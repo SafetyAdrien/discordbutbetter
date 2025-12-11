@@ -3,6 +3,7 @@ export interface User {
   username: string;
   displayName: string;
   avatar?: string;
+  banner?: string;
   status: 'online' | 'idle' | 'dnd' | 'offline';
   customStatus?: string;
   bio?: string;

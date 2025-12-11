@@ -4,13 +4,14 @@ import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
+import { DMConversation } from '@/components/dm/DMConversation';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
-import { useMembers } from '@/hooks/useMembers';
+import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
@@ -20,6 +21,7 @@ const Index = () => {
   
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [activeDMId, setActiveDMId] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
@@ -98,6 +100,19 @@ const Index = () => {
     );
   };
 
+  const handleOpenDM = (conversationId: string) => {
+    setActiveDMId(conversationId);
+    setActiveServerId(null);
+    setActiveChannelId(null);
+  };
+
+  const handleBackFromDM = () => {
+    setActiveDMId(null);
+    if (servers.length > 0) {
+      setActiveServerId(servers[0].id);
+    }
+  };
+
   // Loading state
   if (authLoading || (user && serversLoading)) {
     return (
@@ -144,14 +159,22 @@ const Index = () => {
     })),
   } : null;
 
-  const memberListData: User[] = members.map(m => ({
+  const memberListData: (User & { roles?: MemberWithProfile['roles'] })[] = members.map(m => ({
     id: m.user.id,
     username: m.user.username,
     displayName: m.nickname || m.user.display_name,
     avatar: m.user.avatar_url || undefined,
+    banner: m.user.banner_url || undefined,
     status: m.user.status || 'offline',
     customStatus: m.user.custom_status || undefined,
+    roles: m.roles,
   }));
+
+  // Create member roles map for ChatArea
+  const memberRolesMap = new Map<string, MemberWithProfile['roles']>();
+  members.forEach(m => {
+    memberRolesMap.set(m.user.id, m.roles);
+  });
 
   const messagesData: Message[] = messages.map(m => ({
     id: m.id,
@@ -193,12 +216,21 @@ const Index = () => {
       <ServerList
         servers={serverListData}
         activeServerId={activeServerId}
-        onServerSelect={setActiveServerId}
+        onServerSelect={(id) => {
+          setActiveServerId(id);
+          setActiveDMId(null);
+        }}
         onDiscoverClick={() => setShowDiscover(true)}
         onCreateClick={() => setShowCreate(true)}
       />
 
-      {activeServer && serverForChannelList ? (
+      {/* DM View */}
+      {activeDMId ? (
+        <DMConversation
+          conversationId={activeDMId}
+          onBack={handleBackFromDM}
+        />
+      ) : activeServer && serverForChannelList ? (
         <>
           {/* Channel List */}
           <ChannelList
@@ -214,6 +246,8 @@ const Index = () => {
               channel={channelForChat}
               messages={messagesData}
               onSendMessage={handleSendMessage}
+              memberRoles={memberRolesMap}
+              onOpenDM={handleOpenDM}
             />
           )}
 
@@ -221,6 +255,7 @@ const Index = () => {
           <MemberList 
             members={memberListData} 
             ownerId={activeServer.owner_id || ''} 
+            onOpenDM={handleOpenDM}
           />
         </>
       ) : (

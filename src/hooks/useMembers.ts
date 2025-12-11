@@ -12,6 +12,7 @@ export interface MemberWithProfile {
     username: string;
     display_name: string;
     avatar_url: string | null;
+    banner_url: string | null;
     status: 'online' | 'idle' | 'dnd' | 'offline' | null;
     custom_status: string | null;
   };
@@ -43,6 +44,7 @@ export function useMembers(serverId: string | null) {
             username,
             display_name,
             avatar_url,
+            banner_url,
             status,
             custom_status
           ),
@@ -103,6 +105,7 @@ export function useMembers(serverId: string | null) {
                         custom_status: updated.custom_status,
                         display_name: updated.display_name,
                         avatar_url: updated.avatar_url,
+                        banner_url: updated.banner_url,
                       },
                     }
                   : member

@@ -143,8 +143,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                     className="w-10 h-10 rounded-full flex-shrink-0 mt-0.5"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-semibold text-foreground hover:underline cursor-pointer">
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px]">
                         {message.author.displayName}
                       </span>
                       <span className="text-xs text-muted-foreground">

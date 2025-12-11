@@ -681,56 +681,24 @@ export type Database = {
       }
     }
     Views: {
-      webhooks_secure: {
-        Row: {
-          avatar_url: string | null
-          channel_id: string | null
-          created_at: string | null
-          created_by: string | null
-          id: string | null
-          name: string | null
-          token: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          channel_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          id?: string | null
-          name?: string | null
-          token?: never
-        }
-        Update: {
-          avatar_url?: string | null
-          channel_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          id?: string | null
-          name?: string | null
-          token?: never
-        }
-        Relationships: [
-          {
-            foreignKeyName: "webhooks_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "webhooks_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       can_view_webhook_token: {
         Args: { _user_id: string; _webhook_id: string }
         Returns: boolean
+      }
+      get_channel_webhooks: {
+        Args: { _channel_id: string }
+        Returns: {
+          avatar_url: string
+          channel_id: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          token: string
+        }[]
       }
       has_server_permission: {
         Args: {

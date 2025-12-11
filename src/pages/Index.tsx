@@ -8,10 +8,12 @@ import { DMConversation } from '@/components/dm/DMConversation';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
+import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
@@ -25,6 +27,7 @@ const Index = () => {
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -36,6 +39,25 @@ const Index = () => {
   const createServer = useCreateServer();
   const joinServer = useJoinServer();
   const sendMessage = useSendMessage();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onEscape: () => {
+      if (showShortcutsHelp) setShowShortcutsHelp(false);
+      else if (showDiscover) setShowDiscover(false);
+      else if (showCreate) setShowCreate(false);
+      else if (showServerSettings) setShowServerSettings(false);
+    },
+    onSearch: () => {
+      // TODO: Open search modal
+      console.log('Open search');
+    },
+    onShortcutsHelp: () => setShowShortcutsHelp(true),
+    onToggleMute: () => {
+      // TODO: Toggle microphone mute for VoIP
+      console.log('Toggle mute');
+    },
+  });
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -111,6 +133,13 @@ const Index = () => {
     if (servers.length > 0) {
       setActiveServerId(servers[0].id);
     }
+  };
+
+  const handleOpenServerSettings = (serverId?: string) => {
+    if (serverId) {
+      setActiveServerId(serverId);
+    }
+    setShowServerSettings(true);
   };
 
   // Loading state
@@ -222,6 +251,7 @@ const Index = () => {
         }}
         onDiscoverClick={() => setShowDiscover(true)}
         onCreateClick={() => setShowCreate(true)}
+        onOpenServerSettings={handleOpenServerSettings}
       />
 
       {/* DM View */}
@@ -313,6 +343,10 @@ const Index = () => {
           serverName={activeServer.name}
           onClose={() => setShowServerSettings(false)}
         />
+      )}
+
+      {showShortcutsHelp && (
+        <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />
       )}
     </div>
   );

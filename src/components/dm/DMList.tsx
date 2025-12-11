@@ -3,7 +3,15 @@ import { useDMConversations, DMConversation } from '@/hooks/useDMs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, User, Phone, X, Trash2 } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { toast } from '@/hooks/use-toast';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -78,49 +86,96 @@ function DMConversationItem({
     : participant?.avatar_url;
   const status = participant?.status || 'offline';
 
+  const handleViewProfile = () => {
+    // TODO: Open profile popup
+    console.log('View profile', participant?.id);
+  };
+
+  const handleCall = () => {
+    toast({ title: 'Appels vocaux', description: 'Bientôt disponible !' });
+  };
+
+  const handleClose = () => {
+    // TODO: Implement close conversation
+    toast({ title: 'Conversation fermée' });
+  };
+
+  const handleDelete = () => {
+    // TODO: Implement delete conversation
+    toast({ title: 'Conversation supprimée', variant: 'destructive' });
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors text-left',
-        isActive ? 'bg-muted' : 'hover:bg-muted/50'
-      )}
-    >
-      <div className="relative flex-shrink-0">
-        <Avatar className="w-8 h-8">
-          <AvatarImage src={avatarUrl || undefined} />
-          <AvatarFallback className="bg-primary/20 text-primary text-sm">
-            {displayName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <button
+          onClick={onClick}
+          className={cn(
+            'w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors text-left',
+            isActive ? 'bg-muted' : 'hover:bg-muted/50'
+          )}
+        >
+          <div className="relative flex-shrink-0">
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={avatarUrl || undefined} />
+              <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {!conversation.is_group && (
+              <div className={cn(
+                'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card',
+                statusColors[status]
+              )} />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={cn(
+              'text-sm truncate',
+              isActive ? 'font-medium' : 'text-foreground/80'
+            )}>
+              {displayName}
+            </p>
+            {conversation.lastMessage && (
+              <p className="text-xs text-muted-foreground truncate">
+                {conversation.lastMessage.content}
+              </p>
+            )}
+          </div>
+          {conversation.lastMessage && (
+            <span className="text-xs text-muted-foreground flex-shrink-0">
+              {formatDistanceToNow(new Date(conversation.lastMessage.created_at), {
+                addSuffix: false,
+                locale: fr,
+              })}
+            </span>
+          )}
+        </button>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
         {!conversation.is_group && (
-          <div className={cn(
-            'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card',
-            statusColors[status]
-          )} />
+          <ContextMenuItem onClick={handleViewProfile}>
+            <User className="w-4 h-4 mr-2" />
+            Voir le profil
+          </ContextMenuItem>
         )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={cn(
-          'text-sm truncate',
-          isActive ? 'font-medium' : 'text-foreground/80'
-        )}>
-          {displayName}
-        </p>
-        {conversation.lastMessage && (
-          <p className="text-xs text-muted-foreground truncate">
-            {conversation.lastMessage.content}
-          </p>
-        )}
-      </div>
-      {conversation.lastMessage && (
-        <span className="text-xs text-muted-foreground flex-shrink-0">
-          {formatDistanceToNow(new Date(conversation.lastMessage.created_at), {
-            addSuffix: false,
-            locale: fr,
-          })}
-        </span>
-      )}
-    </button>
+        <ContextMenuItem onClick={handleCall}>
+          <Phone className="w-4 h-4 mr-2" />
+          Appeler
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleClose}>
+          <X className="w-4 h-4 mr-2" />
+          Fermer la conversation
+        </ContextMenuItem>
+        <ContextMenuItem 
+          onClick={handleDelete}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Supprimer la conversation
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

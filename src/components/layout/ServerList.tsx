@@ -1,8 +1,16 @@
-import { useState } from 'react';
 import { Server } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Compass, Plus, MessageCircle } from 'lucide-react';
+import { Compass, Plus, MessageCircle, Settings, UserPlus, Hash, LogOut, CheckCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { copyToClipboard } from '@/lib/clipboard';
+import { toast } from '@/hooks/use-toast';
 
 interface ServerListProps {
   servers: Server[];
@@ -10,6 +18,7 @@ interface ServerListProps {
   onServerSelect: (serverId: string | null) => void;
   onDiscoverClick: () => void;
   onCreateClick: () => void;
+  onOpenServerSettings?: (serverId: string) => void;
 }
 
 export function ServerList({
@@ -18,7 +27,26 @@ export function ServerList({
   onServerSelect,
   onDiscoverClick,
   onCreateClick,
+  onOpenServerSettings,
 }: ServerListProps) {
+  const handleCopyId = (serverId: string) => {
+    copyToClipboard(serverId, 'ID serveur copié');
+  };
+
+  const handleMarkAsRead = (serverId: string) => {
+    toast({ title: 'Serveur marqué comme lu' });
+  };
+
+  const handleInvite = (serverId: string) => {
+    const inviteLink = `${window.location.origin}/invite/${serverId}`;
+    copyToClipboard(inviteLink, 'Lien d\'invitation copié');
+  };
+
+  const handleLeaveServer = (serverId: string) => {
+    // TODO: Implement leave server
+    console.log('Leave server', serverId);
+  };
+
   return (
     <div className="w-[72px] bg-sidebar flex flex-col items-center py-3 gap-2 border-r border-border">
       {/* Home / DMs */}
@@ -44,40 +72,71 @@ export function ServerList({
       {/* Server Icons */}
       <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full px-3">
         {servers.map((server) => (
-          <Tooltip key={server.id}>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onServerSelect(server.id)}
-                className={cn(
-                  'server-icon relative group',
-                  activeServerId === server.id
-                    ? 'bg-primary text-primary-foreground rounded-[16px]'
-                    : 'bg-card hover:bg-primary/80 hover:text-primary-foreground'
-                )}
+          <ContextMenu key={server.id}>
+            <Tooltip>
+              <ContextMenuTrigger asChild>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onServerSelect(server.id)}
+                    className={cn(
+                      'server-icon relative group',
+                      activeServerId === server.id
+                        ? 'bg-primary text-primary-foreground rounded-[16px]'
+                        : 'bg-card hover:bg-primary/80 hover:text-primary-foreground'
+                    )}
+                  >
+                    {/* Active indicator */}
+                    <div
+                      className={cn(
+                        'absolute left-[-16px] w-1 rounded-r-full bg-foreground transition-all duration-300',
+                        activeServerId === server.id
+                          ? 'h-10'
+                          : 'h-0 group-hover:h-5'
+                      )}
+                    />
+                    
+                    {server.icon ? (
+                      <span className="text-xl">{server.icon}</span>
+                    ) : (
+                      <span className="text-sm font-semibold">
+                        {server.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+              </ContextMenuTrigger>
+              <TooltipContent side="right">
+                <p>{server.name}</p>
+              </TooltipContent>
+            </Tooltip>
+            <ContextMenuContent className="w-48">
+              <ContextMenuItem onClick={() => handleMarkAsRead(server.id)}>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Marquer comme lu
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleInvite(server.id)}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Inviter des personnes
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => onOpenServerSettings?.(server.id)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Paramètres du serveur
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCopyId(server.id)}>
+                <Hash className="w-4 h-4 mr-2" />
+                Copier l'ID
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem 
+                onClick={() => handleLeaveServer(server.id)}
+                className="text-destructive focus:text-destructive"
               >
-                {/* Active indicator */}
-                <div
-                  className={cn(
-                    'absolute left-[-16px] w-1 rounded-r-full bg-foreground transition-all duration-300',
-                    activeServerId === server.id
-                      ? 'h-10'
-                      : 'h-0 group-hover:h-5'
-                  )}
-                />
-                
-                {server.icon ? (
-                  <span className="text-xl">{server.icon}</span>
-                ) : (
-                  <span className="text-sm font-semibold">
-                    {server.name.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{server.name}</p>
-            </TooltipContent>
-          </Tooltip>
+                <LogOut className="w-4 h-4 mr-2" />
+                Quitter le serveur
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         ))}
       </div>
 

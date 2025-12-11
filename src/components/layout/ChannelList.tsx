@@ -8,7 +8,11 @@ import {
   Settings,
   Plus,
   LogOut,
-  User
+  User,
+  CheckCircle,
+  Link,
+  Bell,
+  Trash2
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,8 +24,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
+import { copyToClipboard } from '@/lib/clipboard';
+import { toast } from '@/hooks/use-toast';
 
 interface Channel {
   id: string;
@@ -90,6 +103,15 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
     await signOut();
   };
 
+  const handleCopyLink = (channelId: string) => {
+    const link = `${window.location.origin}/channels/${server.id}/${channelId}`;
+    copyToClipboard(link, 'Lien copié');
+  };
+
+  const handleMarkAsRead = (channelId: string) => {
+    toast({ title: 'Marqué comme lu' });
+  };
+
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header */}
@@ -129,36 +151,63 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
                   const isVoice = channel.type === 'voice';
 
                   return (
-                    <button
-                      key={channel.id}
-                      onClick={() => onChannelSelect(channel.id)}
-                      className={cn(
-                        'channel-item w-full group',
-                        isActive && 'active'
-                      )}
-                    >
-                      <Icon className={cn(
-                        'w-4 h-4 flex-shrink-0',
-                        isVoice && 'text-[hsl(var(--online))]'
-                      )} />
-                      <span className="truncate flex-1 text-left">{channel.name}</span>
-                      
-                      {channel.unreadCount && channel.unreadCount > 0 && (
-                        <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                          {channel.unreadCount}
-                        </span>
-                      )}
+                    <ContextMenu key={channel.id}>
+                      <ContextMenuTrigger asChild>
+                        <button
+                          onClick={() => onChannelSelect(channel.id)}
+                          className={cn(
+                            'channel-item w-full group',
+                            isActive && 'active'
+                          )}
+                        >
+                          <Icon className={cn(
+                            'w-4 h-4 flex-shrink-0',
+                            isVoice && 'text-[hsl(var(--online))]'
+                          )} />
+                          <span className="truncate flex-1 text-left">{channel.name}</span>
+                          
+                          {channel.unreadCount && channel.unreadCount > 0 && (
+                            <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                              {channel.unreadCount}
+                            </span>
+                          )}
 
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Settings 
-                          className="w-4 h-4 text-muted-foreground hover:text-foreground" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedChannelId(channel.id);
-                          }}
-                        />
-                      </div>
-                    </button>
+                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Settings 
+                              className="w-4 h-4 text-muted-foreground hover:text-foreground" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedChannelId(channel.id);
+                              }}
+                            />
+                          </div>
+                        </button>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="w-48">
+                        <ContextMenuItem onClick={() => handleMarkAsRead(channel.id)}>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Marquer comme lu
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleCopyLink(channel.id)}>
+                          <Link className="w-4 h-4 mr-2" />
+                          Copier le lien
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem onClick={() => setSelectedChannelId(channel.id)}>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Modifier le channel
+                        </ContextMenuItem>
+                        <ContextMenuItem>
+                          <Bell className="w-4 h-4 mr-2" />
+                          Notifications
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem className="text-destructive focus:text-destructive">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Supprimer le channel
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   );
                 })}
               </div>

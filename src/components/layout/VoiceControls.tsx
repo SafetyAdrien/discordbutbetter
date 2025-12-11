@@ -1,0 +1,106 @@
+import { cn } from '@/lib/utils';
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+interface VoiceControlsProps {
+  channelName: string;
+  serverName: string | null;
+  isMuted: boolean;
+  isDeafened: boolean;
+  onToggleMute: () => void;
+  onToggleDeafen: () => void;
+  onDisconnect: () => void;
+}
+
+export function VoiceControls({
+  channelName,
+  serverName,
+  isMuted,
+  isDeafened,
+  onToggleMute,
+  onToggleDeafen,
+  onDisconnect,
+}: VoiceControlsProps) {
+  return (
+    <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
+      {/* Connection Info */}
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <Signal className="w-4 h-4 text-[hsl(var(--online))] animate-pulse" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-[hsl(var(--online))]">
+            Connecté
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            {channelName}{serverName && ` / ${serverName}`}
+          </p>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-1">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={isMuted ? 'destructive' : 'ghost'}
+                className={cn(
+                  'flex-1 h-8',
+                  isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                )}
+                onClick={onToggleMute}
+              >
+                {isMuted ? (
+                  <MicOff className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isMuted ? 'Activer le micro' : 'Couper le micro'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={isDeafened ? 'destructive' : 'ghost'}
+                className={cn(
+                  'flex-1 h-8',
+                  isDeafened && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                )}
+                onClick={onToggleDeafen}
+              >
+                {isDeafened ? (
+                  <HeadphoneOff className="w-4 h-4" />
+                ) : (
+                  <Headphones className="w-4 h-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isDeafened ? 'Activer le son' : 'Couper le son'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="flex-1 h-8 hover:bg-destructive/20 hover:text-destructive"
+                onClick={onDisconnect}
+              >
+                <PhoneOff className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Déconnexion</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </div>
+  );
+}

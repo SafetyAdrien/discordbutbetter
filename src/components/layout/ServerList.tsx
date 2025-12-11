@@ -62,10 +62,10 @@ export function ServerList({
             {/* Active indicator */}
             <div
               className={cn(
-                'absolute left-0 w-1 rounded-r-full bg-foreground transition-all duration-300',
+                'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                 activeServerId === null
-                  ? 'h-10'
-                  : 'h-0 group-hover:h-5'
+                  ? 'h-2'
+                  : 'h-0 group-hover:h-1.5'
               )}
             />
             <MessageCircle className="w-6 h-6" />
@@ -97,10 +97,10 @@ export function ServerList({
                     {/* Active indicator */}
                     <div
                       className={cn(
-                        'absolute left-0 w-1 rounded-r-full bg-foreground transition-all duration-300',
+                        'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                         activeServerId === server.id
-                          ? 'h-10'
-                          : 'h-0 group-hover:h-5'
+                          ? 'h-2'
+                          : 'h-0 group-hover:h-1.5'
                       )}
                     />
                     

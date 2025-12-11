@@ -7,7 +7,8 @@ import {
   Megaphone,
   Settings,
   Plus,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ProfileSettings } from '@/components/profile/ProfileSettings';
 
 interface Channel {
   id: string;
@@ -45,6 +47,7 @@ interface ChannelListProps {
   server: Server;
   activeChannelId: string | null;
   onChannelSelect: (channelId: string) => void;
+  onOpenServerSettings?: () => void;
 }
 
 const channelIcons = {
@@ -68,8 +71,9 @@ const statusLabels = {
   offline: 'Hors ligne',
 };
 
-export function ChannelList({ server, activeChannelId, onChannelSelect }: ChannelListProps) {
+export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenServerSettings }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
   const { profile, signOut, updateStatus } = useAuth();
 
   const toggleCategory = (categoryId: string) => {
@@ -87,10 +91,13 @@ export function ChannelList({ server, activeChannelId, onChannelSelect }: Channe
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border hover:bg-muted cursor-pointer transition-colors">
+      <button 
+        onClick={onOpenServerSettings}
+        className="h-12 px-4 flex items-center justify-between border-b border-border hover:bg-muted cursor-pointer transition-colors w-full"
+      >
         <h2 className="font-semibold text-foreground truncate">{server.name}</h2>
-        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </div>
+        <Settings className="w-4 h-4 text-muted-foreground" />
+      </button>
 
       {/* Channels */}
       <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
@@ -200,16 +207,27 @@ export function ChannelList({ server, activeChannelId, onChannelSelect }: Channe
               Invisible
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowProfileSettings(true)}>
+              <User className="w-4 h-4 mr-2" />
+              Mon profil
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
               <LogOut className="w-4 h-4 mr-2" />
               Se déconnecter
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
+        <button 
+          onClick={() => setShowProfileSettings(true)}
+          className="p-1.5 hover:bg-muted rounded-md transition-colors"
+        >
           <Settings className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
+
+      {showProfileSettings && (
+        <ProfileSettings onClose={() => setShowProfileSettings(false)} />
+      )}
     </div>
   );
 }

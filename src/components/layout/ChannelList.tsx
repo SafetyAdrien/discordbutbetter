@@ -1,4 +1,3 @@
-import { Server, Category, Channel } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
   ChevronDown, 
@@ -8,9 +7,39 @@ import {
   Megaphone,
   Settings,
   Plus,
-  Users
+  LogOut
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+interface Channel {
+  id: string;
+  name: string;
+  type: 'text' | 'voice' | 'forum' | 'announcement';
+  description?: string;
+  unreadCount?: number;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  channels: Channel[];
+}
+
+interface Server {
+  id: string;
+  name: string;
+  ownerId: string;
+  categories: Category[];
+}
 
 interface ChannelListProps {
   server: Server;
@@ -25,8 +54,23 @@ const channelIcons = {
   announcement: Megaphone,
 };
 
+const statusColors = {
+  online: 'bg-[hsl(var(--online))]',
+  idle: 'bg-[hsl(var(--idle))]',
+  dnd: 'bg-[hsl(var(--dnd))]',
+  offline: 'bg-[hsl(var(--offline))]',
+};
+
+const statusLabels = {
+  online: 'En ligne',
+  idle: 'Inactif',
+  dnd: 'Ne pas déranger',
+  offline: 'Hors ligne',
+};
+
 export function ChannelList({ server, activeChannelId, onChannelSelect }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
+  const { profile, signOut, updateStatus } = useAuth();
 
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories((prev) =>
@@ -36,10 +80,14 @@ export function ChannelList({ server, activeChannelId, onChannelSelect }: Channe
     );
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border hover:bg-surface-hover cursor-pointer transition-colors">
+      <div className="h-12 px-4 flex items-center justify-between border-b border-border hover:bg-muted cursor-pointer transition-colors">
         <h2 className="font-semibold text-foreground truncate">{server.name}</h2>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
       </div>
@@ -82,7 +130,7 @@ export function ChannelList({ server, activeChannelId, onChannelSelect }: Channe
                     >
                       <Icon className={cn(
                         'w-4 h-4 flex-shrink-0',
-                        isVoice && 'text-status-online'
+                        isVoice && 'text-[hsl(var(--online))]'
                       )} />
                       <span className="truncate flex-1 text-left">{channel.name}</span>
                       
@@ -106,17 +154,59 @@ export function ChannelList({ server, activeChannelId, onChannelSelect }: Channe
 
       {/* User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
-        <div className="relative">
-          <div className="w-8 h-8 rounded-full bg-gradient-gaming flex items-center justify-center">
-            <span className="text-sm">🎮</span>
-          </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-status-online rounded-full border-2 border-background" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">CyberPunk</p>
-          <p className="text-xs text-muted-foreground truncate">En ligne</p>
-        </div>
-        <button className="p-1.5 hover:bg-surface-hover rounded-md transition-colors">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
+              <div className="relative">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                    {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={cn(
+                  'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background',
+                  statusColors[profile?.status || 'offline']
+                )} />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium truncate">{profile?.display_name || 'Chargement...'}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {profile?.custom_status || statusLabels[profile?.status || 'offline']}
+                </p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium">{profile?.display_name}</p>
+              <p className="text-xs text-muted-foreground">@{profile?.username}</p>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => updateStatus('online')}>
+              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.online)} />
+              En ligne
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatus('idle')}>
+              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.idle)} />
+              Inactif
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatus('dnd')}>
+              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.dnd)} />
+              Ne pas déranger
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatus('offline')}>
+              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.offline)} />
+              Invisible
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+              <LogOut className="w-4 h-4 mr-2" />
+              Se déconnecter
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
           <Settings className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>

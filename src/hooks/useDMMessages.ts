@@ -3,7 +3,15 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
+// Message validation schema
+const messageSchema = z.object({
+  content: z.string()
+    .trim()
+    .min(1, 'Message cannot be empty')
+    .max(2000, 'Message too long (max 2000 characters)'),
+});
 export interface DMMessage {
   id: string;
   content: string;
@@ -126,11 +134,14 @@ export function useSendDMMessage() {
     }) => {
       if (!user) throw new Error('Not authenticated');
 
+      // Validate message content
+      const validated = messageSchema.parse({ content });
+
       const { data, error } = await supabase
         .from('dm_messages')
         .insert({
           conversation_id: conversationId,
-          content,
+          content: validated.content,
           author_id: user.id,
         })
         .select(`

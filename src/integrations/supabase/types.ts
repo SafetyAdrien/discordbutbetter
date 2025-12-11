@@ -681,9 +681,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      webhooks_secure: {
+        Row: {
+          avatar_url: string | null
+          channel_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string | null
+          name: string | null
+          token: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          channel_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          name?: string | null
+          token?: never
+        }
+        Update: {
+          avatar_url?: string | null
+          channel_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          name?: string | null
+          token?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_view_webhook_token: {
+        Args: { _user_id: string; _webhook_id: string }
+        Returns: boolean
+      }
       has_server_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["server_permission"]
@@ -696,12 +744,24 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      is_friend_with: {
+        Args: { _other_user_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_server_member: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
       is_server_owner: {
         Args: { _server_id: string; _user_id: string }
+        Returns: boolean
+      }
+      shares_dm_with: {
+        Args: { _other_user_id: string; _user_id: string }
+        Returns: boolean
+      }
+      shares_server_with: {
+        Args: { _other_user_id: string; _user_id: string }
         Returns: boolean
       }
     }

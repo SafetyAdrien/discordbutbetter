@@ -81,7 +81,15 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
         {/* Banner */}
-        <div className="h-24 bg-gradient-to-br from-primary/60 via-glow-purple/40 to-glow-cyan/30" />
+        {user.banner ? (
+          <img 
+            src={user.banner} 
+            alt="Banner" 
+            className="h-24 w-full object-cover" 
+          />
+        ) : (
+          <div className="h-24 bg-gradient-to-br from-primary/60 via-glow-purple/40 to-glow-cyan/30" />
+        )}
 
         {/* Profile Content */}
         <div className="px-4 pb-4">

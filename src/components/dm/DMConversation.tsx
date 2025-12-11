@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, ArrowLeft } from 'lucide-react';
 
-interface DMConversationProps {
+export interface DMConversationProps {
   conversationId: string;
+  onBack?: () => void;
 }
 
-export function DMConversation({ conversationId }: DMConversationProps) {
+export function DMConversation({ conversationId, onBack }: DMConversationProps) {
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +48,11 @@ export function DMConversation({ conversationId }: DMConversationProps) {
     <div className="flex-1 flex flex-col bg-background">
       {/* Header */}
       <div className="h-12 px-4 flex items-center gap-3 border-b border-border">
+        {onBack && (
+          <Button variant="ghost" size="icon" onClick={onBack} className="mr-1">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        )}
         <Avatar className="w-8 h-8">
           <AvatarImage src={participant?.avatar_url || undefined} />
           <AvatarFallback className="bg-primary/20 text-primary text-sm">
@@ -57,7 +63,7 @@ export function DMConversation({ conversationId }: DMConversationProps) {
           <h2 className="font-semibold text-sm">{displayName}</h2>
           {participant && (
             <p className="text-xs text-muted-foreground">
-              @{participant.username}
+              @{participant.username.toLowerCase()}
             </p>
           )}
         </div>

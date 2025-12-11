@@ -12,12 +12,28 @@ import {
   Gift,
   Sticker,
   Smile,
-  Send
+  Send,
+  Copy,
+  Reply,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { copyToClipboard } from '@/lib/clipboard';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Role {
   id: string;
@@ -51,11 +67,14 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
 export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
   function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM }, ref) {
     const [messageInput, setMessageInput] = useState('');
     const [showMembers, setShowMembers] = useState(true);
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
+    const { user } = useAuth();
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -68,6 +87,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const handleUserClick = (author: User) => {
       const roles = memberRoles?.get(author.id);
       setSelectedUser({ user: author, roles });
+    };
+
+    const handleCopyMessage = (content: string) => {
+      copyToClipboard(content, 'Message copié');
+    };
+
+    const handleCopyId = (id: string) => {
+      copyToClipboard(id, 'ID copié');
+    };
+
+    const handleAddReaction = (messageId: string, emoji: string) => {
+      // TODO: Implement reaction mutation
+      console.log('Add reaction', messageId, emoji);
     };
 
     return (
@@ -143,79 +175,130 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
           const showAuthor = index === 0 || 
             messages[index - 1].author.id !== message.author.id ||
             (message.timestamp.getTime() - messages[index - 1].timestamp.getTime()) > 300000;
+          const isOwnMessage = user?.id === message.author.id;
 
           return (
-            <div
-              key={message.id}
-              className={cn(
-                'group message-hover rounded-md px-2 py-1 -mx-2',
-                !showAuthor && 'mt-0'
-              )}
-            >
-              {showAuthor ? (
-                <div className="flex gap-4">
-                  <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
-                    <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
-                      <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
-                      <AvatarFallback className="bg-primary/20 text-primary">
-                        {message.author.displayName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                      <button 
-                        onClick={() => handleUserClick(message.author)}
-                        className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
-                      >
-                        {message.author.displayName}
+            <ContextMenu key={message.id}>
+              <ContextMenuTrigger asChild>
+                <div
+                  className={cn(
+                    'group message-hover rounded-md px-2 py-1 -mx-2',
+                    !showAuthor && 'mt-0'
+                  )}
+                >
+                  {showAuthor ? (
+                    <div className="flex gap-4">
+                      <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                        <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                          <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                          <AvatarFallback className="bg-primary/20 text-primary">
+                            {message.author.displayName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                       </button>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                          <button 
+                            onClick={() => handleUserClick(message.author)}
+                            className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                          >
+                            {message.author.displayName}
+                          </button>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {formatTime(message.timestamp)}
+                          </span>
+                        </div>
+                        <p className="text-foreground break-words">{message.content}</p>
+                        
+                        {message.reactions && message.reactions.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {message.reactions.map((reaction, i) => (
+                              <button
+                                key={i}
+                                className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
+                              >
+                                <span>{reaction.emoji}</span>
+                                <span className="text-xs text-muted-foreground">{reaction.count}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-4">
+                      <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
                         {formatTime(message.timestamp)}
                       </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-foreground break-words">{message.content}</p>
+                        
+                        {message.reactions && message.reactions.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {message.reactions.map((reaction, i) => (
+                              <button
+                                key={i}
+                                className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
+                              >
+                                <span>{reaction.emoji}</span>
+                                <span className="text-xs text-muted-foreground">{reaction.count}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-foreground break-words">{message.content}</p>
-                    
-                    {message.reactions && message.reactions.length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {message.reactions.map((reaction, i) => (
-                          <button
-                            key={i}
-                            className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
-                          >
-                            <span>{reaction.emoji}</span>
-                            <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex gap-4">
-                  <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
-                    {formatTime(message.timestamp)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground break-words">{message.content}</p>
-                    
-                    {message.reactions && message.reactions.length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {message.reactions.map((reaction, i) => (
-                          <button
-                            key={i}
-                            className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
-                          >
-                            <span>{reaction.emoji}</span>
-                            <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger>
+                    <Smile className="w-4 h-4 mr-2" />
+                    Ajouter une réaction
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="p-2">
+                    <div className="flex gap-1">
+                      {QUICK_REACTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleAddReaction(message.id, emoji)}
+                          className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuItem>
+                  <Reply className="w-4 h-4 mr-2" />
+                  Répondre
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copier le texte
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyId(message.id)}>
+                  <Hash className="w-4 h-4 mr-2" />
+                  Copier l'ID
+                </ContextMenuItem>
+                {isOwnMessage && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Modifier
+                    </ContextMenuItem>
+                    <ContextMenuItem className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Supprimer
+                    </ContextMenuItem>
+                  </>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
       </div>

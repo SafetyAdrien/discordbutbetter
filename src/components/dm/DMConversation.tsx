@@ -7,16 +7,31 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Send, Loader2, ArrowLeft } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, Copy, Pencil, Trash2, Hash, Smile, Reply } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { copyToClipboard } from '@/lib/clipboard';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface DMConversationProps {
   conversationId: string;
   onBack?: () => void;
 }
 
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
 export function DMConversation({ conversationId, onBack }: DMConversationProps) {
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   const { data: conversations = [] } = useDMConversations();
   const { data: messages = [], isLoading } = useDMMessages(conversationId);
@@ -38,6 +53,19 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       content: messageInput.trim(),
     });
     setMessageInput('');
+  };
+
+  const handleCopyMessage = (content: string) => {
+    copyToClipboard(content, 'Message copié');
+  };
+
+  const handleCopyId = (id: string) => {
+    copyToClipboard(id, 'ID copié');
+  };
+
+  const handleAddReaction = (messageId: string, emoji: string) => {
+    // TODO: Implement reaction mutation
+    console.log('Add reaction', messageId, emoji);
   };
 
   const displayName = conversation?.is_group
@@ -95,6 +123,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 key={message.id}
                 message={message}
                 showAuthor={idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id}
+                isOwnMessage={user?.id === message.author?.id}
+                onCopyMessage={handleCopyMessage}
+                onCopyId={handleCopyId}
+                onAddReaction={handleAddReaction}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -120,37 +152,102 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   );
 }
 
-function MessageItem({ message, showAuthor }: { message: DMMessage; showAuthor: boolean }) {
+function MessageItem({ 
+  message, 
+  showAuthor,
+  isOwnMessage,
+  onCopyMessage,
+  onCopyId,
+  onAddReaction,
+}: { 
+  message: DMMessage; 
+  showAuthor: boolean;
+  isOwnMessage: boolean;
+  onCopyMessage: (content: string) => void;
+  onCopyId: (id: string) => void;
+  onAddReaction: (messageId: string, emoji: string) => void;
+}) {
   const timestamp = message.created_at
     ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
     : '';
 
   return (
-    <div className={cn('flex gap-3', !showAuthor && 'pl-12')}>
-      {showAuthor && (
-        <Avatar className="w-9 h-9 flex-shrink-0">
-          <AvatarImage src={message.author?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/20 text-primary text-sm">
-            {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
-          </AvatarFallback>
-        </Avatar>
-      )}
-      <div className="flex-1 min-w-0">
-        {showAuthor && (
-          <div className="flex items-baseline gap-2 mb-0.5">
-            <span className="font-medium text-sm">
-              {message.author?.display_name || 'Utilisateur'}
-            </span>
-            <span className="text-xs text-muted-foreground">{timestamp}</span>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className={cn('flex gap-3 group message-hover rounded-md px-2 py-1 -mx-2', !showAuthor && 'pl-12')}>
+          {showAuthor && (
+            <Avatar className="w-9 h-9 flex-shrink-0">
+              <AvatarImage src={message.author?.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          <div className="flex-1 min-w-0">
+            {showAuthor && (
+              <div className="flex items-baseline gap-2 mb-0.5">
+                <span className="font-medium text-sm">
+                  {message.author?.display_name || 'Utilisateur'}
+                </span>
+                <span className="text-xs text-muted-foreground">{timestamp}</span>
+              </div>
+            )}
+            <p className={cn(
+              'text-sm break-words',
+              message.isPending && 'opacity-50'
+            )}>
+              {message.content}
+            </p>
           </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Smile className="w-4 h-4 mr-2" />
+            Ajouter une réaction
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="p-2">
+            <div className="flex gap-1">
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => onAddReaction(message.id, emoji)}
+                  className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuItem>
+          <Reply className="w-4 h-4 mr-2" />
+          Répondre
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onCopyMessage(message.content)}>
+          <Copy className="w-4 h-4 mr-2" />
+          Copier le texte
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onCopyId(message.id)}>
+          <Hash className="w-4 h-4 mr-2" />
+          Copier l'ID
+        </ContextMenuItem>
+        {isOwnMessage && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem>
+              <Pencil className="w-4 h-4 mr-2" />
+              Modifier
+            </ContextMenuItem>
+            <ContextMenuItem className="text-destructive focus:text-destructive">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer
+            </ContextMenuItem>
+          </>
         )}
-        <p className={cn(
-          'text-sm break-words',
-          message.isPending && 'opacity-50'
-        )}>
-          {message.content}
-        </p>
-      </div>
-    </div>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

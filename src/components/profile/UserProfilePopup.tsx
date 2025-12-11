@@ -3,7 +3,7 @@ import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, UserPlus, Check, Loader2 } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -37,6 +37,15 @@ const statusLabels = {
   dnd: 'Ne pas déranger',
   offline: 'Hors ligne',
 };
+
+function formatMemberSince(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('fr-FR', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+}
 
 export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: UserProfilePopupProps) {
   const { user: currentUser } = useAuth();
@@ -109,6 +118,15 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
                 )}
               />
             </div>
+            {/* Friend Badge */}
+            {isFriend && !isOwnProfile && (
+              <div className="absolute top-0 right-0">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[hsl(var(--online))]/20 text-[hsl(var(--online))] text-xs font-medium">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Ami</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* User Info */}
@@ -127,6 +145,14 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
             {/* Custom Status */}
             {user.customStatus && (
               <p className="text-sm text-foreground/80 italic">"{user.customStatus}"</p>
+            )}
+
+            {/* Member Since */}
+            {user.createdAt && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                <span>Membre depuis le {formatMemberSince(user.createdAt)}</span>
+              </div>
             )}
 
             {/* Roles */}

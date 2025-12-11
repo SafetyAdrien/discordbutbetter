@@ -282,3 +282,112 @@ export function useSendMessage() {
     },
   });
 }
+
+export function useEditMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      channelId,
+      content,
+    }: {
+      messageId: string;
+      channelId: string;
+      content: string;
+    }) => {
+      const validated = messageSchema.parse({ content });
+      const { data, error } = await supabase
+        .from('messages')
+        .update({ content: validated.content, edited_at: new Date().toISOString() })
+        .eq('id', messageId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ messageId, channelId, content }) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
+
+      const previousMessages = queryClient.getQueryData<MessageWithAuthor[]>([
+        'messages',
+        channelId,
+      ]);
+
+      queryClient.setQueryData<MessageWithAuthor[]>(
+        ['messages', channelId],
+        (old) => {
+          if (!old) return old;
+          return old.map((m) =>
+            m.id === messageId
+              ? { ...m, content, edited_at: new Date().toISOString() }
+              : m
+          );
+        }
+      );
+
+      return { previousMessages };
+    },
+    onError: (error, { channelId }, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', channelId], context.previousMessages);
+      }
+      toast.error('Erreur lors de la modification');
+      console.error('Edit message error:', error);
+    },
+    onSuccess: () => {
+      toast.success('Message modifié');
+    },
+  });
+}
+
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      channelId,
+    }: {
+      messageId: string;
+      channelId: string;
+    }) => {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+      return { messageId, channelId };
+    },
+    onMutate: async ({ messageId, channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
+
+      const previousMessages = queryClient.getQueryData<MessageWithAuthor[]>([
+        'messages',
+        channelId,
+      ]);
+
+      queryClient.setQueryData<MessageWithAuthor[]>(
+        ['messages', channelId],
+        (old) => {
+          if (!old) return old;
+          return old.filter((m) => m.id !== messageId);
+        }
+      );
+
+      return { previousMessages };
+    },
+    onError: (error, { channelId }, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', channelId], context.previousMessages);
+      }
+      toast.error('Erreur lors de la suppression');
+      console.error('Delete message error:', error);
+    },
+    onSuccess: () => {
+      toast.success('Message supprimé');
+    },
+  });
+}

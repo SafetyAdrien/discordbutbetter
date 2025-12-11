@@ -38,7 +38,7 @@ import { AccountSettingsModal } from '@/components/account-settings/AccountSetti
 import { VoiceControls } from './VoiceControls';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
-import { useVoiceState, useVoiceParticipants } from '@/hooks/useVoiceState';
+import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 
 interface Channel {
   id: string;
@@ -94,7 +94,7 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const { profile, signOut, updateStatus } = useAuth();
-  const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoiceState();
+  const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
 
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories((prev) =>
@@ -120,11 +120,7 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
   const handleChannelClick = (channel: Channel) => {
     if (channel.type === 'voice') {
       // Join voice channel instantly
-      joinChannel.mutate({
-        channelId: channel.id,
-        channelName: channel.name,
-        serverName: server.name,
-      });
+      joinChannel(channel.id, channel.name, server.name);
     } else {
       // Select text channel
       onChannelSelect(channel.id);
@@ -171,6 +167,7 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
                     serverId={server.id}
                     isActive={activeChannelId === channel.id}
                     isVoiceConnected={voiceState.channelId === channel.id}
+                    speakingUsers={speakingUsers}
                     onChannelClick={() => handleChannelClick(channel)}
                     onCopyLink={() => handleCopyLink(channel.id)}
                     onMarkAsRead={() => handleMarkAsRead(channel.id)}
@@ -190,9 +187,9 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
           serverName={voiceState.serverName}
           isMuted={voiceState.isMuted}
           isDeafened={voiceState.isDeafened}
-          onToggleMute={() => toggleMute.mutate()}
-          onToggleDeafen={() => toggleDeafen.mutate()}
-          onDisconnect={() => leaveChannel.mutate()}
+          onToggleMute={() => toggleMute()}
+          onToggleDeafen={() => toggleDeafen()}
+          onDisconnect={() => leaveChannel()}
         />
       )}
 
@@ -283,6 +280,7 @@ function ChannelItem({
   serverId,
   isActive,
   isVoiceConnected,
+  speakingUsers,
   onChannelClick,
   onCopyLink,
   onMarkAsRead,
@@ -292,6 +290,7 @@ function ChannelItem({
   serverId: string;
   isActive: boolean;
   isVoiceConnected: boolean;
+  speakingUsers: Set<string>;
   onChannelClick: () => void;
   onCopyLink: () => void;
   onMarkAsRead: () => void;
@@ -365,28 +364,34 @@ function ChannelItem({
       {/* Voice Participants */}
       {isVoice && participants.length > 0 && (
         <div className="ml-6 mt-1 space-y-1">
-          {participants.map((participant) => (
-            <div 
-              key={participant.id}
-              className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground"
-            >
-              <Avatar className="w-5 h-5">
-                <AvatarImage src={participant.profile.avatar_url || undefined} />
-                <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                  {participant.profile.display_name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate flex-1 text-xs">
-                {participant.profile.display_name}
-              </span>
-              {participant.muted && (
-                <MicOff className="w-3 h-3 text-destructive" />
-              )}
-              {participant.deafened && (
-                <HeadphoneOff className="w-3 h-3 text-destructive" />
-              )}
-            </div>
-          ))}
+          {participants.map((participant) => {
+            const isSpeaking = speakingUsers.has(participant.user_id);
+            return (
+              <div 
+                key={participant.id}
+                className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground"
+              >
+                <Avatar className={cn(
+                  "w-5 h-5 transition-all",
+                  isSpeaking && "ring-2 ring-[hsl(var(--online))] ring-offset-1 ring-offset-background"
+                )}>
+                  <AvatarImage src={participant.profile.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                    {participant.profile.display_name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate flex-1 text-xs">
+                  {participant.profile.display_name}
+                </span>
+                {participant.muted && (
+                  <MicOff className="w-3 h-3 text-destructive" />
+                )}
+                {participant.deafened && (
+                  <HeadphoneOff className="w-3 h-3 text-destructive" />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

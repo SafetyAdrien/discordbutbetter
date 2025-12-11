@@ -364,6 +364,57 @@ export type Database = {
           },
         ]
       }
+      invites: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_permanent: boolean | null
+          max_uses: number | null
+          server_id: string
+          uses: number | null
+        }
+        Insert: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_permanent?: boolean | null
+          max_uses?: number | null
+          server_id: string
+          uses?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_permanent?: boolean | null
+          max_uses?: number | null
+          server_id?: string
+          uses?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_roles: {
         Row: {
           id: string
@@ -924,6 +975,7 @@ export type Database = {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean
       }
+      use_invite: { Args: { invite_code: string }; Returns: string }
     }
     Enums: {
       channel_type:

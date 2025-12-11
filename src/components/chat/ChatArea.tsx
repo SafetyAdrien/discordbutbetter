@@ -8,7 +8,6 @@ import {
   Users, 
   Inbox,
   PlusCircle,
-  Gift,
   Sticker,
   Smile,
   Send,
@@ -21,7 +20,9 @@ import {
   BellRing,
   AtSign,
   X,
-  Check
+  Check,
+  Image,
+  BarChart2
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -508,12 +509,32 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       <div className="px-4 pb-6 flex-shrink-0">
         <form onSubmit={handleSubmit} className="relative shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
           <div className="flex items-center gap-2 bg-input rounded-lg border border-border focus-within:border-primary/50 transition-colors">
-            <button
-              type="button"
-              className="p-3 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <PlusCircle className="w-5 h-5" />
-            </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="p-3 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <PlusCircle className="w-5 h-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-48 p-1">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                >
+                  <Image className="w-4 h-4" />
+                  <span>Ajouter une image</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                >
+                  <BarChart2 className="w-4 h-4" />
+                  <span>Créer un sondage</span>
+                </button>
+              </PopoverContent>
+            </Popover>
             
             <input
               type="text"
@@ -524,12 +545,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
             />
             
             <div className="flex items-center gap-1 pr-2">
-              <button
-                type="button"
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Gift className="w-5 h-5" />
-              </button>
               <button
                 type="button"
                 className="p-2 text-muted-foreground hover:text-foreground transition-colors"

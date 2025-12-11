@@ -309,7 +309,13 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
                       )}
                     />
                     <span className="tracking-wide">{category.name}</span>
-                    <Plus className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Plus 
+                      className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCreateChannelForCategory({ id: category.id, name: category.name });
+                      }}
+                    />
                   </button>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-52">
@@ -355,6 +361,13 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
+          <ContextMenuItem onClick={() => {
+            const firstCat = server.categories[0];
+            if (firstCat) setCreateChannelForCategory({ id: firstCat.id, name: firstCat.name });
+          }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Créer un salon
+          </ContextMenuItem>
           <ContextMenuItem onClick={() => setShowCreateCategory(true)}>
             <FolderPlus className="w-4 h-4 mr-2" />
             Créer une catégorie

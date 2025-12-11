@@ -208,3 +208,21 @@ export function useDeleteRole() {
     },
   });
 }
+
+export function useReorderRoles() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, orderedIds }: { serverId: string; orderedIds: string[] }) => {
+      // Update positions (higher index = higher in hierarchy)
+      const updates = orderedIds.map((id, index) => 
+        supabase.from('roles').update({ position: orderedIds.length - index }).eq('id', id)
+      );
+      await Promise.all(updates);
+      return { serverId };
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+    },
+  });
+}

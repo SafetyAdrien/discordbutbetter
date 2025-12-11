@@ -179,7 +179,7 @@ const Index = () => {
       channels: cat.channels.map(ch => ({
         id: ch.id,
         name: ch.name,
-        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement',
+        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks',
         description: ch.description || undefined,
       })),
     })),
@@ -195,7 +195,7 @@ const Index = () => {
       channels: cat.channels.map(ch => ({
         id: ch.id,
         name: ch.name,
-        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement',
+        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks',
         description: ch.description || undefined,
       })),
     })),
@@ -234,7 +234,7 @@ const Index = () => {
   const channelForChat = activeChannel ? {
     id: activeChannel.id,
     name: activeChannel.name,
-    type: (activeChannel.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement',
+    type: (activeChannel.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks',
     description: activeChannel.description || undefined,
   } : null;
 

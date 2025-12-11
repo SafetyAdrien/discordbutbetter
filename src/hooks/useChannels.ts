@@ -139,3 +139,85 @@ export function useCreateChannel() {
     onError: () => toast.error('Erreur lors de la création du salon'),
   });
 }
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ categoryId, serverId }: { categoryId: string; serverId: string }) => {
+      // Delete all channels in category first
+      await supabase.from('channels').delete().eq('category_id', categoryId);
+      
+      // Delete category
+      const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+      if (error) throw error;
+      return { serverId };
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      toast.success('Catégorie supprimée');
+    },
+    onError: () => toast.error('Erreur lors de la suppression'),
+  });
+}
+
+export function useDeleteChannel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ channelId, serverId }: { channelId: string; serverId: string }) => {
+      const { error } = await supabase.from('channels').delete().eq('id', channelId);
+      if (error) throw error;
+      return { serverId };
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      toast.success('Salon supprimé');
+    },
+    onError: () => toast.error('Erreur lors de la suppression'),
+  });
+}
+
+export function useReorderCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, orderedIds }: { serverId: string; orderedIds: string[] }) => {
+      // Update positions
+      const updates = orderedIds.map((id, index) => 
+        supabase.from('categories').update({ position: index }).eq('id', id)
+      );
+      await Promise.all(updates);
+      return { serverId };
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+    },
+  });
+}
+
+export function useReorderChannels() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      serverId, 
+      categoryId, 
+      orderedIds 
+    }: { 
+      serverId: string; 
+      categoryId: string; 
+      orderedIds: string[] 
+    }) => {
+      // Update positions
+      const updates = orderedIds.map((id, index) => 
+        supabase.from('channels').update({ position: index, category_id: categoryId }).eq('id', id)
+      );
+      await Promise.all(updates);
+      return { serverId };
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+    },
+  });
+}

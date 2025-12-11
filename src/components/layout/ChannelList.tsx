@@ -14,11 +14,13 @@ import {
   Bell,
   Trash2,
   MicOff,
-  HeadphoneOff
+  HeadphoneOff,
+  Pencil
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +41,7 @@ import { VoiceControls } from './VoiceControls';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
+import { useUpdateCategory } from '@/hooks/useCategories';
 
 interface Channel {
   id: string;
@@ -93,8 +96,11 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
+  const updateCategory = useUpdateCategory();
 
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories((prev) =>
@@ -127,6 +133,24 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
     }
   };
 
+  const handleStartEditCategory = (category: Category) => {
+    setEditingCategoryId(category.id);
+    setEditingCategoryName(category.name);
+  };
+
+  const handleSaveCategory = () => {
+    if (editingCategoryId && editingCategoryName.trim()) {
+      updateCategory.mutate({ categoryId: editingCategoryId, name: editingCategoryName.trim() });
+    }
+    setEditingCategoryId(null);
+    setEditingCategoryName('');
+  };
+
+  const handleCancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setEditingCategoryName('');
+  };
+
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header */}
@@ -143,19 +167,50 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
         {server.categories.map((category) => (
           <div key={category.id} className="mb-2">
             {/* Category Header */}
-            <button
-              onClick={() => toggleCategory(category.id)}
-              className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group"
-            >
-              <ChevronDown
-                className={cn(
-                  'w-3 h-3 transition-transform',
-                  collapsedCategories.includes(category.id) && '-rotate-90'
-                )}
-              />
-              <span className="uppercase tracking-wide">{category.name}</span>
-              <Plus className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
+            {editingCategoryId === category.id ? (
+              <div className="px-2 py-1">
+                <Input
+                  value={editingCategoryName}
+                  onChange={(e) => setEditingCategoryName(e.target.value)}
+                  onBlur={handleSaveCategory}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveCategory();
+                    if (e.key === 'Escape') handleCancelEditCategory();
+                  }}
+                  autoFocus
+                  className="h-6 text-xs font-semibold"
+                />
+              </div>
+            ) : (
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <button
+                    onClick={() => toggleCategory(category.id)}
+                    className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        'w-3 h-3 transition-transform',
+                        collapsedCategories.includes(category.id) && '-rotate-90'
+                      )}
+                    />
+                    <span className="tracking-wide">{category.name}</span>
+                    <Plus className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <ContextMenuItem onClick={() => handleStartEditCategory(category)}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Modifier la catégorie
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem className="text-destructive focus:text-destructive">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Supprimer la catégorie
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
+            )}
 
             {/* Channel List */}
             {!collapsedCategories.includes(category.id) && (

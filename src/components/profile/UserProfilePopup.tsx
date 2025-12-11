@@ -88,7 +88,7 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
             className="h-24 w-full object-cover" 
           />
         ) : (
-          <div className="h-24 bg-gradient-to-br from-primary/60 via-glow-purple/40 to-glow-cyan/30" />
+          <div className="h-24 bg-[hsl(var(--primary))]" />
         )}
 
         {/* Profile Content */}
@@ -105,8 +105,7 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
               <div
                 className={cn(
                   'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card',
-                  statusColors[user.status],
-                  user.status === 'online' && 'animate-pulse-ring'
+                  statusColors[user.status]
                 )}
               />
             </div>
@@ -135,7 +134,7 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
               <>
                 <div className="border-t border-border" />
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2">
                     Rôles
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
@@ -166,10 +165,13 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
 
             {/* Bio Section */}
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                À propos de moi
+              <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-1">
+                À Propos de Moi
               </h4>
-              <p className="text-sm text-foreground/90">
+              <p className={cn(
+                "text-sm",
+                user.bio ? "text-foreground/90" : "text-muted-foreground/50"
+              )}>
                 {user.bio || 'Aucune biographie définie.'}
               </p>
             </div>

@@ -29,6 +29,7 @@ const Index = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showMembers, setShowMembers] = useState(true);
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -148,6 +149,10 @@ const Index = () => {
       setActiveServerId(serverId);
     }
     setShowServerSettings(true);
+  };
+
+  const handleToggleMembers = () => {
+    setShowMembers(!showMembers);
   };
 
   // Loading state
@@ -287,15 +292,19 @@ const Index = () => {
               onSendMessage={handleSendMessage}
               memberRoles={memberRolesMap}
               onOpenDM={handleOpenDM}
+              onToggleMembers={handleToggleMembers}
+              showMembers={showMembers}
             />
           )}
 
-          {/* Member List */}
-          <MemberList 
-            members={memberListData} 
-            ownerId={activeServer.owner_id || ''} 
-            onOpenDM={handleOpenDM}
-          />
+          {/* Member List - Conditionally rendered */}
+          {showMembers && (
+            <MemberList 
+              members={memberListData} 
+              ownerId={activeServer.owner_id || ''} 
+              onOpenDM={handleOpenDM}
+            />
+          )}
         </>
       ) : null}
 

@@ -77,8 +77,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                 <div
                   className={cn(
                     'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card',
-                    statusColors[member.status],
-                    member.status === 'online' && 'animate-pulse-ring'
+                    statusColors[member.status]
                   )}
                 />
               </div>
@@ -148,8 +147,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
             {/* Online Members */}
             {onlineMembers.length > 0 && (
               <div className="mb-4">
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  En ligne — {onlineMembers.length}
+                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
+                  En Ligne — {onlineMembers.length}
                 </h3>
                 <div className="space-y-0.5">
                   {onlineMembers.map(renderMember)}
@@ -160,8 +159,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
             {/* Offline Members */}
             {offlineMembers.length > 0 && (
               <div>
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Hors ligne — {offlineMembers.length}
+                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
+                  Hors Ligne — {offlineMembers.length}
                 </h3>
                 <div className="space-y-0.5">
                   {offlineMembers.map(renderMember)}

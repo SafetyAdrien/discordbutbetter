@@ -704,6 +704,10 @@ export type Database = {
           token: string
         }[]
       }
+      has_dm_interaction: {
+        Args: { _other_user_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_server_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["server_permission"]

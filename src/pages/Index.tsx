@@ -9,6 +9,11 @@ import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
+import { MediaChannel } from '@/components/channels/MediaChannel';
+import { ForumChannel } from '@/components/channels/ForumChannel';
+import { TasksChannel } from '@/components/channels/TasksChannel';
+import { CalendarChannel } from '@/components/channels/CalendarChannel';
+import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
@@ -284,17 +289,51 @@ const Index = () => {
             onOpenServerSettings={() => setShowServerSettings(true)}
           />
 
-          {/* Main Chat Area */}
+          {/* Main Content Area - Conditional based on channel type */}
           {channelForChat && (
-            <ChatArea
-              channel={channelForChat}
-              messages={messagesData}
-              onSendMessage={handleSendMessage}
-              memberRoles={memberRolesMap}
-              onOpenDM={handleOpenDM}
-              onToggleMembers={handleToggleMembers}
-              showMembers={showMembers}
-            />
+            <>
+              {channelForChat.type === 'media' ? (
+                <MediaChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'forum' ? (
+                <ForumChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'tasks' ? (
+                <TasksChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'calendar' ? (
+                <CalendarChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'announcement' ? (
+                <AnnouncementChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : (
+                <ChatArea
+                  channel={channelForChat}
+                  messages={messagesData}
+                  onSendMessage={handleSendMessage}
+                  memberRoles={memberRolesMap}
+                  onOpenDM={handleOpenDM}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              )}
+            </>
           )}
 
           {/* Member List - Conditionally rendered */}

@@ -1,14 +1,22 @@
 import { useState } from 'react';
-import { Megaphone, Pin, Bell, BellOff, Edit, Trash2 } from 'lucide-react';
+import { Megaphone, Pin, Bell, BellOff, Edit, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { MarkdownText } from '@/lib/markdown';
 
-interface AnnouncementChannelProps {
-  channelId: string;
-  channelName: string;
+interface Channel {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+}
+
+export interface AnnouncementChannelProps {
+  channel: Channel;
+  onToggleMembers?: () => void;
+  showMembers?: boolean;
 }
 
 interface Announcement {
@@ -24,10 +32,9 @@ interface Announcement {
   reactions?: { emoji: string; count: number }[];
 }
 
-export function AnnouncementChannel({ channelId, channelName }: AnnouncementChannelProps) {
+export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: AnnouncementChannelProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  // Placeholder data
   const announcements: Announcement[] = [];
 
   const pinnedAnnouncements = announcements.filter((a) => a.pinned);
@@ -35,11 +42,10 @@ export function AnnouncementChannel({ channelId, channelName }: AnnouncementChan
 
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0">
-      {/* Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <Megaphone className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channelName}</h2>
+          <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">

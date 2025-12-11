@@ -7,71 +7,71 @@
 @layer base {
   :root {
     /* Dark gaming theme - always dark */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
+    --background: #0f1118;
+    --foreground: #f8fafc;
 
-    --card: 230 25% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: #171b26;
+    --card-foreground: #f8fafc;
 
-    --popover: 230 25% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: #13161f;
+    --popover-foreground: #f8fafc;
 
-    --primary: 186 100% 50%;
-    --primary-foreground: 230 25% 8%;
+    --primary: #00d4ff;
+    --primary-foreground: #0f1118;
 
-    --secondary: 270 60% 60%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: #a855f7;
+    --secondary-foreground: #f8fafc;
 
-    --muted: 230 20% 18%;
-    --muted-foreground: 215 20% 65%;
+    --muted: #252a36;
+    --muted-foreground: #9ca3b4;
 
-    --accent: 186 80% 40%;
-    --accent-foreground: 210 40% 98%;
+    --accent: #14b8cc;
+    --accent-foreground: #f8fafc;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: #e02424;
+    --destructive-foreground: #f8fafc;
 
-    --border: 230 20% 20%;
-    --input: 230 20% 15%;
-    --ring: 186 100% 50%;
+    --border: #2a303d;
+    --input: #1e222b;
+    --ring: #00d4ff;
 
     --radius: 0.75rem;
 
     /* Custom gaming colors */
-    --glow-primary: 186 100% 50%;
-    --glow-secondary: 270 60% 60%;
-    --surface-elevated: 230 25% 14%;
-    --surface-hover: 230 25% 18%;
-    --online: 142 76% 46%;
-    --idle: 38 92% 50%;
-    --dnd: 0 72% 51%;
-    --offline: 215 20% 45%;
-    --voice-active: 142 76% 46%;
+    --glow-primary: #00d4ff;
+    --glow-secondary: #a855f7;
+    --surface-elevated: #1b1f2a;
+    --surface-hover: #222836;
+    --online: #22c55e;
+    --idle: #f59e0b;
+    --dnd: #e02424;
+    --offline: #5c6b7f;
+    --voice-active: #22c55e;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
-    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(230 25% 14%), hsl(230 25% 10%));
+    --gradient-primary: linear-gradient(135deg, #00d4ff, #a855f7);
+    --gradient-glow: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(168, 85, 247, 0.3));
+    --gradient-surface: linear-gradient(180deg, #1b1f2a, #13161f);
 
     /* Shadows */
-    --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
-    --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
-    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    --shadow-glow-lg: 0 0 40px rgba(0, 212, 255, 0.4);
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
 
-    --sidebar-background: 230 25% 10%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 186 100% 50%;
-    --sidebar-primary-foreground: 230 25% 8%;
-    --sidebar-accent: 230 25% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 230 20% 18%;
-    --sidebar-ring: 186 100% 50%;
+    --sidebar-background: #13161f;
+    --sidebar-foreground: #f8fafc;
+    --sidebar-primary: #00d4ff;
+    --sidebar-primary-foreground: #0f1118;
+    --sidebar-accent: #222836;
+    --sidebar-accent-foreground: #f8fafc;
+    --sidebar-border: #252a36;
+    --sidebar-ring: #00d4ff;
   }
 
   .dark {
     /* Same as root - always dark */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
+    --background: #0f1118;
+    --foreground: #f8fafc;
   }
 }
 
@@ -92,21 +92,27 @@
 
 @layer components {
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    background-color: rgba(23, 27, 38, 0.8);
+    @apply backdrop-blur-xl border;
+    border-color: rgba(42, 48, 61, 0.5);
   }
 
   .glass-hover {
-    @apply hover:bg-surface-hover/80 transition-all duration-300;
+    @apply transition-all duration-300;
+  }
+  
+  .glass-hover:hover {
+    background-color: rgba(34, 40, 54, 0.8);
   }
 
   .glow-text {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5),
-                 0 0 20px hsl(var(--primary) / 0.3);
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5),
+                 0 0 20px rgba(0, 212, 255, 0.3);
   }
 
   .glow-border {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
-                inset 0 0 10px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3),
+                inset 0 0 10px rgba(0, 212, 255, 0.1);
   }
 
   .gradient-text {
@@ -138,12 +144,16 @@
   }
 
   .message-hover {
-    @apply hover:bg-surface-hover/50 transition-colors duration-150;
+    @apply transition-colors duration-150;
+  }
+  
+  .message-hover:hover {
+    background-color: rgba(34, 40, 54, 0.5);
   }
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: var(--muted) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -155,12 +165,12 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
+    background: var(--muted);
     border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: var(--muted-foreground);
   }
 }
 
@@ -175,10 +185,10 @@
 
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
     }
     50% {
-      box-shadow: 0 0 25px hsl(var(--primary) / 0.5);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.5);
     }
   }
 
@@ -236,10 +246,10 @@
 
   @keyframes voice-glow {
     0%, 100% {
-      box-shadow: 0 0 0 2px hsl(var(--voice-active) / 0.5);
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5);
     }
     50% {
-      box-shadow: 0 0 8px 3px hsl(var(--voice-active) / 0.7);
+      box-shadow: 0 0 8px 3px rgba(34, 197, 94, 0.7);
     }
   }
 
@@ -249,7 +259,7 @@
 
   /* Spoiler style Discord */
   .spoiler {
-    background-color: hsl(var(--muted));
+    background-color: var(--muted);
     color: transparent;
     border-radius: 4px;
     padding: 0 2px;
@@ -259,11 +269,11 @@
   }
 
   .spoiler:hover {
-    background-color: hsl(var(--muted) / 0.8);
+    background-color: rgba(37, 42, 54, 0.8);
   }
 
   .spoiler.revealed {
-    background-color: hsl(var(--muted) / 0.3);
+    background-color: rgba(37, 42, 54, 0.3);
     color: inherit;
     user-select: text;
   }

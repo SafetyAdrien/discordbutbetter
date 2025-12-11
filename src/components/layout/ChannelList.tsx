@@ -20,8 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ProfileSettings } from '@/components/profile/ProfileSettings';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
+import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 
 interface Channel {
   id: string;
@@ -74,7 +74,7 @@ const statusLabels = {
 
 export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenServerSettings }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
-  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const { profile, signOut, updateStatus } = useAuth();
 
@@ -215,7 +215,7 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
               Invisible
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setShowProfileSettings(true)}>
+            <DropdownMenuItem onClick={() => setShowAccountSettings(true)}>
               <User className="w-4 h-4 mr-2" />
               Mon profil
             </DropdownMenuItem>
@@ -226,15 +226,15 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
           </DropdownMenuContent>
         </DropdownMenu>
         <button 
-          onClick={() => setShowProfileSettings(true)}
+          onClick={() => setShowAccountSettings(true)}
           className="p-1.5 hover:bg-muted rounded-md transition-colors"
         >
           <Settings className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
 
-      {showProfileSettings && (
-        <ProfileSettings onClose={() => setShowProfileSettings(false)} />
+      {showAccountSettings && (
+        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
       )}
 
       {selectedChannelId && (

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PeerConnection, SignalData } from '@/utils/webrtc/PeerConnection';
@@ -12,7 +11,7 @@ interface PeerInfo {
   isSpeaking: boolean;
 }
 
-interface UseWebRTCReturn {
+export interface UseWebRTCReturn {
   isConnected: boolean;
   isConnecting: boolean;
   isMicrophoneActive: boolean;
@@ -22,17 +21,25 @@ interface UseWebRTCReturn {
   disconnect: () => Promise<void>;
   setMuted: (muted: boolean) => void;
   setDeafened: (deafened: boolean) => void;
+  microphoneError: boolean;
+  hasMicrophoneAccess: boolean;
+  retryMicrophone: () => Promise<boolean>;
+  isPushToTalkMode: boolean;
+  setPushToTalkMode: (enabled: boolean) => void;
+  setPushToTalkActive: (active: boolean) => void;
 }
 
 export function useWebRTC(): UseWebRTCReturn {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrophoneActive, setIsMicrophoneActive] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [peers, setPeers] = useState<Map<string, PeerInfo>>(new Map());
+  const [microphoneError, setMicrophoneError] = useState(false);
+  const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState(false);
+  const [isPushToTalkMode, setIsPushToTalkMode] = useState(false);
 
   const signalingServiceRef = useRef<SignalingService | null>(null);
   const peersRef = useRef<Map<string, PeerConnection>>(new Map());
@@ -40,41 +47,17 @@ export function useWebRTC(): UseWebRTCReturn {
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const participantsSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Handle incoming signals
-  const handleSignalReceived = useCallback(async (fromUserId: string, signal: SignalData) => {
-    if (!user?.id || !channelIdRef.current) return;
-
-    let peerConnection = peersRef.current.get(fromUserId);
-
-    // If this is an offer and we don't have a connection, create one
-    if (!peerConnection && signal.type === 'offer') {
-      peerConnection = createPeerConnection(fromUserId);
-      
-      // Add local stream
-      const localStream = audioManager.getLocalStream();
-      if (localStream) {
-        peerConnection.addStream(localStream);
-      }
-    }
-
-    if (peerConnection) {
-      await peerConnection.handleSignal(signal);
-    }
-  }, [user?.id]);
-
   // Create a peer connection for a user
   const createPeerConnection = useCallback((peerId: string): PeerConnection => {
     console.log('[useWebRTC] Creating peer connection for:', peerId);
 
     const pc = new PeerConnection(
       peerId,
-      // On signal - send through signaling service
       async (signal) => {
         if (signalingServiceRef.current) {
           await signalingServiceRef.current.sendSignal(peerId, signal);
         }
       },
-      // On stream - add to audio manager
       (stream) => {
         console.log('[useWebRTC] Received stream from:', peerId);
         audioManager.addRemoteStream(peerId, stream);
@@ -89,7 +72,6 @@ export function useWebRTC(): UseWebRTCReturn {
           return newPeers;
         });
       },
-      // On disconnect
       () => {
         console.log('[useWebRTC] Peer disconnected:', peerId);
         audioManager.removeRemoteStream(peerId);
@@ -106,15 +88,30 @@ export function useWebRTC(): UseWebRTCReturn {
     return pc;
   }, []);
 
+  // Handle incoming signals
+  const handleSignalReceived = useCallback(async (fromUserId: string, signal: SignalData) => {
+    if (!user?.id || !channelIdRef.current) return;
+
+    let peerConnection = peersRef.current.get(fromUserId);
+
+    if (!peerConnection && signal.type === 'offer') {
+      peerConnection = createPeerConnection(fromUserId);
+      const localStream = audioManager.getLocalStream();
+      if (localStream) {
+        peerConnection.addStream(localStream);
+      }
+    }
+
+    if (peerConnection) {
+      await peerConnection.handleSignal(signal);
+    }
+  }, [user?.id, createPeerConnection]);
+
   // Connect to existing participants
   const connectToParticipants = useCallback(async (participants: Array<{ user_id: string }>) => {
     if (!user?.id) return;
 
     const localStream = audioManager.getLocalStream();
-    if (!localStream) {
-      console.error('[useWebRTC] No local stream available');
-      return;
-    }
 
     for (const participant of participants) {
       if (participant.user_id === user.id) continue;
@@ -123,7 +120,9 @@ export function useWebRTC(): UseWebRTCReturn {
       console.log('[useWebRTC] Connecting to participant:', participant.user_id);
 
       const pc = createPeerConnection(participant.user_id);
-      pc.addStream(localStream);
+      if (localStream) {
+        pc.addStream(localStream);
+      }
       await pc.createOffer();
     }
   }, [user?.id, createPeerConnection]);
@@ -138,9 +137,16 @@ export function useWebRTC(): UseWebRTCReturn {
     try {
       channelIdRef.current = channelId;
 
-      // Start microphone
-      await audioManager.startMicrophone();
-      setIsMicrophoneActive(true);
+      // Try to start microphone - don't fail if it doesn't work
+      const micSuccess = await audioManager.tryStartMicrophone();
+      setHasMicrophoneAccess(micSuccess);
+      setMicrophoneError(!micSuccess);
+      
+      if (micSuccess) {
+        setIsMicrophoneActive(true);
+      } else {
+        console.warn('[useWebRTC] Joining in listen-only mode');
+      }
 
       // Start audio level monitoring
       audioLevelIntervalRef.current = setInterval(() => {
@@ -223,13 +229,11 @@ export function useWebRTC(): UseWebRTCReturn {
   const disconnect = useCallback(async () => {
     console.log('[useWebRTC] Disconnecting');
 
-    // Stop audio level monitoring
     if (audioLevelIntervalRef.current) {
       clearInterval(audioLevelIntervalRef.current);
       audioLevelIntervalRef.current = null;
     }
 
-    // Close all peer connections
     peersRef.current.forEach((pc, peerId) => {
       pc.close();
       audioManager.removeRemoteStream(peerId);
@@ -237,27 +241,48 @@ export function useWebRTC(): UseWebRTCReturn {
     peersRef.current.clear();
     setPeers(new Map());
 
-    // Stop signaling service
     if (signalingServiceRef.current) {
       await signalingServiceRef.current.stop();
       signalingServiceRef.current = null;
     }
 
-    // Unsubscribe from participants
     if (participantsSubscriptionRef.current) {
       await supabase.removeChannel(participantsSubscriptionRef.current);
       participantsSubscriptionRef.current = null;
     }
 
-    // Stop microphone
     audioManager.cleanup();
     setIsMicrophoneActive(false);
     setAudioLevel(0);
+    setMicrophoneError(false);
+    setHasMicrophoneAccess(false);
 
     channelIdRef.current = null;
     setIsConnected(false);
 
     console.log('[useWebRTC] Disconnected');
+  }, []);
+
+  // Retry microphone access
+  const retryMicrophone = useCallback(async (): Promise<boolean> => {
+    const success = await audioManager.tryStartMicrophone();
+    setHasMicrophoneAccess(success);
+    setMicrophoneError(!success);
+    
+    if (success) {
+      setIsMicrophoneActive(true);
+      
+      // Add stream to existing peer connections
+      const localStream = audioManager.getLocalStream();
+      if (localStream) {
+        for (const [peerId, pc] of peersRef.current.entries()) {
+          pc.addStream(localStream);
+          await pc.createOffer();
+        }
+      }
+    }
+    
+    return success;
   }, []);
 
   // Set muted state
@@ -268,6 +293,17 @@ export function useWebRTC(): UseWebRTCReturn {
   // Set deafened state
   const setDeafened = useCallback((deafened: boolean) => {
     audioManager.setDeafened(deafened);
+  }, []);
+
+  // Set push-to-talk mode
+  const handleSetPushToTalkMode = useCallback((enabled: boolean) => {
+    setIsPushToTalkMode(enabled);
+    audioManager.setPushToTalkMode(enabled);
+  }, []);
+
+  // Set push-to-talk active state
+  const setPushToTalkActive = useCallback((active: boolean) => {
+    audioManager.setPushToTalkActive(active);
   }, []);
 
   // Cleanup on unmount
@@ -287,5 +323,11 @@ export function useWebRTC(): UseWebRTCReturn {
     disconnect,
     setMuted,
     setDeafened,
+    microphoneError,
+    hasMicrophoneAccess,
+    retryMicrophone,
+    isPushToTalkMode,
+    setPushToTalkMode: handleSetPushToTalkMode,
+    setPushToTalkActive,
   };
 }

@@ -17,9 +17,13 @@ import {
   Reply,
   Pencil,
   Trash2,
-  MessageSquareText
+  MessageSquareText,
+  BellOff,
+  BellRing,
+  AtSign
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -52,6 +56,8 @@ interface ChatAreaProps {
   onSendMessage: (content: string) => void;
   memberRoles?: Map<string, Role[]>;
   onOpenDM?: (conversationId: string) => void;
+  onToggleMembers?: () => void;
+  showMembers?: boolean;
 }
 
 function formatTime(date: Date): string {
@@ -74,9 +80,8 @@ function formatDate(date: Date): string {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
-  function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM }, ref) {
+  function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM, onToggleMembers, showMembers = true }, ref) {
     const [messageInput, setMessageInput] = useState('');
-    const [showMembers, setShowMembers] = useState(true);
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
@@ -127,36 +132,78 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         {channel.description && (
           <>
             <div className="w-px h-6 bg-border" />
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild>
                 <button className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[300px]">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-md">
-                <p className="font-medium mb-1">Topic du salon</p>
-                <p className="text-muted-foreground">{channel.description}</p>
-              </TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="start" className="w-80 p-3">
+                <h4 className="font-semibold text-foreground mb-2">Topic du Salon</h4>
+                <p className="text-sm text-muted-foreground">{channel.description}</p>
+              </PopoverContent>
+            </Popover>
           </>
         )}
 
         <div className="flex items-center gap-1 ml-auto">
-          <Button variant="ghost" size="iconSm">
-            <Bell className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="iconSm">
-            <Pin className="w-5 h-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="iconSm"
-            onClick={() => setShowMembers(!showMembers)}
-            className={cn(showMembers && 'bg-surface-hover')}
-          >
-            <Users className="w-5 h-5" />
-          </Button>
+          {/* Notifications Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <Bell className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-64 p-3">
+              <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
+              <div className="space-y-2">
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <BellRing className="w-4 h-4 text-muted-foreground" />
+                  <span>Tous les messages</span>
+                </button>
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <AtSign className="w-4 h-4 text-muted-foreground" />
+                  <span>Uniquement les mentions</span>
+                </button>
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <BellOff className="w-4 h-4 text-muted-foreground" />
+                  <span>Désactiver</span>
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Pinned Messages Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <Pin className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-80 p-3">
+              <h4 className="font-semibold text-foreground mb-3">Messages Épinglés</h4>
+              <div className="text-sm text-muted-foreground/70 text-center py-6">
+                Aucun message épinglé dans ce salon.
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Members Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="iconSm"
+                onClick={onToggleMembers}
+                className={cn(showMembers && 'bg-surface-hover')}
+              >
+                <Users className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{showMembers ? 'Masquer les membres' : 'Afficher les membres'}</TooltipContent>
+          </Tooltip>
+
           <div className="relative ml-2">
             <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input 
@@ -164,9 +211,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               className="h-7 w-36 pl-8 text-sm bg-input"
             />
           </div>
-          <Button variant="ghost" size="iconSm">
-            <Inbox className="w-5 h-5" />
-          </Button>
+
+          {/* Inbox Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <Inbox className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-80 p-3">
+              <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
+              <div className="text-sm text-muted-foreground/70 text-center py-6">
+                Aucune notification récente.
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

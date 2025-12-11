@@ -233,4 +233,17 @@
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
   }
+
+  @keyframes voice-glow {
+    0%, 100% {
+      box-shadow: 0 0 0 2px hsl(var(--voice-active) / 0.5);
+    }
+    50% {
+      box-shadow: 0 0 8px 3px hsl(var(--voice-active) / 0.7);
+    }
+  }
+
+  .voice-active-ring {
+    animation: voice-glow 1.5s ease-in-out infinite;
+  }
 }

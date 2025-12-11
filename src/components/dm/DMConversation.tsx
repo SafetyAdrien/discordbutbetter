@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useDMMessages, useSendDMMessage, DMMessage } from '@/hooks/useDMMessages';
 import { useDMConversations } from '@/hooks/useDMs';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { startTyping, stopTyping } = useTypingIndicator(null, conversationId);
+  const { markAsRead } = useUnreadCounts();
 
   const { data: conversations = [] } = useDMConversations();
   const { data: messages = [], isLoading } = useDMMessages(conversationId);
@@ -43,6 +45,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
   const conversation = conversations.find(c => c.id === conversationId);
   const participant = conversation?.participants[0];
+
+  // Mark conversation as read when opened
+  useEffect(() => {
+    if (conversationId) {
+      markAsRead.mutate(conversationId);
+    }
+  }, [conversationId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useVoice } from '@/contexts/VoiceContext';
 
 interface VoiceControlsProps {
   channelName: string;
@@ -22,6 +23,8 @@ export function VoiceControls({
   onToggleDeafen,
   onDisconnect,
 }: VoiceControlsProps) {
+  const { localAudioLevel } = useVoice();
+
   return (
     <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
       {/* Connection Info */}
@@ -36,6 +39,18 @@ export function VoiceControls({
           </p>
         </div>
       </div>
+
+      {/* Audio Level Bar */}
+      {!isMuted && (
+        <div className="mb-2 px-1">
+          <div className="h-1 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[hsl(var(--online))] transition-all duration-75"
+              style={{ width: `${Math.min(localAudioLevel * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex items-center gap-1">

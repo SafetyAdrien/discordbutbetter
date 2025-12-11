@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useDMConversations, DMConversation } from '@/hooks/useDMs';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -27,6 +28,7 @@ interface DMListProps {
 
 export function DMList({ activeConversationId, onConversationSelect }: DMListProps) {
   const { data: conversations = [], isLoading } = useDMConversations();
+  const { unreadCounts } = useUnreadCounts();
 
   if (isLoading) {
     return (
@@ -61,6 +63,7 @@ export function DMList({ activeConversationId, onConversationSelect }: DMListPro
           key={conv.id}
           conversation={conv}
           isActive={activeConversationId === conv.id}
+          unreadCount={unreadCounts[conv.id] || 0}
           onClick={() => onConversationSelect(conv.id)}
         />
       ))}
@@ -71,10 +74,12 @@ export function DMList({ activeConversationId, onConversationSelect }: DMListPro
 function DMConversationItem({
   conversation,
   isActive,
+  unreadCount,
   onClick,
 }: {
   conversation: DMConversation;
   isActive: boolean;
+  unreadCount: number;
   onClick: () => void;
 }) {
   const participant = conversation.participants[0];
@@ -142,14 +147,21 @@ function DMConversationItem({
               </p>
             )}
           </div>
-          {conversation.lastMessage && (
-            <span className="text-xs text-muted-foreground flex-shrink-0">
-              {formatDistanceToNow(new Date(conversation.lastMessage.created_at), {
-                addSuffix: false,
-                locale: fr,
-              })}
-            </span>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {unreadCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+            {conversation.lastMessage && (
+              <span className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(conversation.lastMessage.created_at), {
+                  addSuffix: false,
+                  locale: fr,
+                })}
+              </span>
+            )}
+          </div>
         </button>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">

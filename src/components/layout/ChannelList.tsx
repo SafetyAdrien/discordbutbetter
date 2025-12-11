@@ -199,7 +199,7 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
               <div className="relative">
-                <Avatar className="w-8 h-8">
+                <Avatar className="w-8 h-8 ring-2 ring-primary/30">
                   <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/20 text-primary text-sm">
                     {profile?.display_name?.charAt(0).toUpperCase() || '?'}
@@ -372,7 +372,7 @@ function ChannelItem({
                 className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground"
               >
                 <Avatar className={cn(
-                  "w-5 h-5 transition-all",
+                  "w-5 h-5 transition-all ring-1 ring-border",
                   isSpeaking && "ring-2 ring-[hsl(var(--online))] ring-offset-1 ring-offset-background"
                 )}>
                   <AvatarImage src={participant.profile.avatar_url || undefined} />

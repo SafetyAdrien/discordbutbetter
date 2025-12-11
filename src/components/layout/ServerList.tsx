@@ -96,7 +96,15 @@ export function ServerList({
                     />
                     
                     {server.icon ? (
-                      <span className="text-xl">{server.icon}</span>
+                      server.icon.startsWith('http') ? (
+                        <img 
+                          src={server.icon} 
+                          alt={server.name}
+                          className="w-full h-full object-cover rounded-[inherit]"
+                        />
+                      ) : (
+                        <span className="text-xl">{server.icon}</span>
+                      )
                     ) : (
                       <span className="text-sm font-semibold">
                         {server.name.slice(0, 2).toUpperCase()}

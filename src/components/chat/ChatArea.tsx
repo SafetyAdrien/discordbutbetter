@@ -16,8 +16,10 @@ import {
   Copy,
   Reply,
   Pencil,
-  Trash2
+  Trash2,
+  MessageSquareText
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -125,7 +127,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         {channel.description && (
           <>
             <div className="w-px h-6 bg-border" />
-            <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[300px]">
+                  <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-md">
+                <p className="font-medium mb-1">Topic du salon</p>
+                <p className="text-muted-foreground">{channel.description}</p>
+              </TooltipContent>
+            </Tooltip>
           </>
         )}
 

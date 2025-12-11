@@ -5,6 +5,7 @@ export interface User {
   avatar?: string;
   status: 'online' | 'idle' | 'dnd' | 'offline';
   customStatus?: string;
+  bio?: string;
 }
 
 export interface Server {

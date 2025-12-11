@@ -1,5 +1,5 @@
 import { useState, forwardRef } from 'react';
-import { Message, Channel } from '@/types/app';
+import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
   Hash, 
@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 
 interface ChatAreaProps {
   channel: Channel;
@@ -45,6 +46,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
   function ChatArea({ channel, messages, onSendMessage }, ref) {
     const [messageInput, setMessageInput] = useState('');
     const [showMembers, setShowMembers] = useState(true);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -138,17 +140,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
             >
               {showAuthor ? (
                 <div className="flex gap-4">
-                  <Avatar className="w-10 h-10 flex-shrink-0 mt-0.5">
-                    <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
-                    <AvatarFallback className="bg-primary/20 text-primary">
-                      {message.author.displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <button onClick={() => setSelectedUser(message.author)} className="flex-shrink-0">
+                    <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                      <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {message.author.displayName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                      <span className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
+                      <button 
+                        onClick={() => setSelectedUser(message.author)}
+                        className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                      >
                         {message.author.displayName}
-                      </span>
+                      </button>
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {formatTime(message.timestamp)}
                       </span>
@@ -246,6 +253,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
           </div>
         </form>
       </div>
+
+      <UserProfilePopup
+        user={selectedUser}
+        open={!!selectedUser}
+        onOpenChange={(open) => !open && setSelectedUser(null)}
+      />
     </div>
     );
   }

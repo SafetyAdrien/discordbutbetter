@@ -4,7 +4,7 @@ import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
-import { DMConversation } from '@/components/dm/DMConversation';
+import { DMPage } from '@/components/dm/DMPage';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
@@ -14,6 +14,7 @@ import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useVoiceState } from '@/hooks/useVoiceState';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
@@ -35,6 +36,9 @@ const Index = () => {
   const { data: messages = [] } = useMessages(activeChannelId);
   const { data: members = [] } = useMembers(activeServerId);
 
+  // Voice state
+  const { voiceState, toggleMute } = useVoiceState();
+
   // Mutations
   const createServer = useCreateServer();
   const joinServer = useJoinServer();
@@ -54,8 +58,9 @@ const Index = () => {
     },
     onShortcutsHelp: () => setShowShortcutsHelp(true),
     onToggleMute: () => {
-      // TODO: Toggle microphone mute for VoIP
-      console.log('Toggle mute');
+      if (voiceState.channelId) {
+        toggleMute.mutate();
+      }
     },
   });
 
@@ -66,19 +71,13 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Set first server as active when servers load
+  // Set first server as active when servers load (only if not on home/DM view)
   useEffect(() => {
-    if (servers.length > 0 && !activeServerId) {
-      setActiveServerId(servers[0].id);
-      // Set first text channel as active
-      const firstChannel = servers[0].categories
-        .flatMap(c => c.channels)
-        .find(ch => ch.type === 'text');
-      if (firstChannel) {
-        setActiveChannelId(firstChannel.id);
-      }
+    if (servers.length > 0 && activeServerId === null && activeDMId === null) {
+      // Start on home (DM) view by default
+      // User can click a server to switch
     }
-  }, [servers, activeServerId]);
+  }, [servers, activeServerId, activeDMId]);
 
   // Update active channel when server changes
   useEffect(() => {
@@ -116,6 +115,7 @@ const Index = () => {
       {
         onSuccess: (server) => {
           setActiveServerId(server.id);
+          setActiveDMId(null);
           setShowCreate(false);
         },
       }
@@ -128,10 +128,18 @@ const Index = () => {
     setActiveChannelId(null);
   };
 
-  const handleBackFromDM = () => {
+  const handleShowFriends = () => {
     setActiveDMId(null);
-    if (servers.length > 0) {
-      setActiveServerId(servers[0].id);
+  };
+
+  const handleServerSelect = (serverId: string | null) => {
+    if (serverId === null) {
+      // Home button clicked - show DM page
+      setActiveServerId(null);
+      setActiveChannelId(null);
+    } else {
+      setActiveServerId(serverId);
+      setActiveDMId(null);
     }
   };
 
@@ -239,26 +247,27 @@ const Index = () => {
       categories: [],
     }));
 
+  // Determine if we're on home (DM) view
+  const isHomeView = activeServerId === null;
+
   return (
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Server List */}
       <ServerList
         servers={serverListData}
         activeServerId={activeServerId}
-        onServerSelect={(id) => {
-          setActiveServerId(id);
-          setActiveDMId(null);
-        }}
+        onServerSelect={handleServerSelect}
         onDiscoverClick={() => setShowDiscover(true)}
         onCreateClick={() => setShowCreate(true)}
         onOpenServerSettings={handleOpenServerSettings}
       />
 
-      {/* DM View */}
-      {activeDMId ? (
-        <DMConversation
-          conversationId={activeDMId}
-          onBack={handleBackFromDM}
+      {/* Home/DM View */}
+      {isHomeView ? (
+        <DMPage
+          activeDMId={activeDMId}
+          onConversationSelect={handleOpenDM}
+          onShowFriends={handleShowFriends}
         />
       ) : activeServer && serverForChannelList ? (
         <>
@@ -288,38 +297,7 @@ const Index = () => {
             onOpenDM={handleOpenDM}
           />
         </>
-      ) : (
-        /* Home / No Server View */
-        <div className="flex-1 flex flex-col items-center justify-center bg-background">
-          <div className="text-center max-w-md px-6">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center animation-pulse-glow">
-              <span className="text-5xl">💬</span>
-            </div>
-            <h1 className="text-3xl font-bold mb-4 gradient-text">
-              Bienvenue sur GameVault
-            </h1>
-            <p className="text-muted-foreground mb-8">
-              {servers.length === 0 
-                ? "Créez votre premier serveur ou explorez les serveurs publics."
-                : "Sélectionnez un serveur ou commencez une conversation privée avec vos amis."}
-            </p>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => setShowCreate(true)}
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity"
-              >
-                Créer un serveur
-              </button>
-              <button
-                onClick={() => setShowDiscover(true)}
-                className="px-6 py-3 bg-muted rounded-lg font-semibold text-foreground border border-border hover:bg-muted/80 transition-colors"
-              >
-                Explorer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       {/* Modals */}
       {showDiscover && (

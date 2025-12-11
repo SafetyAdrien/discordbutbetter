@@ -1,14 +1,22 @@
 import { useState } from 'react';
-import { Image, Upload, Grid, List, Loader2 } from 'lucide-react';
+import { Image, Upload, Grid, List, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-interface MediaChannelProps {
-  channelId: string;
-  channelName: string;
+interface Channel {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
 }
 
-export function MediaChannel({ channelId, channelName }: MediaChannelProps) {
+export interface MediaChannelProps {
+  channel: Channel;
+  onToggleMembers?: () => void;
+  showMembers?: boolean;
+}
+
+export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Placeholder data - will be connected to actual storage later
@@ -20,7 +28,7 @@ export function MediaChannel({ channelId, channelName }: MediaChannelProps) {
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <Image className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channelName}</h2>
+          <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
@@ -48,6 +56,16 @@ export function MediaChannel({ channelId, channelName }: MediaChannelProps) {
             <Upload className="w-4 h-4 mr-2" />
             Téléverser
           </Button>
+          {onToggleMembers && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleMembers}
+              className={cn(showMembers && 'bg-muted')}
+            >
+              <Users className="w-5 h-5" />
+            </Button>
+          )}
         </div>
       </div>
 

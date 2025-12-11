@@ -1,13 +1,21 @@
 import { useState } from 'react';
-import { MessageSquare, Plus, Search, Tag, ArrowUp, MessageCircle, Clock } from 'lucide-react';
+import { MessageSquare, Plus, Search, Tag, ArrowUp, MessageCircle, Clock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-interface ForumChannelProps {
-  channelId: string;
-  channelName: string;
+interface Channel {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+}
+
+export interface ForumChannelProps {
+  channel: Channel;
+  onToggleMembers?: () => void;
+  showMembers?: boolean;
 }
 
 interface ForumThread {
@@ -22,20 +30,18 @@ interface ForumThread {
   pinned?: boolean;
 }
 
-export function ForumChannel({ channelId, channelName }: ForumChannelProps) {
+export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumChannelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
 
-  // Placeholder data
   const threads: ForumThread[] = [];
 
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0">
-      {/* Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channelName}</h2>
+          <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">

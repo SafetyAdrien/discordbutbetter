@@ -20,11 +20,9 @@ export function useChannelWebhooks(channelId: string | null) {
     queryFn: async (): Promise<Webhook[]> => {
       if (!channelId) return [];
 
+      // Use secure function that masks tokens for unauthorized users
       const { data, error } = await supabase
-        .from('webhooks')
-        .select('*')
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: false });
+        .rpc('get_channel_webhooks', { _channel_id: channelId });
 
       if (error) throw error;
       return data || [];

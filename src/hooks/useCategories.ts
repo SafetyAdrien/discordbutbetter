@@ -15,12 +15,34 @@ export function useUpdateCategory() {
       if (error) throw error;
       return { categoryId, name };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      toast.success('Catégorie mise à jour');
+    onMutate: async ({ categoryId, name }) => {
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      
+      const previousServers = queryClient.getQueryData(['servers']);
+      
+      queryClient.setQueryData(['servers'], (old: any) => {
+        if (!old) return old;
+        return old.map((server: any) => ({
+          ...server,
+          categories: server.categories?.map((cat: any) =>
+            cat.id === categoryId ? { ...cat, name } : cat
+          ),
+        }));
+      });
+      
+      return { previousServers };
     },
-    onError: () => {
-      toast.error('Erreur lors de la mise à jour de la catégorie');
+    onError: (_err, _variables, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
+      toast.error('Erreur lors de la mise à jour');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
+    },
+    onSuccess: () => {
+      toast.success('Catégorie mise à jour');
     },
   });
 }

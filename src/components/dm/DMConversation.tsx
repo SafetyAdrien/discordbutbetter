@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useDMMessages, useSendDMMessage, DMMessage } from '@/hooks/useDMMessages';
 import { useDMConversations } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useDMCalls } from '@/hooks/useDMCalls';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { fr } from 'date-fns/locale';
 import { Send, Loader2, ArrowLeft, Copy, Pencil, Trash2, Hash, Smile, Reply, Phone, Video, Pin } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
-import { toast } from '@/hooks/use-toast';
+import { DMCallView } from './DMCallView';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -42,6 +43,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const { data: conversations = [] } = useDMConversations();
   const { data: messages = [], isLoading } = useDMMessages(conversationId);
   const sendMessage = useSendDMMessage();
+  const { activeCall, startCall, endCall } = useDMCalls(conversationId);
 
   const conversation = conversations.find(c => c.id === conversationId);
   const participant = conversation?.participants[0];
@@ -77,11 +79,17 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   }, [startTyping]);
 
   const handleVoiceCall = () => {
-    toast({ title: 'Appels vocaux', description: 'Bientôt disponible !' });
+    startCall.mutate({ callType: 'voice' });
   };
 
   const handleVideoCall = () => {
-    toast({ title: 'Appels vidéo', description: 'Bientôt disponible !' });
+    startCall.mutate({ callType: 'video' });
+  };
+
+  const handleEndCall = () => {
+    if (activeCall) {
+      endCall.mutate(activeCall.id);
+    }
   };
 
   const handleCopyMessage = (content: string) => {
@@ -93,7 +101,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
-    // TODO: Implement reaction mutation
     console.log('Add reaction', messageId, emoji);
   };
 
@@ -102,7 +109,16 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     : participant?.display_name || 'Utilisateur';
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background relative">
+      {/* Active Call View */}
+      {activeCall && (activeCall.status === 'ringing' || activeCall.status === 'active') && (
+        <DMCallView 
+          call={activeCall} 
+          participant={participant || null} 
+          onEndCall={handleEndCall} 
+        />
+      )}
+
       {/* Header */}
       <div className="h-12 px-4 flex items-center gap-3 border-b border-border">
         {onBack && (
@@ -125,10 +141,20 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={handleVoiceCall}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleVoiceCall}
+            disabled={startCall.isPending || !!activeCall}
+          >
             <Phone className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleVideoCall}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleVideoCall}
+            disabled={startCall.isPending || !!activeCall}
+          >
             <Video className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="icon">

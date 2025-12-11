@@ -139,6 +139,54 @@ export type Database = {
           },
         ]
       }
+      dm_calls: {
+        Row: {
+          call_type: string
+          conversation_id: string
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          initiator_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          call_type?: string
+          conversation_id: string
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          initiator_id: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          call_type?: string
+          conversation_id?: string
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          initiator_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_calls_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_calls_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dm_conversations: {
         Row: {
           created_at: string | null

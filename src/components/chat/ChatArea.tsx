@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface ChatAreaProps {
   channel: Channel;
@@ -137,11 +138,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
             >
               {showAuthor ? (
                 <div className="flex gap-4">
-                  <img
-                    src={message.author.avatar}
-                    alt={message.author.displayName}
-                    className="w-10 h-10 rounded-full flex-shrink-0 mt-0.5"
-                  />
+                  <Avatar className="w-10 h-10 flex-shrink-0 mt-0.5">
+                    <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {message.author.displayName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                       <span className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">

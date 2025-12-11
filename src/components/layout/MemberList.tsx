@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { Crown, Shield, Headphones, Mic } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface MemberListProps {
   members: User[];
@@ -29,14 +30,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
         className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
       >
         <div className="relative flex-shrink-0">
-          <img
-            src={member.avatar}
-            alt={member.displayName}
-            className={cn(
-              'w-8 h-8 rounded-full',
-              member.status === 'offline' && 'opacity-50 grayscale'
-            )}
-          />
+          <Avatar className={cn('w-8 h-8', member.status === 'offline' && 'opacity-50 grayscale')}>
+            <AvatarImage src={member.avatar} alt={member.displayName} />
+            <AvatarFallback className="bg-primary/20 text-primary text-sm">
+              {member.displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div
             className={cn(
               'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card',

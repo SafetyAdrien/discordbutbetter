@@ -46,6 +46,51 @@ export type Database = {
           },
         ]
       }
+      channel_permission_overrides: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          id: string
+          permission: Database["public"]["Enums"]["server_permission"]
+          role_id: string | null
+          sync_with_category: boolean | null
+          type: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["server_permission"]
+          role_id?: string | null
+          sync_with_category?: boolean | null
+          type: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["server_permission"]
+          role_id?: string | null
+          sync_with_category?: boolean | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_permission_overrides_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_permission_overrides_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           category_id: string | null
@@ -583,6 +628,51 @@ export type Database = {
           {
             foreignKeyName: "voice_states_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks: {
+        Row: {
+          avatar_url: string | null
+          channel_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          token: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          channel_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          token?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          channel_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

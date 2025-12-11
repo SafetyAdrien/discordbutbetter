@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ProfileSettings } from '@/components/profile/ProfileSettings';
+import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 
 interface Channel {
   id: string;
@@ -74,6 +75,7 @@ const statusLabels = {
 export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenServerSettings }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const { profile, signOut, updateStatus } = useAuth();
 
   const toggleCategory = (categoryId: string) => {
@@ -148,7 +150,13 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
                       )}
 
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                        <Settings 
+                          className="w-4 h-4 text-muted-foreground hover:text-foreground" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedChannelId(channel.id);
+                          }}
+                        />
                       </div>
                     </button>
                   );
@@ -227,6 +235,14 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
 
       {showProfileSettings && (
         <ProfileSettings onClose={() => setShowProfileSettings(false)} />
+      )}
+
+      {selectedChannelId && (
+        <ChannelSettingsModal
+          channelId={selectedChannelId}
+          serverId={server.id}
+          onClose={() => setSelectedChannelId(null)}
+        />
       )}
     </div>
   );

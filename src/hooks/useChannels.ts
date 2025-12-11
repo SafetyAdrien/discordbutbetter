@@ -1,11 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+export type ChannelType = 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks';
 
 export interface ChannelWithCategory {
   id: string;
   name: string;
-  type: 'text' | 'voice' | 'announcement' | 'forum' | null;
+  type: ChannelType | null;
   description: string | null;
   position: number | null;
   category_id: string | null;
@@ -54,5 +57,85 @@ export function useChannels(serverId: string | null) {
       }));
     },
     enabled: !!serverId && !!user,
+  });
+}
+
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, name }: { serverId: string; name: string }) => {
+      // Get max position
+      const { data: existing } = await supabase
+        .from('categories')
+        .select('position')
+        .eq('server_id', serverId)
+        .order('position', { ascending: false })
+        .limit(1);
+
+      const nextPosition = (existing?.[0]?.position ?? -1) + 1;
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ server_id: serverId, name, position: nextPosition })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      toast.success('Catégorie créée');
+    },
+    onError: () => toast.error('Erreur lors de la création de la catégorie'),
+  });
+}
+
+export function useCreateChannel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      serverId,
+      categoryId,
+      name,
+      type,
+    }: {
+      serverId: string;
+      categoryId: string;
+      name: string;
+      type: ChannelType;
+    }) => {
+      // Get max position in category
+      const { data: existing } = await supabase
+        .from('channels')
+        .select('position')
+        .eq('category_id', categoryId)
+        .order('position', { ascending: false })
+        .limit(1);
+
+      const nextPosition = (existing?.[0]?.position ?? -1) + 1;
+
+      const { data, error } = await supabase
+        .from('channels')
+        .insert({
+          server_id: serverId,
+          category_id: categoryId,
+          name,
+          type,
+          position: nextPosition,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      toast.success('Salon créé');
+    },
+    onError: () => toast.error('Erreur lors de la création du salon'),
   });
 }

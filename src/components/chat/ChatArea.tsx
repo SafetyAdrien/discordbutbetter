@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Message, Channel } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
@@ -40,20 +40,21 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export function ChatArea({ channel, messages, onSendMessage }: ChatAreaProps) {
-  const [messageInput, setMessageInput] = useState('');
-  const [showMembers, setShowMembers] = useState(true);
+export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
+  function ChatArea({ channel, messages, onSendMessage }, ref) {
+    const [messageInput, setMessageInput] = useState('');
+    const [showMembers, setShowMembers] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (messageInput.trim()) {
-      onSendMessage(messageInput);
-      setMessageInput('');
-    }
-  };
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (messageInput.trim()) {
+        onSendMessage(messageInput);
+        setMessageInput('');
+      }
+    };
 
-  return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
+    return (
+      <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0">
       {/* Channel Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -244,5 +245,6 @@ export function ChatArea({ channel, messages, onSendMessage }: ChatAreaProps) {
         </form>
       </div>
     </div>
-  );
-}
+    );
+  }
+);

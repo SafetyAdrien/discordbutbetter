@@ -688,6 +688,10 @@ export type Database = {
         Args: { _user_id: string; _webhook_id: string }
         Returns: boolean
       }
+      create_dm_conversation: {
+        Args: { p_other_user_id?: string }
+        Returns: string
+      }
       get_channel_webhooks: {
         Args: { _channel_id: string }
         Returns: {

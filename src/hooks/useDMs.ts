@@ -3,6 +3,10 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+// Validation schema
+const targetUserSchema = z.string().uuid('Invalid user ID');
 
 export interface DMConversation {
   id: string;
@@ -131,61 +135,26 @@ export function useCreateDMConversation() {
     mutationFn: async (targetUserId: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Check if DM already exists
-      const { data: existingParticipations } = await supabase
-        .from('dm_participants')
-        .select('conversation_id')
-        .eq('user_id', user.id);
+      // Validate input
+      const validatedUserId = targetUserSchema.parse(targetUserId);
 
-      const myConvIds = existingParticipations?.map(p => p.conversation_id) || [];
+      // Use secure database function that handles conversation creation and participant enrollment
+      const { data, error } = await supabase
+        .rpc('create_dm_conversation', { p_other_user_id: validatedUserId });
 
-      if (myConvIds.length > 0) {
-        const { data: targetParticipations } = await supabase
-          .from('dm_participants')
-          .select('conversation_id')
-          .eq('user_id', targetUserId)
-          .in('conversation_id', myConvIds);
+      if (error) throw error;
 
-        // Check for 1-on-1 conversation
-        for (const tp of targetParticipations || []) {
-          const { data: convParticipants } = await supabase
-            .from('dm_participants')
-            .select('user_id')
-            .eq('conversation_id', tp.conversation_id);
-
-          if (convParticipants?.length === 2) {
-            // Return existing conversation
-            return { conversation_id: tp.conversation_id, isNew: false };
-          }
-        }
-      }
-
-      // Create new conversation
-      const { data: newConv, error: convError } = await supabase
-        .from('dm_conversations')
-        .insert({ is_group: false })
-        .select()
-        .single();
-
-      if (convError) throw convError;
-
-      // Add participants
-      const { error: partError } = await supabase
-        .from('dm_participants')
-        .insert([
-          { conversation_id: newConv.id, user_id: user.id },
-          { conversation_id: newConv.id, user_id: targetUserId },
-        ]);
-
-      if (partError) throw partError;
-
-      return { conversation_id: newConv.id, isNew: true };
+      return { conversation_id: data as string, isNew: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
     },
-    onError: () => {
-      toast.error('Erreur lors de la création de la conversation');
+    onError: (error) => {
+      if (error instanceof z.ZodError) {
+        toast.error('Invalid user ID');
+      } else {
+        toast.error('Erreur lors de la création de la conversation');
+      }
     },
   });
 }

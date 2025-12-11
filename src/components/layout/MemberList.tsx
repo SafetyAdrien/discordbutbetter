@@ -45,11 +45,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
           />
         </div>
 
-        <div className="flex-1 min-w-0 text-left">
-          <div className="flex items-center gap-1 min-w-0">
+        <div className="flex-1 min-w-0 text-left overflow-hidden">
+          <div className="flex items-center gap-1 min-w-0 overflow-hidden">
             <span
               className={cn(
-                'text-sm font-medium truncate',
+                'text-sm font-medium truncate block flex-1 min-w-0',
                 member.status === 'offline' ? 'text-muted-foreground' : 'text-foreground'
               )}
             >

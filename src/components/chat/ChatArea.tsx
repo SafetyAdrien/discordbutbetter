@@ -142,12 +142,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                     alt={message.author.displayName}
                     className="w-10 h-10 rounded-full flex-shrink-0 mt-0.5"
                   />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 min-w-0">
-                      <span className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px]">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                      <span className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
                         {message.author.displayName}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
                         {formatTime(message.timestamp)}
                       </span>
                     </div>

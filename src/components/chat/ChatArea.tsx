@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react';
+import { useState, forwardRef, useCallback } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
@@ -34,6 +34,8 @@ import {
 } from '@/components/ui/context-menu';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { TypingIndicator } from '@/components/typing/TypingIndicator';
 
 interface Role {
   id: string;
@@ -75,14 +77,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const [showMembers, setShowMembers] = useState(true);
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
     const { user } = useAuth();
+    const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (messageInput.trim()) {
         onSendMessage(messageInput);
         setMessageInput('');
+        stopTyping();
       }
     };
+
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      setMessageInput(e.target.value);
+      if (e.target.value.trim()) {
+        startTyping();
+      }
+    }, [startTyping]);
 
     const handleUserClick = (author: User) => {
       const roles = memberRoles?.get(author.id);
@@ -303,6 +314,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         })}
       </div>
 
+      {/* Typing Indicator */}
+      <TypingIndicator channelId={channel.id} />
+
       {/* Message Input */}
       <div className="px-4 pb-6 flex-shrink-0">
         <form onSubmit={handleSubmit} className="relative">
@@ -317,7 +331,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
             <input
               type="text"
               value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
+              onChange={handleInputChange}
               placeholder={`Envoyer un message dans #${channel.name}`}
               className="flex-1 bg-transparent py-3 text-foreground placeholder:text-muted-foreground focus:outline-none"
             />

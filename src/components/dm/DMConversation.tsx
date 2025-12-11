@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useDMMessages, useSendDMMessage, DMMessage } from '@/hooks/useDMMessages';
 import { useDMConversations } from '@/hooks/useDMs';
@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Send, Loader2, ArrowLeft, Copy, Pencil, Trash2, Hash, Smile, Reply } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, Copy, Pencil, Trash2, Hash, Smile, Reply, Phone, Video, Pin } from 'lucide-react';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { TypingIndicator } from '@/components/typing/TypingIndicator';
+import { toast } from '@/hooks/use-toast';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -32,6 +35,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const { startTyping, stopTyping } = useTypingIndicator(null, conversationId);
 
   const { data: conversations = [] } = useDMConversations();
   const { data: messages = [], isLoading } = useDMMessages(conversationId);
@@ -53,6 +57,22 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       content: messageInput.trim(),
     });
     setMessageInput('');
+    stopTyping();
+  };
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+    if (e.target.value.trim()) {
+      startTyping();
+    }
+  }, [startTyping]);
+
+  const handleVoiceCall = () => {
+    toast({ title: 'Appels vocaux', description: 'Bientôt disponible !' });
+  };
+
+  const handleVideoCall = () => {
+    toast({ title: 'Appels vidéo', description: 'Bientôt disponible !' });
   };
 
   const handleCopyMessage = (content: string) => {
@@ -87,13 +107,24 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             {displayName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <div>
+        <div className="flex-1">
           <h2 className="font-semibold text-sm">{displayName}</h2>
           {participant && (
             <p className="text-xs text-muted-foreground">
               @{participant.username.toLowerCase()}
             </p>
           )}
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={handleVoiceCall}>
+            <Phone className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handleVideoCall}>
+            <Video className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <Pin className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -134,12 +165,15 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         )}
       </div>
 
+      {/* Typing Indicator */}
+      <TypingIndicator conversationId={conversationId} />
+
       {/* Input */}
       <form onSubmit={handleSend} className="p-4 border-t border-border">
         <div className="flex gap-2">
           <Input
             value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
+            onChange={handleInputChange}
             placeholder={`Envoyer un message à ${displayName}`}
             className="flex-1"
           />

@@ -586,6 +586,104 @@ export type Database = {
           },
         ]
       }
+      typing_indicators: {
+        Row: {
+          channel_id: string | null
+          conversation_id: string | null
+          id: string
+          started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          channel_id?: string | null
+          conversation_id?: string | null
+          id?: string
+          started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          channel_id?: string | null
+          conversation_id?: string | null
+          id?: string
+          started_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_indicators_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "typing_indicators_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "typing_indicators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_signals: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          from_user_id: string
+          id: string
+          signal_data: Json
+          signal_type: string
+          to_user_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          from_user_id: string
+          id?: string
+          signal_data: Json
+          signal_type: string
+          to_user_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          from_user_id?: string
+          id?: string
+          signal_data?: Json
+          signal_type?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_signals_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_signals_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_signals_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voice_states: {
         Row: {
           camera: boolean | null
@@ -688,6 +786,8 @@ export type Database = {
         Args: { _user_id: string; _webhook_id: string }
         Returns: boolean
       }
+      cleanup_old_typing_indicators: { Args: never; Returns: undefined }
+      cleanup_old_voice_signals: { Args: never; Returns: undefined }
       create_dm_conversation: {
         Args: { p_other_user_id?: string }
         Returns: string

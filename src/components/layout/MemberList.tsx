@@ -1,7 +1,7 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, useMemo } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon } from 'lucide-react';
+import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import {
@@ -12,6 +12,8 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { copyToClipboard } from '@/lib/clipboard';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 
 interface Role {
   id: string;
@@ -40,8 +42,19 @@ const statusColors = {
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
   function MemberList({ members, ownerId, onOpenDM }, ref) {
     const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-    const onlineMembers = members.filter((m) => m.status !== 'offline');
-    const offlineMembers = members.filter((m) => m.status === 'offline');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredMembers = useMemo(() => {
+      if (!searchQuery.trim()) return members;
+      const query = searchQuery.toLowerCase();
+      return members.filter(m => 
+        m.displayName.toLowerCase().includes(query) ||
+        m.username.toLowerCase().includes(query)
+      );
+    }, [members, searchQuery]);
+
+    const onlineMembers = filteredMembers.filter((m) => m.status !== 'offline');
+    const offlineMembers = filteredMembers.filter((m) => m.status === 'offline');
 
     const handleCopyId = (id: string) => {
       copyToClipboard(id, 'ID utilisateur copié');
@@ -143,6 +156,19 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     return (
       <>
         <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
+          {/* Search input */}
+          <div className="px-[5px] pt-[5px]">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                placeholder="Rechercher"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-7 pl-8 text-sm bg-input"
+              />
+            </div>
+          </div>
+          <Separator className="mt-2" />
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
             {/* Online Members */}
             {onlineMembers.length > 0 && (

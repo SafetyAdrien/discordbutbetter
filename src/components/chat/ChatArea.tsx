@@ -6,7 +6,6 @@ import {
   Bell, 
   Pin, 
   Users, 
-  Search, 
   Inbox,
   PlusCircle,
   Gift,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
@@ -42,6 +40,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
+import { MarkdownText } from '@/lib/markdown';
 
 interface Role {
   id: string;
@@ -189,29 +188,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
             </PopoverContent>
           </Popover>
 
-          {/* Members Toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="iconSm"
-                onClick={onToggleMembers}
-                className={cn(showMembers && 'bg-surface-hover')}
-              >
-                <Users className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{showMembers ? 'Masquer les membres' : 'Afficher les membres'}</TooltipContent>
-          </Tooltip>
-
-          <div className="relative ml-2">
-            <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Rechercher"
-              className="h-7 w-36 pl-8 text-sm bg-input"
-            />
-          </div>
-
           {/* Inbox Popover */}
           <Popover>
             <PopoverTrigger asChild>
@@ -226,6 +202,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Members Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="iconSm"
+                onClick={onToggleMembers}
+                className={cn(showMembers && 'bg-surface-hover')}
+              >
+                <Users className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{showMembers ? 'Masquer les membres' : 'Afficher les membres'}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -291,7 +282,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                             {formatTime(message.timestamp)}
                           </span>
                         </div>
-                        <p className="text-foreground break-words">{message.content}</p>
+                        <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
                         
                         {message.reactions && message.reactions.length > 0 && (
                           <div className="flex gap-1 mt-1">
@@ -314,7 +305,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                         {formatTime(message.timestamp)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-foreground break-words">{message.content}</p>
+                        <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
                         
                         {message.reactions && message.reactions.length > 0 && (
                           <div className="flex gap-1 mt-1">

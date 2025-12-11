@@ -246,4 +246,25 @@
   .voice-active-ring {
     animation: voice-glow 1.5s ease-in-out infinite;
   }
+
+  /* Spoiler style Discord */
+  .spoiler {
+    background-color: hsl(var(--muted));
+    color: transparent;
+    border-radius: 4px;
+    padding: 0 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+
+  .spoiler:hover {
+    background-color: hsl(var(--muted) / 0.8);
+  }
+
+  .spoiler.revealed {
+    background-color: hsl(var(--muted) / 0.3);
+    color: inherit;
+    user-select: text;
+  }
 }

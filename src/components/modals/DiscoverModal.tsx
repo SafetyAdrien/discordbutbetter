@@ -1,8 +1,8 @@
+import { useState, forwardRef } from 'react';
 import { Server } from '@/types/app';
 import { X, Search, Users, Compass, Gamepad2, Palette, Music, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface DiscoverModalProps {
@@ -19,17 +19,18 @@ const categories = [
   { id: 'tech', name: 'Tech', icon: Code },
 ];
 
-export function DiscoverModal({ servers, onClose, onJoinServer }: DiscoverModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
+export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
+  function DiscoverModal({ servers, onClose, onJoinServer }, ref) {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeCategory, setActiveCategory] = useState('all');
 
-  const filteredServers = servers.filter((server) =>
-    server.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    server.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const filteredServers = servers.filter((server) =>
+      server.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      server.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    return (
+      <div ref={ref} className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
       
       <div className="relative w-full max-w-5xl h-[90vh] bg-card rounded-xl border border-border shadow-2xl overflow-hidden flex animate-slide-in-right">
@@ -138,8 +139,9 @@ export function DiscoverModal({ servers, onClose, onJoinServer }: DiscoverModalP
               ))}
             </div>
           </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);

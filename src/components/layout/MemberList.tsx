@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { Crown, Shield, Headphones, Mic } from 'lucide-react';
@@ -14,11 +15,12 @@ const statusColors = {
   offline: 'bg-status-offline',
 };
 
-export function MemberList({ members, ownerId }: MemberListProps) {
-  const onlineMembers = members.filter((m) => m.status !== 'offline');
-  const offlineMembers = members.filter((m) => m.status === 'offline');
+export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
+  function MemberList({ members, ownerId }, ref) {
+    const onlineMembers = members.filter((m) => m.status !== 'offline');
+    const offlineMembers = members.filter((m) => m.status === 'offline');
 
-  const renderMember = (member: User) => {
+    const renderMember = (member: User) => {
     const isOwner = member.id === ownerId;
 
     return (
@@ -64,36 +66,37 @@ export function MemberList({ members, ownerId }: MemberListProps) {
           )}
         </div>
       </button>
-    );
-  };
+      );
+    };
 
-  return (
-    <div className="w-60 bg-card flex flex-col border-l border-border">
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
-        {/* Online Members */}
-        {onlineMembers.length > 0 && (
-          <div className="mb-4">
-            <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              En ligne — {onlineMembers.length}
-            </h3>
-            <div className="space-y-0.5">
-              {onlineMembers.map(renderMember)}
+    return (
+      <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
+        <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
+          {/* Online Members */}
+          {onlineMembers.length > 0 && (
+            <div className="mb-4">
+              <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                En ligne — {onlineMembers.length}
+              </h3>
+              <div className="space-y-0.5">
+                {onlineMembers.map(renderMember)}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Offline Members */}
-        {offlineMembers.length > 0 && (
-          <div>
-            <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Hors ligne — {offlineMembers.length}
-            </h3>
-            <div className="space-y-0.5">
-              {offlineMembers.map(renderMember)}
+          {/* Offline Members */}
+          {offlineMembers.length > 0 && (
+            <div>
+              <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Hors ligne — {offlineMembers.length}
+              </h3>
+              <div className="space-y-0.5">
+                {offlineMembers.map(renderMember)}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);

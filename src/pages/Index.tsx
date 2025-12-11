@@ -6,6 +6,7 @@ import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
+import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
@@ -21,6 +22,7 @@ const Index = () => {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showServerSettings, setShowServerSettings] = useState(false);
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -203,6 +205,7 @@ const Index = () => {
             server={serverForChannelList}
             activeChannelId={activeChannelId}
             onChannelSelect={setActiveChannelId}
+            onOpenServerSettings={() => setShowServerSettings(true)}
           />
 
           {/* Main Chat Area */}
@@ -266,6 +269,14 @@ const Index = () => {
         <CreateServerModal
           onClose={() => setShowCreate(false)}
           onCreate={handleCreateServer}
+        />
+      )}
+
+      {showServerSettings && activeServer && (
+        <ServerSettingsModal
+          serverId={activeServer.id}
+          serverName={activeServer.name}
+          onClose={() => setShowServerSettings(false)}
         />
       )}
     </div>

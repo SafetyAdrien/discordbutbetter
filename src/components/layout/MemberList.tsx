@@ -5,9 +5,21 @@ import { Crown } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 
+interface Role {
+  id: string;
+  name: string;
+  color: string | null;
+  position: number | null;
+}
+
+interface MemberWithRoles extends User {
+  roles?: Role[];
+}
+
 interface MemberListProps {
-  members: User[];
+  members: MemberWithRoles[];
   ownerId: string;
+  onOpenDM?: (conversationId: string) => void;
 }
 
 const statusColors = {
@@ -18,18 +30,18 @@ const statusColors = {
 };
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
-  function MemberList({ members, ownerId }, ref) {
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  function MemberList({ members, ownerId, onOpenDM }, ref) {
+    const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
     const onlineMembers = members.filter((m) => m.status !== 'offline');
     const offlineMembers = members.filter((m) => m.status === 'offline');
 
-    const renderMember = (member: User) => {
+    const renderMember = (member: MemberWithRoles) => {
       const isOwner = member.id === ownerId;
 
       return (
         <button
           key={member.id}
-          onClick={() => setSelectedUser(member)}
+          onClick={() => setSelectedMember(member)}
           className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
         >
           <div className="relative flex-shrink-0">
@@ -103,9 +115,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
         </div>
 
         <UserProfilePopup
-          user={selectedUser}
-          open={!!selectedUser}
-          onOpenChange={(open) => !open && setSelectedUser(null)}
+          user={selectedMember}
+          open={!!selectedMember}
+          onOpenChange={(open) => !open && setSelectedMember(null)}
+          roles={selectedMember?.roles}
+          onOpenDM={onOpenDM}
         />
       </>
     );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Server } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Compass, Plus, MessageCircle, Settings } from 'lucide-react';
+import { Compass, Plus, MessageCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ServerListProps {
@@ -109,18 +109,6 @@ export function ServerList({
         </TooltipTrigger>
         <TooltipContent side="right">
           <p>Découvrir des serveurs</p>
-        </TooltipContent>
-      </Tooltip>
-
-      {/* Settings */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button className="server-icon bg-card hover:bg-surface-hover mt-auto">
-            <Settings className="w-5 h-5 text-muted-foreground" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>Paramètres</p>
         </TooltipContent>
       </Tooltip>
     </div>

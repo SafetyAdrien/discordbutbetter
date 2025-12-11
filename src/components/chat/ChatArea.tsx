@@ -19,12 +19,15 @@ import {
   MessageSquareText,
   BellOff,
   BellRing,
-  AtSign
+  AtSign,
+  X,
+  Check
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import {
   ContextMenu,
@@ -41,6 +44,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MarkdownText } from '@/lib/markdown';
+import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 
 interface Role {
   id: string;
@@ -82,8 +86,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
   function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM, onToggleMembers, showMembers = true }, ref) {
     const [messageInput, setMessageInput] = useState('');
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editingContent, setEditingContent] = useState('');
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
+    const editMessage = useEditMessage();
+    const deleteMessage = useDeleteMessage();
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -117,6 +125,32 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const handleAddReaction = (messageId: string, emoji: string) => {
       // TODO: Implement reaction mutation
       console.log('Add reaction', messageId, emoji);
+    };
+
+    const handleStartEdit = (message: Message) => {
+      setEditingMessageId(message.id);
+      setEditingContent(message.content);
+    };
+
+    const handleSaveEdit = () => {
+      if (editingMessageId && editingContent.trim()) {
+        editMessage.mutate({ 
+          messageId: editingMessageId, 
+          channelId: channel.id, 
+          content: editingContent 
+        });
+        setEditingMessageId(null);
+        setEditingContent('');
+      }
+    };
+
+    const handleCancelEdit = () => {
+      setEditingMessageId(null);
+      setEditingContent('');
+    };
+
+    const handleDelete = (messageId: string) => {
+      deleteMessage.mutate({ messageId, channelId: channel.id });
     };
 
     return (
@@ -250,6 +284,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
             messages[index - 1].author.id !== message.author.id ||
             (message.timestamp.getTime() - messages[index - 1].timestamp.getTime()) > 300000;
           const isOwnMessage = user?.id === message.author.id;
+          const isEditing = editingMessageId === message.id;
 
           return (
             <ContextMenu key={message.id}>
@@ -281,8 +316,44 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                           <span className="text-xs text-muted-foreground flex-shrink-0">
                             {formatTime(message.timestamp)}
                           </span>
+                          {message.edited && (
+                            <span className="text-xs text-muted-foreground/50">(modifié)</span>
+                          )}
                         </div>
-                        <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
+                        {isEditing ? (
+                          <div className="mt-1 space-y-2">
+                            <Input
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              autoFocus
+                              className="bg-input"
+                            />
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>Échap pour annuler</span>
+                              <span>•</span>
+                              <span>Entrée pour sauvegarder</span>
+                              <div className="flex gap-1 ml-auto">
+                                <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
+                        )}
                         
                         {message.reactions && message.reactions.length > 0 && (
                           <div className="flex gap-1 mt-1">
@@ -305,7 +376,45 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                         {formatTime(message.timestamp)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              autoFocus
+                              className="bg-input"
+                            />
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>Échap pour annuler</span>
+                              <span>•</span>
+                              <span>Entrée pour sauvegarder</span>
+                              <div className="flex gap-1 ml-auto">
+                                <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
+                            {message.edited && (
+                              <span className="text-xs text-muted-foreground/50">(modifié)</span>
+                            )}
+                          </>
+                        )}
                         
                         {message.reactions && message.reactions.length > 0 && (
                           <div className="flex gap-1 mt-1">
@@ -361,11 +470,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 {isOwnMessage && (
                   <>
                     <ContextMenuSeparator />
-                    <ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleStartEdit(message)}>
                       <Pencil className="w-4 h-4 mr-2" />
                       Modifier
                     </ContextMenuItem>
-                    <ContextMenuItem className="text-destructive focus:text-destructive">
+                    <ContextMenuItem 
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => handleDelete(message.id)}
+                    >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Supprimer
                     </ContextMenuItem>
@@ -380,9 +492,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       {/* Typing Indicator */}
       <TypingIndicator channelId={channel.id} />
 
+      {/* Message Preview */}
+      {messageInput.trim() && (
+        <div className="px-4 mb-2">
+          <div className="bg-muted/30 rounded-lg p-3 border border-border">
+            <p className="text-xs text-muted-foreground mb-1">Aperçu</p>
+            <div className="text-foreground text-sm">
+              <MarkdownText content={messageInput} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Message Input */}
       <div className="px-4 pb-6 flex-shrink-0">
-        <form onSubmit={handleSubmit} className="relative">
+        <form onSubmit={handleSubmit} className="relative shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
           <div className="flex items-center gap-2 bg-input rounded-lg border border-border focus-within:border-primary/50 transition-colors">
             <button
               type="button"

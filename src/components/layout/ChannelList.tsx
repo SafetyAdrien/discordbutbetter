@@ -15,12 +15,16 @@ import {
   Trash2,
   MicOff,
   HeadphoneOff,
-  Pencil
+  Pencil,
+  Calendar,
+  Crown,
+  Users
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +46,8 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useUpdateCategory } from '@/hooks/useCategories';
+import { useServerEmojis } from '@/hooks/useServerAssets';
+import { useMembers } from '@/hooks/useMembers';
 
 interface Channel {
   id: string;
@@ -62,6 +68,10 @@ interface Server {
   name: string;
   ownerId: string;
   categories: Category[];
+  iconUrl?: string;
+  bannerUrl?: string;
+  description?: string;
+  createdAt?: string;
 }
 
 interface ChannelListProps {
@@ -92,6 +102,16 @@ const statusLabels = {
   offline: 'Hors ligne',
 };
 
+function formatServerDate(dateString?: string): string {
+  if (!dateString) return 'Date inconnue';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('fr-FR', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+}
+
 export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenServerSettings }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -101,6 +121,10 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();
+  const { data: serverEmojis = [] } = useServerEmojis(server.id);
+  const { data: membersData } = useMembers(server.id);
+
+  const ownerProfile = membersData?.find(m => m.id === server.ownerId);
 
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories((prev) =>
@@ -154,13 +178,89 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header */}
-      <button 
-        onClick={onOpenServerSettings}
-        className="h-12 px-4 flex items-center justify-between border-b border-border hover:bg-muted cursor-pointer transition-colors w-full"
-      >
-        <h2 className="font-semibold text-foreground truncate">{server.name}</h2>
-        <Settings className="w-4 h-4 text-muted-foreground" />
-      </button>
+      <div className="h-12 px-4 flex items-center justify-between border-b border-border">
+        {/* Server Name - Opens Info Popup */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="font-semibold text-foreground truncate hover:text-primary transition-colors cursor-pointer flex-1 text-left">
+              {server.name}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden">
+            {/* Banner */}
+            {server.bannerUrl ? (
+              <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" />
+            ) : (
+              <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
+            )}
+            
+            <div className="p-4 space-y-3">
+              {/* Icon and Name */}
+              <div className="flex items-center gap-3">
+                {server.iconUrl ? (
+                  <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
+                    {server.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-lg text-foreground truncate">{server.name}</h3>
+                  {server.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Server Info */}
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>Créé le {formatServerDate(server.createdAt)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Crown className="w-4 h-4 text-yellow-500" />
+                  <span>Fondateur: {ownerProfile?.user?.display_name || 'Inconnu'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="w-4 h-4" />
+                  <span>{membersData?.length || 0} membres</span>
+                </div>
+              </div>
+              
+              {/* Server Emojis */}
+              {serverEmojis.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
+                  <div className="flex flex-wrap gap-1">
+                    {serverEmojis.slice(0, 10).map((emoji) => (
+                      <img 
+                        key={emoji.id} 
+                        src={emoji.image_url} 
+                        alt={emoji.name}
+                        className="w-6 h-6 rounded" 
+                      />
+                    ))}
+                    {serverEmojis.length > 10 && (
+                      <span className="text-xs text-muted-foreground self-center ml-1">
+                        +{serverEmojis.length - 10}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        
+        {/* Settings Gear - Opens Server Settings */}
+        <button 
+          onClick={onOpenServerSettings}
+          className="p-1.5 hover:bg-muted rounded-md transition-colors"
+        >
+          <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+        </button>
+      </div>
 
       {/* Channels */}
       <div className="flex-1 overflow-y-auto scrollbar-thin py-2">

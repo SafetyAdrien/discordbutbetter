@@ -7,6 +7,7 @@ export interface User {
   status: 'online' | 'idle' | 'dnd' | 'offline';
   customStatus?: string;
   bio?: string;
+  createdAt?: string;
 }
 
 export interface Server {

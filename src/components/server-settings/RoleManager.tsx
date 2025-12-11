@@ -1,0 +1,145 @@
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { useServerRoles, useCreateRole, useDeleteRole, RoleWithPermissions } from '@/hooks/useRoles';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { RoleEditor } from './RoleEditor';
+import { Plus, Shield, Trash2, Loader2 } from 'lucide-react';
+
+interface RoleManagerProps {
+  serverId: string;
+}
+
+export function RoleManager({ serverId }: RoleManagerProps) {
+  const { data: roles = [], isLoading } = useServerRoles(serverId);
+  const createRole = useCreateRole();
+  const deleteRole = useDeleteRole();
+
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [showNewRoleInput, setShowNewRoleInput] = useState(false);
+
+  const selectedRole = roles.find(r => r.id === selectedRoleId);
+
+  const handleCreateRole = () => {
+    if (!newRoleName.trim()) return;
+    createRole.mutate(
+      { serverId, name: newRoleName.trim() },
+      {
+        onSuccess: () => {
+          setNewRoleName('');
+          setShowNewRoleInput(false);
+        },
+      }
+    );
+  };
+
+  const handleDeleteRole = (roleId: string) => {
+    if (selectedRoleId === roleId) {
+      setSelectedRoleId(null);
+    }
+    deleteRole.mutate({ roleId, serverId });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-6 h-full min-h-[400px]">
+      {/* Role List */}
+      <div className="w-64 flex-shrink-0 space-y-2">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-medium text-muted-foreground">
+            Rôles — {roles.length}
+          </h4>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowNewRoleInput(true)}
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {showNewRoleInput && (
+          <div className="flex gap-2 mb-2">
+            <Input
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="Nom du rôle"
+              className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateRole();
+                if (e.key === 'Escape') setShowNewRoleInput(false);
+              }}
+            />
+            <Button
+              size="sm"
+              onClick={handleCreateRole}
+              disabled={!newRoleName.trim() || createRole.isPending}
+            >
+              {createRole.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          {roles.map((role) => (
+            <div
+              key={role.id}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors group',
+                selectedRoleId === role.id
+                  ? 'bg-primary/10 text-primary'
+                  : 'hover:bg-muted'
+              )}
+              onClick={() => setSelectedRoleId(role.id)}
+            >
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: role.color || '#99AAB5' }}
+              />
+              <span className="flex-1 truncate text-sm">{role.name}</span>
+              {!role.is_default && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteRole(role.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Role Editor */}
+      <div className="flex-1 border-l border-border pl-6">
+        {selectedRole ? (
+          <RoleEditor role={selectedRole} serverId={serverId} />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <Shield className="w-12 h-12 text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-medium">Sélectionnez un rôle</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Choisissez un rôle pour modifier ses permissions
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

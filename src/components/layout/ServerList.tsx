@@ -55,10 +55,19 @@ export function ServerList({
           <button
             onClick={() => onServerSelect(null)}
             className={cn(
-              'server-icon bg-card hover:bg-primary hover:text-primary-foreground',
+              'server-icon bg-card hover:bg-primary hover:text-primary-foreground relative group',
               activeServerId === null && 'bg-primary text-primary-foreground rounded-[16px]'
             )}
           >
+            {/* Active indicator */}
+            <div
+              className={cn(
+                'absolute left-0 w-1 rounded-r-full bg-foreground transition-all duration-300',
+                activeServerId === null
+                  ? 'h-10'
+                  : 'h-0 group-hover:h-5'
+              )}
+            />
             <MessageCircle className="w-6 h-6" />
           </button>
         </TooltipTrigger>
@@ -70,7 +79,7 @@ export function ServerList({
       <div className="w-8 h-[2px] bg-border rounded-full my-1" />
 
       {/* Server Icons */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full px-3">
+      <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
         {servers.map((server) => (
           <ContextMenu key={server.id}>
             <Tooltip>
@@ -88,7 +97,7 @@ export function ServerList({
                     {/* Active indicator */}
                     <div
                       className={cn(
-                        'absolute left-[-16px] w-1 rounded-r-full bg-foreground transition-all duration-300',
+                        'absolute left-0 w-1 rounded-r-full bg-foreground transition-all duration-300',
                         activeServerId === server.id
                           ? 'h-10'
                           : 'h-0 group-hover:h-5'

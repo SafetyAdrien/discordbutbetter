@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { soundEffects } from '@/utils/audio/SoundEffects';
 
@@ -23,6 +23,12 @@ interface VoiceContextType {
   isConnected: boolean;
   speakingUsers: Set<string>;
   localAudioLevel: number;
+  microphoneError: boolean;
+  hasMicrophoneAccess: boolean;
+  retryMicrophone: () => Promise<boolean>;
+  isPushToTalkMode: boolean;
+  togglePushToTalkMode: () => void;
+  setPushToTalkActive: (active: boolean) => void;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -33,7 +39,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const webrtc = useWebRTC();
   const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
   const [localAudioLevel, setLocalAudioLevel] = useState(0);
-  const previousParticipantsRef = useRef<Set<string>>(new Set());
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
     channelId: null,
@@ -99,6 +104,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setSpeakingUsers(newSpeaking);
     setLocalAudioLevel(webrtc.audioLevel);
   }, [webrtc.peers, webrtc.audioLevel]);
+
+  // Show toast when microphone access fails
+  useEffect(() => {
+    if (webrtc.microphoneError && voiceState.channelId) {
+      toast.warning('Mode écoute seule', {
+        description: 'Impossible d\'accéder au microphone. Vous pouvez écouter mais pas parler.',
+        action: {
+          label: 'Réessayer',
+          onClick: () => webrtc.retryMicrophone(),
+        },
+        duration: 10000,
+      });
+    }
+  }, [webrtc.microphoneError, voiceState.channelId]);
 
   // Subscribe to voice state changes for sound effects
   useEffect(() => {
@@ -262,6 +281,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, voiceState.channelId, voiceState.isDeafened, voiceState.isMuted, webrtc, queryClient]);
 
+  const togglePushToTalkMode = useCallback(() => {
+    webrtc.setPushToTalkMode(!webrtc.isPushToTalkMode);
+  }, [webrtc]);
+
+  const retryMicrophone = useCallback(async () => {
+    const success = await webrtc.retryMicrophone();
+    if (success) {
+      toast.success('Microphone activé');
+    } else {
+      toast.error('Impossible d\'accéder au microphone');
+    }
+    return success;
+  }, [webrtc]);
+
   return (
     <VoiceContext.Provider
       value={{
@@ -273,6 +306,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         isConnected: !!voiceState.channelId,
         speakingUsers,
         localAudioLevel,
+        microphoneError: webrtc.microphoneError,
+        hasMicrophoneAccess: webrtc.hasMicrophoneAccess,
+        retryMicrophone,
+        isPushToTalkMode: webrtc.isPushToTalkMode,
+        togglePushToTalkMode,
+        setPushToTalkActive: webrtc.setPushToTalkActive,
       }}
     >
       {children}
@@ -288,7 +327,7 @@ export function useVoice() {
   return context;
 }
 
-// Hook for voice participants (same as before but reusable)
+// Hook for voice participants
 export function useVoiceParticipants(channelId: string | null) {
   const queryClient = useQueryClient();
 

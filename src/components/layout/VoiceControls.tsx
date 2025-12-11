@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal } from 'lucide-react';
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal, AlertTriangle, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoice } from '@/contexts/VoiceContext';
@@ -23,7 +23,14 @@ export function VoiceControls({
   onToggleDeafen,
   onDisconnect,
 }: VoiceControlsProps) {
-  const { localAudioLevel } = useVoice();
+  const { 
+    localAudioLevel, 
+    microphoneError, 
+    hasMicrophoneAccess, 
+    retryMicrophone,
+    isPushToTalkMode,
+    togglePushToTalkMode,
+  } = useVoice();
 
   return (
     <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
@@ -40,14 +47,45 @@ export function VoiceControls({
         </div>
       </div>
 
+      {/* Microphone Error */}
+      {microphoneError && (
+        <div className="mb-2 px-1">
+          <div className="flex items-center gap-2 p-2 rounded bg-warning/10 border border-warning/20">
+            <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-warning font-medium">Mode écoute seule</p>
+              <p className="text-xs text-muted-foreground">Microphone non disponible</p>
+            </div>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-6 px-2 text-xs"
+              onClick={retryMicrophone}
+            >
+              Activer
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Audio Level Bar */}
-      {!isMuted && (
+      {hasMicrophoneAccess && !isMuted && (
         <div className="mb-2 px-1">
           <div className="h-1 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-[hsl(var(--online))] transition-all duration-75"
               style={{ width: `${Math.min(localAudioLevel * 100, 100)}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* PTT Indicator */}
+      {isPushToTalkMode && (
+        <div className="mb-2 px-1">
+          <div className="flex items-center gap-2 p-1.5 rounded bg-primary/10 border border-primary/20">
+            <Radio className="w-3 h-3 text-primary" />
+            <p className="text-xs text-primary">Push-to-Talk actif (Espace)</p>
           </div>
         </div>
       )}
@@ -62,9 +100,11 @@ export function VoiceControls({
                 variant={isMuted ? 'destructive' : 'ghost'}
                 className={cn(
                   'flex-1 h-8',
-                  isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                  isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
+                  !hasMicrophoneAccess && 'opacity-50'
                 )}
                 onClick={onToggleMute}
+                disabled={!hasMicrophoneAccess}
               >
                 {isMuted ? (
                   <MicOff className="w-4 h-4" />
@@ -74,7 +114,11 @@ export function VoiceControls({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {isMuted ? 'Activer le micro' : 'Couper le micro'}
+              {!hasMicrophoneAccess 
+                ? 'Microphone non disponible' 
+                : isMuted 
+                  ? 'Activer le micro' 
+                  : 'Couper le micro'}
             </TooltipContent>
           </Tooltip>
 
@@ -98,6 +142,22 @@ export function VoiceControls({
             </TooltipTrigger>
             <TooltipContent>
               {isDeafened ? 'Activer le son' : 'Couper le son'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={isPushToTalkMode ? 'secondary' : 'ghost'}
+                className="flex-1 h-8"
+                onClick={togglePushToTalkMode}
+              >
+                <Radio className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isPushToTalkMode ? 'Désactiver Push-to-Talk' : 'Activer Push-to-Talk'}
             </TooltipContent>
           </Tooltip>
 

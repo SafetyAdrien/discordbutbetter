@@ -90,8 +90,8 @@ export function ServerList({
                     className={cn(
                       'server-icon relative group',
                       activeServerId === server.id
-                        ? 'bg-primary text-primary-foreground rounded-[16px]'
-                        : 'bg-card hover:bg-primary/80 hover:text-primary-foreground'
+                        ? 'bg-[#5865f2] text-white rounded-[16px]'
+                        : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
                     )}
                   >
                     {/* Active indicator */}
@@ -164,7 +164,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onCreateClick}
-            className="server-icon bg-card hover:bg-status-online hover:text-primary-foreground text-status-online"
+            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -178,7 +178,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onDiscoverClick}
-            className="server-icon bg-card hover:bg-status-online hover:text-primary-foreground text-status-online"
+            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
           >
             <Compass className="w-6 h-6" />
           </button>

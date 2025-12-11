@@ -18,7 +18,11 @@ import {
   Pencil,
   Calendar,
   Crown,
-  Users
+  Users,
+  Image,
+  CalendarDays,
+  ListTodo,
+  FolderPlus
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +45,8 @@ import {
 } from '@/components/ui/context-menu';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
+import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
+import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
 import { VoiceControls } from './VoiceControls';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
@@ -48,11 +54,12 @@ import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
+import { ChannelType } from '@/hooks/useChannels';
 
 interface Channel {
   id: string;
   name: string;
-  type: 'text' | 'voice' | 'forum' | 'announcement';
+  type: ChannelType;
   description?: string;
   unreadCount?: number;
 }
@@ -81,11 +88,14 @@ interface ChannelListProps {
   onOpenServerSettings?: () => void;
 }
 
-const channelIcons = {
+const channelIcons: Record<ChannelType, React.ElementType> = {
   text: Hash,
   voice: Volume2,
   forum: MessageSquare,
   announcement: Megaphone,
+  media: Image,
+  calendar: CalendarDays,
+  tasks: ListTodo,
 };
 
 const statusColors = {
@@ -118,6 +128,8 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [createChannelForCategory, setCreateChannelForCategory] = useState<{ id: string; name: string } | null>(null);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();
@@ -263,7 +275,9 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
       </div>
 
       {/* Channels */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
         {server.categories.map((category) => (
           <div key={category.id} className="mb-2">
             {/* Category Header */}
@@ -298,7 +312,12 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
                     <Plus className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 </ContextMenuTrigger>
-                <ContextMenuContent className="w-48">
+                <ContextMenuContent className="w-52">
+                  <ContextMenuItem onClick={() => setCreateChannelForCategory({ id: category.id, name: category.name })}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Créer un salon
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => handleStartEditCategory(category)}>
                     <Pencil className="w-4 h-4 mr-2" />
                     Modifier la catégorie
@@ -333,7 +352,15 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
             )}
           </div>
         ))}
-      </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-52">
+          <ContextMenuItem onClick={() => setShowCreateCategory(true)}>
+            <FolderPlus className="w-4 h-4 mr-2" />
+            Créer une catégorie
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* Voice Controls - Show when connected */}
       {isConnected && voiceState.channelName && (
@@ -428,6 +455,22 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
           channelId={selectedChannelId}
           serverId={server.id}
           onClose={() => setSelectedChannelId(null)}
+        />
+      )}
+
+      {createChannelForCategory && (
+        <CreateChannelModal
+          serverId={server.id}
+          categoryId={createChannelForCategory.id}
+          categoryName={createChannelForCategory.name}
+          onClose={() => setCreateChannelForCategory(null)}
+        />
+      )}
+
+      {showCreateCategory && (
+        <CreateCategoryModal
+          serverId={server.id}
+          onClose={() => setShowCreateCategory(false)}
         />
       )}
     </div>

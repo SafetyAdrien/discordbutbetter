@@ -926,7 +926,14 @@ export type Database = {
       }
     }
     Enums: {
-      channel_type: "text" | "voice" | "forum" | "announcement"
+      channel_type:
+        | "text"
+        | "voice"
+        | "forum"
+        | "announcement"
+        | "media"
+        | "calendar"
+        | "tasks"
       friendship_status: "pending" | "accepted" | "blocked"
       server_permission:
         | "manage_server"
@@ -1069,7 +1076,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      channel_type: ["text", "voice", "forum", "announcement"],
+      channel_type: [
+        "text",
+        "voice",
+        "forum",
+        "announcement",
+        "media",
+        "calendar",
+        "tasks",
+      ],
       friendship_status: ["pending", "accepted", "blocked"],
       server_permission: [
         "manage_server",

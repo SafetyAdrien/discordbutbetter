@@ -217,7 +217,7 @@ function SortableChannel({
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
               <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
-            <span className="truncate flex-1 text-left font-ginto font-normal text-[#9b9ca3]">{channel.name}</span>
+            <span className="truncate flex-1 text-left font-ginto font-normal text-base text-[#9b9ca3]">{channel.name}</span>
             
               {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                   {channel.unreadCount}

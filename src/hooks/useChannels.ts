@@ -246,13 +246,41 @@ export function useDeleteCategory() {
       // Delete category
       const { error } = await supabase.from('categories').delete().eq('id', categoryId);
       if (error) throw error;
-      return { serverId };
+      return { serverId, categoryId };
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ categoryId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      if (previousData) {
+        const deletedCategory = previousData.categories.find(c => c.id === categoryId);
+        const orphanedChannels = deletedCategory?.channels || [];
+        
+        queryClient.setQueryData(['channels', serverId], {
+          categories: previousData.categories.filter(c => c.id !== categoryId),
+          orphanChannels: [...previousData.orphanChannels, ...orphanedChannels.map(ch => ({
+            ...ch,
+            category_id: null,
+            position: 0
+          }))]
+        });
+      }
+      
+      return { previousData, serverId };
+    },
+    onError: (_, { serverId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['channels', serverId], context.previousData);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+    },
+    onSuccess: () => {
       toast.success('Catégorie supprimée');
     },
-    onError: () => toast.error('Erreur lors de la suppression'),
   });
 }
 
@@ -263,13 +291,37 @@ export function useDeleteChannel() {
     mutationFn: async ({ channelId, serverId }: { channelId: string; serverId: string }) => {
       const { error } = await supabase.from('channels').delete().eq('id', channelId);
       if (error) throw error;
-      return { serverId };
+      return { serverId, channelId };
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ channelId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      if (previousData) {
+        queryClient.setQueryData(['channels', serverId], {
+          categories: previousData.categories.map(cat => ({
+            ...cat,
+            channels: cat.channels.filter(ch => ch.id !== channelId)
+          })),
+          orphanChannels: previousData.orphanChannels.filter(ch => ch.id !== channelId)
+        });
+      }
+      
+      return { previousData, serverId };
+    },
+    onError: (_, { serverId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['channels', serverId], context.previousData);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+    },
+    onSuccess: () => {
       toast.success('Salon supprimé');
     },
-    onError: () => toast.error('Erreur lors de la suppression'),
   });
 }
 

@@ -4,6 +4,43 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700&display=swap');
 
+/* ABC Ginto Discord Font */
+@font-face {
+  font-family: 'ABC Ginto Discord';
+  src: url('/fonts/ABCGintoDiscord-Regular.woff2') format('woff2'),
+       url('/fonts/ABCGintoDiscord-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ABC Ginto Discord';
+  src: url('/fonts/ABCGintoDiscord-RegularItalic.woff2') format('woff2'),
+       url('/fonts/ABCGintoDiscord-RegularItalic.woff') format('woff');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ABC Ginto Discord';
+  src: url('/fonts/ABCGintoDiscord-Medium.woff2') format('woff2'),
+       url('/fonts/ABCGintoDiscord-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ABC Ginto Discord';
+  src: url('/fonts/ABCGintoDiscord-MediumItalic.woff2') format('woff2'),
+       url('/fonts/ABCGintoDiscord-MediumItalic.woff') format('woff');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     /* Dark gaming theme - always dark */

@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Orbitron', 'system-ui', 'sans-serif'],
+        ginto: ['ABC Ginto Discord', 'Inter', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

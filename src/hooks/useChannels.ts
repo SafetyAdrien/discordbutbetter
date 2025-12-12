@@ -93,11 +93,39 @@ export function useCreateCategory() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ serverId, name }) => {
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      if (previousData) {
+        const tempCategory: CategoryWithChannels = {
+          id: `temp-${Date.now()}`,
+          name,
+          position: previousData.categories.length,
+          channels: []
+        };
+        
+        queryClient.setQueryData(['channels', serverId], {
+          ...previousData,
+          categories: [...previousData.categories, tempCategory]
+        });
+      }
+      
+      return { previousData };
+    },
+    onError: (_, { serverId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['channels', serverId], context.previousData);
+      }
+      toast.error('Erreur lors de la création de la catégorie');
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+    },
+    onSuccess: () => {
       toast.success('Catégorie créée');
     },
-    onError: () => toast.error('Erreur lors de la création de la catégorie'),
   });
 }
 
@@ -154,11 +182,53 @@ export function useCreateChannel() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ serverId, categoryId, name, type }) => {
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      if (previousData) {
+        const tempChannel: ChannelWithCategory = {
+          id: `temp-${Date.now()}`,
+          name,
+          type,
+          description: null,
+          position: 0,
+          category_id: categoryId,
+          server_id: serverId
+        };
+        
+        if (categoryId) {
+          queryClient.setQueryData(['channels', serverId], {
+            ...previousData,
+            categories: previousData.categories.map(cat =>
+              cat.id === categoryId
+                ? { ...cat, channels: [...cat.channels, tempChannel] }
+                : cat
+            )
+          });
+        } else {
+          queryClient.setQueryData(['channels', serverId], {
+            ...previousData,
+            orphanChannels: [...previousData.orphanChannels, tempChannel]
+          });
+        }
+      }
+      
+      return { previousData };
+    },
+    onError: (_, { serverId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['channels', serverId], context.previousData);
+      }
+      toast.error('Erreur lors de la création du salon');
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+    },
+    onSuccess: () => {
       toast.success('Salon créé');
     },
-    onError: () => toast.error('Erreur lors de la création du salon'),
   });
 }
 

@@ -1,25 +1,126 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useServerRoles, useCreateRole, useDeleteRole, RoleWithPermissions } from '@/hooks/useRoles';
+import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
 import { Plus, Shield, Trash2, Loader2 } from 'lucide-react';
 
+// DnD Kit imports
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 interface RoleManagerProps {
   serverId: string;
+}
+
+// Sortable Role Component
+function SortableRole({
+  role,
+  isSelected,
+  onSelect,
+  onDelete,
+}: {
+  role: RoleWithPermissions;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: role.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || 'transform 200ms ease, opacity 200ms ease',
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 rounded-lg cursor-grab transition-colors group',
+        isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
+        isDragging && 'sortable-ghost'
+      )}
+      onClick={onSelect}
+    >
+      <div
+        className="w-3 h-3 rounded-full flex-shrink-0"
+        style={{ backgroundColor: role.color || '#99AAB5' }}
+      />
+      <span className="flex-1 truncate text-sm">{role.name}</span>
+      {!role.is_default && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function RoleManager({ serverId }: RoleManagerProps) {
   const { data: roles = [], isLoading } = useServerRoles(serverId);
   const createRole = useCreateRole();
   const deleteRole = useDeleteRole();
+  const reorderRoles = useReorderRoles();
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [newRoleName, setNewRoleName] = useState('');
   const [showNewRoleInput, setShowNewRoleInput] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const selectedRole = roles.find(r => r.id === selectedRoleId);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = roles.findIndex(r => r.id === active.id);
+    const newIndex = roles.findIndex(r => r.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newOrder = arrayMove(roles, oldIndex, newIndex);
+      reorderRoles.mutate({
+        serverId,
+        orderedIds: newOrder.map(r => r.id),
+      });
+    }
+  };
 
   const handleCreateRole = () => {
     if (!newRoleName.trim()) return;
@@ -40,6 +141,8 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     }
     deleteRole.mutate({ roleId, serverId });
   };
+
+  const activeRole = activeId ? roles.find(r => r.id === activeId) : null;
 
   if (isLoading) {
     return (
@@ -93,37 +196,42 @@ export function RoleManager({ serverId }: RoleManagerProps) {
           </div>
         )}
 
-        <div className="space-y-1">
-          {roles.map((role) => (
-            <div
-              key={role.id}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors group',
-                selectedRoleId === role.id
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted'
-              )}
-              onClick={() => setSelectedRoleId(role.id)}
-            >
-              <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: role.color || '#99AAB5' }}
-              />
-              <span className="flex-1 truncate text-sm">{role.name}</span>
-              {!role.is_default && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteRole(role.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={roles.map(r => r.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-1">
+              {roles.map((role) => (
+                <SortableRole
+                  key={role.id}
+                  role={role}
+                  isSelected={selectedRoleId === role.id}
+                  onSelect={() => setSelectedRoleId(role.id)}
+                  onDelete={() => handleDeleteRole(role.id)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeRole && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-lg drag-overlay-item">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: activeRole.color || '#99AAB5' }}
+                />
+                <span className="text-sm">{activeRole.name}</span>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {/* Role Editor */}

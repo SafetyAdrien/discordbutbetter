@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,16 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ImagePlus, X, Pin, Star, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownText } from '@/lib/markdown';
-import { useCreateAnnouncement, useUploadAnnouncementBanner, type AnnouncementCategory } from '@/hooks/useAnnouncements';
+import { useCreateAnnouncement, useUpdateAnnouncement, useUploadAnnouncementBanner, type AnnouncementCategory, type Announcement } from '@/hooks/useAnnouncements';
+
+const NONE_CATEGORY = '__none__';
 
 interface CreateAnnouncementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   channelId: string;
   categories: AnnouncementCategory[];
+  announcement?: Announcement; // For edit mode
 }
 
-export function CreateAnnouncementModal({ open, onOpenChange, channelId, categories }: CreateAnnouncementModalProps) {
+export function CreateAnnouncementModal({ open, onOpenChange, channelId, categories, announcement }: CreateAnnouncementModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<string>('');
@@ -28,10 +31,39 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
   const [bannerPreview, setBannerPreview] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isEditMode = !!announcement;
   const createAnnouncement = useCreateAnnouncement();
+  const updateAnnouncement = useUpdateAnnouncement();
   const uploadBanner = useUploadAnnouncementBanner();
 
-  const isSubmitting = createAnnouncement.isPending || uploadBanner.isPending;
+  const isSubmitting = createAnnouncement.isPending || updateAnnouncement.isPending || uploadBanner.isPending;
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (announcement && open) {
+      setTitle(announcement.title);
+      setContent(announcement.content);
+      setCategoryId(announcement.category?.id || '');
+      setPinned(announcement.pinned || false);
+      setFeatured(announcement.featured || false);
+      if (announcement.banner_url) {
+        setBannerPreview(announcement.banner_url);
+      }
+    }
+  }, [announcement, open]);
+
+  const resetForm = () => {
+    setTitle('');
+    setContent('');
+    setCategoryId('');
+    setPinned(false);
+    setFeatured(false);
+    setBannerFile(null);
+    setBannerPreview('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,34 +87,47 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
 
-    let bannerUrl: string | undefined;
+    let bannerUrl: string | undefined = isEditMode ? announcement.banner_url || undefined : undefined;
 
     if (bannerFile) {
       bannerUrl = await uploadBanner.mutateAsync(bannerFile);
+    } else if (!bannerPreview && isEditMode) {
+      // Banner was cleared
+      bannerUrl = undefined;
     }
 
-    await createAnnouncement.mutateAsync({
-      channelId,
-      title: title.trim(),
-      content: content.trim(),
-      categoryId: categoryId || undefined,
-      bannerUrl,
-      pinned,
-      featured,
-    });
+    if (isEditMode) {
+      await updateAnnouncement.mutateAsync({
+        id: announcement.id,
+        channelId,
+        title: title.trim(),
+        content: content.trim(),
+        categoryId: categoryId || undefined,
+        bannerUrl,
+        pinned,
+        featured,
+      });
+    } else {
+      await createAnnouncement.mutateAsync({
+        channelId,
+        title: title.trim(),
+        content: content.trim(),
+        categoryId: categoryId || undefined,
+        bannerUrl,
+        pinned,
+        featured,
+      });
+    }
 
-    // Reset form
-    setTitle('');
-    setContent('');
-    setCategoryId('');
-    setPinned(false);
-    setFeatured(false);
-    clearBanner();
+    resetForm();
     onOpenChange(false);
   };
 
   const handleClose = () => {
     if (!isSubmitting) {
+      if (!isEditMode) {
+        resetForm();
+      }
       onOpenChange(false);
     }
   };
@@ -91,9 +136,11 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nouvelle annonce</DialogTitle>
+          <DialogTitle>{isEditMode ? "Modifier l'annonce" : 'Nouvelle annonce'}</DialogTitle>
           <DialogDescription>
-            Créez une annonce importante pour les membres du serveur
+            {isEditMode 
+              ? "Modifiez les détails de l'annonce" 
+              : 'Créez une annonce importante pour les membres du serveur'}
           </DialogDescription>
         </DialogHeader>
 
@@ -134,12 +181,15 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
           {/* Category */}
           <div className="space-y-2">
             <Label>Catégorie</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select 
+              value={categoryId || NONE_CATEGORY} 
+              onValueChange={(value) => setCategoryId(value === NONE_CATEGORY ? '' : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner une catégorie" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucune catégorie</SelectItem>
+                <SelectItem value={NONE_CATEGORY}>Aucune catégorie</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     <div className="flex items-center gap-2">
@@ -241,7 +291,7 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
             disabled={!title.trim() || !content.trim() || isSubmitting}
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            Publier l'annonce
+            {isEditMode ? 'Enregistrer' : "Publier l'annonce"}
           </Button>
         </DialogFooter>
       </DialogContent>

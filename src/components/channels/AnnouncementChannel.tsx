@@ -226,6 +226,7 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
           onOpenChange={(open) => !open && setSelectedAnnouncement(null)}
           announcement={selectedAnnouncement}
           canEdit={true}
+          categories={allCategories}
         />
       )}
 

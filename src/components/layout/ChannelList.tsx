@@ -21,32 +21,9 @@ import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay, useDroppable } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-// Orphan drop zone component
-function OrphanDropZone({ isActive }: { isActive: boolean }) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: 'orphan-drop-zone'
-  });
-
-  if (!isActive) return null;
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "mx-2 my-2 p-3 border-2 border-dashed rounded-lg transition-all duration-200",
-        isOver
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-muted-foreground/30 text-muted-foreground drop-zone-active"
-      )}
-    >
-      <p className="text-xs text-center font-medium">Déposer ici pour retirer de la catégorie</p>
-    </div>
-  );
-}
 interface Channel {
   id: string;
   name: string;
@@ -486,18 +463,6 @@ export function ChannelList({
         }
       }
       
-      // Dropping on the orphan drop zone - move to uncategorized
-      else if (overIdStr === 'orphan-drop-zone') {
-        const existingOrphanIds = orphanChannels
-          .filter(ch => ch.id !== activeChannelId)
-          .map(ch => ch.id);
-        
-        reorderChannels.mutate({
-          serverId: server.id,
-          categoryId: null,
-          orderedIds: [...existingOrphanIds, activeChannelId]
-        });
-      }
     }
   };
 
@@ -587,25 +552,7 @@ export function ChannelList({
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-                {server.categories.map(category => editingCategoryId === category.id ? <div key={category.id} className="px-2 py-1 mb-2">
-                      <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
-                  if (e.key === 'Enter') handleSaveCategory();
-                  if (e.key === 'Escape') handleCancelEditCategory();
-                }} autoFocus className="h-6 text-xs font-semibold" />
-                    </div> : <SortableCategory key={category.id} category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
-                id: category.id,
-                name: category.name
-              })}>
-                      <div className="mt-1 px-2 space-y-0.5">
-                        <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} />)}
-                        </SortableContext>
-                      </div>
-                    </SortableCategory>)}
-              </SortableContext>
-
-              {/* Orphan Channels (displayed at the top without header) */}
+              {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {orphanChannels.length > 0 && (
                 <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
@@ -637,8 +584,24 @@ export function ChannelList({
                 </div>
               )}
 
-              {/* Orphan Drop Zone - visible during channel drag */}
-              <OrphanDropZone isActive={activeId?.startsWith('channel-') ?? false} />
+              {/* Categories */}
+              <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
+                {server.categories.map(category => editingCategoryId === category.id ? <div key={category.id} className="px-2 py-1 mb-2">
+                      <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
+                  if (e.key === 'Enter') handleSaveCategory();
+                  if (e.key === 'Escape') handleCancelEditCategory();
+                }} autoFocus className="h-6 text-xs font-semibold" />
+                    </div> : <SortableCategory key={category.id} category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
+                id: category.id,
+                name: category.name
+              })}>
+                      <div className="mt-1 px-2 space-y-0.5">
+                        <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
+                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} />)}
+                        </SortableContext>
+                      </div>
+                    </SortableCategory>)}
+              </SortableContext>
 
               {/* Drag Overlay for visual feedback */}
               <DragOverlay>

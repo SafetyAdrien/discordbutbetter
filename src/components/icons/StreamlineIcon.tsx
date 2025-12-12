@@ -13,19 +13,15 @@ export interface StreamlineIconProps extends React.SVGAttributes<SVGSVGElement> 
  * Provides consistent API similar to Lucide React
  */
 export const StreamlineIcon = React.forwardRef<SVGSVGElement, StreamlineIconProps & { children: React.ReactNode }>(
-  ({ size = 24, color = "currentColor", strokeWidth = 1.5, className, children, ...props }, ref) => {
+  ({ size = 24, color = "currentColor", className, children, ...props }, ref) => {
     return (
       <svg
         ref={ref}
         xmlns="http://www.w3.org/2000/svg"
         width={size}
         height={size}
-        viewBox="0 0 14 14"
-        fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        viewBox="0 0 1000 1000"
+        fill={color}
         className={cn("shrink-0", className)}
         {...props}
       >

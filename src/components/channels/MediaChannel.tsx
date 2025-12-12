@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Image, Upload, Grid, List, Loader2, Users } from 'lucide-react';
+import { Upload, Grid, List, Users } from 'lucide-react';
+import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +28,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       {/* Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Image className="w-4 h-4 text-muted-foreground" />
+          <StreamlineMedia className="w-4 h-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 
@@ -74,7 +75,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
         {mediaItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-              <Image className="w-10 h-10 text-muted-foreground/50" />
+              <StreamlineMedia className="w-10 h-10 text-muted-foreground/50" />
             </div>
             <h3 className="text-lg font-semibold mb-2">Aucun média</h3>
             <p className="text-muted-foreground text-sm max-w-md mb-4">

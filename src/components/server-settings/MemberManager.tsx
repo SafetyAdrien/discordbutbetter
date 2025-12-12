@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useMembers } from '@/hooks/useMembers';
-import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
+import { useKickMember, useBanMember, useBannedMembers, useUnbanMember } from '@/hooks/useMemberActions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, MoreVertical, Shield, UserMinus, Ban, Crown } from 'lucide-react';
+import { Search, MoreVertical, Shield, UserMinus, Ban, Crown, UserX } from 'lucide-react';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -33,16 +34,19 @@ interface MemberManagerProps {
 
 export function MemberManager({ serverId }: MemberManagerProps) {
   const { data: members = [], isLoading } = useMembers(serverId);
+  const { data: bannedMembers = [], isLoading: bannedLoading } = useBannedMembers(serverId);
   const { data: servers = [] } = useServers();
   const { user } = useAuth();
   const kickMember = useKickMember();
   const banMember = useBanMember();
+  const unbanMember = useUnbanMember();
   
   const server = servers.find(s => s.id === serverId);
   const [search, setSearch] = useState('');
   const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   const [banTarget, setBanTarget] = useState<{ id: string; name: string } | null>(null);
   const [banReason, setBanReason] = useState('');
+  const [unbanTarget, setUnbanTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filteredMembers = members.filter(member => 
     member.user.display_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -67,6 +71,19 @@ export function MemberManager({ serverId }: MemberManagerProps) {
     );
   };
 
+  const handleUnban = () => {
+    if (!unbanTarget) return;
+    unbanMember.mutate(
+      { serverId, userId: unbanTarget.id },
+      { onSuccess: () => setUnbanTarget(null) }
+    );
+  };
+
+  const filteredBannedMembers = bannedMembers.filter(ban => 
+    ban.profile?.display_name.toLowerCase().includes(search.toLowerCase()) ||
+    ban.profile?.username.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -78,25 +95,34 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold mb-1">Membres du serveur</h3>
+        <h3 className="text-lg font-semibold mb-1">Gestion des membres</h3>
         <p className="text-sm text-muted-foreground">
-          {members.length} membre{members.length > 1 ? 's' : ''}
+          {members.length} membre{members.length > 1 ? 's' : ''} • {bannedMembers.length} banni{bannedMembers.length > 1 ? 's' : ''}
         </p>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher un membre..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <Tabs defaultValue="members" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="members" className="flex-1">Membres ({members.length})</TabsTrigger>
+          <TabsTrigger value="banned" className="flex-1">Bannis ({bannedMembers.length})</TabsTrigger>
+        </TabsList>
 
-      {/* Member list */}
-      <div className="space-y-1 max-h-[400px] overflow-y-auto">
+        <div className="mt-4">
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        <TabsContent value="members" className="mt-0">
+          {/* Member list */}
+          <div className="space-y-1 max-h-[400px] overflow-y-auto">
         {filteredMembers.map((member) => {
           const isMemberOwner = member.user.id === server?.owner_id;
           
@@ -181,12 +207,70 @@ export function MemberManager({ serverId }: MemberManagerProps) {
           );
         })}
 
-        {filteredMembers.length === 0 && (
-          <p className="text-center text-muted-foreground py-8">
-            Aucun membre trouvé
-          </p>
-        )}
-      </div>
+            {filteredMembers.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">
+                Aucun membre trouvé
+              </p>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="banned" className="mt-0">
+          {/* Banned list */}
+          <div className="space-y-1 max-h-[400px] overflow-y-auto">
+            {filteredBannedMembers.map((ban) => (
+              <div
+                key={ban.id}
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={ban.profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-destructive/20 text-destructive">
+                      {ban.profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{ban.profile?.display_name || 'Utilisateur inconnu'}</span>
+                      <UserX className="w-4 h-4 text-destructive" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      @{ban.profile?.username?.toLowerCase() || 'inconnu'}
+                    </span>
+                    {ban.reason && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Raison: {ban.reason}
+                      </p>
+                    )}
+                    {ban.created_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Banni le {new Date(ban.created_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUnbanTarget({ id: ban.user_id, name: ban.profile?.display_name || 'Utilisateur' })}
+                  >
+                    Débannir
+                  </Button>
+                )}
+              </div>
+            ))}
+
+            {filteredBannedMembers.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">
+                {bannedMembers.length === 0 ? 'Aucun membre banni' : 'Aucun banni trouvé'}
+              </p>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Kick Confirmation Dialog */}
       <AlertDialog open={!!kickTarget} onOpenChange={() => setKickTarget(null)}>
@@ -236,6 +320,28 @@ export function MemberManager({ serverId }: MemberManagerProps) {
               disabled={banMember.isPending}
             >
               {banMember.isPending ? 'Bannissement...' : 'Bannir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unban Confirmation Dialog */}
+      <AlertDialog open={!!unbanTarget} onOpenChange={() => setUnbanTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Débannir {unbanTarget?.name} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre pourra à nouveau rejoindre le serveur avec une invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnban}
+              className="bg-primary hover:bg-primary/90"
+              disabled={unbanMember.isPending}
+            >
+              {unbanMember.isPending ? 'Débannissement...' : 'Débannir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

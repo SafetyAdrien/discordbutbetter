@@ -137,6 +137,13 @@ export function ServerList({
                         {server.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
+
+                    {/* Unread notification badge */}
+                    {(unreadCounts[server.id] ?? 0) > 0 && (
+                      <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar">
+                        {unreadCounts[server.id] > 99 ? '99+' : unreadCounts[server.id]}
+                      </div>
+                    )}
                   </button>
                 </TooltipTrigger>
               </ContextMenuTrigger>

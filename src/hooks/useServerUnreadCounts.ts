@@ -1,10 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
 
 export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Subscribe to realtime message inserts
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('server-messages-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 
   const query = useQuery({
     queryKey: ['server-unread-counts', user?.id],

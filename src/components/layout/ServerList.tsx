@@ -13,6 +13,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useState, useEffect, useRef } from 'react';
 
 interface ServerListProps {
   servers: Server[];
@@ -39,6 +40,39 @@ export function ServerList({
 
   // Check if there are any unread DMs
   const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
+
+  // Track previous counts for shake animation
+  const prevUnreadCounts = useRef<Record<string, number>>({});
+  const prevDMCount = useRef<number>(0);
+  const [shakingServers, setShakingServers] = useState<Set<string>>(new Set());
+  const [shakingDMs, setShakingDMs] = useState(false);
+
+  useEffect(() => {
+    // Detect servers where count increased
+    const newShaking = new Set<string>();
+    Object.entries(unreadCounts).forEach(([serverId, count]) => {
+      const prevCount = prevUnreadCounts.current[serverId] || 0;
+      if (count > prevCount) {
+        newShaking.add(serverId);
+      }
+    });
+
+    if (newShaking.size > 0) {
+      setShakingServers(newShaking);
+      setTimeout(() => setShakingServers(new Set()), 500);
+    }
+
+    prevUnreadCounts.current = { ...unreadCounts };
+  }, [unreadCounts]);
+
+  useEffect(() => {
+    // Detect DM count increase
+    if (totalUnreadDMs > prevDMCount.current) {
+      setShakingDMs(true);
+      setTimeout(() => setShakingDMs(false), 500);
+    }
+    prevDMCount.current = totalUnreadDMs;
+  }, [totalUnreadDMs]);
 
   const handleCopyId = (serverId: string) => {
     copyToClipboard(serverId, 'ID serveur copié');
@@ -91,7 +125,10 @@ export function ServerList({
             
             {/* Unread DMs notification badge */}
             {totalUnreadDMs > 0 && (
-              <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop">
+              <div className={cn(
+                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                shakingDMs && "animate-badge-shake"
+              )}>
                 {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
               </div>
             )}
@@ -150,7 +187,10 @@ export function ServerList({
 
                     {/* Unread notification badge */}
                     {(unreadCounts[server.id] ?? 0) > 0 && (
-                      <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop">
+                      <div className={cn(
+                        "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                        shakingServers.has(server.id) && "animate-badge-shake"
+                      )}>
                         {unreadCounts[server.id] > 99 ? '99+' : unreadCounts[server.id]}
                       </div>
                     )}

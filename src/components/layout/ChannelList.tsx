@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Volume2, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { ChevronDown, Volume2, Settings, Plus, Pencil, Calendar, Crown, Users, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
+import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -72,7 +73,7 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   voice: Volume2,
   forum: StreamlineForum,
   announcement: StreamlineMegaphone,
-  media: Image,
+  media: StreamlineMedia,
   calendar: CalendarDays,
   tasks: ListTodo
 };

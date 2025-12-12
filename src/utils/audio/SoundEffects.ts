@@ -83,6 +83,19 @@ class SoundEffectsManager {
     this.playTone(523, 0.05, 'sine', 0.1);
     setTimeout(() => this.playTone(392, 0.08, 'sine', 0.1), 40);
   }
+
+  playMessageNotification() {
+    // Pleasant notification ding for new messages
+    this.playTone(880, 0.08, 'sine', 0.15); // A5
+    setTimeout(() => this.playTone(1175, 0.12, 'sine', 0.12), 60); // D6
+  }
+
+  playMentionNotification() {
+    // More attention-grabbing sound for mentions
+    this.playTone(1047, 0.06, 'sine', 0.18); // C6
+    setTimeout(() => this.playTone(1319, 0.06, 'sine', 0.18), 50); // E6
+    setTimeout(() => this.playTone(1568, 0.1, 'sine', 0.15), 100); // G6
+  }
 }
 
 export const soundEffects = new SoundEffectsManager();

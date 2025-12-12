@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
+import { soundEffects } from '@/utils/audio/SoundEffects';
 
 export function useServerUnreadCounts() {
   const { user } = useAuth();
@@ -20,7 +21,11 @@ export function useServerUnreadCounts() {
           schema: 'public',
           table: 'messages',
         },
-        () => {
+        (payload) => {
+          // Play notification sound if not our own message
+          if (payload.new && (payload.new as { author_id: string }).author_id !== user.id) {
+            soundEffects.playMessageNotification();
+          }
           queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
         }
       )

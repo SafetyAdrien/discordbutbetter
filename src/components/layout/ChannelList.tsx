@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { ChevronDown, Volume2, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
+import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -67,7 +68,7 @@ interface ChannelListProps {
   orphanChannels?: OrphanChannel[];
 }
 const channelIcons: Record<ChannelType, React.ElementType> = {
-  text: Hash,
+  text: StreamlineHash,
   voice: Volume2,
   forum: StreamlineForum,
   announcement: StreamlineMegaphone,
@@ -654,7 +655,7 @@ export function ChannelList({
                       </span>}
                     {activeId.startsWith('channel-') && (() => {
                   const channel = findChannelById(activeId.replace('channel-', ''));
-                  const Icon = channel ? channelIcons[channel.type] : Hash;
+                  const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
                   return <div className="flex items-center gap-2 text-sm text-foreground">
                           <Icon className="w-4 h-4 text-muted-foreground" />
                           <span>{channel?.name || 'Channel'}</span>

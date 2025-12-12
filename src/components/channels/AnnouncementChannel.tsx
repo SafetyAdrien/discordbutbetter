@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { Megaphone, Pin, Bell, BellOff, Edit, Trash2, Users } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { MarkdownText } from '@/lib/markdown';
+import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
+import { AnnouncementStats } from './announcement/AnnouncementStats';
+import { AnnouncementFilters, DEFAULT_CATEGORIES, type AnnouncementCategory } from './announcement/AnnouncementFilters';
+import { CategoryFilterModal } from './announcement/CategoryFilterModal';
+import { FeaturedAnnouncement } from './announcement/FeaturedAnnouncement';
+import { AnnouncementCard } from './announcement/AnnouncementCard';
 
 interface Channel {
   id: string;
@@ -21,7 +23,11 @@ export interface AnnouncementChannelProps {
 
 interface Announcement {
   id: string;
+  title?: string;
   content: string;
+  category?: AnnouncementCategory;
+  bannerUrl?: string;
+  thumbnailUrl?: string;
   author: {
     id: string;
     displayName: string;
@@ -29,143 +35,147 @@ interface Announcement {
   };
   createdAt: Date;
   pinned: boolean;
+  featured?: boolean;
   reactions?: { emoji: string; count: number }[];
 }
 
 export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: AnnouncementChannelProps) {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [customCategories, setCustomCategories] = useState<AnnouncementCategory[]>([]);
 
+  // Mock announcements for demonstration
   const announcements: Announcement[] = [];
 
-  const pinnedAnnouncements = announcements.filter((a) => a.pinned);
-  const regularAnnouncements = announcements.filter((a) => !a.pinned);
+  const allCategories = [...DEFAULT_CATEGORIES, ...customCategories];
+
+  // Filter announcements
+  const filteredAnnouncements = useMemo(() => {
+    if (activeFilter === 'all') return announcements;
+    return announcements.filter((a) => a.category?.id === activeFilter);
+  }, [announcements, activeFilter]);
+
+  // Get featured announcement (first pinned or most recent)
+  const featuredAnnouncement = useMemo(() => {
+    const pinned = filteredAnnouncements.find((a) => a.pinned || a.featured);
+    return pinned || filteredAnnouncements[0];
+  }, [filteredAnnouncements]);
+
+  // Grid announcements (excluding featured)
+  const gridAnnouncements = useMemo(() => {
+    if (!featuredAnnouncement) return filteredAnnouncements;
+    return filteredAnnouncements.filter((a) => a.id !== featuredAnnouncement.id);
+  }, [filteredAnnouncements, featuredAnnouncement]);
+
+  // Stats
+  const thisWeekCount = useMemo(() => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return announcements.filter((a) => a.createdAt > weekAgo).length;
+  }, [announcements]);
+
+  const handleAddCategory = (category: Omit<AnnouncementCategory, 'id'>) => {
+    setCustomCategories((prev) => [
+      ...prev,
+      { ...category, id: `custom-${Date.now()}` },
+    ]);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    setCustomCategories((prev) => prev.filter((c) => c.id !== id));
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0">
+      {/* Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Megaphone className="w-4 h-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+          <StreamlineMegaphone className="w-5 h-5 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground font-ginto">{channel.name}</h2>
         </div>
 
+        <AnnouncementStats
+          totalCount={announcements.length}
+          thisWeekCount={thisWeekCount}
+        />
+
         <div className="flex items-center gap-2 ml-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-          >
-            {notificationsEnabled ? (
-              <>
-                <Bell className="w-4 h-4 mr-2" />
-                Notifications activées
-              </>
-            ) : (
-              <>
-                <BellOff className="w-4 h-4 mr-2" />
-                Notifications désactivées
-              </>
-            )}
+          <Button size="sm" className="gap-1.5">
+            <Plus className="w-4 h-4" />
+            Nouvelle annonce
           </Button>
+          {onToggleMembers && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleMembers}
+              className={showMembers ? 'bg-muted' : ''}
+            >
+              <Users className="w-5 h-5" />
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Filters */}
+      <AnnouncementFilters
+        categories={allCategories}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        onManageCategories={() => setCategoryModalOpen(true)}
+        canManage={true}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {announcements.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-              <Megaphone className="w-10 h-10 text-muted-foreground/50" />
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center mb-6">
+              <StreamlineMegaphone size={48} className="text-primary/60" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Aucune annonce</h3>
-            <p className="text-muted-foreground text-sm max-w-md">
-              Les annonces importantes du serveur apparaîtront ici.
+            <h3 className="text-xl font-semibold mb-2">Aucune annonce</h3>
+            <p className="text-muted-foreground text-sm max-w-md mb-6">
+              Les annonces importantes du serveur apparaîtront ici dans un format magazine moderne.
             </p>
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Créer la première annonce
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Pinned announcements */}
-            {pinnedAnnouncements.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                  <Pin className="w-4 h-4" />
-                  Épinglées
-                </h3>
-                {pinnedAnnouncements.map((announcement) => (
-                  <AnnouncementCard key={announcement.id} announcement={announcement} />
-                ))}
-              </div>
+            {/* Featured Announcement */}
+            {featuredAnnouncement && (
+              <FeaturedAnnouncement
+                announcement={featuredAnnouncement}
+                onClick={() => console.log('View announcement', featuredAnnouncement.id)}
+              />
             )}
 
-            {/* Regular announcements */}
-            {regularAnnouncements.length > 0 && (
-              <div className="space-y-4">
-                {pinnedAnnouncements.length > 0 && (
-                  <h3 className="text-sm font-semibold text-muted-foreground">
-                    Récentes
-                  </h3>
-                )}
-                {regularAnnouncements.map((announcement) => (
-                  <AnnouncementCard key={announcement.id} announcement={announcement} />
+            {/* Grid */}
+            {gridAnnouncements.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {gridAnnouncements.map((announcement) => (
+                  <AnnouncementCard
+                    key={announcement.id}
+                    announcement={announcement}
+                    onClick={() => console.log('View announcement', announcement.id)}
+                  />
                 ))}
               </div>
             )}
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function AnnouncementCard({ announcement }: { announcement: Announcement }) {
-  return (
-    <div className={cn(
-      'p-4 rounded-lg border',
-      announcement.pinned ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-border'
-    )}>
-      <div className="flex items-start gap-3">
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={announcement.author.avatar} />
-          <AvatarFallback className="bg-primary/20 text-primary">
-            {announcement.author.displayName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold">{announcement.author.displayName}</span>
-            {announcement.pinned && (
-              <Badge variant="secondary" className="text-xs">
-                <Pin className="w-3 h-3 mr-1" />
-                Épinglée
-              </Badge>
-            )}
-            <span className="text-xs text-muted-foreground ml-auto">
-              {announcement.createdAt.toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-          </div>
-          <div className="text-foreground">
-            <MarkdownText content={announcement.content} />
-          </div>
-          {announcement.reactions && announcement.reactions.length > 0 && (
-            <div className="flex gap-1 mt-3">
-              {announcement.reactions.map((reaction, i) => (
-                <button
-                  key={i}
-                  className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-sm hover:bg-primary/20 transition-colors"
-                >
-                  <span>{reaction.emoji}</span>
-                  <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Category Modal */}
+      <CategoryFilterModal
+        open={categoryModalOpen}
+        onOpenChange={setCategoryModalOpen}
+        categories={customCategories}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+      />
     </div>
   );
 }

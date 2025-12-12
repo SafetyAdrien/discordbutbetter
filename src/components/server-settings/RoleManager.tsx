@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, RoleWithPermissions } from '@/hooks/useRoles';
+import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, RoleWithPermissions } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy } from 'lucide-react';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 
 interface RoleManagerProps {
   serverId: string;
@@ -21,11 +22,13 @@ function SortableRole({
   isSelected,
   onSelect,
   onDelete,
+  onDuplicate,
 }: {
   role: RoleWithPermissions;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }) {
   const {
     attributes,
@@ -39,7 +42,7 @@ function SortableRole({
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition: transition || 'transform 200ms ease, opacity 200ms ease',
     opacity: isDragging ? 0.4 : 1,
   };
@@ -63,15 +66,27 @@ function SortableRole({
       />
       <span className="flex-1 truncate text-sm">{role.name}</span>
       {!role.is_default && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
+            title="Dupliquer ce rôle"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </>
       )}
     </div>
   );
@@ -82,6 +97,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
   const createRole = useCreateRole();
   const deleteRole = useDeleteRole();
   const reorderRoles = useReorderRoles();
+  const duplicateRole = useDuplicateRole();
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [newRoleName, setNewRoleName] = useState('');
@@ -142,6 +158,10 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     deleteRole.mutate({ roleId, serverId });
   };
 
+  const handleDuplicateRole = (roleId: string) => {
+    duplicateRole.mutate({ roleId, serverId });
+  };
+
   const activeRole = activeId ? roles.find(r => r.id === activeId) : null;
 
   if (isLoading) {
@@ -199,6 +219,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
@@ -214,6 +235,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                   isSelected={selectedRoleId === role.id}
                   onSelect={() => setSelectedRoleId(role.id)}
                   onDelete={() => handleDeleteRole(role.id)}
+                  onDuplicate={() => handleDuplicateRole(role.id)}
                 />
               ))}
             </div>
@@ -222,7 +244,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
           {/* Drag Overlay */}
           <DragOverlay>
             {activeRole && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-lg drag-overlay-item">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-lg">
                 <div
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: activeRole.color || '#99AAB5' }}

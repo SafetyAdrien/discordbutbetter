@@ -226,3 +226,65 @@ export function useReorderRoles() {
     },
   });
 }
+
+export function useDuplicateRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      roleId,
+      serverId,
+    }: {
+      roleId: string;
+      serverId: string;
+    }) => {
+      // 1. Get source role
+      const { data: sourceRole, error: roleError } = await supabase
+        .from('roles')
+        .select('name, color, position')
+        .eq('id', roleId)
+        .single();
+
+      if (roleError) throw roleError;
+
+      // 2. Get source permissions
+      const { data: sourcePermissions } = await supabase
+        .from('role_permissions')
+        .select('permission')
+        .eq('role_id', roleId);
+
+      // 3. Create new role with "(copie)" suffix
+      const { data: newRole, error: createError } = await supabase
+        .from('roles')
+        .insert({
+          server_id: serverId,
+          name: `${sourceRole.name} (copie)`,
+          color: sourceRole.color,
+          position: (sourceRole.position || 0) + 1,
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // 4. Copy permissions
+      if (sourcePermissions && sourcePermissions.length > 0) {
+        await supabase
+          .from('role_permissions')
+          .insert(sourcePermissions.map(p => ({
+            role_id: newRole.id,
+            permission: p.permission,
+          })));
+      }
+
+      return newRole;
+    },
+    onSuccess: (newRole, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+      toast.success(`Rôle "${newRole.name}" créé !`);
+    },
+    onError: () => {
+      toast.error('Erreur lors de la duplication du rôle');
+    },
+  });
+}

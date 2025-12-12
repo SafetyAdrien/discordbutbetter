@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, MessageSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, GripVertical } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, MessageSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -118,10 +118,7 @@ function SortableCategory({
   return <div ref={setNodeRef} style={style} className="mb-2">
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group">
-            <div {...attributes} {...listeners} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical className="w-3 h-3" />
-            </div>
+          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
             <button onClick={onToggle} className="flex items-center justify-between gap-1 flex-1">
               <span className="tracking-wide">{category.name}</span>
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
@@ -198,10 +195,7 @@ function SortableChannel({
   return <div ref={setNodeRef} style={style}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
-            <div {...attributes} {...listeners} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-              <GripVertical className="w-3 h-3" />
-            </div>
+          <button {...attributes} {...listeners} onClick={onChannelClick} className={cn('channel-item w-full group hover:cursor-grab', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
             <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
             <span className="truncate flex-1 text-left">{channel.name}</span>
             

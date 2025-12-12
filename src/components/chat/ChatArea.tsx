@@ -48,6 +48,30 @@ import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MarkdownText } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 
+// Reply Reference Component
+function ReplyReference({ 
+  replyTo, 
+  onClear 
+}: { 
+  replyTo: Message; 
+  onClear: () => void;
+}) {
+  return (
+    <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+      <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-primary font-medium">
+          Réponse à {replyTo.author.displayName}
+        </span>
+        <p className="text-sm text-muted-foreground truncate">{replyTo.content}</p>
+      </div>
+      <button onClick={onClear} className="p-1 hover:bg-muted rounded transition-colors">
+        <X className="w-4 h-4 text-muted-foreground" />
+      </button>
+    </div>
+  );
+}
+
 // Message Actions Component (shown on Shift+hover)
 function MessageActions({ 
   isVisible, 
@@ -162,6 +186,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const [editingContent, setEditingContent] = useState('');
     const [isShiftPressed, setIsShiftPressed] = useState(false);
     const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
     const editMessage = useEditMessage();
@@ -186,10 +211,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (messageInput.trim()) {
-        onSendMessage(messageInput);
+        // Include reply reference in message if replying
+        const content = replyingTo 
+          ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? '...' : ''}\n\n${messageInput}`
+          : messageInput;
+        onSendMessage(content);
         setMessageInput('');
+        setReplyingTo(null);
         stopTyping();
       }
+    };
+
+    const handleReply = (message: Message) => {
+      setReplyingTo(message);
     };
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,7 +428,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 >
                   <MessageActions
                     isVisible={isShiftPressed && hoveredMessageId === message.id}
-                    onReply={() => {/* TODO */}}
+                    onReply={() => handleReply(message)}
                     onAddReaction={() => handleAddReaction(message.id, '👍')}
                     onCopyLink={() => handleCopyMessageLink(message.id)}
                     onEdit={() => handleStartEdit(message)}
@@ -560,7 +594,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                     </div>
                   </ContextMenuSubContent>
                 </ContextMenuSub>
-                <ContextMenuItem>
+                <ContextMenuItem onClick={() => handleReply(message)}>
                   <Reply className="w-4 h-4 mr-2" />
                   Répondre
                 </ContextMenuItem>
@@ -601,6 +635,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
 
       {/* Typing Indicator */}
       <TypingIndicator channelId={channel.id} />
+
+      {/* Reply Reference */}
+      {replyingTo && (
+        <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />
+      )}
 
       {/* Message Preview */}
       {messageInput.trim() && (

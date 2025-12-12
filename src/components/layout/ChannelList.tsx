@@ -1,17 +1,18 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
 import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
+import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
 import { VoiceControls } from './VoiceControls';
+import { UserProfileCard } from '@/components/profile/UserProfileCard';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
@@ -301,6 +302,7 @@ export function ChannelList({
     showSelector?: boolean;
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -353,9 +355,16 @@ export function ChannelList({
     });
   };
   const handleCreateInvite = (channelId: string) => {
-    // Generate and copy invite link
-    const inviteLink = `${window.location.origin}/invite/${server.id}`;
-    copyToClipboard(inviteLink, 'Lien d\'invitation copié');
+    setInviteChannelId(channelId);
+  };
+  
+  const getChannelName = (channelId: string): string => {
+    for (const cat of server.categories) {
+      const ch = cat.channels.find(c => c.id === channelId);
+      if (ch) return ch.name;
+    }
+    const orphan = orphanChannels.find(c => c.id === channelId);
+    return orphan?.name || '';
   };
   const handleChannelClick = (channel: Channel) => {
     if (channel.type === 'voice') {
@@ -691,64 +700,11 @@ export function ChannelList({
       {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute()} onToggleDeafen={() => toggleDeafen()} onDisconnect={() => leaveChannel()} />}
 
       {/* User Panel */}
-      <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
-              <div className="relative">
-                <Avatar className={cn("w-8 h-8 transition-all", profile?.id && speakingUsers.has(profile.id) ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-2 ring-primary/30")}>
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                    {profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className={cn('absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background', statusColors[profile?.status || 'offline'])} />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium truncate">{profile?.display_name || 'Chargement...'}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {profile?.custom_status || statusLabels[profile?.status || 'offline']}
-                </p>
-              </div>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">{profile?.display_name}</p>
-              <p className="text-xs text-muted-foreground">@{profile?.username}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => updateStatus('online')}>
-              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.online)} />
-              En ligne
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatus('idle')}>
-              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.idle)} />
-              Inactif
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatus('dnd')}>
-              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.dnd)} />
-              Ne pas déranger
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatus('offline')}>
-              <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.offline)} />
-              Invisible
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setShowAccountSettings(true)}>
-              <User className="w-4 h-4 mr-2" />
-              Mon profil
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-              <LogOut className="w-4 h-4 mr-2" />
-              Se déconnecter
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <button onClick={() => setShowAccountSettings(true)} className="p-1.5 hover:bg-muted rounded-md transition-colors">
-          <Settings className="w-4 h-4 text-muted-foreground" />
-        </button>
-      </div>
+      <UserProfileCard 
+        onOpenSettings={() => setShowAccountSettings(true)}
+        onOpenProfile={() => setShowAccountSettings(true)}
+        speakingUsers={speakingUsers}
+      />
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 
@@ -757,5 +713,7 @@ export function ChannelList({
       {createChannelForCategory && <CreateChannelModal serverId={server.id} categoryId={createChannelForCategory.id} categoryName={createChannelForCategory.name} categories={createChannelForCategory.showSelector ? server.categories.map(c => ({ id: c.id, name: c.name })) : undefined} showCategorySelector={createChannelForCategory.showSelector} onClose={() => setCreateChannelForCategory(null)} />}
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
+
+      {inviteChannelId && <CreateInviteModal serverId={server.id} channelName={getChannelName(inviteChannelId)} onClose={() => setInviteChannelId(null)} />}
     </div>;
 }

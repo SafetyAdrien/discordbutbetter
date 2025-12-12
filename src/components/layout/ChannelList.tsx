@@ -119,9 +119,9 @@ function SortableCategory({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
-            <button onClick={onToggle} className="flex items-center justify-between gap-1 flex-1">
-              <span className="tracking-wide">{category.name}</span>
+            <button onClick={(e) => { e.stopPropagation(); onToggle(); }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
+              <span className="tracking-wide">{category.name}</span>
             </button>
             <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
             e.stopPropagation();
@@ -192,10 +192,10 @@ function SortableChannel({
   const {
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
-  return <div ref={setNodeRef} style={style}>
+  return <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="hover:cursor-grab">
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <button {...attributes} {...listeners} onClick={onChannelClick} className={cn('channel-item w-full group hover:cursor-grab', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
+          <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
             <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
             <span className="truncate flex-1 text-left">{channel.name}</span>
             

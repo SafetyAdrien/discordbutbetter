@@ -6,8 +6,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Hash, Volume2, MessageCircleMore } from 'lucide-react';
+import { StreamlineHash } from '@/components/icons/StreamlineHash';
+import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
+import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
+import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
+import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
+import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
@@ -21,17 +26,20 @@ interface ChannelSettingsModalProps {
 }
 
 const channelIcons = {
-  text: Hash,
-  voice: Volume2,
-  forum: MessageCircleMore,
+  text: StreamlineHash,
+  voice: StreamlineVoice,
+  forum: StreamlineForum,
   announcement: StreamlineMegaphone,
+  media: StreamlineMedia,
+  calendar: StreamlineCalendar,
+  tasks: StreamlineTasks,
 };
 
 export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const { data: channel, isLoading } = useChannelDetails(channelId);
 
-  const Icon = channel?.type ? channelIcons[channel.type] : Hash;
+  const Icon = channel?.type ? channelIcons[channel.type] : StreamlineHash;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

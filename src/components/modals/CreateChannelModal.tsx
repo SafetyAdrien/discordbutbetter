@@ -10,15 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Hash,
-  Volume2,
-  MessageCircleMore,
-  Image,
-  CalendarDays,
-  ListTodo,
-} from 'lucide-react';
+import { StreamlineHash } from '@/components/icons/StreamlineHash';
+import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
+import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
+import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
+import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
+import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { useCreateChannel, ChannelType } from '@/hooks/useChannels';
 import {
   Select,
@@ -38,13 +36,13 @@ interface CreateChannelModalProps {
 }
 
 const channelTypes: { value: ChannelType; label: string; icon: React.ElementType; description: string }[] = [
-  { value: 'text', label: 'Textuel', icon: Hash, description: 'Envoyer des messages' },
-  { value: 'voice', label: 'Vocal', icon: Volume2, description: 'Parler en temps réel' },
-  { value: 'forum', label: 'Forum', icon: MessageCircleMore, description: 'Discussions organisées' },
+  { value: 'text', label: 'Textuel', icon: StreamlineHash, description: 'Envoyer des messages' },
+  { value: 'voice', label: 'Vocal', icon: StreamlineVoice, description: 'Parler en temps réel' },
+  { value: 'forum', label: 'Forum', icon: StreamlineForum, description: 'Discussions organisées' },
   { value: 'announcement', label: 'Annonce', icon: StreamlineMegaphone, description: 'Messages importants' },
-  { value: 'media', label: 'Médias', icon: Image, description: 'Partager des images/vidéos' },
-  { value: 'calendar', label: 'Calendrier', icon: CalendarDays, description: 'Événements et rendez-vous' },
-  { value: 'tasks', label: 'Tâches', icon: ListTodo, description: 'Liste de tâches' },
+  { value: 'media', label: 'Médias', icon: StreamlineMedia, description: 'Partager des images/vidéos' },
+  { value: 'calendar', label: 'Calendrier', icon: StreamlineCalendar, description: 'Événements et rendez-vous' },
+  { value: 'tasks', label: 'Tâches', icon: StreamlineTasks, description: 'Liste de tâches' },
 ];
 
 export function CreateChannelModal({

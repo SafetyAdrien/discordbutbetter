@@ -29,7 +29,6 @@ export function ServerList({
   onCreateClick,
   onOpenServerSettings,
 }: ServerListProps) {
-
   const handleCopyId = (serverId: string) => {
     copyToClipboard(serverId, 'ID serveur copié');
   };
@@ -89,23 +88,22 @@ export function ServerList({
                   <button
                     onClick={() => onServerSelect(server.id)}
                     className={cn(
-                      'server-icon relative group overflow-hidden',
+                      'server-icon relative group',
                       activeServerId === server.id
                         ? 'bg-[#5865f2] text-white rounded-[16px]'
-                        : 'bg-card hover:bg-[#5865f2] hover:text-white hover:rounded-[16px]'
+                        : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
                     )}
                   >
-                    {/* Active indicator - white pill */}
+                    {/* Active indicator */}
                     <div
                       className={cn(
-                        'absolute -left-3 w-1 rounded-r-full bg-white transition-all duration-200',
+                        'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                         activeServerId === server.id
-                          ? 'h-10'
-                          : 'h-0 group-hover:h-5'
+                          ? 'h-2'
+                          : 'h-0 group-hover:h-1.5'
                       )}
                     />
                     
-                    {/* Server content */}
                     {server.icon ? (
                       server.icon.startsWith('http') ? (
                         <img 

@@ -13,25 +13,34 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Hash,
   Volume2,
-  MessageSquare,
+  MessagesSquare,
   Megaphone,
   Image,
   CalendarDays,
   ListTodo,
 } from 'lucide-react';
 import { useCreateChannel, ChannelType } from '@/hooks/useChannels';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface CreateChannelModalProps {
   serverId: string;
   categoryId: string | null;
   categoryName: string;
+  categories?: { id: string; name: string }[];
+  showCategorySelector?: boolean;
   onClose: () => void;
 }
 
 const channelTypes: { value: ChannelType; label: string; icon: React.ElementType; description: string }[] = [
   { value: 'text', label: 'Textuel', icon: Hash, description: 'Envoyer des messages' },
   { value: 'voice', label: 'Vocal', icon: Volume2, description: 'Parler en temps réel' },
-  { value: 'forum', label: 'Forum', icon: MessageSquare, description: 'Discussions organisées' },
+  { value: 'forum', label: 'Forum', icon: MessagesSquare, description: 'Discussions organisées' },
   { value: 'announcement', label: 'Annonce', icon: Megaphone, description: 'Messages importants' },
   { value: 'media', label: 'Médias', icon: Image, description: 'Partager des images/vidéos' },
   { value: 'calendar', label: 'Calendrier', icon: CalendarDays, description: 'Événements et rendez-vous' },
@@ -42,10 +51,13 @@ export function CreateChannelModal({
   serverId,
   categoryId,
   categoryName,
+  categories,
+  showCategorySelector,
   onClose,
 }: CreateChannelModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<ChannelType>('text');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(categoryId);
   const createChannel = useCreateChannel();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,10 +65,14 @@ export function CreateChannelModal({
     if (!name.trim()) return;
 
     createChannel.mutate(
-      { serverId, categoryId, name: name.trim(), type },
+      { serverId, categoryId: selectedCategoryId, name: name.trim(), type },
       { onSuccess: onClose }
     );
   };
+
+  const displayCategoryName = showCategorySelector
+    ? (selectedCategoryId ? categories?.find(c => c.id === selectedCategoryId)?.name || 'Sans catégorie' : 'Sans catégorie')
+    : categoryName;
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -64,11 +80,31 @@ export function CreateChannelModal({
         <DialogHeader>
           <DialogTitle>Créer un salon</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {categoryId ? `Dans ${categoryName}` : 'Sans catégorie'}
+            {selectedCategoryId ? `Dans ${displayCategoryName}` : 'Sans catégorie'}
           </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {showCategorySelector && categories && (
+            <div className="space-y-2">
+              <Label>Catégorie</Label>
+              <Select 
+                value={selectedCategoryId || 'none'} 
+                onValueChange={(value) => setSelectedCategoryId(value === 'none' ? null : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sans catégorie</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Nom du salon</Label>
             <Input

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, MessageSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -56,7 +56,7 @@ interface ChannelListProps {
 const channelIcons: Record<ChannelType, React.ElementType> = {
   text: Hash,
   voice: Volume2,
-  forum: MessageSquare,
+  forum: MessagesSquare,
   announcement: Megaphone,
   media: Image,
   calendar: CalendarDays,
@@ -273,6 +273,7 @@ export function ChannelList({
   const [createChannelForCategory, setCreateChannelForCategory] = useState<{
     id: string | null;
     name: string;
+    showSelector?: boolean;
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   
@@ -585,9 +586,10 @@ export function ChannelList({
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
           <ContextMenuItem onClick={() => setCreateChannelForCategory({
-          id: null,
-          name: 'Sans catégorie'
-        })}>
+            id: null,
+            name: 'Sans catégorie',
+            showSelector: true
+          })}>
             <Plus className="w-4 h-4 mr-2" />
             Créer un salon
           </ContextMenuItem>
@@ -665,7 +667,7 @@ export function ChannelList({
 
       {selectedChannelId && <ChannelSettingsModal channelId={selectedChannelId} serverId={server.id} onClose={() => setSelectedChannelId(null)} />}
 
-      {createChannelForCategory && <CreateChannelModal serverId={server.id} categoryId={createChannelForCategory.id} categoryName={createChannelForCategory.name} onClose={() => setCreateChannelForCategory(null)} />}
+      {createChannelForCategory && <CreateChannelModal serverId={server.id} categoryId={createChannelForCategory.id} categoryName={createChannelForCategory.name} categories={createChannelForCategory.showSelector ? server.categories.map(c => ({ id: c.id, name: c.name })) : undefined} showCategorySelector={createChannelForCategory.showSelector} onClose={() => setCreateChannelForCategory(null)} />}
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
     </div>;

@@ -1,9 +1,12 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Volume2, Settings, Plus, Pencil, Calendar, Crown, Users, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Crown, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
+import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
+import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
+import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -70,12 +73,12 @@ interface ChannelListProps {
 }
 const channelIcons: Record<ChannelType, React.ElementType> = {
   text: StreamlineHash,
-  voice: Volume2,
+  voice: StreamlineVoice,
   forum: StreamlineForum,
   announcement: StreamlineMegaphone,
   media: StreamlineMedia,
-  calendar: CalendarDays,
-  tasks: ListTodo
+  calendar: StreamlineCalendar,
+  tasks: StreamlineTasks
 };
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',

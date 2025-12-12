@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, LogOut, Pencil, ChevronRight } from 'lucide-react';
+import { Settings, Pencil, ChevronRight } from 'lucide-react';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -27,20 +27,14 @@ interface UserProfileCardProps {
 }
 
 export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
-  const { profile, signOut, updateStatus } = useAuth();
+  const { profile, updateStatus } = useAuth();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
-  const [statusMenuLocked, setStatusMenuLocked] = useState(false);
 
   const currentStatus = profile?.status || 'offline';
 
   const handleStatusChange = (status: 'online' | 'idle' | 'dnd' | 'offline') => {
     updateStatus(status);
     setShowStatusMenu(false);
-    setStatusMenuLocked(false);
-  };
-
-  const handleStatusClick = () => {
-    setStatusMenuLocked(!statusMenuLocked);
   };
 
   return (
@@ -120,14 +114,13 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             </Button>
 
             <div className="border-t border-border pt-2 space-y-0.5">
-              {/* Status Selector with Hover Menu */}
+              {/* Status Selector with Secondary Embed */}
               <div
                 className="relative"
-                onMouseEnter={() => !statusMenuLocked && setShowStatusMenu(true)}
-                onMouseLeave={() => !statusMenuLocked && setShowStatusMenu(false)}
+                onMouseEnter={() => setShowStatusMenu(true)}
+                onMouseLeave={() => setShowStatusMenu(false)}
               >
                 <button
-                  onClick={handleStatusClick}
                   className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
                 >
                   <div className="flex items-center gap-2">
@@ -137,16 +130,17 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
 
-                {/* Submenu */}
+                {/* Secondary Status Embed */}
                 {showStatusMenu && (
-                  <div className="absolute left-full top-0 ml-1 w-40 bg-popover border border-border rounded-md shadow-lg p-1 z-50">
+                  <div className="absolute left-full top-0 ml-1 w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-50 animate-slide-in-left">
+                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
                     {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
                       <button
                         key={status}
                         onClick={() => handleStatusChange(status)}
                         className={cn(
-                          "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                          currentStatus === status ? "bg-muted" : "hover:bg-muted"
+                          "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                          currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted"
                         )}
                       >
                         <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[status])} />
@@ -164,15 +158,6 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
               >
                 <Settings className="w-4 h-4 text-muted-foreground" />
                 <span>Paramètres</span>
-              </button>
-
-              {/* Logout */}
-              <button
-                onClick={signOut}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm text-destructive"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Se déconnecter</span>
               </button>
             </div>
           </div>

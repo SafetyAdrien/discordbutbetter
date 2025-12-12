@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, MessageCircleMore, Megaphone, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, MessageCircleMore, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -68,7 +69,7 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   text: Hash,
   voice: Volume2,
   forum: MessageCircleMore,
-  announcement: Megaphone,
+  announcement: StreamlineMegaphone,
   media: Image,
   calendar: CalendarDays,
   tasks: ListTodo

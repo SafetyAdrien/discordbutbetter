@@ -4,7 +4,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Hash, Volume2, MessageCircleMore, Megaphone, Loader2 } from 'lucide-react';
+import { Hash, Volume2, MessageCircleMore, Loader2 } from 'lucide-react';
+import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSettings';
 import { toast } from 'sonner';
 
@@ -16,7 +17,7 @@ const channelTypeLabels = {
   text: { label: 'Textuel', icon: Hash },
   voice: { label: 'Vocal', icon: Volume2 },
   forum: { label: 'Forum', icon: MessageCircleMore },
-  announcement: { label: 'Annonces', icon: Megaphone },
+  announcement: { label: 'Annonces', icon: StreamlineMegaphone },
 };
 
 export function ChannelOverview({ channel }: ChannelOverviewProps) {

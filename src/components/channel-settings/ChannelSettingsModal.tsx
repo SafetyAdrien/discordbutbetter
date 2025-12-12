@@ -6,7 +6,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Hash, Volume2, MessageCircleMore, Megaphone } from 'lucide-react';
+import { Hash, Volume2, MessageCircleMore } from 'lucide-react';
+import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
@@ -23,7 +24,7 @@ const channelIcons = {
   text: Hash,
   voice: Volume2,
   forum: MessageCircleMore,
-  announcement: Megaphone,
+  announcement: StreamlineMegaphone,
 };
 
 export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {

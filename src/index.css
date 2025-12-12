@@ -267,4 +267,35 @@
     color: inherit;
     user-select: text;
   }
+
+  /* Drag and drop animations */
+  .dragging-item {
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4), 0 0 0 1px hsl(var(--primary) / 0.3);
+    transform: scale(1.02);
+    z-index: 1000;
+  }
+
+  .sortable-ghost {
+    opacity: 0.4;
+  }
+
+  @keyframes drop-zone-pulse {
+    0%, 100% {
+      border-color: hsl(var(--primary) / 0.4);
+      background-color: hsl(var(--primary) / 0.05);
+    }
+    50% {
+      border-color: hsl(var(--primary) / 0.7);
+      background-color: hsl(var(--primary) / 0.1);
+    }
+  }
+
+  .drop-zone-active {
+    animation: drop-zone-pulse 1.5s ease-in-out infinite;
+  }
+
+  .drag-overlay-item {
+    box-shadow: 0 12px 28px hsl(0 0% 0% / 0.5), 0 0 0 1px hsl(var(--primary) / 0.4);
+    backdrop-filter: blur(4px);
+  }
 }

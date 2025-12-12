@@ -21,9 +21,32 @@ import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+// Orphan drop zone component
+function OrphanDropZone({ isActive }: { isActive: boolean }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'orphan-drop-zone'
+  });
+
+  if (!isActive) return null;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "mx-2 my-2 p-3 border-2 border-dashed rounded-lg transition-all duration-200",
+        isOver
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-muted-foreground/30 text-muted-foreground drop-zone-active"
+      )}
+    >
+      <p className="text-xs text-center font-medium">Déposer ici pour retirer de la catégorie</p>
+    </div>
+  );
+}
 interface Channel {
   id: string;
   name: string;
@@ -112,10 +135,10 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1
+    transition: transition || 'transform 200ms ease, opacity 200ms ease',
+    opacity: isDragging ? 0.4 : 1,
   };
-  return <div ref={setNodeRef} style={style} className="mb-2">
+  return <div ref={setNodeRef} style={style} className={cn("mb-2", isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
@@ -184,15 +207,16 @@ function SortableChannel({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1
+    transition: transition || 'transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease',
+    opacity: isDragging ? 0.4 : 1,
+    boxShadow: isDragging ? '0 8px 24px hsl(0 0% 0% / 0.4)' : 'none',
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
   const {
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
-  return <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="hover:cursor-grab">
+  return <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("hover:cursor-grab", isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
@@ -461,7 +485,38 @@ export function ChannelList({
           });
         }
       }
+      
+      // Dropping on the orphan drop zone - move to uncategorized
+      else if (overIdStr === 'orphan-drop-zone') {
+        const existingOrphanIds = orphanChannels
+          .filter(ch => ch.id !== activeChannelId)
+          .map(ch => ch.id);
+        
+        reorderChannels.mutate({
+          serverId: server.id,
+          categoryId: null,
+          orderedIds: [...existingOrphanIds, activeChannelId]
+        });
+      }
     }
+  };
+
+  // Helper to find a channel by ID for the DragOverlay
+  const findChannelById = (id: string): Channel | undefined => {
+    for (const cat of server.categories) {
+      const found = cat.channels.find(ch => ch.id === id);
+      if (found) return found;
+    }
+    const orphan = orphanChannels.find(ch => ch.id === id);
+    if (orphan) {
+      return {
+        id: orphan.id,
+        name: orphan.name,
+        type: (orphan.type || 'text') as ChannelType,
+        description: orphan.description || undefined
+      };
+    }
+    return undefined;
   };
 
   // Get all sortable IDs
@@ -581,6 +636,32 @@ export function ChannelList({
                   </SortableContext>
                 </div>
               )}
+
+              {/* Orphan Drop Zone - visible during channel drag */}
+              <OrphanDropZone isActive={activeId?.startsWith('channel-') ?? false} />
+
+              {/* Drag Overlay for visual feedback */}
+              <DragOverlay>
+                {activeId && (
+                  <div className="bg-card border border-primary/50 rounded-md px-3 py-2 drag-overlay-item">
+                    {activeId.startsWith('category-') && (
+                      <span className="text-sm font-semibold text-foreground">
+                        {server.categories.find(c => `category-${c.id}` === activeId)?.name}
+                      </span>
+                    )}
+                    {activeId.startsWith('channel-') && (() => {
+                      const channel = findChannelById(activeId.replace('channel-', ''));
+                      const Icon = channel ? channelIcons[channel.type] : Hash;
+                      return (
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <span>{channel?.name || 'Channel'}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </DragOverlay>
             </DndContext>
           </div>
         </ContextMenuTrigger>

@@ -21,9 +21,15 @@ import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+// Drop Indicator Component
+function DropIndicator({ isVisible }: { isVisible: boolean }) {
+  if (!isVisible) return null;
+  return <div className="drop-indicator mx-2 my-0.5" />;
+}
 interface Channel {
   id: string;
   name: string;
@@ -160,7 +166,8 @@ function SortableChannel({
   onChannelClick,
   onCopyLink,
   onMarkAsRead,
-  onOpenSettings
+  onOpenSettings,
+  showDropIndicator = false
 }: {
   channel: Channel;
   serverId: string;
@@ -171,6 +178,7 @@ function SortableChannel({
   onCopyLink: () => void;
   onMarkAsRead: () => void;
   onOpenSettings: () => void;
+  showDropIndicator?: boolean;
 }) {
   const {
     attributes,
@@ -184,80 +192,86 @@ function SortableChannel({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || 'transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease',
+    transition: isDragging 
+      ? 'opacity 200ms ease' 
+      : 'transform 250ms cubic-bezier(0.25, 1, 0.5, 1), opacity 200ms ease, background-color 200ms ease',
     opacity: isDragging ? 0.4 : 1,
-    boxShadow: isDragging ? '0 8px 24px hsl(0 0% 0% / 0.4)' : 'none',
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
   const {
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
-  return <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("hover:cursor-grab", isDragging && "sortable-ghost")}>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
-            <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
+  return (
+    <>
+      <DropIndicator isVisible={showDropIndicator} />
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("hover:cursor-grab channel-transition", isDragging && "sortable-ghost")}>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
+              <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
             <span className="truncate flex-1 text-left">{channel.name}</span>
             
-            {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                {channel.unreadCount}
-              </span>}
+              {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                  {channel.unreadCount}
+                </span>}
 
-            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
-              e.stopPropagation();
-              onOpenSettings();
-            }} />
-            </div>
-          </button>
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={onMarkAsRead}>
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Marquer comme lu
-          </ContextMenuItem>
-          <ContextMenuItem onClick={onCopyLink}>
-            <Link className="w-4 h-4 mr-2" />
-            Copier le lien
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={onOpenSettings}>
-            <Settings className="w-4 h-4 mr-2" />
-            Modifier le channel
-          </ContextMenuItem>
-          <ContextMenuItem>
-            <Bell className="w-4 h-4 mr-2" />
-            Notifications
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem className="text-destructive focus:text-destructive">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Supprimer le channel
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
+                e.stopPropagation();
+                onOpenSettings();
+              }} />
+              </div>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            <ContextMenuItem onClick={onMarkAsRead}>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Marquer comme lu
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onCopyLink}>
+              <Link className="w-4 h-4 mr-2" />
+              Copier le lien
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onOpenSettings}>
+              <Settings className="w-4 h-4 mr-2" />
+              Modifier le channel
+            </ContextMenuItem>
+            <ContextMenuItem>
+              <Bell className="w-4 h-4 mr-2" />
+              Notifications
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem className="text-destructive focus:text-destructive">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer le channel
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
-      {/* Voice Participants */}
-      {isVoice && participants.length > 0 && <div className="ml-6 mt-1 space-y-1">
-          {participants.map(participant => {
-        const isSpeaking = speakingUsers.has(participant.user_id);
-        return <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
-                <Avatar className={cn("w-5 h-5 transition-all", isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border")}>
-                  <AvatarImage src={participant.profile.avatar_url || undefined} />
-                  <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                    {participant.profile.display_name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="truncate flex-1 text-xs">
-                  {participant.profile.display_name}
-                </span>
-                {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
-                {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
-              </div>;
-      })}
-        </div>}
-    </div>;
+        {/* Voice Participants */}
+        {isVoice && participants.length > 0 && <div className="ml-6 mt-1 space-y-1">
+            {participants.map(participant => {
+          const isSpeaking = speakingUsers.has(participant.user_id);
+          return <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
+                  <Avatar className={cn("w-5 h-5 transition-all", isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border")}>
+                    <AvatarImage src={participant.profile.avatar_url || undefined} />
+                    <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                      {participant.profile.display_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate flex-1 text-xs">
+                    {participant.profile.display_name}
+                  </span>
+                  {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
+                  {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
+                </div>;
+        })}
+          </div>}
+      </div>
+    </>
+  );
 }
 export function ChannelList({
   server,
@@ -279,6 +293,7 @@ export function ChannelList({
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const {
     profile,
     signOut,
@@ -355,7 +370,18 @@ export function ChannelList({
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
+  
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (over && over.id !== activeId) {
+      setOverId(over.id as string);
+    } else {
+      setOverId(null);
+    }
+  };
+  
   const handleDragEnd = (event: DragEndEvent) => {
+    setOverId(null);
     const { active, over } = event;
     setActiveId(null);
     if (!over || active.id === over.id) return;
@@ -551,7 +577,7 @@ export function ChannelList({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {orphanChannels.length > 0 && (
                 <div className="px-2 space-y-0.5 mb-2">
@@ -577,7 +603,8 @@ export function ChannelList({
                         })} 
                         onCopyLink={() => handleCopyLink(channel.id)} 
                         onMarkAsRead={() => handleMarkAsRead(channel.id)} 
-                        onOpenSettings={() => setSelectedChannelId(channel.id)} 
+                        onOpenSettings={() => setSelectedChannelId(channel.id)}
+                        showDropIndicator={overId === `channel-${channel.id}`}
                       />
                     ))}
                   </SortableContext>
@@ -597,7 +624,7 @@ export function ChannelList({
               })}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} />)}
+                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} />)}
                         </SortableContext>
                       </div>
                     </SortableCategory>)}

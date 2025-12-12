@@ -236,9 +236,55 @@ export function useReorderChannels() {
         supabase.from('channels').update({ position: index, category_id: categoryId }).eq('id', id)
       );
       await Promise.all(updates);
-      return { serverId };
+      return { serverId, categoryId, orderedIds };
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ serverId, categoryId, orderedIds }) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      if (previousData) {
+        // Apply optimistic update
+        const allChannels = [
+          ...previousData.categories.flatMap(c => c.channels),
+          ...previousData.orphanChannels
+        ];
+        
+        const movedChannels = orderedIds
+          .map(id => allChannels.find(ch => ch.id === id))
+          .filter((ch): ch is ChannelWithCategory => !!ch)
+          .map((ch, index) => ({ ...ch, category_id: categoryId, position: index }));
+        
+        const movedIds = new Set(orderedIds);
+        
+        const newCategories = previousData.categories.map(cat => ({
+          ...cat,
+          channels: cat.id === categoryId 
+            ? movedChannels
+            : cat.channels.filter(ch => !movedIds.has(ch.id))
+        }));
+        
+        const newOrphans = categoryId === null 
+          ? movedChannels
+          : previousData.orphanChannels.filter(ch => !movedIds.has(ch.id));
+        
+        queryClient.setQueryData(['channels', serverId], {
+          categories: newCategories,
+          orphanChannels: newOrphans
+        });
+      }
+      
+      return { previousData };
+    },
+    onError: (_, { serverId }, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['channels', serverId], context.previousData);
+      }
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },

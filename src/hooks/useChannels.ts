@@ -237,8 +237,11 @@ export function useDeleteCategory() {
 
   return useMutation({
     mutationFn: async ({ categoryId, serverId }: { categoryId: string; serverId: string }) => {
-      // Delete all channels in category first
-      await supabase.from('channels').delete().eq('category_id', categoryId);
+      // Make channels orphans (category_id = null) instead of deleting them
+      await supabase
+        .from('channels')
+        .update({ category_id: null, position: 0 })
+        .eq('category_id', categoryId);
       
       // Delete category
       const { error } = await supabase.from('categories').delete().eq('id', categoryId);

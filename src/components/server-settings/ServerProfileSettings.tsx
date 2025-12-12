@@ -5,15 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2 } from 'lucide-react';
 
-interface GeneralSettingsProps {
+interface ServerProfileSettingsProps {
   serverId: string;
 }
 
-export function GeneralSettings({ serverId }: GeneralSettingsProps) {
+export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) {
   const { data: servers = [] } = useServers();
   const server = servers.find(s => s.id === serverId);
   
@@ -27,7 +26,6 @@ export function GeneralSettings({ serverId }: GeneralSettingsProps) {
   const [formData, setFormData] = useState({
     name: server?.name || '',
     description: server?.description || '',
-    is_public: server?.is_public || false,
   });
 
   const handleSave = () => {
@@ -35,7 +33,6 @@ export function GeneralSettings({ serverId }: GeneralSettingsProps) {
       serverId,
       name: formData.name,
       description: formData.description,
-      is_public: formData.is_public,
     });
   };
 
@@ -135,21 +132,6 @@ export function GeneralSettings({ serverId }: GeneralSettingsProps) {
           placeholder="Décrivez votre serveur..."
           rows={3}
           maxLength={1000}
-        />
-      </div>
-
-      {/* Public toggle */}
-      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-        <div>
-          <Label htmlFor="is_public" className="cursor-pointer">Serveur public</Label>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Les serveurs publics apparaissent dans la découverte
-          </p>
-        </div>
-        <Switch
-          id="is_public"
-          checked={formData.is_public}
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_public: checked }))}
         />
       </div>
 

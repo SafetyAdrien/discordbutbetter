@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { X, Settings, Shield, Smile, Sticker, Users, Info } from 'lucide-react';
-import { GeneralSettings } from './GeneralSettings';
-import { RoleManager } from './RoleManager';
+import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Lock } from 'lucide-react';
+import { ServerProfileSettings } from './ServerProfileSettings';
+import { EngagementSettings } from './EngagementSettings';
 import { EmojiManager } from './EmojiManager';
 import { StickerManager } from './StickerManager';
+import { MemberManager } from './MemberManager';
+import { RoleManager } from './RoleManager';
+import { InviteManager } from './InviteManager';
+import { PrivacySettings } from './PrivacySettings';
 
 interface ServerSettingsModalProps {
   serverId: string;
@@ -13,17 +16,67 @@ interface ServerSettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'general' | 'roles' | 'emojis' | 'stickers' | 'security';
+type SettingsTab = 
+  | 'profile' 
+  | 'engagement' 
+  | 'emojis' 
+  | 'stickers' 
+  | 'members' 
+  | 'roles' 
+  | 'invites' 
+  | 'privacy';
 
-const tabs: { id: SettingsTab; label: string; icon: React.ComponentType<any> }[] = [
-  { id: 'general', label: 'Général', icon: Info },
-  { id: 'roles', label: 'Rôles', icon: Shield },
-  { id: 'emojis', label: 'Emojis', icon: Smile },
-  { id: 'stickers', label: 'Stickers', icon: Sticker },
+interface Section {
+  id: string;
+  name: string | 'server';
+  tabs: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[];
+}
+
+const sections: Section[] = [
+  {
+    id: 'server',
+    name: 'server',
+    tabs: [
+      { id: 'profile', label: 'Profil du serveur', icon: Info },
+      { id: 'engagement', label: 'Engagement', icon: Heart },
+    ],
+  },
+  {
+    id: 'expressions',
+    name: 'Expressions',
+    tabs: [
+      { id: 'emojis', label: 'Emojis', icon: Smile },
+      { id: 'stickers', label: 'Autocollants', icon: Sticker },
+    ],
+  },
+  {
+    id: 'people',
+    name: 'Personnes',
+    tabs: [
+      { id: 'members', label: 'Membres', icon: Users },
+      { id: 'roles', label: 'Rôles', icon: Shield },
+      { id: 'invites', label: 'Invites', icon: Link },
+    ],
+  },
+  {
+    id: 'discovery',
+    name: 'Découvertes',
+    tabs: [
+      { id: 'privacy', label: 'Confidentialité', icon: Lock },
+    ],
+  },
 ];
 
 export function ServerSettingsModal({ serverId, serverName, onClose }: ServerSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+
+  const getCurrentTabLabel = () => {
+    for (const section of sections) {
+      const tab = section.tabs.find(t => t.id === activeTab);
+      if (tab) return tab.label;
+    }
+    return '';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -31,25 +84,38 @@ export function ServerSettingsModal({ serverId, serverName, onClose }: ServerSet
       
       <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] glass rounded-xl overflow-hidden">
         {/* Sidebar */}
-        <div className="w-56 bg-card/50 border-r border-border p-4 flex flex-col">
-          <h2 className="text-lg font-semibold mb-1 truncate">{serverName}</h2>
-          <p className="text-xs text-muted-foreground mb-4">Paramètres du serveur</p>
+        <div className="w-56 bg-card/50 border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
+            <h2 className="text-lg font-semibold truncate">{serverName}</h2>
+            <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
+          </div>
 
-          <nav className="space-y-1 flex-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                  activeTab === tab.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
+          <nav className="flex-1 overflow-y-auto p-2 space-y-4">
+            {sections.map((section) => (
+              <div key={section.id}>
+                {/* Section header */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase px-3 mb-1">
+                  {section.name === 'server' ? serverName : section.name}
+                </p>
+                {/* Tabs in section */}
+                <div className="space-y-0.5">
+                  {section.tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                        activeTab === tab.id
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
         </div>
@@ -58,9 +124,7 @@ export function ServerSettingsModal({ serverId, serverName, onClose }: ServerSet
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="h-12 px-6 flex items-center justify-between border-b border-border">
-            <h3 className="font-semibold">
-              {tabs.find(t => t.id === activeTab)?.label}
-            </h3>
+            <h3 className="font-semibold">{getCurrentTabLabel()}</h3>
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-muted transition-colors"
@@ -71,10 +135,14 @@ export function ServerSettingsModal({ serverId, serverName, onClose }: ServerSet
 
           {/* Tab Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            {activeTab === 'general' && <GeneralSettings serverId={serverId} />}
-            {activeTab === 'roles' && <RoleManager serverId={serverId} />}
+            {activeTab === 'profile' && <ServerProfileSettings serverId={serverId} />}
+            {activeTab === 'engagement' && <EngagementSettings serverId={serverId} />}
             {activeTab === 'emojis' && <EmojiManager serverId={serverId} />}
             {activeTab === 'stickers' && <StickerManager serverId={serverId} />}
+            {activeTab === 'members' && <MemberManager serverId={serverId} />}
+            {activeTab === 'roles' && <RoleManager serverId={serverId} />}
+            {activeTab === 'invites' && <InviteManager serverId={serverId} />}
+            {activeTab === 'privacy' && <PrivacySettings serverId={serverId} />}
           </div>
         </div>
       </div>

@@ -1,28 +1,14 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Users, MessageCircle } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { DMList } from './DMList';
 import { DMConversation } from './DMConversation';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { VoiceControls } from '@/components/layout/VoiceControls';
+import { UserProfileCard } from '@/components/profile/UserProfileCard';
 import { useVoiceState } from '@/hooks/useVoiceState';
-import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
-import { Settings, LogOut, User } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-const statusColors = {
-  online: 'bg-[hsl(var(--online))]',
-  idle: 'bg-[hsl(var(--idle))]',
-  dnd: 'bg-[hsl(var(--dnd))]',
-  offline: 'bg-[hsl(var(--offline))]'
-};
-const statusLabels = {
-  online: 'En ligne',
-  idle: 'Inactif',
-  dnd: 'Ne pas déranger',
-  offline: 'Hors ligne'
-};
+
 type DMView = 'friends' | 'conversation';
 interface DMPageProps {
   activeDMId: string | null;
@@ -35,11 +21,6 @@ export function DMPage({
   onShowFriends
 }: DMPageProps) {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const {
-    profile,
-    signOut,
-    updateStatus
-  } = useAuth();
   const {
     voiceState,
     leaveChannel,
@@ -85,64 +66,10 @@ export function DMPage({
         {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute.mutate()} onToggleDeafen={() => toggleDeafen.mutate()} onDisconnect={() => leaveChannel.mutate()} />}
 
         {/* User Panel */}
-        <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
-                <div className="relative">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                      {profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className={cn('absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background', statusColors[profile?.status || 'offline'])} />
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium truncate">{profile?.display_name || 'Chargement...'}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {profile?.custom_status || statusLabels[profile?.status || 'offline']}
-                  </p>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{profile?.display_name}</p>
-                <p className="text-xs text-muted-foreground">@{profile?.username}</p>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => updateStatus('online')}>
-                <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.online)} />
-                En ligne
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => updateStatus('idle')}>
-                <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.idle)} />
-                Inactif
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => updateStatus('dnd')}>
-                <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.dnd)} />
-                Ne pas déranger
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => updateStatus('offline')}>
-                <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusColors.offline)} />
-                Invisible
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setShowAccountSettings(true)}>
-                <User className="w-4 h-4 mr-2" />
-                Mon profil
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={signOut} className="text-destructive">
-                <LogOut className="w-4 h-4 mr-2" />
-                Se déconnecter
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <button onClick={() => setShowAccountSettings(true)} className="p-1.5 hover:bg-muted rounded-md transition-colors">
-            <Settings className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+        <UserProfileCard 
+          onOpenSettings={() => setShowAccountSettings(true)}
+          onOpenProfile={() => setShowAccountSettings(true)}
+        />
       </div>
 
       {/* Main Content */}

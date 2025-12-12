@@ -34,6 +34,9 @@ export function ServerList({
   const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
 
+  // Calculate total unread DMs
+  const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((acc, count) => acc + count, 0);
+
   // Check if there are any unread DMs
   const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
 
@@ -85,6 +88,13 @@ export function ServerList({
               )}
             />
             <MessageCircle className="w-6 h-6" />
+            
+            {/* Unread DMs notification badge */}
+            {totalUnreadDMs > 0 && (
+              <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop">
+                {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
+              </div>
+            )}
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">
@@ -140,7 +150,7 @@ export function ServerList({
 
                     {/* Unread notification badge */}
                     {(unreadCounts[server.id] ?? 0) > 0 && (
-                      <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar">
+                      <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop">
                         {unreadCounts[server.id] > 99 ? '99+' : unreadCounts[server.id]}
                       </div>
                     )}

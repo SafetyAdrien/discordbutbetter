@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, LogOut, User, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -167,6 +167,7 @@ function SortableChannel({
   onCopyLink,
   onMarkAsRead,
   onOpenSettings,
+  onCreateInvite,
   showDropIndicator = false
 }: {
   channel: Channel;
@@ -178,6 +179,7 @@ function SortableChannel({
   onCopyLink: () => void;
   onMarkAsRead: () => void;
   onOpenSettings: () => void;
+  onCreateInvite: () => void;
   showDropIndicator?: boolean;
 }) {
   const {
@@ -217,10 +219,14 @@ function SortableChannel({
                 </span>}
 
               <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <UserPlus className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
+                  e.stopPropagation();
+                  onCreateInvite();
+                }} />
                 <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
-                e.stopPropagation();
-                onOpenSettings();
-              }} />
+                  e.stopPropagation();
+                  onOpenSettings();
+                }} />
               </div>
             </button>
           </ContextMenuTrigger>
@@ -232,6 +238,10 @@ function SortableChannel({
             <ContextMenuItem onClick={onCopyLink}>
               <Link className="w-4 h-4 mr-2" />
               Copier le lien
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onCreateInvite}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Créer une invitation
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onOpenSettings}>
@@ -341,6 +351,11 @@ export function ChannelList({
     toast({
       title: 'Marqué comme lu'
     });
+  };
+  const handleCreateInvite = (channelId: string) => {
+    // Generate and copy invite link
+    const inviteLink = `${window.location.origin}/invite/${server.id}`;
+    copyToClipboard(inviteLink, 'Lien d\'invitation copié');
   };
   const handleChannelClick = (channel: Channel) => {
     if (channel.type === 'voice') {
@@ -604,6 +619,7 @@ export function ChannelList({
                         onCopyLink={() => handleCopyLink(channel.id)} 
                         onMarkAsRead={() => handleMarkAsRead(channel.id)} 
                         onOpenSettings={() => setSelectedChannelId(channel.id)}
+                        onCreateInvite={() => handleCreateInvite(channel.id)}
                         showDropIndicator={overId === `channel-${channel.id}`}
                       />
                     ))}
@@ -624,7 +640,7 @@ export function ChannelList({
               })}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} />)}
+                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} />)}
                         </SortableContext>
                       </div>
                     </SortableCategory>)}

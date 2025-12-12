@@ -1,4 +1,4 @@
-import { useState, forwardRef, useCallback } from 'react';
+import { useState, forwardRef, useCallback, useEffect } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
@@ -22,7 +22,8 @@ import {
   X,
   Check,
   Image,
-  BarChart2
+  BarChart2,
+  Link
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -46,6 +47,76 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MarkdownText } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
+
+// Message Actions Component (shown on Shift+hover)
+function MessageActions({ 
+  isVisible, 
+  onReply, 
+  onAddReaction,
+  onCopyLink,
+  onEdit, 
+  onDelete, 
+  isOwnMessage 
+}: { 
+  isVisible: boolean;
+  onReply: () => void;
+  onAddReaction: () => void;
+  onCopyLink: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isOwnMessage: boolean;
+}) {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onReply} className="p-1.5 hover:bg-muted rounded transition-colors">
+            <Reply className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Répondre</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onAddReaction} className="p-1.5 hover:bg-muted rounded transition-colors">
+            <Smile className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Ajouter une réaction</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
+            <Link className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Copier le lien</TooltipContent>
+      </Tooltip>
+      {isOwnMessage && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Modifier</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Supprimer</TooltipContent>
+          </Tooltip>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface Role {
   id: string;
@@ -89,10 +160,28 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [editingContent, setEditingContent] = useState('');
+    const [isShiftPressed, setIsShiftPressed] = useState(false);
+    const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
     const editMessage = useEditMessage();
     const deleteMessage = useDeleteMessage();
+
+    // Detect Shift key press
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Shift') setIsShiftPressed(true);
+      };
+      const handleKeyUp = (e: KeyboardEvent) => {
+        if (e.key === 'Shift') setIsShiftPressed(false);
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+      };
+    }, []);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -152,6 +241,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
 
     const handleDelete = (messageId: string) => {
       deleteMessage.mutate({ messageId, channelId: channel.id });
+    };
+
+    const handleCopyMessageLink = (messageId: string) => {
+      const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/${messageId}`;
+      copyToClipboard(link, 'Lien du message copié');
     };
 
     return (
@@ -292,10 +386,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               <ContextMenuTrigger asChild>
                 <div
                   className={cn(
-                    'group message-hover rounded-md px-2 py-1 -mx-2',
+                    'group message-hover rounded-md px-2 py-1 -mx-2 relative',
                     !showAuthor && 'mt-0'
                   )}
+                  onMouseEnter={() => setHoveredMessageId(message.id)}
+                  onMouseLeave={() => setHoveredMessageId(null)}
                 >
+                  <MessageActions
+                    isVisible={isShiftPressed && hoveredMessageId === message.id}
+                    onReply={() => {/* TODO */}}
+                    onAddReaction={() => handleAddReaction(message.id, '👍')}
+                    onCopyLink={() => handleCopyMessageLink(message.id)}
+                    onEdit={() => handleStartEdit(message)}
+                    onDelete={() => handleDelete(message.id)}
+                    isOwnMessage={isOwnMessage}
+                  />
                   {showAuthor ? (
                     <div className="flex gap-4">
                       <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
@@ -463,6 +568,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
                   <Copy className="w-4 h-4 mr-2" />
                   Copier le texte
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
+                  <Link className="w-4 h-4 mr-2" />
+                  Copier le lien du message
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => handleCopyId(message.id)}>
                   <Hash className="w-4 h-4 mr-2" />

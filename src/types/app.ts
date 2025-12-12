@@ -34,6 +34,7 @@ export interface Channel {
   type: 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks';
   description?: string;
   unreadCount?: number;
+  server_id?: string;
 }
 
 export interface Message {

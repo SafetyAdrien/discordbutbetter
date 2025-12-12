@@ -27,7 +27,7 @@ import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
-import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, ChannelType, OrphanChannel } from '@/hooks/useChannels';
+import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
@@ -110,7 +110,8 @@ function SortableCategory({
   isCollapsed,
   onToggle,
   onEdit,
-  onCreateChannel
+  onCreateChannel,
+  onDelete
 }: {
   category: Category;
   children: React.ReactNode;
@@ -118,7 +119,9 @@ function SortableCategory({
   onToggle: () => void;
   onEdit: () => void;
   onCreateChannel: () => void;
+  onDelete: () => void;
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
     attributes,
     listeners,
@@ -134,7 +137,8 @@ function SortableCategory({
     transition: transition || 'transform 200ms ease, opacity 200ms ease',
     opacity: isDragging ? 0.4 : 1
   };
-  return <div ref={setNodeRef} style={style} className={cn("mb-2", isDragging && "sortable-ghost")}>
+  return <>
+    <div ref={setNodeRef} style={style} className={cn("mb-2", isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
@@ -162,14 +166,53 @@ function SortableCategory({
             Modifier la catégorie
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem className="text-destructive focus:text-destructive">
+          <ContextMenuItem 
+            className="text-destructive focus:text-destructive"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
             <Trash2 className="w-4 h-4 mr-2" />
             Supprimer la catégorie
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       {!isCollapsed && children}
-    </div>;
+    </div>
+
+    {/* Delete Category Confirmation Dialog */}
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+            Supprimer la catégorie "{category.name}" ?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            <span className="font-semibold text-destructive">
+              Cette action est immédiate et irréversible.
+            </span>
+            <br /><br />
+            {category.channels.length > 0 ? (
+              <>Les <strong>{category.channels.length} salon{category.channels.length > 1 ? 's' : ''}</strong> de cette catégorie deviendront des salons sans catégorie.</>
+            ) : (
+              <>Cette catégorie est vide.</>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annuler</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={() => {
+              onDelete();
+              setShowDeleteConfirm(false);
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Supprimer définitivement
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>;
 }
 
 // Sortable Channel Component
@@ -369,6 +412,7 @@ export function ChannelList({
   const reorderCategories = useReorderCategories();
   const reorderChannels = useReorderChannels();
   const deleteChannel = useDeleteChannel();
+  const deleteCategory = useDeleteCategory();
   const {
     data: serverEmojis = []
   } = useServerEmojis(server.id);
@@ -392,6 +436,14 @@ export function ChannelList({
       }
     } catch {
       toast({ title: 'Erreur lors de la suppression', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      await deleteCategory.mutateAsync({ categoryId, serverId: server.id });
+    } catch {
+      // Error already handled by the hook
     }
   };
 
@@ -697,7 +749,7 @@ export function ChannelList({
                     </div> : <SortableCategory key={category.id} category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                 id: category.id,
                 name: category.name
-              })}>
+              })} onDelete={() => handleDeleteCategory(category.id)}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
                           {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} />)}

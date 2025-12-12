@@ -223,7 +223,7 @@ function SortableChannel({
                   {channel.unreadCount}
                 </span>}
 
-              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
                 <UserPlus className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
                 e.stopPropagation();
                 onCreateInvite();

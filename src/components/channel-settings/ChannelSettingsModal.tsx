@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Hash, Volume2, MessageSquare, Megaphone } from 'lucide-react';
+import { Hash, Volume2, MessageCircleMore, Megaphone } from 'lucide-react';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
@@ -22,7 +22,7 @@ interface ChannelSettingsModalProps {
 const channelIcons = {
   text: Hash,
   voice: Volume2,
-  forum: MessageSquare,
+  forum: MessageCircleMore,
   announcement: Megaphone,
 };
 

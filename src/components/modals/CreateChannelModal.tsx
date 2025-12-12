@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Hash,
   Volume2,
-  MessagesSquare,
+  MessageCircleMore,
   Megaphone,
   Image,
   CalendarDays,
@@ -40,7 +40,7 @@ interface CreateChannelModalProps {
 const channelTypes: { value: ChannelType; label: string; icon: React.ElementType; description: string }[] = [
   { value: 'text', label: 'Textuel', icon: Hash, description: 'Envoyer des messages' },
   { value: 'voice', label: 'Vocal', icon: Volume2, description: 'Parler en temps réel' },
-  { value: 'forum', label: 'Forum', icon: MessagesSquare, description: 'Discussions organisées' },
+  { value: 'forum', label: 'Forum', icon: MessageCircleMore, description: 'Discussions organisées' },
   { value: 'announcement', label: 'Annonce', icon: Megaphone, description: 'Messages importants' },
   { value: 'media', label: 'Médias', icon: Image, description: 'Partager des images/vidéos' },
   { value: 'calendar', label: 'Calendrier', icon: CalendarDays, description: 'Événements et rendez-vous' },

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, MessageCircleMore, Megaphone, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -67,7 +67,7 @@ interface ChannelListProps {
 const channelIcons: Record<ChannelType, React.ElementType> = {
   text: Hash,
   voice: Volume2,
-  forum: MessagesSquare,
+  forum: MessageCircleMore,
   announcement: Megaphone,
   media: Image,
   calendar: CalendarDays,

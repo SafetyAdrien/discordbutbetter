@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Server } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { Compass, Plus, MessageCircle, Settings, UserPlus, Hash, LogOut, CheckCircle } from 'lucide-react';
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/context-menu';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
+import { DiscordLogoIcon } from '@/components/icons/DiscordLogoIcon';
 
 interface ServerListProps {
   servers: Server[];
@@ -29,6 +31,8 @@ export function ServerList({
   onCreateClick,
   onOpenServerSettings,
 }: ServerListProps) {
+  const [hoveredServerId, setHoveredServerId] = useState<string | null>(null);
+
   const handleCopyId = (serverId: string) => {
     copyToClipboard(serverId, 'ID serveur copié');
   };
@@ -87,11 +91,13 @@ export function ServerList({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => onServerSelect(server.id)}
+                    onMouseEnter={() => setHoveredServerId(server.id)}
+                    onMouseLeave={() => setHoveredServerId(null)}
                     className={cn(
-                      'server-icon relative group',
+                      'server-icon relative group overflow-hidden',
                       activeServerId === server.id
                         ? 'bg-[#5865f2] text-white rounded-[16px]'
-                        : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
+                        : 'bg-card hover:bg-[#5865f2] hover:text-white hover:rounded-[16px]'
                     )}
                   >
                     {/* Active indicator */}
@@ -104,20 +110,33 @@ export function ServerList({
                       )}
                     />
                     
-                    {server.icon ? (
-                      server.icon.startsWith('http') ? (
-                        <img 
-                          src={server.icon} 
-                          alt={server.name}
-                          className="w-full h-full object-cover rounded-[inherit]"
-                        />
+                    {/* Normal server content */}
+                    <div className={cn(
+                      'flex items-center justify-center w-full h-full transition-opacity duration-150',
+                      hoveredServerId === server.id && activeServerId !== server.id ? 'opacity-0' : 'opacity-100'
+                    )}>
+                      {server.icon ? (
+                        server.icon.startsWith('http') ? (
+                          <img 
+                            src={server.icon} 
+                            alt={server.name}
+                            className="w-full h-full object-cover rounded-[inherit]"
+                          />
+                        ) : (
+                          <span className="text-xl">{server.icon}</span>
+                        )
                       ) : (
-                        <span className="text-xl">{server.icon}</span>
-                      )
-                    ) : (
-                      <span className="text-sm font-semibold">
-                        {server.name.slice(0, 2).toUpperCase()}
-                      </span>
+                        <span className="text-sm font-semibold">
+                          {server.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Discord logo overlay on hover */}
+                    {hoveredServerId === server.id && activeServerId !== server.id && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <DiscordLogoIcon className="text-white discord-logo-hover" size={28} />
+                      </div>
                     )}
                   </button>
                 </TooltipTrigger>

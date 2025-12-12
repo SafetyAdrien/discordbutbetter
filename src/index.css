@@ -344,7 +344,22 @@
     animation: drop-indicator-pulse 0.8s ease-in-out infinite;
   }
 
-  @keyframes drop-indicator-pulse {
+@keyframes discord-logo-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.discord-logo-hover {
+  animation: discord-logo-appear 0.15s ease-out forwards;
+}
+
+@keyframes drop-indicator-pulse {
     0%, 100% {
       opacity: 1;
       box-shadow: 0 0 8px 2px #5865f2, 0 0 16px 4px rgba(88, 101, 242, 0.5);

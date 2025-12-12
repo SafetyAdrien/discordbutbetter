@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/context-menu';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
+import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 
 interface ServerListProps {
   servers: Server[];
@@ -29,11 +31,18 @@ export function ServerList({
   onCreateClick,
   onOpenServerSettings,
 }: ServerListProps) {
+  const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
+  const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
+
+  // Check if there are any unread DMs
+  const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
+
   const handleCopyId = (serverId: string) => {
     copyToClipboard(serverId, 'ID serveur copié');
   };
 
   const handleMarkAsRead = (serverId: string) => {
+    markServerAsRead(serverId);
     toast({ title: 'Serveur marqué comme lu' });
   };
 
@@ -45,6 +54,11 @@ export function ServerList({
   const handleLeaveServer = (serverId: string) => {
     // TODO: Implement leave server
     console.log('Leave server', serverId);
+  };
+
+  const handleServerClick = (serverId: string) => {
+    onServerSelect(serverId);
+    markServerAsRead(serverId);
   };
 
   return (
@@ -65,7 +79,9 @@ export function ServerList({
                 'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                 activeServerId === null
                   ? 'h-10'
-                  : 'h-0 group-hover:h-5'
+                  : hasUnreadDMs
+                    ? 'h-2'
+                    : 'h-0 group-hover:h-5'
               )}
             />
             <MessageCircle className="w-6 h-6" />
@@ -86,7 +102,7 @@ export function ServerList({
               <ContextMenuTrigger asChild>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => onServerSelect(server.id)}
+                    onClick={() => handleServerClick(server.id)}
                     className={cn(
                       'server-icon relative group',
                       activeServerId === server.id
@@ -100,7 +116,9 @@ export function ServerList({
                         'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                         activeServerId === server.id
                           ? 'h-10'
-                          : 'h-0 group-hover:h-5'
+                          : (unreadCounts[server.id] ?? 0) > 0
+                            ? 'h-2'
+                            : 'h-0 group-hover:h-5'
                       )}
                     />
                     

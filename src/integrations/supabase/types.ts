@@ -955,6 +955,42 @@ export type Database = {
           },
         ]
       }
+      server_read_states: {
+        Row: {
+          id: string
+          last_read_at: string | null
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_read_at?: string | null
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_read_at?: string | null
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_read_states_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_read_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_settings: {
         Row: {
           auto_assign_roles: string[] | null

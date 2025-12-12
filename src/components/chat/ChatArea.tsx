@@ -614,7 +614,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                             </div>
                           </div>
                         ) : (
-                          <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
+                          <p className="text-foreground break-words font-ginto"><MarkdownText content={message.content} /></p>
                         )}
                         
                         {message.reactions && message.reactions.length > 0 && (
@@ -671,7 +671,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                           </div>
                         ) : (
                           <>
-                            <p className="text-foreground break-words"><MarkdownText content={message.content} /></p>
+                            <p className="text-foreground break-words font-ginto"><MarkdownText content={message.content} /></p>
                             {message.edited && (
                               <span className="text-xs text-muted-foreground/50">(modifié)</span>
                             )}

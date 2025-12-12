@@ -262,7 +262,7 @@ function MessageItem({
               </div>
             )}
             <p className={cn(
-              'text-sm break-words',
+              'text-sm break-words font-ginto',
               message.isPending && 'opacity-50'
             )}>
               {message.content}

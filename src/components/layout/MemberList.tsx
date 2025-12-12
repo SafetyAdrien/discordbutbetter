@@ -1,7 +1,7 @@
-import { forwardRef, useState, useMemo, useRef, useEffect } from 'react';
+import { forwardRef, useState, useMemo, useRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, X, ChevronDown } from 'lucide-react';
+import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import {
@@ -40,120 +40,63 @@ const statusColors: Record<string, string> = {
   offline: 'bg-[hsl(var(--offline))]',
 };
 
-const statusLabels: Record<string, string> = {
-  online: 'En ligne',
-  idle: 'Inactif',
-  dnd: 'Ne pas déranger',
-  offline: 'Hors ligne',
-};
+// Search filter prefixes
+const searchFilters = [
+  { prefix: 'de:', label: 'de la personne', icon: UserIcon },
+  { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign },
+  { prefix: 'contient:', label: 'dispose de données spécifiques', icon: FileText },
+  { prefix: 'dans:', label: 'dans un salon spécifique', icon: Hash },
+  { prefix: 'pendant:', label: 'envoyé à une date', icon: Calendar },
+  { prefix: 'avant:', label: 'avant la date', icon: Calendar },
+  { prefix: 'après:', label: 'après la date', icon: Calendar },
+  { prefix: 'épinglé:', label: 'épinglé', icon: Pin },
+  { prefix: 'auteur:', label: 'par type d\'auteur', icon: UserCircle },
+];
 
 // Search Filters Component
 function SearchFilters({ 
-  selectedStatuses, 
-  selectedRoles,
-  sortBy,
-  onStatusChange,
-  onRoleChange,
-  onSortChange,
-  onClear,
-  roles,
+  onSelectFilter,
+  searchQuery,
 }: {
-  selectedStatuses: string[];
-  selectedRoles: string[];
-  sortBy: string;
-  onStatusChange: (status: string) => void;
-  onRoleChange: (roleId: string) => void;
-  onSortChange: (sort: string) => void;
-  onClear: () => void;
-  roles: Role[];
+  onSelectFilter: (prefix: string) => void;
+  searchQuery: string;
 }) {
-  const hasFilters = selectedStatuses.length > 0 || selectedRoles.length > 0 || sortBy !== 'name-asc';
+  // Filter suggestions based on current query
+  const availableFilters = useMemo(() => {
+    const lowerQuery = searchQuery.toLowerCase();
+    // If query already has a prefix, don't show suggestions
+    if (searchFilters.some(f => lowerQuery.startsWith(f.prefix))) {
+      return [];
+    }
+    // If typing, filter suggestions that match
+    if (lowerQuery.trim()) {
+      return searchFilters.filter(f => 
+        f.prefix.toLowerCase().includes(lowerQuery) ||
+        f.label.toLowerCase().includes(lowerQuery)
+      );
+    }
+    return searchFilters;
+  }, [searchQuery]);
+
+  if (availableFilters.length === 0) return null;
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-lg p-3 mt-2 animate-fade-in">
-      {/* Status Filter */}
-      <div className="mb-3">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Statut</p>
-        <div className="flex flex-wrap gap-1">
-          {['online', 'idle', 'dnd', 'offline'].map(status => (
-            <button
-              key={status}
-              onClick={() => onStatusChange(status)}
-              className={cn(
-                "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-colors",
-                selectedStatuses.includes(status) 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              )}
-            >
-              <div className={cn('w-2 h-2 rounded-full', statusColors[status])} />
-              {statusLabels[status]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Roles Filter */}
-      {roles.length > 0 && (
-        <div className="mb-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Rôles</p>
-          <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
-            {roles.map(role => (
-              <button
-                key={role.id}
-                onClick={() => onRoleChange(role.id)}
-                className={cn(
-                  "px-2 py-1 rounded-full text-xs transition-colors border",
-                  selectedRoles.includes(role.id) 
-                    ? "ring-2 ring-primary border-primary" 
-                    : "border-border hover:border-muted-foreground"
-                )}
-                style={{ 
-                  backgroundColor: role.color ? `${role.color}20` : undefined, 
-                  color: role.color || undefined 
-                }}
-              >
-                {role.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Sort By */}
-      <div className="mb-3">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Trier par</p>
-        <div className="flex gap-1">
-          {[
-            { value: 'name-asc', label: 'A-Z' },
-            { value: 'name-desc', label: 'Z-A' },
-          ].map(option => (
-            <button
-              key={option.value}
-              onClick={() => onSortChange(option.value)}
-              className={cn(
-                "px-2 py-1 rounded text-xs transition-colors",
-                sortBy === option.value 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-muted hover:bg-muted/80"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Clear Filters */}
-      {hasFilters && (
-        <button
-          onClick={onClear}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <X className="w-3 h-3" />
-          Effacer les filtres
-        </button>
-      )}
+    <div className="bg-card border border-border rounded-lg shadow-lg p-2 mt-2 animate-slide-down">
+      <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
+      {availableFilters.map(filter => {
+        const Icon = filter.icon;
+        return (
+          <button
+            key={filter.prefix}
+            onClick={() => onSelectFilter(filter.prefix)}
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted text-sm text-left transition-colors"
+          >
+            <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-primary font-medium min-w-[80px]">{filter.prefix}</span>
+            <span className="text-muted-foreground/70 truncate">{filter.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -163,72 +106,71 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
-    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-    const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-    const [sortBy, setSortBy] = useState('name-asc');
     const searchRef = useRef<HTMLInputElement>(null);
 
-    const handleStatusChange = (status: string) => {
-      setSelectedStatuses(prev => 
-        prev.includes(status) 
-          ? prev.filter(s => s !== status)
-          : [...prev, status]
-      );
+    const handleSelectFilter = (prefix: string) => {
+      setSearchQuery(prefix);
+      setShowFilters(false);
+      searchRef.current?.focus();
     };
 
-    const handleRoleChange = (roleId: string) => {
-      setSelectedRoles(prev => 
-        prev.includes(roleId) 
-          ? prev.filter(r => r !== roleId)
-          : [...prev, roleId]
-      );
-    };
-
-    const handleSortChange = (sort: string) => {
-      setSortBy(sort);
-    };
-
-    const handleClearFilters = () => {
-      setSelectedStatuses([]);
-      setSelectedRoles([]);
-      setSortBy('name-asc');
+    // Parse search query for prefixes
+    const parseSearchQuery = (query: string) => {
+      const parsed: { prefix: string; value: string }[] = [];
+      let remaining = query;
+      
+      // Check for each known prefix
+      for (const filter of searchFilters) {
+        const regex = new RegExp(`${filter.prefix}(\\S+)`, 'gi');
+        const match = regex.exec(remaining);
+        if (match) {
+          parsed.push({ prefix: filter.prefix, value: match[1] });
+          remaining = remaining.replace(match[0], '').trim();
+        }
+      }
+      
+      return { parsed, freeText: remaining };
     };
 
     const filteredMembers = useMemo(() => {
       let result = [...members];
       
-      // Filter by search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
+      const { parsed, freeText } = parseSearchQuery(searchQuery);
+      
+      // Apply free text filter on name
+      if (freeText.trim()) {
+        const query = freeText.toLowerCase();
         result = result.filter(m => 
           m.displayName.toLowerCase().includes(query) ||
           m.username.toLowerCase().includes(query)
         );
       }
       
-      // Filter by status
-      if (selectedStatuses.length > 0) {
-        result = result.filter(m => selectedStatuses.includes(m.status));
-      }
-      
-      // Filter by role
-      if (selectedRoles.length > 0) {
-        result = result.filter(m => 
-          m.roles?.some(r => selectedRoles.includes(r.id))
-        );
-      }
-      
-      // Sort
-      result.sort((a, b) => {
-        switch (sortBy) {
-          case 'name-asc': return a.displayName.localeCompare(b.displayName);
-          case 'name-desc': return b.displayName.localeCompare(a.displayName);
-          default: return 0;
+      // Apply prefix filters
+      for (const { prefix, value } of parsed) {
+        switch (prefix) {
+          case 'de:':
+            result = result.filter(m => 
+              m.displayName.toLowerCase().includes(value.toLowerCase()) ||
+              m.username.toLowerCase().includes(value.toLowerCase())
+            );
+            break;
+          case 'auteur:':
+            // Filter by author type (e.g., bot, user)
+            if (value.toLowerCase() === 'bot') {
+              result = result.filter(m => m.username.toLowerCase().includes('bot'));
+            }
+            break;
+          // Other prefix filters would be applied here
+          // They mostly filter messages rather than members, so they're placeholder
         }
-      });
+      }
+      
+      // Sort by display name
+      result.sort((a, b) => a.displayName.localeCompare(b.displayName));
       
       return result;
-    }, [members, searchQuery, selectedStatuses, selectedRoles, sortBy]);
+    }, [members, searchQuery]);
 
     const onlineMembers = filteredMembers.filter((m) => m.status !== 'offline');
     const offlineMembers = filteredMembers.filter((m) => m.status === 'offline');
@@ -244,8 +186,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     const handleAddFriend = (member: MemberWithRoles) => {
       console.log('Add friend', member.id);
     };
-
-    const hasActiveFilters = selectedStatuses.length > 0 || selectedRoles.length > 0 || sortBy !== 'name-asc';
 
     const renderMember = (member: MemberWithRoles) => {
       const isOwner = member.id === ownerId;
@@ -333,7 +273,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     return (
       <>
         <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
-          {/* Search input with filters toggle */}
+          {/* Search input */}
           <div className="px-3 pt-3">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -343,30 +283,16 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setShowFilters(true)}
-                className="h-8 pl-8 pr-8 text-sm bg-input"
+                onBlur={() => setTimeout(() => setShowFilters(false), 150)}
+                className="h-8 pl-8 text-sm bg-input"
               />
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors",
-                  showFilters || hasActiveFilters ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <ChevronDown className={cn("w-4 h-4 transition-transform", showFilters && "rotate-180")} />
-              </button>
             </div>
             
-            {/* Filters embed */}
+            {/* Filters suggestions */}
             {showFilters && (
               <SearchFilters
-                selectedStatuses={selectedStatuses}
-                selectedRoles={selectedRoles}
-                sortBy={sortBy}
-                onStatusChange={handleStatusChange}
-                onRoleChange={handleRoleChange}
-                onSortChange={handleSortChange}
-                onClear={handleClearFilters}
-                roles={serverRoles}
+                onSelectFilter={handleSelectFilter}
+                searchQuery={searchQuery}
               />
             )}
           </div>

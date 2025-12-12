@@ -19,6 +19,7 @@ interface FeaturedAnnouncementProps {
     };
     createdAt: Date;
     pinned: boolean;
+    featured?: boolean;
     reactions?: { emoji: string; count: number }[];
   };
   onClick?: () => void;

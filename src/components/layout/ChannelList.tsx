@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Volume2, MessagesSquare, Megaphone, Settings, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
-import { Hash, Plus } from '@/components/icons';
+import { ChevronDown, Hash, Volume2, MessagesSquare, Megaphone, Settings, Plus, Pencil, Calendar, Crown, Users, Image, CalendarDays, ListTodo, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

@@ -64,8 +64,8 @@ export function ServerList({
               className={cn(
                 'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                 activeServerId === null
-                  ? 'h-2'
-                  : 'h-0 group-hover:h-1.5'
+                  ? 'h-10'
+                  : 'h-0 group-hover:h-5'
               )}
             />
             <MessageCircle className="w-6 h-6" />
@@ -99,8 +99,8 @@ export function ServerList({
                       className={cn(
                         'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                         activeServerId === server.id
-                          ? 'h-2'
-                          : 'h-0 group-hover:h-1.5'
+                          ? 'h-10'
+                          : 'h-0 group-hover:h-5'
                       )}
                     />
                     

@@ -275,7 +275,7 @@ export function ChannelList({
     name: string;
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
-  const [showOrphanChannels, setShowOrphanChannels] = useState(true);
+  
   const [activeId, setActiveId] = useState<string | null>(null);
   const {
     profile,
@@ -354,12 +354,10 @@ export function ChannelList({
     setActiveId(event.active.id as string);
   };
   const handleDragEnd = (event: DragEndEvent) => {
-    const {
-      active,
-      over
-    } = event;
+    const { active, over } = event;
     setActiveId(null);
     if (!over || active.id === over.id) return;
+    
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
 
@@ -379,24 +377,87 @@ export function ChannelList({
       }
     }
 
-    // Handle channel reordering within the same category
-    if (activeIdStr.startsWith('channel-') && overIdStr.startsWith('channel-')) {
+    // Handle channel reordering (inter-category support)
+    if (activeIdStr.startsWith('channel-')) {
       const activeChannelId = activeIdStr.replace('channel-', '');
-      const overChannelId = overIdStr.replace('channel-', '');
+      
+      // Find source category (null for orphans)
+      let sourceCategoryId: string | null = null;
+      for (const cat of server.categories) {
+        if (cat.channels.some(ch => ch.id === activeChannelId)) {
+          sourceCategoryId = cat.id;
+          break;
+        }
+      }
+      if (!sourceCategoryId && orphanChannels.some(ch => ch.id === activeChannelId)) {
+        sourceCategoryId = null;
+      }
 
-      // Find which category contains the active channel
-      for (const category of server.categories) {
-        const activeIdx = category.channels.findIndex(ch => ch.id === activeChannelId);
-        const overIdx = category.channels.findIndex(ch => ch.id === overChannelId);
-        if (activeIdx !== -1 && overIdx !== -1) {
-          const newOrder = arrayMove(category.channels, activeIdx, overIdx);
-          const orderedIds = newOrder.map(ch => ch.id);
+      // Dropping on another channel
+      if (overIdStr.startsWith('channel-')) {
+        const overChannelId = overIdStr.replace('channel-', '');
+        
+        // Find target category
+        let targetCategoryId: string | null = null;
+        let targetChannels: Channel[] = [];
+        
+        for (const cat of server.categories) {
+          if (cat.channels.some(ch => ch.id === overChannelId)) {
+            targetCategoryId = cat.id;
+            targetChannels = cat.channels;
+            break;
+          }
+        }
+        if (!targetCategoryId && orphanChannels.some(ch => ch.id === overChannelId)) {
+          targetCategoryId = null;
+          targetChannels = orphanChannels.map(ch => ({
+            id: ch.id,
+            name: ch.name,
+            type: (ch.type || 'text') as ChannelType,
+            description: ch.description || undefined
+          }));
+        }
+
+        // Calculate new order
+        const activeChannel = [...server.categories.flatMap(c => c.channels), ...orphanChannels.map(ch => ({
+          id: ch.id,
+          name: ch.name,
+          type: (ch.type || 'text') as ChannelType,
+          description: ch.description || undefined
+        }))].find(ch => ch.id === activeChannelId);
+        
+        if (activeChannel) {
+          const filteredChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
+          const overIdx = filteredChannels.findIndex(ch => ch.id === overChannelId);
+          const newOrder = [
+            ...filteredChannels.slice(0, overIdx + 1),
+            activeChannel,
+            ...filteredChannels.slice(overIdx + 1)
+          ];
+          
           reorderChannels.mutate({
             serverId: server.id,
-            categoryId: category.id,
-            orderedIds
+            categoryId: targetCategoryId,
+            orderedIds: newOrder.map(ch => ch.id)
           });
-          break;
+        }
+      }
+      
+      // Dropping on a category header - add at end of category
+      else if (overIdStr.startsWith('category-')) {
+        const targetCategoryId = overIdStr.replace('category-', '');
+        const targetCategory = server.categories.find(c => c.id === targetCategoryId);
+        
+        if (targetCategory) {
+          const existingIds = targetCategory.channels
+            .filter(ch => ch.id !== activeChannelId)
+            .map(ch => ch.id);
+          
+          reorderChannels.mutate({
+            serverId: server.id,
+            categoryId: targetCategoryId,
+            orderedIds: [...existingIds, activeChannelId]
+          });
         }
       }
     }
@@ -488,37 +549,37 @@ export function ChannelList({
                     </SortableCategory>)}
               </SortableContext>
 
-              {/* Orphan Channels Section */}
-              {orphanChannels.length > 0 && <div className="mb-2">
-                  <div className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group">
-                    <button onClick={() => setShowOrphanChannels(!showOrphanChannels)} className="flex items-center justify-between gap-1 flex-1">
-                      <span className="tracking-wide">SALONS</span>
-                      <ChevronDown className={cn('w-3 h-3 transition-transform', !showOrphanChannels && '-rotate-90')} />
-                    </button>
-                    <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
-                  e.stopPropagation();
-                  setCreateChannelForCategory({
-                    id: null,
-                    name: 'Sans catégorie'
-                  });
-                }} />
-                  </div>
-                  {showOrphanChannels && <div className="mt-1 px-2 space-y-0.5">
-                      <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                        {orphanChannels.map(channel => <SortableChannel key={channel.id} channel={{
-                    id: channel.id,
-                    name: channel.name,
-                    type: (channel.type || 'text') as ChannelType,
-                    description: channel.description || undefined
-                  }} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick({
-                    id: channel.id,
-                    name: channel.name,
-                    type: (channel.type || 'text') as ChannelType,
-                    description: channel.description || undefined
-                  })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} />)}
-                      </SortableContext>
-                    </div>}
-                </div>}
+              {/* Orphan Channels (displayed at the top without header) */}
+              {orphanChannels.length > 0 && (
+                <div className="px-2 space-y-0.5 mb-2">
+                  <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
+                    {orphanChannels.map(channel => (
+                      <SortableChannel 
+                        key={channel.id} 
+                        channel={{
+                          id: channel.id,
+                          name: channel.name,
+                          type: (channel.type || 'text') as ChannelType,
+                          description: channel.description || undefined
+                        }} 
+                        serverId={server.id} 
+                        isActive={activeChannelId === channel.id} 
+                        isVoiceConnected={voiceState.channelId === channel.id} 
+                        speakingUsers={speakingUsers} 
+                        onChannelClick={() => handleChannelClick({
+                          id: channel.id,
+                          name: channel.name,
+                          type: (channel.type || 'text') as ChannelType,
+                          description: channel.description || undefined
+                        })} 
+                        onCopyLink={() => handleCopyLink(channel.id)} 
+                        onMarkAsRead={() => handleMarkAsRead(channel.id)} 
+                        onOpenSettings={() => setSelectedChannelId(channel.id)} 
+                      />
+                    ))}
+                  </SortableContext>
+                </div>
+              )}
             </DndContext>
           </div>
         </ContextMenuTrigger>

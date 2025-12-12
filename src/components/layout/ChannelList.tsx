@@ -187,14 +187,14 @@ function SortableCategory({
             >
               <GripVertical className="w-3 h-3" />
             </div>
-            <button onClick={onToggle} className="flex items-center gap-1 flex-1">
+            <button onClick={onToggle} className="flex items-center justify-between gap-1 flex-1">
+              <span className="tracking-wide">{category.name}</span>
               <ChevronDown
                 className={cn(
                   'w-3 h-3 transition-transform',
                   isCollapsed && '-rotate-90'
                 )}
               />
-              <span className="tracking-wide">{category.name}</span>
             </button>
             <Plus 
               className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" 
@@ -509,12 +509,24 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
 
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
-      {/* Server Header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border">
+      {/* Server Header - styled like User Panel */}
+      <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>
           <PopoverTrigger asChild>
-            <button className="font-semibold text-foreground truncate hover:text-primary transition-colors cursor-pointer flex-1 text-left">
-              {server.name}
+            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">
+              <div className="relative">
+                {server.iconUrl ? (
+                  <img src={server.iconUrl} className="w-8 h-8 rounded-xl object-cover" alt="Server icon" />
+                ) : (
+                  <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                    {server.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-semibold truncate">{server.name}</p>
+                <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
+              </div>
             </button>
           </PopoverTrigger>
           <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden">

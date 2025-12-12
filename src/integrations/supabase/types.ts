@@ -638,6 +638,55 @@ export type Database = {
           },
         ]
       }
+      server_bans: {
+        Row: {
+          banned_by: string | null
+          created_at: string | null
+          id: string
+          reason: string | null
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_bans_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_bans_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_bans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_members: {
         Row: {
           id: string
@@ -673,6 +722,54 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_settings: {
+        Row: {
+          auto_assign_roles: string[] | null
+          created_at: string | null
+          id: string
+          server_id: string
+          system_messages_enabled: boolean | null
+          updated_at: string | null
+          welcome_channel_id: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          auto_assign_roles?: string[] | null
+          created_at?: string | null
+          id?: string
+          server_id: string
+          system_messages_enabled?: boolean | null
+          updated_at?: string | null
+          welcome_channel_id?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          auto_assign_roles?: string[] | null
+          created_at?: string | null
+          id?: string
+          server_id?: string
+          system_messages_enabled?: boolean | null
+          updated_at?: string | null
+          welcome_channel_id?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_settings_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: true
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_settings_welcome_channel_id_fkey"
+            columns: ["welcome_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
         ]
@@ -917,6 +1014,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ban_member: {
+        Args: { _reason?: string; _server_id: string; _user_id: string }
+        Returns: undefined
+      }
       can_view_webhook_token: {
         Args: { _user_id: string; _webhook_id: string }
         Returns: boolean
@@ -967,6 +1068,10 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      kick_member: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: undefined
+      }
       shares_dm_with: {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean
@@ -974,6 +1079,10 @@ export type Database = {
       shares_server_with: {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean
+      }
+      unban_member: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: undefined
       }
       use_invite: { Args: { invite_code: string }; Returns: string }
     }

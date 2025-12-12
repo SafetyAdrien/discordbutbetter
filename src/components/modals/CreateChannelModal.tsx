@@ -23,7 +23,7 @@ import { useCreateChannel, ChannelType } from '@/hooks/useChannels';
 
 interface CreateChannelModalProps {
   serverId: string;
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   onClose: () => void;
 }
@@ -53,7 +53,7 @@ export function CreateChannelModal({
     if (!name.trim()) return;
 
     createChannel.mutate(
-      { serverId, categoryId, name: name.trim(), type },
+      { serverId, categoryId: categoryId || '', name: name.trim(), type },
       { onSuccess: onClose }
     );
   };

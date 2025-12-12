@@ -27,7 +27,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       {/* Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Image className="w-5 h-5 text-muted-foreground" />
+          <Image className="w-4 h-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 
@@ -63,7 +63,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
               onClick={onToggleMembers}
               className={cn(showMembers && 'bg-muted')}
             >
-              <Users className="w-5 h-5" />
+              <Users className="w-4 h-4" />
             </Button>
           )}
         </div>

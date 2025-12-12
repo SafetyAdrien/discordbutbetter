@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useMembers } from '@/hooks/useMembers';
+import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Search, MoreVertical, Shield, UserMinus, Ban, Crown } from 'lucide-react';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,9 +35,14 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   const { data: members = [], isLoading } = useMembers(serverId);
   const { data: servers = [] } = useServers();
   const { user } = useAuth();
+  const kickMember = useKickMember();
+  const banMember = useBanMember();
   
   const server = servers.find(s => s.id === serverId);
   const [search, setSearch] = useState('');
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
+  const [banTarget, setBanTarget] = useState<{ id: string; name: string } | null>(null);
+  const [banReason, setBanReason] = useState('');
 
   const filteredMembers = members.filter(member => 
     member.user.display_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -33,6 +50,22 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   );
 
   const isOwner = server?.owner_id === user?.id;
+
+  const handleKick = () => {
+    if (!kickTarget) return;
+    kickMember.mutate(
+      { serverId, userId: kickTarget.id },
+      { onSuccess: () => setKickTarget(null) }
+    );
+  };
+
+  const handleBan = () => {
+    if (!banTarget) return;
+    banMember.mutate(
+      { serverId, userId: banTarget.id, reason: banReason || undefined },
+      { onSuccess: () => { setBanTarget(null); setBanReason(''); } }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -126,11 +159,17 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                         Gérer les rôles
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-yellow-500">
+                      <DropdownMenuItem 
+                        className="text-yellow-500"
+                        onClick={() => setKickTarget({ id: member.user.id, name: member.user.display_name })}
+                      >
                         <UserMinus className="w-4 h-4 mr-2" />
                         Expulser
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => setBanTarget({ id: member.user.id, name: member.user.display_name })}
+                      >
                         <Ban className="w-4 h-4 mr-2" />
                         Bannir
                       </DropdownMenuItem>
@@ -148,6 +187,59 @@ export function MemberManager({ serverId }: MemberManagerProps) {
           </p>
         )}
       </div>
+
+      {/* Kick Confirmation Dialog */}
+      <AlertDialog open={!!kickTarget} onOpenChange={() => setKickTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Expulser {kickTarget?.name} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre sera retiré du serveur mais pourra rejoindre à nouveau avec une invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleKick}
+              className="bg-yellow-600 hover:bg-yellow-700"
+              disabled={kickMember.isPending}
+            >
+              {kickMember.isPending ? 'Expulsion...' : 'Expulser'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ban Confirmation Dialog */}
+      <AlertDialog open={!!banTarget} onOpenChange={() => { setBanTarget(null); setBanReason(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bannir {banTarget?.name} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre sera définitivement exclu du serveur et ne pourra plus le rejoindre.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Raison du bannissement (optionnel)"
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              className="resize-none"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBan}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={banMember.isPending}
+            >
+              {banMember.isPending ? 'Bannissement...' : 'Bannir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

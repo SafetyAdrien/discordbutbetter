@@ -22,13 +22,15 @@ export interface CategoryWithChannels {
   channels: ChannelWithCategory[];
 }
 
+export interface OrphanChannel extends ChannelWithCategory {}
+
 export function useChannels(serverId: string | null) {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['channels', serverId],
-    queryFn: async (): Promise<CategoryWithChannels[]> => {
-      if (!serverId) return [];
+    queryFn: async (): Promise<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }> => {
+      if (!serverId) return { categories: [], orphanChannels: [] };
 
       // Fetch categories
       const { data: categories, error: catError } = await supabase
@@ -49,12 +51,19 @@ export function useChannels(serverId: string | null) {
       if (chanError) throw chanError;
 
       // Group channels by category
-      return categories.map((cat) => ({
+      const categorizedChannels = categories.map((cat) => ({
         ...cat,
         channels: channels
           .filter((ch) => ch.category_id === cat.id)
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
       }));
+
+      // Get orphan channels (no category)
+      const orphanChannels = channels
+        .filter((ch) => !ch.category_id)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+      return { categories: categorizedChannels, orphanChannels };
     },
     enabled: !!serverId && !!user,
   });
@@ -103,17 +112,30 @@ export function useCreateChannel() {
       type,
     }: {
       serverId: string;
-      categoryId: string;
+      categoryId: string | null;
       name: string;
       type: ChannelType;
     }) => {
-      // Get max position in category
-      const { data: existing } = await supabase
-        .from('channels')
-        .select('position')
-        .eq('category_id', categoryId)
-        .order('position', { ascending: false })
-        .limit(1);
+      // Get max position in category (or server for orphan channels)
+      let existing;
+      if (categoryId) {
+        const result = await supabase
+          .from('channels')
+          .select('position')
+          .eq('category_id', categoryId)
+          .order('position', { ascending: false })
+          .limit(1);
+        existing = result.data;
+      } else {
+        const result = await supabase
+          .from('channels')
+          .select('position')
+          .eq('server_id', serverId)
+          .is('category_id', null)
+          .order('position', { ascending: false })
+          .limit(1);
+        existing = result.data;
+      }
 
       const nextPosition = (existing?.[0]?.position ?? -1) + 1;
 
@@ -121,7 +143,7 @@ export function useCreateChannel() {
         .from('channels')
         .insert({
           server_id: serverId,
-          category_id: categoryId,
+          category_id: categoryId || null,
           name,
           type,
           position: nextPosition,

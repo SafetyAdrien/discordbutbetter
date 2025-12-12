@@ -1086,6 +1086,22 @@ export type Database = {
           token: string
         }[]
       }
+      get_invite_details: {
+        Args: { invite_code: string }
+        Returns: {
+          expires_at: string
+          id: string
+          is_expired: boolean
+          is_maxed: boolean
+          max_uses: number
+          member_count: number
+          server_description: string
+          server_icon_url: string
+          server_id: string
+          server_name: string
+          uses: number
+        }[]
+      }
       has_dm_interaction: {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean

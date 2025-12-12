@@ -14,11 +14,11 @@ import {
   Hash,
   Volume2,
   MessageCircleMore,
-  Megaphone,
   Image,
   CalendarDays,
   ListTodo,
 } from 'lucide-react';
+import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { useCreateChannel, ChannelType } from '@/hooks/useChannels';
 import {
   Select,
@@ -41,7 +41,7 @@ const channelTypes: { value: ChannelType; label: string; icon: React.ElementType
   { value: 'text', label: 'Textuel', icon: Hash, description: 'Envoyer des messages' },
   { value: 'voice', label: 'Vocal', icon: Volume2, description: 'Parler en temps réel' },
   { value: 'forum', label: 'Forum', icon: MessageCircleMore, description: 'Discussions organisées' },
-  { value: 'announcement', label: 'Annonce', icon: Megaphone, description: 'Messages importants' },
+  { value: 'announcement', label: 'Annonce', icon: StreamlineMegaphone, description: 'Messages importants' },
   { value: 'media', label: 'Médias', icon: Image, description: 'Partager des images/vidéos' },
   { value: 'calendar', label: 'Calendrier', icon: CalendarDays, description: 'Événements et rendez-vous' },
   { value: 'tasks', label: 'Tâches', icon: ListTodo, description: 'Liste de tâches' },

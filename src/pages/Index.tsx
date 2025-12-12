@@ -16,6 +16,7 @@ import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
+import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -39,6 +40,7 @@ const Index = () => {
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
   const { data: publicServers = [] } = usePublicServers();
+  const { data: channelsData } = useChannels(activeServerId);
   const { data: messages = [] } = useMessages(activeChannelId);
   const { data: members = [] } = useMembers(activeServerId);
 
@@ -100,10 +102,21 @@ const Index = () => {
     }
   }, [activeServerId, servers]);
 
+  // Also check orphan channels when selecting first channel
+  useEffect(() => {
+    if (activeServerId && !activeChannelId && channelsData?.orphanChannels) {
+      const firstOrphan = channelsData.orphanChannels.find(ch => ch.type === 'text');
+      if (firstOrphan) {
+        setActiveChannelId(firstOrphan.id);
+      }
+    }
+  }, [activeServerId, activeChannelId, channelsData?.orphanChannels]);
+
   const activeServer = servers.find((s) => s.id === activeServerId);
   const activeChannel = activeServer?.categories
     .flatMap((c) => c.channels)
-    .find((ch) => ch.id === activeChannelId);
+    .find((ch) => ch.id === activeChannelId) 
+    || channelsData?.orphanChannels?.find((ch) => ch.id === activeChannelId);
 
   const handleSendMessage = (content: string) => {
     if (!activeChannelId) return;
@@ -287,6 +300,7 @@ const Index = () => {
             activeChannelId={activeChannelId}
             onChannelSelect={setActiveChannelId}
             onOpenServerSettings={() => setShowServerSettings(true)}
+            orphanChannels={channelsData?.orphanChannels || []}
           />
 
           {/* Main Content Area - Conditional based on channel type */}

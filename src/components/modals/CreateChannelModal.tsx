@@ -53,7 +53,7 @@ export function CreateChannelModal({
     if (!name.trim()) return;
 
     createChannel.mutate(
-      { serverId, categoryId: categoryId || '', name: name.trim(), type },
+      { serverId, categoryId, name: name.trim(), type },
       { onSuccess: onClose }
     );
   };
@@ -64,7 +64,7 @@ export function CreateChannelModal({
         <DialogHeader>
           <DialogTitle>Créer un salon</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Dans {categoryName}
+            {categoryId ? `Dans ${categoryName}` : 'Sans catégorie'}
           </p>
         </DialogHeader>
 

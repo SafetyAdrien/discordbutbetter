@@ -228,10 +228,10 @@ export function useReorderChannels() {
       orderedIds 
     }: { 
       serverId: string; 
-      categoryId: string; 
+      categoryId: string | null; 
       orderedIds: string[] 
     }) => {
-      // Update positions
+      // Update positions and category
       const updates = orderedIds.map((id, index) => 
         supabase.from('channels').update({ position: index, category_id: categoryId }).eq('id', id)
       );
@@ -240,6 +240,7 @@ export function useReorderChannels() {
     },
     onSuccess: (_, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }

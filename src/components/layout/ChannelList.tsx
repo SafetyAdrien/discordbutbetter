@@ -55,7 +55,7 @@ import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
-import { useReorderCategories, useReorderChannels, ChannelType } from '@/hooks/useChannels';
+import { useChannels, useReorderCategories, useReorderChannels, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
 import {
@@ -108,6 +108,7 @@ interface ChannelListProps {
   activeChannelId: string | null;
   onChannelSelect: (channelId: string) => void;
   onOpenServerSettings?: () => void;
+  orphanChannels?: OrphanChannel[];
 }
 
 const channelIcons: Record<ChannelType, React.ElementType> = {
@@ -376,14 +377,15 @@ function SortableChannel({
   );
 }
 
-export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenServerSettings }: ChannelListProps) {
+export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenServerSettings, orphanChannels = [] }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
-  const [createChannelForCategory, setCreateChannelForCategory] = useState<{ id: string; name: string } | null>(null);
+  const [createChannelForCategory, setCreateChannelForCategory] = useState<{ id: string | null; name: string } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [showOrphanChannels, setShowOrphanChannels] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   
   const { profile, signOut, updateStatus } = useAuth();
@@ -505,7 +507,10 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
 
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
-  const allChannelIds = server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`));
+  const allChannelIds = [
+    ...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)),
+    ...orphanChannels.map(ch => `channel-${ch.id}`)
+  ];
 
   return (
     <div className="w-60 bg-card flex flex-col border-r border-border">
@@ -660,14 +665,68 @@ export function ChannelList({ server, activeChannelId, onChannelSelect, onOpenSe
                   )
                 ))}
               </SortableContext>
+
+              {/* Orphan Channels Section */}
+              {orphanChannels.length > 0 && (
+                <div className="mb-2">
+                  <div className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group">
+                    <button onClick={() => setShowOrphanChannels(!showOrphanChannels)} className="flex items-center justify-between gap-1 flex-1">
+                      <span className="tracking-wide">SALONS</span>
+                      <ChevronDown
+                        className={cn(
+                          'w-3 h-3 transition-transform',
+                          !showOrphanChannels && '-rotate-90'
+                        )}
+                      />
+                    </button>
+                    <Plus 
+                      className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCreateChannelForCategory({ id: null, name: 'Sans catégorie' });
+                      }}
+                    />
+                  </div>
+                  {showOrphanChannels && (
+                    <div className="mt-1 px-2 space-y-0.5">
+                      <SortableContext 
+                        items={orphanChannels.map(ch => `channel-${ch.id}`)} 
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {orphanChannels.map((channel) => (
+                          <SortableChannel
+                            key={channel.id}
+                            channel={{
+                              id: channel.id,
+                              name: channel.name,
+                              type: (channel.type || 'text') as ChannelType,
+                              description: channel.description || undefined,
+                            }}
+                            serverId={server.id}
+                            isActive={activeChannelId === channel.id}
+                            isVoiceConnected={voiceState.channelId === channel.id}
+                            speakingUsers={speakingUsers}
+                            onChannelClick={() => handleChannelClick({
+                              id: channel.id,
+                              name: channel.name,
+                              type: (channel.type || 'text') as ChannelType,
+                              description: channel.description || undefined,
+                            })}
+                            onCopyLink={() => handleCopyLink(channel.id)}
+                            onMarkAsRead={() => handleMarkAsRead(channel.id)}
+                            onOpenSettings={() => setSelectedChannelId(channel.id)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </div>
+                  )}
+                </div>
+              )}
             </DndContext>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
-          <ContextMenuItem onClick={() => {
-            const firstCat = server.categories[0];
-            if (firstCat) setCreateChannelForCategory({ id: firstCat.id, name: firstCat.name });
-          }}>
+          <ContextMenuItem onClick={() => setCreateChannelForCategory({ id: null, name: 'Sans catégorie' })}>
             <Plus className="w-4 h-4 mr-2" />
             Créer un salon
           </ContextMenuItem>

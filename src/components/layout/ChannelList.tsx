@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Crown, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Crown, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle } from 'lucide-react';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
@@ -26,7 +27,7 @@ import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
-import { useChannels, useReorderCategories, useReorderChannels, ChannelType, OrphanChannel } from '@/hooks/useChannels';
+import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
@@ -183,6 +184,7 @@ function SortableChannel({
   onMarkAsRead,
   onOpenSettings,
   onCreateInvite,
+  onDelete,
   showDropIndicator = false
 }: {
   channel: Channel;
@@ -195,8 +197,10 @@ function SortableChannel({
   onMarkAsRead: () => void;
   onOpenSettings: () => void;
   onCreateInvite: () => void;
+  onDelete: () => void;
   showDropIndicator?: boolean;
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
     attributes,
     listeners,
@@ -265,7 +269,10 @@ function SortableChannel({
               Notifications
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem className="text-destructive focus:text-destructive">
+            <ContextMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
               <Trash2 className="w-4 h-4 mr-2" />
               Supprimer le channel
             </ContextMenuItem>
@@ -292,6 +299,35 @@ function SortableChannel({
         })}
           </div>}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Supprimer #{channel.name} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
+              <br /><br />
+              Tous les messages, fichiers et webhooks de ce salon seront définitivement supprimés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                onDelete();
+                setShowDeleteConfirm(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>;
 }
 export function ChannelList({
@@ -332,6 +368,7 @@ export function ChannelList({
   const updateCategory = useUpdateCategory();
   const reorderCategories = useReorderCategories();
   const reorderChannels = useReorderChannels();
+  const deleteChannel = useDeleteChannel();
   const {
     data: serverEmojis = []
   } = useServerEmojis(server.id);
@@ -339,6 +376,24 @@ export function ChannelList({
     data: membersData
   } = useMembers(server.id);
   const ownerProfile = membersData?.find(m => m.id === server.ownerId);
+
+  const handleDeleteChannel = async (channelId: string, channelName: string) => {
+    try {
+      await deleteChannel.mutateAsync({ channelId, serverId: server.id });
+      toast({ title: `Salon #${channelName} supprimé` });
+      
+      // If deleted channel was active, clear selection
+      if (activeChannelId === channelId) {
+        // Find another channel to select
+        const firstChannel = server.categories[0]?.channels[0] || orphanChannels[0];
+        if (firstChannel) {
+          onChannelSelect(firstChannel.id);
+        }
+      }
+    } catch {
+      toast({ title: 'Erreur lors de la suppression', variant: 'destructive' });
+    }
+  };
 
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, {
@@ -628,7 +683,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} />)}
                   </SortableContext>
                 </div>}
 
@@ -645,7 +700,7 @@ export function ChannelList({
               })}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} />)}
+                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} />)}
                         </SortableContext>
                       </div>
                     </SortableCategory>)}

@@ -14,6 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_categories: {
+        Row: {
+          color: string
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          server_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          server_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          server_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_categories_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_comments: {
+        Row: {
+          announcement_id: string
+          author_id: string | null
+          content: string
+          created_at: string | null
+          edited_at: string | null
+          id: string
+        }
+        Insert: {
+          announcement_id: string
+          author_id?: string | null
+          content: string
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+        }
+        Update: {
+          announcement_id?: string
+          author_id?: string | null
+          content?: string
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_comments_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_reactions: {
+        Row: {
+          announcement_id: string
+          created_at: string | null
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          created_at?: string | null
+          emoji: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reactions_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          author_id: string | null
+          banner_url: string | null
+          category_id: string | null
+          channel_id: string
+          content: string
+          created_at: string | null
+          edited_at: string | null
+          featured: boolean | null
+          id: string
+          pinned: boolean | null
+          title: string
+          view_count: number | null
+        }
+        Insert: {
+          author_id?: string | null
+          banner_url?: string | null
+          category_id?: string | null
+          channel_id: string
+          content: string
+          created_at?: string | null
+          edited_at?: string | null
+          featured?: boolean | null
+          id?: string
+          pinned?: boolean | null
+          title: string
+          view_count?: number | null
+        }
+        Update: {
+          author_id?: string | null
+          banner_url?: string | null
+          category_id?: string | null
+          channel_id?: string
+          content?: string
+          created_at?: string | null
+          edited_at?: string | null
+          featured?: boolean | null
+          id?: string
+          pinned?: boolean | null
+          title?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "announcement_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null

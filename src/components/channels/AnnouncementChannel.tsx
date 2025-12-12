@@ -3,16 +3,27 @@ import { Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { AnnouncementStats } from './announcement/AnnouncementStats';
-import { AnnouncementFilters, DEFAULT_CATEGORIES, type AnnouncementCategory } from './announcement/AnnouncementFilters';
+import { AnnouncementFilters, DEFAULT_CATEGORIES } from './announcement/AnnouncementFilters';
 import { CategoryFilterModal } from './announcement/CategoryFilterModal';
 import { FeaturedAnnouncement } from './announcement/FeaturedAnnouncement';
 import { AnnouncementCard } from './announcement/AnnouncementCard';
+import { CreateAnnouncementModal } from './announcement/CreateAnnouncementModal';
+import { AnnouncementDetailModal } from './announcement/AnnouncementDetailModal';
+import {
+  useAnnouncements,
+  useAnnouncementCategories,
+  useCreateAnnouncementCategory,
+  useDeleteAnnouncementCategory,
+  type Announcement,
+  type AnnouncementCategory,
+} from '@/hooks/useAnnouncements';
 
 interface Channel {
   id: string;
   name: string;
   type: string;
   description?: string;
+  server_id?: string;
 }
 
 export interface AnnouncementChannelProps {
@@ -21,33 +32,31 @@ export interface AnnouncementChannelProps {
   showMembers?: boolean;
 }
 
-interface Announcement {
-  id: string;
-  title?: string;
-  content: string;
-  category?: AnnouncementCategory;
-  bannerUrl?: string;
-  thumbnailUrl?: string;
-  author: {
-    id: string;
-    displayName: string;
-    avatar?: string;
-  };
-  createdAt: Date;
-  pinned: boolean;
-  featured?: boolean;
-  reactions?: { emoji: string; count: number }[];
-}
-
 export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: AnnouncementChannelProps) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [customCategories, setCustomCategories] = useState<AnnouncementCategory[]>([]);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
-  // Mock announcements for demonstration
-  const announcements: Announcement[] = [];
+  const serverId = channel.server_id || '';
 
-  const allCategories = [...DEFAULT_CATEGORIES, ...customCategories];
+  // Fetch data from Supabase
+  const { data: announcements = [] } = useAnnouncements(channel.id);
+  const { data: dbCategories = [] } = useAnnouncementCategories(serverId);
+  const createCategory = useCreateAnnouncementCategory();
+  const deleteCategory = useDeleteAnnouncementCategory();
+
+  // Merge default categories with custom ones from database
+  const allCategories: AnnouncementCategory[] = useMemo(() => {
+    const defaultCats = DEFAULT_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      color: cat.color,
+      icon: cat.icon,
+      server_id: serverId,
+    }));
+    return [...defaultCats, ...dbCategories];
+  }, [dbCategories, serverId]);
 
   // Filter announcements
   const filteredAnnouncements = useMemo(() => {
@@ -55,7 +64,7 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
     return announcements.filter((a) => a.category?.id === activeFilter);
   }, [announcements, activeFilter]);
 
-  // Get featured announcement (first pinned or most recent)
+  // Get featured announcement (first pinned/featured or most recent)
   const featuredAnnouncement = useMemo(() => {
     const pinned = filteredAnnouncements.find((a) => a.pinned || a.featured);
     return pinned || filteredAnnouncements[0];
@@ -71,18 +80,24 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
   const thisWeekCount = useMemo(() => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return announcements.filter((a) => a.createdAt > weekAgo).length;
+    return announcements.filter((a) => new Date(a.created_at) > weekAgo).length;
   }, [announcements]);
 
-  const handleAddCategory = (category: Omit<AnnouncementCategory, 'id'>) => {
-    setCustomCategories((prev) => [
-      ...prev,
-      { ...category, id: `custom-${Date.now()}` },
-    ]);
+  const handleAddCategory = (category: Omit<AnnouncementCategory, 'id' | 'server_id'>) => {
+    createCategory.mutate({
+      serverId,
+      name: category.name,
+      color: category.color,
+      icon: category.icon,
+    });
   };
 
   const handleDeleteCategory = (id: string) => {
-    setCustomCategories((prev) => prev.filter((c) => c.id !== id));
+    deleteCategory.mutate({ id, serverId });
+  };
+
+  const handleAnnouncementClick = (announcement: Announcement) => {
+    setSelectedAnnouncement(announcement);
   };
 
   return (
@@ -100,7 +115,7 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
         />
 
         <div className="flex items-center gap-2 ml-auto">
-          <Button size="sm" className="gap-1.5">
+          <Button size="sm" className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
             <Plus className="w-4 h-4" />
             Nouvelle annonce
           </Button>
@@ -137,7 +152,7 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
             <p className="text-muted-foreground text-sm max-w-md mb-6">
               Les annonces importantes du serveur apparaîtront ici dans un format magazine moderne.
             </p>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
               <Plus className="w-4 h-4" />
               Créer la première annonce
             </Button>
@@ -147,8 +162,23 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
             {/* Featured Announcement */}
             {featuredAnnouncement && (
               <FeaturedAnnouncement
-                announcement={featuredAnnouncement}
-                onClick={() => console.log('View announcement', featuredAnnouncement.id)}
+                announcement={{
+                  id: featuredAnnouncement.id,
+                  title: featuredAnnouncement.title,
+                  content: featuredAnnouncement.content,
+                  category: featuredAnnouncement.category,
+                  bannerUrl: featuredAnnouncement.banner_url,
+                  author: {
+                    id: featuredAnnouncement.author.id,
+                    displayName: featuredAnnouncement.author.display_name,
+                    avatar: featuredAnnouncement.author.avatar_url,
+                  },
+                  createdAt: new Date(featuredAnnouncement.created_at),
+                  pinned: featuredAnnouncement.pinned,
+                  featured: featuredAnnouncement.featured,
+                  reactions: [],
+                }}
+                onClick={() => handleAnnouncementClick(featuredAnnouncement)}
               />
             )}
 
@@ -158,8 +188,21 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
                 {gridAnnouncements.map((announcement) => (
                   <AnnouncementCard
                     key={announcement.id}
-                    announcement={announcement}
-                    onClick={() => console.log('View announcement', announcement.id)}
+                    announcement={{
+                      id: announcement.id,
+                      title: announcement.title,
+                      content: announcement.content,
+                      category: announcement.category,
+                      thumbnailUrl: announcement.banner_url,
+                      author: {
+                        id: announcement.author.id,
+                        displayName: announcement.author.display_name,
+                        avatar: announcement.author.avatar_url,
+                      },
+                      createdAt: new Date(announcement.created_at),
+                      reactions: [],
+                    }}
+                    onClick={() => handleAnnouncementClick(announcement)}
                   />
                 ))}
               </div>
@@ -168,11 +211,29 @@ export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: A
         )}
       </div>
 
+      {/* Create Announcement Modal */}
+      <CreateAnnouncementModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        channelId={channel.id}
+        categories={allCategories}
+      />
+
+      {/* Announcement Detail Modal */}
+      {selectedAnnouncement && (
+        <AnnouncementDetailModal
+          open={!!selectedAnnouncement}
+          onOpenChange={(open) => !open && setSelectedAnnouncement(null)}
+          announcement={selectedAnnouncement}
+          canEdit={true}
+        />
+      )}
+
       {/* Category Modal */}
       <CategoryFilterModal
         open={categoryModalOpen}
         onOpenChange={setCategoryModalOpen}
-        categories={customCategories}
+        categories={dbCategories}
         onAddCategory={handleAddCategory}
         onDeleteCategory={handleDeleteCategory}
       />

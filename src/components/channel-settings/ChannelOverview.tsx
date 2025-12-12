@@ -4,8 +4,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Hash, Volume2, MessageCircleMore, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { StreamlineHash } from '@/components/icons/StreamlineHash';
+import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
+import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
+import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
+import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
+import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSettings';
 import { toast } from 'sonner';
 
@@ -14,10 +20,13 @@ interface ChannelOverviewProps {
 }
 
 const channelTypeLabels = {
-  text: { label: 'Textuel', icon: Hash },
-  voice: { label: 'Vocal', icon: Volume2 },
-  forum: { label: 'Forum', icon: MessageCircleMore },
+  text: { label: 'Textuel', icon: StreamlineHash },
+  voice: { label: 'Vocal', icon: StreamlineVoice },
+  forum: { label: 'Forum', icon: StreamlineForum },
   announcement: { label: 'Annonces', icon: StreamlineMegaphone },
+  media: { label: 'Médias', icon: StreamlineMedia },
+  calendar: { label: 'Calendrier', icon: StreamlineCalendar },
+  tasks: { label: 'Tâches', icon: StreamlineTasks },
 };
 
 export function ChannelOverview({ channel }: ChannelOverviewProps) {

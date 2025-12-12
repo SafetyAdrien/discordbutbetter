@@ -479,19 +479,34 @@ export function ChannelList({
         }))].find(ch => ch.id === activeChannelId);
         
         if (activeChannel) {
-          const filteredChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
-          const overIdx = filteredChannels.findIndex(ch => ch.id === overChannelId);
-          const newOrder = [
-            ...filteredChannels.slice(0, overIdx + 1),
-            activeChannel,
-            ...filteredChannels.slice(overIdx + 1)
-          ];
-          
-          reorderChannels.mutate({
-            serverId: server.id,
-            categoryId: targetCategoryId,
-            orderedIds: newOrder.map(ch => ch.id)
-          });
+          // Same category: perform true swap using arrayMove
+          if (sourceCategoryId === targetCategoryId || (sourceCategoryId === null && targetCategoryId === null)) {
+            const oldIndex = targetChannels.findIndex(ch => ch.id === activeChannelId);
+            const newIndex = targetChannels.findIndex(ch => ch.id === overChannelId);
+            if (oldIndex !== -1 && newIndex !== -1) {
+              const newOrder = arrayMove(targetChannels, oldIndex, newIndex);
+              reorderChannels.mutate({
+                serverId: server.id,
+                categoryId: targetCategoryId,
+                orderedIds: newOrder.map(ch => ch.id)
+              });
+            }
+          } else {
+            // Different category: move channel to new category at target position
+            const filteredChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
+            const overIdx = filteredChannels.findIndex(ch => ch.id === overChannelId);
+            const newOrder = [
+              ...filteredChannels.slice(0, overIdx + 1),
+              activeChannel,
+              ...filteredChannels.slice(overIdx + 1)
+            ];
+            
+            reorderChannels.mutate({
+              serverId: server.id,
+              categoryId: targetCategoryId,
+              orderedIds: newOrder.map(ch => ch.id)
+            });
+          }
         }
       }
       

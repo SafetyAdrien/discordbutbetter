@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
@@ -9,6 +9,7 @@ import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
+import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
 import { MediaChannel } from '@/components/channels/MediaChannel';
 import { ForumChannel } from '@/components/channels/ForumChannel';
 import { TasksChannel } from '@/components/channels/TasksChannel';
@@ -35,6 +36,7 @@ const Index = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
 
   // Data hooks
@@ -55,14 +57,14 @@ const Index = () => {
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onEscape: () => {
-      if (showShortcutsHelp) setShowShortcutsHelp(false);
+      if (showGlobalSearch) setShowGlobalSearch(false);
+      else if (showShortcutsHelp) setShowShortcutsHelp(false);
       else if (showDiscover) setShowDiscover(false);
       else if (showCreate) setShowCreate(false);
       else if (showServerSettings) setShowServerSettings(false);
     },
     onSearch: () => {
-      // TODO: Open search modal
-      console.log('Open search');
+      setShowGlobalSearch(true);
     },
     onShortcutsHelp: () => setShowShortcutsHelp(true),
     onToggleMute: () => {
@@ -71,6 +73,7 @@ const Index = () => {
       }
     },
   });
+
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -117,6 +120,29 @@ const Index = () => {
     .flatMap((c) => c.channels)
     .find((ch) => ch.id === activeChannelId) 
     || channelsData?.orphanChannels?.find((ch) => ch.id === activeChannelId);
+
+  // Prepare channels and members for search modal
+  const searchChannels = useMemo(() => {
+    if (!activeServer) return [];
+    const allChannels = [
+      ...activeServer.categories.flatMap(cat => cat.channels),
+      ...(channelsData?.orphanChannels || [])
+    ];
+    return allChannels.map(ch => ({
+      id: ch.id,
+      name: ch.name,
+      type: ch.type || 'text'
+    }));
+  }, [activeServer, channelsData]);
+
+  const searchMembers = useMemo(() => {
+    return members.map(m => ({
+      id: m.user.id,
+      username: m.user.username,
+      displayName: m.nickname || m.user.display_name,
+      avatar: m.user.avatar_url || undefined
+    }));
+  }, [members]);
 
   const handleSendMessage = (content: string) => {
     if (!activeChannelId) return;
@@ -387,6 +413,21 @@ const Index = () => {
 
       {showShortcutsHelp && (
         <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />
+      )}
+
+      {showGlobalSearch && (
+        <GlobalSearchModal
+          open={showGlobalSearch}
+          onClose={() => setShowGlobalSearch(false)}
+          serverId={activeServerId}
+          channels={searchChannels}
+          members={searchMembers}
+          onNavigateToMessage={(channelId, messageId) => {
+            setActiveChannelId(channelId);
+            setShowGlobalSearch(false);
+            // TODO: Scroll to message
+          }}
+        />
       )}
     </div>
   );

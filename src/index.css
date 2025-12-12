@@ -326,7 +326,7 @@
 
   /* Drag and drop animations */
   .dragging-item {
-    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4), 0 0 0 1px hsl(var(--primary) / 0.3);
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
     transform: scale(1.02);
     z-index: 1000;
   }
@@ -379,7 +379,13 @@
   }
 
   .drag-overlay-item {
-    box-shadow: 0 12px 28px hsl(0 0% 0% / 0.5), 0 0 0 1px #5865f2;
+    box-shadow: 0 12px 28px hsl(0 0% 0% / 0.5);
     backdrop-filter: blur(4px);
+  }
+
+  /* Remove focus outline on drag-and-drop elements */
+  [data-dnd-kit-draggable]:focus,
+  [data-dnd-kit-draggable]:focus-visible {
+    outline: none;
   }
 }

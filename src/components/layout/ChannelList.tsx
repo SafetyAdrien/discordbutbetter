@@ -760,7 +760,7 @@ export function ChannelList({
 
               {/* Drag Overlay for visual feedback */}
               <DragOverlay>
-                {activeId && <div className="bg-card border border-primary/50 rounded-md px-3 py-2 drag-overlay-item">
+                {activeId && <div className="bg-card border border-border rounded-md px-3 py-2 drag-overlay-item">
                     {activeId.startsWith('category-') && <span className="text-sm font-semibold text-foreground">
                         {server.categories.find(c => `category-${c.id}` === activeId)?.name}
                       </span>}

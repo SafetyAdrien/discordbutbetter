@@ -1,4 +1,4 @@
-import { useState, forwardRef, useCallback, useEffect } from 'react';
+import { useState, forwardRef, useCallback, useEffect, useMemo } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
@@ -30,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import {
   ContextMenu,
@@ -47,6 +48,8 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MarkdownText } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
+import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePinnedMessages';
+import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
 
 // Reply Reference Component
 function ReplyReference({ 
@@ -68,6 +71,54 @@ function ReplyReference({
       <button onClick={onClear} className="p-1 hover:bg-muted rounded transition-colors">
         <X className="w-4 h-4 text-muted-foreground" />
       </button>
+    </div>
+  );
+}
+
+// Reactions Display Component
+function MessageReactions({ 
+  reactions, 
+  onToggle, 
+  userId 
+}: { 
+  reactions: Reaction[]; 
+  onToggle: (emoji: string) => void;
+  userId?: string;
+}) {
+  // Group reactions by emoji
+  const grouped = useMemo(() => {
+    const groups: Record<string, { count: number; hasUserReacted: boolean }> = {};
+    reactions.forEach(r => {
+      if (!groups[r.emoji]) {
+        groups[r.emoji] = { count: 0, hasUserReacted: false };
+      }
+      groups[r.emoji].count++;
+      if (r.user_id === userId) {
+        groups[r.emoji].hasUserReacted = true;
+      }
+    });
+    return groups;
+  }, [reactions, userId]);
+
+  if (Object.keys(grouped).length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {Object.entries(grouped).map(([emoji, { count, hasUserReacted }]) => (
+        <button
+          key={emoji}
+          onClick={() => onToggle(emoji)}
+          className={cn(
+            "flex items-center gap-1 px-2 py-0.5 rounded-full text-sm transition-colors",
+            hasUserReacted 
+              ? "bg-primary/20 border border-primary/50" 
+              : "bg-surface-hover hover:bg-muted"
+          )}
+        >
+          <span>{emoji}</span>
+          <span className="text-xs text-muted-foreground">{count}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -191,6 +242,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
     const editMessage = useEditMessage();
     const deleteMessage = useDeleteMessage();
+    
+    // Pinned messages
+    const { data: pinnedMessages } = usePinnedMessages(channel.id);
+    const pinMessage = usePinMessage();
+    const unpinMessage = useUnpinMessage();
+    
+    // Reactions
+    const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
+    const { data: reactionsData } = useMessageReactions(messageIds);
+    const addReaction = useAddReaction();
+    const removeReaction = useRemoveReaction();
+    
+    const pinnedMessageIds = useMemo(() => 
+      new Set(pinnedMessages?.map(pm => pm.message_id) || []), 
+      [pinnedMessages]
+    );
 
     // Detect Shift key press
     useEffect(() => {
@@ -247,8 +314,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     };
 
     const handleAddReaction = (messageId: string, emoji: string) => {
-      // TODO: Implement reaction mutation
-      console.log('Add reaction', messageId, emoji);
+      const currentReactions = reactionsData?.[messageId] || [];
+      const hasReacted = currentReactions.some(r => r.user_id === user?.id && r.emoji === emoji);
+      
+      if (hasReacted) {
+        removeReaction.mutate({ messageId, emoji });
+      } else {
+        addReaction.mutate({ messageId, emoji });
+      }
+    };
+    
+    const handlePinMessage = (messageId: string) => {
+      if (pinnedMessageIds.has(messageId)) {
+        unpinMessage.mutate({ messageId, channelId: channel.id });
+      } else {
+        pinMessage.mutate({ messageId, channelId: channel.id });
+      }
     };
 
     const handleStartEdit = (message: Message) => {
@@ -339,15 +420,56 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
           {/* Pinned Messages Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="iconSm">
+              <Button variant="ghost" size="iconSm" className="relative">
                 <Pin className="w-5 h-5" />
+                {pinnedMessages && pinnedMessages.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {pinnedMessages.length}
+                  </span>
+                )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-80 p-3">
-              <h4 className="font-semibold text-foreground mb-3">Messages Épinglés</h4>
-              <div className="text-sm text-muted-foreground/70 text-center py-6">
-                Aucun message épinglé dans ce salon.
+            <PopoverContent side="bottom" align="end" className="w-96 p-0">
+              <div className="p-3 border-b border-border">
+                <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
               </div>
+              <ScrollArea className="max-h-80">
+                {pinnedMessages && pinnedMessages.length > 0 ? (
+                  <div className="p-2 space-y-2">
+                    {pinnedMessages.map((pm) => (
+                      <div key={pm.id} className="p-3 bg-muted/50 rounded-lg group relative">
+                        <div className="flex items-start gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={pm.message?.author?.avatar_url || undefined} />
+                            <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                              {pm.message?.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{pm.message?.author?.display_name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {pm.message?.created_at && formatDate(new Date(pm.message.created_at))}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{pm.message?.content}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => unpinMessage.mutate({ messageId: pm.message_id, channelId: channel.id })}
+                          className="absolute top-2 right-2 p-1 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3.5 h-3.5 text-destructive" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground/70 text-center py-8">
+                    Aucun message épinglé dans ce salon.
+                  </div>
+                )}
+              </ScrollArea>
             </PopoverContent>
           </Popover>
 
@@ -597,6 +719,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 <ContextMenuItem onClick={() => handleReply(message)}>
                   <Reply className="w-4 h-4 mr-2" />
                   Répondre
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handlePinMessage(message.id)}>
+                  <Pin className="w-4 h-4 mr-2" />
+                  {pinnedMessageIds.has(message.id) ? 'Désépingler' : 'Épingler'}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>

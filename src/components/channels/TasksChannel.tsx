@@ -57,7 +57,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
     <div className="flex-1 flex flex-col bg-background min-w-0">
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <ListTodo className="w-5 h-5 text-muted-foreground" />
+          <ListTodo className="w-4 h-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 

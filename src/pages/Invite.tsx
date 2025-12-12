@@ -1,113 +1,94 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJoinByInvite } from '@/hooks/useInvites';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Users, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface InviteDetails {
   id: string;
-  code: string;
-  server: {
-    id: string;
-    name: string;
-    icon_url: string | null;
-    description: string | null;
-    member_count: number;
-  };
+  server_id: string;
+  server_name: string;
+  server_icon_url: string | null;
+  server_description: string | null;
+  member_count: number;
+  expires_at: string | null;
+  max_uses: number | null;
+  uses: number;
   is_expired: boolean;
-  is_max_uses: boolean;
+  is_maxed: boolean;
 }
 
-const Invite = () => {
+export default function Invite() {
   const { code } = useParams<{ code: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
   const joinByInvite = useJoinByInvite();
   
   const [invite, setInvite] = useState<InviteDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [alreadyMember, setAlreadyMember] = useState(false);
+  const [isAlreadyMember, setIsAlreadyMember] = useState(false);
 
   useEffect(() => {
-    const fetchInvite = async () => {
+    async function fetchInvite() {
       if (!code) {
-        setError('Code d\'invitation invalide');
+        setError('Code d\'invitation manquant');
         setLoading(false);
         return;
       }
 
       try {
-        // Fetch invite with server details
-        const { data: inviteData, error: inviteError } = await supabase
-          .from('invites')
-          .select(`
-            id,
-            code,
-            expires_at,
-            max_uses,
-            uses,
-            server:server_id (
-              id,
-              name,
-              icon_url,
-              description
-            )
-          `)
-          .eq('code', code)
-          .single();
+        // Use the secure RPC function to get invite details
+        const { data, error: fetchError } = await supabase
+          .rpc('get_invite_details', { invite_code: code });
 
-        if (inviteError || !inviteData) {
-          setError('Cette invitation n\'existe pas ou a expiré');
+        if (fetchError) throw fetchError;
+
+        if (!data || data.length === 0) {
+          setError('Invitation introuvable');
           setLoading(false);
           return;
         }
 
-        // Check expiration
-        const isExpired = inviteData.expires_at && new Date(inviteData.expires_at) < new Date();
-        const isMaxUses = inviteData.max_uses && (inviteData.uses ?? 0) >= inviteData.max_uses;
+        const inviteData = data[0] as InviteDetails;
 
-        // Get member count
-        const { count } = await supabase
-          .from('server_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('server_id', (inviteData.server as any).id);
-
-        // Check if already a member
-        if (user) {
-          const { data: membership } = await supabase
-            .from('server_members')
-            .select('id')
-            .eq('server_id', (inviteData.server as any).id)
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          setAlreadyMember(!!membership);
+        // Check if invite is expired or maxed
+        if (inviteData.is_expired) {
+          setError('Cette invitation a expiré');
+          setLoading(false);
+          return;
         }
 
-        setInvite({
-          id: inviteData.id,
-          code: inviteData.code,
-          server: {
-            id: (inviteData.server as any).id,
-            name: (inviteData.server as any).name,
-            icon_url: (inviteData.server as any).icon_url,
-            description: (inviteData.server as any).description,
-            member_count: count || 0,
-          },
-          is_expired: !!isExpired,
-          is_max_uses: !!isMaxUses,
-        });
+        if (inviteData.is_maxed) {
+          setError('Cette invitation a atteint le nombre maximum d\'utilisations');
+          setLoading(false);
+          return;
+        }
+
+        setInvite(inviteData);
+
+        // Check if user is already a member
+        if (user) {
+          const { data: memberData } = await supabase
+            .from('server_members')
+            .select('id')
+            .eq('server_id', inviteData.server_id)
+            .eq('user_id', user.id)
+            .single();
+
+          setIsAlreadyMember(!!memberData);
+        }
       } catch (err) {
+        console.error('Error fetching invite:', err);
         setError('Erreur lors du chargement de l\'invitation');
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchInvite();
   }, [code, user]);
@@ -116,7 +97,7 @@ const Invite = () => {
     if (!code) return;
     
     joinByInvite.mutate(code, {
-      onSuccess: (serverId) => {
+      onSuccess: () => {
         navigate('/');
       },
     });
@@ -127,7 +108,7 @@ const Invite = () => {
   };
 
   // Show loading
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -176,7 +157,7 @@ const Invite = () => {
   }
 
   // Show expired/max uses
-  if (invite.is_expired || invite.is_max_uses) {
+  if (invite.is_expired || invite.is_maxed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
@@ -206,29 +187,29 @@ const Invite = () => {
         <CardContent className="pt-0 -mt-10 text-center space-y-4">
           {/* Server Icon */}
           <Avatar className="w-20 h-20 mx-auto border-4 border-card">
-            <AvatarImage src={invite.server.icon_url || undefined} />
+            <AvatarImage src={invite.server_icon_url || undefined} />
             <AvatarFallback className="bg-primary/20 text-primary text-2xl font-bold">
-              {invite.server.name.charAt(0).toUpperCase()}
+              {invite.server_name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
 
           {/* Server Info */}
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">Vous avez été invité à rejoindre</p>
-            <h2 className="text-2xl font-bold">{invite.server.name}</h2>
-            {invite.server.description && (
-              <p className="text-muted-foreground text-sm">{invite.server.description}</p>
+            <h2 className="text-2xl font-bold">{invite.server_name}</h2>
+            {invite.server_description && (
+              <p className="text-muted-foreground text-sm">{invite.server_description}</p>
             )}
           </div>
 
           {/* Member Count */}
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Users className="w-4 h-4" />
-            <span className="text-sm">{invite.server.member_count} membres</span>
+            <span className="text-sm">{invite.member_count} membres</span>
           </div>
 
           {/* Action Button */}
-          {alreadyMember ? (
+          {isAlreadyMember ? (
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2 text-[hsl(var(--online))]">
                 <CheckCircle2 className="w-4 h-4" />
@@ -258,6 +239,4 @@ const Invite = () => {
       </Card>
     </div>
   );
-};
-
-export default Invite;
+}

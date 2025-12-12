@@ -233,6 +233,10 @@ const Index = () => {
     id: activeServer.id,
     name: activeServer.name,
     ownerId: activeServer.owner_id || '',
+    iconUrl: activeServer.icon_url || undefined,
+    bannerUrl: activeServer.banner_url || undefined,
+    description: activeServer.description || undefined,
+    createdAt: activeServer.created_at || undefined,
     categories: activeServer.categories.map(cat => ({
       id: cat.id,
       name: cat.name,

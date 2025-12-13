@@ -14,7 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['gg sans', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Orbitron', 'system-ui', 'sans-serif'],
         ginto: ['gg sans', 'Noto Sans', 'Helvetica', 'sans-serif'],
       },
       colors: {
@@ -51,34 +52,15 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Discord 2021 background levels
-        discord: {
-          tertiary: "hsl(var(--background-tertiary))",       // #202225
-          secondary: "hsl(var(--background-secondary))",     // #2f3136
-          primary: "hsl(var(--background-primary))",         // #36393f
-          hover: "hsl(var(--background-modifier-hover))",    // #32353b
-          selected: "hsl(var(--background-modifier-selected))", // #34373c
-          active: "hsl(var(--background-modifier-active))",  // #393c43
-          channels: "hsl(var(--channels-default))",          // #40444b
+        // Custom gaming colors
+        glow: {
+          primary: "hsl(var(--glow-primary))",
+          secondary: "hsl(var(--glow-secondary))",
         },
-        // Text colors
-        text: {
-          normal: "hsl(var(--text-normal))",
-          muted: "hsl(var(--text-muted))",
-          link: "hsl(var(--text-link))",
-        },
-        interactive: {
-          normal: "hsl(var(--interactive-normal))",
-          hover: "hsl(var(--interactive-hover))",
-          active: "hsl(var(--interactive-active))",
-          muted: "hsl(var(--interactive-muted))",
-        },
-        // Surface variants
         surface: {
           elevated: "hsl(var(--surface-elevated))",
           hover: "hsl(var(--surface-hover))",
         },
-        // Status colors
         status: {
           online: "hsl(var(--online))",
           idle: "hsl(var(--idle))",
@@ -141,10 +123,9 @@ export default {
         "badge-pop": "badge-pop 0.3s ease-out forwards",
         "badge-shake": "badge-shake 0.5s ease-in-out",
       },
-      boxShadow: {
-        'elevation-low': '0 1px 0 rgba(4, 4, 5, 0.2), 0 1.5px 0 rgba(6, 6, 7, 0.05), 0 2px 0 rgba(4, 4, 5, 0.05)',
-        'elevation-medium': '0 4px 4px rgba(0, 0, 0, 0.16)',
-        'elevation-high': '0 8px 16px rgba(0, 0, 0, 0.24)',
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-gaming": "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))",
       },
     },
   },

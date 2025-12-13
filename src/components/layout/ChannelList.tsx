@@ -149,7 +149,7 @@ function SortableCategory({
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
               <span className="tracking-wide font-ginto text-sm text-[#9b9ca3] font-medium my-0 px-0 py-0 mx-0">{category.name}</span>
             </button>
-            <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
+            <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
             e.stopPropagation();
             onCreateChannel();
           }} />

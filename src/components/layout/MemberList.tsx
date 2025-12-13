@@ -272,7 +272,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
           <ContextMenuTrigger asChild>
             <button
               onClick={() => setSelectedMember({ ...member, memberId })}
-              className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
+              className="member-item group"
             >
               <div className="relative flex-shrink-0">
                 <Avatar className={cn('w-8 h-8', member.status === 'offline' && 'opacity-50 grayscale')}>
@@ -352,7 +352,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
 
     return (
       <>
-        <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
+        <div ref={ref} className="w-60 bg-discord-channelBar flex flex-col">
           {/* Search input */}
           <div className="px-3 pt-3">
             <div className="flex gap-1.5">
@@ -441,13 +441,13 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
               />
             )}
           </div>
-          <Separator className="mt-3" />
+          <Separator className="mt-3 bg-discord-separator" />
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
             {/* Online Members */}
             {onlineMembers.length > 0 && (
               <div className="mb-4">
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
-                  En Ligne — {onlineMembers.length}
+                <h3 className="role-header">
+                  EN LIGNE — {onlineMembers.length}
                 </h3>
                 <div className="space-y-0.5">
                   {onlineMembers.map(renderMember)}
@@ -458,7 +458,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
             {/* Offline Members */}
             {offlineMembers.length > 0 && (
               <div>
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
+                <h3 className="role-header">
                   Hors Ligne — {offlineMembers.length}
                 </h3>
                 <div className="space-y-0.5">

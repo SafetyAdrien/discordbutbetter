@@ -38,10 +38,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   return (
-    <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
+    <div className="h-[52px] px-2 flex items-center gap-2 bg-discord-userBar">
       <Popover>
         <PopoverTrigger asChild>
-          <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
+          <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-accent rounded p-1 transition-colors">
             <div className="relative">
               <Avatar className={cn(
                 "w-8 h-8 transition-all",
@@ -166,7 +166,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
       
       <button 
         onClick={onOpenSettings} 
-        className="p-1.5 hover:bg-muted rounded-md transition-colors"
+        className="p-1.5 hover:bg-accent rounded transition-colors"
       >
         <Settings className="w-4 h-4 text-muted-foreground" />
       </button>

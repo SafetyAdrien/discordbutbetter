@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Orbitron', 'system-ui', 'sans-serif'],
+        sans: ['gg sans', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['gg sans', 'Inter', 'system-ui', 'sans-serif'],
         ginto: ['gg sans', 'Noto Sans', 'Helvetica', 'sans-serif'],
       },
       colors: {
@@ -52,14 +52,29 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom gaming colors
-        glow: {
-          primary: "hsl(var(--glow-primary))",
-          secondary: "hsl(var(--glow-secondary))",
+        // Discord OG specific colors
+        discord: {
+          serverBar: "hsl(var(--discord-server-bar))",
+          channelBar: "hsl(var(--discord-channel-bar))",
+          chat: "hsl(var(--discord-chat))",
+          userBar: "hsl(var(--discord-user-bar))",
+          separator: "hsl(var(--discord-separator))",
         },
-        surface: {
-          elevated: "hsl(var(--surface-elevated))",
-          hover: "hsl(var(--surface-hover))",
+        channel: {
+          normal: "hsl(var(--channel-normal))",
+          hover: "hsl(var(--channel-hover))",
+          hoverText: "hsl(var(--channel-hover-text))",
+          active: "hsl(var(--channel-active))",
+          activeText: "hsl(var(--channel-active-text))",
+        },
+        message: {
+          hover: "hsl(var(--message-hover))",
+        },
+        text: {
+          normal: "hsl(var(--text-normal))",
+          muted: "hsl(var(--text-muted))",
+          faint: "hsl(var(--text-faint))",
+          link: "hsl(var(--text-link))",
         },
         status: {
           online: "hsl(var(--online))",

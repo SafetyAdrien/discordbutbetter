@@ -42,9 +42,9 @@ export function VoiceVideoTile({
   return (
     <div
       className={cn(
-        'relative rounded-xl overflow-hidden bg-[#1e1f22]',
+        'relative rounded-xl overflow-hidden bg-[#1e1f22] transition-all duration-150',
         type === 'screen' && 'col-span-2 row-span-2',
-        isSpeaking && 'ring-2 ring-[hsl(var(--voice-active))] voice-speaking-glow',
+        isSpeaking && 'ring-4 ring-[hsl(var(--online))] voice-speaking-ring',
         className
       )}
     >

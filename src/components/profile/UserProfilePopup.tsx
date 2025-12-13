@@ -13,6 +13,7 @@ interface Role {
   id: string;
   name: string;
   color: string | null;
+  icon_url?: string | null;
   position: number | null;
 }
 
@@ -174,10 +175,18 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
                           color: role.color || 'hsl(var(--foreground))',
                         }}
                       >
-                        <div
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
-                        />
+                        {role.icon_url ? (
+                          role.icon_url.startsWith('http') ? (
+                            <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />
+                          ) : (
+                            <span className="text-xs">{role.icon_url}</span>
+                          )
+                        ) : (
+                          <div
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
+                          />
+                        )}
                         {role.name}
                       </div>
                     ))}

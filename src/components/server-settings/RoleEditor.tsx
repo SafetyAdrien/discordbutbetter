@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useUpdateRole, RoleWithPermissions, ALL_PERMISSIONS, ServerPermission } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ImagePlus, X, Shield } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface RoleEditorProps {
   role: RoleWithPermissions;
@@ -14,9 +16,13 @@ interface RoleEditorProps {
 
 export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const updateRole = useUpdateRole();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(role.name);
   const [color, setColor] = useState(role.color || '#99AAB5');
+  const [iconUrl, setIconUrl] = useState(role.icon_url || '');
+  const [emojiInput, setEmojiInput] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [permissions, setPermissions] = useState<Set<ServerPermission>>(
     new Set(role.permissions)
   );
@@ -25,6 +31,8 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   useEffect(() => {
     setName(role.name);
     setColor(role.color || '#99AAB5');
+    setIconUrl(role.icon_url || '');
+    setEmojiInput('');
     setPermissions(new Set(role.permissions));
   }, [role.id]);
 
@@ -38,12 +46,68 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
     setPermissions(newPerms);
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+
+    if (file.size > 256 * 1024) {
+      toast.error('L\'image doit faire moins de 256 Ko');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${serverId}/${role.id}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('role-icons')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('role-icons')
+        .getPublicUrl(fileName);
+
+      setIconUrl(publicUrl + '?t=' + Date.now());
+      setEmojiInput('');
+      toast.success('Icône uploadée !');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Erreur lors de l\'upload');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleEmojiChange = (value: string) => {
+    // Only take the first character/emoji
+    const emoji = [...value][0] || '';
+    if (emoji) {
+      setIconUrl(emoji);
+      setEmojiInput(emoji);
+    }
+  };
+
+  const handleRemoveIcon = () => {
+    setIconUrl('');
+    setEmojiInput('');
+  };
+
   const handleSave = () => {
     updateRole.mutate({
       roleId: role.id,
       serverId,
       name,
       color,
+      iconUrl: iconUrl || null,
       permissions: Array.from(permissions),
     });
   };
@@ -51,10 +115,14 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const hasChanges =
     name !== role.name ||
     color !== (role.color || '#99AAB5') ||
+    iconUrl !== (role.icon_url || '') ||
     JSON.stringify([...permissions].sort()) !==
       JSON.stringify([...role.permissions].sort());
 
   const isAdmin = permissions.has('administrator');
+
+  // Check if iconUrl is an emoji (single character or emoji) vs URL
+  const isEmojiIcon = iconUrl && !iconUrl.startsWith('http');
 
   return (
     <div className="space-y-6">
@@ -88,6 +156,71 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
             />
           </div>
         </div>
+      </div>
+
+      {/* Role Icon */}
+      <div className="space-y-2">
+        <Label>Icône du rôle</Label>
+        <div className="flex items-center gap-3">
+          {/* Preview */}
+          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border">
+            {iconUrl ? (
+              isEmojiIcon ? (
+                <span className="text-xl">{iconUrl}</span>
+              ) : (
+                <img src={iconUrl} alt="Role icon" className="w-6 h-6 object-contain" />
+              )
+            ) : (
+              <Shield className="w-5 h-5 text-muted-foreground" />
+            )}
+          </div>
+
+          {/* Upload button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || role.is_default}
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <ImagePlus className="w-4 h-4 mr-2" />
+            )}
+            Uploader
+          </Button>
+
+          {/* Emoji input */}
+          <Input
+            placeholder="ou emoji 🎮"
+            value={emojiInput}
+            onChange={(e) => handleEmojiChange(e.target.value)}
+            className="w-28"
+            disabled={role.is_default}
+          />
+
+          {/* Remove button */}
+          {iconUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveIcon}
+              disabled={role.is_default}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Uploadez une image (max 256 Ko) ou entrez un emoji
+        </p>
       </div>
 
       {/* Permissions */}

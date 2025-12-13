@@ -59,7 +59,7 @@ export function useWebRTC(): UseWebRTCReturn {
         }
       },
       (stream) => {
-        console.log('[useWebRTC] Received stream from:', peerId);
+        console.log('[useWebRTC] Received audio stream from:', peerId);
         audioManager.addRemoteStream(peerId, stream);
         setPeers(prev => {
           const newPeers = new Map(prev);
@@ -71,6 +71,10 @@ export function useWebRTC(): UseWebRTCReturn {
           }
           return newPeers;
         });
+      },
+      (stream, type) => {
+        console.log('[useWebRTC] Received video stream from:', peerId, 'type:', type);
+        // Video stream handling will be added when VoiceContext is updated
       },
       () => {
         console.log('[useWebRTC] Peer disconnected:', peerId);

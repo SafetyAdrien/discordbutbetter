@@ -145,13 +145,42 @@ export function useCreateServer() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      toast.success('Serveur créé avec succès !');
+    onMutate: async ({ name, icon_url, description, is_public }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['servers', user.id] });
+      const previousServers = queryClient.getQueryData(['servers', user.id]);
+      
+      const tempServer: ServerWithDetails = {
+        id: `temp-${Date.now()}`,
+        name,
+        icon_url: icon_url || null,
+        banner_url: null,
+        description: description || null,
+        is_public: is_public ?? false,
+        owner_id: user.id,
+        created_at: new Date().toISOString(),
+        categories: [],
+      };
+      
+      queryClient.setQueryData(['servers', user.id], (old: ServerWithDetails[] | undefined) =>
+        old ? [...old, tempServer] : [tempServer]
+      );
+      
+      return { previousServers };
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers', user?.id], context.previousServers);
+      }
       toast.error('Erreur lors de la création du serveur');
       console.error('Create server error:', error);
+    },
+    onSuccess: () => {
+      toast.success('Serveur créé avec succès !');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }
@@ -176,18 +205,31 @@ export function useJoinServer() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['public-servers'] });
-      toast.success('Vous avez rejoint le serveur !');
+    onMutate: async () => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['servers', user.id] });
+      const previousServers = queryClient.getQueryData(['servers', user.id]);
+      
+      return { previousServers };
     },
-    onError: (error: any) => {
+    onError: (error: any, _, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers', user?.id], context.previousServers);
+      }
       if (error.message?.includes('duplicate')) {
         toast.error('Vous êtes déjà membre de ce serveur');
       } else {
         toast.error('Erreur lors de la connexion au serveur');
       }
       console.error('Join server error:', error);
+    },
+    onSuccess: () => {
+      toast.success('Vous avez rejoint le serveur !');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
+      queryClient.invalidateQueries({ queryKey: ['public-servers'] });
     },
   });
 }

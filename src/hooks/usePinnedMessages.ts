@@ -53,22 +53,50 @@ export function usePinMessage() {
     mutationFn: async ({ messageId, channelId }: { messageId: string; channelId: string }) => {
       if (!user) throw new Error('Not authenticated');
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('pinned_messages')
         .insert({ 
           message_id: messageId, 
           channel_id: channelId, 
           pinned_by: user.id 
-        });
+        })
+        .select()
+        .single();
       
       if (error) throw error;
+      return data;
     },
-    onSuccess: (_, { channelId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });
+    onMutate: async ({ messageId, channelId }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['pinned-messages', channelId] });
+      const previousPinned = queryClient.getQueryData(['pinned-messages', channelId]);
+      
+      const tempPinned: PinnedMessage = {
+        id: `temp-${Date.now()}`,
+        message_id: messageId,
+        channel_id: channelId,
+        pinned_by: user.id,
+        pinned_at: new Date().toISOString(),
+      };
+      
+      queryClient.setQueryData(['pinned-messages', channelId], (old: PinnedMessage[] | undefined) =>
+        old ? [tempPinned, ...old] : [tempPinned]
+      );
+      
+      return { previousPinned };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousPinned) {
+        queryClient.setQueryData(['pinned-messages', variables.channelId], context.previousPinned);
+      }
+      toast.error('Erreur lors de l\'épinglage du message');
+    },
+    onSuccess: () => {
       toast.success('Message épinglé');
     },
-    onError: () => {
-      toast.error('Erreur lors de l\'épinglage du message');
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });
     },
   });
 }
@@ -85,12 +113,27 @@ export function useUnpinMessage() {
       
       if (error) throw error;
     },
-    onSuccess: (_, { channelId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });
+    onMutate: async ({ messageId, channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['pinned-messages', channelId] });
+      const previousPinned = queryClient.getQueryData(['pinned-messages', channelId]);
+      
+      queryClient.setQueryData(['pinned-messages', channelId], (old: PinnedMessage[] | undefined) =>
+        old?.filter(p => p.message_id !== messageId)
+      );
+      
+      return { previousPinned };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousPinned) {
+        queryClient.setQueryData(['pinned-messages', variables.channelId], context.previousPinned);
+      }
+      toast.error('Erreur lors du désépinglage du message');
+    },
+    onSuccess: () => {
       toast.success('Message désépinglé');
     },
-    onError: () => {
-      toast.error('Erreur lors du désépinglage du message');
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });
     },
   });
 }

@@ -64,12 +64,37 @@ export function useUpdateServerSettings() {
 
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['server-settings', serverId] });
+    onMutate: async ({ serverId, settings }) => {
+      await queryClient.cancelQueries({ queryKey: ['server-settings', serverId] });
+      const previousSettings = queryClient.getQueryData(['server-settings', serverId]);
+      
+      queryClient.setQueryData(['server-settings', serverId], (old: ServerSettings | null | undefined) => {
+        if (!old) {
+          return {
+            id: `temp-${Date.now()}`,
+            server_id: serverId,
+            welcome_message: settings.welcome_message ?? null,
+            welcome_channel_id: settings.welcome_channel_id ?? null,
+            auto_assign_roles: settings.auto_assign_roles ?? [],
+            system_messages_enabled: settings.system_messages_enabled ?? true,
+          };
+        }
+        return { ...old, ...settings };
+      });
+      
+      return { previousSettings };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousSettings !== undefined) {
+        queryClient.setQueryData(['server-settings', variables.serverId], context.previousSettings);
+      }
+      toast.error('Erreur lors de la sauvegarde');
+    },
+    onSuccess: () => {
       toast.success('Paramètres sauvegardés');
     },
-    onError: () => {
-      toast.error('Erreur lors de la sauvegarde');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-settings', serverId] });
     },
   });
 }

@@ -105,12 +105,46 @@ export function useCreateAnnouncement() {
       if (error) throw error;
       return result;
     },
+    onMutate: async (data) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['announcements', data.channelId] });
+      const previousAnnouncements = queryClient.getQueryData(['announcements', data.channelId]);
+      
+      const tempAnnouncement: Announcement = {
+        id: `temp-${Date.now()}`,
+        channel_id: data.channelId,
+        title: data.title,
+        content: data.content,
+        banner_url: data.bannerUrl,
+        pinned: data.pinned || false,
+        featured: data.featured || false,
+        view_count: 0,
+        created_at: new Date().toISOString(),
+        author: {
+          id: user.id,
+          display_name: user.user_metadata?.display_name || 'Vous',
+          avatar_url: user.user_metadata?.avatar_url,
+        },
+      };
+      
+      queryClient.setQueryData(['announcements', data.channelId], (old: Announcement[] | undefined) => 
+        old ? [tempAnnouncement, ...old] : [tempAnnouncement]
+      );
+      
+      return { previousAnnouncements };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousAnnouncements) {
+        queryClient.setQueryData(['announcements', variables.channelId], context.previousAnnouncements);
+      }
+      toast.error('Erreur lors de la création');
+    },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
       toast.success('Annonce publiée');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création');
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
     },
   });
 }
@@ -145,12 +179,35 @@ export function useUpdateAnnouncement() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ['announcements', data.channelId] });
+      const previousAnnouncements = queryClient.getQueryData(['announcements', data.channelId]);
+      
+      queryClient.setQueryData(['announcements', data.channelId], (old: Announcement[] | undefined) =>
+        old?.map(a => a.id === data.id ? {
+          ...a,
+          title: data.title ?? a.title,
+          content: data.content ?? a.content,
+          banner_url: data.bannerUrl ?? a.banner_url,
+          pinned: data.pinned ?? a.pinned,
+          featured: data.featured ?? a.featured,
+          edited_at: new Date().toISOString(),
+        } : a)
+      );
+      
+      return { previousAnnouncements };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousAnnouncements) {
+        queryClient.setQueryData(['announcements', variables.channelId], context.previousAnnouncements);
+      }
+      toast.error('Erreur lors de la modification');
+    },
+    onSuccess: () => {
       toast.success('Annonce modifiée');
     },
-    onError: () => {
-      toast.error('Erreur lors de la modification');
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
     },
   });
 }
@@ -168,12 +225,27 @@ export function useDeleteAnnouncement() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ['announcements', data.channelId] });
+      const previousAnnouncements = queryClient.getQueryData(['announcements', data.channelId]);
+      
+      queryClient.setQueryData(['announcements', data.channelId], (old: Announcement[] | undefined) =>
+        old?.filter(a => a.id !== data.id)
+      );
+      
+      return { previousAnnouncements };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousAnnouncements) {
+        queryClient.setQueryData(['announcements', variables.channelId], context.previousAnnouncements);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
+    onSuccess: () => {
       toast.success('Annonce supprimée');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression');
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
     },
   });
 }
@@ -182,7 +254,6 @@ export function useDeleteAnnouncement() {
 export function useIncrementViewCount() {
   return useMutation({
     mutationFn: async (announcementId: string) => {
-      // Simple increment using update
       const { data: current } = await supabase
         .from('announcements')
         .select('view_count')
@@ -261,12 +332,35 @@ export function useCreateAnnouncementCategory() {
       if (error) throw error;
       return result;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcement-categories', variables.serverId] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ['announcement-categories', data.serverId] });
+      const previousCategories = queryClient.getQueryData(['announcement-categories', data.serverId]);
+      
+      const tempCategory: AnnouncementCategory = {
+        id: `temp-${Date.now()}`,
+        server_id: data.serverId,
+        name: data.name,
+        color: data.color,
+        icon: data.icon,
+      };
+      
+      queryClient.setQueryData(['announcement-categories', data.serverId], (old: AnnouncementCategory[] | undefined) =>
+        old ? [...old, tempCategory] : [tempCategory]
+      );
+      
+      return { previousCategories };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousCategories) {
+        queryClient.setQueryData(['announcement-categories', variables.serverId], context.previousCategories);
+      }
+      toast.error('Erreur lors de la création');
+    },
+    onSuccess: () => {
       toast.success('Catégorie créée');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création');
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcement-categories', variables.serverId] });
     },
   });
 }
@@ -283,12 +377,27 @@ export function useDeleteAnnouncementCategory() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcement-categories', variables.serverId] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ['announcement-categories', data.serverId] });
+      const previousCategories = queryClient.getQueryData(['announcement-categories', data.serverId]);
+      
+      queryClient.setQueryData(['announcement-categories', data.serverId], (old: AnnouncementCategory[] | undefined) =>
+        old?.filter(c => c.id !== data.id)
+      );
+      
+      return { previousCategories };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousCategories) {
+        queryClient.setQueryData(['announcement-categories', variables.serverId], context.previousCategories);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
+    onSuccess: () => {
       toast.success('Catégorie supprimée');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression');
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcement-categories', variables.serverId] });
     },
   });
 }
@@ -333,11 +442,38 @@ export function useAddAnnouncementComment() {
       if (error) throw error;
       return result;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcement-comments', variables.announcementId] });
+    onMutate: async (data) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['announcement-comments', data.announcementId] });
+      const previousComments = queryClient.getQueryData(['announcement-comments', data.announcementId]);
+      
+      const tempComment: AnnouncementComment = {
+        id: `temp-${Date.now()}`,
+        announcement_id: data.announcementId,
+        content: data.content,
+        created_at: new Date().toISOString(),
+        author: {
+          id: user.id,
+          display_name: user.user_metadata?.display_name || 'Vous',
+          avatar_url: user.user_metadata?.avatar_url,
+        },
+      };
+      
+      queryClient.setQueryData(['announcement-comments', data.announcementId], (old: AnnouncementComment[] | undefined) =>
+        old ? [...old, tempComment] : [tempComment]
+      );
+      
+      return { previousComments };
     },
-    onError: () => {
+    onError: (_, variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['announcement-comments', variables.announcementId], context.previousComments);
+      }
       toast.error("Erreur lors de l'ajout du commentaire");
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcement-comments', variables.announcementId] });
     },
   });
 }
@@ -354,11 +490,24 @@ export function useDeleteAnnouncementComment() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcement-comments', variables.announcementId] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ['announcement-comments', data.announcementId] });
+      const previousComments = queryClient.getQueryData(['announcement-comments', data.announcementId]);
+      
+      queryClient.setQueryData(['announcement-comments', data.announcementId], (old: AnnouncementComment[] | undefined) =>
+        old?.filter(c => c.id !== data.id)
+      );
+      
+      return { previousComments };
     },
-    onError: () => {
+    onError: (_, variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['announcement-comments', variables.announcementId], context.previousComments);
+      }
       toast.error('Erreur lors de la suppression');
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcement-comments', variables.announcementId] });
     },
   });
 }
@@ -402,6 +551,7 @@ export function useToggleAnnouncementReaction() {
           .delete()
           .eq('id', existing.id);
         if (error) throw error;
+        return { action: 'removed' };
       } else {
         // Add reaction
         const { error } = await supabase
@@ -412,9 +562,38 @@ export function useToggleAnnouncementReaction() {
             emoji: data.emoji,
           });
         if (error) throw error;
+        return { action: 'added' };
       }
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (data) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['announcement-reactions', data.announcementId] });
+      const previousReactions = queryClient.getQueryData(['announcement-reactions', data.announcementId]);
+      
+      queryClient.setQueryData(['announcement-reactions', data.announcementId], (old: AnnouncementReaction[] | undefined) => {
+        if (!old) return old;
+        const existing = old.find(r => r.user_id === user.id && r.emoji === data.emoji);
+        if (existing) {
+          return old.filter(r => r.id !== existing.id);
+        } else {
+          return [...old, {
+            id: `temp-${Date.now()}`,
+            announcement_id: data.announcementId,
+            user_id: user.id,
+            emoji: data.emoji,
+          }];
+        }
+      });
+      
+      return { previousReactions };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousReactions) {
+        queryClient.setQueryData(['announcement-reactions', variables.announcementId], context.previousReactions);
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcement-reactions', variables.announcementId] });
     },
   });

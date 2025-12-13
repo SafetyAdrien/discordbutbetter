@@ -83,12 +83,45 @@ export function useCreateInvite() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['invites', serverId] });
+    onMutate: async ({ serverId, isPermanent, expiresIn, maxUses }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['invites', serverId] });
+      const previousInvites = queryClient.getQueryData(['invites', serverId]);
+      
+      const tempInvite: Invite = {
+        id: `temp-${Date.now()}`,
+        server_id: serverId,
+        code: 'loading...',
+        created_by: user.id,
+        expires_at: isPermanent ? null : (expiresIn ? new Date(Date.now() + expiresIn * 60 * 60 * 1000).toISOString() : null),
+        max_uses: maxUses || null,
+        uses: 0,
+        is_permanent: isPermanent || false,
+        created_at: new Date().toISOString(),
+        creator: {
+          display_name: user.user_metadata?.display_name || 'Vous',
+          avatar_url: user.user_metadata?.avatar_url,
+        },
+      };
+      
+      queryClient.setQueryData(['invites', serverId], (old: Invite[] | undefined) =>
+        old ? [tempInvite, ...old] : [tempInvite]
+      );
+      
+      return { previousInvites };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousInvites) {
+        queryClient.setQueryData(['invites', variables.serverId], context.previousInvites);
+      }
+      toast.error('Erreur lors de la création de l\'invitation');
+    },
+    onSuccess: () => {
       toast.success('Invitation créée !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création de l\'invitation');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['invites', serverId] });
     },
   });
 }
@@ -106,12 +139,27 @@ export function useDeleteInvite() {
       if (error) throw error;
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['invites', serverId] });
+    onMutate: async ({ inviteId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['invites', serverId] });
+      const previousInvites = queryClient.getQueryData(['invites', serverId]);
+      
+      queryClient.setQueryData(['invites', serverId], (old: Invite[] | undefined) =>
+        old?.filter(i => i.id !== inviteId)
+      );
+      
+      return { previousInvites };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousInvites) {
+        queryClient.setQueryData(['invites', variables.serverId], context.previousInvites);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
+    onSuccess: () => {
       toast.success('Invitation supprimée');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['invites', serverId] });
     },
   });
 }

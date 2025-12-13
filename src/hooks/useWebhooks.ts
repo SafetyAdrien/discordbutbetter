@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export interface Webhook {
   id: string;
@@ -59,8 +60,39 @@ export function useCreateWebhook() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks', variables.channelId] });
+    onMutate: async ({ channelId, name, avatarUrl }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['webhooks', channelId] });
+      const previousWebhooks = queryClient.getQueryData(['webhooks', channelId]);
+      
+      const tempWebhook: Webhook = {
+        id: `temp-${Date.now()}`,
+        channel_id: channelId,
+        name,
+        avatar_url: avatarUrl || null,
+        token: '********',
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+      };
+      
+      queryClient.setQueryData(['webhooks', channelId], (old: Webhook[] | undefined) =>
+        old ? [...old, tempWebhook] : [tempWebhook]
+      );
+      
+      return { previousWebhooks };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousWebhooks) {
+        queryClient.setQueryData(['webhooks', variables.channelId], context.previousWebhooks);
+      }
+      toast.error('Erreur lors de la création du webhook');
+    },
+    onSuccess: () => {
+      toast.success('Webhook créé !');
+    },
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });
     },
   });
 }
@@ -77,8 +109,27 @@ export function useDeleteWebhook() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks', variables.channelId] });
+    onMutate: async ({ webhookId, channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['webhooks', channelId] });
+      const previousWebhooks = queryClient.getQueryData(['webhooks', channelId]);
+      
+      queryClient.setQueryData(['webhooks', channelId], (old: Webhook[] | undefined) =>
+        old?.filter(w => w.id !== webhookId)
+      );
+      
+      return { previousWebhooks };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousWebhooks) {
+        queryClient.setQueryData(['webhooks', variables.channelId], context.previousWebhooks);
+      }
+      toast.error('Erreur lors de la suppression du webhook');
+    },
+    onSuccess: () => {
+      toast.success('Webhook supprimé !');
+    },
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });
     },
   });
 }

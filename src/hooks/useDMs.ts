@@ -146,15 +146,26 @@ export function useCreateDMConversation() {
 
       return { conversation_id: data as string, isNew: true };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
+    onMutate: async () => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['dm-conversations', user.id] });
+      const previousConversations = queryClient.getQueryData(['dm-conversations', user.id]);
+      
+      return { previousConversations };
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      if (context?.previousConversations) {
+        queryClient.setQueryData(['dm-conversations', user?.id], context.previousConversations);
+      }
       if (error instanceof z.ZodError) {
         toast.error('Invalid user ID');
       } else {
         toast.error('Erreur lors de la création de la conversation');
       }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
     },
   });
 }

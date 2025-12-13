@@ -382,7 +382,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     return (
       <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0">
       {/* Channel Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
+      <div className="h-12 px-4 flex items-center gap-4 border-b border-border shadow-sm flex-shrink-0">
         <div className="flex items-center gap-2">
           <Hash className="w-5 h-5 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
@@ -525,13 +525,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-4">
         {/* Welcome message */}
         <div className="mb-8 animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
+          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-4">
             <Hash className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-display font-bold mb-2">
+          <h1 className="text-3xl font-bold mb-2">
             Bienvenue sur #{channel.name} !
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-text-secondary">
             C'est le début du salon #{channel.name}. Commencez la conversation !
           </p>
         </div>
@@ -539,7 +539,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         {/* Date Separator */}
         <div className="flex items-center gap-4">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground font-medium">
+          <span className="text-xs text-text-secondary font-medium">
             {formatDate(messages[0]?.timestamp || new Date())}
           </span>
           <div className="flex-1 h-px bg-border" />
@@ -558,7 +558,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               <ContextMenuTrigger asChild>
                 <div
                   className={cn(
-                    'group message-hover rounded-md px-2 py-0.5 -mx-2 relative',
+                    'group rounded px-2 py-0.5 -mx-2 relative hover:bg-discord-message-hover',
                     !showAuthor && 'mt-0'
                   )}
                   onMouseEnter={() => setHoveredMessageId(message.id)}
@@ -591,7 +591,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                           >
                             {message.author.displayName}
                           </button>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                          <span className="text-xs text-text-secondary flex-shrink-0">
                             {formatTime(message.timestamp)}
                           </span>
                           {message.edited && (
@@ -785,8 +785,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
 
       {/* Message Input */}
       <div className="px-4 pb-6 flex-shrink-0">
-        <form onSubmit={handleSubmit} className="relative shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
-          <div className="flex items-center gap-2 bg-input rounded-lg border border-border focus-within:border-primary/50 transition-colors">
+        <form onSubmit={handleSubmit} className="relative">
+          <div className="flex items-center gap-2 bg-input rounded-lg transition-colors">
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -841,7 +841,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                   type="submit" 
                   className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''}`}
                 >
-                  <Send className="w-4 h-4" style={{ color: '#5865f2' }} />
+                  <Send className="w-4 h-4 text-primary" />
                 </button>
               )}
             </div>

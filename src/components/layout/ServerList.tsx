@@ -99,7 +99,7 @@ export function ServerList({
   };
 
   return (
-    <div className="w-[72px] bg-sidebar flex flex-col items-center py-3 gap-2 border-r border-border">
+    <div className="w-[72px] bg-discord-server-bar flex flex-col items-center py-3 gap-2">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -126,7 +126,7 @@ export function ServerList({
             {/* Unread DMs notification badge */}
             {totalUnreadDMs > 0 && (
               <div className={cn(
-                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-discord-server-bar animate-badge-pop",
                 shakingDMs && "animate-badge-shake"
               )}>
                 {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
@@ -139,7 +139,7 @@ export function ServerList({
         </TooltipContent>
       </Tooltip>
 
-      <div className="w-8 h-[2px] bg-border rounded-full my-1" />
+      <div className="w-8 h-[2px] bg-discord-separator rounded-full my-1" />
 
       {/* Server Icons */}
       <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
@@ -152,9 +152,9 @@ export function ServerList({
                     onClick={() => handleServerClick(server.id)}
                     className={cn(
                       'server-icon relative group',
-                      activeServerId === server.id
-                        ? 'bg-[#5865f2] text-white rounded-[16px]'
-                        : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
+                    activeServerId === server.id
+                        ? 'bg-primary text-primary-foreground rounded-[16px]'
+                        : 'bg-card hover:bg-primary/80 hover:text-white'
                     )}
                   >
                     {/* Active indicator */}
@@ -188,7 +188,7 @@ export function ServerList({
                     {/* Unread notification badge */}
                     {(unreadCounts[server.id] ?? 0) > 0 && (
                       <div className={cn(
-                        "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                        "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-discord-server-bar animate-badge-pop",
                         shakingServers.has(server.id) && "animate-badge-shake"
                       )}>
                         {unreadCounts[server.id] > 99 ? '99+' : unreadCounts[server.id]}
@@ -232,14 +232,14 @@ export function ServerList({
         ))}
       </div>
 
-      <div className="w-8 h-[2px] bg-border rounded-full my-1" />
+      <div className="w-8 h-[2px] bg-discord-separator rounded-full my-1" />
 
       {/* Action Buttons */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={onCreateClick}
-            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
+            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -253,7 +253,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onDiscoverClick}
-            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
+            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
           >
             <Compass className="w-6 h-6" />
           </button>

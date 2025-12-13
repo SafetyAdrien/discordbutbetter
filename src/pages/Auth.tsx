@@ -118,17 +118,17 @@ export default function Auth() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-4 glow-border">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-sidebar border border-border mb-4">
             <Gamepad2 className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold gradient-text">GameVault</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold text-foreground">GameVault</h1>
+          <p className="text-text-secondary mt-2">
             Rejoins la communauté gaming
           </p>
         </div>
 
         {/* Auth Card */}
-        <div className="glass rounded-xl p-6">
+        <div className="bg-sidebar rounded-md p-6 border border-border">
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Connexion</TabsTrigger>

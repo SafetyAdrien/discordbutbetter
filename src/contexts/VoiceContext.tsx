@@ -40,6 +40,8 @@ interface VoiceContextType {
   // Remote streams
   remoteVideoStreams: Map<string, MediaStream>;
   remoteScreenStreams: Map<string, MediaStream>;
+  // Connection stats
+  connectionStats: import('@/utils/webrtc/PeerConnection').ConnectionStats | null;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -373,6 +375,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Remote streams
         remoteVideoStreams: webrtc.remoteVideoStreams,
         remoteScreenStreams: webrtc.remoteScreenStreams,
+        // Connection stats
+        connectionStats: webrtc.connectionStats,
       }}
     >
       {children}

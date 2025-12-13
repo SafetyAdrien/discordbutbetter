@@ -52,14 +52,29 @@ export function useUnbanMember() {
         _user_id: userId,
       });
       if (error) throw error;
-      return { serverId };
+      return { serverId, userId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['banned-members', serverId] });
+    onMutate: async ({ serverId, userId }) => {
+      await queryClient.cancelQueries({ queryKey: ['banned-members', serverId] });
+      const previousBanned = queryClient.getQueryData(['banned-members', serverId]);
+      
+      queryClient.setQueryData(['banned-members', serverId], (old: BannedMember[] | undefined) =>
+        old?.filter(b => b.user_id !== userId)
+      );
+      
+      return { previousBanned };
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousBanned) {
+        queryClient.setQueryData(['banned-members', variables.serverId], context.previousBanned);
+      }
+      toast.error('Erreur lors du débannissement: ' + (error as Error).message);
+    },
+    onSuccess: () => {
       toast.success('Membre débanni');
     },
-    onError: (error) => {
-      toast.error('Erreur lors du débannissement: ' + (error as Error).message);
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['banned-members', serverId] });
     },
   });
 }
@@ -86,15 +101,17 @@ export function useKickMember() {
       
       return { previousMembers };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      toast.success('Membre expulsé');
-    },
     onError: (error, { serverId }, context) => {
       if (context?.previousMembers) {
         queryClient.setQueryData(['members', serverId], context.previousMembers);
       }
       toast.error('Erreur lors de l\'expulsion: ' + (error as Error).message);
+    },
+    onSuccess: () => {
+      toast.success('Membre expulsé');
+    },
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
     },
   });
 }
@@ -130,15 +147,18 @@ export function useBanMember() {
       
       return { previousMembers };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      toast.success('Membre banni');
-    },
     onError: (error, { serverId }, context) => {
       if (context?.previousMembers) {
         queryClient.setQueryData(['members', serverId], context.previousMembers);
       }
       toast.error('Erreur lors du bannissement: ' + (error as Error).message);
+    },
+    onSuccess: () => {
+      toast.success('Membre banni');
+    },
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['banned-members', serverId] });
     },
   });
 }

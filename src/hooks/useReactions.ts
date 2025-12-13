@@ -56,11 +56,40 @@ export function useAddReaction() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reactions'] });
+    onMutate: async ({ messageId, emoji }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['reactions'] });
+      
+      const previousReactions = queryClient.getQueriesData({ queryKey: ['reactions'] });
+      
+      queryClient.setQueriesData({ queryKey: ['reactions'] }, (old: Record<string, Reaction[]> | undefined) => {
+        if (!old) return old;
+        const newReaction: Reaction = {
+          id: `temp-${Date.now()}`,
+          message_id: messageId,
+          user_id: user.id,
+          emoji,
+          created_at: new Date().toISOString(),
+        };
+        return {
+          ...old,
+          [messageId]: [...(old[messageId] || []), newReaction],
+        };
+      });
+      
+      return { previousReactions };
     },
-    onError: () => {
+    onError: (_, __, context) => {
+      if (context?.previousReactions) {
+        context.previousReactions.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error('Erreur lors de l\'ajout de la réaction');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['reactions'] });
     },
   });
 }
@@ -82,11 +111,33 @@ export function useRemoveReaction() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reactions'] });
+    onMutate: async ({ messageId, emoji }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['reactions'] });
+      
+      const previousReactions = queryClient.getQueriesData({ queryKey: ['reactions'] });
+      
+      queryClient.setQueriesData({ queryKey: ['reactions'] }, (old: Record<string, Reaction[]> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          [messageId]: (old[messageId] || []).filter(r => !(r.user_id === user.id && r.emoji === emoji)),
+        };
+      });
+      
+      return { previousReactions };
     },
-    onError: () => {
+    onError: (_, __, context) => {
+      if (context?.previousReactions) {
+        context.previousReactions.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error('Erreur lors de la suppression de la réaction');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['reactions'] });
     },
   });
 }
@@ -115,7 +166,7 @@ export function useToggleReaction() {
         await addReaction.mutateAsync({ messageId, emoji });
       }
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['reactions'] });
     },
   });

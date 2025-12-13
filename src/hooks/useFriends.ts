@@ -105,7 +105,7 @@ export function useSendFriendRequest() {
       // Find user by username
       const { data: targetUser, error: findError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, username, display_name, avatar_url, status, custom_status')
         .eq('username', username)
         .single();
 
@@ -147,14 +147,27 @@ export function useSendFriendRequest() {
         .single();
 
       if (error) throw error;
-      return data;
+      return { ...data, targetProfile: targetUser };
+    },
+    onMutate: async (username) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['friends', user.id] });
+      const previousFriends = queryClient.getQueryData(['friends', user.id]);
+      
+      return { previousFriends };
+    },
+    onError: (error: Error, _, context) => {
+      if (context?.previousFriends) {
+        queryClient.setQueryData(['friends', user?.id], context.previousFriends);
+      }
+      toast.error(error.message);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
       toast.success('Demande d\'ami envoyée !');
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
     },
   });
 }
@@ -178,12 +191,29 @@ export function useAcceptFriendRequest() {
       if (error) throw error;
       return data;
     },
+    onMutate: async (friendshipId) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['friends', user.id] });
+      const previousFriends = queryClient.getQueryData(['friends', user.id]);
+      
+      queryClient.setQueryData(['friends', user.id], (old: FriendWithProfile[] | undefined) =>
+        old?.map(f => f.id === friendshipId ? { ...f, status: 'accepted' as const } : f)
+      );
+      
+      return { previousFriends };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousFriends) {
+        queryClient.setQueryData(['friends', user?.id], context.previousFriends);
+      }
+      toast.error('Erreur lors de l\'acceptation');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
       toast.success('Demande d\'ami acceptée !');
     },
-    onError: () => {
-      toast.error('Erreur lors de l\'acceptation');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
     },
   });
 }
@@ -203,12 +233,29 @@ export function useDeclineFriendRequest() {
 
       if (error) throw error;
     },
+    onMutate: async (friendshipId) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['friends', user.id] });
+      const previousFriends = queryClient.getQueryData(['friends', user.id]);
+      
+      queryClient.setQueryData(['friends', user.id], (old: FriendWithProfile[] | undefined) =>
+        old?.filter(f => f.id !== friendshipId)
+      );
+      
+      return { previousFriends };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousFriends) {
+        queryClient.setQueryData(['friends', user?.id], context.previousFriends);
+      }
+      toast.error('Erreur lors du refus');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
       toast.success('Demande refusée');
     },
-    onError: () => {
-      toast.error('Erreur lors du refus');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
     },
   });
 }
@@ -228,12 +275,29 @@ export function useRemoveFriend() {
 
       if (error) throw error;
     },
+    onMutate: async (friendshipId) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['friends', user.id] });
+      const previousFriends = queryClient.getQueryData(['friends', user.id]);
+      
+      queryClient.setQueryData(['friends', user.id], (old: FriendWithProfile[] | undefined) =>
+        old?.filter(f => f.id !== friendshipId)
+      );
+      
+      return { previousFriends };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousFriends) {
+        queryClient.setQueryData(['friends', user?.id], context.previousFriends);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
       toast.success('Ami supprimé');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
     },
   });
 }

@@ -120,12 +120,38 @@ export function useCreateRole() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+    onMutate: async ({ serverId, name, color }) => {
+      await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
+      const previousRoles = queryClient.getQueryData(['roles', serverId]);
+      
+      const tempRole: RoleWithPermissions = {
+        id: `temp-${Date.now()}`,
+        name,
+        color: color || '#99AAB5',
+        icon_url: null,
+        position: 999,
+        is_default: false,
+        server_id: serverId,
+        permissions: [],
+      };
+      
+      queryClient.setQueryData(['roles', serverId], (old: RoleWithPermissions[] | undefined) =>
+        old ? [tempRole, ...old] : [tempRole]
+      );
+      
+      return { previousRoles };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousRoles) {
+        queryClient.setQueryData(['roles', variables.serverId], context.previousRoles);
+      }
+      toast.error('Erreur lors de la création du rôle');
+    },
+    onSuccess: () => {
       toast.success('Rôle créé !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création du rôle');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
     },
   });
 }
@@ -184,12 +210,33 @@ export function useUpdateRole() {
 
       return { roleId, serverId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+    onMutate: async ({ roleId, serverId, name, color, iconUrl, permissions }) => {
+      await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
+      const previousRoles = queryClient.getQueryData(['roles', serverId]);
+      
+      queryClient.setQueryData(['roles', serverId], (old: RoleWithPermissions[] | undefined) =>
+        old?.map(r => r.id === roleId ? {
+          ...r,
+          name: name ?? r.name,
+          color: color ?? r.color,
+          icon_url: iconUrl !== undefined ? iconUrl : r.icon_url,
+          permissions: permissions ?? r.permissions,
+        } : r)
+      );
+      
+      return { previousRoles };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousRoles) {
+        queryClient.setQueryData(['roles', variables.serverId], context.previousRoles);
+      }
+      toast.error('Erreur lors de la mise à jour du rôle');
+    },
+    onSuccess: () => {
       toast.success('Rôle mis à jour !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la mise à jour du rôle');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
     },
   });
 }
@@ -207,12 +254,27 @@ export function useDeleteRole() {
       if (error) throw error;
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+    onMutate: async ({ roleId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
+      const previousRoles = queryClient.getQueryData(['roles', serverId]);
+      
+      queryClient.setQueryData(['roles', serverId], (old: RoleWithPermissions[] | undefined) =>
+        old?.filter(r => r.id !== roleId)
+      );
+      
+      return { previousRoles };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousRoles) {
+        queryClient.setQueryData(['roles', variables.serverId], context.previousRoles);
+      }
+      toast.error('Erreur lors de la suppression du rôle');
+    },
+    onSuccess: () => {
       toast.success('Rôle supprimé !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression du rôle');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
     },
   });
 }
@@ -229,7 +291,26 @@ export function useReorderRoles() {
       await Promise.all(updates);
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ serverId, orderedIds }) => {
+      await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
+      const previousRoles = queryClient.getQueryData(['roles', serverId]);
+      
+      queryClient.setQueryData(['roles', serverId], (old: RoleWithPermissions[] | undefined) => {
+        if (!old) return old;
+        return orderedIds.map((id, index) => {
+          const role = old.find(r => r.id === id);
+          return role ? { ...role, position: orderedIds.length - index } : null;
+        }).filter(Boolean) as RoleWithPermissions[];
+      });
+      
+      return { previousRoles };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousRoles) {
+        queryClient.setQueryData(['roles', variables.serverId], context.previousRoles);
+      }
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
     },
   });
@@ -288,12 +369,23 @@ export function useDuplicateRole() {
 
       return newRole;
     },
-    onSuccess: (newRole, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+    onMutate: async ({ roleId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
+      const previousRoles = queryClient.getQueryData(['roles', serverId]);
+      
+      return { previousRoles };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousRoles) {
+        queryClient.setQueryData(['roles', variables.serverId], context.previousRoles);
+      }
+      toast.error('Erreur lors de la duplication du rôle');
+    },
+    onSuccess: (newRole) => {
       toast.success(`Rôle "${newRole.name}" créé !`);
     },
-    onError: () => {
-      toast.error('Erreur lors de la duplication du rôle');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
     },
   });
 }
@@ -342,13 +434,31 @@ export function useAssignRoleToMember() {
         .insert({ member_id: memberId, role_id: roleId });
       if (error) throw error;
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+    onMutate: async ({ memberId, roleId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['members', serverId] });
+      const previousMembers = queryClient.getQueryData(['members', serverId]);
+      
+      queryClient.setQueryData(['members', serverId], (old: any[] | undefined) =>
+        old?.map(m => m.id === memberId ? {
+          ...m,
+          roles: [...(m.roles || []), { id: roleId }],
+        } : m)
+      );
+      
+      return { previousMembers };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousMembers) {
+        queryClient.setQueryData(['members', variables.serverId], context.previousMembers);
+      }
+      toast.error('Erreur lors de l\'attribution du rôle');
+    },
+    onSuccess: () => {
       toast.success('Rôle attribué !');
     },
-    onError: () => {
-      toast.error('Erreur lors de l\'attribution du rôle');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
     },
   });
 }
@@ -370,13 +480,31 @@ export function useRemoveRoleFromMember() {
         .eq('role_id', roleId);
       if (error) throw error;
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+    onMutate: async ({ memberId, roleId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['members', serverId] });
+      const previousMembers = queryClient.getQueryData(['members', serverId]);
+      
+      queryClient.setQueryData(['members', serverId], (old: any[] | undefined) =>
+        old?.map(m => m.id === memberId ? {
+          ...m,
+          roles: (m.roles || []).filter((r: any) => r.id !== roleId),
+        } : m)
+      );
+      
+      return { previousMembers };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousMembers) {
+        queryClient.setQueryData(['members', variables.serverId], context.previousMembers);
+      }
+      toast.error('Erreur lors du retrait du rôle');
+    },
+    onSuccess: () => {
       toast.success('Rôle retiré !');
     },
-    onError: () => {
-      toast.error('Erreur lors du retrait du rôle');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
     },
   });
 }

@@ -114,12 +114,27 @@ export function useDeleteEmoji() {
       if (error) throw error;
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
+    onMutate: async ({ emojiId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['server-emojis', serverId] });
+      const previousEmojis = queryClient.getQueryData(['server-emojis', serverId]);
+      
+      queryClient.setQueryData(['server-emojis', serverId], (old: ServerEmoji[] | undefined) =>
+        old?.filter(e => e.id !== emojiId)
+      );
+      
+      return { previousEmojis };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousEmojis) {
+        queryClient.setQueryData(['server-emojis', variables.serverId], context.previousEmojis);
+      }
+      toast.error('Erreur lors de la suppression de l\'emoji');
+    },
+    onSuccess: () => {
       toast.success('Emoji supprimé !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression de l\'emoji');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
     },
   });
 }
@@ -217,12 +232,27 @@ export function useDeleteSticker() {
       if (error) throw error;
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
+    onMutate: async ({ stickerId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['server-stickers', serverId] });
+      const previousStickers = queryClient.getQueryData(['server-stickers', serverId]);
+      
+      queryClient.setQueryData(['server-stickers', serverId], (old: ServerSticker[] | undefined) =>
+        old?.filter(s => s.id !== stickerId)
+      );
+      
+      return { previousStickers };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previousStickers) {
+        queryClient.setQueryData(['server-stickers', variables.serverId], context.previousStickers);
+      }
+      toast.error('Erreur lors de la suppression du sticker');
+    },
+    onSuccess: () => {
       toast.success('Sticker supprimé !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression du sticker');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
     },
   });
 }
@@ -253,14 +283,37 @@ export function useUpdateServerInfo() {
         .eq('id', serverId);
 
       if (error) throw error;
-      return { serverId };
+      return { serverId, name, description, is_public };
+    },
+    onMutate: async ({ serverId, name, description, is_public }) => {
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData(['servers']);
+      
+      queryClient.setQueriesData({ queryKey: ['servers'] }, (old: any) => {
+        if (Array.isArray(old)) {
+          return old.map((s: any) => s.id === serverId ? {
+            ...s,
+            name: name ?? s.name,
+            description: description ?? s.description,
+            is_public: is_public ?? s.is_public,
+          } : s);
+        }
+        return old;
+      });
+      
+      return { previousServers };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
+      toast.error('Erreur lors de la mise à jour du serveur');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
       toast.success('Serveur mis à jour !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la mise à jour du serveur');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }

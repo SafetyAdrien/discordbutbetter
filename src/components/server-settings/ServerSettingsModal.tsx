@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Lock } from 'lucide-react';
+import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Lock, Ban } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';
 import { EmojiManager } from './EmojiManager';
@@ -9,12 +9,16 @@ import { MemberManager } from './MemberManager';
 import { RoleManager } from './RoleManager';
 import { InviteManager } from './InviteManager';
 import { PrivacySettings } from './PrivacySettings';
+import { BannedMembersManager } from './BannedMembersManager';
+
 interface ServerSettingsModalProps {
   serverId: string;
   serverName: string;
   onClose: () => void;
 }
-type SettingsTab = 'profile' | 'engagement' | 'emojis' | 'stickers' | 'members' | 'roles' | 'invites' | 'privacy';
+
+type SettingsTab = 'profile' | 'engagement' | 'emojis' | 'stickers' | 'members' | 'roles' | 'invites' | 'privacy' | 'banned';
+
 interface Section {
   id: string;
   name: string | 'server';
@@ -26,61 +30,50 @@ interface Section {
     }>;
   }[];
 }
-const sections: Section[] = [{
-  id: 'server',
-  name: 'server',
-  tabs: [{
-    id: 'profile',
-    label: 'Profil du serveur',
-    icon: Info
-  }, {
-    id: 'engagement',
-    label: 'Engagement',
-    icon: Heart
-  }]
-}, {
-  id: 'expressions',
-  name: 'Expressions',
-  tabs: [{
-    id: 'emojis',
-    label: 'Emojis',
-    icon: Smile
-  }, {
-    id: 'stickers',
-    label: 'Autocollants',
-    icon: Sticker
-  }]
-}, {
-  id: 'people',
-  name: 'Personnes',
-  tabs: [{
-    id: 'members',
-    label: 'Membres',
-    icon: Users
-  }, {
-    id: 'roles',
-    label: 'Rôles',
-    icon: Shield
-  }, {
-    id: 'invites',
-    label: 'Invites',
-    icon: Link
-  }]
-}, {
-  id: 'discovery',
-  name: 'Découvertes',
-  tabs: [{
-    id: 'privacy',
-    label: 'Confidentialité',
-    icon: Lock
-  }]
-}];
+
+const sections: Section[] = [
+  {
+    id: 'server',
+    name: 'server',
+    tabs: [
+      { id: 'profile', label: 'Profil du serveur', icon: Info },
+      { id: 'engagement', label: 'Engagement', icon: Heart }
+    ]
+  },
+  {
+    id: 'expressions',
+    name: 'Expressions',
+    tabs: [
+      { id: 'emojis', label: 'Emojis', icon: Smile },
+      { id: 'stickers', label: 'Autocollants', icon: Sticker }
+    ]
+  },
+  {
+    id: 'people',
+    name: 'Personnes',
+    tabs: [
+      { id: 'members', label: 'Membres', icon: Users },
+      { id: 'roles', label: 'Rôles', icon: Shield },
+      { id: 'invites', label: 'Invites', icon: Link },
+      { id: 'banned', label: 'Bannis', icon: Ban }
+    ]
+  },
+  {
+    id: 'discovery',
+    name: 'Découvertes',
+    tabs: [
+      { id: 'privacy', label: 'Confidentialité', icon: Lock }
+    ]
+  }
+];
+
 export function ServerSettingsModal({
   serverId,
   serverName,
   onClose
 }: ServerSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+
   const getCurrentTabLabel = () => {
     for (const section of sections) {
       const tab = section.tabs.find(t => t.id === activeTab);
@@ -88,7 +81,9 @@ export function ServerSettingsModal({
     }
     return '';
   };
-  return <div className="fixed inset-0 z-50 flex">
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       
       <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] glass rounded-xl overflow-hidden">
@@ -100,19 +95,32 @@ export function ServerSettingsModal({
           </div>
 
           <nav className="flex-1 overflow-y-auto p-2 space-y-4">
-            {sections.map(section => <div key={section.id}>
+            {sections.map(section => (
+              <div key={section.id}>
                 {/* Section header */}
                 <p className="text-xs font-semibold text-muted-foreground capitalize px-3 mb-1">
                   {section.name === 'server' ? serverName : section.name}
                 </p>
                 {/* Tabs in section */}
                 <div className="space-y-0.5">
-                  {section.tabs.map(tab => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors', activeTab === tab.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+                  {section.tabs.map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                        activeTab === tab.id
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
                       <tab.icon className="w-4 h-4" />
                       {tab.label}
-                    </button>)}
+                    </button>
+                  ))}
                 </div>
-              </div>)}
+              </div>
+            ))}
           </nav>
         </div>
 
@@ -135,9 +143,11 @@ export function ServerSettingsModal({
             {activeTab === 'members' && <MemberManager serverId={serverId} />}
             {activeTab === 'roles' && <RoleManager serverId={serverId} />}
             {activeTab === 'invites' && <InviteManager serverId={serverId} />}
+            {activeTab === 'banned' && <BannedMembersManager serverId={serverId} />}
             {activeTab === 'privacy' && <PrivacySettings serverId={serverId} />}
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }

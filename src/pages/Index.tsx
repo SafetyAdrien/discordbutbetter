@@ -15,6 +15,7 @@ import { ForumChannel } from '@/components/channels/ForumChannel';
 import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
+import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -336,7 +337,15 @@ const Index = () => {
           {/* Main Content Area - Conditional based on channel type */}
           {channelForChat && (
             <>
-              {channelForChat.type === 'media' ? (
+              {channelForChat.type === 'voice' ? (
+                <VoiceChannelView 
+                  channel={channelForChat}
+                  serverId={activeServer.id}
+                  members={memberListData}
+                  ownerId={activeServer.owner_id || ''}
+                  onOpenDM={handleOpenDM}
+                />
+              ) : channelForChat.type === 'media' ? (
                 <MediaChannel 
                   channel={channelForChat}
                   onToggleMembers={handleToggleMembers}
@@ -380,8 +389,8 @@ const Index = () => {
             </>
           )}
 
-          {/* Member List - Conditionally rendered */}
-          {showMembers && (
+          {/* Member List - Conditionally rendered (not for voice channels) */}
+          {showMembers && channelForChat?.type !== 'voice' && (
             <MemberList 
               members={memberListData} 
               ownerId={activeServer.owner_id || ''} 

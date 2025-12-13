@@ -71,12 +71,23 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     stopTyping();
   };
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageInput(e.target.value);
     if (e.target.value.trim()) {
       startTyping();
     }
+    // Auto-resize textarea
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
   }, [startTyping]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+    // Shift+Enter = default behavior (new line)
+  }, []);
 
   const handleVoiceCall = () => {
     startCall.mutate({ callType: 'voice' });
@@ -205,12 +216,14 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
       {/* Input */}
       <form onSubmit={handleSend} className="p-4 border-t border-border">
-        <div className="flex gap-2">
-          <Input
+        <div className="flex gap-2 items-end bg-muted/50 rounded-lg px-3 py-2">
+          <textarea
             value={messageInput}
             onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             placeholder={`Envoyer un message à ${displayName}`}
-            className="flex-1"
+            className="flex-1 bg-transparent py-2 text-foreground placeholder:text-muted-foreground focus:outline-none resize-none min-h-[24px] max-h-[200px] overflow-y-auto"
+            rows={1}
           />
           <Button type="submit" size="icon" disabled={!messageInput.trim()}>
             <Send className="w-4 h-4" />
@@ -243,7 +256,7 @@ function MessageItem({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className={cn('flex gap-3 group message-hover rounded-md px-2 py-1 -mx-2', !showAuthor && 'pl-12')}>
+        <div className={cn('flex gap-3 group message-hover rounded-md px-2 py-0.5 -mx-2', !showAuthor && 'pl-12')}>
           {showAuthor && (
             <Avatar className="w-9 h-9 flex-shrink-0">
               <AvatarImage src={message.author?.avatar_url || undefined} />

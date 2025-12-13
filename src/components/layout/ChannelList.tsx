@@ -482,10 +482,12 @@ export function ChannelList({
     return orphan?.name || '';
   };
   const handleChannelClick = (channel: Channel) => {
+    // Toujours sélectionner le canal pour afficher son interface
+    onChannelSelect(channel.id);
+    
+    // Pour les salons vocaux, également rejoindre le voice chat
     if (channel.type === 'voice') {
       joinChannel(channel.id, channel.name, server.name);
-    } else {
-      onChannelSelect(channel.id);
     }
   };
   const handleStartEditCategory = (category: Category) => {

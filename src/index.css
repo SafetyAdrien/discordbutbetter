@@ -47,96 +47,72 @@
 
 @layer base {
   :root {
-    /* Discord OG Legacy Theme */
-    /* Main backgrounds */
-    --background: 223 6.7% 20.6%;          /* #36393f - Chat background */
-    --foreground: 210 2.9% 86.7%;          /* #dcddde - Main text */
+    /* Dark gaming theme - always dark */
+    --background: 230 25% 8%;
+    --foreground: 210 40% 98%;
 
-    /* Card/Popover - sidebar colors */
-    --card: 220 6.5% 18%;                  /* #2f3136 - Sidebars */
-    --card-foreground: 210 2.9% 86.7%;    /* #dcddde */
+    --card: 230 25% 12%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 225 6.3% 12.5%;            /* #202225 - Darker popover */
-    --popover-foreground: 210 2.9% 86.7%;
+    --popover: 230 25% 10%;
+    --popover-foreground: 210 40% 98%;
 
-    /* Primary - Old Blurple */
-    --primary: 227 57.9% 55.1%;            /* #7289da - Old Blurple */
-    --primary-foreground: 0 0% 100%;
+    --primary: 186 100% 50%;
+    --primary-foreground: 230 25% 8%;
 
-    /* Secondary */
-    --secondary: 220 6.8% 17.3%;           /* #2d2f32 - Separators */
-    --secondary-foreground: 210 2.9% 86.7%;
+    --secondary: 270 60% 60%;
+    --secondary-foreground: 210 40% 98%;
 
-    /* Muted */
-    --muted: 220 7.7% 22.9%;               /* #393c43 - Active channel bg */
-    --muted-foreground: 214 8.1% 61.2%;    /* #8e9297 - Secondary text */
+    --muted: 230 20% 18%;
+    --muted-foreground: 215 20% 65%;
 
-    /* Accent */
-    --accent: 220 6.4% 23.9%;              /* #34373c - Hover states */
-    --accent-foreground: 210 2.9% 86.7%;
+    --accent: 186 80% 40%;
+    --accent-foreground: 210 40% 98%;
 
-    /* Destructive */
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 40% 98%;
 
-    /* Borders & Input */
-    --border: 225 6.3% 12.5%;              /* #202225 */
-    --input: 220 7.4% 26.5%;               /* #40444b - Input background */
-    --ring: 227 57.9% 55.1%;               /* Old Blurple */
+    --border: 230 20% 20%;
+    --input: 230 20% 15%;
+    --ring: 186 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Discord OG specific colors */
-    --discord-server-bar: 225 6.3% 12.5%;  /* #202225 */
-    --discord-channel-bar: 220 6.5% 18%;   /* #2f3136 */
-    --discord-chat: 223 6.7% 20.6%;        /* #36393f */
-    --discord-user-bar: 220 7.1% 16.7%;    /* #292b2f */
-    --discord-separator: 220 6.8% 17.3%;   /* #2d2f32 */
+    /* Custom gaming colors */
+    --glow-primary: 186 100% 50%;
+    --glow-secondary: 270 60% 60%;
+    --surface-elevated: 230 25% 14%;
+    --surface-hover: 230 25% 18%;
+    --online: 142 76% 46%;
+    --idle: 38 92% 50%;
+    --dnd: 0 72% 51%;
+    --offline: 215 20% 45%;
+    --voice-active: 142 76% 46%;
 
-    /* Channel states */
-    --channel-normal: 214 8.1% 61.2%;      /* #8e9297 */
-    --channel-hover: 220 6.4% 23.9%;       /* #34373c bg */
-    --channel-hover-text: 210 2.9% 86.7%;  /* #dcddde */
-    --channel-active: 220 7.7% 22.9%;      /* #393c43 bg */
-    --channel-active-text: 0 0% 100%;      /* white */
-
-    /* Message hover */
-    --message-hover: 223 7.4% 19.4%;       /* #32353b */
-
-    /* Status colors */
-    --online: 139 47.3% 43.9%;             /* #43b581 */
-    --idle: 38 95.7% 54.1%;                /* #faa61a */
-    --dnd: 0 72% 51%;                      /* Red */
-    --offline: 214 9.9% 50.4%;             /* #72767d */
-    --voice-active: 139 47.3% 43.9%;
-
-    /* Sidebar */
-    --sidebar-background: 225 6.3% 12.5%;  /* #202225 - Server bar */
-    --sidebar-foreground: 210 2.9% 86.7%;
-    --sidebar-primary: 227 57.9% 55.1%;    /* Old Blurple */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 6.4% 23.9%;      /* #34373c */
-    --sidebar-accent-foreground: 210 2.9% 86.7%;
-    --sidebar-border: 225 6.3% 12.5%;
-    --sidebar-ring: 227 57.9% 55.1%;
-
-    /* Text colors */
-    --text-normal: 210 2.9% 86.7%;         /* #dcddde */
-    --text-muted: 214 8.1% 61.2%;          /* #8e9297 */
-    --text-faint: 214 9.9% 50.4%;          /* #72767d */
-    --text-link: 197 100% 47.8%;           /* #00aff4 */
-
-    /* Gradients - Discord style */
-    --gradient-primary: linear-gradient(135deg, hsl(227 57.9% 55.1%), hsl(227 57.9% 45%));
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
+    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
+    --gradient-surface: linear-gradient(180deg, hsl(230 25% 14%), hsl(230 25% 10%));
 
     /* Shadows */
-    --shadow-card: 0 2px 10px hsl(0 0% 0% / 0.2);
+    --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
+    --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
+
+    --sidebar-background: 230 25% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 186 100% 50%;
+    --sidebar-primary-foreground: 230 25% 8%;
+    --sidebar-accent: 230 25% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 186 100% 50%;
   }
 
   .dark {
-    /* Same as root - always dark OG theme */
-    --background: 223 6.7% 20.6%;
-    --foreground: 210 2.9% 86.7%;
+    /* Same as root - always dark */
+    --background: 230 25% 8%;
+    --foreground: 210 40% 98%;
   }
 }
 
@@ -147,12 +123,11 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'gg sans', 'Inter', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   h1, h2, h3 {
-    font-family: 'gg sans', 'Inter', sans-serif;
-    font-weight: 600;
+    font-family: 'Orbitron', sans-serif;
   }
 }
 
@@ -162,64 +137,51 @@
   }
 
   .glass-hover {
-    @apply hover:bg-accent/80 transition-all duration-200;
+    @apply hover:bg-surface-hover/80 transition-all duration-300;
   }
 
-  /* Server icon with squircle transition */
+  .glow-text {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.5),
+                 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-border {
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
+                inset 0 0 10px hsl(var(--primary) / 0.1);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
   .server-icon {
     @apply w-12 h-12 rounded-[24px] flex items-center justify-center cursor-pointer
-           transition-all duration-200 ease-out overflow-hidden;
-    background-color: hsl(var(--discord-chat));
+           transition-all duration-300 ease-out;
   }
 
   .server-icon:hover {
     @apply rounded-[16px];
-    background-color: hsl(var(--primary));
   }
 
   .server-icon.active {
     @apply rounded-[16px];
-    background-color: hsl(var(--primary));
   }
 
-  /* Channel item states - OG Discord style */
   .channel-item {
-    @apply flex items-center gap-2 px-2 py-1.5 mx-2 rounded cursor-pointer
-           transition-all duration-150;
-    color: hsl(var(--channel-normal));
-  }
-
-  .channel-item:hover {
-    background-color: hsl(var(--channel-hover));
-    color: hsl(var(--channel-hover-text));
+    @apply flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
+           text-muted-foreground hover:text-foreground hover:bg-surface-hover
+           transition-all duration-200;
   }
 
   .channel-item.active {
-    background-color: hsl(var(--channel-active));
-    color: hsl(var(--channel-active-text));
+    @apply bg-muted text-foreground;
   }
 
-  /* Message hover effect */
-  .message-hover:hover {
-    background-color: hsl(var(--message-hover));
+  .message-hover {
+    @apply hover:bg-surface-hover/50 transition-colors duration-150;
   }
 
-  /* Role headers - uppercase, small, bold */
-  .role-header {
-    @apply px-2 py-2 text-xs font-semibold uppercase tracking-wide;
-    color: hsl(var(--text-muted));
-  }
-
-  /* Member item hover */
-  .member-item {
-    @apply flex items-center gap-3 w-full px-2 py-1.5 rounded transition-colors;
-  }
-
-  .member-item:hover {
-    background-color: hsl(var(--channel-hover));
-  }
-
-  /* Scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted)) transparent;
@@ -376,20 +338,20 @@
   /* Drop indicator line with Blurple glow */
   .drop-indicator {
     height: 2px;
-    background-color: #7289da;
+    background-color: #5865f2;
     border-radius: 1px;
-    box-shadow: 0 0 8px 2px #7289da, 0 0 16px 4px rgba(114, 137, 218, 0.5);
+    box-shadow: 0 0 8px 2px #5865f2, 0 0 16px 4px rgba(88, 101, 242, 0.5);
     animation: drop-indicator-pulse 0.8s ease-in-out infinite;
   }
 
   @keyframes drop-indicator-pulse {
     0%, 100% {
       opacity: 1;
-      box-shadow: 0 0 8px 2px #7289da, 0 0 16px 4px rgba(114, 137, 218, 0.5);
+      box-shadow: 0 0 8px 2px #5865f2, 0 0 16px 4px rgba(88, 101, 242, 0.5);
     }
     50% {
       opacity: 0.85;
-      box-shadow: 0 0 12px 4px #7289da, 0 0 24px 8px rgba(114, 137, 218, 0.6);
+      box-shadow: 0 0 12px 4px #5865f2, 0 0 24px 8px rgba(88, 101, 242, 0.6);
     }
   }
 

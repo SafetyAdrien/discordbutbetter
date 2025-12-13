@@ -16,7 +16,11 @@ import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
+import { UserProfileCard } from '@/components/profile/UserProfileCard';
+import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVoice } from '@/contexts/VoiceContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
@@ -39,6 +43,10 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  
+  // Get speaking users from voice context
+  const { speakingUsers } = useVoice();
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -324,82 +332,112 @@ const Index = () => {
           onShowFriends={handleShowFriends}
         />
       ) : activeServer && serverForChannelList ? (
-        <>
-          {/* Channel List */}
-          <ChannelList
-            server={serverForChannelList}
-            activeChannelId={activeChannelId}
-            onChannelSelect={setActiveChannelId}
-            onOpenServerSettings={() => setShowServerSettings(true)}
-            orphanChannels={channelsData?.orphanChannels || []}
-          />
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          {/* Channel List Panel - Resizable */}
+          <ResizablePanel 
+            defaultSize={18} 
+            minSize={12} 
+            maxSize={28}
+            className="flex flex-col"
+          >
+            <div className="flex-1 flex flex-col min-h-0">
+              <ChannelList
+                server={serverForChannelList}
+                activeChannelId={activeChannelId}
+                onChannelSelect={setActiveChannelId}
+                onOpenServerSettings={() => setShowServerSettings(true)}
+                orphanChannels={channelsData?.orphanChannels || []}
+                hideUserPanel
+              />
+            </div>
+            {/* User Profile Card - Fixed at bottom, outside scroll */}
+            <UserProfileCard 
+              onOpenSettings={() => setShowAccountSettings(true)} 
+              onOpenProfile={() => setShowAccountSettings(true)} 
+              speakingUsers={speakingUsers}
+            />
+          </ResizablePanel>
+          
+          <ResizableHandle />
 
           {/* Main Content Area - Conditional based on channel type */}
-          {channelForChat && (
-            <>
-              {channelForChat.type === 'voice' ? (
-                <VoiceChannelView 
-                  channel={channelForChat}
-                  serverId={activeServer.id}
-                  members={memberListData}
-                  ownerId={activeServer.owner_id || ''}
-                  onOpenDM={handleOpenDM}
-                />
-              ) : channelForChat.type === 'media' ? (
-                <MediaChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'forum' ? (
-                <ForumChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'tasks' ? (
-                <TasksChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'calendar' ? (
-                <CalendarChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'announcement' ? (
-                <AnnouncementChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : (
-                <ChatArea
-                  channel={channelForChat}
-                  messages={messagesData}
-                  onSendMessage={handleSendMessage}
-                  memberRoles={memberRolesMap}
-                  onOpenDM={handleOpenDM}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              )}
-            </>
-          )}
+          <ResizablePanel defaultSize={showMembers && channelForChat?.type !== 'voice' ? 62 : 82}>
+            {channelForChat && (
+              <>
+                {channelForChat.type === 'voice' ? (
+                  <VoiceChannelView 
+                    channel={channelForChat}
+                    serverId={activeServer.id}
+                    members={memberListData}
+                    ownerId={activeServer.owner_id || ''}
+                    onOpenDM={handleOpenDM}
+                  />
+                ) : channelForChat.type === 'media' ? (
+                  <MediaChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'forum' ? (
+                  <ForumChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'tasks' ? (
+                  <TasksChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'calendar' ? (
+                  <CalendarChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'announcement' ? (
+                  <AnnouncementChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : (
+                  <ChatArea
+                    channel={channelForChat}
+                    messages={messagesData}
+                    onSendMessage={handleSendMessage}
+                    memberRoles={memberRolesMap}
+                    onOpenDM={handleOpenDM}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                )}
+              </>
+            )}
+          </ResizablePanel>
 
           {/* Member List - Conditionally rendered (not for voice channels) */}
           {showMembers && channelForChat?.type !== 'voice' && (
-            <MemberList 
-              members={memberListData} 
-              ownerId={activeServer.owner_id || ''} 
-              serverId={activeServer.id}
-              onOpenDM={handleOpenDM}
-            />
+            <>
+              <ResizableHandle />
+              <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+                <MemberList 
+                  members={memberListData} 
+                  ownerId={activeServer.owner_id || ''} 
+                  serverId={activeServer.id}
+                  onOpenDM={handleOpenDM}
+                />
+              </ResizablePanel>
+            </>
           )}
-        </>
+        </ResizablePanelGroup>
       ) : null}
+
+      {/* Account Settings Modal */}
+      {showAccountSettings && (
+        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
+      )}
 
       {/* Modals */}
       {showDiscover && (

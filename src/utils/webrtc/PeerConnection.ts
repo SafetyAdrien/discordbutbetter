@@ -3,10 +3,12 @@ export type SignalType = 'offer' | 'answer' | 'ice-candidate';
 export interface SignalData {
   type: SignalType;
   data: RTCSessionDescriptionInit | RTCIceCandidateInit;
+  trackType?: 'audio' | 'camera' | 'screen';
 }
 
 export type OnSignalCallback = (signal: SignalData) => void;
-export type OnStreamCallback = (stream: MediaStream) => void;
+export type OnAudioStreamCallback = (stream: MediaStream) => void;
+export type OnVideoStreamCallback = (stream: MediaStream, type: 'camera' | 'screen') => void;
 export type OnDisconnectCallback = () => void;
 
 const ICE_SERVERS: RTCIceServer[] = [
@@ -19,20 +21,25 @@ export class PeerConnection {
   private pc: RTCPeerConnection;
   private peerId: string;
   private onSignal: OnSignalCallback;
-  private onStream: OnStreamCallback;
+  private onAudioStream: OnAudioStreamCallback;
+  private onVideoStream: OnVideoStreamCallback;
   private onDisconnect: OnDisconnectCallback;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
+  private audioSenders: Map<string, RTCRtpSender> = new Map();
+  private videoSenders: Map<string, RTCRtpSender> = new Map();
 
   constructor(
     peerId: string,
     onSignal: OnSignalCallback,
-    onStream: OnStreamCallback,
+    onAudioStream: OnAudioStreamCallback,
+    onVideoStream: OnVideoStreamCallback,
     onDisconnect: OnDisconnectCallback
   ) {
     this.peerId = peerId;
     this.onSignal = onSignal;
-    this.onStream = onStream;
+    this.onAudioStream = onAudioStream;
+    this.onVideoStream = onVideoStream;
     this.onDisconnect = onDisconnect;
 
     this.pc = new RTCPeerConnection({
@@ -55,9 +62,20 @@ export class PeerConnection {
     };
 
     this.pc.ontrack = (event) => {
-      console.log('[PeerConnection] Track received from:', this.peerId);
+      console.log('[PeerConnection] Track received from:', this.peerId, 'kind:', event.track.kind);
+      
       if (event.streams[0]) {
-        this.onStream(event.streams[0]);
+        const stream = event.streams[0];
+        
+        if (event.track.kind === 'audio') {
+          this.onAudioStream(stream);
+        } else if (event.track.kind === 'video') {
+          // Determine if this is camera or screen based on track label/settings
+          const isScreen = event.track.label.toLowerCase().includes('screen') ||
+                          event.track.label.toLowerCase().includes('window') ||
+                          event.track.label.toLowerCase().includes('display');
+          this.onVideoStream(stream, isScreen ? 'screen' : 'camera');
+        }
       }
     };
 
@@ -75,11 +93,53 @@ export class PeerConnection {
     };
   }
 
-  addStream(stream: MediaStream): void {
-    stream.getTracks().forEach(track => {
-      this.pc.addTrack(track, stream);
+  addAudioStream(stream: MediaStream): void {
+    stream.getAudioTracks().forEach(track => {
+      const sender = this.pc.addTrack(track, stream);
+      this.audioSenders.set(track.id, sender);
     });
-    console.log('[PeerConnection] Added local stream to peer:', this.peerId);
+    console.log('[PeerConnection] Added audio stream to peer:', this.peerId);
+  }
+
+  addVideoStream(stream: MediaStream, type: 'camera' | 'screen'): void {
+    stream.getVideoTracks().forEach(track => {
+      const sender = this.pc.addTrack(track, stream);
+      this.videoSenders.set(`${type}-${track.id}`, sender);
+    });
+    // Also add audio tracks if present (for screen share with audio)
+    stream.getAudioTracks().forEach(track => {
+      const sender = this.pc.addTrack(track, stream);
+      this.audioSenders.set(`${type}-audio-${track.id}`, sender);
+    });
+    console.log(`[PeerConnection] Added ${type} stream to peer:`, this.peerId);
+  }
+
+  removeVideoStream(type: 'camera' | 'screen'): void {
+    const toRemove: string[] = [];
+    this.videoSenders.forEach((sender, key) => {
+      if (key.startsWith(type)) {
+        this.pc.removeTrack(sender);
+        toRemove.push(key);
+      }
+    });
+    toRemove.forEach(key => this.videoSenders.delete(key));
+    
+    // Also remove associated audio tracks (for screen share)
+    const audioToRemove: string[] = [];
+    this.audioSenders.forEach((sender, key) => {
+      if (key.startsWith(`${type}-audio`)) {
+        this.pc.removeTrack(sender);
+        audioToRemove.push(key);
+      }
+    });
+    audioToRemove.forEach(key => this.audioSenders.delete(key));
+    
+    console.log(`[PeerConnection] Removed ${type} stream from peer:`, this.peerId);
+  }
+
+  // Legacy method for backward compatibility
+  addStream(stream: MediaStream): void {
+    this.addAudioStream(stream);
   }
 
   async createOffer(): Promise<void> {
@@ -150,8 +210,14 @@ export class PeerConnection {
     return this.pc.connectionState;
   }
 
+  async renegotiate(): Promise<void> {
+    await this.createOffer();
+  }
+
   close(): void {
     this.pc.close();
+    this.audioSenders.clear();
+    this.videoSenders.clear();
     console.log('[PeerConnection] Closed for peer:', this.peerId);
   }
 }

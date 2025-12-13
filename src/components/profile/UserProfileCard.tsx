@@ -153,7 +153,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 {showStatusMenu && (
                   <Portal.Root>
                     <div 
-                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-right"
+                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-status-menu"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
                       onMouseEnter={() => setShowStatusMenu(true)}
                       onMouseLeave={() => setShowStatusMenu(false)}
@@ -190,18 +190,26 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </PopoverContent>
       </Popover>
       
-      {/* Mic Settings Button */}
+      {/* Mic Button */}
+      <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
+        <Mic className="w-4 h-4 text-muted-foreground" />
+      </button>
+      
+      {/* Mic Settings Chevron */}
       <VoiceSettingsPopover side="top" align="center">
-        <button className="p-1.5 hover:bg-muted rounded-md transition-colors flex items-center gap-0.5">
-          <Mic className="w-4 h-4 text-muted-foreground" />
+        <button className="p-1 hover:bg-muted rounded-md transition-colors">
           <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
         </button>
       </VoiceSettingsPopover>
 
-      {/* Video Settings Button */}
+      {/* Video Button */}
+      <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
+        <Video className="w-4 h-4 text-muted-foreground" />
+      </button>
+      
+      {/* Video Settings Chevron */}
       <VideoSettingsPopover side="top" align="center">
-        <button className="p-1.5 hover:bg-muted rounded-md transition-colors flex items-center gap-0.5">
-          <Video className="w-4 h-4 text-muted-foreground" />
+        <button className="p-1 hover:bg-muted rounded-md transition-colors">
           <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
         </button>
       </VideoSettingsPopover>

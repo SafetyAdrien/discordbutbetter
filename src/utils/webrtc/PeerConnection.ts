@@ -231,10 +231,66 @@ export class PeerConnection {
     await this.createOffer();
   }
 
+  // Get WebRTC connection statistics
+  async getStats(): Promise<ConnectionStats> {
+    const stats = await this.pc.getStats();
+    let latency = 0;
+    let packetLoss = 0;
+    let jitter = 0;
+    let bitrate = 0;
+    let connectionType = 'unknown';
+    let packetsReceived = 0;
+    let packetsLost = 0;
+
+    stats.forEach((report) => {
+      // Get RTT from candidate-pair
+      if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+        latency = report.currentRoundTripTime 
+          ? Math.round(report.currentRoundTripTime * 1000) 
+          : 0;
+      }
+      
+      // Get packet loss from inbound-rtp
+      if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+        packetsReceived = report.packetsReceived || 0;
+        packetsLost = report.packetsLost || 0;
+        jitter = report.jitter ? Math.round(report.jitter * 1000) : 0;
+      }
+      
+      // Get connection type from local candidate
+      if (report.type === 'local-candidate') {
+        connectionType = report.candidateType || 'unknown';
+      }
+    });
+
+    // Calculate packet loss percentage
+    if (packetsReceived + packetsLost > 0) {
+      packetLoss = Math.round((packetsLost / (packetsReceived + packetsLost)) * 1000) / 10;
+    }
+
+    return {
+      latency,
+      packetLoss,
+      jitter,
+      bitrate,
+      iceState: this.pc.iceConnectionState,
+      connectionType,
+    };
+  }
+
   close(): void {
     this.pc.close();
     this.audioSenders.clear();
     this.videoSenders.clear();
     console.log('[PeerConnection] Closed for peer:', this.peerId);
   }
+}
+
+export interface ConnectionStats {
+  latency: number;
+  packetLoss: number;
+  jitter: number;
+  bitrate: number;
+  iceState: RTCIceConnectionState;
+  connectionType: string;
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { PeerConnection, SignalData } from '@/utils/webrtc/PeerConnection';
+import { PeerConnection, SignalData, ConnectionStats } from '@/utils/webrtc/PeerConnection';
 import { SignalingService } from '@/utils/webrtc/SignalingService';
 import { mediaManager } from '@/utils/webrtc/MediaManager';
 
@@ -40,6 +40,8 @@ export interface UseWebRTCReturn {
   // Remote video/screen streams
   remoteVideoStreams: Map<string, MediaStream>;
   remoteScreenStreams: Map<string, MediaStream>;
+  // Connection stats
+  connectionStats: ConnectionStats | null;
 }
 
 export function useWebRTC(): UseWebRTCReturn {
@@ -61,12 +63,14 @@ export function useWebRTC(): UseWebRTCReturn {
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [remoteVideoStreams, setRemoteVideoStreams] = useState<Map<string, MediaStream>>(new Map());
   const [remoteScreenStreams, setRemoteScreenStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [connectionStats, setConnectionStats] = useState<ConnectionStats | null>(null);
 
   const signalingServiceRef = useRef<SignalingService | null>(null);
   const peersRef = useRef<Map<string, PeerConnection>>(new Map());
   const channelIdRef = useRef<string | null>(null);
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const participantsSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Set up remote stream callbacks
   useEffect(() => {
@@ -246,6 +250,20 @@ export function useWebRTC(): UseWebRTCReturn {
         });
       }, 50); // 50ms for responsive VAD
 
+      // Start connection stats monitoring
+      statsIntervalRef.current = setInterval(async () => {
+        // Get stats from first connected peer
+        const firstPeer = peersRef.current.values().next().value;
+        if (firstPeer) {
+          try {
+            const stats = await firstPeer.getStats();
+            setConnectionStats(stats);
+          } catch (e) {
+            // Ignore stats errors
+          }
+        }
+      }, 2000); // Update every 2 seconds
+
       // Start signaling service
       signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);
       await signalingServiceRef.current.start();
@@ -327,6 +345,12 @@ export function useWebRTC(): UseWebRTCReturn {
       clearInterval(audioLevelIntervalRef.current);
       audioLevelIntervalRef.current = null;
     }
+
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current);
+      statsIntervalRef.current = null;
+    }
+    setConnectionStats(null);
 
     peersRef.current.forEach((pc, peerId) => {
       pc.close();
@@ -551,5 +575,7 @@ export function useWebRTC(): UseWebRTCReturn {
     // Remote streams
     remoteVideoStreams,
     remoteScreenStreams,
+    // Connection stats
+    connectionStats,
   };
 }

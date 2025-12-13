@@ -2,7 +2,10 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MicOff, HeadphoneOff } from 'lucide-react';
 import { VoiceVideoTile } from './VoiceVideoTile';
+import { VoiceParticipantPopover } from './VoiceParticipantPopover';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
+import { useVoice } from '@/contexts/VoiceContext';
 
 // Array of gradient backgrounds for participants
 const PARTICIPANT_GRADIENTS = [
@@ -20,6 +23,8 @@ interface Participant {
   user_id: string;
   muted: boolean;
   deafened: boolean;
+  server_muted?: boolean;
+  server_deafened?: boolean;
   camera?: boolean;
   streaming?: boolean;
   profile: {
@@ -37,6 +42,8 @@ interface VoiceParticipantGridProps {
   localScreenStream: MediaStream | null;
   remoteVideoStreams: Map<string, MediaStream>;
   remoteScreenStreams: Map<string, MediaStream>;
+  channelId: string;
+  canModerate?: boolean;
 }
 
 export function VoiceParticipantGrid({ 
@@ -46,8 +53,11 @@ export function VoiceParticipantGrid({
   localScreenStream,
   remoteVideoStreams,
   remoteScreenStreams,
+  channelId,
+  canModerate = false,
 }: VoiceParticipantGridProps) {
   const { user } = useAuth();
+  const { getUserVolume, setUserVolume, serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
   
   // Check if anyone is screen sharing (for focus mode)
   const screenShareUser = participants.find(p => p.streaming);
@@ -116,12 +126,23 @@ export function VoiceParticipantGrid({
                     className="aspect-video"
                   />
                 ) : (
-                  <VoiceParticipantCard
+                  <VoiceParticipantPopover
                     participant={participant}
-                    isSpeaking={speakingUsers.has(participant.user_id)}
-                    gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-                    compact
-                  />
+                    canModerate={canModerate && !isLocal}
+                    volume={getUserVolume(participant.user_id)}
+                    onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
+                    onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
+                    onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
+                  >
+                    <div className="cursor-pointer">
+                      <VoiceParticipantCard
+                        participant={participant}
+                        isSpeaking={speakingUsers.has(participant.user_id)}
+                        gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                        compact
+                      />
+                    </div>
+                  </VoiceParticipantPopover>
                 )}
               </div>
             );
@@ -161,12 +182,23 @@ export function VoiceParticipantGrid({
 
           // Show avatar card if no camera
           return (
-            <VoiceParticipantCard
+            <VoiceParticipantPopover
               key={participant.user_id}
               participant={participant}
-              isSpeaking={speakingUsers.has(participant.user_id)}
-              gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-            />
+              canModerate={canModerate && !isLocal}
+              volume={getUserVolume(participant.user_id)}
+              onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
+              onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
+              onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
+            >
+              <div className="cursor-pointer">
+                <VoiceParticipantCard
+                  participant={participant}
+                  isSpeaking={speakingUsers.has(participant.user_id)}
+                  gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                />
+              </div>
+            </VoiceParticipantPopover>
           );
         })}
       </div>

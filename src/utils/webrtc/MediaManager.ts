@@ -21,6 +21,7 @@ export class MediaManager {
   private remoteAudioContexts: Map<string, RemoteAudioContext> = new Map();
   private remoteVideoStreams: Map<string, MediaStream> = new Map();
   private remoteScreenStreams: Map<string, MediaStream> = new Map();
+  private peerVolumes: Map<string, number> = new Map();
   
   private isMuted = false;
   private isDeafened = false;
@@ -244,6 +245,12 @@ export class MediaManager {
     audio.autoplay = true;
     audio.muted = this.isDeafened;
     
+    // Apply saved volume if exists
+    const savedVolume = this.peerVolumes.get(peerId);
+    if (savedVolume !== undefined) {
+      audio.volume = Math.max(0, Math.min(2, savedVolume / 100));
+    }
+
     audio.play().catch(error => {
       console.error('[MediaManager] Failed to play audio for peer:', peerId, error);
     });
@@ -336,6 +343,24 @@ export class MediaManager {
 
     const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
     return average / 255;
+  }
+
+  // ==================== VOLUME CONTROL ====================
+
+  setRemoteAudioVolume(peerId: string, volume: number): void {
+    // volume: 0-200 (100 = normal, 200 = 2x amplification)
+    const normalizedVolume = Math.max(0, Math.min(2, volume / 100));
+    this.peerVolumes.set(peerId, volume);
+    
+    const audio = this.remoteAudioElements.get(peerId);
+    if (audio) {
+      audio.volume = normalizedVolume;
+    }
+    console.log('[MediaManager] Set volume for peer:', peerId, 'to', volume);
+  }
+
+  getRemoteAudioVolume(peerId: string): number {
+    return this.peerVolumes.get(peerId) ?? 100;
   }
 
   // ==================== CLEANUP ====================

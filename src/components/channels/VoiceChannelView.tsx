@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MemberList } from '@/components/layout/MemberList';
 import { Button } from '@/components/ui/button';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
@@ -31,6 +32,7 @@ export function VoiceChannelView({
   ownerId,
   onOpenDM 
 }: VoiceChannelViewProps) {
+  const { user } = useAuth();
   const [showChat, setShowChat] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -151,6 +153,8 @@ export function VoiceChannelView({
             localScreenStream={isConnectedToThisChannel ? localScreenStream : null}
             remoteVideoStreams={remoteVideoStreams}
             remoteScreenStreams={remoteScreenStreams}
+            channelId={channel.id}
+            canModerate={ownerId === user?.id}
           />
 
           {/* Action Bar - only show if connected */}

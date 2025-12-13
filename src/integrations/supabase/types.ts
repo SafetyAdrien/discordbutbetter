@@ -1251,6 +1251,9 @@ export type Database = {
           id: string
           joined_at: string | null
           muted: boolean | null
+          muted_by: string | null
+          server_deafened: boolean | null
+          server_muted: boolean | null
           streaming: boolean | null
           user_id: string
         }
@@ -1261,6 +1264,9 @@ export type Database = {
           id?: string
           joined_at?: string | null
           muted?: boolean | null
+          muted_by?: string | null
+          server_deafened?: boolean | null
+          server_muted?: boolean | null
           streaming?: boolean | null
           user_id: string
         }
@@ -1271,6 +1277,9 @@ export type Database = {
           id?: string
           joined_at?: string | null
           muted?: boolean | null
+          muted_by?: string | null
+          server_deafened?: boolean | null
+          server_muted?: boolean | null
           streaming?: boolean | null
           user_id?: string
         }
@@ -1283,7 +1292,53 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "voice_states_muted_by_fkey"
+            columns: ["muted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "voice_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_user_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          target_user_id: string
+          user_id: string
+          volume: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          target_user_id: string
+          user_id: string
+          volume?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          target_user_id?: string
+          user_id?: string
+          volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_user_settings_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_user_settings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1422,6 +1477,18 @@ export type Database = {
       }
       remove_secondary_owner: {
         Args: { _server_id: string }
+        Returns: undefined
+      }
+      server_deafen_participant: {
+        Args: {
+          _channel_id: string
+          _deafened: boolean
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
+      server_mute_participant: {
+        Args: { _channel_id: string; _muted: boolean; _target_user_id: string }
         Returns: undefined
       }
       set_secondary_owner: {

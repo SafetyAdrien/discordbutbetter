@@ -767,18 +767,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />
       )}
 
-      {/* Message Preview */}
-      {messageInput.trim() && (
-        <div className="px-4 mb-2">
-          <div className="bg-muted/30 rounded-lg p-3 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">Aperçu</p>
-            <div className="text-foreground text-sm">
-              <MarkdownText content={messageInput} />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Message Input */}
       <div className="px-4 pb-6 flex-shrink-0">
         <form onSubmit={handleSubmit} className="relative shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">

@@ -1355,6 +1355,7 @@ export type Database = {
         Args: { p_other_user_id?: string }
         Returns: string
       }
+      generate_invite_code: { Args: never; Returns: string }
       get_channel_webhooks: {
         Args: { _channel_id: string }
         Returns: {

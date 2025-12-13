@@ -667,9 +667,9 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="w-60 bg-card flex flex-col border-r border-border">
+  return <div className="h-full bg-card flex flex-col border-r border-border min-w-[180px]">
       {/* Server Header - styled like User Panel */}
-      <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
+      <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border flex-shrink-0">
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">
@@ -815,8 +815,10 @@ export function ChannelList({
       {/* Voice Controls */}
       {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute()} onToggleDeafen={() => toggleDeafen()} onDisconnect={() => leaveChannel()} />}
 
-      {/* User Panel */}
-      <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} speakingUsers={speakingUsers} />
+      {/* User Panel - Fixed at bottom, not affected by resize */}
+      <div className="flex-shrink-0 border-t border-border mt-auto">
+        <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} speakingUsers={speakingUsers} />
+      </div>
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 

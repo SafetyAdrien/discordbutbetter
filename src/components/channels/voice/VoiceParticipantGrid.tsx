@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MicOff, HeadphoneOff } from 'lucide-react';
+import { VoiceVideoTile } from './VoiceVideoTile';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Array of gradient backgrounds for participants
 const PARTICIPANT_GRADIENTS = [
@@ -19,6 +21,7 @@ interface Participant {
   muted: boolean;
   deafened: boolean;
   camera?: boolean;
+  streaming?: boolean;
   profile: {
     id: string;
     username: string;
@@ -30,11 +33,33 @@ interface Participant {
 interface VoiceParticipantGridProps {
   participants: Participant[];
   speakingUsers: Set<string>;
+  localCameraStream: MediaStream | null;
+  localScreenStream: MediaStream | null;
+  remoteVideoStreams: Map<string, MediaStream>;
+  remoteScreenStreams: Map<string, MediaStream>;
 }
 
-export function VoiceParticipantGrid({ participants, speakingUsers }: VoiceParticipantGridProps) {
-  // Determine grid layout based on participant count
+export function VoiceParticipantGrid({ 
+  participants, 
+  speakingUsers,
+  localCameraStream,
+  localScreenStream,
+  remoteVideoStreams,
+  remoteScreenStreams,
+}: VoiceParticipantGridProps) {
+  const { user } = useAuth();
+  
+  // Check if anyone is screen sharing (for focus mode)
+  const screenShareUser = participants.find(p => p.streaming);
+  const hasScreenShare = !!screenShareUser || !!localScreenStream;
+
+  // Determine grid layout based on participant count and screen share
   const getGridClass = () => {
+    if (hasScreenShare) {
+      // Focus layout: screen share takes most space
+      return 'grid-cols-1';
+    }
+    
     const count = participants.length;
     if (count === 1) return 'grid-cols-1 max-w-md';
     if (count === 2) return 'grid-cols-2 max-w-2xl';
@@ -43,17 +68,107 @@ export function VoiceParticipantGrid({ participants, speakingUsers }: VoiceParti
     return 'grid-cols-4 max-w-5xl';
   };
 
+  // Render screen share in focus mode
+  if (hasScreenShare) {
+    const screenStream = localScreenStream || (screenShareUser ? remoteScreenStreams.get(screenShareUser.user_id) : null);
+    const screenOwner = localScreenStream 
+      ? participants.find(p => p.user_id === user?.id)
+      : screenShareUser;
+
+    return (
+      <div className="flex-1 flex flex-col gap-4 p-4">
+        {/* Main screen share */}
+        <div className="flex-1 min-h-0">
+          {screenStream && screenOwner && (
+            <VoiceVideoTile
+              stream={screenStream}
+              type="screen"
+              participantName={screenOwner.profile.display_name}
+              isSpeaking={speakingUsers.has(screenOwner.user_id)}
+              isMuted={screenOwner.muted}
+              isLocal={screenOwner.user_id === user?.id}
+              className="h-full"
+            />
+          )}
+        </div>
+
+        {/* Participant strip at bottom */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {participants.map((participant, index) => {
+            const isLocal = participant.user_id === user?.id;
+            const hasCameraStream = isLocal 
+              ? !!localCameraStream 
+              : remoteVideoStreams.has(participant.user_id);
+            const cameraStream = isLocal 
+              ? localCameraStream 
+              : remoteVideoStreams.get(participant.user_id);
+
+            return (
+              <div key={participant.user_id} className="flex-shrink-0 w-40">
+                {hasCameraStream && cameraStream ? (
+                  <VoiceVideoTile
+                    stream={cameraStream}
+                    type="camera"
+                    participantName={participant.profile.display_name}
+                    isSpeaking={speakingUsers.has(participant.user_id)}
+                    isMuted={participant.muted}
+                    isLocal={isLocal}
+                    className="aspect-video"
+                  />
+                ) : (
+                  <VoiceParticipantCard
+                    participant={participant}
+                    isSpeaking={speakingUsers.has(participant.user_id)}
+                    gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                    compact
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Normal grid layout (no screen share)
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className={cn('grid gap-4 w-full mx-auto', getGridClass())}>
-        {participants.map((participant, index) => (
-          <VoiceParticipantCard
-            key={participant.user_id}
-            participant={participant}
-            isSpeaking={speakingUsers.has(participant.user_id)}
-            gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-          />
-        ))}
+        {participants.map((participant, index) => {
+          const isLocal = participant.user_id === user?.id;
+          const hasCameraStream = isLocal 
+            ? !!localCameraStream 
+            : remoteVideoStreams.has(participant.user_id);
+          const cameraStream = isLocal 
+            ? localCameraStream 
+            : remoteVideoStreams.get(participant.user_id);
+
+          // Show video tile if camera is on
+          if (hasCameraStream && cameraStream) {
+            return (
+              <VoiceVideoTile
+                key={participant.user_id}
+                stream={cameraStream}
+                type="camera"
+                participantName={participant.profile.display_name}
+                isSpeaking={speakingUsers.has(participant.user_id)}
+                isMuted={participant.muted}
+                isLocal={isLocal}
+              />
+            );
+          }
+
+          // Show avatar card if no camera
+          return (
+            <VoiceParticipantCard
+              key={participant.user_id}
+              participant={participant}
+              isSpeaking={speakingUsers.has(participant.user_id)}
+              gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -63,9 +178,10 @@ interface VoiceParticipantCardProps {
   participant: Participant;
   isSpeaking: boolean;
   gradientIndex: number;
+  compact?: boolean;
 }
 
-function VoiceParticipantCard({ participant, isSpeaking, gradientIndex }: VoiceParticipantCardProps) {
+function VoiceParticipantCard({ participant, isSpeaking, gradientIndex, compact }: VoiceParticipantCardProps) {
   const gradient = PARTICIPANT_GRADIENTS[gradientIndex];
 
   return (
@@ -74,7 +190,8 @@ function VoiceParticipantCard({ participant, isSpeaking, gradientIndex }: VoiceP
         'relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br',
         gradient,
         'transition-all duration-300',
-        isSpeaking && 'ring-4 ring-[hsl(var(--online))] voice-speaking-glow'
+        isSpeaking && 'ring-4 ring-[hsl(var(--online))] voice-speaking-glow',
+        compact && 'rounded-xl'
       )}
     >
       {/* Subtle inner glow */}
@@ -86,20 +203,29 @@ function VoiceParticipantCard({ participant, isSpeaking, gradientIndex }: VoiceP
           'relative transition-transform duration-200',
           isSpeaking && 'scale-105'
         )}>
-          <Avatar className="w-20 h-20 border-4 border-white/20">
+          <Avatar className={cn(
+            'border-4 border-white/20',
+            compact ? 'w-12 h-12' : 'w-20 h-20'
+          )}>
             <AvatarImage src={participant.profile.avatar_url || undefined} />
-            <AvatarFallback className="bg-white/10 text-white text-2xl font-bold">
+            <AvatarFallback className={cn(
+              'bg-white/10 text-white font-bold',
+              compact ? 'text-lg' : 'text-2xl'
+            )}>
               {participant.profile.display_name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           
           {/* Mute/Deafen badge */}
           {(participant.muted || participant.deafened) && (
-            <div className="absolute -bottom-1 -right-1 bg-[#232428] rounded-full p-1.5 border-2 border-black/20">
+            <div className={cn(
+              'absolute -bottom-1 -right-1 bg-[#232428] rounded-full border-2 border-black/20',
+              compact ? 'p-1' : 'p-1.5'
+            )}>
               {participant.deafened ? (
-                <HeadphoneOff className="w-4 h-4 text-destructive" />
+                <HeadphoneOff className={cn(compact ? 'w-3 h-3' : 'w-4 h-4', 'text-destructive')} />
               ) : (
-                <MicOff className="w-4 h-4 text-destructive" />
+                <MicOff className={cn(compact ? 'w-3 h-3' : 'w-4 h-4', 'text-destructive')} />
               )}
             </div>
           )}
@@ -107,9 +233,15 @@ function VoiceParticipantCard({ participant, isSpeaking, gradientIndex }: VoiceP
       </div>
 
       {/* Name badge at bottom */}
-      <div className="absolute bottom-3 left-3 right-3">
-        <div className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-md px-2.5 py-1.5">
-          <span className="text-sm font-medium text-white truncate">
+      <div className={cn('absolute left-2 right-2', compact ? 'bottom-1.5' : 'bottom-3')}>
+        <div className={cn(
+          'inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-md',
+          compact ? 'px-1.5 py-0.5' : 'px-2.5 py-1.5'
+        )}>
+          <span className={cn(
+            'font-medium text-white truncate',
+            compact ? 'text-xs' : 'text-sm'
+          )}>
             {participant.profile.display_name}
           </span>
         </div>

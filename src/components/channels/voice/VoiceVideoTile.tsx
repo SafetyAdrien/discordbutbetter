@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
 import { Mic, MicOff, Headphones } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -11,6 +12,7 @@ interface VoiceVideoTileProps {
   isMuted?: boolean;
   isDeafened?: boolean;
   isLocal?: boolean;
+  className?: string;
 }
 
 export function VoiceVideoTile({
@@ -22,6 +24,7 @@ export function VoiceVideoTile({
   isMuted = false,
   isDeafened = false,
   isLocal = false,
+  className,
 }: VoiceVideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -38,9 +41,12 @@ export function VoiceVideoTile({
 
   return (
     <div
-      className={`relative rounded-xl overflow-hidden bg-[#1e1f22] ${
-        type === 'screen' ? 'col-span-2 row-span-2' : ''
-      } ${isSpeaking ? 'ring-2 ring-[hsl(var(--voice-active))] voice-speaking-glow' : ''}`}
+      className={cn(
+        'relative rounded-xl overflow-hidden bg-[#1e1f22]',
+        type === 'screen' && 'col-span-2 row-span-2',
+        isSpeaking && 'ring-2 ring-[hsl(var(--voice-active))] voice-speaking-glow',
+        className
+      )}
     >
       {stream ? (
         <video

@@ -204,7 +204,10 @@ function VoiceParticipantCard({ participant, isSpeaking, gradientIndex, compact 
           isSpeaking && 'scale-105'
         )}>
           <Avatar className={cn(
-            'border-4 border-white/20',
+            'transition-all duration-150',
+            isSpeaking 
+              ? 'ring-4 ring-[hsl(var(--online))] voice-speaking-ring border-4 border-[hsl(var(--online))]' 
+              : 'border-4 border-white/20',
             compact ? 'w-12 h-12' : 'w-20 h-20'
           )}>
             <AvatarImage src={participant.profile.avatar_url || undefined} />

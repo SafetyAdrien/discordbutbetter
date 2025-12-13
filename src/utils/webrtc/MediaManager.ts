@@ -5,6 +5,12 @@ export interface StreamInfo {
   type: StreamType;
 }
 
+interface RemoteAudioContext {
+  context: AudioContext;
+  analyser: AnalyserNode;
+  source: MediaStreamAudioSourceNode;
+}
+
 export class MediaManager {
   private audioContext: AudioContext | null = null;
   private localAudioStream: MediaStream | null = null;
@@ -12,6 +18,7 @@ export class MediaManager {
   private localScreenStream: MediaStream | null = null;
   private analyser: AnalyserNode | null = null;
   private remoteAudioElements: Map<string, HTMLAudioElement> = new Map();
+  private remoteAudioContexts: Map<string, RemoteAudioContext> = new Map();
   private remoteVideoStreams: Map<string, MediaStream> = new Map();
   private remoteScreenStreams: Map<string, MediaStream> = new Map();
   
@@ -231,6 +238,7 @@ export class MediaManager {
   addRemoteAudioStream(peerId: string, stream: MediaStream): void {
     this.removeRemoteAudioStream(peerId);
 
+    // Create audio element for playback
     const audio = document.createElement('audio');
     audio.srcObject = stream;
     audio.autoplay = true;
@@ -241,17 +249,51 @@ export class MediaManager {
     });
 
     this.remoteAudioElements.set(peerId, audio);
-    console.log('[MediaManager] Added remote audio stream for peer:', peerId);
+
+    // Create audio context and analyser for VAD (Voice Activity Detection)
+    try {
+      const context = new AudioContext();
+      const source = context.createMediaStreamSource(stream);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      
+      this.remoteAudioContexts.set(peerId, { context, analyser, source });
+      console.log('[MediaManager] Added remote audio stream with VAD for peer:', peerId);
+    } catch (error) {
+      console.warn('[MediaManager] Failed to create audio analyser for peer:', peerId, error);
+    }
   }
 
   removeRemoteAudioStream(peerId: string): void {
+    // Clean up audio element
     const audio = this.remoteAudioElements.get(peerId);
     if (audio) {
       audio.srcObject = null;
       audio.remove();
       this.remoteAudioElements.delete(peerId);
-      console.log('[MediaManager] Removed remote audio stream for peer:', peerId);
     }
+
+    // Clean up audio context for VAD
+    const audioContext = this.remoteAudioContexts.get(peerId);
+    if (audioContext) {
+      audioContext.source.disconnect();
+      audioContext.context.close().catch(() => {});
+      this.remoteAudioContexts.delete(peerId);
+    }
+    
+    console.log('[MediaManager] Removed remote audio stream for peer:', peerId);
+  }
+
+  // Get audio level for a remote peer (for VAD)
+  getRemoteAudioLevel(peerId: string): number {
+    const entry = this.remoteAudioContexts.get(peerId);
+    if (!entry) return 0;
+
+    const dataArray = new Uint8Array(entry.analyser.frequencyBinCount);
+    entry.analyser.getByteFrequencyData(dataArray);
+    const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+    return average / 255;
   }
 
   addRemoteVideoStream(peerId: string, stream: MediaStream, type: 'camera' | 'screen'): void {
@@ -308,6 +350,14 @@ export class MediaManager {
       audio.remove();
     });
     this.remoteAudioElements.clear();
+    
+    // Clean up remote audio contexts for VAD
+    this.remoteAudioContexts.forEach((ctx) => {
+      ctx.source.disconnect();
+      ctx.context.close().catch(() => {});
+    });
+    this.remoteAudioContexts.clear();
+    
     this.remoteVideoStreams.clear();
     this.remoteScreenStreams.clear();
     

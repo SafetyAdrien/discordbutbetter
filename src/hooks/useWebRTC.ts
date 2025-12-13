@@ -221,11 +221,30 @@ export function useWebRTC(): UseWebRTCReturn {
         console.warn('[useWebRTC] Joining in listen-only mode');
       }
 
-      // Start audio level monitoring
+      // Start audio level monitoring with VAD for all peers
       audioLevelIntervalRef.current = setInterval(() => {
+        // Local audio level
         const level = mediaManager.getAudioLevel();
         setAudioLevel(level);
-      }, 100);
+
+        // Update speaking status for remote peers based on their audio levels
+        setPeers(prev => {
+          const newPeers = new Map(prev);
+          let hasChanges = false;
+
+          for (const [peerId, peerInfo] of newPeers.entries()) {
+            const remoteLevel = mediaManager.getRemoteAudioLevel(peerId);
+            const isSpeaking = remoteLevel > 0.05; // VAD threshold
+
+            if (peerInfo.isSpeaking !== isSpeaking) {
+              newPeers.set(peerId, { ...peerInfo, isSpeaking });
+              hasChanges = true;
+            }
+          }
+
+          return hasChanges ? newPeers : prev;
+        });
+      }, 50); // 50ms for responsive VAD
 
       // Start signaling service
       signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);

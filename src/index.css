@@ -308,7 +308,23 @@
     background: radial-gradient(ellipse at 50% 30%, #1e3a8a 0%, #312e81 40%, #1e1b4b 70%, #0f0f23 100%);
   }
 
-  /* Voice speaking glow effect */
+  /* Voice speaking glow effect - green pulsing ring */
+  @keyframes voice-speaking-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 2px hsl(var(--online)), 
+                  0 0 12px 4px hsl(var(--online) / 0.6);
+    }
+    50% {
+      box-shadow: 0 0 0 3px hsl(var(--online)), 
+                  0 0 20px 8px hsl(var(--online) / 0.4);
+    }
+  }
+
+  .voice-speaking-ring {
+    animation: voice-speaking-pulse 0.8s ease-in-out infinite;
+  }
+
+  /* Legacy glow effect */
   @keyframes electric-pulse {
     0%, 100% {
       box-shadow: 0 0 0 0 hsl(var(--online) / 0.7), 0 0 20px 5px hsl(var(--online) / 0.3);

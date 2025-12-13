@@ -104,17 +104,25 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dbVoiceState]);
 
-  // Update speaking users from WebRTC
+  // Update speaking users from WebRTC (VAD - Voice Activity Detection)
   useEffect(() => {
     const newSpeaking = new Set<string>();
-    webrtc.peers.forEach((peer, oderId) => {
+    
+    // Check if local user is speaking (audio level > threshold and not muted)
+    if (webrtc.audioLevel > 0.05 && !voiceState.isMuted && user?.id) {
+      newSpeaking.add(user.id);
+    }
+    
+    // Check remote peers speaking status
+    webrtc.peers.forEach((peer, peerId) => {
       if (peer.isSpeaking) {
-        newSpeaking.add(oderId);
+        newSpeaking.add(peerId);
       }
     });
+    
     setSpeakingUsers(newSpeaking);
     setLocalAudioLevel(webrtc.audioLevel);
-  }, [webrtc.peers, webrtc.audioLevel]);
+  }, [webrtc.peers, webrtc.audioLevel, voiceState.isMuted, user?.id]);
 
   // Show toast when microphone access fails
   useEffect(() => {

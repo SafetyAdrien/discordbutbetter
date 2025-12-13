@@ -250,16 +250,18 @@ export function useDeleteCategory() {
     },
     onMutate: async ({ categoryId, serverId }) => {
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
-      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
-      if (previousData) {
-        const deletedCategory = previousData.categories.find(c => c.id === categoryId);
+      if (previousChannels) {
+        const deletedCategory = previousChannels.categories.find(c => c.id === categoryId);
         const orphanedChannels = deletedCategory?.channels || [];
         
         queryClient.setQueryData(['channels', serverId], {
-          categories: previousData.categories.filter(c => c.id !== categoryId),
-          orphanChannels: [...previousData.orphanChannels, ...orphanedChannels.map(ch => ({
+          categories: previousChannels.categories.filter(c => c.id !== categoryId),
+          orphanChannels: [...previousChannels.orphanChannels, ...orphanedChannels.map(ch => ({
             ...ch,
             category_id: null,
             position: 0
@@ -267,16 +269,34 @@ export function useDeleteCategory() {
         });
       }
       
-      return { previousData, serverId };
+      // Also update servers query for immediate UI feedback
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) => 
+          old?.map((server: any) => 
+            server.id === serverId 
+              ? {
+                  ...server,
+                  categories: server.categories?.filter((cat: any) => cat.id !== categoryId) || []
+                }
+              : server
+          )
+        );
+      }
+      
+      return { previousChannels, previousServers, serverId };
     },
     onError: (_, { serverId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['channels', serverId], context.previousData);
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       toast.error('Erreur lors de la suppression');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Catégorie supprimée');
@@ -295,29 +315,52 @@ export function useDeleteChannel() {
     },
     onMutate: async ({ channelId, serverId }) => {
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
-      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
-      if (previousData) {
+      if (previousChannels) {
         queryClient.setQueryData(['channels', serverId], {
-          categories: previousData.categories.map(cat => ({
+          categories: previousChannels.categories.map(cat => ({
             ...cat,
             channels: cat.channels.filter(ch => ch.id !== channelId)
           })),
-          orphanChannels: previousData.orphanChannels.filter(ch => ch.id !== channelId)
+          orphanChannels: previousChannels.orphanChannels.filter(ch => ch.id !== channelId)
         });
       }
       
-      return { previousData, serverId };
+      // Also update servers query for immediate UI feedback
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) => 
+          old?.map((server: any) => 
+            server.id === serverId 
+              ? {
+                  ...server,
+                  categories: server.categories?.map((cat: any) => ({
+                    ...cat,
+                    channels: cat.channels?.filter((ch: any) => ch.id !== channelId) || []
+                  })) || []
+                }
+              : server
+          )
+        );
+      }
+      
+      return { previousChannels, previousServers, serverId };
     },
     onError: (_, { serverId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['channels', serverId], context.previousData);
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       toast.error('Erreur lors de la suppression');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Salon supprimé');

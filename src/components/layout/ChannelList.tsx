@@ -73,7 +73,6 @@ interface ChannelListProps {
   onChannelSelect: (channelId: string) => void;
   onOpenServerSettings?: () => void;
   orphanChannels?: OrphanChannel[];
-  hideUserPanel?: boolean;
 }
 const channelIcons: Record<ChannelType, React.ElementType> = {
   text: StreamlineHash,
@@ -387,8 +386,7 @@ export function ChannelList({
   activeChannelId,
   onChannelSelect,
   onOpenServerSettings,
-  orphanChannels = [],
-  hideUserPanel = false
+  orphanChannels = []
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -669,7 +667,7 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="flex-1 bg-card flex flex-col border-r border-border shadow-[4px_0_12px_-4px_rgba(0,0,0,0.3)] min-w-0">
+  return <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>
@@ -817,13 +815,10 @@ export function ChannelList({
       {/* Voice Controls */}
       {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute()} onToggleDeafen={() => toggleDeafen()} onDisconnect={() => leaveChannel()} />}
 
-      {/* User Panel - Only shown if not hidden */}
-      {!hideUserPanel && (
-        <>
-          <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} speakingUsers={speakingUsers} />
-          {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
-        </>
-      )}
+      {/* User Panel */}
+      <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} speakingUsers={speakingUsers} />
+
+      {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 
       {selectedChannelId && <ChannelSettingsModal channelId={selectedChannelId} serverId={server.id} onClose={() => setSelectedChannelId(null)} />}
 

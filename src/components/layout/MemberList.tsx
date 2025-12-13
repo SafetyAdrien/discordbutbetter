@@ -373,7 +373,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
 
     return (
       <>
-        <div ref={ref} className="flex-1 bg-card flex flex-col border-l border-border shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.3)] min-w-0">
+        <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
           {/* Search input */}
           <div className="px-3 pt-3">
             <div className="flex gap-1.5">

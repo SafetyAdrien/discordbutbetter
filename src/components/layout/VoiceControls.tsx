@@ -1,7 +1,15 @@
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio } from 'lucide-react';
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useVoice } from '@/contexts/VoiceContext';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
 
@@ -92,83 +100,117 @@ export function VoiceControls({
         </div>
       )}
 
-      {/* Controls */}
+      {/* Controls - Separated groups with chevrons */}
       <div className="flex items-center gap-1">
         <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant={isMuted ? 'destructive' : 'ghost'}
-                className={cn(
-                  'flex-1 h-8',
-                  isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
-                  !hasMicrophoneAccess && 'opacity-50'
-                )}
-                onClick={onToggleMute}
-                disabled={!hasMicrophoneAccess}
-              >
-                {isMuted ? (
-                  <MicOff className="w-4 h-4" />
-                ) : (
-                  <Mic className="w-4 h-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {!hasMicrophoneAccess 
-                ? 'Microphone non disponible' 
-                : isMuted 
-                  ? 'Activer le micro' 
-                  : 'Couper le micro'}
-            </TooltipContent>
-          </Tooltip>
+          {/* Microphone Group */}
+          <div className="flex items-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isMuted ? 'destructive' : 'ghost'}
+                  className={cn(
+                    'h-8 px-2 rounded-r-none',
+                    isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
+                    !hasMicrophoneAccess && 'opacity-50'
+                  )}
+                  onClick={onToggleMute}
+                  disabled={!hasMicrophoneAccess}
+                >
+                  {isMuted ? (
+                    <MicOff className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {!hasMicrophoneAccess 
+                  ? 'Microphone non disponible' 
+                  : isMuted 
+                    ? 'Activer le micro' 
+                    : 'Couper le micro'}
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isMuted ? 'destructive' : 'ghost'}
+                  className={cn(
+                    'h-8 w-5 px-0 rounded-l-none border-l border-border/30',
+                    isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                  )}
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Périphériques d'entrée</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Microphone par défaut</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={togglePushToTalkMode}>
+                  <Radio className="w-4 h-4 mr-2" />
+                  {isPushToTalkMode ? 'Désactiver Push-to-Talk' : 'Activer Push-to-Talk'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant={isDeafened ? 'destructive' : 'ghost'}
-                className={cn(
-                  'flex-1 h-8',
-                  isDeafened && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
-                )}
-                onClick={onToggleDeafen}
-              >
-                {isDeafened ? (
-                  <HeadphoneOff className="w-4 h-4" />
-                ) : (
-                  <Headphones className="w-4 h-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isDeafened ? 'Activer le son' : 'Couper le son'}
-            </TooltipContent>
-          </Tooltip>
+          {/* Headphones Group */}
+          <div className="flex items-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isDeafened ? 'destructive' : 'ghost'}
+                  className={cn(
+                    'h-8 px-2 rounded-r-none',
+                    isDeafened && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                  )}
+                  onClick={onToggleDeafen}
+                >
+                  {isDeafened ? (
+                    <HeadphoneOff className="w-4 h-4" />
+                  ) : (
+                    <Headphones className="w-4 h-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isDeafened ? 'Activer le son' : 'Couper le son'}
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isDeafened ? 'destructive' : 'ghost'}
+                  className={cn(
+                    'h-8 w-5 px-0 rounded-l-none border-l border-border/30',
+                    isDeafened && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                  )}
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Périphériques de sortie</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Haut-parleurs par défaut</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant={isPushToTalkMode ? 'secondary' : 'ghost'}
-                className="flex-1 h-8"
-                onClick={togglePushToTalkMode}
-              >
-                <Radio className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isPushToTalkMode ? 'Désactiver Push-to-Talk' : 'Activer Push-to-Talk'}
-            </TooltipContent>
-          </Tooltip>
-
+          {/* Disconnect Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="sm"
                 variant="ghost"
-                className="flex-1 h-8 hover:bg-destructive/20 hover:text-destructive"
+                className="h-8 px-2 hover:bg-destructive/20 hover:text-destructive"
                 onClick={onDisconnect}
               >
                 <PhoneOff className="w-4 h-4" />

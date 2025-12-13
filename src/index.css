@@ -47,95 +47,72 @@
 
 @layer base {
   :root {
-    /* Discord OG Legacy 2024 Theme */
-    /* Main chat background: #36393f */
-    --background: 220 6% 23%;
-    /* General text (muted): #dcddde */
-    --foreground: 220 6% 87%;
+    /* Dark gaming theme - always dark */
+    --background: 230 25% 8%;
+    --foreground: 210 40% 98%;
 
-    /* Sidebars (channels/members): #2f3136 */
-    --card: 220 7% 20%;
-    --card-foreground: 220 6% 87%;
+    --card: 230 25% 12%;
+    --card-foreground: 210 40% 98%;
 
-    /* Popover matches sidebar */
-    --popover: 220 7% 20%;
-    --popover-foreground: 220 6% 87%;
+    --popover: 230 25% 10%;
+    --popover-foreground: 210 40% 98%;
 
-    /* Old Blurple accent: #7289da */
-    --primary: 227 58% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 186 100% 50%;
+    --primary-foreground: 230 25% 8%;
 
-    /* Secondary accent */
-    --secondary: 220 7% 20%;
-    --secondary-foreground: 220 6% 87%;
+    --secondary: 270 60% 60%;
+    --secondary-foreground: 210 40% 98%;
 
-    /* Muted for channels bar */
-    --muted: 220 7% 22%;
-    --muted-foreground: 220 6% 56%;
+    --muted: 230 20% 18%;
+    --muted-foreground: 215 20% 65%;
 
-    /* Accent for hover states */
-    --accent: 220 7% 24%;
-    --accent-foreground: 220 6% 87%;
+    --accent: 186 80% 40%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 40% 98%;
 
-    /* Border: #202225 */
-    --border: 220 8% 14%;
-    /* Input background: #40444b */
-    --input: 220 7% 27%;
-    --ring: 227 58% 65%;
+    --border: 230 20% 20%;
+    --input: 230 20% 15%;
+    --ring: 186 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Discord OG specific colors */
-    /* Server bar: #202225 */
-    --server-bar: 220 8% 14%;
-    /* User bar (bottom): #292b2f */
-    --user-bar: 225 6% 17%;
-    /* Separator: #2d2f32 */
-    --separator: 220 6% 19%;
-    /* Channel hover: #34373c */
-    --channel-hover: 220 7% 22%;
-    /* Channel active: #393c43 */
-    --channel-active: 220 7% 24%;
-    /* Message hover: #32353b */
-    --message-hover: 220 7% 21%;
-    /* Channel text normal: #8e9297 */
-    --channel-text: 220 5% 57%;
-    /* Channel text hover: #dcddde */
-    --channel-text-hover: 220 6% 87%;
-    /* Secondary text: #72767d */
-    --text-secondary: 220 5% 47%;
-    /* Tertiary text: #b9bbbe */
-    --text-tertiary: 220 4% 73%;
+    /* Custom gaming colors */
+    --glow-primary: 186 100% 50%;
+    --glow-secondary: 270 60% 60%;
+    --surface-elevated: 230 25% 14%;
+    --surface-hover: 230 25% 18%;
+    --online: 142 76% 46%;
+    --idle: 38 92% 50%;
+    --dnd: 0 72% 51%;
+    --offline: 215 20% 45%;
+    --voice-active: 142 76% 46%;
 
-    /* Status colors */
-    --online: 139 47% 44%;
-    --idle: 38 96% 54%;
-    --dnd: 0 84% 60%;
-    --offline: 214 9% 50%;
-    --voice-active: 139 47% 44%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
+    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
+    --gradient-surface: linear-gradient(180deg, hsl(230 25% 14%), hsl(230 25% 10%));
 
-    /* Surface variants */
-    --surface-elevated: 220 7% 20%;
-    --surface-hover: 220 7% 22%;
+    /* Shadows */
+    --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
+    --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
 
-    /* Sidebar specific */
-    --sidebar-background: 220 7% 20%;
-    --sidebar-foreground: 220 6% 87%;
-    --sidebar-primary: 227 58% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 7% 24%;
-    --sidebar-accent-foreground: 220 6% 87%;
-    --sidebar-border: 220 8% 14%;
-    --sidebar-ring: 227 58% 65%;
+    --sidebar-background: 230 25% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 186 100% 50%;
+    --sidebar-primary-foreground: 230 25% 8%;
+    --sidebar-accent: 230 25% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 186 100% 50%;
   }
 
   .dark {
-    /* Same as root - always dark Discord OG theme */
-    --background: 220 6% 23%;
-    --foreground: 220 6% 87%;
+    /* Same as root - always dark */
+    --background: 230 25% 8%;
+    --foreground: 210 40% 98%;
   }
 }
 
@@ -160,12 +137,27 @@
   }
 
   .glass-hover {
-    @apply hover:bg-discord-channel-hover transition-all duration-300;
+    @apply hover:bg-surface-hover/80 transition-all duration-300;
+  }
+
+  .glow-text {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.5),
+                 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-border {
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
+                inset 0 0 10px hsl(var(--primary) / 0.1);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
   }
 
   .server-icon {
     @apply w-12 h-12 rounded-[24px] flex items-center justify-center cursor-pointer
-           transition-all duration-200 ease-out;
+           transition-all duration-300 ease-out;
   }
 
   .server-icon:hover {
@@ -177,23 +169,17 @@
   }
 
   .channel-item {
-    @apply flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer
-           text-discord-channel-text hover:text-discord-channel-text-hover hover:bg-discord-channel-hover
-           transition-all duration-150;
+    @apply flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
+           text-muted-foreground hover:text-foreground hover:bg-surface-hover
+           transition-all duration-200;
   }
 
   .channel-item.active {
-    @apply bg-discord-channel-active text-white;
+    @apply bg-muted text-foreground;
   }
 
   .message-hover {
-    @apply hover:bg-discord-message-hover transition-colors duration-100;
-  }
-
-  .member-item {
-    @apply flex items-center gap-3 px-2 py-1.5 rounded cursor-pointer
-           text-discord-channel-text hover:text-discord-channel-text-hover hover:bg-discord-channel-hover
-           transition-all duration-150;
+    @apply hover:bg-surface-hover/50 transition-colors duration-150;
   }
 
   .scrollbar-thin {
@@ -202,7 +188,7 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -210,8 +196,8 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 4px;
+    background: hsl(var(--muted));
+    border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {

@@ -8,74 +8,66 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Settings, Pencil, ChevronRight, Mic, Video, ChevronDown } from 'lucide-react';
 import { VoiceSettingsPopover } from '@/components/voice/VoiceSettingsPopover';
 import { VideoSettingsPopover } from '@/components/voice/VideoSettingsPopover';
-
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
   idle: 'bg-[hsl(var(--idle))]',
   dnd: 'bg-[hsl(var(--dnd))]',
   offline: 'bg-[hsl(var(--offline))]'
 };
-
 const statusLabels = {
   online: 'En ligne',
   idle: 'Inactif',
   dnd: 'Ne pas déranger',
   offline: 'Hors ligne'
 };
-
 interface UserProfileCardProps {
   onOpenSettings: () => void;
   onOpenProfile: () => void;
   speakingUsers?: Set<string>;
 }
-
-export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
-  const { profile, updateStatus } = useAuth();
+export function UserProfileCard({
+  onOpenSettings,
+  onOpenProfile,
+  speakingUsers
+}: UserProfileCardProps) {
+  const {
+    profile,
+    updateStatus
+  } = useAuth();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-
+  const [menuPosition, setMenuPosition] = useState({
+    top: 0,
+    left: 0
+  });
   const currentStatus = profile?.status || 'offline';
-
   const handleStatusHover = () => {
     if (statusButtonRef.current) {
       const rect = statusButtonRef.current.getBoundingClientRect();
       const menuHeight = 160;
-      
       setMenuPosition({
         top: Math.max(10, rect.top - menuHeight + rect.height + 50),
-        left: rect.right + 4,
+        left: rect.right + 4
       });
     }
     setShowStatusMenu(true);
   };
-
   const handleStatusChange = (status: 'online' | 'idle' | 'dnd' | 'offline') => {
     updateStatus(status);
     setShowStatusMenu(false);
   };
-
-  return (
-    <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
+  return <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
       <Popover>
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
             <div className="relative">
-              <Avatar className={cn(
-                "w-8 h-8 transition-all",
-                profile?.id && speakingUsers?.has(profile.id) 
-                  ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" 
-                  : "ring-2 ring-primary/30"
-              )}>
+              <Avatar className={cn("w-8 h-8 transition-all", profile?.id && speakingUsers?.has(profile.id) ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-2 ring-primary/30")}>
                 <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary/20 text-primary text-sm">
                   {profile?.display_name?.charAt(0).toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
-              <div className={cn(
-                'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background',
-                statusColors[currentStatus]
-              )} />
+              <div className={cn('absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background', statusColors[currentStatus])} />
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium truncate">{profile?.display_name || 'Chargement...'}</p>
@@ -88,15 +80,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         <PopoverContent align="start" side="top" className="w-72 p-0 overflow-hidden">
           {/* Profile Header with Banner */}
           <div className="relative">
-            {profile?.banner_url ? (
-              <img 
-                src={profile.banner_url} 
-                alt="Banner" 
-                className="h-16 w-full object-cover" 
-              />
-            ) : (
-              <div className="h-16 bg-gradient-to-r from-primary to-primary/50" />
-            )}
+            {profile?.banner_url ? <img src={profile.banner_url} alt="Banner" className="h-16 w-full object-cover" /> : <div className="h-16 bg-gradient-to-r from-primary to-primary/50" />}
             
             {/* Avatar overlapping banner */}
             <div className="absolute -bottom-6 left-3">
@@ -106,10 +90,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                   {profile?.display_name?.charAt(0).toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
-              <div className={cn(
-                'absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-card',
-                statusColors[currentStatus]
-              )} />
+              <div className={cn('absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-card', statusColors[currentStatus])} />
             </div>
           </div>
 
@@ -121,27 +102,15 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             </div>
 
             {/* Edit Profile Button */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full mb-3"
-              onClick={onOpenProfile}
-            >
+            <Button variant="outline" size="sm" className="w-full mb-3" onClick={onOpenProfile}>
               <Pencil className="w-3.5 h-3.5 mr-2" />
               Modifier profil
             </Button>
 
             <div className="border-t border-border pt-2 space-y-0.5">
               {/* Status Selector with Portal */}
-              <div
-                className="relative"
-                onMouseLeave={() => setShowStatusMenu(false)}
-              >
-                <button
-                  ref={statusButtonRef}
-                  onMouseEnter={handleStatusHover}
-                  className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
-                >
+              <div className="relative" onMouseLeave={() => setShowStatusMenu(false)}>
+                <button ref={statusButtonRef} onMouseEnter={handleStatusHover} className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm">
                   <div className="flex items-center gap-2">
                     <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[currentStatus])} />
                     <span>{statusLabels[currentStatus]}</span>
@@ -150,38 +119,22 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 </button>
 
                 {/* Status Menu via Portal */}
-                {showStatusMenu && (
-                  <Portal.Root>
-                    <div 
-                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-status-menu"
-                      style={{ top: menuPosition.top, left: menuPosition.left }}
-                      onMouseEnter={() => setShowStatusMenu(true)}
-                      onMouseLeave={() => setShowStatusMenu(false)}
-                    >
+                {showStatusMenu && <Portal.Root>
+                    <div className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-status-menu" style={{
+                  top: menuPosition.top,
+                  left: menuPosition.left
+                }} onMouseEnter={() => setShowStatusMenu(true)} onMouseLeave={() => setShowStatusMenu(false)}>
                       <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
-                      {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => handleStatusChange(status)}
-                          className={cn(
-                            "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                            currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted"
-                          )}
-                        >
+                      {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map(status => <button key={status} onClick={() => handleStatusChange(status)} className={cn("flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors", currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted")}>
                           <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[status])} />
                           <span>{statusLabels[status]}</span>
-                        </button>
-                      ))}
+                        </button>)}
                     </div>
-                  </Portal.Root>
-                )}
+                  </Portal.Root>}
               </div>
 
               {/* Settings */}
-              <button
-                onClick={onOpenSettings}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
-              >
+              <button onClick={onOpenSettings} className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm">
                 <Settings className="w-4 h-4 text-muted-foreground" />
                 <span>Paramètres</span>
               </button>
@@ -191,36 +144,32 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
       </Popover>
       
       {/* Mic Button */}
-      <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
+      <button className="p-1.5 hover:bg-muted rounded-md transition-colors px-0 py-0">
         <Mic className="w-4 h-4 text-muted-foreground" />
       </button>
       
       {/* Mic Settings Chevron */}
       <VoiceSettingsPopover side="top" align="center">
-        <button className="p-1 hover:bg-muted rounded-md transition-colors">
-          <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
+        <button className="p-1 hover:bg-muted rounded-md transition-colors px-0 py-0">
+          <ChevronDown className="text-muted-foreground/70 w-[12px] h-[20px]" />
         </button>
       </VoiceSettingsPopover>
 
       {/* Video Button */}
-      <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
+      <button className="p-1.5 hover:bg-muted rounded-md transition-colors px-0 py-0">
         <Video className="w-4 h-4 text-muted-foreground" />
       </button>
       
       {/* Video Settings Chevron */}
       <VideoSettingsPopover side="top" align="center">
-        <button className="p-1 hover:bg-muted rounded-md transition-colors">
-          <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
+        <button className="p-1 hover:bg-muted rounded-md transition-colors px-0 py-0">
+          <ChevronDown className="w-3 text-muted-foreground/70 h-[20px]" />
         </button>
       </VideoSettingsPopover>
       
       {/* Settings Button */}
-      <button 
-        onClick={onOpenSettings} 
-        className="p-1.5 hover:bg-muted rounded-md transition-colors"
-      >
+      <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
         <Settings className="w-4 h-4 text-muted-foreground" />
       </button>
-    </div>
-  );
+    </div>;
 }

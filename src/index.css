@@ -275,6 +275,21 @@
     animation: fade-in 0.2s ease-out;
   }
 
+  /* Subtle slide animation for status menu */
+  @keyframes subtle-slide-in {
+    from {
+      opacity: 0.9;
+      transform: translateX(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  .animate-subtle-slide {
+    animation: subtle-slide-in 0.12s ease-out;
+  }
+
   @keyframes slide-down {
     from {
       opacity: 0;

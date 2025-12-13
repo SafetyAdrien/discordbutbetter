@@ -6,9 +6,6 @@ import {
   PhoneOff, MessageSquare, Users, MoreHorizontal,
   ChevronDown
 } from 'lucide-react';
-import { VoiceSettingsPopover } from '@/components/voice/VoiceSettingsPopover';
-import { VideoSettingsPopover } from '@/components/voice/VideoSettingsPopover';
-import { VoiceMoreOptionsMenu } from '@/components/voice/VoiceMoreOptionsMenu';
 
 interface VoiceActionBarProps {
   isMuted: boolean;
@@ -55,7 +52,7 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-3 rounded-none hover:bg-white/10',
+                    'h-11 px-4 rounded-none hover:bg-white/10',
                     isMuted && 'bg-destructive/20 text-destructive hover:bg-destructive/30',
                     !hasMicrophoneAccess && 'opacity-50'
                   )}
@@ -63,23 +60,13 @@ export function VoiceActionBar({
                   disabled={!hasMicrophoneAccess}
                 >
                   {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                  <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 {!hasMicrophoneAccess ? 'Microphone non disponible' : isMuted ? 'Activer le micro' : 'Couper le micro'}
               </TooltipContent>
             </Tooltip>
-
-            {/* Mic Settings Dropdown */}
-            <VoiceSettingsPopover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-11 px-1.5 rounded-none hover:bg-white/10 border-l border-white/10"
-              >
-                <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-              </Button>
-            </VoiceSettingsPopover>
 
             {/* Divider */}
             <div className="w-px h-6 bg-white/10" />
@@ -90,29 +77,19 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-3 rounded-none hover:bg-white/10',
+                    'h-11 px-4 rounded-none hover:bg-white/10',
                     isCameraOn && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]'
                   )}
                   onClick={onToggleCamera}
                 >
                   {isCameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                  <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 {isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
               </TooltipContent>
             </Tooltip>
-
-            {/* Video Settings Dropdown */}
-            <VideoSettingsPopover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-11 px-1.5 rounded-none hover:bg-white/10 border-l border-white/10"
-              >
-                <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-              </Button>
-            </VideoSettingsPopover>
           </div>
 
           {/* Group 2: Chat, Members, Screen Share, More */}
@@ -171,14 +148,17 @@ export function VoiceActionBar({
             </Tooltip>
 
             {/* More Options */}
-            <VoiceMoreOptionsMenu>
-              <Button
-                variant="ghost"
-                className="h-11 px-3 rounded-none hover:bg-white/10"
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </Button>
-            </VoiceMoreOptionsMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-11 px-3 rounded-none hover:bg-white/10"
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Plus d'options</TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Disconnect Button */}

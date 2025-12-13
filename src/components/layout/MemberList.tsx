@@ -1,9 +1,13 @@
 import { forwardRef, useState, useMemo, useRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
+import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle, Filter, X } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -14,6 +18,9 @@ import {
 import { copyToClipboard } from '@/lib/clipboard';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
+import { useMembers } from '@/hooks/useMembers';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Role {
   id: string;
@@ -25,11 +32,13 @@ interface Role {
 
 interface MemberWithRoles extends User {
   roles?: Role[];
+  memberId?: string;
 }
 
 interface MemberListProps {
   members: MemberWithRoles[];
   ownerId: string;
+  serverId?: string;
   onOpenDM?: (conversationId: string) => void;
   serverRoles?: Role[];
 }
@@ -102,17 +111,72 @@ function SearchFilters({
   );
 }
 
+// Role Icon Component
+function RoleIcon({ role }: { role: Role | RoleWithPermissions }) {
+  if (role.icon_url) {
+    if (!role.icon_url.startsWith('http')) {
+      return <span className="text-xs">{role.icon_url}</span>;
+    }
+    return <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />;
+  }
+
+  return (
+    <div
+      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+      style={{ backgroundColor: role.color || '#99AAB5' }}
+    />
+  );
+}
+
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
-  function MemberList({ members, ownerId, onOpenDM, serverRoles = [] }, ref) {
+  function MemberList({ members, ownerId, serverId, onOpenDM, serverRoles = [] }, ref) {
+    const { user: currentUser } = useAuth();
     const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    const [selectedRoleFilters, setSelectedRoleFilters] = useState<string[]>([]);
     const searchRef = useRef<HTMLInputElement>(null);
+
+    // Fetch roles for filter and management
+    const { data: allRoles = [] } = useServerRoles(serverId || null);
+    const { data: membersData = [] } = useMembers(serverId || null);
+
+    // Check if current user can manage roles
+    const canManageRoles = useMemo(() => {
+      if (!currentUser || !serverId) return false;
+      
+      // Owner can always manage
+      if (currentUser.id === ownerId) return true;
+      
+      // Check if current user has administrator or manage_roles permission
+      const currentMemberData = membersData.find(m => m.user.id === currentUser.id);
+      if (!currentMemberData) return false;
+      
+      const userRoleIds = currentMemberData.roles?.map(r => r.id) || [];
+      const userRoles = allRoles.filter(r => userRoleIds.includes(r.id));
+      
+      return userRoles.some(role => 
+        role.permissions.includes('administrator') || 
+        role.permissions.includes('manage_roles')
+      );
+    }, [currentUser, serverId, ownerId, membersData, allRoles]);
 
     const handleSelectFilter = (prefix: string) => {
       setSearchQuery(prefix);
       setShowFilters(false);
       searchRef.current?.focus();
+    };
+
+    const handleRoleFilterToggle = (roleId: string) => {
+      setSelectedRoleFilters(prev => 
+        prev.includes(roleId) 
+          ? prev.filter(id => id !== roleId)
+          : [...prev, roleId]
+      );
+    };
+
+    const clearRoleFilters = () => {
+      setSelectedRoleFilters([]);
     };
 
     // Parse search query for prefixes
@@ -162,16 +226,21 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
               result = result.filter(m => m.username.toLowerCase().includes('bot'));
             }
             break;
-          // Other prefix filters would be applied here
-          // They mostly filter messages rather than members, so they're placeholder
         }
+      }
+      
+      // Apply role filter
+      if (selectedRoleFilters.length > 0) {
+        result = result.filter(m => 
+          m.roles?.some(role => selectedRoleFilters.includes(role.id))
+        );
       }
       
       // Sort by display name
       result.sort((a, b) => a.displayName.localeCompare(b.displayName));
       
       return result;
-    }, [members, searchQuery]);
+    }, [members, searchQuery, selectedRoleFilters]);
 
     const onlineMembers = filteredMembers.filter((m) => m.status !== 'offline');
     const offlineMembers = filteredMembers.filter((m) => m.status === 'offline');
@@ -188,14 +257,21 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
       console.log('Add friend', member.id);
     };
 
+    // Get the member ID from membersData for role management
+    const getMemberId = (userId: string): string | undefined => {
+      const memberData = membersData.find(m => m.user.id === userId);
+      return memberData?.id;
+    };
+
     const renderMember = (member: MemberWithRoles) => {
       const isOwner = member.id === ownerId;
+      const memberId = getMemberId(member.id);
 
       return (
         <ContextMenu key={member.id}>
           <ContextMenuTrigger asChild>
             <button
-              onClick={() => setSelectedMember(member)}
+              onClick={() => setSelectedMember({ ...member, memberId })}
               className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
             >
               <div className="relative flex-shrink-0">
@@ -236,7 +312,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
             </button>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-48">
-            <ContextMenuItem onClick={() => setSelectedMember(member)}>
+            <ContextMenuItem onClick={() => setSelectedMember({ ...member, memberId })}>
               <UserIcon className="w-4 h-4 mr-2" />
               Voir le profil
             </ContextMenuItem>
@@ -271,22 +347,90 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
       );
     };
 
+    // Get displayable roles for filter (non-default roles)
+    const filterableRoles = allRoles.filter(r => !r.is_default);
+
     return (
       <>
         <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
           {/* Search input */}
           <div className="px-3 pt-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input 
-                ref={searchRef}
-                placeholder="Rechercher"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setShowFilters(true)}
-                onBlur={() => setTimeout(() => setShowFilters(false), 150)}
-                className="h-8 pl-8 text-sm bg-input"
-              />
+            <div className="flex gap-1.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input 
+                  ref={searchRef}
+                  placeholder="Rechercher"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowFilters(true)}
+                  onBlur={() => setTimeout(() => setShowFilters(false), 150)}
+                  className="h-8 pl-8 text-sm bg-input"
+                />
+              </div>
+              
+              {/* Role Filter Button */}
+              {filterableRoles.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className={cn(
+                        "h-8 w-8 p-0",
+                        selectedRoleFilters.length > 0 && "text-primary"
+                      )}
+                    >
+                      <Filter className="w-4 h-4" />
+                      {selectedRoleFilters.length > 0 && (
+                        <Badge 
+                          variant="secondary" 
+                          className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[10px]"
+                        >
+                          {selectedRoleFilters.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-56 p-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium">Filtrer par rôle</h4>
+                      {selectedRoleFilters.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={clearRoleFilters}
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Effacer
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {filterableRoles.map(role => (
+                        <div 
+                          key={role.id} 
+                          className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted cursor-pointer"
+                          onClick={() => handleRoleFilterToggle(role.id)}
+                        >
+                          <Checkbox
+                            checked={selectedRoleFilters.includes(role.id)}
+                            onCheckedChange={() => handleRoleFilterToggle(role.id)}
+                          />
+                          <RoleIcon role={role} />
+                          <span 
+                            className="text-sm truncate flex-1"
+                            style={{ color: role.color || undefined }}
+                          >
+                            {role.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
             
             {/* Filters suggestions */}
@@ -331,6 +475,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
           onOpenChange={(open) => !open && setSelectedMember(null)}
           roles={selectedMember?.roles}
           onOpenDM={onOpenDM}
+          serverId={serverId}
+          ownerId={ownerId}
+          memberId={selectedMember?.memberId}
+          canManageRoles={canManageRoles}
         />
       </>
     );

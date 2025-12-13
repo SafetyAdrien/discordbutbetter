@@ -326,3 +326,57 @@ export function useRoleMemberCounts(serverId: string | null) {
     enabled: !!serverId && !!user,
   });
 }
+
+// Hook to assign a role to a member
+export function useAssignRoleToMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, roleId, serverId }: { 
+      memberId: string; 
+      roleId: string; 
+      serverId: string;
+    }) => {
+      const { error } = await supabase
+        .from('member_roles')
+        .insert({ member_id: memberId, role_id: roleId });
+      if (error) throw error;
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+      toast.success('Rôle attribué !');
+    },
+    onError: () => {
+      toast.error('Erreur lors de l\'attribution du rôle');
+    },
+  });
+}
+
+// Hook to remove a role from a member
+export function useRemoveRoleFromMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, roleId, serverId }: { 
+      memberId: string; 
+      roleId: string; 
+      serverId: string;
+    }) => {
+      const { error } = await supabase
+        .from('member_roles')
+        .delete()
+        .eq('member_id', memberId)
+        .eq('role_id', roleId);
+      if (error) throw error;
+    },
+    onSuccess: (_, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+      toast.success('Rôle retiré !');
+    },
+    onError: () => {
+      toast.error('Erreur lors du retrait du rôle');
+    },
+  });
+}

@@ -385,6 +385,7 @@ const Index = () => {
             <MemberList 
               members={memberListData} 
               ownerId={activeServer.owner_id || ''} 
+              serverId={activeServer.id}
               onOpenDM={handleOpenDM}
             />
           )}

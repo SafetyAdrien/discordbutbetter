@@ -479,6 +479,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
           ownerId={ownerId}
           memberId={selectedMember?.memberId}
           canManageRoles={canManageRoles}
+          mode="card"
+          cardPosition={{ top: 60, right: 280 }}
         />
       </>
     );

@@ -29,6 +29,17 @@ interface VoiceContextType {
   isPushToTalkMode: boolean;
   togglePushToTalkMode: () => void;
   setPushToTalkActive: (active: boolean) => void;
+  // Camera
+  isCameraActive: boolean;
+  localCameraStream: MediaStream | null;
+  toggleCamera: () => Promise<void>;
+  // Screen Share
+  isScreenSharing: boolean;
+  localScreenStream: MediaStream | null;
+  toggleScreenShare: () => Promise<void>;
+  // Remote streams
+  remoteVideoStreams: Map<string, MediaStream>;
+  remoteScreenStreams: Map<string, MediaStream>;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -295,6 +306,37 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     return success;
   }, [webrtc]);
 
+  // Toggle camera
+  const toggleCamera = useCallback(async () => {
+    try {
+      if (webrtc.isCameraActive) {
+        webrtc.stopCamera();
+        toast.success('Caméra désactivée');
+      } else {
+        await webrtc.startCamera();
+        toast.success('Caméra activée');
+      }
+    } catch (error) {
+      toast.error('Impossible d\'accéder à la caméra');
+    }
+  }, [webrtc]);
+
+  // Toggle screen share
+  const toggleScreenShare = useCallback(async () => {
+    try {
+      if (webrtc.isScreenSharing) {
+        webrtc.stopScreenShare();
+        toast.success('Partage d\'écran arrêté');
+      } else {
+        await webrtc.startScreenShare();
+        toast.success('Partage d\'écran démarré');
+      }
+    } catch (error) {
+      // User cancelled the screen share dialog
+      console.log('[VoiceContext] Screen share cancelled or failed');
+    }
+  }, [webrtc]);
+
   return (
     <VoiceContext.Provider
       value={{
@@ -312,6 +354,17 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         isPushToTalkMode: webrtc.isPushToTalkMode,
         togglePushToTalkMode,
         setPushToTalkActive: webrtc.setPushToTalkActive,
+        // Camera
+        isCameraActive: webrtc.isCameraActive,
+        localCameraStream: webrtc.localCameraStream,
+        toggleCamera,
+        // Screen Share
+        isScreenSharing: webrtc.isScreenSharing,
+        localScreenStream: webrtc.localScreenStream,
+        toggleScreenShare,
+        // Remote streams
+        remoteVideoStreams: webrtc.remoteVideoStreams,
+        remoteScreenStreams: webrtc.remoteScreenStreams,
       }}
     >
       {children}

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PeerConnection, SignalData } from '@/utils/webrtc/PeerConnection';
 import { SignalingService } from '@/utils/webrtc/SignalingService';
-import { audioManager } from '@/utils/webrtc/AudioManager';
+import { mediaManager } from '@/utils/webrtc/MediaManager';
 
 interface PeerInfo {
   peerId: string;
@@ -27,6 +27,19 @@ export interface UseWebRTCReturn {
   isPushToTalkMode: boolean;
   setPushToTalkMode: (enabled: boolean) => void;
   setPushToTalkActive: (active: boolean) => void;
+  // Camera
+  isCameraActive: boolean;
+  localCameraStream: MediaStream | null;
+  startCamera: () => Promise<void>;
+  stopCamera: () => void;
+  // Screen Share
+  isScreenSharing: boolean;
+  localScreenStream: MediaStream | null;
+  startScreenShare: () => Promise<void>;
+  stopScreenShare: () => void;
+  // Remote video/screen streams
+  remoteVideoStreams: Map<string, MediaStream>;
+  remoteScreenStreams: Map<string, MediaStream>;
 }
 
 export function useWebRTC(): UseWebRTCReturn {
@@ -40,12 +53,48 @@ export function useWebRTC(): UseWebRTCReturn {
   const [microphoneError, setMicrophoneError] = useState(false);
   const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState(false);
   const [isPushToTalkMode, setIsPushToTalkMode] = useState(false);
+  
+  // Camera & Screen share state
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
+  const [remoteVideoStreams, setRemoteVideoStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Map<string, MediaStream>>(new Map());
 
   const signalingServiceRef = useRef<SignalingService | null>(null);
   const peersRef = useRef<Map<string, PeerConnection>>(new Map());
   const channelIdRef = useRef<string | null>(null);
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const participantsSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Set up remote stream callbacks
+  useEffect(() => {
+    mediaManager.setRemoteStreamCallbacks(
+      (peerId, stream) => {
+        setRemoteVideoStreams(prev => {
+          const next = new Map(prev);
+          if (stream) {
+            next.set(peerId, stream);
+          } else {
+            next.delete(peerId);
+          }
+          return next;
+        });
+      },
+      (peerId, stream) => {
+        setRemoteScreenStreams(prev => {
+          const next = new Map(prev);
+          if (stream) {
+            next.set(peerId, stream);
+          } else {
+            next.delete(peerId);
+          }
+          return next;
+        });
+      }
+    );
+  }, []);
 
   // Create a peer connection for a user
   const createPeerConnection = useCallback((peerId: string): PeerConnection => {
@@ -60,7 +109,7 @@ export function useWebRTC(): UseWebRTCReturn {
       },
       (stream) => {
         console.log('[useWebRTC] Received audio stream from:', peerId);
-        audioManager.addRemoteStream(peerId, stream);
+        mediaManager.addRemoteAudioStream(peerId, stream);
         setPeers(prev => {
           const newPeers = new Map(prev);
           const existing = newPeers.get(peerId);
@@ -74,11 +123,13 @@ export function useWebRTC(): UseWebRTCReturn {
       },
       (stream, type) => {
         console.log('[useWebRTC] Received video stream from:', peerId, 'type:', type);
-        // Video stream handling will be added when VoiceContext is updated
+        mediaManager.addRemoteVideoStream(peerId, stream, type);
       },
       () => {
         console.log('[useWebRTC] Peer disconnected:', peerId);
-        audioManager.removeRemoteStream(peerId);
+        mediaManager.removeRemoteAudioStream(peerId);
+        mediaManager.removeRemoteVideoStream(peerId, 'camera');
+        mediaManager.removeRemoteVideoStream(peerId, 'screen');
         peersRef.current.delete(peerId);
         setPeers(prev => {
           const newPeers = new Map(prev);
@@ -100,9 +151,18 @@ export function useWebRTC(): UseWebRTCReturn {
 
     if (!peerConnection && signal.type === 'offer') {
       peerConnection = createPeerConnection(fromUserId);
-      const localStream = audioManager.getLocalStream();
+      const localStream = mediaManager.getLocalAudioStream();
       if (localStream) {
-        peerConnection.addStream(localStream);
+        peerConnection.addAudioStream(localStream);
+      }
+      // Add camera/screen if active
+      const cameraStream = mediaManager.getLocalCameraStream();
+      if (cameraStream) {
+        peerConnection.addVideoStream(cameraStream, 'camera');
+      }
+      const screenStream = mediaManager.getLocalScreenStream();
+      if (screenStream) {
+        peerConnection.addVideoStream(screenStream, 'screen');
       }
     }
 
@@ -115,7 +175,7 @@ export function useWebRTC(): UseWebRTCReturn {
   const connectToParticipants = useCallback(async (participants: Array<{ user_id: string }>) => {
     if (!user?.id) return;
 
-    const localStream = audioManager.getLocalStream();
+    const localStream = mediaManager.getLocalAudioStream();
 
     for (const participant of participants) {
       if (participant.user_id === user.id) continue;
@@ -125,7 +185,16 @@ export function useWebRTC(): UseWebRTCReturn {
 
       const pc = createPeerConnection(participant.user_id);
       if (localStream) {
-        pc.addStream(localStream);
+        pc.addAudioStream(localStream);
+      }
+      // Add camera/screen if active
+      const cameraStream = mediaManager.getLocalCameraStream();
+      if (cameraStream) {
+        pc.addVideoStream(cameraStream, 'camera');
+      }
+      const screenStream = mediaManager.getLocalScreenStream();
+      if (screenStream) {
+        pc.addVideoStream(screenStream, 'screen');
       }
       await pc.createOffer();
     }
@@ -142,7 +211,7 @@ export function useWebRTC(): UseWebRTCReturn {
       channelIdRef.current = channelId;
 
       // Try to start microphone - don't fail if it doesn't work
-      const micSuccess = await audioManager.tryStartMicrophone();
+      const micSuccess = await mediaManager.tryStartMicrophone();
       setHasMicrophoneAccess(micSuccess);
       setMicrophoneError(!micSuccess);
       
@@ -154,7 +223,7 @@ export function useWebRTC(): UseWebRTCReturn {
 
       // Start audio level monitoring
       audioLevelIntervalRef.current = setInterval(() => {
-        const level = audioManager.getAudioLevel();
+        const level = mediaManager.getAudioLevel();
         setAudioLevel(level);
       }, 100);
 
@@ -206,7 +275,9 @@ export function useWebRTC(): UseWebRTCReturn {
               if (pc) {
                 pc.close();
                 peersRef.current.delete(leftParticipant.user_id);
-                audioManager.removeRemoteStream(leftParticipant.user_id);
+                mediaManager.removeRemoteAudioStream(leftParticipant.user_id);
+                mediaManager.removeRemoteVideoStream(leftParticipant.user_id, 'camera');
+                mediaManager.removeRemoteVideoStream(leftParticipant.user_id, 'screen');
                 setPeers(prev => {
                   const newPeers = new Map(prev);
                   newPeers.delete(leftParticipant.user_id);
@@ -240,7 +311,9 @@ export function useWebRTC(): UseWebRTCReturn {
 
     peersRef.current.forEach((pc, peerId) => {
       pc.close();
-      audioManager.removeRemoteStream(peerId);
+      mediaManager.removeRemoteAudioStream(peerId);
+      mediaManager.removeRemoteVideoStream(peerId, 'camera');
+      mediaManager.removeRemoteVideoStream(peerId, 'screen');
     });
     peersRef.current.clear();
     setPeers(new Map());
@@ -255,11 +328,17 @@ export function useWebRTC(): UseWebRTCReturn {
       participantsSubscriptionRef.current = null;
     }
 
-    audioManager.cleanup();
+    mediaManager.cleanup();
     setIsMicrophoneActive(false);
     setAudioLevel(0);
     setMicrophoneError(false);
     setHasMicrophoneAccess(false);
+    setIsCameraActive(false);
+    setIsScreenSharing(false);
+    setLocalCameraStream(null);
+    setLocalScreenStream(null);
+    setRemoteVideoStreams(new Map());
+    setRemoteScreenStreams(new Map());
 
     channelIdRef.current = null;
     setIsConnected(false);
@@ -269,7 +348,7 @@ export function useWebRTC(): UseWebRTCReturn {
 
   // Retry microphone access
   const retryMicrophone = useCallback(async (): Promise<boolean> => {
-    const success = await audioManager.tryStartMicrophone();
+    const success = await mediaManager.tryStartMicrophone();
     setHasMicrophoneAccess(success);
     setMicrophoneError(!success);
     
@@ -277,10 +356,10 @@ export function useWebRTC(): UseWebRTCReturn {
       setIsMicrophoneActive(true);
       
       // Add stream to existing peer connections
-      const localStream = audioManager.getLocalStream();
+      const localStream = mediaManager.getLocalAudioStream();
       if (localStream) {
-        for (const [peerId, pc] of peersRef.current.entries()) {
-          pc.addStream(localStream);
+        for (const [, pc] of peersRef.current.entries()) {
+          pc.addAudioStream(localStream);
           await pc.createOffer();
         }
       }
@@ -291,24 +370,131 @@ export function useWebRTC(): UseWebRTCReturn {
 
   // Set muted state
   const setMuted = useCallback((muted: boolean) => {
-    audioManager.setMuted(muted);
+    mediaManager.setMuted(muted);
   }, []);
 
   // Set deafened state
   const setDeafened = useCallback((deafened: boolean) => {
-    audioManager.setDeafened(deafened);
+    mediaManager.setDeafened(deafened);
   }, []);
 
   // Set push-to-talk mode
   const handleSetPushToTalkMode = useCallback((enabled: boolean) => {
     setIsPushToTalkMode(enabled);
-    audioManager.setPushToTalkMode(enabled);
+    mediaManager.setPushToTalkMode(enabled);
   }, []);
 
   // Set push-to-talk active state
   const setPushToTalkActive = useCallback((active: boolean) => {
-    audioManager.setPushToTalkActive(active);
+    mediaManager.setPushToTalkActive(active);
   }, []);
+
+  // Start camera
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await mediaManager.startCamera();
+      setLocalCameraStream(stream);
+      setIsCameraActive(true);
+
+      // Add to all peer connections
+      for (const [, pc] of peersRef.current.entries()) {
+        pc.addVideoStream(stream, 'camera');
+        await pc.createOffer();
+      }
+
+      // Update DB
+      if (user?.id) {
+        await supabase
+          .from('voice_states')
+          .update({ camera: true })
+          .eq('user_id', user.id);
+      }
+
+      console.log('[useWebRTC] Camera started');
+    } catch (error) {
+      console.error('[useWebRTC] Failed to start camera:', error);
+      throw error;
+    }
+  }, [user?.id]);
+
+  // Stop camera
+  const stopCamera = useCallback(async () => {
+    mediaManager.stopCamera();
+    setLocalCameraStream(null);
+    setIsCameraActive(false);
+
+    // Remove from all peer connections and renegotiate
+    for (const [, pc] of peersRef.current.entries()) {
+      pc.removeVideoStream('camera');
+      await pc.renegotiate();
+    }
+
+    // Update DB
+    if (user?.id) {
+      await supabase
+        .from('voice_states')
+        .update({ camera: false })
+        .eq('user_id', user.id);
+    }
+
+    console.log('[useWebRTC] Camera stopped');
+  }, [user?.id]);
+
+  // Start screen share
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await mediaManager.startScreenShare();
+      setLocalScreenStream(stream);
+      setIsScreenSharing(true);
+
+      // Handle user stopping via browser UI
+      stream.getVideoTracks()[0].onended = () => {
+        stopScreenShare();
+      };
+
+      // Add to all peer connections
+      for (const [, pc] of peersRef.current.entries()) {
+        pc.addVideoStream(stream, 'screen');
+        await pc.createOffer();
+      }
+
+      // Update DB
+      if (user?.id) {
+        await supabase
+          .from('voice_states')
+          .update({ streaming: true })
+          .eq('user_id', user.id);
+      }
+
+      console.log('[useWebRTC] Screen share started');
+    } catch (error) {
+      console.error('[useWebRTC] Failed to start screen share:', error);
+      throw error;
+    }
+  }, [user?.id]);
+
+  // Stop screen share
+  const stopScreenShare = useCallback(async () => {
+    mediaManager.stopScreenShare();
+    setLocalScreenStream(null);
+    setIsScreenSharing(false);
+
+    // Remove from all peer connections and renegotiate
+    for (const [, pc] of peersRef.current.entries()) {
+      pc.removeVideoStream('screen');
+      await pc.renegotiate();
+    }
+
+    // Update DB
+    if (user?.id) {
+      await supabase
+        .from('voice_states')
+        .update({ streaming: false })
+        .eq('user_id', user.id);
+    }
+
+    console.log('[useWebRTC] Screen share stopped');
+  }, [user?.id]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -333,5 +519,18 @@ export function useWebRTC(): UseWebRTCReturn {
     isPushToTalkMode,
     setPushToTalkMode: handleSetPushToTalkMode,
     setPushToTalkActive,
+    // Camera
+    isCameraActive,
+    localCameraStream,
+    startCamera,
+    stopCamera,
+    // Screen Share
+    isScreenSharing,
+    localScreenStream,
+    startScreenShare,
+    stopScreenShare,
+    // Remote streams
+    remoteVideoStreams,
+    remoteScreenStreams,
   };
 }

@@ -33,8 +33,6 @@ export function VoiceChannelView({
 }: VoiceChannelViewProps) {
   const [showChat, setShowChat] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   
   const { 
@@ -44,7 +42,16 @@ export function VoiceChannelView({
     toggleMute, 
     toggleDeafen, 
     speakingUsers,
-    hasMicrophoneAccess
+    hasMicrophoneAccess,
+    // Camera & Screen share
+    isCameraActive,
+    localCameraStream,
+    toggleCamera,
+    isScreenSharing,
+    localScreenStream,
+    toggleScreenShare,
+    remoteVideoStreams,
+    remoteScreenStreams,
   } = useVoice();
   
   const { data: participants = [] } = useVoiceParticipants(channel.id);
@@ -53,7 +60,7 @@ export function VoiceChannelView({
   const handleJoinChannel = async () => {
     setIsConnecting(true);
     try {
-      await joinChannel(channel.id, channel.name, null);
+      await joinChannel(channel.id, channel.name, voiceState.serverName || 'Server');
     } finally {
       setIsConnecting(false);
     }
@@ -140,6 +147,10 @@ export function VoiceChannelView({
           <VoiceParticipantGrid 
             participants={participants}
             speakingUsers={speakingUsers || new Set()}
+            localCameraStream={isConnectedToThisChannel ? localCameraStream : null}
+            localScreenStream={isConnectedToThisChannel ? localScreenStream : null}
+            remoteVideoStreams={remoteVideoStreams}
+            remoteScreenStreams={remoteScreenStreams}
           />
 
           {/* Action Bar - only show if connected */}
@@ -147,14 +158,14 @@ export function VoiceChannelView({
             <VoiceActionBar
               isMuted={voiceState.isMuted}
               isDeafened={voiceState.isDeafened}
-              isCameraOn={isCameraOn}
+              isCameraOn={isCameraActive}
               isScreenSharing={isScreenSharing}
               showChat={showChat}
               showMembers={showMembers}
               onToggleMute={toggleMute}
               onToggleDeafen={toggleDeafen}
-              onToggleCamera={() => setIsCameraOn(!isCameraOn)}
-              onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
+              onToggleCamera={toggleCamera}
+              onToggleScreenShare={toggleScreenShare}
               onToggleChat={handleToggleChat}
               onToggleMembers={handleToggleMembers}
               onDisconnect={leaveChannel}

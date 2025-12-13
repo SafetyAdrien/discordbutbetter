@@ -303,6 +303,25 @@
     animation: voice-glow 1.5s ease-in-out infinite;
   }
 
+  /* Voice channel gradient background */
+  .voice-gradient-bg {
+    background: radial-gradient(ellipse at 50% 30%, #1e3a8a 0%, #312e81 40%, #1e1b4b 70%, #0f0f23 100%);
+  }
+
+  /* Voice speaking glow effect */
+  @keyframes electric-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--online) / 0.7), 0 0 20px 5px hsl(var(--online) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 0 4px hsl(var(--online) / 0.4), 0 0 40px 10px hsl(var(--online) / 0.2);
+    }
+  }
+
+  .voice-speaking-glow {
+    animation: electric-pulse 1.5s ease-in-out infinite;
+  }
+
   /* Spoiler style Discord */
   .spoiler {
     background-color: hsl(var(--muted));

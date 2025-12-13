@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, RoleWithPermissions } from '@/hooks/useRoles';
+import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, useRoleMemberCounts, RoleWithPermissions } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy, Users } from 'lucide-react';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
@@ -16,6 +16,27 @@ interface RoleManagerProps {
   serverId: string;
 }
 
+// Role Icon Component
+function RoleIcon({ role, size = 'sm' }: { role: RoleWithPermissions; size?: 'sm' | 'md' }) {
+  const sizeClasses = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
+  const textSize = size === 'sm' ? 'text-sm' : 'text-base';
+
+  if (role.icon_url) {
+    // Check if it's an emoji (not a URL)
+    if (!role.icon_url.startsWith('http')) {
+      return <span className={textSize}>{role.icon_url}</span>;
+    }
+    return <img src={role.icon_url} alt="" className={cn(sizeClasses, 'object-contain flex-shrink-0')} />;
+  }
+
+  return (
+    <div
+      className={cn(sizeClasses, 'rounded-full flex-shrink-0')}
+      style={{ backgroundColor: role.color || '#99AAB5' }}
+    />
+  );
+}
+
 // Sortable Role Component
 function SortableRole({
   role,
@@ -23,12 +44,14 @@ function SortableRole({
   onSelect,
   onDelete,
   onDuplicate,
+  memberCount,
 }: {
   role: RoleWithPermissions;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  memberCount: number;
 }) {
   const {
     attributes,
@@ -60,11 +83,15 @@ function SortableRole({
       )}
       onClick={onSelect}
     >
-      <div
-        className="w-3 h-3 rounded-full flex-shrink-0"
-        style={{ backgroundColor: role.color || '#99AAB5' }}
-      />
+      <RoleIcon role={role} />
       <span className="flex-1 truncate text-sm">{role.name}</span>
+      
+      {/* Member count */}
+      <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+        <Users className="w-3 h-3" />
+        <span>{memberCount}</span>
+      </div>
+
       {!role.is_default && (
         <>
           <button
@@ -94,6 +121,7 @@ function SortableRole({
 
 export function RoleManager({ serverId }: RoleManagerProps) {
   const { data: roles = [], isLoading } = useServerRoles(serverId);
+  const { data: memberCounts = {} } = useRoleMemberCounts(serverId);
   const createRole = useCreateRole();
   const deleteRole = useDeleteRole();
   const reorderRoles = useReorderRoles();
@@ -236,6 +264,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                   onSelect={() => setSelectedRoleId(role.id)}
                   onDelete={() => handleDeleteRole(role.id)}
                   onDuplicate={() => handleDuplicateRole(role.id)}
+                  memberCount={memberCounts[role.id] || 0}
                 />
               ))}
             </div>
@@ -245,10 +274,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
           <DragOverlay>
             {activeRole && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-lg">
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: activeRole.color || '#99AAB5' }}
-                />
+                <RoleIcon role={activeRole} />
                 <span className="text-sm">{activeRole.name}</span>
               </div>
             )}

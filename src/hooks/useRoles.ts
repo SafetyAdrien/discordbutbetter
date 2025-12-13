@@ -14,6 +14,7 @@ export interface RoleWithPermissions {
   id: string;
   name: string;
   color: string | null;
+  icon_url: string | null;
   position: number | null;
   is_default: boolean | null;
   server_id: string;
@@ -53,7 +54,7 @@ export function useServerRoles(serverId: string | null) {
 
       const { data: roles, error: rolesError } = await supabase
         .from('roles')
-        .select('id, name, color, position, is_default, server_id')
+        .select('id, name, color, icon_url, position, is_default, server_id')
         .eq('server_id', serverId)
         .order('position', { ascending: false });
 
@@ -138,19 +139,26 @@ export function useUpdateRole() {
       serverId,
       name,
       color,
+      iconUrl,
       permissions,
     }: {
       roleId: string;
       serverId: string;
       name?: string;
       color?: string;
+      iconUrl?: string | null;
       permissions?: ServerPermission[];
     }) => {
       // Update role basic info
-      if (name || color) {
+      if (name || color || iconUrl !== undefined) {
+        const updateData: { name?: string; color?: string; icon_url?: string | null } = {};
+        if (name) updateData.name = name;
+        if (color) updateData.color = color;
+        if (iconUrl !== undefined) updateData.icon_url = iconUrl;
+        
         const { error } = await supabase
           .from('roles')
-          .update({ name, color })
+          .update(updateData)
           .eq('id', roleId);
 
         if (error) throw error;
@@ -241,7 +249,7 @@ export function useDuplicateRole() {
       // 1. Get source role
       const { data: sourceRole, error: roleError } = await supabase
         .from('roles')
-        .select('name, color, position')
+        .select('name, color, icon_url, position')
         .eq('id', roleId)
         .single();
 
@@ -260,6 +268,7 @@ export function useDuplicateRole() {
           server_id: serverId,
           name: `${sourceRole.name} (copie)`,
           color: sourceRole.color,
+          icon_url: sourceRole.icon_url,
           position: (sourceRole.position || 0) + 1,
         })
         .select()
@@ -286,5 +295,34 @@ export function useDuplicateRole() {
     onError: () => {
       toast.error('Erreur lors de la duplication du rôle');
     },
+  });
+}
+
+export function useRoleMemberCounts(serverId: string | null) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['role-member-counts', serverId],
+    queryFn: async (): Promise<Record<string, number>> => {
+      if (!serverId) return {};
+
+      const { data, error } = await supabase
+        .from('member_roles')
+        .select(`
+          role_id,
+          roles!inner(server_id)
+        `)
+        .eq('roles.server_id', serverId);
+
+      if (error) throw error;
+
+      // Count members per role
+      const counts: Record<string, number> = {};
+      data?.forEach((mr: any) => {
+        counts[mr.role_id] = (counts[mr.role_id] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: !!serverId && !!user,
   });
 }

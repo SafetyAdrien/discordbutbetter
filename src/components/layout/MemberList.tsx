@@ -19,6 +19,7 @@ interface Role {
   id: string;
   name: string;
   color: string | null;
+  icon_url?: string | null;
   position: number | null;
 }
 

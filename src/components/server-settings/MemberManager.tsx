@@ -29,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Search, MoreVertical, Shield, UserMinus, Ban } from 'lucide-react';
+import { Search, MoreHorizontal, Shield, UserMinus, Ban } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -126,7 +126,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
           return (
             <div
               key={member.id}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
@@ -141,7 +141,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                     {(isMemberOwner || isMemberSecondaryOwner) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="flex-shrink-0">
+                          <span className="flex-shrink-0 cursor-pointer">
                             <StreamlineCrown size={16} className="text-yellow-500" />
                           </span>
                         </TooltipTrigger>
@@ -158,8 +158,8 @@ export function MemberManager({ serverId }: MemberManagerProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Role badges */}
-                <div className="flex gap-1">
+                {/* Role badges with 3-dot menu */}
+                <div className="flex items-center gap-1">
                   {member.roles?.slice(0, 2).map((role) => (
                     <Badge
                       key={role.id}
@@ -175,6 +175,23 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                       +{(member.roles?.length || 0) - 2}
                     </Badge>
                   )}
+                  
+                  {/* 3-dot menu for role management */}
+                  {isOwner && !isMemberOwner && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Shield className="w-4 h-4 mr-2" />
+                          Gérer les rôles
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
 
                 {/* Actions menu - only show if current user is owner and member is not owner */}
@@ -182,7 +199,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
+                        <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

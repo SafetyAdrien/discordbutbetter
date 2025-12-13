@@ -4,7 +4,7 @@ import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDupli
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy, Users, GripVertical } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy, Users } from 'lucide-react';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
@@ -57,7 +57,6 @@ function SortableRole({
     attributes,
     listeners,
     setNodeRef,
-    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -74,25 +73,16 @@ function SortableRole({
   return (
     <div
       ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       style={style}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors group',
+        'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors group cursor-grab active:cursor-grabbing',
         isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
         isDragging && 'sortable-ghost'
       )}
       onClick={onSelect}
     >
-      {/* Drag Handle - separate from click */}
-      <button
-        ref={setActivatorNodeRef}
-        {...attributes}
-        {...listeners}
-        className="cursor-grab hover:text-primary text-muted-foreground p-0.5 -ml-1"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="w-4 h-4" />
-      </button>
-      
       <RoleIcon role={role} />
       <span className="flex-1 truncate text-sm">{role.name}</span>
       

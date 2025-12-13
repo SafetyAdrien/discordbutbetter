@@ -388,7 +388,6 @@ export function ChannelList({
   onOpenServerSettings,
   orphanChannels = []
 }: ChannelListProps) {
-  // Structure: flex column with scrollable channels area and fixed bottom panels
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);

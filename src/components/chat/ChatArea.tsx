@@ -298,12 +298,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       setReplyingTo(message);
     };
 
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setMessageInput(e.target.value);
       if (e.target.value.trim()) {
         startTyping();
       }
+      // Auto-resize textarea
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
     }, [startTyping]);
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        e.currentTarget.form?.requestSubmit();
+      }
+      // Shift+Enter = default behavior (new line)
+    }, []);
 
     const handleUserClick = (author: User) => {
       const roles = memberRoles?.get(author.id);
@@ -547,7 +558,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               <ContextMenuTrigger asChild>
                 <div
                   className={cn(
-                    'group message-hover rounded-md px-2 py-1 -mx-2 relative',
+                    'group message-hover rounded-md px-2 py-0.5 -mx-2 relative',
                     !showAuthor && 'mt-0'
                   )}
                   onMouseEnter={() => setHoveredMessageId(message.id)}
@@ -563,7 +574,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                     isOwnMessage={isOwnMessage}
                   />
                   {showAuthor ? (
-                    <div className="flex gap-4">
+                  <div className="flex gap-3">
                       <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                         <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
                           <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
@@ -803,12 +814,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               </PopoverContent>
             </Popover>
             
-            <input
-              type="text"
+            <textarea
               value={messageInput}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               placeholder={`Envoyer un message dans #${channel.name}`}
-              className="flex-1 bg-transparent py-3 text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="flex-1 bg-transparent py-3 text-foreground placeholder:text-muted-foreground focus:outline-none resize-none min-h-[24px] max-h-[200px] overflow-y-auto"
+              rows={1}
             />
             
             <div className="flex items-center gap-1 pr-2">

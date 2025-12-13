@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
@@ -25,6 +26,27 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
+
+// Channel list resize limits (Discord-style: ~160px min, ~420px max)
+const CHANNEL_LIST_STORAGE_KEY = 'channel-list-size';
+const DEFAULT_CHANNEL_SIZE = 15; // ~240px on 1600px screen
+const MIN_CHANNEL_SIZE = 10; // ~160px
+const MAX_CHANNEL_SIZE = 26; // ~420px
+
+function loadChannelListSize(): number {
+  try {
+    const saved = localStorage.getItem(CHANNEL_LIST_STORAGE_KEY);
+    if (saved) {
+      const size = parseFloat(saved);
+      if (!isNaN(size) && size >= MIN_CHANNEL_SIZE && size <= MAX_CHANNEL_SIZE) {
+        return size;
+      }
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+  return DEFAULT_CHANNEL_SIZE;
+}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -324,81 +346,104 @@ const Index = () => {
           onShowFriends={handleShowFriends}
         />
       ) : activeServer && serverForChannelList ? (
-        <>
-          {/* Channel List */}
-          <ChannelList
-            server={serverForChannelList}
-            activeChannelId={activeChannelId}
-            onChannelSelect={setActiveChannelId}
-            onOpenServerSettings={() => setShowServerSettings(true)}
-            orphanChannels={channelsData?.orphanChannels || []}
-          />
-
-          {/* Main Content Area - Conditional based on channel type */}
-          {channelForChat && (
-            <>
-              {channelForChat.type === 'voice' ? (
-                <VoiceChannelView 
-                  channel={channelForChat}
-                  serverId={activeServer.id}
-                  members={memberListData}
-                  ownerId={activeServer.owner_id || ''}
-                  onOpenDM={handleOpenDM}
-                />
-              ) : channelForChat.type === 'media' ? (
-                <MediaChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'forum' ? (
-                <ForumChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'tasks' ? (
-                <TasksChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'calendar' ? (
-                <CalendarChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'announcement' ? (
-                <AnnouncementChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : (
-                <ChatArea
-                  channel={channelForChat}
-                  messages={messagesData}
-                  onSendMessage={handleSendMessage}
-                  memberRoles={memberRolesMap}
-                  onOpenDM={handleOpenDM}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              )}
-            </>
-          )}
-
-          {/* Member List - Conditionally rendered (not for voice channels) */}
-          {showMembers && channelForChat?.type !== 'voice' && (
-            <MemberList 
-              members={memberListData} 
-              ownerId={activeServer.owner_id || ''} 
-              serverId={activeServer.id}
-              onOpenDM={handleOpenDM}
+        <PanelGroup 
+          direction="horizontal" 
+          className="flex-1"
+          onLayout={(sizes) => {
+            try {
+              localStorage.setItem(CHANNEL_LIST_STORAGE_KEY, sizes[0].toString());
+            } catch {
+              // Ignore localStorage errors
+            }
+          }}
+        >
+          {/* Channel List Panel */}
+          <Panel 
+            defaultSize={loadChannelListSize()} 
+            minSize={MIN_CHANNEL_SIZE} 
+            maxSize={MAX_CHANNEL_SIZE}
+            className="flex flex-col"
+          >
+            <ChannelList
+              server={serverForChannelList}
+              activeChannelId={activeChannelId}
+              onChannelSelect={setActiveChannelId}
+              onOpenServerSettings={() => setShowServerSettings(true)}
+              orphanChannels={channelsData?.orphanChannels || []}
             />
-          )}
-        </>
+          </Panel>
+
+          {/* Resize Handle */}
+          <PanelResizeHandle className="resize-handle" />
+
+          {/* Main Content Panel */}
+          <Panel minSize={40} className="flex">
+            {/* Main Content Area - Conditional based on channel type */}
+            {channelForChat && (
+              <>
+                {channelForChat.type === 'voice' ? (
+                  <VoiceChannelView 
+                    channel={channelForChat}
+                    serverId={activeServer.id}
+                    members={memberListData}
+                    ownerId={activeServer.owner_id || ''}
+                    onOpenDM={handleOpenDM}
+                  />
+                ) : channelForChat.type === 'media' ? (
+                  <MediaChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'forum' ? (
+                  <ForumChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'tasks' ? (
+                  <TasksChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'calendar' ? (
+                  <CalendarChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'announcement' ? (
+                  <AnnouncementChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : (
+                  <ChatArea
+                    channel={channelForChat}
+                    messages={messagesData}
+                    onSendMessage={handleSendMessage}
+                    memberRoles={memberRolesMap}
+                    onOpenDM={handleOpenDM}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Member List - Conditionally rendered (not for voice channels) */}
+            {showMembers && channelForChat?.type !== 'voice' && (
+              <MemberList 
+                members={memberListData} 
+                ownerId={activeServer.owner_id || ''} 
+                serverId={activeServer.id}
+                onOpenDM={handleOpenDM}
+              />
+            )}
+          </Panel>
+        </PanelGroup>
       ) : null}
 
       {/* Modals */}

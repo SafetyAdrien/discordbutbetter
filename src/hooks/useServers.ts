@@ -11,6 +11,7 @@ export interface ServerWithDetails {
   description: string | null;
   is_public: boolean;
   owner_id: string | null;
+  secondary_owner_id: string | null;
   created_at: string | null;
   categories: {
     id: string;
@@ -45,6 +46,7 @@ export function useServers() {
             description,
             is_public,
             owner_id,
+            secondary_owner_id,
             created_at,
             categories (
               id,
@@ -159,6 +161,7 @@ export function useCreateServer() {
         description: description || null,
         is_public: is_public ?? false,
         owner_id: user.id,
+        secondary_owner_id: null,
         created_at: new Date().toISOString(),
         categories: [],
       };

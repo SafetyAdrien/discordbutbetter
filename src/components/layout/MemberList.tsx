@@ -16,12 +16,18 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { copyToClipboard } from '@/lib/clipboard';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
+import { useServers } from '@/hooks/useServers';
 
 interface Role {
   id: string;
@@ -141,6 +147,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     // Fetch roles for filter and management
     const { data: allRoles = [] } = useServerRoles(serverId || null);
     const { data: membersData = [] } = useMembers(serverId || null);
+    const { data: servers = [] } = useServers();
+    
+    // Get the server to check for secondary owner
+    const server = servers.find(s => s.id === serverId);
 
     // Check if current user can manage roles
     const canManageRoles = useMemo(() => {
@@ -266,6 +276,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
 
     const renderMember = (member: MemberWithRoles) => {
       const isOwner = member.id === ownerId;
+      const isSecondaryOwner = member.id === server?.secondary_owner_id;
       const memberId = getMemberId(member.id);
 
       return (
@@ -300,8 +311,17 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                   >
                     {member.displayName}
                   </span>
-                  {isOwner && (
-                    <StreamlineCrown size={14} className="text-yellow-500 flex-shrink-0" />
+                  {(isOwner || isSecondaryOwner) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex-shrink-0">
+                          <StreamlineCrown size={14} className="text-yellow-500" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isOwner ? 'Propriétaire du serveur' : 'Second Propriétaire'}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
                 {member.customStatus && (

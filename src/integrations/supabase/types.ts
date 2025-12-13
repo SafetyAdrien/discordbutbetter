@@ -1049,6 +1049,7 @@ export type Database = {
           is_public: boolean | null
           name: string
           owner_id: string | null
+          secondary_owner_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1060,6 +1061,7 @@ export type Database = {
           is_public?: boolean | null
           name: string
           owner_id?: string | null
+          secondary_owner_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1071,12 +1073,20 @@ export type Database = {
           is_public?: boolean | null
           name?: string
           owner_id?: string | null
+          secondary_owner_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "servers_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servers_secondary_owner_id_fkey"
+            columns: ["secondary_owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1349,7 +1359,19 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      is_server_owner_or_secondary: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: boolean
+      }
       kick_member: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: undefined
+      }
+      remove_secondary_owner: {
+        Args: { _server_id: string }
+        Returns: undefined
+      }
+      set_secondary_owner: {
         Args: { _server_id: string; _user_id: string }
         Returns: undefined
       }

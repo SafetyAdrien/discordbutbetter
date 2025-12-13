@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
@@ -699,7 +700,16 @@ export function ChannelList({
                   <span>Créé le {formatServerDate(server.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <StreamlineCrown size={16} className="text-yellow-500" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <StreamlineCrown size={16} className="text-yellow-500" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Propriétaire du serveur</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <span>Fondateur: {ownerProfile?.user?.display_name || 'Inconnu'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
@@ -325,100 +324,83 @@ const Index = () => {
           onShowFriends={handleShowFriends}
         />
       ) : activeServer && serverForChannelList ? (
-        <PanelGroup 
-          direction="horizontal" 
-          autoSaveId="channel-list-size"
-          className="flex-1"
-        >
-          {/* Channel List Panel */}
-          <Panel 
-            defaultSize={15} 
-            minSize={10} 
-            maxSize={25}
-            id="channel-list"
-          >
-            <ChannelList
-              server={serverForChannelList}
-              activeChannelId={activeChannelId}
-              onChannelSelect={setActiveChannelId}
-              onOpenServerSettings={() => setShowServerSettings(true)}
-              orphanChannels={channelsData?.orphanChannels || []}
-            />
-          </Panel>
-          
-          <PanelResizeHandle className="w-0.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
+        <>
+          {/* Channel List */}
+          <ChannelList
+            server={serverForChannelList}
+            activeChannelId={activeChannelId}
+            onChannelSelect={setActiveChannelId}
+            onOpenServerSettings={() => setShowServerSettings(true)}
+            orphanChannels={channelsData?.orphanChannels || []}
+          />
 
-          {/* Main Content Panel */}
-          <Panel defaultSize={85} id="main-content">
-            <div className="flex h-full">
-              {/* Main Content Area - Conditional based on channel type */}
-              {channelForChat && (
-                <>
-                  {channelForChat.type === 'voice' ? (
-                    <VoiceChannelView 
-                      channel={channelForChat}
-                      serverId={activeServer.id}
-                      members={memberListData}
-                      ownerId={activeServer.owner_id || ''}
-                      onOpenDM={handleOpenDM}
-                    />
-                  ) : channelForChat.type === 'media' ? (
-                    <MediaChannel 
-                      channel={channelForChat}
-                      onToggleMembers={handleToggleMembers}
-                      showMembers={showMembers}
-                    />
-                  ) : channelForChat.type === 'forum' ? (
-                    <ForumChannel 
-                      channel={channelForChat}
-                      onToggleMembers={handleToggleMembers}
-                      showMembers={showMembers}
-                    />
-                  ) : channelForChat.type === 'tasks' ? (
-                    <TasksChannel 
-                      channel={channelForChat}
-                      onToggleMembers={handleToggleMembers}
-                      showMembers={showMembers}
-                    />
-                  ) : channelForChat.type === 'calendar' ? (
-                    <CalendarChannel 
-                      channel={channelForChat}
-                      onToggleMembers={handleToggleMembers}
-                      showMembers={showMembers}
-                    />
-                  ) : channelForChat.type === 'announcement' ? (
-                    <AnnouncementChannel 
-                      channel={channelForChat}
-                      onToggleMembers={handleToggleMembers}
-                      showMembers={showMembers}
-                    />
-                  ) : (
-                    <ChatArea
-                      channel={channelForChat}
-                      messages={messagesData}
-                      onSendMessage={handleSendMessage}
-                      memberRoles={memberRolesMap}
-                      onOpenDM={handleOpenDM}
-                      onToggleMembers={handleToggleMembers}
-                      showMembers={showMembers}
-                    />
-                  )}
-                </>
-              )}
-
-              {/* Member List - Conditionally rendered (not for voice channels) */}
-              {showMembers && channelForChat?.type !== 'voice' && (
-                <MemberList 
-                  members={memberListData} 
-                  ownerId={activeServer.owner_id || ''} 
+          {/* Main Content Area - Conditional based on channel type */}
+          {channelForChat && (
+            <>
+              {channelForChat.type === 'voice' ? (
+                <VoiceChannelView 
+                  channel={channelForChat}
                   serverId={activeServer.id}
+                  members={memberListData}
+                  ownerId={activeServer.owner_id || ''}
                   onOpenDM={handleOpenDM}
                 />
+              ) : channelForChat.type === 'media' ? (
+                <MediaChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'forum' ? (
+                <ForumChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'tasks' ? (
+                <TasksChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'calendar' ? (
+                <CalendarChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'announcement' ? (
+                <AnnouncementChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : (
+                <ChatArea
+                  channel={channelForChat}
+                  messages={messagesData}
+                  onSendMessage={handleSendMessage}
+                  memberRoles={memberRolesMap}
+                  onOpenDM={handleOpenDM}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
               )}
-            </div>
-          </Panel>
-        </PanelGroup>
+            </>
+          )}
+
+          {/* Member List - Conditionally rendered (not for voice channels) */}
+          {showMembers && channelForChat?.type !== 'voice' && (
+            <MemberList 
+              members={memberListData} 
+              ownerId={activeServer.owner_id || ''} 
+              serverId={activeServer.id}
+              onOpenDM={handleOpenDM}
+            />
+          )}
+        </>
       ) : null}
+
       {/* Modals */}
       {showDiscover && (
         <DiscoverModal

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
 
 /* gg sans Font */
 @font-face {
@@ -47,72 +47,85 @@
 
 @layer base {
   :root {
-    /* Dark gaming theme - always dark */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
-
-    --card: 230 25% 12%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 230 25% 10%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 186 100% 50%;
-    --primary-foreground: 230 25% 8%;
-
-    --secondary: 270 60% 60%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 230 20% 18%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 186 80% 40%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 230 20% 20%;
-    --input: 230 20% 15%;
-    --ring: 186 100% 50%;
-
-    --radius: 0.75rem;
-
-    /* Custom gaming colors */
-    --glow-primary: 186 100% 50%;
-    --glow-secondary: 270 60% 60%;
-    --surface-elevated: 230 25% 14%;
-    --surface-hover: 230 25% 18%;
-    --online: 142 76% 46%;
-    --idle: 38 92% 50%;
-    --dnd: 0 72% 51%;
-    --offline: 215 20% 45%;
-    --voice-active: 142 76% 46%;
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
-    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(230 25% 14%), hsl(230 25% 10%));
-
-    /* Shadows */
-    --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
-    --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
-    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
-
-    --sidebar-background: 230 25% 10%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 186 100% 50%;
-    --sidebar-primary-foreground: 230 25% 8%;
-    --sidebar-accent: 230 25% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 230 20% 18%;
-    --sidebar-ring: 186 100% 50%;
+    /* Discord 2021 Legacy Dark Mode - Exact Hex Colors converted to HSL */
+    
+    /* App Backgrounds (Depth Hierarchy) */
+    --background-tertiary: 220 6% 13%;      /* #202225 - Level 1 (Deepest - Server Sidebar) */
+    --background-secondary: 223 7% 20%;     /* #2f3136 - Level 2 (Sidebars - Channels/Members) */
+    --background-primary: 223 7% 23%;       /* #36393f - Level 3 (Main Chat View/Headers) */
+    --background-modifier-hover: 220 7% 21%; /* #32353b - Message hover */
+    --background-modifier-selected: 220 7% 22%; /* #34373c - List item hover */
+    --background-modifier-active: 220 6% 24%; /* #393c43 - Active/Selected */
+    
+    /* Main tokens mapped to Discord colors */
+    --background: 223 7% 23%;               /* #36393f - Main content */
+    --foreground: 210 3% 87%;               /* #dcddde - Primary text */
+    
+    --card: 223 7% 20%;                     /* #2f3136 */
+    --card-foreground: 210 3% 87%;          /* #dcddde */
+    
+    --popover: 223 7% 20%;                  /* #2f3136 */
+    --popover-foreground: 210 3% 87%;       /* #dcddde */
+    
+    /* Brand Blue (2021 Era) */
+    --primary: 235 86% 65%;                 /* #5865F2 */
+    --primary-foreground: 0 0% 100%;        /* White */
+    
+    --secondary: 220 7% 29%;                /* #4f545c - Interaction buttons */
+    --secondary-foreground: 0 0% 100%;      /* White */
+    
+    --muted: 220 7% 27%;                    /* #40444b - Input background */
+    --muted-foreground: 216 4% 57%;         /* #8e9297 - Secondary text */
+    
+    --accent: 235 86% 65%;                  /* #5865F2 */
+    --accent-foreground: 0 0% 100%;         /* White */
+    
+    /* Brand Red (Notifications/DND) */
+    --destructive: 359 83% 59%;             /* #ed4245 */
+    --destructive-foreground: 0 0% 100%;    /* White */
+    
+    --border: 220 6% 13%;                   /* #202225 - Divider lines */
+    --input: 220 7% 27%;                    /* #40444b */
+    --ring: 235 86% 65%;                    /* #5865F2 */
+    
+    --radius: 0.25rem;                      /* 4px - Discord's standard radius */
+    
+    /* Status Colors */
+    --online: 139 48% 47%;                  /* #3ba55c - Brand Green */
+    --idle: 38 96% 54%;                     /* #faa61a */
+    --dnd: 359 83% 59%;                     /* #ed4245 */
+    --offline: 214 8% 57%;                  /* #8e9297 */
+    --voice-active: 139 48% 47%;            /* #3ba55c */
+    
+    /* Surface variants */
+    --surface-elevated: 223 7% 20%;         /* #2f3136 */
+    --surface-hover: 220 7% 21%;            /* #32353b */
+    
+    /* Text Colors */
+    --text-normal: 210 3% 87%;              /* #dcddde */
+    --text-muted: 216 4% 57%;               /* #8e9297 */
+    --text-link: 200 100% 50%;              /* #00aff4 */
+    --interactive-normal: 214 8% 73%;       /* #b9bbbe */
+    --interactive-hover: 210 3% 87%;        /* #dcddde */
+    --interactive-active: 0 0% 100%;        /* #ffffff */
+    --interactive-muted: 214 8% 45%;        /* #72767d - Timestamp */
+    
+    /* Sidebar specific */
+    --sidebar-background: 220 6% 13%;       /* #202225 */
+    --sidebar-foreground: 210 3% 87%;       /* #dcddde */
+    --sidebar-primary: 235 86% 65%;         /* #5865F2 */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 6% 24%;           /* #393c43 */
+    --sidebar-accent-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-border: 220 6% 13%;           /* #202225 */
+    --sidebar-ring: 235 86% 65%;            /* #5865F2 */
+    
+    /* Channels sidebar */
+    --channels-default: 220 7% 27%;         /* #40444b */
   }
 
   .dark {
-    /* Same as root - always dark */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
+    /* Same as root - always dark Discord theme */
   }
 }
 
@@ -122,116 +135,107 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 
-  h1, h2, h3 {
-    font-family: 'Orbitron', sans-serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 }
 
 @layer components {
-  .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
-  }
-
-  .glass-hover {
-    @apply hover:bg-surface-hover/80 transition-all duration-300;
-  }
-
-  .glow-text {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5),
-                 0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  .glow-border {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
-                inset 0 0 10px hsl(var(--primary) / 0.1);
-  }
-
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-primary);
-  }
-
+  /* Server icon Discord style */
   .server-icon {
     @apply w-12 h-12 rounded-[24px] flex items-center justify-center cursor-pointer
-           transition-all duration-300 ease-out;
+           transition-all duration-200 ease-out;
+    background-color: hsl(var(--background-primary));
   }
 
   .server-icon:hover {
     @apply rounded-[16px];
+    background-color: hsl(var(--primary));
   }
 
   .server-icon.active {
     @apply rounded-[16px];
+    background-color: hsl(var(--primary));
   }
 
+  /* Channel item Discord 2021 style */
   .channel-item {
-    @apply flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
-           text-muted-foreground hover:text-foreground hover:bg-surface-hover
-           transition-all duration-200;
+    @apply flex items-center gap-2 px-2 py-1 rounded cursor-pointer
+           transition-all duration-100;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .channel-item:hover {
+    background-color: hsl(var(--background-modifier-selected));
+    color: hsl(var(--interactive-hover));
   }
 
   .channel-item.active {
-    @apply bg-muted text-foreground;
+    background-color: hsl(var(--background-modifier-active));
+    color: hsl(var(--interactive-active));
   }
 
+  /* Message hover Discord style */
   .message-hover {
-    @apply hover:bg-surface-hover/50 transition-colors duration-150;
+    transition: background-color 0.1s ease;
   }
 
+  .message-hover:hover {
+    background-color: hsl(var(--background-modifier-hover));
+  }
+
+  /* Discord 2021 Scrollbars */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: hsl(220 6% 13%) hsl(220 7% 18%);
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(220 7% 18%); /* #2e3338 */
+    border-radius: 4px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 3px;
+    background: hsl(220 6% 13%); /* #202225 */
+    border-radius: 4px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(220 6% 17%);
+  }
+
+  /* Discord buttons style */
+  .discord-button {
+    @apply px-4 py-2 rounded font-medium text-sm transition-colors duration-100;
+    background-color: hsl(var(--secondary));
+    color: white;
+  }
+
+  .discord-button:hover {
+    background-color: hsl(220 7% 35%); /* #5d6269 lighter */
+  }
+
+  .discord-button-primary {
+    @apply px-4 py-2 rounded font-medium text-sm transition-colors duration-100;
+    background-color: hsl(var(--primary));
+    color: white;
+  }
+
+  .discord-button-primary:hover {
+    background-color: hsl(235 86% 58%);
   }
 }
 
 @layer utilities {
-  .animation-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  .animation-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
-    }
-    50% {
-      box-shadow: 0 0 25px hsl(var(--primary) / 0.5);
-    }
-  }
-
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-5px);
-    }
-  }
-
+  /* Animation keyframes */
   @keyframes slide-in-left {
     from {
       transform: translateX(-100%);
@@ -263,6 +267,17 @@
     }
   }
 
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .animate-slide-in-left {
     animation: slide-in-left 0.3s ease-out;
   }
@@ -275,21 +290,11 @@
     animation: fade-in 0.2s ease-out;
   }
 
-  @keyframes slide-down {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   .animate-slide-down {
     animation: slide-down 200ms ease-out;
   }
 
+  /* Voice active ring */
   @keyframes voice-glow {
     0%, 100% {
       box-shadow: 0 0 0 2px hsl(var(--voice-active) / 0.5);
@@ -324,7 +329,7 @@
     user-select: text;
   }
 
-  /* Drag and drop animations */
+  /* Drag and drop */
   .dragging-item {
     box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
     transform: scale(1.02);
@@ -355,14 +360,12 @@
     }
   }
 
-  /* Smooth channel transition animation */
   .channel-transition {
     transition: transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
                 opacity 200ms ease,
                 background-color 200ms ease;
   }
 
-  /* Animation when channel enters a new category */
   @keyframes slide-into-place {
     from {
       opacity: 0.5;
@@ -383,7 +386,6 @@
     backdrop-filter: blur(4px);
   }
 
-  /* Remove focus outline on drag-and-drop elements */
   [data-dnd-kit-draggable]:focus,
   [data-dnd-kit-draggable]:focus-visible {
     outline: none;

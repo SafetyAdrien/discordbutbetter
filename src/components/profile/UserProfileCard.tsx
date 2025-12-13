@@ -18,7 +18,7 @@ const statusLabels = {
   online: 'En ligne',
   idle: 'Inactif',
   dnd: 'Ne pas déranger',
-  offline: 'Invisible'
+  offline: 'Hors ligne'
 };
 
 interface UserProfileCardProps {
@@ -38,8 +38,11 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   const handleStatusHover = () => {
     if (statusButtonRef.current) {
       const rect = statusButtonRef.current.getBoundingClientRect();
+      const menuHeight = 160; // Hauteur approximative du menu (4 statuts + header)
+      
       setMenuPosition({
-        top: rect.top,
+        // Remonter le menu pour qu'il soit bien visible
+        top: Math.max(10, rect.top - menuHeight + rect.height + 50),
         left: rect.right + 4,
       });
     }
@@ -149,7 +152,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 {showStatusMenu && (
                   <Portal.Root>
                     <div 
-                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-left"
+                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-right"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
                       onMouseEnter={() => setShowStatusMenu(true)}
                       onMouseLeave={() => setShowStatusMenu(false)}

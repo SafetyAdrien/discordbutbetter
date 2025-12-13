@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, useAssignRoleToMember, useRemoveRoleFromMember, RoleWithPermissions } from '@/hooks/useRoles';
+import * as Portal from '@radix-ui/react-portal';
 
 interface Role {
   id: string;
@@ -26,11 +27,12 @@ interface UserProfilePopupProps {
   onOpenChange: (open: boolean) => void;
   roles?: Role[];
   onOpenDM?: (conversationId: string) => void;
-  // New props for role management
   serverId?: string;
   ownerId?: string;
   memberId?: string;
   canManageRoles?: boolean;
+  mode?: 'dialog' | 'card';
+  cardPosition?: { top: number; right: number };
 }
 
 const statusColors = {
@@ -56,7 +58,6 @@ function formatMemberSince(dateString: string): string {
   });
 }
 
-// Role Icon Component
 function RoleIcon({ role }: { role: RoleWithPermissions | Role }) {
   if ('icon_url' in role && role.icon_url) {
     if (!role.icon_url.startsWith('http')) {
@@ -83,6 +84,8 @@ export function UserProfilePopup({
   ownerId,
   memberId,
   canManageRoles = false,
+  mode = 'dialog',
+  cardPosition,
 }: UserProfilePopupProps) {
   const { user: currentUser } = useAuth();
   const { mutate: createDM, isPending: isCreatingDM } = useCreateDMConversation();
@@ -103,7 +106,6 @@ export function UserProfilePopup({
   const isFriend = friendship?.status === 'accepted';
   const isPending = friendship?.status === 'pending';
 
-  // Get the user's current role IDs
   const userRoleIds = roles?.map(r => r.id) || [];
 
   const handleSendMessage = () => {
@@ -133,214 +135,233 @@ export function UserProfilePopup({
     }
   };
 
-  // Filter out @everyone role and sort by position
   const displayRoles = roles
     ?.filter(role => role.name !== '@everyone')
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
-  // Get assignable roles (non-default roles)
   const assignableRoles = allRoles
     .filter(role => !role.is_default)
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
+  const ProfileContent = () => (
+    <>
+      {/* Banner */}
+      {user.banner ? (
+        <img 
+          src={user.banner} 
+          alt="Banner" 
+          className="h-24 w-full object-cover" 
+        />
+      ) : (
+        <div className="h-24 bg-[hsl(var(--primary))]" />
+      )}
+
+      {/* Profile Content */}
+      <div className="px-4 pb-4">
+        {/* Avatar */}
+        <div className="relative -mt-12 mb-3">
+          <div className="relative inline-block">
+            <Avatar className="w-20 h-20 border-4 border-card">
+              <AvatarImage src={user.avatar} alt={user.displayName} />
+              <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                {user.displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div
+              className={cn(
+                'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card',
+                statusColors[user.status]
+              )}
+            />
+          </div>
+          {isFriend && !isOwnProfile && (
+            <div className="absolute top-0 right-0">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[hsl(var(--online))]/20 text-[hsl(var(--online))] text-xs font-medium">
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Ami</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* User Info */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-xl font-bold text-foreground">{user.displayName}</h3>
+            <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm">
+            <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[user.status])} />
+            <span className="text-muted-foreground">{statusLabels[user.status]}</span>
+          </div>
+
+          {user.customStatus && (
+            <p className="text-sm text-foreground/80 italic">"{user.customStatus}"</p>
+          )}
+
+          {user.createdAt && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="w-4 h-4" />
+              <span>Membre depuis le {formatMemberSince(user.createdAt)}</span>
+            </div>
+          )}
+
+          {displayRoles && displayRoles.length > 0 && (
+            <>
+              <div className="border-t border-border" />
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2">
+                  Rôles
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {displayRoles.map((role) => (
+                    <div
+                      key={role.id}
+                      className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
+                      style={{
+                        backgroundColor: role.color ? `${role.color}20` : 'hsl(var(--muted))',
+                        borderLeft: `3px solid ${role.color || 'hsl(var(--muted-foreground))'}`,
+                        color: role.color || 'hsl(var(--foreground))',
+                      }}
+                    >
+                      {role.icon_url ? (
+                        role.icon_url.startsWith('http') ? (
+                          <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />
+                        ) : (
+                          <span className="text-xs">{role.icon_url}</span>
+                        )
+                      ) : (
+                        <div
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
+                        />
+                      )}
+                      {role.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
+            <>
+              <div className="border-t border-border" />
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2 flex items-center gap-1.5">
+                  <Settings className="w-3.5 h-3.5" />
+                  Gérer les rôles
+                </h4>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {assignableRoles.map((role) => (
+                    <div key={role.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`role-${role.id}`}
+                        checked={userRoleIds.includes(role.id)}
+                        onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
+                        disabled={assignRole.isPending || removeRole.isPending}
+                      />
+                      <Label 
+                        htmlFor={`role-${role.id}`} 
+                        className="flex items-center gap-1.5 cursor-pointer text-sm"
+                      >
+                        <RoleIcon role={role} />
+                        <span style={{ color: role.color || undefined }}>{role.name}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="border-t border-border" />
+
+          <div>
+            <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-1">
+              À Propos de Moi
+            </h4>
+            <p className={cn(
+              "text-sm",
+              user.bio ? "text-foreground/90" : "text-muted-foreground/50"
+            )}>
+              {user.bio || 'Aucune biographie définie.'}
+            </p>
+          </div>
+
+          {!isOwnProfile && (
+            <>
+              <div className="border-t border-border" />
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 gap-2"
+                  onClick={handleSendMessage}
+                  disabled={isCreatingDM || dmCreated}
+                >
+                  {isCreatingDM ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : dmCreated ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <MessageSquare className="w-4 h-4" />
+                  )}
+                  {dmCreated ? 'Ouvert' : 'Message'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-2"
+                  onClick={handleAddFriend}
+                  disabled={isSendingRequest || isFriend || isPending}
+                >
+                  {isSendingRequest ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isFriend ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                  {isFriend ? 'Ami' : isPending ? 'En attente' : 'Ajouter'}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  // Mode Card - affichage en carte latérale
+  if (mode === 'card' && open) {
+    return (
+      <Portal.Root>
+        <div 
+          className="fixed inset-0 z-50"
+          onClick={() => onOpenChange(false)}
+        >
+          <div 
+            className="absolute w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right"
+            style={{ 
+              top: cardPosition?.top ?? 100,
+              right: cardPosition?.right ?? 280
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ProfileContent />
+          </div>
+        </div>
+      </Portal.Root>
+    );
+  }
+
+  // Mode Dialog (comportement par défaut)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
-        {/* Banner */}
-        {user.banner ? (
-          <img 
-            src={user.banner} 
-            alt="Banner" 
-            className="h-24 w-full object-cover" 
-          />
-        ) : (
-          <div className="h-24 bg-[hsl(var(--primary))]" />
-        )}
-
-        {/* Profile Content */}
-        <div className="px-4 pb-4">
-          {/* Avatar - positioned to overlap banner */}
-          <div className="relative -mt-12 mb-3">
-            <div className="relative inline-block">
-              <Avatar className="w-20 h-20 border-4 border-card">
-                <AvatarImage src={user.avatar} alt={user.displayName} />
-                <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                  {user.displayName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div
-                className={cn(
-                  'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card',
-                  statusColors[user.status]
-                )}
-              />
-            </div>
-            {/* Friend Badge */}
-            {isFriend && !isOwnProfile && (
-              <div className="absolute top-0 right-0">
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[hsl(var(--online))]/20 text-[hsl(var(--online))] text-xs font-medium">
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>Ami</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* User Info */}
-          <div className="space-y-3">
-            <div>
-              <h3 className="text-xl font-bold text-foreground">{user.displayName}</h3>
-              <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center gap-2 text-sm">
-              <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[user.status])} />
-              <span className="text-muted-foreground">{statusLabels[user.status]}</span>
-            </div>
-
-            {/* Custom Status */}
-            {user.customStatus && (
-              <p className="text-sm text-foreground/80 italic">"{user.customStatus}"</p>
-            )}
-
-            {/* Member Since */}
-            {user.createdAt && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="w-4 h-4" />
-                <span>Membre depuis le {formatMemberSince(user.createdAt)}</span>
-              </div>
-            )}
-
-            {/* Roles */}
-            {displayRoles && displayRoles.length > 0 && (
-              <>
-                <div className="border-t border-border" />
-                <div>
-                <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2">
-                    Rôles
-                  </h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {displayRoles.map((role) => (
-                      <div
-                        key={role.id}
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
-                        style={{
-                          backgroundColor: role.color ? `${role.color}20` : 'hsl(var(--muted))',
-                          borderLeft: `3px solid ${role.color || 'hsl(var(--muted-foreground))'}`,
-                          color: role.color || 'hsl(var(--foreground))',
-                        }}
-                      >
-                        {role.icon_url ? (
-                          role.icon_url.startsWith('http') ? (
-                            <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />
-                          ) : (
-                            <span className="text-xs">{role.icon_url}</span>
-                          )
-                        ) : (
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
-                          />
-                        )}
-                        {role.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Role Management Section */}
-            {canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
-              <>
-                <div className="border-t border-border" />
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2 flex items-center gap-1.5">
-                    <Settings className="w-3.5 h-3.5" />
-                    Gérer les rôles
-                  </h4>
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                    {assignableRoles.map((role) => (
-                      <div key={role.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`role-${role.id}`}
-                          checked={userRoleIds.includes(role.id)}
-                          onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
-                          disabled={assignRole.isPending || removeRole.isPending}
-                        />
-                        <Label 
-                          htmlFor={`role-${role.id}`} 
-                          className="flex items-center gap-1.5 cursor-pointer text-sm"
-                        >
-                          <RoleIcon role={role} />
-                          <span style={{ color: role.color || undefined }}>{role.name}</span>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Bio Section */}
-            <div>
-              <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-1">
-                À Propos de Moi
-              </h4>
-              <p className={cn(
-                "text-sm",
-                user.bio ? "text-foreground/90" : "text-muted-foreground/50"
-              )}>
-                {user.bio || 'Aucune biographie définie.'}
-              </p>
-            </div>
-
-            {/* Action Buttons - Hide for own profile */}
-            {!isOwnProfile && (
-              <>
-                <div className="border-t border-border" />
-                <div className="flex gap-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1 gap-2"
-                    onClick={handleSendMessage}
-                    disabled={isCreatingDM || dmCreated}
-                  >
-                    {isCreatingDM ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : dmCreated ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <MessageSquare className="w-4 h-4" />
-                    )}
-                    {dmCreated ? 'Ouvert' : 'Message'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 gap-2"
-                    onClick={handleAddFriend}
-                    disabled={isSendingRequest || isFriend || isPending}
-                  >
-                    {isSendingRequest ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : isFriend ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <UserPlus className="w-4 h-4" />
-                    )}
-                    {isFriend ? 'Ami' : isPending ? 'En attente' : 'Ajouter'}
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <ProfileContent />
       </DialogContent>
     </Dialog>
   );

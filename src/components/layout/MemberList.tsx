@@ -1,7 +1,8 @@
 import { forwardRef, useState, useMemo, useRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Crown, MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle, Filter, X } from 'lucide-react';
+import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle, Filter, X } from 'lucide-react';
+import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { Button } from '@/components/ui/button';
@@ -300,7 +301,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                     {member.displayName}
                   </span>
                   {isOwner && (
-                    <Crown className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                    <StreamlineCrown size={14} className="text-yellow-500 flex-shrink-0" />
                   )}
                 </div>
                 {member.customStatus && (

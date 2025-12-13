@@ -238,6 +238,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const [isShiftPressed, setIsShiftPressed] = useState(false);
     const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+    const [isSending, setIsSending] = useState(false);
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
     const editMessage = useEditMessage();
@@ -278,6 +279,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (messageInput.trim()) {
+        // Trigger send animation
+        setIsSending(true);
+        setTimeout(() => setIsSending(false), 400);
+        
         // Include reply reference in message if replying
         const content = replyingTo 
           ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? '...' : ''}\n\n${messageInput}`
@@ -820,7 +825,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 <Smile className="w-5 h-5" />
               </button>
               {messageInput.trim() && (
-                <button type="submit" className="ml-1 p-1.5 rounded transition-colors hover:bg-muted">
+                <button 
+                  type="submit" 
+                  className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''}`}
+                >
                   <Send className="w-4 h-4" style={{ color: '#5865f2' }} />
                 </button>
               )}

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import * as Portal from '@radix-ui/react-portal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Settings, Pencil, ChevronRight } from 'lucide-react';
@@ -29,8 +30,21 @@ interface UserProfileCardProps {
 export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
   const { profile, updateStatus } = useAuth();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const statusButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   const currentStatus = profile?.status || 'offline';
+
+  const handleStatusHover = () => {
+    if (statusButtonRef.current) {
+      const rect = statusButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.top,
+        left: rect.right + 4,
+      });
+    }
+    setShowStatusMenu(true);
+  };
 
   const handleStatusChange = (status: 'online' | 'idle' | 'dnd' | 'offline') => {
     updateStatus(status);
@@ -114,13 +128,14 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             </Button>
 
             <div className="border-t border-border pt-2 space-y-0.5">
-              {/* Status Selector with Secondary Embed */}
+              {/* Status Selector with Portal */}
               <div
                 className="relative"
-                onMouseEnter={() => setShowStatusMenu(true)}
                 onMouseLeave={() => setShowStatusMenu(false)}
               >
                 <button
+                  ref={statusButtonRef}
+                  onMouseEnter={handleStatusHover}
                   className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
                 >
                   <div className="flex items-center gap-2">
@@ -130,24 +145,31 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
 
-                {/* Secondary Status Embed */}
+                {/* Status Menu via Portal */}
                 {showStatusMenu && (
-                  <div className="absolute left-full top-0 ml-1 w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-50 animate-slide-in-left">
-                    <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
-                    {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => handleStatusChange(status)}
-                        className={cn(
-                          "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                          currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted"
-                        )}
-                      >
-                        <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[status])} />
-                        <span>{statusLabels[status]}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <Portal.Root>
+                    <div 
+                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-left"
+                      style={{ top: menuPosition.top, left: menuPosition.left }}
+                      onMouseEnter={() => setShowStatusMenu(true)}
+                      onMouseLeave={() => setShowStatusMenu(false)}
+                    >
+                      <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
+                      {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => handleStatusChange(status)}
+                          className={cn(
+                            "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                            currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted"
+                          )}
+                        >
+                          <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[status])} />
+                          <span>{statusLabels[status]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </Portal.Root>
                 )}
               </div>
 

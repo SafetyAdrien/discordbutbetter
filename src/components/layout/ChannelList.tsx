@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Crown, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle } from 'lucide-react';
+import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
@@ -698,7 +699,7 @@ export function ChannelList({
                   <span>Créé le {formatServerDate(server.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Crown className="w-4 h-4 text-yellow-500" />
+                  <StreamlineCrown size={16} className="text-yellow-500" />
                   <span>Fondateur: {ownerProfile?.user?.display_name || 'Inconnu'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">

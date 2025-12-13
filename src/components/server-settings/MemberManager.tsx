@@ -24,7 +24,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, MoreVertical, Shield, UserMinus, Ban, Crown, UserX } from 'lucide-react';
+import { Search, MoreVertical, Shield, UserMinus, Ban, UserX } from 'lucide-react';
+import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -142,7 +143,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{member.user.display_name}</span>
                     {isMemberOwner && (
-                      <Crown className="w-4 h-4 text-yellow-500" />
+                      <StreamlineCrown size={16} className="text-yellow-500" />
                     )}
                   </div>
                   <span className="text-sm text-muted-foreground">

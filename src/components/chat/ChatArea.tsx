@@ -380,9 +380,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     };
 
     return (
-      <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0">
+      <div ref={ref} className="flex-1 flex flex-col bg-discord-chat min-w-0">
       {/* Channel Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
+      <div className="h-12 px-4 flex items-center gap-4 border-b border-popover flex-shrink-0 shadow-sm">
         <div className="flex items-center gap-2">
           <Hash className="w-5 h-5 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
@@ -511,7 +511,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 variant="ghost" 
                 size="iconSm"
                 onClick={onToggleMembers}
-                className={cn(showMembers && 'bg-surface-hover')}
+                className={cn(showMembers && 'bg-accent')}
               >
                 <Users className="w-5 h-5" />
               </Button>
@@ -538,11 +538,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
 
         {/* Date Separator */}
         <div className="flex items-center gap-4">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground font-medium">
+          <div className="flex-1 h-px bg-discord-separator" />
+          <span className="text-xs text-text-faint font-medium">
             {formatDate(messages[0]?.timestamp || new Date())}
           </span>
-          <div className="flex-1 h-px bg-border" />
+          <div className="flex-1 h-px bg-discord-separator" />
         </div>
 
         {/* Messages */}

@@ -3,11 +3,14 @@ import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
+import { useServerRoles, useAssignRoleToMember, useRemoveRoleFromMember, RoleWithPermissions } from '@/hooks/useRoles';
 
 interface Role {
   id: string;
@@ -23,6 +26,11 @@ interface UserProfilePopupProps {
   onOpenChange: (open: boolean) => void;
   roles?: Role[];
   onOpenDM?: (conversationId: string) => void;
+  // New props for role management
+  serverId?: string;
+  ownerId?: string;
+  memberId?: string;
+  canManageRoles?: boolean;
 }
 
 const statusColors = {
@@ -48,11 +56,41 @@ function formatMemberSince(dateString: string): string {
   });
 }
 
-export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: UserProfilePopupProps) {
+// Role Icon Component
+function RoleIcon({ role }: { role: RoleWithPermissions | Role }) {
+  if ('icon_url' in role && role.icon_url) {
+    if (!role.icon_url.startsWith('http')) {
+      return <span className="text-xs">{role.icon_url}</span>;
+    }
+    return <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />;
+  }
+
+  return (
+    <div
+      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+      style={{ backgroundColor: role.color || '#99AAB5' }}
+    />
+  );
+}
+
+export function UserProfilePopup({ 
+  user, 
+  open, 
+  onOpenChange, 
+  roles, 
+  onOpenDM,
+  serverId,
+  ownerId,
+  memberId,
+  canManageRoles = false,
+}: UserProfilePopupProps) {
   const { user: currentUser } = useAuth();
   const { mutate: createDM, isPending: isCreatingDM } = useCreateDMConversation();
   const { mutate: sendFriendRequest, isPending: isSendingRequest } = useSendFriendRequest();
   const { data: friends } = useFriends();
+  const { data: allRoles = [] } = useServerRoles(serverId || null);
+  const assignRole = useAssignRoleToMember();
+  const removeRole = useRemoveRoleFromMember();
   const [dmCreated, setDmCreated] = useState(false);
 
   if (!user) return null;
@@ -64,6 +102,9 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
   );
   const isFriend = friendship?.status === 'accepted';
   const isPending = friendship?.status === 'pending';
+
+  // Get the user's current role IDs
+  const userRoleIds = roles?.map(r => r.id) || [];
 
   const handleSendMessage = () => {
     createDM(user.id, {
@@ -82,9 +123,24 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
     sendFriendRequest(user.username);
   };
 
+  const handleRoleToggle = (roleId: string, checked: boolean) => {
+    if (!serverId || !memberId) return;
+    
+    if (checked) {
+      assignRole.mutate({ memberId, roleId, serverId });
+    } else {
+      removeRole.mutate({ memberId, roleId, serverId });
+    }
+  };
+
   // Filter out @everyone role and sort by position
   const displayRoles = roles
     ?.filter(role => role.name !== '@everyone')
+    .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+
+  // Get assignable roles (non-default roles)
+  const assignableRoles = allRoles
+    .filter(role => !role.is_default)
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
   return (
@@ -188,6 +244,38 @@ export function UserProfilePopup({ user, open, onOpenChange, roles, onOpenDM }: 
                           />
                         )}
                         {role.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Role Management Section */}
+            {canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
+              <>
+                <div className="border-t border-border" />
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2 flex items-center gap-1.5">
+                    <Settings className="w-3.5 h-3.5" />
+                    Gérer les rôles
+                  </h4>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {assignableRoles.map((role) => (
+                      <div key={role.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`role-${role.id}`}
+                          checked={userRoleIds.includes(role.id)}
+                          onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
+                          disabled={assignRole.isPending || removeRole.isPending}
+                        />
+                        <Label 
+                          htmlFor={`role-${role.id}`} 
+                          className="flex items-center gap-1.5 cursor-pointer text-sm"
+                        >
+                          <RoleIcon role={role} />
+                          <span style={{ color: role.color || undefined }}>{role.name}</span>
+                        </Label>
                       </div>
                     ))}
                   </div>

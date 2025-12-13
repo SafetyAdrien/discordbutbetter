@@ -56,7 +56,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   return (
-    <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-t border-border">
+    <div className="h-14 px-2 flex items-center bg-background/50 border-t border-border">
       <Popover>
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
@@ -153,7 +153,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 {showStatusMenu && (
                   <Portal.Root>
                     <div 
-                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-right"
+                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-subtle-appear"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
                       onMouseEnter={() => setShowStatusMenu(true)}
                       onMouseLeave={() => setShowStatusMenu(false)}
@@ -190,29 +190,30 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </PopoverContent>
       </Popover>
       
-      {/* Mic Settings Button */}
-      <VoiceSettingsPopover side="top" align="center">
-        <button className="p-1.5 hover:bg-muted rounded-md transition-colors flex items-center gap-0.5">
-          <Mic className="w-4 h-4 text-muted-foreground" />
-          <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
-        </button>
-      </VoiceSettingsPopover>
+      {/* Separated control icons */}
+      <div className="flex items-center ml-auto">
+        {/* Mic Settings Button */}
+        <VoiceSettingsPopover side="top" align="center">
+          <button className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors">
+            <Mic className="w-[18px] h-[18px] text-muted-foreground" />
+          </button>
+        </VoiceSettingsPopover>
 
-      {/* Video Settings Button */}
-      <VideoSettingsPopover side="top" align="center">
-        <button className="p-1.5 hover:bg-muted rounded-md transition-colors flex items-center gap-0.5">
-          <Video className="w-4 h-4 text-muted-foreground" />
-          <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
+        {/* Video Settings Button */}
+        <VideoSettingsPopover side="top" align="center">
+          <button className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors">
+            <Video className="w-[18px] h-[18px] text-muted-foreground" />
+          </button>
+        </VideoSettingsPopover>
+        
+        {/* Settings Button */}
+        <button 
+          onClick={onOpenSettings} 
+          className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+        >
+          <Settings className="w-[18px] h-[18px] text-muted-foreground" />
         </button>
-      </VideoSettingsPopover>
-      
-      {/* Settings Button */}
-      <button 
-        onClick={onOpenSettings} 
-        className="p-1.5 hover:bg-muted rounded-md transition-colors"
-      >
-        <Settings className="w-4 h-4 text-muted-foreground" />
-      </button>
+      </div>
     </div>
   );
 }

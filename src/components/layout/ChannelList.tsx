@@ -667,7 +667,7 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="w-60 bg-card flex flex-col border-r border-border">
+  return <div className="w-full h-full bg-card flex flex-col border-r border-border">
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>

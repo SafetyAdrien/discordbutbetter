@@ -82,6 +82,12 @@ export function ChannelDangerZone({ channelId, channelName, onDeleted }: Channel
                   id="confirm-name"
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && canDelete && !deleteChannel.isPending) {
+                      e.preventDefault();
+                      handleDelete();
+                    }
+                  }}
                   placeholder={channelName}
                 />
               </div>

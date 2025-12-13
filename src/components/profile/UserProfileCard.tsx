@@ -5,7 +5,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import * as Portal from '@radix-ui/react-portal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, Pencil, ChevronRight } from 'lucide-react';
+import { Settings, Pencil, ChevronRight, Mic, Video, ChevronDown } from 'lucide-react';
+import { VoiceSettingsPopover } from '@/components/voice/VoiceSettingsPopover';
+import { VideoSettingsPopover } from '@/components/voice/VideoSettingsPopover';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -38,10 +40,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   const handleStatusHover = () => {
     if (statusButtonRef.current) {
       const rect = statusButtonRef.current.getBoundingClientRect();
-      const menuHeight = 160; // Hauteur approximative du menu (4 statuts + header)
+      const menuHeight = 160;
       
       setMenuPosition({
-        // Remonter le menu pour qu'il soit bien visible
         top: Math.max(10, rect.top - menuHeight + rect.height + 50),
         left: rect.right + 4,
       });
@@ -189,6 +190,23 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </PopoverContent>
       </Popover>
       
+      {/* Mic Settings Button */}
+      <VoiceSettingsPopover side="top" align="center">
+        <button className="p-1.5 hover:bg-muted rounded-md transition-colors flex items-center gap-0.5">
+          <Mic className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
+        </button>
+      </VoiceSettingsPopover>
+
+      {/* Video Settings Button */}
+      <VideoSettingsPopover side="top" align="center">
+        <button className="p-1.5 hover:bg-muted rounded-md transition-colors flex items-center gap-0.5">
+          <Video className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-3 h-3 text-muted-foreground/70" />
+        </button>
+      </VideoSettingsPopover>
+      
+      {/* Settings Button */}
       <button 
         onClick={onOpenSettings} 
         className="p-1.5 hover:bg-muted rounded-md transition-colors"

@@ -52,10 +52,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom gaming colors
-        glow: {
-          primary: "hsl(var(--glow-primary))",
-          secondary: "hsl(var(--glow-secondary))",
+        // Discord OG Legacy colors
+        discord: {
+          "server-bar": "hsl(var(--server-bar))",
+          "user-bar": "hsl(var(--user-bar))",
+          separator: "hsl(var(--separator))",
+          "channel-hover": "hsl(var(--channel-hover))",
+          "channel-active": "hsl(var(--channel-active))",
+          "message-hover": "hsl(var(--message-hover))",
+          "channel-text": "hsl(var(--channel-text))",
+          "channel-text-hover": "hsl(var(--channel-text-hover))",
+          blurple: "hsl(var(--primary))",
         },
         surface: {
           elevated: "hsl(var(--surface-elevated))",
@@ -79,6 +86,10 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        text: {
+          secondary: "hsl(var(--text-secondary))",
+          tertiary: "hsl(var(--text-tertiary))",
         },
       },
       borderRadius: {

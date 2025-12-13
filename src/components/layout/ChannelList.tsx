@@ -665,9 +665,9 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="w-60 bg-card flex flex-col border-r border-border">
-      {/* Server Header - styled like User Panel */}
-      <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
+  return <div className="w-60 bg-sidebar flex flex-col">
+      {/* Server Header */}
+      <div className="h-12 px-2 flex items-center gap-2 border-b border-border shadow-sm">
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">

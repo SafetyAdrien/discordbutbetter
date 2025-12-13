@@ -314,7 +314,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                   {(isOwner || isSecondaryOwner) && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="flex-shrink-0">
+                        <span className="flex-shrink-0 cursor-pointer">
                           <StreamlineCrown size={14} className="text-yellow-500" />
                         </span>
                       </TooltipTrigger>

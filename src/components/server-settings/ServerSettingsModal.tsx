@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Lock, Ban } from 'lucide-react';
+import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Lock, Ban, History } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';
 import { EmojiManager } from './EmojiManager';
@@ -10,6 +10,7 @@ import { RoleManager } from './RoleManager';
 import { InviteManager } from './InviteManager';
 import { PrivacySettings } from './PrivacySettings';
 import { BannedMembersManager } from './BannedMembersManager';
+import { AuditLogManager } from './AuditLogManager';
 
 interface ServerSettingsModalProps {
   serverId: string;
@@ -17,7 +18,7 @@ interface ServerSettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'profile' | 'engagement' | 'emojis' | 'stickers' | 'members' | 'roles' | 'invites' | 'privacy' | 'banned';
+type SettingsTab = 'profile' | 'engagement' | 'emojis' | 'stickers' | 'members' | 'roles' | 'invites' | 'privacy' | 'banned' | 'audit';
 
 interface Section {
   id: string;
@@ -55,7 +56,8 @@ const sections: Section[] = [
       { id: 'members', label: 'Membres', icon: Users },
       { id: 'roles', label: 'Rôles', icon: Shield },
       { id: 'invites', label: 'Invites', icon: Link },
-      { id: 'banned', label: 'Bannis', icon: Ban }
+      { id: 'banned', label: 'Bannis', icon: Ban },
+      { id: 'audit', label: "Journal d'audit", icon: History }
     ]
   },
   {
@@ -144,6 +146,7 @@ export function ServerSettingsModal({
             {activeTab === 'roles' && <RoleManager serverId={serverId} />}
             {activeTab === 'invites' && <InviteManager serverId={serverId} />}
             {activeTab === 'banned' && <BannedMembersManager serverId={serverId} />}
+            {activeTab === 'audit' && <AuditLogManager serverId={serverId} />}
             {activeTab === 'privacy' && <PrivacySettings serverId={serverId} />}
           </div>
         </div>

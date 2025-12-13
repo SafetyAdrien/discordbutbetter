@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { cn } from '@/lib/utils';
+
 interface StreamlineCrownProps {
   className?: string;
   size?: number | string;
@@ -15,7 +17,7 @@ export const StreamlineCrown: React.FC<StreamlineCrownProps> = ({
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      className={className}
+      className={cn("cursor-pointer", className)}
     >
       <path 
         fill="currentColor" 

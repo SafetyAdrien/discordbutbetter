@@ -820,9 +820,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                 <Smile className="w-5 h-5" />
               </button>
               {messageInput.trim() && (
-                <Button type="submit" size="iconSm" className="ml-1">
-                  <Send className="w-4 h-4" />
-                </Button>
+                <button type="submit" className="ml-1 p-1.5 rounded transition-colors hover:bg-muted">
+                  <Send className="w-4 h-4" style={{ color: '#5865f2' }} />
+                </button>
               )}
             </div>
           </div>

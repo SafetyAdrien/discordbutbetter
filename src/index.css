@@ -454,33 +454,4 @@
   .send-button-hover:active {
     transform: scale(0.9);
   }
-
-  /* Status menu subtle animation */
-  @keyframes status-menu-appear {
-    from {
-      opacity: 0.9;
-      transform: translateX(-2px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .animate-status-menu {
-    animation: status-menu-appear 0.12s ease-out;
-  }
-
-  /* Resize handle for panels */
-  .resize-handle {
-    width: 2px;
-    background: transparent;
-    transition: background-color 0.15s;
-    cursor: col-resize;
-  }
-
-  .resize-handle:hover,
-  .resize-handle[data-resize-handle-active] {
-    background: hsl(var(--primary) / 0.5);
-  }
 }

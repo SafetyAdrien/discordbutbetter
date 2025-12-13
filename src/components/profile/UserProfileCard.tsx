@@ -152,7 +152,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 {showStatusMenu && (
                   <Portal.Root>
                     <div 
-                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-status-menu"
+                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-right"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
                       onMouseEnter={() => setShowStatusMenu(true)}
                       onMouseLeave={() => setShowStatusMenu(false)}

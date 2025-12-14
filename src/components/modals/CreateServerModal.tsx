@@ -1,20 +1,30 @@
 import { useState } from 'react';
-import { X, Upload, Camera, Sparkles } from 'lucide-react';
+import { X, Camera, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { JoinServerModal } from './JoinServerModal';
 
 interface CreateServerModalProps {
   onClose: () => void;
   onCreate: (name: string, icon: string) => void;
+  onDiscoverClick?: () => void;
 }
 
 const defaultIcons = ['🎮', '🏆', '🎨', '🎵', '💻', '🚀', '⚔️', '🌟', '🔥', '💜', '🎯', '🎪'];
 
-export function CreateServerModal({ onClose, onCreate }: CreateServerModalProps) {
+const templates = [
+  { id: 'gaming', name: 'Gaming', icon: '🎮', description: 'Pour les communautés de joueurs' },
+  { id: 'friends', name: 'Amis', icon: '💗', description: 'Un espace pour votre groupe d\'amis' },
+  { id: 'study', name: 'Groupe d\'étude', icon: '🍎', description: 'Pour les projets éducatifs' },
+  { id: 'school', name: 'Club Scolaire', icon: '📚', description: 'Pour les associations étudiantes' },
+];
+
+export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: CreateServerModalProps) {
   const [serverName, setServerName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('🎮');
-  const [step, setStep] = useState<'type' | 'customize'>('type');
+  const [step, setStep] = useState<'choice' | 'type' | 'customize' | 'join'>('choice');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   const handleCreate = () => {
     if (serverName.trim()) {
@@ -22,6 +32,33 @@ export function CreateServerModal({ onClose, onCreate }: CreateServerModalProps)
       onClose();
     }
   };
+
+  const handleSelectTemplate = (templateId: string | null) => {
+    setSelectedTemplate(templateId);
+    if (templateId) {
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        setSelectedIcon(template.icon);
+      }
+    }
+    setStep('customize');
+  };
+
+  const handleJoinSuccess = (serverId: string) => {
+    onClose();
+  };
+
+  // Show Join Server Modal
+  if (step === 'join') {
+    return (
+      <JoinServerModal
+        onClose={onClose}
+        onBack={() => setStep('choice')}
+        onJoinSuccess={handleJoinSuccess}
+        onDiscoverClick={onDiscoverClick}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
@@ -39,87 +76,143 @@ export function CreateServerModal({ onClose, onCreate }: CreateServerModalProps)
             <X className="w-5 h-5" />
           </Button>
           
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-gaming flex items-center justify-center animation-float">
-            <Sparkles className="w-8 h-8 text-primary-foreground" />
-          </div>
-          
-          <h2 className="text-2xl font-display font-bold glow-text">
-            Créer un serveur
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            Votre serveur est l'endroit où vous et vos amis traînez. Créez le vôtre et commencez à discuter.
-          </p>
+          {step === 'choice' && (
+            <>
+              <h2 className="text-2xl font-display font-bold">
+                Créer un serveur
+              </h2>
+              <p className="text-muted-foreground mt-2">
+                Votre serveur est l'endroit où vous et vos amis traînez. Créez le vôtre et commencez à discuter.
+              </p>
+            </>
+          )}
+
+          {step === 'type' && (
+            <>
+              <h2 className="text-2xl font-display font-bold">
+                Créer votre serveur
+              </h2>
+              <p className="text-muted-foreground mt-2">
+                Votre serveur est l'endroit où vous et vos amis passez du temps. Créez le vôtre et commencez à discuter.
+              </p>
+            </>
+          )}
+
+          {step === 'customize' && (
+            <>
+              <h2 className="text-2xl font-display font-bold">
+                Personnaliser votre serveur
+              </h2>
+              <p className="text-muted-foreground mt-2">
+                Donnez une identité à votre nouveau serveur en lui donnant un nom et une icône. Vous pourrez toujours les modifier plus tard.
+              </p>
+            </>
+          )}
         </div>
 
-        {step === 'type' ? (
-          /* Step 1: Choose Type */
+        {step === 'choice' && (
           <div className="px-6 pb-6 space-y-3">
+            {/* Create own server */}
             <button
-              onClick={() => setStep('customize')}
+              onClick={() => setStep('type')}
               className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-2xl">🎮</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">🎮</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Créer le mien
+                    </h3>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                    Créer le mien
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Personnalisez votre serveur comme vous le souhaitez
-                  </p>
-                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
             </button>
 
-            <button
-              onClick={() => setStep('customize')}
-              className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-2xl">🏆</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                    Gaming
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Modèle optimisé pour les communautés de jeux
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setStep('customize')}
-              className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-2xl">👥</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                    Amis
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Un espace pour vous et votre groupe d'amis
-                  </p>
-                </div>
-              </div>
-            </button>
+            {/* Join existing server link */}
+            <div className="pt-4 border-t border-border text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                Vous avez déjà une invitation ?
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setStep('join')}
+              >
+                Rejoindre un serveur
+              </Button>
+            </div>
           </div>
-        ) : (
-          /* Step 2: Customize */
+        )}
+
+        {step === 'type' && (
+          <div className="px-6 pb-6 space-y-4">
+            {/* Create own - top option */}
+            <button
+              onClick={() => handleSelectTemplate(null)}
+              className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">🎮</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Créer le mien
+                    </h3>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </button>
+
+            {/* Template section */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Commencer à partir d'un modèle
+              </p>
+              
+              {templates.map((template) => (
+                <button
+                  key={template.id}
+                  onClick={() => handleSelectTemplate(template.id)}
+                  className="w-full p-3 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{template.icon}</span>
+                      <span className="font-medium text-foreground group-hover:text-primary transition-colors">
+                        {template.name}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Back button */}
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => setStep('choice')}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'customize' && (
           <div className="px-6 pb-6">
             {/* Icon Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-foreground mb-3">
-                Icône du serveur
-              </label>
-              
               <div className="flex justify-center mb-4">
                 <div className="relative group cursor-pointer">
                   <div className="w-20 h-20 rounded-full bg-gradient-gaming flex items-center justify-center text-4xl shadow-lg glow-border group-hover:scale-105 transition-transform">
@@ -151,7 +244,7 @@ export function CreateServerModal({ onClose, onCreate }: CreateServerModalProps)
 
             {/* Server Name */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                 Nom du serveur
               </label>
               <Input
@@ -170,8 +263,9 @@ export function CreateServerModal({ onClose, onCreate }: CreateServerModalProps)
               <Button
                 variant="ghost"
                 className="flex-1"
-                onClick={() => setStep('type')}
+                onClick={() => setStep(selectedTemplate ? 'type' : 'choice')}
               >
+                <ArrowLeft className="w-4 h-4 mr-2" />
                 Retour
               </Button>
               <Button

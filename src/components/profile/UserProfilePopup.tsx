@@ -146,15 +146,33 @@ export function UserProfilePopup({
   const ProfileContent = () => (
     <>
       {/* Banner */}
-      {user.banner ? (
-        <img 
-          src={user.banner} 
-          alt="Banner" 
-          className="h-24 w-full object-cover" 
-        />
-      ) : (
-        <div className="h-24 bg-[hsl(var(--primary))]" />
-      )}
+      <div className="relative">
+        {user.banner ? (
+          <img 
+            src={user.banner} 
+            alt="Banner" 
+            className="h-24 w-full object-cover" 
+          />
+        ) : (
+          <div className="h-24 bg-[hsl(var(--primary))]" />
+        )}
+        
+        {/* Quick Add Friend Icon */}
+        {!isOwnProfile && !isFriend && !isPending && (
+          <button
+            onClick={handleAddFriend}
+            disabled={isSendingRequest}
+            className="absolute top-2 right-2 p-2 rounded-full bg-background/60 hover:bg-background/80 backdrop-blur-sm transition-colors disabled:opacity-50"
+            title="Ajouter en ami"
+          >
+            {isSendingRequest ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <UserPlus className="w-4 h-4" />
+            )}
+          </button>
+        )}
+      </div>
 
       {/* Profile Content */}
       <div className="px-4 pb-4">

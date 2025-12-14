@@ -793,6 +793,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         isSending={isSending}
         onTypingStart={startTyping}
         onTypingStop={stopTyping}
+        serverId={channel.server_id}
+        channelId={channel.id}
       />
 
       <UserProfilePopup

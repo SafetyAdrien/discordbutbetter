@@ -38,7 +38,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
               </AvatarFallback>
             </Avatar>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-xs">
+          <TooltipContent side="top" sideOffset={20} className="text-xs z-50">
             {vote.user?.display_name || 'Utilisateur inconnu'}
           </TooltipContent>
         </Tooltip>
@@ -53,7 +53,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
               +{remainingCount}
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-xs max-w-[200px]">
+          <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px] z-50">
             {votes.slice(maxVisible).map(v => v.user?.display_name || 'Inconnu').join(', ')}
           </TooltipContent>
         </Tooltip>

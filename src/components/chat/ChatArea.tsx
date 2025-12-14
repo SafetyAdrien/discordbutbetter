@@ -587,7 +587,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <ContextMenuTrigger asChild>
                   <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredPollId(poll.id)} onMouseLeave={() => setHoveredPollId(null)}>
                     <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} isOwnPoll={isOwnPoll} />
-                    {showAuthor ? <div className="flex gap-3 py-[10px]">
+                    {showAuthor ? <div className="flex gap-3 my-0 py-[5px]">
                         <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                           <AvatarImage src={poll.author?.avatar_url || undefined} />
                           <AvatarFallback className="bg-primary/20 text-primary">

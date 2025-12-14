@@ -371,7 +371,26 @@ export function useDuplicateRole() {
     },
     onMutate: async ({ roleId, serverId }) => {
       await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
-      const previousRoles = queryClient.getQueryData(['roles', serverId]);
+      const previousRoles = queryClient.getQueryData<RoleWithPermissions[]>(['roles', serverId]);
+      
+      // Create optimistic duplicate role
+      if (previousRoles) {
+        const sourceRole = previousRoles.find(r => r.id === roleId);
+        if (sourceRole) {
+          const tempRole: RoleWithPermissions = {
+            id: `temp-${Date.now()}`,
+            name: `${sourceRole.name} (copie)`,
+            color: sourceRole.color,
+            icon_url: sourceRole.icon_url,
+            position: (sourceRole.position || 0) + 1,
+            is_default: false,
+            server_id: serverId,
+            permissions: [...sourceRole.permissions],
+          };
+          
+          queryClient.setQueryData(['roles', serverId], [tempRole, ...previousRoles]);
+        }
+      }
       
       return { previousRoles };
     },

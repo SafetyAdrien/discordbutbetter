@@ -51,9 +51,11 @@ export function useUpdateChannel() {
     onMutate: async ({ channelId, serverId, name, description }) => {
       await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
       const previousDetails = queryClient.getQueryData<ChannelDetails>(['channel-details', channelId]);
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
       // Update channel details cache
       if (previousDetails) {
@@ -80,7 +82,26 @@ export function useUpdateChannel() {
         });
       }
       
-      return { previousDetails, previousChannels, channelId, serverId };
+      // Also update servers cache
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) =>
+          old?.map((server: any) =>
+            server.id === serverId
+              ? {
+                  ...server,
+                  categories: server.categories?.map((cat: any) => ({
+                    ...cat,
+                    channels: cat.channels?.map((ch: any) =>
+                      ch.id === channelId ? { ...ch, name } : ch
+                    ) || []
+                  })) || []
+                }
+              : server
+          )
+        );
+      }
+      
+      return { previousDetails, previousChannels, previousServers, channelId, serverId };
     },
     onError: (_, { channelId, serverId }, context) => {
       if (context?.previousDetails) {
@@ -89,11 +110,15 @@ export function useUpdateChannel() {
       if (context?.previousChannels) {
         queryClient.setQueryData(['channels', serverId], context.previousChannels);
       }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
       toast.error('Erreur lors de la mise à jour');
     },
     onSettled: (_, __, { channelId, serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channel-details', channelId] });
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Salon mis à jour');

@@ -91,7 +91,10 @@ export function useDMConversations() {
           participants,
           lastMessage: lastMsg ? { content: lastMsg.content, created_at: lastMsg.created_at } : undefined,
         };
-      }).sort((a, b) => {
+      })
+      // Only show conversations that have at least one message
+      .filter(conv => conv.lastMessage !== undefined)
+      .sort((a, b) => {
         const aTime = a.lastMessage?.created_at || a.created_at || '';
         const bTime = b.lastMessage?.created_at || b.created_at || '';
         return new Date(bTime).getTime() - new Date(aTime).getTime();

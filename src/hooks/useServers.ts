@@ -114,6 +114,67 @@ export function usePublicServers() {
   });
 }
 
+// Server templates with pre-configured categories and channels
+const serverTemplates: Record<string, { categories: { name: string; channels: { name: string; type: 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks' }[] }[] }> = {
+  gaming: {
+    categories: [
+      { name: 'INFORMATION', channels: [
+        { name: 'règles', type: 'text' },
+        { name: 'annonces', type: 'announcement' }
+      ]},
+      { name: 'GÉNÉRAL', channels: [
+        { name: 'général', type: 'text' },
+        { name: 'médias', type: 'media' }
+      ]},
+      { name: 'VOCAL', channels: [
+        { name: 'Salon vocal', type: 'voice' },
+        { name: 'Gaming', type: 'voice' }
+      ]}
+    ]
+  },
+  friends: {
+    categories: [
+      { name: 'GÉNÉRAL', channels: [
+        { name: 'général', type: 'text' },
+        { name: 'photos', type: 'media' }
+      ]},
+      { name: 'VOCAL', channels: [
+        { name: 'Discuter', type: 'voice' }
+      ]}
+    ]
+  },
+  study: {
+    categories: [
+      { name: 'COURS', channels: [
+        { name: 'ressources', type: 'text' },
+        { name: 'devoirs', type: 'tasks' }
+      ]},
+      { name: 'DISCUSSIONS', channels: [
+        { name: 'général', type: 'text' },
+        { name: 'questions', type: 'forum' }
+      ]},
+      { name: 'VOCAL', channels: [
+        { name: 'Étude', type: 'voice' }
+      ]}
+    ]
+  },
+  school: {
+    categories: [
+      { name: 'ANNONCES', channels: [
+        { name: 'annonces', type: 'announcement' },
+        { name: 'événements', type: 'calendar' }
+      ]},
+      { name: 'GÉNÉRAL', channels: [
+        { name: 'général', type: 'text' },
+        { name: 'discussions', type: 'forum' }
+      ]},
+      { name: 'VOCAL', channels: [
+        { name: 'Réunion', type: 'voice' }
+      ]}
+    ]
+  }
+};
+
 export function useCreateServer() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -124,15 +185,18 @@ export function useCreateServer() {
       icon_url,
       description,
       is_public,
+      templateId,
     }: {
       name: string;
       icon_url?: string;
       description?: string;
       is_public?: boolean;
+      templateId?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      // Create server first
+      const { data: server, error } = await supabase
         .from('servers')
         .insert({
           name,
@@ -145,7 +209,52 @@ export function useCreateServer() {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // If template selected, create additional categories and channels
+      if (templateId && serverTemplates[templateId]) {
+        const template = serverTemplates[templateId];
+        
+        for (let catIndex = 0; catIndex < template.categories.length; catIndex++) {
+          const catTemplate = template.categories[catIndex];
+          
+          // Create category
+          const { data: category, error: catError } = await supabase
+            .from('categories')
+            .insert({
+              server_id: server.id,
+              name: catTemplate.name,
+              position: catIndex + 1, // Start after default category
+            })
+            .select()
+            .single();
+
+          if (catError) {
+            console.error('Error creating category:', catError);
+            continue;
+          }
+
+          // Create channels in this category
+          for (let chIndex = 0; chIndex < catTemplate.channels.length; chIndex++) {
+            const chTemplate = catTemplate.channels[chIndex];
+            
+            const { error: chError } = await supabase
+              .from('channels')
+              .insert({
+                server_id: server.id,
+                category_id: category.id,
+                name: chTemplate.name,
+                type: chTemplate.type,
+                position: chIndex,
+              });
+
+            if (chError) {
+              console.error('Error creating channel:', chError);
+            }
+          }
+        }
+      }
+
+      return server;
     },
     onMutate: async ({ name, icon_url, description, is_public }) => {
       if (!user) return;

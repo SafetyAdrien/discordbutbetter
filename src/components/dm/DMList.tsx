@@ -55,9 +55,6 @@ export function DMList({ activeConversationId, onConversationSelect }: DMListPro
 
   return (
     <div className="px-2 py-2 space-y-1">
-      <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
-        Messages privés
-      </p>
       {conversations.map((conv) => (
         <DMConversationItem
           key={conv.id}

@@ -7,7 +7,7 @@ import { JoinServerModal } from './JoinServerModal';
 
 interface CreateServerModalProps {
   onClose: () => void;
-  onCreate: (name: string, icon: string) => void;
+  onCreate: (name: string, icon: string, templateId?: string | null) => void;
   onDiscoverClick?: () => void;
 }
 
@@ -28,7 +28,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
   const handleCreate = () => {
     if (serverName.trim()) {
-      onCreate(serverName, selectedIcon);
+      onCreate(serverName, selectedIcon, selectedTemplate);
       onClose();
     }
   };

@@ -14,6 +14,7 @@ import { Plus, Trash2, Smile } from 'lucide-react';
 interface CreatePollModalProps {
   channelId: string;
   serverId: string | null;
+  threadId?: string | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -34,7 +35,8 @@ const DURATION_OPTIONS = [
 
 export function CreatePollModal({ 
   channelId, 
-  serverId, 
+  serverId,
+  threadId,
   open = false,
   onOpenChange
 }: CreatePollModalProps) {
@@ -83,6 +85,7 @@ export function CreatePollModal({
 
     createPoll.mutate({
       channelId,
+      threadId,
       question: question.trim(),
       options: validOptions.map(opt => ({ text: opt.text.trim(), emoji: opt.emoji })),
       allowMultiple,

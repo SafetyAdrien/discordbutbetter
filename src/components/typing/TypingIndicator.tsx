@@ -3,10 +3,11 @@ import { useTypingUsers } from '@/hooks/useTypingIndicator';
 interface TypingIndicatorProps {
   channelId?: string | null;
   conversationId?: string | null;
+  threadId?: string | null;
 }
 
-export function TypingIndicator({ channelId, conversationId }: TypingIndicatorProps) {
-  const { data: typingUsers = [], isLoading } = useTypingUsers(channelId, conversationId);
+export function TypingIndicator({ channelId, conversationId, threadId }: TypingIndicatorProps) {
+  const { data: typingUsers = [], isLoading } = useTypingUsers(channelId, conversationId, threadId);
 
   if (isLoading || typingUsers.length === 0) {
     return null;

@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Settings } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Settings, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -157,20 +157,57 @@ export function UserProfilePopup({
           <div className="h-24 bg-[hsl(var(--primary))]" />
         )}
         
-        {/* Quick Add Friend Icon */}
-        {!isOwnProfile && !isFriend && !isPending && (
-          <button
-            onClick={handleAddFriend}
-            disabled={isSendingRequest}
-            className="absolute top-2 right-2 p-2 rounded-full bg-background/60 hover:bg-background/80 backdrop-blur-sm transition-colors disabled:opacity-50"
-            title="Ajouter en ami"
-          >
-            {isSendingRequest ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <UserPlus className="w-4 h-4" />
-            )}
-          </button>
+        {/* Header Actions - Message & Friend */}
+        {!isOwnProfile && (
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            {/* Message Icon */}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={isCreatingDM}
+                  className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                >
+                  {isCreatingDM ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : dmCreated ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    <MessageSquare className="w-5 h-5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{dmCreated ? 'Conversation ouverte' : 'Envoyer un message'}</TooltipContent>
+            </Tooltip>
+
+            {/* Friend Icon */}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={!isFriend && !isPending ? handleAddFriend : undefined}
+                  disabled={isSendingRequest || isFriend}
+                  className={cn(
+                    "p-1.5 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]",
+                    isFriend ? "text-[hsl(var(--online))]" : "text-white hover:scale-110",
+                    !isFriend && !isPending && "cursor-pointer"
+                  )}
+                >
+                  {isSendingRequest ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : isFriend ? (
+                    <UserCheck className="w-5 h-5" />
+                  ) : isPending ? (
+                    <Clock className="w-5 h-5" />
+                  ) : (
+                    <UserPlus className="w-5 h-5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isFriend ? 'Ami' : isPending ? 'Demande en attente' : 'Ajouter en ami'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         )}
       </div>
 
@@ -192,27 +229,15 @@ export function UserProfilePopup({
               )}
             />
           </div>
-          {isFriend && !isOwnProfile && (
-            <div className="absolute top-0 right-0">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[hsl(var(--online))]/20 text-[hsl(var(--online))] text-xs font-medium">
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Ami</span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* User Info */}
         <div className="space-y-3">
           <div>
             <h3 className="text-xl font-bold text-foreground">{user.displayName}</h3>
-            <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
+            <p className="text-sm text-muted-foreground">{user.username.toLowerCase()}</p>
           </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[user.status])} />
-            <span className="text-muted-foreground">{statusLabels[user.status]}</span>
-          </div>
 
           {user.customStatus && (
             <p className="text-sm text-foreground/80 italic">"{user.customStatus}"</p>
@@ -308,45 +333,6 @@ export function UserProfilePopup({
             </p>
           </div>
 
-          {!isOwnProfile && (
-            <>
-              <div className="border-t border-border" />
-              <div className="flex gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="flex-1 gap-2"
-                  onClick={handleSendMessage}
-                  disabled={isCreatingDM || dmCreated}
-                >
-                  {isCreatingDM ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : dmCreated ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <MessageSquare className="w-4 h-4" />
-                  )}
-                  {dmCreated ? 'Ouvert' : 'Message'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 gap-2"
-                  onClick={handleAddFriend}
-                  disabled={isSendingRequest || isFriend || isPending}
-                >
-                  {isSendingRequest ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : isFriend ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <UserPlus className="w-4 h-4" />
-                  )}
-                  {isFriend ? 'Ami' : isPending ? 'En attente' : 'Ajouter'}
-                </Button>
-              </div>
-            </>
-          )}
         </div>
       </div>
     </>

@@ -94,7 +94,7 @@ function SearchFilters({
   if (availableFilters.length === 0) return null;
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-lg p-2 mt-2 animate-slide-down">
+    <div className="absolute top-full left-0 right-0 z-50 bg-card border border-border rounded-lg shadow-xl p-2 mt-1 animate-slide-down">
       <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
       {availableFilters.map(filter => {
         const Icon = filter.icon;
@@ -372,29 +372,25 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
         <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
           {/* Search input */}
           <div className="px-3 pt-3">
-            <div className="flex gap-1.5">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  ref={searchRef}
-                  placeholder="Rechercher"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setShowFilters(true)}
-                  onBlur={() => setTimeout(() => setShowFilters(false), 150)}
-                  className="h-8 pl-8 text-sm bg-input"
-                />
-              </div>
-              
-            </div>
-            
-            {/* Filters suggestions */}
-            {showFilters && (
-              <SearchFilters
-                onSelectFilter={handleSelectFilter}
-                searchQuery={searchQuery}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+              <Input 
+                ref={searchRef}
+                placeholder="Rechercher"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setShowFilters(true)}
+                onBlur={() => setTimeout(() => setShowFilters(false), 150)}
+                className="h-8 pl-8 text-sm bg-input"
               />
-            )}
+              {/* Filters suggestions - overlay dropdown */}
+              {showFilters && (
+                <SearchFilters
+                  onSelectFilter={handleSelectFilter}
+                  searchQuery={searchQuery}
+                />
+              )}
+            </div>
           </div>
           <Separator className="mt-3" />
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">

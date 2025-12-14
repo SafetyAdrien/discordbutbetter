@@ -11,7 +11,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, username: string, displayName: string, phone?: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
   updateStatus: (status: Database['public']['Enums']['user_status']) => Promise<void>;
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, username: string) => {
+  const signUp = async (email: string, password: string, username: string, displayName: string, phone?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -98,8 +98,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          username,
-          display_name: username,
+          username: username.toLowerCase(),
+          display_name: displayName,
+          phone: phone || null,
         },
       },
     });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,20 +7,35 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Gamepad2 } from 'lucide-react';
+import { Loader2, Gamepad2, Check, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Email invalide').max(255, 'Email trop long'),
   password: z.string().min(6, 'Mot de passe trop court (min 6 caractères)'),
 });
 
-const signupSchema = loginSchema.extend({
+const signupSchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .min(1, 'Nom d\'affichage requis')
+    .max(50, 'Nom d\'affichage trop long (max 50 caractères)'),
   username: z
     .string()
     .trim()
-    .min(3, 'Pseudo trop court (min 3 caractères)')
-    .max(32, 'Pseudo trop long (max 32 caractères)')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Caractères autorisés: lettres, chiffres, _'),
+    .min(3, 'Nom d\'utilisateur trop court (min 3 caractères)')
+    .max(32, 'Nom d\'utilisateur trop long (max 32 caractères)')
+    .regex(/^[a-z0-9_]+$/, 'Minuscules, chiffres et _ uniquement'),
+  email: z.string().trim().email('Email invalide').max(255, 'Email trop long'),
+  phone: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || /^\+?[0-9]{10,15}$/.test(val),
+      'Format de téléphone invalide'
+    ),
+  password: z.string().min(6, 'Mot de passe trop court (min 6 caractères)'),
 });
 
 export default function Auth() {
@@ -29,15 +44,70 @@ export default function Auth() {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Username availability state
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   useEffect(() => {
     if (user && !authLoading) {
       navigate('/');
     }
   }, [user, authLoading, navigate]);
+
+  // Debounced username availability check
+  const checkUsernameAvailability = useCallback(async (value: string) => {
+    if (value.length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    // Validate format first
+    if (!/^[a-z0-9_]+$/.test(value)) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    setCheckingUsername(true);
+    try {
+      const { data, error } = await supabase.rpc('check_username_availability', {
+        p_username: value,
+      });
+
+      if (error) throw error;
+      setUsernameAvailable(data);
+    } catch (error) {
+      console.error('Error checking username:', error);
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
+    }
+  }, []);
+
+  // Debounce effect for username check
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (username) {
+        checkUsernameAvailability(username);
+      } else {
+        setUsernameAvailable(null);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [username, checkUsernameAvailability]);
+
+  const handleUsernameChange = (value: string) => {
+    // Force lowercase and remove invalid characters
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    setUsername(sanitized);
+    setUsernameAvailable(null);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +147,14 @@ export default function Auth() {
     e.preventDefault();
     setErrors({});
     
-    const result = signupSchema.safeParse({ email, password, username });
+    const result = signupSchema.safeParse({ 
+      email, 
+      password, 
+      username, 
+      displayName,
+      phone: phone || undefined,
+    });
+    
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -89,8 +166,14 @@ export default function Auth() {
       return;
     }
 
+    // Check username availability before submitting
+    if (usernameAvailable === false) {
+      setErrors({ username: 'Ce nom d\'utilisateur est déjà pris' });
+      return;
+    }
+
     setLoading(true);
-    const { error } = await signUp(email, password, username);
+    const { error } = await signUp(email, password, username, displayName, phone || undefined);
     setLoading(false);
 
     if (error) {
@@ -138,7 +221,7 @@ export default function Auth() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email">Ton Email</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -187,22 +270,56 @@ export default function Auth() {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-username">Pseudo</Label>
+                  <Label htmlFor="signup-displayname">Nom d'affichage</Label>
                   <Input
-                    id="signup-username"
+                    id="signup-displayname"
                     type="text"
                     placeholder="GamerPro42"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className={errors.username ? 'border-destructive' : ''}
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className={errors.displayName ? 'border-destructive' : ''}
                   />
-                  {errors.username && (
-                    <p className="text-sm text-destructive">{errors.username}</p>
+                  {errors.displayName && (
+                    <p className="text-sm text-destructive">{errors.displayName}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-username">Nom d'utilisateur</Label>
+                  <div className="relative">
+                    <Input
+                      id="signup-username"
+                      type="text"
+                      placeholder="gamerpro42"
+                      value={username}
+                      onChange={(e) => handleUsernameChange(e.target.value)}
+                      className={`pr-10 ${errors.username ? 'border-destructive' : usernameAvailable === true ? 'border-green-500' : usernameAvailable === false ? 'border-destructive' : ''}`}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {checkingUsername && (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      )}
+                      {!checkingUsername && usernameAvailable === true && (
+                        <Check className="w-4 h-4 text-green-500" />
+                      )}
+                      {!checkingUsername && usernameAvailable === false && (
+                        <X className="w-4 h-4 text-destructive" />
+                      )}
+                    </div>
+                  </div>
+                  {errors.username && (
+                    <p className="text-sm text-destructive">{errors.username}</p>
+                  )}
+                  {!errors.username && usernameAvailable === false && (
+                    <p className="text-sm text-destructive">Ce nom d'utilisateur est déjà pris</p>
+                  )}
+                  {!errors.username && usernameAvailable === true && (
+                    <p className="text-sm text-green-500">Nom d'utilisateur disponible</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Ton Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
@@ -213,6 +330,23 @@ export default function Auth() {
                   />
                   {errors.email && (
                     <p className="text-sm text-destructive">{errors.email}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-phone">
+                    Numéro de Téléphone <span className="text-muted-foreground">(facultatif)</span>
+                  </Label>
+                  <Input
+                    id="signup-phone"
+                    type="tel"
+                    placeholder="+33612345678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={errors.phone ? 'border-destructive' : ''}
+                  />
+                  {errors.phone && (
+                    <p className="text-sm text-destructive">{errors.phone}</p>
                   )}
                 </div>
 
@@ -234,7 +368,7 @@ export default function Auth() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading}
+                  disabled={loading || usernameAvailable === false}
                 >
                   {loading ? (
                     <>

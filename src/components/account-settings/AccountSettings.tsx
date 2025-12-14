@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Mail, Lock, Trash2, ShieldCheck, Loader2 } from 'lucide-react';
+import { AlertTriangle, Mail, Lock, Trash2, ShieldCheck, Loader2, LogOut } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,14 +21,17 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export function AccountSettings() {
-  const { profile, user } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -57,6 +60,54 @@ export function AccountSettings() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResetPasswordByEmail = async () => {
+    if (!user?.email) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) throw error;
+
+      toast.success('Un email de réinitialisation a été envoyé à votre adresse');
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de l\'envoi de l\'email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim()) {
+      toast.error('Veuillez entrer une adresse email');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (error) throw error;
+
+      toast.success('Un email de confirmation a été envoyé à votre nouvelle adresse');
+      setIsChangingEmail(false);
+      setNewEmail('');
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors du changement d\'email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    toast.success('Déconnexion réussie');
   };
 
   const handleDeleteAccount = async () => {
@@ -89,9 +140,46 @@ export function AccountSettings() {
             <Label className="text-muted-foreground">Email</Label>
             <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
               <Mail className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm">{user?.email}</span>
+              <span className="text-sm flex-1">{user?.email}</span>
             </div>
           </div>
+
+          {!isChangingEmail ? (
+            <Button variant="outline" onClick={() => setIsChangingEmail(true)}>
+              Modifier l'email
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newEmail">Nouvel email</Label>
+                <Input
+                  id="newEmail"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="nouveau@email.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Un email de confirmation sera envoyé à cette adresse.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsChangingEmail(false);
+                    setNewEmail('');
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button onClick={handleChangeEmail} disabled={isLoading}>
+                  {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Envoyer la confirmation
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -104,11 +192,17 @@ export function AccountSettings() {
           </CardTitle>
           <CardDescription>Modifiez votre mot de passe pour sécuriser votre compte</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {!isChangingPassword ? (
-            <Button variant="outline" onClick={() => setIsChangingPassword(true)}>
-              Changer le mot de passe
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" onClick={() => setIsChangingPassword(true)}>
+                Changer le mot de passe
+              </Button>
+              <Button variant="secondary" onClick={handleResetPasswordByEmail} disabled={isLoading}>
+                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Réinitialiser par email
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -174,6 +268,41 @@ export function AccountSettings() {
         </CardContent>
       </Card>
 
+      {/* Logout */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <LogOut className="w-5 h-5" />
+            Déconnexion
+          </CardTitle>
+          <CardDescription>Se déconnecter de votre compte</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <LogOut className="w-4 h-4" />
+                Se déconnecter
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Se déconnecter ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Êtes-vous sûr de vouloir vous déconnecter de votre compte ?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleLogout}>
+                  Se déconnecter
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
+
       {/* Danger Zone */}
       <Card className="border-destructive/50">
         <CardHeader>
@@ -194,13 +323,33 @@ export function AccountSettings() {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Supprimer votre compte ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                <AlertDialogDescription className="space-y-4">
+                  <span>
+                    Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                  </span>
+                  <div className="pt-2">
+                    <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                      Tapez <span className="font-bold text-destructive">SUPPRIMER</span> pour confirmer
+                    </Label>
+                    <Input
+                      id="delete-confirm"
+                      className="mt-2"
+                      value={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.value)}
+                      placeholder="SUPPRIMER"
+                    />
+                  </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                <AlertDialogCancel onClick={() => setDeleteConfirmation('')}>
+                  Annuler
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDeleteAccount} 
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleteConfirmation !== 'SUPPRIMER'}
+                >
                   Supprimer définitivement
                 </AlertDialogAction>
               </AlertDialogFooter>

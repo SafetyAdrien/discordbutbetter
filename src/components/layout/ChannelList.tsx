@@ -149,7 +149,8 @@ function SortableCategory({
   };
   return <>
     {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
-    <div ref={setNodeRef} style={style} className={cn("mb-2", isDragging && "sortable-ghost")}>
+    {/* En-tête de catégorie (zone draggable uniquement) */}
+    <div ref={setNodeRef} style={style} className={cn(isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
@@ -186,9 +187,11 @@ function SortableCategory({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-      {!isCollapsed && children}
     </div>
     {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
+    
+    {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
+    {!isCollapsed && <div className="mb-2">{children}</div>}
 
     {/* Delete Category Confirmation Dialog */}
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

@@ -24,7 +24,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
       {visibleVotes.map((vote, index) => (
         <Avatar 
           key={vote.id} 
-          className="w-5 h-5 border-2 border-[#2b2d31] transition-transform duration-300"
+          className="w-5 h-5 border-2 border-card transition-transform duration-300"
           style={{ 
             zIndex: maxVisible - index,
             animationDelay: `${index * 50}ms`
@@ -38,7 +38,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
       ))}
       {remainingCount > 0 && (
         <div 
-          className="w-5 h-5 rounded-full bg-[#5865f2] border-2 border-[#2b2d31] flex items-center justify-center text-[9px] font-medium text-white"
+          className="w-5 h-5 rounded-full bg-primary border-2 border-card flex items-center justify-center text-[9px] font-medium text-primary-foreground"
           style={{ zIndex: 0 }}
         >
           +{remainingCount}
@@ -147,7 +147,7 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-[#2b2d31] rounded-lg overflow-hidden max-w-[500px]">
+    <div className="bg-card rounded-lg overflow-hidden max-w-[500px]">
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         
@@ -170,16 +170,16 @@ export function PollDisplay({
                 key={option.id}
                 onClick={() => handleOptionClick(option.id)}
                 disabled={(isExpired && !hasVoted) || (showResults && !hasVoted)}
-                className={cn(
+              className={cn(
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted
-                    ? "border-[#5865f2] bg-[#5865f2]/10"
-                    : "border-white/10 hover:border-white/20 bg-[#1e1f22]"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-border/80 bg-background"
                 )}
               >
                 {/* Progress bar background with animation */}
                 <div 
-                  className="absolute inset-0 bg-[#5865f2]/20 transition-all duration-500 ease-out"
+                  className="absolute inset-0 bg-primary/20 transition-all duration-500 ease-out"
                   style={{ width: shouldShowResults ? `${percentage}%` : '0%' }}
                 />
                 
@@ -202,8 +202,8 @@ export function PollDisplay({
                           {voteCount} vote{voteCount !== 1 ? 's' : ''} ({percentage}%)
                         </span>
                         {isVoted && (
-                          <div className="w-5 h-5 rounded-full bg-[#5865f2] flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" />
+                          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-3 h-3 text-primary-foreground" />
                           </div>
                         )}
                       </>
@@ -218,9 +218,9 @@ export function PollDisplay({
                     {!shouldShowResults && (
                       <div className={cn(
                         "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                        isSelected ? "border-[#5865f2] bg-[#5865f2]" : "border-white/30"
+                        isSelected ? "border-primary bg-primary" : "border-muted-foreground/50"
                       )}>
-                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                        {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                       </div>
                     )}
                   </div>
@@ -272,7 +272,7 @@ export function PollDisplay({
                 onClick={handleVote}
                 disabled={votePoll.isPending}
                 size="sm"
-                className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs h-8"
+                className="bg-primary hover:bg-primary/80 text-primary-foreground text-xs h-8"
               >
                 Voter
               </Button>

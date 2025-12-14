@@ -14,7 +14,9 @@ import { Plus, Trash2, Smile, X } from 'lucide-react';
 interface CreatePollModalProps {
   channelId: string;
   serverId: string | null;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface PollOptionInput {
@@ -31,8 +33,17 @@ const DURATION_OPTIONS = [
   { value: 'unlimited', label: 'Illimité' }
 ];
 
-export function CreatePollModal({ channelId, serverId, trigger }: CreatePollModalProps) {
-  const [open, setOpen] = useState(false);
+export function CreatePollModal({ 
+  channelId, 
+  serverId, 
+  trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange
+}: CreatePollModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange || setInternalOpen;
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<PollOptionInput[]>([
     { id: '1', text: '', emoji: null },
@@ -101,10 +112,12 @@ export function CreatePollModal({ channelId, serverId, trigger }: CreatePollModa
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {trigger}
-      </PopoverTrigger>
-      <PopoverContent 
+      {trigger && (
+        <PopoverTrigger asChild>
+          {trigger}
+        </PopoverTrigger>
+      )}
+      <PopoverContent
         side="top" 
         align="start" 
         className="w-[400px] p-0 bg-[#313338] border-none shadow-xl"

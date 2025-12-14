@@ -34,6 +34,7 @@ export function MessageInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [pollModalOpen, setPollModalOpen] = useState(false);
 
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
@@ -123,20 +124,17 @@ export function MessageInput({
                 <span>Ajouter une image</span>
               </button>
               {channelId && (
-                <CreatePollModal
-                  channelId={channelId}
-                  serverId={serverId}
-                  trigger={
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                      onClick={() => setPlusMenuOpen(false)}
-                    >
-                      <BarChart2 className="w-4 h-4" />
-                      <span>Créer un sondage</span>
-                    </button>
-                  }
-                />
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    setPollModalOpen(true);
+                  }}
+                >
+                  <BarChart2 className="w-4 h-4" />
+                  <span>Créer un sondage</span>
+                </button>
               )}
             </PopoverContent>
           </Popover>
@@ -195,6 +193,15 @@ export function MessageInput({
           </div>
         </div>
       </form>
+      
+      {channelId && (
+        <CreatePollModal
+          channelId={channelId}
+          serverId={serverId}
+          open={pollModalOpen}
+          onOpenChange={setPollModalOpen}
+        />
+      )}
     </div>
   );
 }

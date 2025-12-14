@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
-import { Send, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { MessageInput } from '@/components/chat/MessageInput';
 
 interface VoiceChannelChatProps {
   channelId: string;
@@ -24,26 +25,11 @@ export function VoiceChannelChat({ channelId, channelName, onClose }: VoiceChann
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = () => {
     if (!messageInput.trim()) return;
-    
     sendMessage.mutate({ channelId, content: messageInput.trim() });
     setMessageInput('');
   };
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageInput(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
-  }, []);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      e.currentTarget.form?.requestSubmit();
-    }
-  }, []);
 
   return (
     <div className="w-80 border-l border-white/10 flex flex-col bg-[#2b2d31]">
@@ -97,27 +83,15 @@ export function VoiceChannelChat({ channelId, channelName, onClose }: VoiceChann
       </ScrollArea>
 
       {/* Input */}
-      <form onSubmit={handleSend} className="p-3 border-t border-white/10">
-        <div className="flex gap-2 items-end bg-[#383a40] rounded-lg px-3 py-2">
-          <textarea
-            value={messageInput}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={`Message #${channelName}`}
-            className="flex-1 bg-transparent py-1 text-sm text-white placeholder:text-muted-foreground focus:outline-none resize-none min-h-[24px] max-h-[120px] overflow-y-auto"
-            rows={1}
-          />
-          <Button 
-            type="submit" 
-            size="icon" 
-            variant="ghost"
-            className="h-7 w-7 text-muted-foreground hover:text-white"
-            disabled={!messageInput.trim()}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </form>
+      <MessageInput
+        value={messageInput}
+        onChange={setMessageInput}
+        onSend={handleSend}
+        placeholder={`Envoyer un message dans #${channelName}`}
+        disabled={sendMessage.isPending}
+        isSending={sendMessage.isPending}
+        compact
+      />
     </div>
   );
 }

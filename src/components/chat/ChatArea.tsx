@@ -1,4 +1,4 @@
-import { useState, forwardRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, forwardRef, useEffect, useMemo } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { 
@@ -7,10 +7,6 @@ import {
   Pin, 
   Users, 
   Inbox,
-  PlusCircle,
-  Sticker,
-  Smile,
-  Send,
   Copy,
   Reply,
   Pencil,
@@ -21,9 +17,8 @@ import {
   AtSign,
   X,
   Check,
-  Image,
-  BarChart2,
-  Link
+  Link,
+  Smile
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -53,6 +48,7 @@ import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import ThreadsPopover from '@/components/threads/ThreadsPopover';
 import CreateThreadModal from '@/components/threads/CreateThreadModal';
+import { MessageInput } from '@/components/chat/MessageInput';
 
 // Reply Reference Component
 function ReplyReference({ 
@@ -281,8 +277,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       };
     }, []);
 
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
+    const handleSubmit = () => {
       if (messageInput.trim()) {
         // Trigger send animation
         setIsSending(true);
@@ -302,24 +297,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const handleReply = (message: Message) => {
       setReplyingTo(message);
     };
-
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setMessageInput(e.target.value);
-      if (e.target.value.trim()) {
-        startTyping();
-      }
-      // Auto-resize textarea
-      e.target.style.height = 'auto';
-      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-    }, [startTyping]);
-
-    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        e.currentTarget.form?.requestSubmit();
-      }
-      // Shift+Enter = default behavior (new line)
-    }, []);
 
     const handleUserClick = (author: User) => {
       const roles = memberRoles?.get(author.id);
@@ -808,70 +785,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       )}
 
       {/* Message Input */}
-      <div className="px-4 pb-6 flex-shrink-0">
-        <form onSubmit={handleSubmit} className="relative shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
-          <div className="flex items-center gap-2 bg-input rounded-lg border border-border focus-within:border-primary/50 transition-colors">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="p-3 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <PlusCircle className="w-5 h-5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-48 p-1">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                >
-                  <Image className="w-4 h-4" />
-                  <span>Ajouter une image</span>
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                >
-                  <BarChart2 className="w-4 h-4" />
-                  <span>Créer un sondage</span>
-                </button>
-              </PopoverContent>
-            </Popover>
-            
-            <textarea
-              value={messageInput}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder={`Envoyer un message dans #${channel.name}`}
-              className="flex-1 bg-transparent py-3 text-foreground placeholder:text-muted-foreground focus:outline-none resize-none min-h-[24px] max-h-[200px] overflow-y-auto"
-              rows={1}
-            />
-            
-            <div className="flex items-center gap-1 pr-2">
-              <button
-                type="button"
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Sticker className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Smile className="w-5 h-5" />
-              </button>
-              {messageInput.trim() && (
-                <button 
-                  type="submit" 
-                  className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''}`}
-                >
-                  <Send className="w-4 h-4" style={{ color: '#5865f2' }} />
-                </button>
-              )}
-            </div>
-          </div>
-        </form>
-      </div>
+      <MessageInput
+        value={messageInput}
+        onChange={setMessageInput}
+        onSend={handleSubmit}
+        placeholder={`Envoyer un message dans #${channel.name}`}
+        isSending={isSending}
+        onTypingStart={startTyping}
+        onTypingStop={stopTyping}
+      />
 
       <UserProfilePopup
         user={selectedUser?.user ?? null}

@@ -2,44 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap");
 
 /* gg sans Font */
 @font-face {
-  font-family: 'gg sans';
-  src: url('/fonts/ggsans-Normal.ttf') format('truetype');
+  font-family: "gg sans";
+  src: url("/fonts/ggsans-Normal.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'gg sans';
-  src: url('/fonts/ggsans-Medium.ttf') format('truetype');
+  font-family: "gg sans";
+  src: url("/fonts/ggsans-Medium.ttf") format("truetype");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'gg sans';
-  src: url('/fonts/ggsans-SemiBold.ttf') format('truetype');
+  font-family: "gg sans";
+  src: url("/fonts/ggsans-SemiBold.ttf") format("truetype");
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'gg sans';
-  src: url('/fonts/ggsans-Bold.ttf') format('truetype');
+  font-family: "gg sans";
+  src: url("/fonts/ggsans-Bold.ttf") format("truetype");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'gg sans';
-  src: url('/fonts/ggsans-ExtraBold.ttf') format('truetype');
+  font-family: "gg sans";
+  src: url("/fonts/ggsans-ExtraBold.ttf") format("truetype");
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -123,11 +123,13 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
   }
 
-  h1, h2, h3 {
-    font-family: 'Orbitron', sans-serif;
+  h1,
+  h2,
+  h3 {
+    font-family: "Orbitron", sans-serif;
   }
 }
 
@@ -141,13 +143,15 @@
   }
 
   .glow-text {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5),
-                 0 0 20px hsl(var(--primary) / 0.3);
+    text-shadow:
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
   }
 
   .glow-border {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
-                inset 0 0 10px hsl(var(--primary) / 0.1);
+    box-shadow:
+      0 0 10px hsl(var(--primary) / 0.3),
+      inset 0 0 10px hsl(var(--primary) / 0.1);
   }
 
   .gradient-text {
@@ -215,7 +219,8 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
     }
     50% {
@@ -224,7 +229,8 @@
   }
 
   @keyframes float {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(0);
     }
     50% {
@@ -291,7 +297,8 @@
   }
 
   @keyframes voice-glow {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 2px hsl(var(--voice-active) / 0.5);
     }
     50% {
@@ -310,13 +317,16 @@
 
   /* Voice speaking glow effect - green pulsing ring */
   @keyframes voice-speaking-pulse {
-    0%, 100% {
-      box-shadow: 0 0 0 2px hsl(var(--online)), 
-                  0 0 12px 4px hsl(var(--online) / 0.6);
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 2px hsl(var(--online)),
+        0 0 12px 4px hsl(var(--online) / 0.6);
     }
     50% {
-      box-shadow: 0 0 0 3px hsl(var(--online)), 
-                  0 0 20px 8px hsl(var(--online) / 0.4);
+      box-shadow:
+        0 0 0 3px hsl(var(--online)),
+        0 0 20px 8px hsl(var(--online) / 0.4);
     }
   }
 
@@ -326,11 +336,16 @@
 
   /* Legacy glow effect */
   @keyframes electric-pulse {
-    0%, 100% {
-      box-shadow: 0 0 0 0 hsl(var(--online) / 0.7), 0 0 20px 5px hsl(var(--online) / 0.3);
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 hsl(var(--online) / 0.7),
+        0 0 20px 5px hsl(var(--online) / 0.3);
     }
     50% {
-      box-shadow: 0 0 0 4px hsl(var(--online) / 0.4), 0 0 40px 10px hsl(var(--online) / 0.2);
+      box-shadow:
+        0 0 0 4px hsl(var(--online) / 0.4),
+        0 0 40px 10px hsl(var(--online) / 0.2);
     }
   }
 
@@ -372,16 +387,17 @@
 
   /* Drop indicator line - Discord style */
   .drop-indicator {
-    height: 2px;
+    height: 3px;
     background-color: #5865f2;
     border-radius: 1px;
   }
 
   /* Smooth channel transition animation */
   .channel-transition {
-    transition: transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
-                opacity 200ms ease,
-                background-color 200ms ease;
+    transition:
+      transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 200ms ease,
+      background-color 200ms ease;
   }
 
   /* Animation when channel enters a new category */

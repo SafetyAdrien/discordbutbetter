@@ -382,7 +382,7 @@ function SortableChannel({
           onThreadSelect?.(thread.id);
         }} className={cn("flex items-center w-full px-2 py-1 rounded hover:bg-muted/50 transition-colors", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
                 <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="truncate flex-1 text-left font-ginto text-[15px] text-muted-foreground hover:text-foreground ml-2">
+                <span className="truncate flex-1 text-left font-ginto text-[16px] text-muted-foreground hover:text-foreground ml-1">
                   {thread.name}
                   {thread.archived && " (archivé)"}
                 </span>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { EmojiStickerPicker } from './EmojiStickerPicker';
+import { CreatePollModal } from './CreatePollModal';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
 
 interface MessageInputProps {
@@ -13,6 +14,8 @@ interface MessageInputProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   compact?: boolean;
+  serverId?: string | null;
+  channelId?: string | null;
 }
 
 export function MessageInput({
@@ -25,9 +28,28 @@ export function MessageInput({
   onTypingStart,
   onTypingStop,
   compact = false,
+  serverId = null,
+  channelId = null,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+
+  const insertEmoji = useCallback((emoji: string) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newValue = value.slice(0, start) + emoji + value.slice(end);
+      onChange(newValue);
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      onChange(value + emoji);
+    }
+  }, [value, onChange]);
 
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
@@ -82,7 +104,7 @@ export function MessageInput({
             ? "bg-[#383a40] border-transparent" 
             : "bg-input border-border focus-within:border-primary/50"
         }`}>
-          <Popover>
+          <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
@@ -95,17 +117,27 @@ export function MessageInput({
               <button
                 type="button"
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                onClick={() => setPlusMenuOpen(false)}
               >
                 <Image className="w-4 h-4" />
                 <span>Ajouter une image</span>
               </button>
-              <button
-                type="button"
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-              >
-                <BarChart2 className="w-4 h-4" />
-                <span>Créer un sondage</span>
-              </button>
+              {channelId && (
+                <CreatePollModal
+                  channelId={channelId}
+                  serverId={serverId}
+                  trigger={
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                      onClick={() => setPlusMenuOpen(false)}
+                    >
+                      <BarChart2 className="w-4 h-4" />
+                      <span>Créer un sondage</span>
+                    </button>
+                  }
+                />
+              )}
             </PopoverContent>
           </Popover>
           
@@ -125,18 +157,32 @@ export function MessageInput({
           />
           
           <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
-            <button
-              type="button"
-              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
-            >
-              <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
-            </button>
-            <button
-              type="button"
-              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
-            >
-              <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
-            </button>
+            <EmojiStickerPicker
+              serverId={serverId}
+              onEmojiSelect={insertEmoji}
+              defaultTab="sticker"
+              trigger={
+                <button
+                  type="button"
+                  className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                >
+                  <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                </button>
+              }
+            />
+            <EmojiStickerPicker
+              serverId={serverId}
+              onEmojiSelect={insertEmoji}
+              defaultTab="emoji"
+              trigger={
+                <button
+                  type="button"
+                  className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                >
+                  <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                </button>
+              }
+            />
             {value.trim() && (
               <button 
                 type="submit" 

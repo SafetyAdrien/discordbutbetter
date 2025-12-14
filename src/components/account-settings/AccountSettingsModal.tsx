@@ -18,7 +18,7 @@ type SettingsTab = 'account' | 'profile' | 'privacy' | 'connections' | 'apps' | 
 const tabs = [
   { id: 'account' as const, label: 'Mon compte', icon: User },
   { id: 'profile' as const, label: 'Profil', icon: Palette },
-  { id: 'privacy' as const, label: 'Confidentialité & Sécurité', icon: Shield },
+  { id: 'privacy' as const, label: 'Confidentialité', icon: Shield },
   { id: 'connections' as const, label: 'Connexions', icon: Link2 },
   { id: 'apps' as const, label: 'Applications autorisées', icon: AppWindow },
   { id: 'sessions' as const, label: 'Sessions actives', icon: Smartphone },

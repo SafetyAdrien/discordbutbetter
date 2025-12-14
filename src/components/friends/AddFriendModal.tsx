@@ -41,20 +41,23 @@ export function AddFriendModal({ onClose }: AddFriendModalProps) {
           </div>
           <h2 className="text-xl font-semibold">Ajouter un ami</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Entrez le pseudo de la personne que vous souhaitez ajouter
+            Entrez le nom d'utilisateur de la personne que vous souhaitez ajouter
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Pseudo</Label>
+            <Label htmlFor="username">Nom d'utilisateur</Label>
             <Input
               id="username"
-              placeholder="GamerPro42"
+              placeholder="gamerpro42"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoFocus
             />
+            <p className="text-xs text-muted-foreground">
+              Le nom d'utilisateur est affiché avec @ (ex: @gamerpro42)
+            </p>
           </div>
 
           <div className="flex gap-3">

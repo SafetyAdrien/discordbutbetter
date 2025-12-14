@@ -370,24 +370,11 @@
     opacity: 0.4;
   }
 
-  /* Drop indicator line with Blurple glow */
+  /* Drop indicator line - Discord style */
   .drop-indicator {
     height: 2px;
     background-color: #5865f2;
     border-radius: 1px;
-    box-shadow: 0 0 8px 2px #5865f2, 0 0 16px 4px rgba(88, 101, 242, 0.5);
-    animation: drop-indicator-pulse 0.8s ease-in-out infinite;
-  }
-
-  @keyframes drop-indicator-pulse {
-    0%, 100% {
-      opacity: 1;
-      box-shadow: 0 0 8px 2px #5865f2, 0 0 16px 4px rgba(88, 101, 242, 0.5);
-    }
-    50% {
-      opacity: 0.85;
-      box-shadow: 0 0 12px 4px #5865f2, 0 0 24px 8px rgba(88, 101, 242, 0.6);
-    }
   }
 
   /* Smooth channel transition animation */

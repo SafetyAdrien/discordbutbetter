@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useThread } from '@/hooks/useThreads';
@@ -15,6 +15,7 @@ import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MessageInput } from '@/components/chat/MessageInput';
+import { cn } from '@/lib/utils';
 
 interface ThreadViewProps {
   threadId: string;
@@ -219,13 +220,63 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                 {items.map((item, index) => {
                   // Render Poll
                   if (item.type === 'poll') {
+                    const poll = item.data as Poll;
+                    const prevItem = index > 0 ? items[index - 1] : null;
+                    const showAuthor = !prevItem || 
+                      prevItem.type !== 'poll' ||
+                      (prevItem.data as Poll).author?.id !== poll.author?.id ||
+                      (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
+
                     return (
-                      <div key={`poll-${item.data.id}`} className="py-2 px-2">
-                        <PollDisplay 
-                          poll={item.data} 
-                          channelId={channelId || thread?.channel_id || ''} 
-                          threadId={threadId}
-                        />
+                      <div 
+                        key={`poll-${poll.id}`} 
+                        className={cn(
+                          'group rounded-md px-2 hover:bg-muted/50',
+                          showAuthor ? 'pt-2' : 'py-0'
+                        )}
+                      >
+                        {showAuthor ? (
+                          <div className="flex gap-3">
+                            <Avatar className="w-8 h-8 mt-0.5 shrink-0">
+                              <AvatarImage src={poll.author?.avatar_url || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {poll.author?.display_name?.[0] || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-2 mb-0.5">
+                                <span className="font-medium text-foreground text-sm">
+                                  {poll.author?.display_name || 'Inconnu'}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
+                                </span>
+                                <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
+                                  <BarChart2 className="w-3 h-3" />
+                                  POLL
+                                </div>
+                              </div>
+                              <div className="mt-1">
+                                <PollDisplay 
+                                  poll={poll} 
+                                  channelId={channelId || thread?.channel_id || ''} 
+                                  threadId={threadId}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-3">
+                            <div className="w-8 shrink-0" />
+                            <div className="flex-1">
+                              <PollDisplay 
+                                poll={poll} 
+                                channelId={channelId || thread?.channel_id || ''} 
+                                threadId={threadId}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   }

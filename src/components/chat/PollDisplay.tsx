@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Poll, useVotePoll, useRemoveVote } from '@/hooks/usePolls';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, formatDistanceToNow, isPast } from 'date-fns';
+import { formatDistanceToNow, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { BarChart2, Check, Clock } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PollDisplayProps {
@@ -82,29 +81,6 @@ export function PollDisplay({ poll, channelId, threadId }: PollDisplayProps) {
 
   return (
     <div className="bg-[#2b2d31] rounded-lg overflow-hidden max-w-[500px]">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-3 pb-2">
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={poll.author?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-            {poll.author?.display_name?.charAt(0).toUpperCase() || '?'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">
-              {poll.author?.display_name || 'Utilisateur inconnu'}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {format(new Date(poll.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-2 py-1 rounded">
-          <BarChart2 className="w-3.5 h-3.5" />
-          SONDAGE
-        </div>
-      </div>
 
       {/* Content */}
       <div className="px-3 pb-3 space-y-3">

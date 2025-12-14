@@ -18,7 +18,8 @@ import {
   X,
   Check,
   Link,
-  Smile
+  Smile,
+  BarChart2
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -574,9 +575,55 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         {timelineItems.map((item, index) => {
           // Render Poll
           if (item.type === 'poll') {
+            const poll = item.data as Poll;
+            const prevItem = index > 0 ? timelineItems[index - 1] : null;
+            const showAuthor = !prevItem || 
+              prevItem.type !== 'poll' ||
+              (prevItem.data as Poll).author?.id !== poll.author?.id ||
+              (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
+
             return (
-              <div key={`poll-${item.data.id}`} className="py-2 px-2 -mx-2">
-                <PollDisplay poll={item.data} channelId={channel.id} />
+              <div 
+                key={`poll-${poll.id}`} 
+                className={cn(
+                  'group message-hover rounded-md px-2 -mx-2 relative',
+                  showAuthor ? 'pt-1' : 'py-0'
+                )}
+              >
+                {showAuthor ? (
+                  <div className="flex gap-3">
+                    <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
+                      <AvatarImage src={poll.author?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {poll.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-semibold text-foreground">
+                          {poll.author?.display_name || 'Utilisateur inconnu'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(new Date(poll.created_at))}
+                        </span>
+                        <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
+                          <BarChart2 className="w-3 h-3" />
+                          POLL
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <PollDisplay poll={poll} channelId={channel.id} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <span className="w-10 flex-shrink-0" />
+                    <div className="flex-1">
+                      <PollDisplay poll={poll} channelId={channel.id} />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           }

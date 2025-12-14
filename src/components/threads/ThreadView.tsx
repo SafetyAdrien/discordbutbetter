@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, Send, Hash, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
@@ -153,7 +152,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
           </button>
         )}
         
-        <ScrollArea className="h-full" ref={scrollRef} onScrollCapture={handleScroll}>
+        <div 
+          ref={scrollRef} 
+          onScroll={handleScroll}
+          className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+        >
           <div className="p-4 space-y-4">
           {Object.entries(groupedMessages).map(([date, msgs]) => (
             <div key={date}>
@@ -202,7 +205,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
             </div>
           )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Input */}

@@ -95,33 +95,50 @@ export function useCreateCategory() {
     },
     onMutate: async ({ serverId, name }) => {
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
-      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
-      if (previousData) {
-        const tempCategory: CategoryWithChannels = {
-          id: `temp-${Date.now()}`,
-          name,
-          position: previousData.categories.length,
-          channels: []
-        };
-        
+      const tempCategory: CategoryWithChannels = {
+        id: `temp-${Date.now()}`,
+        name,
+        position: previousChannels?.categories.length ?? 0,
+        channels: []
+      };
+      
+      if (previousChannels) {
         queryClient.setQueryData(['channels', serverId], {
-          ...previousData,
-          categories: [...previousData.categories, tempCategory]
+          ...previousChannels,
+          categories: [...previousChannels.categories, tempCategory]
         });
       }
       
-      return { previousData };
+      // Also update servers cache
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) =>
+          old?.map((server: any) =>
+            server.id === serverId
+              ? { ...server, categories: [...(server.categories || []), { id: tempCategory.id, name, channels: [] }] }
+              : server
+          )
+        );
+      }
+      
+      return { previousChannels, previousServers, serverId };
     },
-    onError: (_, { serverId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['channels', serverId], context.previousData);
+    onError: (_, __, context) => {
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       toast.error('Erreur lors de la création de la catégorie');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Catégorie créée');
@@ -184,24 +201,26 @@ export function useCreateChannel() {
     },
     onMutate: async ({ serverId, categoryId, name, type }) => {
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
-      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
-      if (previousData) {
-        const tempChannel: ChannelWithCategory = {
-          id: `temp-${Date.now()}`,
-          name,
-          type,
-          description: null,
-          position: 0,
-          category_id: categoryId,
-          server_id: serverId
-        };
-        
+      const tempChannel: ChannelWithCategory = {
+        id: `temp-${Date.now()}`,
+        name,
+        type,
+        description: null,
+        position: 0,
+        category_id: categoryId,
+        server_id: serverId
+      };
+      
+      if (previousChannels) {
         if (categoryId) {
           queryClient.setQueryData(['channels', serverId], {
-            ...previousData,
-            categories: previousData.categories.map(cat =>
+            ...previousChannels,
+            categories: previousChannels.categories.map(cat =>
               cat.id === categoryId
                 ? { ...cat, channels: [...cat.channels, tempChannel] }
                 : cat
@@ -209,22 +228,44 @@ export function useCreateChannel() {
           });
         } else {
           queryClient.setQueryData(['channels', serverId], {
-            ...previousData,
-            orphanChannels: [...previousData.orphanChannels, tempChannel]
+            ...previousChannels,
+            orphanChannels: [...previousChannels.orphanChannels, tempChannel]
           });
         }
       }
       
-      return { previousData };
+      // Also update servers cache
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) =>
+          old?.map((server: any) =>
+            server.id === serverId
+              ? {
+                  ...server,
+                  categories: server.categories?.map((cat: any) =>
+                    cat.id === categoryId
+                      ? { ...cat, channels: [...(cat.channels || []), { id: tempChannel.id, name, type }] }
+                      : cat
+                  ) || []
+                }
+              : server
+          )
+        );
+      }
+      
+      return { previousChannels, previousServers, serverId };
     },
-    onError: (_, { serverId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['channels', serverId], context.previousData);
+    onError: (_, __, context) => {
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       toast.error('Erreur lors de la création du salon');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Salon créé');
@@ -382,32 +423,55 @@ export function useReorderCategories() {
     },
     onMutate: async ({ serverId, orderedIds }) => {
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
-      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
-      if (previousData) {
+      if (previousChannels) {
         // Reorder categories based on orderedIds
         const reorderedCategories = orderedIds
-          .map(id => previousData.categories.find(cat => cat.id === id))
+          .map(id => previousChannels.categories.find(cat => cat.id === id))
           .filter((cat): cat is CategoryWithChannels => !!cat)
           .map((cat, index) => ({ ...cat, position: index }));
         
         queryClient.setQueryData(['channels', serverId], {
-          ...previousData,
+          ...previousChannels,
           categories: reorderedCategories
         });
       }
       
-      return { previousData, serverId };
+      // Also update servers cache
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) =>
+          old?.map((server: any) =>
+            server.id === serverId
+              ? {
+                  ...server,
+                  categories: orderedIds
+                    .map(id => server.categories?.find((c: any) => c.id === id))
+                    .filter(Boolean)
+                    .map((c: any, i: number) => ({ ...c, position: i }))
+                }
+              : server
+          )
+        );
+      }
+      
+      return { previousChannels, previousServers, serverId };
     },
-    onError: (_, { serverId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['channels', serverId], context.previousData);
+    onError: (_, __, context) => {
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       toast.error('Erreur lors du réordonnancement');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }
@@ -435,15 +499,17 @@ export function useReorderChannels() {
     onMutate: async ({ serverId, categoryId, orderedIds }) => {
       // Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
       
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      // Snapshot previous values
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
       
-      if (previousData) {
+      if (previousChannels) {
         // Apply optimistic update
         const allChannels = [
-          ...previousData.categories.flatMap(c => c.channels),
-          ...previousData.orphanChannels
+          ...previousChannels.categories.flatMap(c => c.channels),
+          ...previousChannels.orphanChannels
         ];
         
         const movedChannels = orderedIds
@@ -453,7 +519,7 @@ export function useReorderChannels() {
         
         const movedIds = new Set(orderedIds);
         
-        const newCategories = previousData.categories.map(cat => ({
+        const newCategories = previousChannels.categories.map(cat => ({
           ...cat,
           channels: cat.id === categoryId 
             ? movedChannels
@@ -462,7 +528,7 @@ export function useReorderChannels() {
         
         const newOrphans = categoryId === null 
           ? movedChannels
-          : previousData.orphanChannels.filter(ch => !movedIds.has(ch.id));
+          : previousChannels.orphanChannels.filter(ch => !movedIds.has(ch.id));
         
         queryClient.setQueryData(['channels', serverId], {
           categories: newCategories,
@@ -470,12 +536,44 @@ export function useReorderChannels() {
         });
       }
       
-      return { previousData };
+      // Also update servers cache
+      if (previousServers) {
+        queryClient.setQueryData(['servers'], (old: any) =>
+          old?.map((server: any) =>
+            server.id === serverId
+              ? {
+                  ...server,
+                  categories: server.categories?.map((cat: any) => {
+                    const movedIds = new Set(orderedIds);
+                    if (cat.id === categoryId) {
+                      const allChs = server.categories?.flatMap((c: any) => c.channels || []) || [];
+                      return {
+                        ...cat,
+                        channels: orderedIds
+                          .map(id => allChs.find((ch: any) => ch.id === id))
+                          .filter(Boolean)
+                      };
+                    }
+                    return {
+                      ...cat,
+                      channels: (cat.channels || []).filter((ch: any) => !movedIds.has(ch.id))
+                    };
+                  }) || []
+                }
+              : server
+          )
+        );
+      }
+      
+      return { previousChannels, previousServers, serverId };
     },
-    onError: (_, { serverId }, context) => {
+    onError: (_, __, context) => {
       // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(['channels', serverId], context.previousData);
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
     },
     onSettled: (_, __, { serverId }) => {

@@ -1429,6 +1429,35 @@ export type Database = {
           },
         ]
       }
+      thread_followers: {
+        Row: {
+          created_at: string | null
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_followers_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_messages: {
         Row: {
           attachments: Json | null

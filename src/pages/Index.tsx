@@ -36,6 +36,7 @@ const Index = () => {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeDMId, setActiveDMId] = useState<string | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [threadChannelId, setThreadChannelId] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
@@ -334,12 +335,15 @@ const Index = () => {
             activeChannelId={activeChannelId}
             onChannelSelect={(channelId) => {
               setActiveChannelId(channelId);
-              setActiveThreadId(null); // Reset thread when changing channel
+              // Ne pas reset le thread lors du changement de salon - il reste affiché
             }}
             onOpenServerSettings={() => setShowServerSettings(true)}
             orphanChannels={channelsData?.orphanChannels || []}
             activeThreadId={activeThreadId}
-            onThreadSelect={(threadId) => setActiveThreadId(threadId)}
+            onThreadSelect={(threadId) => {
+              setActiveThreadId(threadId);
+              setThreadChannelId(activeChannelId); // Stocker le channel d'origine du thread
+            }}
           />
 
           {/* Main Content Area - Conditional based on channel type */}
@@ -349,8 +353,13 @@ const Index = () => {
               {activeThreadId ? (
                 <ThreadView
                   threadId={activeThreadId}
+                  channelId={threadChannelId || activeChannelId || undefined}
+                  serverId={activeServerId}
                   channelName={channelForChat.name}
-                  onBack={() => setActiveThreadId(null)}
+                  onBack={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                  }}
                 />
               ) : channelForChat.type === 'voice' ? (
                 <VoiceChannelView 

@@ -57,7 +57,7 @@ export function VoiceChannelChat({ channelId, channelName, onClose }: VoiceChann
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-3">
-        <div className="space-y-3">
+        <div className="space-y-0.5">
           {messages.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">Aucun message</p>

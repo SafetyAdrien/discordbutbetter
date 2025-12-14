@@ -175,7 +175,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -256,7 +256,11 @@ function MessageItem({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className={cn('flex gap-3 group message-hover rounded-md px-2 py-0.5 -mx-2', !showAuthor && 'pl-12')}>
+        <div className={cn(
+          'flex gap-3 group message-hover rounded-md px-2 -mx-2',
+          showAuthor ? 'pt-1' : 'py-0',
+          !showAuthor && 'pl-12'
+        )}>
           {showAuthor && (
             <Avatar className="w-9 h-9 flex-shrink-0">
               <AvatarImage src={message.author?.avatar_url || undefined} />

@@ -56,7 +56,7 @@ export function AddFriendModal({ onClose }: AddFriendModalProps) {
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              Le nom d'utilisateur est affiché avec @ (ex: @gamerpro42)
+              Entrez le nom d'utilisateur sans le @ (ex: gamerpro42)
             </p>
           </div>
 

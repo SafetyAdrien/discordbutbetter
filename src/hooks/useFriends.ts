@@ -102,12 +102,15 @@ export function useSendFriendRequest() {
     mutationFn: async (username: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Find user by username
+      // Nettoyer le username : retirer le @ au début et normaliser en minuscules
+      const cleanUsername = username.replace(/^@/, '').trim().toLowerCase();
+
+      // Find user by username (recherche insensible à la casse)
       const { data: targetUser, error: findError } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url, status, custom_status')
-        .eq('username', username)
-        .single();
+        .ilike('username', cleanUsername)
+        .maybeSingle();
 
       if (findError || !targetUser) {
         throw new Error('Utilisateur non trouvé');

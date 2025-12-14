@@ -36,7 +36,6 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-
 // Drop Indicator Component
 function DropIndicator({
   isVisible,
@@ -140,7 +139,10 @@ function SortableCategory({
     isDragging
   } = useSortable({
     id: `category-${category.id}`,
-    data: { type: 'category', categoryId: category.id }
+    data: {
+      type: 'category',
+      categoryId: category.id
+    }
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -155,16 +157,16 @@ function SortableCategory({
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
             <button onClick={e => {
-            e.stopPropagation();
-            onToggle();
-          }} className="flex items-center gap-px flex-1">
+              e.stopPropagation();
+              onToggle();
+            }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-sm text-[#9b9ca3] font-medium my-0 px-0 py-0 mx-0">{category.name}</span>
+              <span className="tracking-wide font-ginto text-sm text-[#9b9ca3] font-medium my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
-            e.stopPropagation();
-            onCreateChannel();
-          }} />
+              e.stopPropagation();
+              onCreateChannel();
+            }} />
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
@@ -178,10 +180,7 @@ function SortableCategory({
             Modifier la catégorie
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem 
-            className="text-destructive focus:text-destructive"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
+          <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
             <Trash2 className="w-4 h-4 mr-2" />
             Supprimer la catégorie
           </ContextMenuItem>
@@ -196,7 +195,7 @@ function SortableCategory({
     {/* Delete Category Confirmation Dialog */}
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
       <AlertDialogContent>
-        <form onSubmit={(e) => {
+        <form onSubmit={e => {
           e.preventDefault();
           onDelete();
           setShowDeleteConfirm(false);
@@ -211,19 +210,12 @@ function SortableCategory({
                 Cette action est immédiate et irréversible.
               </span>
               <br /><br />
-              {category.channels.length > 0 ? (
-                <>Les <strong>{category.channels.length} salon{category.channels.length > 1 ? 's' : ''}</strong> de cette catégorie deviendront des salons sans catégorie.</>
-              ) : (
-                <>Cette catégorie est vide.</>
-              )}
+              {category.channels.length > 0 ? <>Les <strong>{category.channels.length} salon{category.channels.length > 1 ? 's' : ''}</strong> de cette catégorie deviendront des salons sans catégorie.</> : <>Cette catégorie est vide.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              type="submit"
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Supprimer définitivement
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -273,7 +265,10 @@ function SortableChannel({
     isDragging
   } = useSortable({
     id: `channel-${channel.id}`,
-    data: { type: 'channel', channelId: channel.id }
+    data: {
+      type: 'channel',
+      channelId: channel.id
+    }
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -333,10 +328,7 @@ function SortableChannel({
               Notifications
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem 
-              className="text-destructive focus:text-destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
+            <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
               <Trash2 className="w-4 h-4 mr-2" />
               Supprimer le channel
             </ContextMenuItem>
@@ -368,11 +360,11 @@ function SortableChannel({
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            onDelete();
-            setShowDeleteConfirm(false);
-          }}>
+          <form onSubmit={e => {
+          e.preventDefault();
+          onDelete();
+          setShowDeleteConfirm(false);
+        }}>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -386,10 +378,7 @@ function SortableChannel({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-              <AlertDialogAction 
-                type="submit"
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
+              <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Supprimer définitivement
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -446,12 +435,16 @@ export function ChannelList({
     data: membersData
   } = useMembers(server.id);
   const ownerProfile = membersData?.find(m => m.id === server.ownerId);
-
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
-      await deleteChannel.mutateAsync({ channelId, serverId: server.id });
-      toast({ title: `Salon #${channelName} supprimé` });
-      
+      await deleteChannel.mutateAsync({
+        channelId,
+        serverId: server.id
+      });
+      toast({
+        title: `Salon #${channelName} supprimé`
+      });
+
       // If deleted channel was active, clear selection
       if (activeChannelId === channelId) {
         // Find another channel to select
@@ -461,13 +454,18 @@ export function ChannelList({
         }
       }
     } catch {
-      toast({ title: 'Erreur lors de la suppression', variant: 'destructive' });
+      toast({
+        title: 'Erreur lors de la suppression',
+        variant: 'destructive'
+      });
     }
   };
-
   const handleDeleteCategory = async (categoryId: string) => {
     try {
-      await deleteCategory.mutateAsync({ categoryId, serverId: server.id });
+      await deleteCategory.mutateAsync({
+        categoryId,
+        serverId: server.id
+      });
     } catch {
       // Error already handled by the hook
     }
@@ -510,7 +508,7 @@ export function ChannelList({
   const handleChannelClick = (channel: Channel) => {
     // Toujours sélectionner le canal pour afficher son interface
     onChannelSelect(channel.id);
-    
+
     // Pour les salons vocaux, également rejoindre le voice chat
     if (channel.type === 'voice') {
       joinChannel(channel.id, channel.name, server.name);
@@ -540,14 +538,16 @@ export function ChannelList({
   };
 
   // Custom collision detection that filters by dragged item type
-  const customCollisionDetection: CollisionDetection = useCallback((args) => {
-    const { active } = args;
+  const customCollisionDetection: CollisionDetection = useCallback(args => {
+    const {
+      active
+    } = args;
     const activeIdStr = active.id.toString();
     const isCategory = activeIdStr.startsWith('category-');
-    
+
     // Use closestCenter as base detection
     const collisions = closestCenter(args);
-    
+
     // Filter collisions to only allow same-type drops
     return collisions.filter(collision => {
       const collidedId = collision.id.toString();
@@ -560,27 +560,29 @@ export function ChannelList({
       }
     });
   }, []);
-
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over, delta } = event;
+    const {
+      active,
+      over,
+      delta
+    } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
     }
-
     const activeIdStr = active.id.toString();
     const overIdStr = over.id.toString();
-    
+
     // Strict type validation for drop indicator
     const isActiveCategory = activeIdStr.startsWith('category-');
     const isOverCategory = overIdStr.startsWith('category-');
-    
+
     // Categories can only show indicator over other categories
     if (isActiveCategory && !isOverCategory) {
       setOverId(null);
       return;
     }
-    
+
     // Calculate cursor position relative to target element
     // Using the over element's rect to determine if cursor is in upper or lower half
     const overRect = over.rect;
@@ -588,7 +590,6 @@ export function ChannelList({
       // Get the current pointer position by calculating from initial + delta
       const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
       let clientY = 0;
-      
       if (activatorEvent) {
         if ('clientY' in activatorEvent) {
           clientY = activatorEvent.clientY + delta.y;
@@ -596,15 +597,14 @@ export function ChannelList({
           clientY = activatorEvent.touches[0].clientY + delta.y;
         }
       }
-      
+
       // Calculate the middle of the target element
       const middleY = overRect.top + overRect.height / 2;
-      
+
       // If cursor is in upper half → insert BEFORE, lower half → insert AFTER
       const position: 'before' | 'after' = clientY < middleY ? 'before' : 'after';
       setDropPosition(position);
     }
-    
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
@@ -719,11 +719,7 @@ export function ChannelList({
             const overIdx = filteredChannels.findIndex(ch => ch.id === overChannelId);
             // Calculate insertion index based on dropPosition
             const insertIdx = dropPosition === 'before' ? overIdx : overIdx + 1;
-            const newOrder = [
-              ...filteredChannels.slice(0, insertIdx),
-              activeChannel,
-              ...filteredChannels.slice(insertIdx)
-            ];
+            const newOrder = [...filteredChannels.slice(0, insertIdx), activeChannel, ...filteredChannels.slice(insertIdx)];
             reorderChannels.mutate({
               serverId: server.id,
               categoryId: targetCategoryId,

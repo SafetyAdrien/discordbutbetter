@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
+import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
 import { ThreadMessage } from '@/types/thread';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -25,6 +26,14 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
   const { data: thread } = useThread(threadId);
   const { data: messages = [] } = useThreadMessages(threadId);
   const sendMessage = useSendThreadMessage();
+  const markAsRead = useMarkThreadAsRead();
+
+  // Mark thread as read when opened
+  useEffect(() => {
+    if (threadId) {
+      markAsRead.mutate(threadId);
+    }
+  }, [threadId]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {

@@ -52,6 +52,7 @@ import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePi
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import ThreadsPopover from '@/components/threads/ThreadsPopover';
+import CreateThreadModal from '@/components/threads/CreateThreadModal';
 
 // Reply Reference Component
 function ReplyReference({ 
@@ -242,6 +243,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [isSending, setIsSending] = useState(false);
+    const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
     const editMessage = useEditMessage();
@@ -758,6 +760,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                   <Pin className="w-4 h-4 mr-2" />
                   {pinnedMessageIds.has(message.id) ? 'Désépingler' : 'Épingler'}
                 </ContextMenuItem>
+                <ContextMenuItem onClick={() => setCreateThreadForMessageId(message.id)}>
+                  <StreamlineThreads className="w-4 h-4 mr-2" />
+                  Créer un thread
+                </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
                   <Copy className="w-4 h-4 mr-2" />
@@ -873,6 +879,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         onOpenChange={(open) => !open && setSelectedUser(null)}
         roles={selectedUser?.roles}
         onOpenDM={onOpenDM}
+      />
+
+      {/* Create Thread from Message Modal */}
+      <CreateThreadModal
+        open={!!createThreadForMessageId}
+        onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
+        channelId={channel.id}
+        messageId={createThreadForMessageId || undefined}
+        onThreadCreated={(threadId) => {
+          setCreateThreadForMessageId(null);
+          onSelectThread?.(threadId);
+        }}
       />
     </div>
     );

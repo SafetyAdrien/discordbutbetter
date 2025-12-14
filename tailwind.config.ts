@@ -70,6 +70,9 @@ export default {
         voice: {
           active: "hsl(var(--voice-active))",
         },
+        poll: {
+          DEFAULT: "hsl(var(--poll-background))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

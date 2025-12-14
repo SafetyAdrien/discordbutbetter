@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Hash } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowLeft, Send, Hash, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,7 +21,10 @@ interface ThreadViewProps {
 
 const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }) => {
   const [messageContent, setMessageContent] = useState('');
+  const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(0);
   
   const { data: thread } = useThread(threadId);
   const { data: messages = [] } = useThreadMessages(threadId);
@@ -32,15 +35,47 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
   useEffect(() => {
     if (threadId) {
       markAsRead.mutate(threadId);
+      setShowNewMessagesBanner(false);
+      lastMessageCountRef.current = 0;
     }
   }, [threadId]);
 
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
+  // Check if user is at bottom of scroll
+  const handleScroll = useCallback(() => {
     if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setIsAtBottom(atBottom);
+      
+      if (atBottom) {
+        setShowNewMessagesBanner(false);
+        markAsRead.mutate(threadId);
+      }
+    }
+  }, [threadId, markAsRead]);
+
+  // Detect new messages and show banner if not at bottom
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current && lastMessageCountRef.current > 0 && !isAtBottom) {
+      setShowNewMessagesBanner(true);
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages.length, isAtBottom]);
+
+  // Auto-scroll to bottom on initial load
+  useEffect(() => {
+    if (scrollRef.current && lastMessageCountRef.current === 0) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      setShowNewMessagesBanner(false);
+      markAsRead.mutate(threadId);
+    }
+  }, [threadId, markAsRead]);
 
   const handleSend = async () => {
     if (!messageContent.trim()) return;
@@ -106,8 +141,20 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1" ref={scrollRef}>
-        <div className="p-4 space-y-4">
+      <div className="relative flex-1 overflow-hidden">
+        {/* New messages banner */}
+        {showNewMessagesBanner && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors"
+          >
+            <ArrowDown className="w-4 h-4" />
+            <span className="text-sm font-medium">Nouveaux messages</span>
+          </button>
+        )}
+        
+        <ScrollArea className="h-full" ref={scrollRef} onScrollCapture={handleScroll}>
+          <div className="p-4 space-y-4">
           {Object.entries(groupedMessages).map(([date, msgs]) => (
             <div key={date}>
               {/* Date separator */}
@@ -154,8 +201,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
               </p>
             </div>
           )}
-        </div>
-      </ScrollArea>
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Input */}
       <div className="p-4 border-t border-border shrink-0">

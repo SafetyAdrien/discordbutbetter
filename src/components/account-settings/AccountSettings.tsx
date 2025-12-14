@@ -268,7 +268,7 @@ export function AccountSettings() {
         </CardContent>
       </Card>
 
-      {/* Logout */}
+      {/* Logout & Danger Zone */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -277,7 +277,7 @@ export function AccountSettings() {
           </CardTitle>
           <CardDescription>Se déconnecter de votre compte</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -300,22 +300,12 @@ export function AccountSettings() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </CardContent>
-      </Card>
 
-      {/* Danger Zone */}
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-destructive">
-            <AlertTriangle className="w-5 h-5" />
-            Zone de danger
-          </CardTitle>
-          <CardDescription>Actions irréversibles sur votre compte</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <div className="h-px bg-border" />
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="gap-2">
+              <Button variant="ghost" className="gap-2 text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10">
                 <Trash2 className="w-4 h-4" />
                 Supprimer mon compte
               </Button>

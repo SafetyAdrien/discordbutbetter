@@ -1441,6 +1441,7 @@ export type Database = {
           conversation_id: string | null
           id: string
           started_at: string | null
+          thread_id: string | null
           user_id: string
         }
         Insert: {
@@ -1448,6 +1449,7 @@ export type Database = {
           conversation_id?: string | null
           id?: string
           started_at?: string | null
+          thread_id?: string | null
           user_id: string
         }
         Update: {
@@ -1455,6 +1457,7 @@ export type Database = {
           conversation_id?: string | null
           id?: string
           started_at?: string | null
+          thread_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1470,6 +1473,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "typing_indicators_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
             referencedColumns: ["id"]
           },
           {

@@ -14,7 +14,7 @@ interface TypingUser {
   } | null;
 }
 
-export function useTypingIndicator(channelId?: string | null, conversationId?: string | null) {
+export function useTypingIndicator(channelId?: string | null, conversationId?: string | null, threadId?: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -29,7 +29,7 @@ export function useTypingIndicator(channelId?: string | null, conversationId?: s
         clearTimeout(typingTimeoutRef.current);
       }
       // Clean up typing indicator when leaving
-      if (user?.id && (channelId || conversationId)) {
+      if (user?.id && (channelId || conversationId || threadId)) {
         supabase
           .from('typing_indicators')
           .delete()
@@ -37,23 +37,25 @@ export function useTypingIndicator(channelId?: string | null, conversationId?: s
           .then(() => {});
       }
     };
-  }, [user?.id, channelId, conversationId]);
+  }, [user?.id, channelId, conversationId, threadId]);
 
   // Start typing mutation
   const startTypingMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
       
-      const data: { user_id: string; channel_id?: string; conversation_id?: string } = {
+      const data: { user_id: string; channel_id?: string; conversation_id?: string; thread_id?: string } = {
         user_id: user.id,
       };
       
-      if (channelId) {
+      if (threadId) {
+        data.thread_id = threadId;
+      } else if (channelId) {
         data.channel_id = channelId;
       } else if (conversationId) {
         data.conversation_id = conversationId;
       } else {
-        throw new Error('No channel or conversation specified');
+        throw new Error('No channel, conversation, or thread specified');
       }
 
       // Upsert typing indicator
@@ -117,20 +119,22 @@ export function useTypingIndicator(channelId?: string | null, conversationId?: s
   };
 }
 
-export function useTypingUsers(channelId?: string | null, conversationId?: string | null) {
+export function useTypingUsers(channelId?: string | null, conversationId?: string | null, threadId?: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const queryKey = channelId 
-    ? ['typing-users', 'channel', channelId]
-    : conversationId 
-      ? ['typing-users', 'conversation', conversationId]
-      : ['typing-users', 'none'];
+  const queryKey = threadId
+    ? ['typing-users', 'thread', threadId]
+    : channelId 
+      ? ['typing-users', 'channel', channelId]
+      : conversationId 
+        ? ['typing-users', 'conversation', conversationId]
+        : ['typing-users', 'none'];
 
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!channelId && !conversationId) return [];
+      if (!channelId && !conversationId && !threadId) return [];
 
       let queryBuilder = supabase
         .from('typing_indicators')
@@ -146,7 +150,9 @@ export function useTypingUsers(channelId?: string | null, conversationId?: strin
           )
         `);
 
-      if (channelId) {
+      if (threadId) {
+        queryBuilder = queryBuilder.eq('thread_id', threadId);
+      } else if (channelId) {
         queryBuilder = queryBuilder.eq('channel_id', channelId);
       } else if (conversationId) {
         queryBuilder = queryBuilder.eq('conversation_id', conversationId);
@@ -170,25 +176,26 @@ export function useTypingUsers(channelId?: string | null, conversationId?: strin
           profile: indicator.profile,
         })) as TypingUser[];
     },
-    enabled: !!(channelId || conversationId),
+    enabled: !!(channelId || conversationId || threadId),
     refetchInterval: 3000, // Refresh every 3 seconds
   });
 
   // Subscribe to realtime changes
   useEffect(() => {
-    if (!channelId && !conversationId) return;
+    if (!channelId && !conversationId && !threadId) return;
+
+    const filterColumn = threadId ? 'thread_id' : channelId ? 'channel_id' : 'conversation_id';
+    const filterValue = threadId || channelId || conversationId;
 
     const channel = supabase
-      .channel(`typing-${channelId || conversationId}`)
+      .channel(`typing-${filterValue}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'typing_indicators',
-          filter: channelId 
-            ? `channel_id=eq.${channelId}`
-            : `conversation_id=eq.${conversationId}`,
+          filter: `${filterColumn}=eq.${filterValue}`,
         },
         () => {
           queryClient.invalidateQueries({ queryKey });
@@ -199,7 +206,7 @@ export function useTypingUsers(channelId?: string | null, conversationId?: strin
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [channelId, conversationId, queryClient, queryKey]);
+  }, [channelId, conversationId, threadId, queryClient, queryKey]);
 
   return query;
 }

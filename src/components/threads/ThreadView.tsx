@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MarkdownText } from '@/lib/markdown';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
+import { useTypingIndicator, useTypingUsers } from '@/hooks/useTypingIndicator';
+import { TypingIndicator } from '@/components/typing/TypingIndicator';
 
 interface ThreadViewProps {
   threadId: string;
@@ -29,6 +31,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
   const { data: messages = [] } = useThreadMessages(threadId);
   const sendMessage = useSendThreadMessage();
   const markAsRead = useMarkThreadAsRead();
+  
+  // Typing indicator for threads
+  const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
+  const { data: typingUsers = [] } = useTypingUsers(null, null, threadId);
 
   // Mark thread as read when opened
   useEffect(() => {
@@ -115,8 +121,18 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
     return groups;
   }, {} as Record<string, ThreadMessage[]>);
 
+  // Handle input change with typing indicator
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageContent(e.target.value);
+    if (e.target.value.trim()) {
+      startTyping();
+    } else {
+      stopTyping();
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex-1 flex flex-col bg-background min-w-0">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 h-12 border-b border-border shrink-0">
         <Button
@@ -208,12 +224,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
         </div>
       </div>
 
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <TypingIndicator threadId={threadId} />
+      )}
+
       {/* Input */}
       <div className="p-4 border-t border-border shrink-0">
         <div className="flex items-center gap-2">
           <Input
             value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={`Message dans ${thread?.name || 'le thread'}...`}
             className="flex-1"

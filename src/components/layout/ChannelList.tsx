@@ -254,7 +254,8 @@ function SortableChannel({
   dropPosition = 'after',
   threads = [],
   activeThreadId,
-  onThreadSelect
+  onThreadSelect,
+  showArchivedThreads = false
 }: {
   channel: Channel;
   serverId: string;
@@ -272,6 +273,7 @@ function SortableChannel({
   threads?: ThreadWithUnread[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
+  showArchivedThreads?: boolean;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -372,11 +374,14 @@ function SortableChannel({
                 </div>;
         })}
           </div>}
-
-        {/* Threads for text channels */}
-        {channel.type === 'text' && threads.length > 0 && (
-          <div className="ml-6 mt-1 space-y-0.5">
-            {threads.map(thread => (
+      </div>
+      
+      {/* Threads for text channels - OUTSIDE draggable div */}
+      {channel.type === 'text' && threads.length > 0 && (
+        <div className="ml-6 mt-1 space-y-0.5">
+          {threads
+            .filter(thread => showArchivedThreads || !thread.archived)
+            .map(thread => (
               <div key={thread.id} className="flex items-center">
                 <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mr-0.5" />
                 <button
@@ -386,18 +391,24 @@ function SortableChannel({
                   }}
                   className={cn(
                     "flex-1 px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors text-left truncate",
-                    activeThreadId === thread.id && "bg-muted"
+                    activeThreadId === thread.id && "bg-muted",
+                    thread.archived && "opacity-50"
                   )}
                 >
                   <span className="text-muted-foreground hover:text-foreground text-xs">
                     {thread.name}
+                    {thread.archived && " (archivé)"}
                   </span>
+                  {thread.unreadCount && thread.unreadCount > 0 && (
+                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
+                      {thread.unreadCount}
+                    </span>
+                  )}
                 </button>
               </div>
             ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
       {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
@@ -440,6 +451,7 @@ export function ChannelList({
   onThreadSelect
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
+  const [showArchivedThreads, setShowArchivedThreads] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -925,7 +937,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                   </SortableContext>
                 </div>}
 
@@ -942,7 +954,7 @@ export function ChannelList({
               })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} />)}
+                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                         </SortableContext>
                       </div>
                     </SortableCategory>)}

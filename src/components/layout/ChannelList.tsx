@@ -83,7 +83,6 @@ interface ChannelListProps {
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
 }
-
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;
 }
@@ -173,7 +172,7 @@ function SortableCategory({
               onToggle();
             }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-[11px] text-[#9b9ca3] font-semibold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
+              <span className="tracking-wide font-ginto text-[14px] text-[#9b9ca3] font-semibold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();
@@ -307,7 +306,7 @@ function SortableChannel({
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
               <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
-            <span className="truncate flex-1 text-left font-ginto text-[15px] text-[#9b9ca3] font-medium">{channel.name}</span>
+            <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9b9ca3] font-medium">{channel.name}</span>
             
               {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                   {channel.unreadCount}
@@ -377,38 +376,23 @@ function SortableChannel({
       </div>
       
       {/* Threads for text channels - OUTSIDE draggable div */}
-      {channel.type === 'text' && threads.length > 0 && (
-        <div className="ml-6 mt-1 space-y-0.5">
-          {threads
-            .filter(thread => showArchivedThreads || !thread.archived)
-            .map(thread => (
-              <div key={thread.id} className="flex items-center">
+      {channel.type === 'text' && threads.length > 0 && <div className="ml-6 mt-1 space-y-0.5">
+          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <div key={thread.id} className="flex items-center">
                 <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mr-0.5" />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onThreadSelect?.(thread.id);
-                  }}
-                  className={cn(
-                    "flex-1 px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors text-left truncate",
-                    activeThreadId === thread.id && "bg-muted",
-                    thread.archived && "opacity-50"
-                  )}
-                >
-                  <span className="text-muted-foreground hover:text-foreground text-xs">
+                <button onClick={e => {
+          e.stopPropagation();
+          onThreadSelect?.(thread.id);
+        }} className={cn("flex-1 px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors text-left truncate", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
+                  <span className="text-muted-foreground hover:text-foreground text-sm">
                     {thread.name}
                     {thread.archived && " (archivé)"}
                   </span>
-                  {thread.unreadCount && thread.unreadCount > 0 && (
-                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
+                  {thread.unreadCount && thread.unreadCount > 0 && <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
                       {thread.unreadCount}
-                    </span>
-                  )}
+                    </span>}
                 </button>
-              </div>
-            ))}
-        </div>
-      )}
+              </div>)}
+        </div>}
       {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
@@ -507,8 +491,12 @@ export function ChannelList({
   }, [server.categories, orphanChannels]);
 
   // Fetch threads for all text channels (we'll use active channel for unread counts)
-  const { data: threads = [] } = useThreads(activeChannelId || undefined);
-  const { data: unreadCounts = {} } = useThreadUnreadCounts(activeChannelId || undefined);
+  const {
+    data: threads = []
+  } = useThreads(activeChannelId || undefined);
+  const {
+    data: unreadCounts = {}
+  } = useThreadUnreadCounts(activeChannelId || undefined);
 
   // Create a map of threads with unread counts
   const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
@@ -517,7 +505,6 @@ export function ChannelList({
       unreadCount: unreadCounts[thread.id] || 0
     }));
   }, [threads, unreadCounts]);
-
   const ownerProfile = membersData?.find(m => m.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
@@ -943,29 +930,23 @@ export function ChannelList({
 
               {/* Categories */}
               <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-                {server.categories.map((category, index) => (
-                  <div key={category.id} className={cn(index > 0 && "mt-4")}>
-                    {editingCategoryId === category.id ? (
-                      <div className="px-2 py-1 mb-2">
+                {server.categories.map((category, index) => <div key={category.id} className={cn(index > 0 && "mt-4")}>
+                    {editingCategoryId === category.id ? <div className="px-2 py-1 mb-2">
                         <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
-                          if (e.key === 'Enter') handleSaveCategory();
-                          if (e.key === 'Escape') handleCancelEditCategory();
-                        }} autoFocus className="h-6 text-xs font-semibold" />
-                      </div>
-                    ) : (
-                      <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
-                        id: category.id,
-                        name: category.name
-                      })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
+                    if (e.key === 'Enter') handleSaveCategory();
+                    if (e.key === 'Escape') handleCancelEditCategory();
+                  }} autoFocus className="h-6 text-xs font-semibold" />
+                      </div> : <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
+                  id: category.id,
+                  name: category.name
+                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
                             {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                           </SortableContext>
                         </div>
-                      </SortableCategory>
-                    )}
-                  </div>
-                ))}
+                      </SortableCategory>}
+                  </div>)}
               </SortableContext>
 
               {/* Drag Overlay for visual feedback */}

@@ -105,7 +105,7 @@ export function PollDisplay({ poll, channelId, threadId }: PollDisplayProps) {
               <button
                 key={option.id}
                 onClick={() => handleOptionClick(option.id)}
-                disabled={isExpired && !hasVoted}
+                disabled={(isExpired && !hasVoted) || (showResults && !hasVoted)}
                 className={cn(
                   "w-full relative rounded-md border transition-all text-left overflow-hidden",
                   isSelected || isVoted
@@ -174,14 +174,25 @@ export function PollDisplay({ poll, channelId, threadId }: PollDisplayProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {!shouldShowResults && (
+            {!shouldShowResults && !hasVoted && !isExpired && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowResults(true)}
                 className="text-xs h-8"
               >
-                Afficher les votes
+                Afficher les résultats
+              </Button>
+            )}
+            
+            {showResults && !hasVoted && !isExpired && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowResults(false)}
+                className="text-xs h-8"
+              >
+                Revenir aux votes
               </Button>
             )}
             

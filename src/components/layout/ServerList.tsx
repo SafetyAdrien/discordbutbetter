@@ -245,7 +245,7 @@ export function ServerList({
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">
-          <p>Créer un serveur</p>
+          <p>Ajouter un serveur</p>
         </TooltipContent>
       </Tooltip>
 

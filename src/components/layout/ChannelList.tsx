@@ -173,7 +173,7 @@ function SortableCategory({
               onToggle();
             }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-sm text-[#9b9ca3] font-medium my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
+              <span className="tracking-wide font-ginto text-[11px] text-[#9b9ca3] font-semibold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();
@@ -307,7 +307,7 @@ function SortableChannel({
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
               <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
-            <span className="truncate flex-1 text-left font-ginto text-sm text-[#9b9ca3] font-normal">{channel.name}</span>
+            <span className="truncate flex-1 text-left font-ginto text-[15px] text-[#9b9ca3] font-medium">{channel.name}</span>
             
               {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                   {channel.unreadCount}

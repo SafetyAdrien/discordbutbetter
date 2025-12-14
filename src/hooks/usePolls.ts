@@ -212,7 +212,7 @@ export function useThreadPolls(threadId: string | null) {
 
 export function useCreatePoll() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async (data: CreatePollData) => {
@@ -250,17 +250,62 @@ export function useCreatePoll() {
 
       return poll;
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (data) => {
+      if (!user) return;
+      
+      const queryKey = data.threadId 
+        ? ['polls', 'thread', data.threadId] 
+        : ['polls', 'channel', data.channelId];
+      
+      await queryClient.cancelQueries({ queryKey });
+      const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
+      
+      const tempPoll: Poll = {
+        id: `temp-${Date.now()}`,
+        channel_id: data.channelId,
+        thread_id: data.threadId || null,
+        author_id: user.id,
+        question: data.question,
+        allow_multiple: data.allowMultiple,
+        expires_at: data.expiresAt?.toISOString() || null,
+        created_at: new Date().toISOString(),
+        author: profile ? {
+          id: user.id,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          username: profile.username,
+        } : undefined,
+        options: data.options.map((opt, i) => ({
+          id: `temp-opt-${i}`,
+          poll_id: `temp-${Date.now()}`,
+          text: opt.text,
+          emoji: opt.emoji,
+          position: i
+        })),
+        votes: []
+      };
+      
+      queryClient.setQueryData<Poll[]>(queryKey, old => 
+        old ? [...old, tempPoll] : [tempPoll]
+      );
+      
+      return { previousPolls, queryKey };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousPolls && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousPolls);
+      }
+      toast.error('Erreur lors de la création du sondage');
+    },
+    onSuccess: () => {
+      toast.success('Sondage créé');
+    },
+    onSettled: (_, __, variables) => {
       if (variables.threadId) {
         queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
       }
-      toast.success('Sondage créé');
-    },
-    onError: (error) => {
-      console.error('Error creating poll:', error);
-      toast.error('Erreur lors de la création du sondage');
     }
   });
 }
@@ -386,16 +431,32 @@ export function useDeletePoll() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ pollId, channelId, threadId }) => {
+      const queryKey = threadId ? ['polls', 'thread', threadId] : ['polls', 'channel', channelId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
+      
+      queryClient.setQueryData<Poll[]>(queryKey, old => 
+        old?.filter(p => p.id !== pollId)
+      );
+      
+      return { previousPolls, queryKey };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousPolls && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousPolls);
+      }
+      toast.error('Erreur lors de la suppression du sondage');
+    },
+    onSuccess: () => {
+      toast.success('Sondage supprimé');
+    },
+    onSettled: (_, __, variables) => {
       if (variables.threadId) {
         queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
       }
-      toast.success('Sondage supprimé');
-    },
-    onError: () => {
-      toast.error('Erreur lors de la suppression du sondage');
     }
   });
 }
@@ -443,16 +504,46 @@ export function useUpdatePoll() {
 
       if (optionsError) throw optionsError;
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (data) => {
+      const queryKey = data.threadId ? ['polls', 'thread', data.threadId] : ['polls', 'channel', data.channelId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
+      
+      queryClient.setQueryData<Poll[]>(queryKey, old => 
+        old?.map(poll => 
+          poll.id === data.pollId 
+            ? {
+                ...poll,
+                question: data.question,
+                options: data.options.map((opt, i) => ({
+                  id: opt.id || `temp-opt-${i}`,
+                  poll_id: data.pollId,
+                  text: opt.text,
+                  emoji: opt.emoji,
+                  position: i
+                }))
+              }
+            : poll
+        )
+      );
+      
+      return { previousPolls, queryKey };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousPolls && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousPolls);
+      }
+      toast.error('Erreur lors de la modification du sondage');
+    },
+    onSuccess: () => {
+      toast.success('Sondage modifié');
+    },
+    onSettled: (_, __, variables) => {
       if (variables.threadId) {
         queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
       }
-      toast.success('Sondage modifié');
-    },
-    onError: () => {
-      toast.error('Erreur lors de la modification du sondage');
     }
   });
 }

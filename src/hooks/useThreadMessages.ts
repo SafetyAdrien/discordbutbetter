@@ -113,20 +113,40 @@ export const useEditThreadMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
+    mutationFn: async ({ messageId, content, threadId }: { messageId: string; content: string; threadId: string }) => {
       const { error } = await supabase
         .from('thread_messages')
         .update({ content, edited_at: new Date().toISOString() })
         .eq('id', messageId);
 
       if (error) throw error;
+      return { messageId, content, threadId };
+    },
+    onMutate: async ({ messageId, content, threadId }) => {
+      await queryClient.cancelQueries({ queryKey: ['thread-messages', threadId] });
+      const previous = queryClient.getQueryData(['thread-messages', threadId]);
+      
+      queryClient.setQueryData(['thread-messages', threadId], (old: ThreadMessage[] | undefined) =>
+        old?.map(m => 
+          m.id === messageId 
+            ? { ...m, content, edited_at: new Date().toISOString() } 
+            : m
+        )
+      );
+      
+      return { previous, threadId };
+    },
+    onError: (_, { threadId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['thread-messages', threadId], context.previous);
+      }
+      toast.error('Erreur lors de la modification');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thread-messages'] });
       toast.success('Message modifié');
     },
-    onError: () => {
-      toast.error('Erreur lors de la modification');
+    onSettled: (_, __, { threadId }) => {
+      queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });
     },
   });
 };
@@ -135,20 +155,36 @@ export const useDeleteThreadMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (messageId: string) => {
+    mutationFn: async ({ messageId, threadId }: { messageId: string; threadId: string }) => {
       const { error } = await supabase
         .from('thread_messages')
         .delete()
         .eq('id', messageId);
 
       if (error) throw error;
+      return { messageId, threadId };
+    },
+    onMutate: async ({ messageId, threadId }) => {
+      await queryClient.cancelQueries({ queryKey: ['thread-messages', threadId] });
+      const previous = queryClient.getQueryData(['thread-messages', threadId]);
+      
+      queryClient.setQueryData(['thread-messages', threadId], (old: ThreadMessage[] | undefined) =>
+        old?.filter(m => m.id !== messageId)
+      );
+      
+      return { previous, threadId };
+    },
+    onError: (_, { threadId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['thread-messages', threadId], context.previous);
+      }
+      toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thread-messages'] });
       toast.success('Message supprimé');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression');
+    onSettled: (_, __, { threadId }) => {
+      queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });
     },
   });
 };

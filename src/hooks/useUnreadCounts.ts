@@ -83,8 +83,26 @@ export function useUnreadCounts() {
         });
 
       if (error) throw error;
+      return conversationId;
     },
-    onSuccess: () => {
+    onMutate: async (conversationId) => {
+      await queryClient.cancelQueries({ queryKey: ['unread-counts', user?.id] });
+      const previousCounts = queryClient.getQueryData<Record<string, number>>(['unread-counts', user?.id]);
+      
+      queryClient.setQueryData<Record<string, number>>(['unread-counts', user?.id], old => {
+        if (!old) return {};
+        const { [conversationId]: _, ...rest } = old;
+        return rest;
+      });
+      
+      return { previousCounts };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousCounts) {
+        queryClient.setQueryData(['unread-counts', user?.id], context.previousCounts);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
     },
   });

@@ -19,6 +19,12 @@ export interface Invite {
   };
 }
 
+interface Server {
+  id: string;
+  name: string;
+  icon_url: string | null;
+}
+
 export function useServerInvites(serverId: string | null) {
   const { user } = useAuth();
 
@@ -176,11 +182,16 @@ export function useJoinByInvite() {
       if (error) throw error;
       return data as string; // server_id
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      toast.success('Vous avez rejoint le serveur !');
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData<Server[]>(['servers']);
+      
+      return { previousServers };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
       if (error.message.includes('expired')) {
         toast.error('Cette invitation a expiré');
       } else if (error.message.includes('maximum')) {
@@ -188,6 +199,12 @@ export function useJoinByInvite() {
       } else {
         toast.error('Invitation invalide');
       }
+    },
+    onSuccess: () => {
+      toast.success('Vous avez rejoint le serveur !');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }

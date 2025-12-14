@@ -116,7 +116,9 @@ function SortableCategory({
   onToggle,
   onEdit,
   onCreateChannel,
-  onDelete
+  onDelete,
+  showDropIndicator = false,
+  dropPosition = 'after'
 }: {
   category: Category;
   children: React.ReactNode;
@@ -125,6 +127,8 @@ function SortableCategory({
   onEdit: () => void;
   onCreateChannel: () => void;
   onDelete: () => void;
+  showDropIndicator?: boolean;
+  dropPosition?: 'before' | 'after';
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -144,6 +148,7 @@ function SortableCategory({
     opacity: isDragging ? 0.4 : 1
   };
   return <>
+    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
     <div ref={setNodeRef} style={style} className={cn("mb-2", isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
@@ -183,6 +188,7 @@ function SortableCategory({
       </ContextMenu>
       {!isCollapsed && children}
     </div>
+    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
     {/* Delete Category Confirmation Dialog */}
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -862,7 +868,7 @@ export function ChannelList({
                     </div> : <SortableCategory key={category.id} category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                 id: category.id,
                 name: category.name
-              })} onDelete={() => handleDeleteCategory(category.id)}>
+              })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
                           {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} />)}

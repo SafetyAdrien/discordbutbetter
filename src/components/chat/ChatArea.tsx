@@ -1,7 +1,7 @@
 import { useState, forwardRef, useEffect, useMemo } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, Smile, BarChart2 } from 'lucide-react';
+import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, Smile, SmilePlus, BarChart2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -161,43 +161,113 @@ function PollActions({
   onCopyLink,
   onEdit,
   onDelete,
-  isOwnPoll
+  onReply,
+  onAddReaction,
+  isOwnPoll,
+  isShiftPressed
 }: {
   isVisible: boolean;
   onCopyLink: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onReply: () => void;
+  onAddReaction: (emoji: string) => void;
   isOwnPoll: boolean;
+  isShiftPressed: boolean;
 }) {
   if (!isVisible) return null;
-  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
-            <Link className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">Copier le lien</TooltipContent>
-      </Tooltip>
-      {isOwnPoll && <>
+  
+  return (
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+      {isShiftPressed ? (
+        <>
+          {/* Mode SHIFT: Réactions rapides */}
+          {QUICK_REACTIONS.map((emoji) => (
+            <Tooltip key={emoji}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onAddReaction(emoji)}
+                  className="p-1 hover:bg-muted rounded transition-colors text-base"
+                >
+                  {emoji}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{emoji}</TooltipContent>
+            </Tooltip>
+          ))}
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                <SmilePlus className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" className="w-64 p-2">
+              <div className="grid grid-cols-8 gap-1">
+                {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => onAddReaction(emoji)}
+                    className="p-1 hover:bg-muted rounded text-lg transition-colors"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </>
+      ) : (
+        <>
+          {/* Mode normal: boutons standards */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
-                <Pencil className="w-4 h-4 text-muted-foreground" />
+              <button onClick={onReply} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Reply className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">Modifier</TooltipContent>
+            <TooltipContent side="top">Répondre</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
-                <Trash2 className="w-4 h-4 text-destructive" />
+              <button onClick={() => onAddReaction('👍')} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Smile className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">Supprimer</TooltipContent>
+            <TooltipContent side="top">Ajouter une réaction</TooltipContent>
           </Tooltip>
-        </>}
-    </div>;
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Link className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Copier le lien</TooltipContent>
+          </Tooltip>
+          {isOwnPoll && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Modifier</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Supprimer</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 interface Role {
   id: string;
@@ -260,6 +330,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isSending, setIsSending] = useState(false);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
+
+  // Détection de la touche SHIFT
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftPressed(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftPressed(false);
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
   const {
     user
   } = useAuth();
@@ -342,6 +431,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   const handleReply = (message: Message) => {
     setReplyingTo(message);
+  };
+
+  const handleReplyToPoll = (poll: Poll) => {
+    // Créer un pseudo-message de réponse référençant le sondage
+    setReplyingTo({
+      id: poll.id,
+      content: `📊 ${poll.question}`,
+      author: {
+        id: poll.author?.id || '',
+        displayName: poll.author?.display_name || 'Utilisateur inconnu',
+        username: poll.author?.username || 'unknown',
+        avatar: poll.author?.avatar_url || undefined
+      },
+      timestamp: new Date(poll.created_at),
+      edited: false
+    } as Message);
   };
   const handleUserClick = (author: User) => {
     const roles = memberRoles?.get(author.id);
@@ -586,7 +691,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           return <ContextMenu key={`poll-${poll.id}`}>
                 <ContextMenuTrigger asChild>
                   <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredPollId(poll.id)} onMouseLeave={() => setHoveredPollId(null)}>
-                    <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} isOwnPoll={isOwnPoll} />
+                    <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} onReply={() => handleReplyToPoll(poll)} onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)} isOwnPoll={isOwnPoll} isShiftPressed={isShiftPressed} />
                     {showAuthor ? <div className="flex gap-3 my-0 py-[5px]">
                         <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                           <AvatarImage src={poll.author?.avatar_url || undefined} />

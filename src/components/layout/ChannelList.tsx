@@ -8,7 +8,7 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -32,9 +32,10 @@ import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, ChannelType, OrphanChannel } from '@/hooks/useChannels';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
 
 // Drop Indicator Component
 function DropIndicator({
@@ -132,7 +133,8 @@ function SortableCategory({
     transition,
     isDragging
   } = useSortable({
-    id: `category-${category.id}`
+    id: `category-${category.id}`,
+    data: { type: 'category', categoryId: category.id }
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -257,7 +259,8 @@ function SortableChannel({
     transition,
     isDragging
   } = useSortable({
-    id: `channel-${channel.id}`
+    id: `channel-${channel.id}`,
+    data: { type: 'channel', channelId: channel.id }
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -520,15 +523,50 @@ export function ChannelList({
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
+
+  // Custom collision detection that filters by dragged item type
+  const customCollisionDetection: CollisionDetection = useCallback((args) => {
+    const { active } = args;
+    const activeIdStr = active.id.toString();
+    const isCategory = activeIdStr.startsWith('category-');
+    
+    // Use closestCenter as base detection
+    const collisions = closestCenter(args);
+    
+    // Filter collisions to only allow same-type drops
+    return collisions.filter(collision => {
+      const collidedId = collision.id.toString();
+      if (isCategory) {
+        // Categories can only be dropped on other categories
+        return collidedId.startsWith('category-');
+      } else {
+        // Channels can be dropped on channels OR on category headers (to add to category)
+        return collidedId.startsWith('channel-') || collidedId.startsWith('category-');
+      }
+    });
+  }, []);
+
   const handleDragOver = (event: DragOverEvent) => {
-    const {
-      over
-    } = event;
-    if (over && over.id !== activeId) {
-      setOverId(over.id as string);
-    } else {
+    const { active, over } = event;
+    if (!over || over.id === active.id) {
       setOverId(null);
+      return;
     }
+
+    const activeIdStr = active.id.toString();
+    const overIdStr = over.id.toString();
+    
+    // Strict type validation for drop indicator
+    const isActiveCategory = activeIdStr.startsWith('category-');
+    const isOverCategory = overIdStr.startsWith('category-');
+    
+    // Categories can only show indicator over other categories
+    if (isActiveCategory && !isOverCategory) {
+      setOverId(null);
+      return;
+    }
+    
+    setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
     setOverId(null);
@@ -741,7 +779,7 @@ export function ChannelList({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {orphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>

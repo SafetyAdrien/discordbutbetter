@@ -48,10 +48,10 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     try {
       await updateChannel.mutateAsync({
         channelId: channel.id,
+        serverId: channel.server_id,
         name: name.trim(),
         description: description.trim() || undefined,
       });
-      toast.success('Salon mis à jour');
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
     }

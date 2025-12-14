@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { useCreatePoll } from '@/hooks/usePolls';
-import { Plus, Trash2, Smile, X } from 'lucide-react';
+import { Plus, Trash2, Smile } from 'lucide-react';
 
 interface CreatePollModalProps {
   channelId: string;
   serverId: string | null;
-  trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -36,14 +35,9 @@ const DURATION_OPTIONS = [
 export function CreatePollModal({ 
   channelId, 
   serverId, 
-  trigger,
-  open: controlledOpen,
-  onOpenChange: controlledOnOpenChange
+  open = false,
+  onOpenChange
 }: CreatePollModalProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
-  const setOpen = controlledOnOpenChange || setInternalOpen;
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<PollOptionInput[]>([
     { id: '1', text: '', emoji: null },
@@ -51,9 +45,12 @@ export function CreatePollModal({
   ]);
   const [duration, setDuration] = useState('24h');
   const [allowMultiple, setAllowMultiple] = useState(false);
-  const [activeEmojiPicker, setActiveEmojiPicker] = useState<string | null>(null);
 
   const createPoll = useCreatePoll();
+
+  const setOpen = (value: boolean) => {
+    onOpenChange?.(value);
+  };
 
   const addOption = () => {
     if (options.length >= 10) return;
@@ -111,26 +108,13 @@ export function CreatePollModal({
   const isValid = question.trim() && options.some(opt => opt.text.trim());
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      {trigger && (
-        <PopoverTrigger asChild>
-          {trigger}
-        </PopoverTrigger>
-      )}
-      <PopoverContent
-        side="top" 
-        align="start" 
-        className="w-[400px] p-0 bg-[#313338] border-none shadow-xl"
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <h3 className="font-semibold text-foreground">Créer un sondage</h3>
-          <button
-            onClick={() => setOpen(false)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-[450px] p-0 bg-[#313338] border-none gap-0">
+        <DialogHeader className="px-4 py-3 border-b border-white/10">
+          <DialogTitle className="font-semibold text-foreground">
+            Créer un sondage
+          </DialogTitle>
+        </DialogHeader>
 
         <ScrollArea className="max-h-[400px]">
           <div className="p-4 space-y-4">
@@ -251,7 +235,7 @@ export function CreatePollModal({
             Publier
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }

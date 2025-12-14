@@ -511,8 +511,8 @@ export function ChannelList({
     // Toujours sélectionner le canal pour afficher son interface
     onChannelSelect(channel.id);
 
-    // Pour les salons vocaux, également rejoindre le voice chat
-    if (channel.type === 'voice') {
+    // Pour les salons vocaux et stage, également rejoindre automatiquement
+    if (channel.type === 'voice' || channel.type === 'stage') {
       joinChannel(channel.id, channel.name, server.name);
     }
   };

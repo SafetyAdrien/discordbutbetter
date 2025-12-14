@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,6 +14,7 @@ import { useThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
 import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
+import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
 import { PollDisplay } from '@/components/chat/PollDisplay';
 import { CreatePollModal } from '@/components/chat/CreatePollModal';
 import { ThreadMessage } from '@/types/thread';
@@ -49,6 +50,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const { data: thread } = useThread(threadId);
   const { data: messages = [] } = useThreadMessages(threadId);
   const { data: polls = [] } = useThreadPolls(threadId);
+  const { data: isFollowing } = useIsFollowingThread(threadId);
+  const followThread = useFollowThread();
+  const unfollowThread = useUnfollowThread();
   const sendMessage = useSendThreadMessage();
   const markAsRead = useMarkThreadAsRead();
   const deletePoll = useDeletePoll();
@@ -201,16 +205,53 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <StreamlineThreads className="w-5 h-5 text-muted-foreground shrink-0" />
           <span className="font-semibold text-foreground truncate">
             {thread?.name || 'Thread'}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Hash className="w-3 h-3" />
           <span>{channelName}</span>
         </div>
+        
+        {/* Bouton Suivre/Ne plus suivre */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (isFollowing) {
+                  unfollowThread.mutate(threadId);
+                } else {
+                  followThread.mutate(threadId);
+                }
+              }}
+              className={cn(
+                "gap-1.5 ml-2",
+                isFollowing && "text-primary"
+              )}
+              disabled={followThread.isPending || unfollowThread.isPending}
+            >
+              {isFollowing ? (
+                <>
+                  <Bell className="w-4 h-4 fill-current" />
+                  <span className="text-sm">Suivi</span>
+                </>
+              ) : (
+                <>
+                  <BellOff className="w-4 h-4" />
+                  <span className="text-sm">Suivre</span>
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {isFollowing ? 'Ne plus suivre ce thread' : 'Suivre ce thread'}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Messages */}

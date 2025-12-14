@@ -83,6 +83,15 @@ export const useCreateThread = () => {
         .single();
 
       if (error) throw error;
+      
+      // Auto-follow the thread after creation
+      await supabase
+        .from('thread_followers')
+        .insert({
+          thread_id: data.id,
+          user_id: authUser.id,
+        });
+      
       return data;
     },
     onMutate: async ({ channelId, name }) => {

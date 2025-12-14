@@ -231,7 +231,7 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-card rounded-lg overflow-hidden max-w-[500px]">
+    <div className="bg-poll rounded-lg overflow-hidden max-w-[500px]">
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         

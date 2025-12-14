@@ -88,6 +88,7 @@
     --dnd: 0 72% 51%;
     --offline: 215 20% 45%;
     --voice-active: 142 76% 46%;
+    --poll-background: 230 25% 10%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));

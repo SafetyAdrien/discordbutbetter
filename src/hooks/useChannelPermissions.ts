@@ -66,8 +66,41 @@ export function useSetPermissionOverride() {
         );
 
       if (error) throw error;
+      return { channelId, roleId, permission, type };
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ channelId, roleId, permission, type }) => {
+      await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
+      const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
+      
+      const existingIndex = previousOverrides?.findIndex(
+        o => o.role_id === roleId && o.permission === permission
+      );
+      
+      const newOverride: ChannelPermissionOverride = {
+        id: `temp-${Date.now()}`,
+        channel_id: channelId,
+        role_id: roleId,
+        permission,
+        type,
+        sync_with_category: false,
+      };
+      
+      queryClient.setQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId], old => {
+        if (!old) return [newOverride];
+        if (existingIndex !== undefined && existingIndex >= 0) {
+          return old.map((o, i) => i === existingIndex ? newOverride : o);
+        }
+        return [...old, newOverride];
+      });
+      
+      return { previousOverrides, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousOverrides) {
+        queryClient.setQueryData(['channel-permissions', channelId], context.previousOverrides);
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
     },
   });
@@ -94,8 +127,24 @@ export function useRemovePermissionOverride() {
         .eq('permission', permission);
 
       if (error) throw error;
+      return { channelId, roleId, permission };
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ channelId, roleId, permission }) => {
+      await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
+      const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
+      
+      queryClient.setQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId], old =>
+        old?.filter(o => !(o.role_id === roleId && o.permission === permission))
+      );
+      
+      return { previousOverrides, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousOverrides) {
+        queryClient.setQueryData(['channel-permissions', channelId], context.previousOverrides);
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
     },
   });
@@ -113,8 +162,22 @@ export function useSyncWithCategory() {
         .eq('channel_id', channelId);
 
       if (error) throw error;
+      return { channelId };
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
+      const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
+      
+      queryClient.setQueryData(['channel-permissions', channelId], []);
+      
+      return { previousOverrides, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousOverrides) {
+        queryClient.setQueryData(['channel-permissions', channelId], context.previousOverrides);
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
     },
   });

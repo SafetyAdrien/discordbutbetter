@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Thread } from '@/types/thread';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useThreads = (channelId: string | undefined) => {
   return useQuery({
@@ -63,18 +64,19 @@ export const useThread = (threadId: string | undefined) => {
 
 export const useCreateThread = () => {
   const queryClient = useQueryClient();
+  const { user, profile } = useAuth();
   
   return useMutation({
     mutationFn: async ({ channelId, name, messageId }: { channelId: string; name: string; messageId?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
       
       const { data, error } = await supabase
         .from('threads')
         .insert({
           channel_id: channelId,
           name,
-          created_by: user.id,
+          created_by: authUser.id,
           message_id: messageId || null,
         })
         .select()
@@ -83,12 +85,50 @@ export const useCreateThread = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+    onMutate: async ({ channelId, name }) => {
+      if (!user) return;
+      
+      await queryClient.cancelQueries({ queryKey: ['threads', channelId] });
+      const previousThreads = queryClient.getQueryData(['threads', channelId]);
+      
+      const tempThread: Thread = {
+        id: `temp-${Date.now()}`,
+        channel_id: channelId,
+        name,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+        last_message_at: new Date().toISOString(),
+        archived: false,
+        archived_at: null,
+        message_id: null,
+        message_count: 0,
+        creator: profile ? {
+          id: user.id,
+          username: profile.username,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+        } : undefined,
+      };
+      
+      queryClient.setQueryData(['threads', channelId], (old: Thread[] | undefined) =>
+        old ? [tempThread, ...old] : [tempThread]
+      );
+      
+      return { previousThreads, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousThreads) {
+        queryClient.setQueryData(['threads', channelId], context.previousThreads);
+      }
+      toast.error('Erreur lors de la création du thread');
+    },
+    onSuccess: () => {
       toast.success('Thread créé');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création du thread');
+    onSettled: (data) => {
+      if (data?.channel_id) {
+        queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+      }
     },
   });
 };
@@ -97,20 +137,36 @@ export const useArchiveThread = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (threadId: string) => {
+    mutationFn: async ({ threadId, channelId }: { threadId: string; channelId: string }) => {
       const { error } = await supabase
         .from('threads')
         .update({ archived: true, archived_at: new Date().toISOString() })
         .eq('id', threadId);
 
       if (error) throw error;
+      return { threadId, channelId };
+    },
+    onMutate: async ({ threadId, channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['threads', channelId] });
+      const previousThreads = queryClient.getQueryData(['threads', channelId]);
+      
+      queryClient.setQueryData(['threads', channelId], (old: Thread[] | undefined) =>
+        old?.filter(t => t.id !== threadId)
+      );
+      
+      return { previousThreads, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousThreads) {
+        queryClient.setQueryData(['threads', channelId], context.previousThreads);
+      }
+      toast.error('Erreur lors de l\'archivage');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['threads'] });
       toast.success('Thread archivé');
     },
-    onError: () => {
-      toast.error('Erreur lors de l\'archivage');
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
     },
   });
 };
@@ -119,20 +175,36 @@ export const useDeleteThread = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (threadId: string) => {
+    mutationFn: async ({ threadId, channelId }: { threadId: string; channelId: string }) => {
       const { error } = await supabase
         .from('threads')
         .delete()
         .eq('id', threadId);
 
       if (error) throw error;
+      return { threadId, channelId };
+    },
+    onMutate: async ({ threadId, channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['threads', channelId] });
+      const previousThreads = queryClient.getQueryData(['threads', channelId]);
+      
+      queryClient.setQueryData(['threads', channelId], (old: Thread[] | undefined) =>
+        old?.filter(t => t.id !== threadId)
+      );
+      
+      return { previousThreads, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousThreads) {
+        queryClient.setQueryData(['threads', channelId], context.previousThreads);
+      }
+      toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['threads'] });
       toast.success('Thread supprimé');
     },
-    onError: () => {
-      toast.error('Erreur lors de la suppression');
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
     },
   });
 };

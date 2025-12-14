@@ -98,7 +98,7 @@ export const useMarkThreadAsRead = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (threadId: string) => {
+    mutationFn: async ({ threadId, channelId }: { threadId: string; channelId: string }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const { error } = await supabase
@@ -112,9 +112,27 @@ export const useMarkThreadAsRead = () => {
         });
 
       if (error) throw error;
+      return { threadId, channelId };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['thread-unread-counts'] });
+    onMutate: async ({ threadId, channelId }) => {
+      await queryClient.cancelQueries({ queryKey: ['thread-unread-counts', channelId, user?.id] });
+      const previousCounts = queryClient.getQueryData<Record<string, number>>(['thread-unread-counts', channelId, user?.id]);
+      
+      queryClient.setQueryData<Record<string, number>>(['thread-unread-counts', channelId, user?.id], old => {
+        if (!old) return {};
+        const { [threadId]: _, ...rest } = old;
+        return rest;
+      });
+      
+      return { previousCounts, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousCounts) {
+        queryClient.setQueryData(['thread-unread-counts', channelId, user?.id], context.previousCounts);
+      }
+    },
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['thread-unread-counts', channelId] });
     },
   });
 };

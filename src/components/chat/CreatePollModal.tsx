@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
-import { useCreatePoll } from '@/hooks/usePolls';
+import { useCreatePoll, useUpdatePoll, Poll } from '@/hooks/usePolls';
 import { Plus, Trash2, Smile } from 'lucide-react';
 
 interface CreatePollModalProps {
@@ -17,6 +17,7 @@ interface CreatePollModalProps {
   threadId?: string | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  editPoll?: Poll | null;
 }
 
 interface PollOptionInput {
@@ -38,7 +39,8 @@ export function CreatePollModal({
   serverId,
   threadId,
   open = false,
-  onOpenChange
+  onOpenChange,
+  editPoll
 }: CreatePollModalProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<PollOptionInput[]>([
@@ -49,6 +51,24 @@ export function CreatePollModal({
   const [allowMultiple, setAllowMultiple] = useState(false);
 
   const createPoll = useCreatePoll();
+  const updatePoll = useUpdatePoll();
+
+  const isEditMode = !!editPoll;
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editPoll) {
+      setQuestion(editPoll.question);
+      setOptions(editPoll.options.map(opt => ({
+        id: opt.id,
+        text: opt.text,
+        emoji: opt.emoji
+      })));
+      setAllowMultiple(editPoll.allow_multiple);
+    } else {
+      resetForm();
+    }
+  }, [editPoll]);
 
   const setOpen = (value: boolean) => {
     onOpenChange?.(value);
@@ -83,19 +103,34 @@ export function CreatePollModal({
     const validOptions = options.filter(opt => opt.text.trim());
     if (!question.trim() || validOptions.length < 1) return;
 
-    createPoll.mutate({
-      channelId,
-      threadId,
-      question: question.trim(),
-      options: validOptions.map(opt => ({ text: opt.text.trim(), emoji: opt.emoji })),
-      allowMultiple,
-      expiresAt: getExpiresAt()
-    }, {
-      onSuccess: () => {
-        setOpen(false);
-        resetForm();
-      }
-    });
+    if (isEditMode && editPoll) {
+      updatePoll.mutate({
+        pollId: editPoll.id,
+        channelId,
+        threadId,
+        question: question.trim(),
+        options: validOptions.map(opt => ({ text: opt.text.trim(), emoji: opt.emoji }))
+      }, {
+        onSuccess: () => {
+          setOpen(false);
+          resetForm();
+        }
+      });
+    } else {
+      createPoll.mutate({
+        channelId,
+        threadId,
+        question: question.trim(),
+        options: validOptions.map(opt => ({ text: opt.text.trim(), emoji: opt.emoji })),
+        allowMultiple,
+        expiresAt: getExpiresAt()
+      }, {
+        onSuccess: () => {
+          setOpen(false);
+          resetForm();
+        }
+      });
+    }
   };
 
   const resetForm = () => {
@@ -109,13 +144,14 @@ export function CreatePollModal({
   };
 
   const isValid = question.trim() && options.some(opt => opt.text.trim());
+  const isPending = createPoll.isPending || updatePoll.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[450px] p-0 bg-[#313338] border-none gap-0">
         <DialogHeader className="px-4 py-3 border-b border-white/10">
           <DialogTitle className="font-semibold text-foreground">
-            Créer un sondage
+            {isEditMode ? 'Modifier le sondage' : 'Créer un sondage'}
           </DialogTitle>
         </DialogHeader>
 
@@ -189,36 +225,40 @@ export function CreatePollModal({
               </div>
             </div>
 
-            {/* Duration */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                Durée
-              </Label>
-              <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger className="bg-[#1e1f22] border-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Duration - Only show in create mode */}
+            {!isEditMode && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                  Durée
+                </Label>
+                <Select value={duration} onValueChange={setDuration}>
+                  <SelectTrigger className="bg-[#1e1f22] border-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATION_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {/* Multiple Answers */}
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id="allow-multiple"
-                checked={allowMultiple}
-                onCheckedChange={(checked) => setAllowMultiple(checked === true)}
-              />
-              <Label htmlFor="allow-multiple" className="text-sm cursor-pointer">
-                Autoriser les réponses multiples
-              </Label>
-            </div>
+            {/* Multiple Answers - Only show in create mode */}
+            {!isEditMode && (
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="allow-multiple"
+                  checked={allowMultiple}
+                  onCheckedChange={(checked) => setAllowMultiple(checked === true)}
+                />
+                <Label htmlFor="allow-multiple" className="text-sm cursor-pointer">
+                  Autoriser les réponses multiples
+                </Label>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
@@ -232,10 +272,10 @@ export function CreatePollModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!isValid || createPoll.isPending}
+            disabled={!isValid || isPending}
             className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm"
           >
-            Publier
+            {isEditMode ? 'Sauvegarder' : 'Publier'}
           </Button>
         </div>
       </DialogContent>

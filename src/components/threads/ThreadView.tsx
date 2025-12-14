@@ -1,12 +1,21 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash, BarChart2 } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { useThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
-import { useThreadPolls, Poll } from '@/hooks/usePolls';
+import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
 import { PollDisplay } from '@/components/chat/PollDisplay';
+import { CreatePollModal } from '@/components/chat/CreatePollModal';
 import { ThreadMessage } from '@/types/thread';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -16,6 +25,8 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { cn } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/clipboard';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ThreadViewProps {
   threadId: string;
@@ -29,17 +40,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [messageContent, setMessageContent] = useState('');
   const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
+  const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   
+  const { user } = useAuth();
   const { data: thread } = useThread(threadId);
   const { data: messages = [] } = useThreadMessages(threadId);
   const { data: polls = [] } = useThreadPolls(threadId);
   const sendMessage = useSendThreadMessage();
   const markAsRead = useMarkThreadAsRead();
+  const deletePoll = useDeletePoll();
   
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
+
+  const handleCopyPollLink = (pollId: string) => {
+    const link = `${window.location.origin}/channels/${serverId}/${channelId}/thread/${threadId}/poll/${pollId}`;
+    copyToClipboard(link, 'Lien du sondage copié');
+  };
+
+  const handleCopyId = (id: string) => {
+    copyToClipboard(id, 'ID copié');
+  };
+
+  const handleDeletePoll = (poll: Poll) => {
+    deletePoll.mutate({ pollId: poll.id, channelId: channelId || thread?.channel_id || '', threadId });
+  };
 
   // Mark thread as read when opened
   useEffect(() => {
@@ -226,58 +254,122 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       prevItem.type !== 'poll' ||
                       (prevItem.data as Poll).author?.id !== poll.author?.id ||
                       (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
+                    const isOwnPoll = user?.id === poll.author_id;
 
                     return (
-                      <div 
-                        key={`poll-${poll.id}`} 
-                        className={cn(
-                          'group rounded-md px-2 hover:bg-muted/50',
-                          showAuthor ? 'pt-2' : 'py-0'
-                        )}
-                      >
-                        {showAuthor ? (
-                          <div className="flex gap-3">
-                            <Avatar className="w-8 h-8 mt-0.5 shrink-0">
-                              <AvatarImage src={poll.author?.avatar_url || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {poll.author?.display_name?.[0] || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-baseline gap-2 mb-0.5">
-                                <span className="font-medium text-foreground text-sm">
-                                  {poll.author?.display_name || 'Inconnu'}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
-                                </span>
-                                <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
-                                  <BarChart2 className="w-3 h-3" />
-                                  POLL
+                      <ContextMenu key={`poll-${poll.id}`}>
+                        <ContextMenuTrigger asChild>
+                          <div 
+                            className={cn(
+                              'group rounded-md px-2 hover:bg-muted/50 relative',
+                              showAuthor ? 'pt-2' : 'py-0'
+                            )}
+                            onMouseEnter={() => setHoveredPollId(poll.id)}
+                            onMouseLeave={() => setHoveredPollId(null)}
+                          >
+                            {hoveredPollId === poll.id && (
+                              <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button onClick={() => handleCopyPollLink(poll.id)} className="p-1.5 hover:bg-muted rounded transition-colors">
+                                      <Link className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">Copier le lien</TooltipContent>
+                                </Tooltip>
+                                {isOwnPoll && (
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button onClick={() => setEditingPoll(poll)} className="p-1.5 hover:bg-muted rounded transition-colors">
+                                          <Pencil className="w-4 h-4 text-muted-foreground" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">Modifier</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button onClick={() => handleDeletePoll(poll)} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+                                          <Trash2 className="w-4 h-4 text-destructive" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">Supprimer</TooltipContent>
+                                    </Tooltip>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                            {showAuthor ? (
+                              <div className="flex gap-3">
+                                <Avatar className="w-8 h-8 mt-0.5 shrink-0">
+                                  <AvatarImage src={poll.author?.avatar_url || undefined} />
+                                  <AvatarFallback className="text-xs">
+                                    {poll.author?.display_name?.[0] || '?'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-baseline gap-2 mb-0.5">
+                                    <span className="font-medium text-foreground text-sm">
+                                      {poll.author?.display_name || 'Inconnu'}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
+                                    </span>
+                                    <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
+                                      <BarChart2 className="w-3 h-3" />
+                                      POLL
+                                    </div>
+                                  </div>
+                                  <div className="mt-1">
+                                    <PollDisplay 
+                                      poll={poll} 
+                                      channelId={channelId || thread?.channel_id || ''} 
+                                      threadId={threadId}
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                              <div className="mt-1">
-                                <PollDisplay 
-                                  poll={poll} 
-                                  channelId={channelId || thread?.channel_id || ''} 
-                                  threadId={threadId}
-                                />
+                            ) : (
+                              <div className="flex gap-3">
+                                <div className="w-8 shrink-0" />
+                                <div className="flex-1">
+                                  <PollDisplay 
+                                    poll={poll} 
+                                    channelId={channelId || thread?.channel_id || ''} 
+                                    threadId={threadId}
+                                  />
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex gap-3">
-                            <div className="w-8 shrink-0" />
-                            <div className="flex-1">
-                              <PollDisplay 
-                                poll={poll} 
-                                channelId={channelId || thread?.channel_id || ''} 
-                                threadId={threadId}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-48">
+                          <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>
+                            <Link className="w-4 h-4 mr-2" />
+                            Copier le lien
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
+                            <Hash className="w-4 h-4 mr-2" />
+                            Copier l'ID
+                          </ContextMenuItem>
+                          {isOwnPoll && (
+                            <>
+                              <ContextMenuSeparator />
+                              <ContextMenuItem onClick={() => setEditingPoll(poll)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Modifier
+                              </ContextMenuItem>
+                              <ContextMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeletePoll(poll)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Supprimer
+                              </ContextMenuItem>
+                            </>
+                          )}
+                        </ContextMenuContent>
+                      </ContextMenu>
                     );
                   }
                   
@@ -334,6 +426,15 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         serverId={serverId}
         channelId={channelId || thread?.channel_id}
         threadId={threadId}
+      />
+      {/* Edit Poll Modal */}
+      <CreatePollModal
+        channelId={channelId || thread?.channel_id || ''}
+        serverId={serverId || null}
+        threadId={threadId}
+        open={!!editingPoll}
+        onOpenChange={(open) => !open && setEditingPoll(null)}
+        editPoll={editingPoll}
       />
     </div>
   );

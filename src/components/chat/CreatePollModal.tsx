@@ -27,11 +27,13 @@ interface PollOptionInput {
 }
 
 const DURATION_OPTIONS = [
+  { value: '1h', label: '1 heure' },
+  { value: '4h', label: '4 heures' },
+  { value: '8h', label: '8 heures' },
   { value: '24h', label: '24 heures' },
   { value: '3d', label: '3 jours' },
   { value: '7d', label: '7 jours' },
-  { value: '14d', label: '2 semaines' },
-  { value: 'unlimited', label: 'Illimité' }
+  { value: '14d', label: '2 semaines' }
 ];
 
 export function CreatePollModal({ 
@@ -91,11 +93,14 @@ export function CreatePollModal({
   const getExpiresAt = (): Date | null => {
     const now = new Date();
     switch (duration) {
+      case '1h': return new Date(now.getTime() + 1 * 60 * 60 * 1000);
+      case '4h': return new Date(now.getTime() + 4 * 60 * 60 * 1000);
+      case '8h': return new Date(now.getTime() + 8 * 60 * 60 * 1000);
       case '24h': return new Date(now.getTime() + 24 * 60 * 60 * 1000);
       case '3d': return new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
       case '7d': return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       case '14d': return new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-      default: return null;
+      default: return new Date(now.getTime() + 24 * 60 * 60 * 1000);
     }
   };
 

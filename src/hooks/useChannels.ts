@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export type ChannelType = 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks';
+export type ChannelType = 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks' | 'stage';
 
 export interface ChannelWithCategory {
   id: string;
@@ -190,7 +190,7 @@ export function useCreateChannel() {
           server_id: serverId,
           category_id: categoryId || null,
           name,
-          type,
+          type: type as 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks',
           position: nextPosition,
         })
         .select()

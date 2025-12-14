@@ -16,7 +16,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <VoiceProvider>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={0}>
           <Toaster />
           <Sonner />
           <BrowserRouter>

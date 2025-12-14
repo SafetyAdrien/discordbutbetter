@@ -31,7 +31,7 @@ export interface Category {
 export interface Channel {
   id: string;
   name: string;
-  type: 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks';
+  type: 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage';
   description?: string;
   unreadCount?: number;
   server_id?: string;

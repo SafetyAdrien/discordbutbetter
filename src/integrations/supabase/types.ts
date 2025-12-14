@@ -1148,6 +1148,154 @@ export type Database = {
           },
         ]
       }
+      stage_hand_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_hand_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_hand_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "stage_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_hand_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_participants: {
+        Row: {
+          id: string
+          is_muted: boolean | null
+          is_video_on: boolean | null
+          joined_at: string | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_muted?: boolean | null
+          is_video_on?: boolean | null
+          joined_at?: string | null
+          role?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_muted?: boolean | null
+          is_video_on?: boolean | null
+          joined_at?: string | null
+          role?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "stage_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_sessions: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          description: string | null
+          ended_at: string | null
+          id: string
+          started_at: string | null
+          started_by: string | null
+          status: string
+          title: string | null
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          title?: string | null
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_sessions_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_sessions_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       typing_indicators: {
         Row: {
           channel_id: string | null

@@ -17,6 +17,7 @@ import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
+import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { useCreateChannel, ChannelType } from '@/hooks/useChannels';
 import {
   Select,
@@ -38,6 +39,7 @@ interface CreateChannelModalProps {
 const channelTypes: { value: ChannelType; label: string; icon: React.ElementType; description: string }[] = [
   { value: 'text', label: 'Textuel', icon: StreamlineHash, description: 'Envoyer des messages' },
   { value: 'voice', label: 'Vocal', icon: StreamlineVoice, description: 'Parler en temps réel' },
+  { value: 'stage', label: 'Conférence', icon: StreamlineStage, description: 'Sessions avec speakers et audience' },
   { value: 'forum', label: 'Forum', icon: StreamlineForum, description: 'Discussions organisées' },
   { value: 'announcement', label: 'Annonce', icon: StreamlineMegaphone, description: 'Messages importants' },
   { value: 'media', label: 'Médias', icon: StreamlineMedia, description: 'Partager des images/vidéos' },

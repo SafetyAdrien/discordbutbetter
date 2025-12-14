@@ -83,6 +83,7 @@ interface ChannelListProps {
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
 }
+
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;
 }
@@ -166,7 +167,7 @@ function SortableCategory({
     <div ref={setNodeRef} style={style} className={cn(isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex items-center gap-1 px-2 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab py-[10px]">
+          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
@@ -376,23 +377,38 @@ function SortableChannel({
       </div>
       
       {/* Threads for text channels - OUTSIDE draggable div */}
-      {channel.type === 'text' && threads.length > 0 && <div className="ml-6 mt-1 space-y-0.5">
-          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <div key={thread.id} className="flex items-center">
+      {channel.type === 'text' && threads.length > 0 && (
+        <div className="ml-6 mt-1 space-y-0.5">
+          {threads
+            .filter(thread => showArchivedThreads || !thread.archived)
+            .map(thread => (
+              <div key={thread.id} className="flex items-center">
                 <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mr-0.5" />
-                <button onClick={e => {
-          e.stopPropagation();
-          onThreadSelect?.(thread.id);
-        }} className={cn("flex-1 px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors text-left truncate", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onThreadSelect?.(thread.id);
+                  }}
+                  className={cn(
+                    "flex-1 px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors text-left truncate",
+                    activeThreadId === thread.id && "bg-muted",
+                    thread.archived && "opacity-50"
+                  )}
+                >
                   <span className="text-muted-foreground hover:text-foreground text-xs">
                     {thread.name}
                     {thread.archived && " (archivé)"}
                   </span>
-                  {thread.unreadCount && thread.unreadCount > 0 && <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
+                  {thread.unreadCount && thread.unreadCount > 0 && (
+                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
                       {thread.unreadCount}
-                    </span>}
+                    </span>
+                  )}
                 </button>
-              </div>)}
-        </div>}
+              </div>
+            ))}
+        </div>
+      )}
       {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
@@ -491,12 +507,8 @@ export function ChannelList({
   }, [server.categories, orphanChannels]);
 
   // Fetch threads for all text channels (we'll use active channel for unread counts)
-  const {
-    data: threads = []
-  } = useThreads(activeChannelId || undefined);
-  const {
-    data: unreadCounts = {}
-  } = useThreadUnreadCounts(activeChannelId || undefined);
+  const { data: threads = [] } = useThreads(activeChannelId || undefined);
+  const { data: unreadCounts = {} } = useThreadUnreadCounts(activeChannelId || undefined);
 
   // Create a map of threads with unread counts
   const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
@@ -505,6 +517,7 @@ export function ChannelList({
       unreadCount: unreadCounts[thread.id] || 0
     }));
   }, [threads, unreadCounts]);
+
   const ownerProfile = membersData?.find(m => m.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {

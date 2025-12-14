@@ -943,21 +943,29 @@ export function ChannelList({
 
               {/* Categories */}
               <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-                {server.categories.map(category => editingCategoryId === category.id ? <div key={category.id} className="px-2 py-1 mb-2">
-                      <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
-                  if (e.key === 'Enter') handleSaveCategory();
-                  if (e.key === 'Escape') handleCancelEditCategory();
-                }} autoFocus className="h-6 text-xs font-semibold" />
-                    </div> : <SortableCategory key={category.id} category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
-                id: category.id,
-                name: category.name
-              })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
-                      <div className="mt-1 px-2 space-y-0.5">
-                        <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
-                        </SortableContext>
+                {server.categories.map((category, index) => (
+                  <div key={category.id} className={cn(index > 0 && "mt-4")}>
+                    {editingCategoryId === category.id ? (
+                      <div className="px-2 py-1 mb-2">
+                        <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveCategory();
+                          if (e.key === 'Escape') handleCancelEditCategory();
+                        }} autoFocus className="h-6 text-xs font-semibold" />
                       </div>
-                    </SortableCategory>)}
+                    ) : (
+                      <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
+                        id: category.id,
+                        name: category.name
+                      })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
+                        <div className="mt-1 px-2 space-y-0.5">
+                          <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
+                          </SortableContext>
+                        </div>
+                      </SortableCategory>
+                    )}
+                  </div>
+                ))}
               </SortableContext>
 
               {/* Drag Overlay for visual feedback */}

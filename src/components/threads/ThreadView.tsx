@@ -71,12 +71,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
   // Mark thread as read when opened
   useEffect(() => {
-    if (threadId) {
-      markAsRead.mutate(threadId);
+    if (threadId && channelId) {
+      markAsRead.mutate({ threadId, channelId });
       setShowNewMessagesBanner(false);
       lastMessageCountRef.current = 0;
     }
-  }, [threadId]);
+  }, [threadId, channelId]);
 
   // Check if user is at bottom of scroll
   const handleScroll = useCallback(() => {
@@ -85,9 +85,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       const atBottom = scrollHeight - scrollTop - clientHeight < 50;
       setIsAtBottom(atBottom);
       
-      if (atBottom) {
+      if (atBottom && channelId) {
         setShowNewMessagesBanner(false);
-        markAsRead.mutate(threadId);
+        markAsRead.mutate({ threadId, channelId });
       }
     }
   }, [threadId, markAsRead]);
@@ -108,12 +108,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   }, [messages]);
 
   const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && channelId) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
       setShowNewMessagesBanner(false);
-      markAsRead.mutate(threadId);
+      markAsRead.mutate({ threadId, channelId });
     }
-  }, [threadId, markAsRead]);
+  }, [threadId, channelId, markAsRead]);
 
   const handleSend = async () => {
     if (!messageContent.trim()) return;

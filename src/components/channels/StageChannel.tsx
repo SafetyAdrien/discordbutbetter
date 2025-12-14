@@ -131,11 +131,11 @@ export function StageChannel({ channel, serverId, canModerate }: StageChannelPro
   };
 
   const handleGoLive = () => {
-    if (session) goLive.mutate(session.id);
+    if (session) goLive.mutate({ sessionId: session.id, channelId: channel.id });
   };
 
   const handleEndSession = () => {
-    if (session) endSession.mutate(session.id);
+    if (session) endSession.mutate({ sessionId: session.id, channelId: channel.id });
   };
 
   const handleJoin = () => {

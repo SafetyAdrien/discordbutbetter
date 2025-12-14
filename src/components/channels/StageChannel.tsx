@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -17,12 +17,13 @@ import {
   useToggleParticipantMute,
   useUpdateSelfMute
 } from '@/hooks/useStageChannel';
+import { useStageWebRTC } from '@/hooks/useStageWebRTC';
+import { soundEffects } from '@/utils/audio/SoundEffects';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { 
   Mic, 
   MicOff, 
@@ -38,7 +39,8 @@ import {
   Check,
   X,
   Radio,
-  Music
+  Music,
+  Volume2
 } from 'lucide-react';
 import type { StageParticipant, StageHandRequest } from '@/types/stage';
 
@@ -99,6 +101,29 @@ export function StageChannel({ channel, serverId, canModerate }: StageChannelPro
   const isSpeaker = myParticipation?.role === 'speaker' || isModerator;
   const isLive = session?.status === 'live';
   const isPreLive = session?.status === 'pre_live';
+
+  // WebRTC for real-time audio
+  const { isConnected: isWebRTCConnected, speakingUsers } = useStageWebRTC({
+    sessionId: session?.id || null,
+    isSpeaker,
+    isMuted: myParticipation?.is_muted ?? true,
+    isLive,
+  });
+
+  // Pre-live music management
+  useEffect(() => {
+    if (isPreLive && myParticipation && !isModerator) {
+      // Start pre-live music for non-moderators waiting
+      soundEffects.playPreLiveMusic();
+    } else {
+      // Stop music when going live or leaving
+      soundEffects.stopPreLiveMusic();
+    }
+    
+    return () => {
+      soundEffects.stopPreLiveMusic();
+    };
+  }, [isPreLive, myParticipation, isModerator]);
 
   // Handlers
   const handleStartSession = () => {
@@ -216,18 +241,31 @@ export function StageChannel({ channel, serverId, canModerate }: StageChannelPro
         </div>
       </div>
 
-      {/* Pre-live waiting screen */}
+      {/* Pre-live waiting screen with music indicator */}
       {isPreLive && !isModerator && (
         <div className="flex-1 flex items-center justify-center bg-muted/30">
           <div className="text-center space-y-4">
-            <div className="w-24 h-24 mx-auto rounded-full bg-muted flex items-center justify-center">
-              <Music className="w-12 h-12 text-muted-foreground animate-pulse" />
+            <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center relative">
+              <Music className="w-12 h-12 text-primary animate-pulse" />
+              {/* Audio waves animation */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex gap-1 items-end h-8">
+                  <div className="w-1 bg-primary/60 rounded-full animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '60%', animationDelay: '0ms' }} />
+                  <div className="w-1 bg-primary/60 rounded-full animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '100%', animationDelay: '150ms' }} />
+                  <div className="w-1 bg-primary/60 rounded-full animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '40%', animationDelay: '300ms' }} />
+                  <div className="w-1 bg-primary/60 rounded-full animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '80%', animationDelay: '450ms' }} />
+                </div>
+              </div>
             </div>
             <div>
               <h3 className="text-lg font-semibold">Session en préparation</h3>
               <p className="text-sm text-muted-foreground">
                 Les modérateurs préparent la session. Veuillez patienter...
               </p>
+              <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground">
+                <Volume2 className="w-3 h-3" />
+                <span>Musique d'ambiance en cours</span>
+              </div>
             </div>
           </div>
         </div>
@@ -251,6 +289,7 @@ export function StageChannel({ channel, serverId, canModerate }: StageChannelPro
                   sessionId={session?.id || ''}
                   onMute={(muted) => toggleMute.mutate({ sessionId: session?.id || '', participantId: speaker.id, muted })}
                   onDemote={() => changeRole.mutate({ sessionId: session?.id || '', userId: speaker.user_id, role: 'audience' })}
+                  isSpeaking={speakingUsers.has(speaker.user_id)}
                 />
               ))}
             </div>
@@ -384,7 +423,8 @@ function SpeakerCard({
   isModerator,
   sessionId,
   onMute,
-  onDemote
+  onDemote,
+  isSpeaking
 }: {
   participant: StageParticipant;
   isMe: boolean;
@@ -392,15 +432,17 @@ function SpeakerCard({
   sessionId: string;
   onMute: (muted: boolean) => void;
   onDemote: () => void;
+  isSpeaking?: boolean;
 }) {
   const isSpeakerModerator = participant.role === 'moderator';
+  const isCurrentlySpeaking = isSpeaking && !participant.is_muted;
   
   return (
     <Popover>
       <PopoverTrigger asChild>
         <div className={cn(
-          "relative flex flex-col items-center p-4 rounded-xl bg-muted/50 cursor-pointer hover:bg-muted transition-colors",
-          !participant.is_muted && "ring-2 ring-[hsl(var(--online))] ring-offset-2 ring-offset-background"
+          "relative flex flex-col items-center p-4 rounded-xl bg-muted/50 cursor-pointer hover:bg-muted transition-all",
+          isCurrentlySpeaking && "ring-2 ring-[hsl(var(--online))] ring-offset-2 ring-offset-background voice-active-ring"
         )}>
           <Avatar className="w-16 h-16 mb-2">
             <AvatarImage src={participant.profile?.avatar_url} />

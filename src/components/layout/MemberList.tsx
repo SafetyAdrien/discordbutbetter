@@ -1,14 +1,10 @@
 import { forwardRef, useState, useMemo, useRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle, Filter, X } from 'lucide-react';
+import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -390,68 +386,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                 />
               </div>
               
-              {/* Role Filter Button */}
-              {filterableRoles.length > 0 && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        selectedRoleFilters.length > 0 && "text-primary"
-                      )}
-                    >
-                      <Filter className="w-4 h-4" />
-                      {selectedRoleFilters.length > 0 && (
-                        <Badge 
-                          variant="secondary" 
-                          className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[10px]"
-                        >
-                          {selectedRoleFilters.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-56 p-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium">Filtrer par rôle</h4>
-                      {selectedRoleFilters.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-xs"
-                          onClick={clearRoleFilters}
-                        >
-                          <X className="w-3 h-3 mr-1" />
-                          Effacer
-                        </Button>
-                      )}
-                    </div>
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {filterableRoles.map(role => (
-                        <div 
-                          key={role.id} 
-                          className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted cursor-pointer"
-                          onClick={() => handleRoleFilterToggle(role.id)}
-                        >
-                          <Checkbox
-                            checked={selectedRoleFilters.includes(role.id)}
-                            onCheckedChange={() => handleRoleFilterToggle(role.id)}
-                          />
-                          <RoleIcon role={role} />
-                          <span 
-                            className="text-sm truncate flex-1"
-                            style={{ color: role.color || undefined }}
-                          >
-                            {role.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
             </div>
             
             {/* Filters suggestions */}

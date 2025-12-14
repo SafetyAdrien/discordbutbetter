@@ -39,9 +39,11 @@ import { CSS } from '@dnd-kit/utilities';
 
 // Drop Indicator Component
 function DropIndicator({
-  isVisible
+  isVisible,
+  position = 'after'
 }: {
   isVisible: boolean;
+  position?: 'before' | 'after';
 }) {
   if (!isVisible) return null;
   return <div className="drop-indicator mx-2 my-0.5" />;
@@ -235,7 +237,8 @@ function SortableChannel({
   onOpenSettings,
   onCreateInvite,
   onDelete,
-  showDropIndicator = false
+  showDropIndicator = false,
+  dropPosition = 'after'
 }: {
   channel: Channel;
   serverId: string;
@@ -249,6 +252,7 @@ function SortableChannel({
   onCreateInvite: () => void;
   onDelete: () => void;
   showDropIndicator?: boolean;
+  dropPosition?: 'before' | 'after';
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -273,7 +277,7 @@ function SortableChannel({
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
   return <>
-      <DropIndicator isVisible={showDropIndicator} />
+      {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
       <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("hover:cursor-grab channel-transition", isDragging && "sortable-ghost")}>
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -350,6 +354,7 @@ function SortableChannel({
         })}
           </div>}
       </div>
+      {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -405,6 +410,7 @@ export function ChannelList({
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
   const {
     profile,
     signOut,
@@ -547,7 +553,7 @@ export function ChannelList({
   }, []);
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
+    const { active, over, delta } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
@@ -566,6 +572,30 @@ export function ChannelList({
       return;
     }
     
+    // Calculate cursor position relative to target element
+    // Using the over element's rect to determine if cursor is in upper or lower half
+    const overRect = over.rect;
+    if (overRect) {
+      // Get the current pointer position by calculating from initial + delta
+      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
+      let clientY = 0;
+      
+      if (activatorEvent) {
+        if ('clientY' in activatorEvent) {
+          clientY = activatorEvent.clientY + delta.y;
+        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
+          clientY = activatorEvent.touches[0].clientY + delta.y;
+        }
+      }
+      
+      // Calculate the middle of the target element
+      const middleY = overRect.top + overRect.height / 2;
+      
+      // If cursor is in upper half → insert BEFORE, lower half → insert AFTER
+      const position: 'before' | 'after' = clientY < middleY ? 'before' : 'after';
+      setDropPosition(position);
+    }
+    
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
@@ -579,18 +609,26 @@ export function ChannelList({
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
 
-    // Handle category reordering
+    // Handle category reordering with precise position
     if (activeIdStr.startsWith('category-') && overIdStr.startsWith('category-')) {
       const activeCatId = activeIdStr.replace('category-', '');
       const overCatId = overIdStr.replace('category-', '');
       const oldIndex = server.categories.findIndex(c => c.id === activeCatId);
-      const newIndex = server.categories.findIndex(c => c.id === overCatId);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(server.categories, oldIndex, newIndex);
-        const orderedIds = newOrder.map(cat => cat.id);
+      const overIndex = server.categories.findIndex(c => c.id === overCatId);
+      if (oldIndex !== -1 && overIndex !== -1) {
+        // Remove active category and insert at precise position based on dropPosition
+        const activeCategory = server.categories[oldIndex];
+        const newCategories = server.categories.filter(c => c.id !== activeCatId);
+        let insertIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+        // Adjust if we removed an element before the insertion point
+        if (oldIndex < overIndex) {
+          insertIndex--;
+        }
+        insertIndex = Math.max(0, Math.min(insertIndex, newCategories.length));
+        newCategories.splice(insertIndex, 0, activeCategory);
         reorderCategories.mutate({
           serverId: server.id,
-          orderedIds
+          orderedIds: newCategories.map(cat => cat.id)
         });
       }
     }
@@ -643,23 +681,40 @@ export function ChannelList({
           description: ch.description || undefined
         }))].find(ch => ch.id === activeChannelId);
         if (activeChannel) {
-          // Same category: perform true swap using arrayMove
+          // Same category: use precise insertion based on dropPosition
           if (sourceCategoryId === targetCategoryId || sourceCategoryId === null && targetCategoryId === null) {
             const oldIndex = targetChannels.findIndex(ch => ch.id === activeChannelId);
-            const newIndex = targetChannels.findIndex(ch => ch.id === overChannelId);
-            if (oldIndex !== -1 && newIndex !== -1) {
-              const newOrder = arrayMove(targetChannels, oldIndex, newIndex);
+            const overIndex = targetChannels.findIndex(ch => ch.id === overChannelId);
+            if (oldIndex !== -1 && overIndex !== -1) {
+              // Remove the active channel from the array
+              const newChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
+              // Calculate insertion index based on dropPosition
+              let insertIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+              // Adjust if we removed an element before the insertion point
+              if (oldIndex < overIndex) {
+                insertIndex--;
+              }
+              // Ensure valid index
+              insertIndex = Math.max(0, Math.min(insertIndex, newChannels.length));
+              // Insert at the precise position
+              newChannels.splice(insertIndex, 0, activeChannel);
               reorderChannels.mutate({
                 serverId: server.id,
                 categoryId: targetCategoryId,
-                orderedIds: newOrder.map(ch => ch.id)
+                orderedIds: newChannels.map(ch => ch.id)
               });
             }
           } else {
-            // Different category: move channel to new category at target position
+            // Different category: move channel to new category at precise position based on dropPosition
             const filteredChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
             const overIdx = filteredChannels.findIndex(ch => ch.id === overChannelId);
-            const newOrder = [...filteredChannels.slice(0, overIdx + 1), activeChannel, ...filteredChannels.slice(overIdx + 1)];
+            // Calculate insertion index based on dropPosition
+            const insertIdx = dropPosition === 'before' ? overIdx : overIdx + 1;
+            const newOrder = [
+              ...filteredChannels.slice(0, insertIdx),
+              activeChannel,
+              ...filteredChannels.slice(insertIdx)
+            ];
             reorderChannels.mutate({
               serverId: server.id,
               categoryId: targetCategoryId,
@@ -793,7 +848,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} />)}
                   </SortableContext>
                 </div>}
 
@@ -810,7 +865,7 @@ export function ChannelList({
               })} onDelete={() => handleDeleteCategory(category.id)}>
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} />)}
+                          {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} />)}
                         </SortableContext>
                       </div>
                     </SortableCategory>)}

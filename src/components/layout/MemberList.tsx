@@ -70,9 +70,11 @@ const searchFilters = [
 function SearchFilters({ 
   onSelectFilter,
   searchQuery,
+  isClosing,
 }: {
   onSelectFilter: (prefix: string) => void;
   searchQuery: string;
+  isClosing: boolean;
 }) {
   // Filter suggestions based on current query
   const availableFilters = useMemo(() => {
@@ -94,7 +96,10 @@ function SearchFilters({
   if (availableFilters.length === 0) return null;
 
   return (
-    <div className="absolute top-full left-0 right-0 z-50 bg-card border border-border rounded-lg shadow-xl p-2 mt-1 animate-slide-down">
+    <div className={cn(
+      "absolute top-full -left-32 right-0 z-50 w-[calc(100%+8rem)] bg-card border border-border rounded-lg shadow-xl p-2 mt-1",
+      isClosing ? "animate-slide-up" : "animate-slide-down"
+    )}>
       <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
       {availableFilters.map(filter => {
         const Icon = filter.icon;
@@ -137,6 +142,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    const [isClosingFilters, setIsClosingFilters] = useState(false);
     const [selectedRoleFilters, setSelectedRoleFilters] = useState<string[]>([]);
     const searchRef = useRef<HTMLInputElement>(null);
 
@@ -379,8 +385,17 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                 placeholder="Rechercher"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setShowFilters(true)}
-                onBlur={() => setTimeout(() => setShowFilters(false), 150)}
+                onFocus={() => {
+                  setIsClosingFilters(false);
+                  setShowFilters(true);
+                }}
+                onBlur={() => {
+                  setIsClosingFilters(true);
+                  setTimeout(() => {
+                    setShowFilters(false);
+                    setIsClosingFilters(false);
+                  }, 150);
+                }}
                 className="h-8 pl-8 text-sm bg-input"
               />
               {/* Filters suggestions - overlay dropdown */}
@@ -388,6 +403,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                 <SearchFilters
                   onSelectFilter={handleSelectFilter}
                   searchQuery={searchQuery}
+                  isClosing={isClosingFilters}
                 />
               )}
             </div>

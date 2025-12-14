@@ -17,6 +17,7 @@ import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
+import ThreadView from '@/components/threads/ThreadView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -34,6 +35,7 @@ const Index = () => {
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeDMId, setActiveDMId] = useState<string | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
@@ -382,6 +384,12 @@ const Index = () => {
                   serverId={activeServer.id}
                   canModerate={activeServer.owner_id === user?.id}
                 />
+              ) : activeThreadId ? (
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelName={channelForChat.name}
+                  onBack={() => setActiveThreadId(null)}
+                />
               ) : (
                 <ChatArea
                   channel={channelForChat}
@@ -391,6 +399,7 @@ const Index = () => {
                   onOpenDM={handleOpenDM}
                   onToggleMembers={handleToggleMembers}
                   showMembers={showMembers}
+                  onSelectThread={(threadId) => setActiveThreadId(threadId)}
                 />
               )}
             </>

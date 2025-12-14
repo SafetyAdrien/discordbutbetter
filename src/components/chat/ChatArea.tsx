@@ -50,6 +50,8 @@ import { MarkdownText } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePinnedMessages';
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
+import StreamlineThreads from '@/components/icons/StreamlineThreads';
+import ThreadsPopover from '@/components/threads/ThreadsPopover';
 
 // Reply Reference Component
 function ReplyReference({ 
@@ -208,6 +210,7 @@ interface ChatAreaProps {
   onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  onSelectThread?: (threadId: string) => void;
 }
 
 function formatTime(date: Date): string {
@@ -230,7 +233,7 @@ function formatDate(date: Date): string {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
-  function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM, onToggleMembers, showMembers = true }, ref) {
+  function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM, onToggleMembers, showMembers = true, onSelectThread }, ref) {
     const [messageInput, setMessageInput] = useState('');
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -430,6 +433,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                   <span>Désactiver</span>
                 </button>
               </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Threads Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <StreamlineThreads className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-96 p-0">
+              <ThreadsPopover 
+                channelId={channel.id} 
+                onSelectThread={(threadId) => onSelectThread?.(threadId)}
+              />
             </PopoverContent>
           </Popover>
 

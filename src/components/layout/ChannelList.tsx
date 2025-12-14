@@ -9,6 +9,7 @@ import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import StreamlineThreadBranch from '@/components/icons/StreamlineThreadBranch';
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,6 +32,7 @@ import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, ChannelType, OrphanChannel } from '@/hooks/useChannels';
+import { useThreads } from '@/hooks/useThreads';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -76,6 +78,8 @@ interface ChannelListProps {
   onChannelSelect: (channelId: string) => void;
   onOpenServerSettings?: () => void;
   orphanChannels?: OrphanChannel[];
+  activeThreadId?: string | null;
+  onThreadSelect?: (threadId: string) => void;
 }
 const channelIcons: Record<ChannelType, React.ElementType> = {
   text: StreamlineHash,

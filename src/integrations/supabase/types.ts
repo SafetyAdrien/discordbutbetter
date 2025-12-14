@@ -1296,6 +1296,109 @@ export type Database = {
           },
         ]
       }
+      thread_messages: {
+        Row: {
+          attachments: Json | null
+          author_id: string | null
+          content: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          thread_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          author_id?: string | null
+          content: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          thread_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      threads: {
+        Row: {
+          archived: boolean
+          archived_at: string | null
+          channel_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_message_at: string | null
+          message_id: string | null
+          name: string
+        }
+        Insert: {
+          archived?: boolean
+          archived_at?: string | null
+          channel_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_id?: string | null
+          name: string
+        }
+        Update: {
+          archived?: boolean
+          archived_at?: string | null
+          channel_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_id?: string | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threads_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "threads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "threads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       typing_indicators: {
         Row: {
           channel_id: string | null

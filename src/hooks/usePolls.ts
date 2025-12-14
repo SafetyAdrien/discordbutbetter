@@ -388,3 +388,60 @@ export function useDeletePoll() {
     }
   });
 }
+
+export interface UpdatePollData {
+  pollId: string;
+  channelId: string;
+  threadId?: string | null;
+  question: string;
+  options: { id?: string; text: string; emoji: string | null }[];
+}
+
+export function useUpdatePoll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: UpdatePollData) => {
+      // Update poll question
+      const { error: pollError } = await supabase
+        .from('polls')
+        .update({ question: data.question })
+        .eq('id', data.pollId);
+
+      if (pollError) throw pollError;
+
+      // Delete existing options
+      const { error: deleteError } = await supabase
+        .from('poll_options')
+        .delete()
+        .eq('poll_id', data.pollId);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new options
+      const optionsToInsert = data.options.map((opt, index) => ({
+        poll_id: data.pollId,
+        text: opt.text,
+        emoji: opt.emoji,
+        position: index
+      }));
+
+      const { error: optionsError } = await supabase
+        .from('poll_options')
+        .insert(optionsToInsert);
+
+      if (optionsError) throw optionsError;
+    },
+    onSuccess: (_, variables) => {
+      if (variables.threadId) {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
+      }
+      toast.success('Sondage modifié');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification du sondage');
+    }
+  });
+}

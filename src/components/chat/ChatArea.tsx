@@ -46,8 +46,9 @@ import { MarkdownText } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePinnedMessages';
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
-import { usePolls, Poll } from '@/hooks/usePolls';
+import { usePolls, useDeletePoll, Poll } from '@/hooks/usePolls';
 import { PollDisplay } from './PollDisplay';
+import { CreatePollModal } from './CreatePollModal';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import ThreadsPopover from '@/components/threads/ThreadsPopover';
 import CreateThreadModal from '@/components/threads/CreateThreadModal';
@@ -125,7 +126,7 @@ function MessageReactions({
   );
 }
 
-// Message Actions Component (shown on Shift+hover)
+// Message Actions Component (shown on hover)
 function MessageActions({ 
   isVisible, 
   onReply, 
@@ -195,6 +196,56 @@ function MessageActions({
   );
 }
 
+// Poll Actions Component (shown on hover)
+function PollActions({ 
+  isVisible, 
+  onCopyLink,
+  onEdit, 
+  onDelete, 
+  isOwnPoll 
+}: { 
+  isVisible: boolean;
+  onCopyLink: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isOwnPoll: boolean;
+}) {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
+            <Link className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Copier le lien</TooltipContent>
+      </Tooltip>
+      {isOwnPoll && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Modifier</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Supprimer</TooltipContent>
+          </Tooltip>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface Role {
   id: string;
   name: string;
@@ -238,15 +289,17 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [editingContent, setEditingContent] = useState('');
-    const [isShiftPressed, setIsShiftPressed] = useState(false);
     const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+    const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [isSending, setIsSending] = useState(false);
     const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
+    const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
     const { user } = useAuth();
     const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
     const editMessage = useEditMessage();
     const deleteMessage = useDeleteMessage();
+    const deletePoll = useDeletePoll();
     
     // Pinned messages
     const { data: pinnedMessages } = usePinnedMessages(channel.id);
@@ -290,21 +343,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
       return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     }, [messages, polls]);
 
-    // Detect Shift key press
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Shift') setIsShiftPressed(true);
-      };
-      const handleKeyUp = (e: KeyboardEvent) => {
-        if (e.key === 'Shift') setIsShiftPressed(false);
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      window.addEventListener('keyup', handleKeyUp);
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('keyup', handleKeyUp);
-      };
-    }, []);
+    const handleCopyPollLink = (pollId: string) => {
+      const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/poll/${pollId}`;
+      copyToClipboard(link, 'Lien du sondage copié');
+    };
+
+    const handleDeletePoll = (poll: Poll) => {
+      deletePoll.mutate({ pollId: poll.id, channelId: channel.id });
+    };
 
     const handleSubmit = () => {
       if (messageInput.trim()) {
@@ -581,50 +627,89 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               prevItem.type !== 'poll' ||
               (prevItem.data as Poll).author?.id !== poll.author?.id ||
               (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
+            const isOwnPoll = user?.id === poll.author_id;
 
             return (
-              <div 
-                key={`poll-${poll.id}`} 
-                className={cn(
-                  'group message-hover rounded-md px-2 -mx-2 relative',
-                  showAuthor ? 'pt-1' : 'py-0'
-                )}
-              >
-                {showAuthor ? (
-                  <div className="flex gap-3">
-                    <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
-                      <AvatarImage src={poll.author?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary">
-                        {poll.author?.display_name?.charAt(0).toUpperCase() || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-foreground">
-                          {poll.author?.display_name || 'Utilisateur inconnu'}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(new Date(poll.created_at))}
-                        </span>
-                        <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
-                          <BarChart2 className="w-3 h-3" />
-                          POLL
+              <ContextMenu key={`poll-${poll.id}`}>
+                <ContextMenuTrigger asChild>
+                  <div 
+                    className={cn(
+                      'group message-hover rounded-md px-2 -mx-2 relative',
+                      showAuthor ? 'pt-1' : 'py-0'
+                    )}
+                    onMouseEnter={() => setHoveredPollId(poll.id)}
+                    onMouseLeave={() => setHoveredPollId(null)}
+                  >
+                    <PollActions
+                      isVisible={hoveredPollId === poll.id}
+                      onCopyLink={() => handleCopyPollLink(poll.id)}
+                      onEdit={() => setEditingPoll(poll)}
+                      onDelete={() => handleDeletePoll(poll)}
+                      isOwnPoll={isOwnPoll}
+                    />
+                    {showAuthor ? (
+                      <div className="flex gap-3">
+                        <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
+                          <AvatarImage src={poll.author?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/20 text-primary">
+                            {poll.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-semibold text-foreground">
+                              {poll.author?.display_name || 'Utilisateur inconnu'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(new Date(poll.created_at))}
+                            </span>
+                            <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
+                              <BarChart2 className="w-3 h-3" />
+                              POLL
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <PollDisplay poll={poll} channelId={channel.id} />
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-2">
-                        <PollDisplay poll={poll} channelId={channel.id} />
+                    ) : (
+                      <div className="flex gap-3">
+                        <span className="w-10 flex-shrink-0" />
+                        <div className="flex-1">
+                          <PollDisplay poll={poll} channelId={channel.id} />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex gap-3">
-                    <span className="w-10 flex-shrink-0" />
-                    <div className="flex-1">
-                      <PollDisplay poll={poll} channelId={channel.id} />
-                    </div>
-                  </div>
-                )}
-              </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>
+                    <Link className="w-4 h-4 mr-2" />
+                    Copier le lien du sondage
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
+                    <Hash className="w-4 h-4 mr-2" />
+                    Copier l'ID
+                  </ContextMenuItem>
+                  {isOwnPoll && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => setEditingPoll(poll)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Modifier le sondage
+                      </ContextMenuItem>
+                      <ContextMenuItem 
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDeletePoll(poll)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer le sondage
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
             );
           }
           
@@ -650,7 +735,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                   onMouseLeave={() => setHoveredMessageId(null)}
                 >
                   <MessageActions
-                    isVisible={isShiftPressed && hoveredMessageId === message.id}
+                    isVisible={hoveredMessageId === message.id}
                     onReply={() => handleReply(message)}
                     onAddReaction={() => handleAddReaction(message.id, '👍')}
                     onCopyLink={() => handleCopyMessageLink(message.id)}
@@ -903,6 +988,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
           setCreateThreadForMessageId(null);
           onSelectThread?.(threadId);
         }}
+      />
+
+      {/* Edit Poll Modal */}
+      <CreatePollModal
+        channelId={channel.id}
+        serverId={channel.server_id}
+        open={!!editingPoll}
+        onOpenChange={(open) => !open && setEditingPoll(null)}
+        editPoll={editingPoll}
       />
     </div>
     );

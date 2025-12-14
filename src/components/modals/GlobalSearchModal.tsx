@@ -10,13 +10,14 @@ import {
   Search, 
   User, 
   AtSign, 
+  FileText, 
   Hash, 
   Calendar as CalendarIcon, 
   Pin, 
   UserCircle,
+  MessageSquare,
   X,
-  Loader2,
-  MessageSquare
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/useGlobalSearch';
@@ -33,17 +34,17 @@ interface GlobalSearchModalProps {
   onNavigateToMessage?: (channelId: string, messageId: string) => void;
 }
 
-// Search filter prefixes configuration (Discord style)
+// Search filter prefixes configuration
 const searchPrefixes = [
-  { prefix: 'from:', label: 'user', type: 'user' as const },
-  { prefix: 'mentions:', label: 'user', type: 'user' as const },
-  { prefix: 'has:', label: 'link, embed or file', type: 'text' as const },
-  { prefix: 'before:', label: 'specific date', type: 'date' as const },
-  { prefix: 'during:', label: 'specific date', type: 'date' as const },
-  { prefix: 'after:', label: 'specific date', type: 'date' as const },
-  { prefix: 'in:', label: 'channel', type: 'channel' as const },
-  { prefix: 'pinned:', label: 'true or false', type: 'boolean' as const },
-  { prefix: 'authorType:', label: 'user, bot or webhook', type: 'authorType' as const },
+  { prefix: 'de:', label: 'de la personne', icon: User, type: 'user' as const },
+  { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign, type: 'user' as const },
+  { prefix: 'contient:', label: 'contient', icon: FileText, type: 'text' as const },
+  { prefix: 'dans:', label: 'dans un salon', icon: Hash, type: 'channel' as const },
+  { prefix: 'pendant:', label: 'envoyé le', icon: CalendarIcon, type: 'date' as const },
+  { prefix: 'avant:', label: 'avant le', icon: CalendarIcon, type: 'date' as const },
+  { prefix: 'après:', label: 'après le', icon: CalendarIcon, type: 'date' as const },
+  { prefix: 'épinglé:', label: 'épinglé', icon: Pin, type: 'boolean' as const },
+  { prefix: 'auteur:', label: 'type d\'auteur', icon: UserCircle, type: 'authorType' as const },
 ];
 
 // Autocomplete suggestion component
@@ -321,17 +322,17 @@ export function GlobalSearchModal({
     const parsedFilters: SearchFiltersType = {};
     let remaining = query;
 
-    // Parse each prefix (Discord style)
+    // Parse each prefix
     const prefixMap: Record<string, keyof SearchFiltersType> = {
-      'from:': 'from',
+      'de:': 'from',
       'mentions:': 'mentions',
-      'has:': 'contains',
-      'in:': 'channel',
-      'during:': 'during',
-      'before:': 'before',
-      'after:': 'after',
-      'pinned:': 'pinned',
-      'authorType:': 'authorType',
+      'contient:': 'contains',
+      'dans:': 'channel',
+      'pendant:': 'during',
+      'avant:': 'before',
+      'après:': 'after',
+      'épinglé:': 'pinned',
+      'auteur:': 'authorType',
     };
 
     for (const [prefix, filterKey] of Object.entries(prefixMap)) {
@@ -378,17 +379,17 @@ export function GlobalSearchModal({
     delete newFilters[key];
     setFilters(newFilters);
     
-    // Also remove from query text (Discord style prefixes)
+    // Also remove from query text
     const prefixMap: Record<keyof SearchFiltersType, string> = {
-      from: 'from:',
+      from: 'de:',
       mentions: 'mentions:',
-      contains: 'has:',
-      channel: 'in:',
-      during: 'during:',
-      before: 'before:',
-      after: 'after:',
-      pinned: 'pinned:',
-      authorType: 'authorType:',
+      contains: 'contient:',
+      channel: 'dans:',
+      during: 'pendant:',
+      before: 'avant:',
+      after: 'après:',
+      pinned: 'épinglé:',
+      authorType: 'auteur:',
     };
     
     const prefix = prefixMap[key];
@@ -434,25 +435,26 @@ export function GlobalSearchModal({
               autoFocus
             />
 
-            {/* Prefix suggestions - Discord style */}
+            {/* Prefix suggestions */}
             {showPrefixSuggestions && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-popover border border-border rounded-md shadow-lg overflow-hidden p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-semibold text-foreground">Search Options</span>
-                  <span className="text-muted-foreground text-xs">?</span>
-                </div>
-                <div className="space-y-1">
-                  {searchPrefixes.map(prefixConfig => (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+                <p className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
+                  Options de recherche
+                </p>
+                {searchPrefixes.map(prefixConfig => {
+                  const Icon = prefixConfig.icon;
+                  return (
                     <button
                       key={prefixConfig.prefix}
                       onClick={() => handlePrefixSelect(prefixConfig.prefix)}
-                      className="flex items-center w-full py-1 hover:bg-muted/50 rounded transition-colors text-left"
+                      className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
                     >
-                      <span className="text-sm font-medium text-primary w-28">{prefixConfig.prefix}</span>
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-primary">{prefixConfig.prefix}</span>
                       <span className="text-sm text-muted-foreground">{prefixConfig.label}</span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             )}
 

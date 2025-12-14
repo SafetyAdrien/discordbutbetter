@@ -6,7 +6,6 @@ import {
   Bell, 
   Pin, 
   Users, 
-  Search,
   Inbox,
   PlusCircle,
   Sticker,
@@ -209,7 +208,6 @@ interface ChatAreaProps {
   onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
   showMembers?: boolean;
-  onOpenSearch?: () => void;
 }
 
 function formatTime(date: Date): string {
@@ -232,7 +230,7 @@ function formatDate(date: Date): string {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
-  function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM, onToggleMembers, showMembers = true, onOpenSearch }, ref) {
+  function ChatArea({ channel, messages, onSendMessage, memberRoles, onOpenDM, onToggleMembers, showMembers = true }, ref) {
     const [messageInput, setMessageInput] = useState('');
     const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -409,16 +407,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         )}
 
         <div className="flex items-center gap-1 ml-auto">
-          {/* Search Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="iconSm" onClick={onOpenSearch}>
-                <Search className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Rechercher</TooltipContent>
-          </Tooltip>
-
           {/* Notifications Popover */}
           <Popover>
             <PopoverTrigger asChild>

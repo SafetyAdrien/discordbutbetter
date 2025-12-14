@@ -391,7 +391,6 @@ const Index = () => {
                   onOpenDM={handleOpenDM}
                   onToggleMembers={handleToggleMembers}
                   showMembers={showMembers}
-                  onOpenSearch={() => setShowGlobalSearch(true)}
                 />
               )}
             </>

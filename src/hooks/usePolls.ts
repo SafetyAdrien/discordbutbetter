@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 export interface Poll {
   id: string;
   channel_id: string;
+  thread_id: string | null;
   author_id: string | null;
   question: string;
   allow_multiple: boolean;
@@ -39,6 +41,7 @@ export interface PollVote {
 
 export interface CreatePollData {
   channelId: string;
+  threadId?: string | null;
   question: string;
   options: { text: string; emoji: string | null }[];
   allowMultiple: boolean;
@@ -47,9 +50,10 @@ export interface CreatePollData {
 
 export function usePolls(channelId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
-    queryKey: ['polls', channelId],
+  const query = useQuery({
+    queryKey: ['polls', 'channel', channelId],
     queryFn: async () => {
       if (!channelId) return [];
 
@@ -60,7 +64,8 @@ export function usePolls(channelId: string | null) {
           author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)
         `)
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: false });
+        .is('thread_id', null)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
@@ -91,6 +96,107 @@ export function usePolls(channelId: string | null) {
     },
     enabled: !!channelId && !!user
   });
+
+  // Real-time subscription for votes
+  useEffect(() => {
+    if (!channelId) return;
+
+    const channel = supabase
+      .channel(`poll-votes-${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'poll_votes'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['polls', 'channel', channelId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, queryClient]);
+
+  return query;
+}
+
+export function useThreadPolls(threadId: string | null) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['polls', 'thread', threadId],
+    queryFn: async () => {
+      if (!threadId) return [];
+
+      const { data: polls, error } = await supabase
+        .from('polls')
+        .select(`
+          *,
+          author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)
+        `)
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Fetch options and votes for each poll
+      const pollsWithDetails = await Promise.all(
+        (polls || []).map(async (poll) => {
+          const [optionsRes, votesRes] = await Promise.all([
+            supabase
+              .from('poll_options')
+              .select('*')
+              .eq('poll_id', poll.id)
+              .order('position', { ascending: true }),
+            supabase
+              .from('poll_votes')
+              .select('*')
+              .eq('poll_id', poll.id)
+          ]);
+
+          return {
+            ...poll,
+            options: optionsRes.data || [],
+            votes: votesRes.data || []
+          };
+        })
+      );
+
+      return pollsWithDetails as Poll[];
+    },
+    enabled: !!threadId && !!user
+  });
+
+  // Real-time subscription for votes
+  useEffect(() => {
+    if (!threadId) return;
+
+    const channel = supabase
+      .channel(`poll-votes-thread-${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'poll_votes'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['polls', 'thread', threadId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [threadId, queryClient]);
+
+  return query;
 }
 
 export function useCreatePoll() {
@@ -106,6 +212,7 @@ export function useCreatePoll() {
         .from('polls')
         .insert({
           channel_id: data.channelId,
+          thread_id: data.threadId || null,
           author_id: user.id,
           question: data.question,
           allow_multiple: data.allowMultiple,
@@ -133,7 +240,11 @@ export function useCreatePoll() {
       return poll;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['polls', variables.channelId] });
+      if (variables.threadId) {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
+      }
       toast.success('Sondage créé');
     },
     onError: (error) => {
@@ -148,7 +259,7 @@ export function useVotePoll() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ pollId, optionId, channelId }: { pollId: string; optionId: string; channelId: string }) => {
+    mutationFn: async ({ pollId, optionId, channelId, threadId }: { pollId: string; optionId: string; channelId: string; threadId?: string | null }) => {
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
@@ -161,12 +272,13 @@ export function useVotePoll() {
 
       if (error) throw error;
     },
-    onMutate: async ({ pollId, optionId, channelId }) => {
-      await queryClient.cancelQueries({ queryKey: ['polls', channelId] });
-      const previousPolls = queryClient.getQueryData<Poll[]>(['polls', channelId]);
+    onMutate: async ({ pollId, optionId, channelId, threadId }) => {
+      const queryKey = threadId ? ['polls', 'thread', threadId] : ['polls', 'channel', channelId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
 
       if (previousPolls && user) {
-        queryClient.setQueryData<Poll[]>(['polls', channelId], (old) =>
+        queryClient.setQueryData<Poll[]>(queryKey, (old) =>
           old?.map((poll) =>
             poll.id === pollId
               ? {
@@ -184,16 +296,17 @@ export function useVotePoll() {
         );
       }
 
-      return { previousPolls };
+      return { previousPolls, queryKey };
     },
     onError: (_, variables, context) => {
-      if (context?.previousPolls) {
-        queryClient.setQueryData(['polls', variables.channelId], context.previousPolls);
+      if (context?.previousPolls && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousPolls);
       }
       toast.error('Erreur lors du vote');
     },
     onSettled: (_, __, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['polls', variables.channelId] });
+      const queryKey = variables.threadId ? ['polls', 'thread', variables.threadId] : ['polls', 'channel', variables.channelId];
+      queryClient.invalidateQueries({ queryKey });
     }
   });
 }
@@ -203,7 +316,7 @@ export function useRemoveVote() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ pollId, optionId, channelId }: { pollId: string; optionId: string; channelId: string }) => {
+    mutationFn: async ({ pollId, optionId, channelId, threadId }: { pollId: string; optionId: string; channelId: string; threadId?: string | null }) => {
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
@@ -215,12 +328,13 @@ export function useRemoveVote() {
 
       if (error) throw error;
     },
-    onMutate: async ({ pollId, optionId, channelId }) => {
-      await queryClient.cancelQueries({ queryKey: ['polls', channelId] });
-      const previousPolls = queryClient.getQueryData<Poll[]>(['polls', channelId]);
+    onMutate: async ({ pollId, optionId, channelId, threadId }) => {
+      const queryKey = threadId ? ['polls', 'thread', threadId] : ['polls', 'channel', channelId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
 
       if (previousPolls && user) {
-        queryClient.setQueryData<Poll[]>(['polls', channelId], (old) =>
+        queryClient.setQueryData<Poll[]>(queryKey, (old) =>
           old?.map((poll) =>
             poll.id === pollId
               ? {
@@ -234,16 +348,17 @@ export function useRemoveVote() {
         );
       }
 
-      return { previousPolls };
+      return { previousPolls, queryKey };
     },
     onError: (_, variables, context) => {
-      if (context?.previousPolls) {
-        queryClient.setQueryData(['polls', variables.channelId], context.previousPolls);
+      if (context?.previousPolls && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousPolls);
       }
       toast.error('Erreur lors de la suppression du vote');
     },
     onSettled: (_, __, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['polls', variables.channelId] });
+      const queryKey = variables.threadId ? ['polls', 'thread', variables.threadId] : ['polls', 'channel', variables.channelId];
+      queryClient.invalidateQueries({ queryKey });
     }
   });
 }
@@ -252,7 +367,7 @@ export function useDeletePoll() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ pollId, channelId }: { pollId: string; channelId: string }) => {
+    mutationFn: async ({ pollId, channelId, threadId }: { pollId: string; channelId: string; threadId?: string | null }) => {
       const { error } = await supabase
         .from('polls')
         .delete()
@@ -261,7 +376,11 @@ export function useDeletePoll() {
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['polls', variables.channelId] });
+      if (variables.threadId) {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
+      }
       toast.success('Sondage supprimé');
     },
     onError: () => {

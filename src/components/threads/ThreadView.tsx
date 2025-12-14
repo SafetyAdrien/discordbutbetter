@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, ArrowDown, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
+import { useThreadPolls, Poll } from '@/hooks/usePolls';
+import { PollDisplay } from '@/components/chat/PollDisplay';
 import { ThreadMessage } from '@/types/thread';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -17,10 +19,12 @@ import { MessageInput } from '@/components/chat/MessageInput';
 interface ThreadViewProps {
   threadId: string;
   channelName: string;
+  channelId?: string;
+  serverId?: string | null;
   onBack: () => void;
 }
 
-const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }) => {
+const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelId, serverId, onBack }) => {
   const [messageContent, setMessageContent] = useState('');
   const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -29,6 +33,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
   
   const { data: thread } = useThread(threadId);
   const { data: messages = [] } = useThreadMessages(threadId);
+  const { data: polls = [] } = useThreadPolls(threadId);
   const sendMessage = useSendThreadMessage();
   const markAsRead = useMarkThreadAsRead();
   
@@ -110,15 +115,40 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
     return format(new Date(dateString), 'd MMMM yyyy', { locale: fr });
   };
 
-  // Group messages by date
-  const groupedMessages = messages.reduce((groups, message) => {
-    const date = format(new Date(message.created_at), 'yyyy-MM-dd');
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(message);
-    return groups;
-  }, {} as Record<string, ThreadMessage[]>);
+  // Create unified timeline of messages and polls
+  type TimelineItem = 
+    | { type: 'message'; data: ThreadMessage; timestamp: Date }
+    | { type: 'poll'; data: Poll; timestamp: Date };
+    
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [];
+    
+    messages.forEach(msg => items.push({ 
+      type: 'message', 
+      data: msg, 
+      timestamp: new Date(msg.created_at) 
+    }));
+    
+    polls.forEach(poll => items.push({ 
+      type: 'poll', 
+      data: poll, 
+      timestamp: new Date(poll.created_at) 
+    }));
+    
+    return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  }, [messages, polls]);
+  
+  // Group timeline items by date
+  const groupedTimelineItems = useMemo(() => {
+    return timelineItems.reduce((groups, item) => {
+      const date = format(item.timestamp, 'yyyy-MM-dd');
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(item);
+      return groups;
+    }, {} as Record<string, TimelineItem[]>);
+  }, [timelineItems]);
 
   // Handle input change with typing indicator
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,27 +203,41 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
           className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
         >
           <div className="p-4 space-y-4">
-          {Object.entries(groupedMessages).map(([date, msgs]) => (
+          {Object.entries(groupedTimelineItems).map(([date, items]) => (
             <div key={date}>
               {/* Date separator */}
               <div className="flex items-center gap-2 my-4">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground px-2">
-                  {formatDate(msgs[0].created_at)}
+                  {formatDate(items[0].timestamp.toISOString())}
                 </span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               
-              {/* Messages for this date */}
+              {/* Items for this date */}
               <div className="space-y-0.5">
-                {msgs.map((message, index) => {
-                  const prevMessage = index > 0 ? msgs[index - 1] : null;
+                {items.map((item, index) => {
+                  // Render Poll
+                  if (item.type === 'poll') {
+                    return (
+                      <div key={`poll-${item.data.id}`} className="py-2 px-2">
+                        <PollDisplay 
+                          poll={item.data} 
+                          channelId={channelId || thread?.channel_id || ''} 
+                          threadId={threadId}
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  // Render Message
+                  const message = item.data as ThreadMessage;
+                  const prevItem = index > 0 ? items[index - 1] : null;
                   const showAuthor =
-                    !prevMessage ||
-                    prevMessage.author_id !== message.author_id ||
-                    new Date(message.created_at).getTime() -
-                      new Date(prevMessage.created_at).getTime() >
-                      5 * 60 * 1000;
+                    !prevItem ||
+                    prevItem.type !== 'message' ||
+                    (prevItem.data as ThreadMessage).author_id !== message.author_id ||
+                    item.timestamp.getTime() - prevItem.timestamp.getTime() > 5 * 60 * 1000;
 
                   return (
                     <MessageItem
@@ -208,7 +252,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
             </div>
           ))}
           
-          {messages.length === 0 && (
+          {timelineItems.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <StreamlineThreads className="w-12 h-12 text-muted-foreground/30 mb-4" />
               <h3 className="font-semibold text-foreground mb-1">
@@ -236,6 +280,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
         isSending={sendMessage.isPending}
         onTypingStart={startTyping}
         onTypingStop={stopTyping}
+        serverId={serverId}
+        channelId={channelId || thread?.channel_id}
+        threadId={threadId}
       />
     </div>
   );

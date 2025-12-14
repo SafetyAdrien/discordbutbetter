@@ -45,6 +45,8 @@ import { MarkdownText } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePinnedMessages';
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
+import { usePolls, Poll } from '@/hooks/usePolls';
+import { PollDisplay } from './PollDisplay';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import ThreadsPopover from '@/components/threads/ThreadsPopover';
 import CreateThreadModal from '@/components/threads/CreateThreadModal';
@@ -256,10 +258,36 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
     const addReaction = useAddReaction();
     const removeReaction = useRemoveReaction();
     
+    // Polls
+    const { data: polls = [] } = usePolls(channel.id);
+    
     const pinnedMessageIds = useMemo(() => 
       new Set(pinnedMessages?.map(pm => pm.message_id) || []), 
       [pinnedMessages]
     );
+    
+    // Create unified timeline of messages and polls
+    type TimelineItem = 
+      | { type: 'message'; data: Message; timestamp: Date }
+      | { type: 'poll'; data: Poll; timestamp: Date };
+      
+    const timelineItems = useMemo<TimelineItem[]>(() => {
+      const items: TimelineItem[] = [];
+      
+      messages.forEach(msg => items.push({ 
+        type: 'message', 
+        data: msg, 
+        timestamp: msg.timestamp 
+      }));
+      
+      polls.forEach(poll => items.push({ 
+        type: 'poll', 
+        data: poll, 
+        timestamp: new Date(poll.created_at) 
+      }));
+      
+      return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    }, [messages, polls]);
 
     // Detect Shift key press
     useEffect(() => {
@@ -537,16 +565,29 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
         <div className="flex items-center gap-4">
           <div className="flex-1 h-px bg-border" />
           <span className="text-xs text-muted-foreground font-medium">
-            {formatDate(messages[0]?.timestamp || new Date())}
+            {formatDate(timelineItems[0]?.timestamp || new Date())}
           </span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        {/* Messages */}
-        {messages.map((message, index) => {
-          const showAuthor = index === 0 || 
-            messages[index - 1].author.id !== message.author.id ||
-            (message.timestamp.getTime() - messages[index - 1].timestamp.getTime()) > 300000;
+        {/* Timeline Items (Messages + Polls) */}
+        {timelineItems.map((item, index) => {
+          // Render Poll
+          if (item.type === 'poll') {
+            return (
+              <div key={`poll-${item.data.id}`} className="py-2 px-2 -mx-2">
+                <PollDisplay poll={item.data} channelId={channel.id} />
+              </div>
+            );
+          }
+          
+          // Render Message
+          const message = item.data as Message;
+          const prevItem = index > 0 ? timelineItems[index - 1] : null;
+          const showAuthor = !prevItem || 
+            prevItem.type !== 'message' ||
+            (prevItem.data as Message).author.id !== message.author.id ||
+            (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
           const isOwnMessage = user?.id === message.author.id;
           const isEditing = editingMessageId === message.id;
 

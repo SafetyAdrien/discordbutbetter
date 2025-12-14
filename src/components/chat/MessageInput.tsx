@@ -16,6 +16,7 @@ interface MessageInputProps {
   compact?: boolean;
   serverId?: string | null;
   channelId?: string | null;
+  threadId?: string | null;
 }
 
 export function MessageInput({
@@ -30,6 +31,7 @@ export function MessageInput({
   compact = false,
   serverId = null,
   channelId = null,
+  threadId = null,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -123,7 +125,7 @@ export function MessageInput({
                 <Image className="w-4 h-4" />
                 <span>Ajouter une image</span>
               </button>
-              {channelId && (
+              {(channelId || threadId) && (
                 <button
                   type="button"
                   className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
@@ -194,10 +196,11 @@ export function MessageInput({
         </div>
       </form>
       
-      {channelId && (
+      {(channelId || threadId) && (
         <CreatePollModal
-          channelId={channelId}
+          channelId={channelId || ''}
           serverId={serverId}
+          threadId={threadId}
           open={pollModalOpen}
           onOpenChange={setPollModalOpen}
         />

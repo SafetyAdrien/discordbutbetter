@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils';
 interface PollDisplayProps {
   poll: Poll;
   channelId: string;
+  threadId?: string | null;
 }
 
-export function PollDisplay({ poll, channelId }: PollDisplayProps) {
+export function PollDisplay({ poll, channelId, threadId }: PollDisplayProps) {
   const { user } = useAuth();
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -49,9 +50,9 @@ export function PollDisplay({ poll, channelId }: PollDisplayProps) {
     if (hasVoted) {
       // Toggle vote
       if (userVotes.includes(optionId)) {
-        removeVote.mutate({ pollId: poll.id, optionId, channelId });
+        removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
       } else if (poll.allow_multiple) {
-        votePoll.mutate({ pollId: poll.id, optionId, channelId });
+        votePoll.mutate({ pollId: poll.id, optionId, channelId, threadId });
       }
     } else {
       // Select for voting
@@ -69,7 +70,7 @@ export function PollDisplay({ poll, channelId }: PollDisplayProps) {
 
   const handleVote = () => {
     selectedOptions.forEach(optionId => {
-      votePoll.mutate({ pollId: poll.id, optionId, channelId });
+      votePoll.mutate({ pollId: poll.id, optionId, channelId, threadId });
     });
     setSelectedOptions([]);
   };

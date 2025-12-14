@@ -861,6 +861,7 @@ export type Database = {
           expires_at: string | null
           id: string
           question: string
+          thread_id: string | null
         }
         Insert: {
           allow_multiple?: boolean
@@ -870,6 +871,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           question: string
+          thread_id?: string | null
         }
         Update: {
           allow_multiple?: boolean
@@ -879,6 +881,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           question?: string
+          thread_id?: string | null
         }
         Relationships: [
           {
@@ -893,6 +896,13 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polls_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
             referencedColumns: ["id"]
           },
         ]

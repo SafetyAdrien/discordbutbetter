@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale';
 import { Check, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
 
 interface VoterAvatarsProps {
   votes: PollVote[];
@@ -21,7 +21,11 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
   if (votes.length === 0) return null;
 
   return (
-    <div className="flex items-center -space-x-1.5 transition-all duration-300 ease-out">
+    <div 
+      className="flex items-center -space-x-1.5 transition-all duration-300 ease-out"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       {visibleVotes.map((vote, index) => (
         <Tooltip key={vote.id}>
           <TooltipTrigger asChild>
@@ -38,9 +42,11 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
               </AvatarFallback>
             </Avatar>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={20} className="text-xs z-50">
-            {vote.user?.display_name || 'Utilisateur inconnu'}
-          </TooltipContent>
+          <TooltipPortal>
+            <TooltipContent side="top" sideOffset={20} className="text-xs z-[100]">
+              {vote.user?.display_name || 'Utilisateur inconnu'}
+            </TooltipContent>
+          </TooltipPortal>
         </Tooltip>
       ))}
       {remainingCount > 0 && (
@@ -53,9 +59,11 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
               +{remainingCount}
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px] z-50">
-            {votes.slice(maxVisible).map(v => v.user?.display_name || 'Inconnu').join(', ')}
-          </TooltipContent>
+          <TooltipPortal>
+            <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px] z-[100]">
+              {votes.slice(maxVisible).map(v => v.user?.display_name || 'Inconnu').join(', ')}
+            </TooltipContent>
+          </TooltipPortal>
         </Tooltip>
       )}
     </div>

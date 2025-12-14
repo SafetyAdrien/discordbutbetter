@@ -378,8 +378,8 @@ function SortableChannel({
       {/* Threads for text channels - OUTSIDE draggable div */}
       {channel.type === 'text' && threads.length > 0 && <div className="mt-1 space-y-0.5">
           {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => (
-            <div key={thread.id} className="flex items-center w-full px-2">
-              <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <div key={thread.id} className="flex items-start w-full px-2">
+                            <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
               <button 
                 onClick={e => {
                   e.stopPropagation();
@@ -395,11 +395,6 @@ function SortableChannel({
                   {thread.name}
                   {thread.archived && " (archivé)"}
                 </span>
-                {thread.unreadCount && thread.unreadCount > 0 && (
-                  <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
-                    {thread.unreadCount}
-                  </span>
-                )}
               </button>
             </div>
           ))}

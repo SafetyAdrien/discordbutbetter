@@ -354,35 +354,9 @@
   }
 
   /* Spoiler style Discord */
-/* Safe area pour iOS */
-.safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Styles responsive mobile */
-@media (max-width: 768px) {
-  .scrollbar-thin::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .channel-item {
-    @apply px-2 py-3;
-  }
-  
-  .message-hover {
-    @apply px-2;
-  }
-}
-
-@media (max-width: 1024px) {
-  .hide-on-tablet {
-    display: none;
-  }
-}
-
-.spoiler {
-  background-color: hsl(var(--muted));
-  color: transparent;
+  .spoiler {
+    background-color: hsl(var(--muted));
+    color: transparent;
     border-radius: 4px;
     padding: 0 2px;
     cursor: pointer;

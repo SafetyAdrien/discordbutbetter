@@ -16,10 +16,6 @@ import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
-import { MobileNavigation, MobileTab } from '@/components/layout/MobileNavigation';
-import { MobileSwipeContainer, MobilePanel } from '@/components/layout/MobileSwipeContainer';
-import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
-import { MobileProfilePanel } from '@/components/profile/MobileProfilePanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -27,9 +23,9 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
-import { useIsMobileOrTablet } from '@/hooks/useDeviceType';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -43,11 +39,6 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
-  
-  // Mobile state
-  const isMobileOrTablet = useIsMobileOrTablet();
-  const [mobileTab, setMobileTab] = useState<MobileTab>('servers');
-  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('left');
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -313,82 +304,104 @@ const Index = () => {
   // Determine if we're on home (DM) view
   const isHomeView = activeServerId === null;
 
-  // Helper to render channel content
-  const renderChannelContent = () => {
-    if (!channelForChat) return null;
-    
-    if (channelForChat.type === 'voice') {
-      return (
-        <VoiceChannelView 
-          channel={channelForChat}
-          serverId={activeServer!.id}
-          members={memberListData}
-          ownerId={activeServer!.owner_id || ''}
-          onOpenDM={handleOpenDM}
-        />
-      );
-    }
-    if (channelForChat.type === 'media') {
-      return (
-        <MediaChannel 
-          channel={channelForChat}
-          onToggleMembers={handleToggleMembers}
-          showMembers={showMembers}
-        />
-      );
-    }
-    if (channelForChat.type === 'forum') {
-      return (
-        <ForumChannel 
-          channel={channelForChat}
-          onToggleMembers={handleToggleMembers}
-          showMembers={showMembers}
-        />
-      );
-    }
-    if (channelForChat.type === 'tasks') {
-      return (
-        <TasksChannel 
-          channel={channelForChat}
-          onToggleMembers={handleToggleMembers}
-          showMembers={showMembers}
-        />
-      );
-    }
-    if (channelForChat.type === 'calendar') {
-      return (
-        <CalendarChannel 
-          channel={channelForChat}
-          onToggleMembers={handleToggleMembers}
-          showMembers={showMembers}
-        />
-      );
-    }
-    if (channelForChat.type === 'announcement') {
-      return (
-        <AnnouncementChannel 
-          channel={channelForChat}
-          onToggleMembers={handleToggleMembers}
-          showMembers={showMembers}
-        />
-      );
-    }
-    return (
-      <ChatArea
-        channel={channelForChat}
-        messages={messagesData}
-        onSendMessage={handleSendMessage}
-        memberRoles={memberRolesMap}
-        onOpenDM={handleOpenDM}
-        onToggleMembers={handleToggleMembers}
-        showMembers={showMembers}
+  return (
+    <div className="h-screen flex bg-background overflow-hidden">
+      {/* Server List */}
+      <ServerList
+        servers={serverListData}
+        activeServerId={activeServerId}
+        onServerSelect={handleServerSelect}
+        onDiscoverClick={() => setShowDiscover(true)}
+        onCreateClick={() => setShowCreate(true)}
+        onOpenServerSettings={handleOpenServerSettings}
       />
-    );
-  };
 
-  // Modals (shared between mobile and desktop)
-  const renderModals = () => (
-    <>
+      {/* Home/DM View */}
+      {isHomeView ? (
+        <DMPage
+          activeDMId={activeDMId}
+          onConversationSelect={handleOpenDM}
+          onShowFriends={handleShowFriends}
+        />
+      ) : activeServer && serverForChannelList ? (
+        <>
+          {/* Channel List */}
+          <ChannelList
+            server={serverForChannelList}
+            activeChannelId={activeChannelId}
+            onChannelSelect={setActiveChannelId}
+            onOpenServerSettings={() => setShowServerSettings(true)}
+            orphanChannels={channelsData?.orphanChannels || []}
+          />
+
+          {/* Main Content Area - Conditional based on channel type */}
+          {channelForChat && (
+            <>
+              {channelForChat.type === 'voice' ? (
+                <VoiceChannelView 
+                  channel={channelForChat}
+                  serverId={activeServer.id}
+                  members={memberListData}
+                  ownerId={activeServer.owner_id || ''}
+                  onOpenDM={handleOpenDM}
+                />
+              ) : channelForChat.type === 'media' ? (
+                <MediaChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'forum' ? (
+                <ForumChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'tasks' ? (
+                <TasksChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'calendar' ? (
+                <CalendarChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'announcement' ? (
+                <AnnouncementChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : (
+                <ChatArea
+                  channel={channelForChat}
+                  messages={messagesData}
+                  onSendMessage={handleSendMessage}
+                  memberRoles={memberRolesMap}
+                  onOpenDM={handleOpenDM}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              )}
+            </>
+          )}
+
+          {/* Member List - Conditionally rendered (not for voice channels) */}
+          {showMembers && channelForChat?.type !== 'voice' && (
+            <MemberList 
+              members={memberListData} 
+              ownerId={activeServer.owner_id || ''} 
+              serverId={activeServer.id}
+              onOpenDM={handleOpenDM}
+            />
+          )}
+        </>
+      ) : null}
+
+      {/* Modals */}
       {showDiscover && (
         <DiscoverModal
           servers={discoverableServers}
@@ -426,149 +439,10 @@ const Index = () => {
           onNavigateToMessage={(channelId, messageId) => {
             setActiveChannelId(channelId);
             setShowGlobalSearch(false);
+            // TODO: Scroll to message
           }}
         />
       )}
-    </>
-  );
-
-  // Mobile/Tablet Layout
-  if (isMobileOrTablet) {
-    return (
-      <div className="h-screen flex flex-col bg-background overflow-hidden pb-16">
-        {mobileTab === 'servers' ? (
-          <MobileSwipeContainer
-            activePanel={mobilePanel}
-            onPanelChange={setMobilePanel}
-            leftPanel={
-              <div className="flex h-full">
-                <ServerList
-                  servers={serverListData}
-                  activeServerId={activeServerId}
-                  onServerSelect={(id) => {
-                    handleServerSelect(id);
-                    setMobilePanel('center');
-                  }}
-                  onDiscoverClick={() => setShowDiscover(true)}
-                  onCreateClick={() => setShowCreate(true)}
-                  onOpenServerSettings={handleOpenServerSettings}
-                />
-                {isHomeView ? (
-                  <div className="flex-1 bg-card">
-                    <DMPage
-                      activeDMId={activeDMId}
-                      onConversationSelect={(id) => {
-                        handleOpenDM(id);
-                        setMobilePanel('center');
-                      }}
-                      onShowFriends={handleShowFriends}
-                    />
-                  </div>
-                ) : serverForChannelList && (
-                  <ChannelList
-                    server={serverForChannelList}
-                    activeChannelId={activeChannelId}
-                    onChannelSelect={(id) => {
-                      setActiveChannelId(id);
-                      setMobilePanel('center');
-                    }}
-                    onOpenServerSettings={() => setShowServerSettings(true)}
-                    orphanChannels={channelsData?.orphanChannels || []}
-                  />
-                )}
-              </div>
-            }
-            centerPanel={
-              <div className="h-full flex flex-col">
-                {isHomeView && activeDMId ? (
-                  <DMPage
-                    activeDMId={activeDMId}
-                    onConversationSelect={handleOpenDM}
-                    onShowFriends={handleShowFriends}
-                  />
-                ) : (
-                  renderChannelContent()
-                )}
-              </div>
-            }
-            rightPanel={
-              <div className="h-full bg-card">
-                {activeServer && (
-                  <MemberList 
-                    members={memberListData} 
-                    ownerId={activeServer.owner_id || ''} 
-                    serverId={activeServer.id}
-                    onOpenDM={handleOpenDM}
-                  />
-                )}
-              </div>
-            }
-            showRightPanel={!isHomeView && channelForChat?.type !== 'voice'}
-          />
-        ) : mobileTab === 'notifications' ? (
-          <NotificationsPanel />
-        ) : (
-          <MobileProfilePanel />
-        )}
-
-        <MobileNavigation
-          activeTab={mobileTab}
-          onTabChange={setMobileTab}
-          unreadCount={0}
-        />
-
-        {renderModals()}
-      </div>
-    );
-  }
-
-  // Desktop Layout
-  return (
-    <div className="h-screen flex bg-background overflow-hidden">
-      {/* Server List */}
-      <ServerList
-        servers={serverListData}
-        activeServerId={activeServerId}
-        onServerSelect={handleServerSelect}
-        onDiscoverClick={() => setShowDiscover(true)}
-        onCreateClick={() => setShowCreate(true)}
-        onOpenServerSettings={handleOpenServerSettings}
-      />
-
-      {/* Home/DM View */}
-      {isHomeView ? (
-        <DMPage
-          activeDMId={activeDMId}
-          onConversationSelect={handleOpenDM}
-          onShowFriends={handleShowFriends}
-        />
-      ) : activeServer && serverForChannelList ? (
-        <>
-          {/* Channel List */}
-          <ChannelList
-            server={serverForChannelList}
-            activeChannelId={activeChannelId}
-            onChannelSelect={setActiveChannelId}
-            onOpenServerSettings={() => setShowServerSettings(true)}
-            orphanChannels={channelsData?.orphanChannels || []}
-          />
-
-          {/* Main Content Area */}
-          {renderChannelContent()}
-
-          {/* Member List */}
-          {showMembers && channelForChat?.type !== 'voice' && (
-            <MemberList 
-              members={memberListData} 
-              ownerId={activeServer.owner_id || ''} 
-              serverId={activeServer.id}
-              onOpenDM={handleOpenDM}
-            />
-          )}
-        </>
-      ) : null}
-
-      {renderModals()}
     </div>
   );
 };

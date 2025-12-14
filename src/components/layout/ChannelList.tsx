@@ -377,19 +377,32 @@ function SortableChannel({
       
       {/* Threads for text channels - OUTSIDE draggable div */}
       {channel.type === 'text' && threads.length > 0 && <div className="mt-1 space-y-0.5">
-          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <button key={thread.id} onClick={e => {
-        e.stopPropagation();
-        onThreadSelect?.(thread.id);
-      }} className={cn("flex items-center w-full px-2 py-1 rounded hover:bg-muted/50 transition-colors", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
-                <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0" />
+          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => (
+            <div key={thread.id} className="flex items-center w-full px-2">
+              <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0" />
+              <button 
+                onClick={e => {
+                  e.stopPropagation();
+                  onThreadSelect?.(thread.id);
+                }} 
+                className={cn(
+                  "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
+                  activeThreadId === thread.id && "bg-muted",
+                  thread.archived && "opacity-50"
+                )}
+              >
                 <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
                   {thread.name}
                   {thread.archived && " (archivé)"}
                 </span>
-                {thread.unreadCount && thread.unreadCount > 0 && <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
+                {thread.unreadCount && thread.unreadCount > 0 && (
+                  <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
                     {thread.unreadCount}
-                  </span>}
-              </button>)}
+                  </span>
+                )}
+              </button>
+            </div>
+          ))}
         </div>}
       {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 

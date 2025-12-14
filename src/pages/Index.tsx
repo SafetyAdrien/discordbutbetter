@@ -395,6 +395,17 @@ const Index = () => {
                   channelName={channelForChat.name}
                   onBack={() => setActiveThreadId(null)}
                 />
+              ) : channelForChat.type === 'text' ? (
+                <ChatArea
+                  channel={channelForChat}
+                  messages={messagesData}
+                  onSendMessage={handleSendMessage}
+                  memberRoles={memberRolesMap}
+                  onOpenDM={handleOpenDM}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                  onSelectThread={(threadId) => setActiveThreadId(threadId)}
+                />
               ) : (
                 <ChatArea
                   channel={channelForChat}

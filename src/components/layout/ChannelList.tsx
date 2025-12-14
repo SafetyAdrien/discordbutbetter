@@ -377,27 +377,23 @@ function SortableChannel({
         {channel.type === 'text' && threads.length > 0 && (
           <div className="ml-6 mt-1 space-y-0.5">
             {threads.map(thread => (
-              <button
-                key={thread.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onThreadSelect?.(thread.id);
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 w-full px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors",
-                  activeThreadId === thread.id && "bg-muted"
-                )}
-              >
-                <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="truncate flex-1 text-left text-muted-foreground hover:text-foreground text-xs">
-                  {thread.name}
-                </span>
-                {thread.unreadCount && thread.unreadCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
-                    {thread.unreadCount > 99 ? '99+' : thread.unreadCount}
+              <div key={thread.id} className="flex items-center">
+                <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mr-0.5" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onThreadSelect?.(thread.id);
+                  }}
+                  className={cn(
+                    "flex-1 px-2 py-1 text-sm rounded hover:bg-muted/50 transition-colors text-left truncate",
+                    activeThreadId === thread.id && "bg-muted"
+                  )}
+                >
+                  <span className="text-muted-foreground hover:text-foreground text-xs">
+                    {thread.name}
                   </span>
-                )}
-              </button>
+                </button>
+              </div>
             ))}
           </div>
         )}

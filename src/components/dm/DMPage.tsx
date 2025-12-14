@@ -14,13 +14,11 @@ interface DMPageProps {
   activeDMId: string | null;
   onConversationSelect: (conversationId: string) => void;
   onShowFriends: () => void;
-  isMobile?: boolean;
 }
 export function DMPage({
   activeDMId,
   onConversationSelect,
-  onShowFriends,
-  isMobile = false
+  onShowFriends
 }: DMPageProps) {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const {
@@ -34,48 +32,19 @@ export function DMPage({
   const handleOpenDM = (conversationId: string) => {
     onConversationSelect(conversationId);
   };
-  // Mobile: Only show the main content area (sidebar is in drawer)
-  if (isMobile) {
-    return (
-      <div className="flex-1 flex flex-col">
-        {currentView === 'friends' ? (
-          <FriendsPanel onOpenDM={handleOpenDM} />
-        ) : activeDMId ? (
-          <DMConversation conversationId={activeDMId} onBack={onShowFriends} />
-        ) : null}
-        
-        {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
-      </div>
-    );
-  }
-
-  // Desktop: Full layout with sidebar
-  return (
-    <div className="flex-1 flex">
+  return <div className="flex-1 flex">
       {/* Left Sidebar - DM List */}
       <div className="w-60 bg-card flex flex-col border-r border-border">
         {/* Header */}
         <div className="h-12 px-4 flex items-center border-b border-border">
           <div className="relative w-full">
-            <input 
-              type="text" 
-              placeholder="Trouver ou commencer une conversation" 
-              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50" 
-            />
+            <input type="text" placeholder="Trouver ou commencer une conversation" className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
         </div>
 
         {/* Navigation */}
         <div className="p-2">
-          <button 
-            onClick={onShowFriends} 
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
-              currentView === 'friends' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            )}
-          >
+          <button onClick={onShowFriends} className={cn('w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', currentView === 'friends' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
             <Users className="w-5 h-5" />
             <span className="font-medium">Amis</span>
           </button>
@@ -94,17 +63,7 @@ export function DMPage({
         </div>
 
         {/* Voice Controls */}
-        {isConnected && voiceState.channelName && (
-          <VoiceControls 
-            channelName={voiceState.channelName} 
-            serverName={voiceState.serverName} 
-            isMuted={voiceState.isMuted} 
-            isDeafened={voiceState.isDeafened} 
-            onToggleMute={() => toggleMute.mutate()} 
-            onToggleDeafen={() => toggleDeafen.mutate()} 
-            onDisconnect={() => leaveChannel.mutate()} 
-          />
-        )}
+        {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute.mutate()} onToggleDeafen={() => toggleDeafen.mutate()} onDisconnect={() => leaveChannel.mutate()} />}
 
         {/* User Panel */}
         <UserProfileCard 
@@ -114,14 +73,9 @@ export function DMPage({
       </div>
 
       {/* Main Content */}
-      {currentView === 'friends' ? (
-        <FriendsPanel onOpenDM={handleOpenDM} />
-      ) : activeDMId ? (
-        <DMConversation conversationId={activeDMId} onBack={onShowFriends} />
-      ) : null}
+      {currentView === 'friends' ? <FriendsPanel onOpenDM={handleOpenDM} /> : activeDMId ? <DMConversation conversationId={activeDMId} onBack={onShowFriends} /> : null}
 
       {/* Modals */}
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
-    </div>
-  );
+    </div>;
 }

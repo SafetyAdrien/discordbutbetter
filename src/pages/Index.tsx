@@ -16,8 +16,6 @@ import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
-import { MobileDrawer } from '@/components/layout/MobileDrawer';
-import { MobileNavBar } from '@/components/layout/MobileNavBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -25,10 +23,8 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
-import { useMobileNavigation } from '@/hooks/useMobileNavigation';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
-import { cn } from '@/lib/utils';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -53,9 +49,6 @@ const Index = () => {
 
   // Voice state
   const { voiceState, toggleMute } = useVoiceState();
-
-  // Mobile navigation
-  const { isMobile, isLeftOpen, isRightOpen, openLeft, openRight, closeDrawer } = useMobileNavigation();
 
   // Mutations
   const createServer = useCreateServer();
@@ -194,14 +187,6 @@ const Index = () => {
       setActiveServerId(serverId);
       setActiveDMId(null);
     }
-    // Close drawer on mobile after selection
-    if (isMobile) closeDrawer();
-  };
-
-  const handleChannelSelect = (channelId: string) => {
-    setActiveChannelId(channelId);
-    // Close drawer on mobile after selection
-    if (isMobile) closeDrawer();
   };
 
   const handleOpenServerSettings = (serverId?: string) => {
@@ -319,186 +304,102 @@ const Index = () => {
   // Determine if we're on home (DM) view
   const isHomeView = activeServerId === null;
 
-  // Helper to render main content area
-  const renderMainContent = () => {
-    if (!channelForChat) return null;
-
-    const commonProps = {
-      onToggleMembers: handleToggleMembers,
-      showMembers: showMembers && !isMobile,
-    };
-
-    switch (channelForChat.type) {
-      case 'voice':
-        return (
-          <VoiceChannelView 
-            channel={channelForChat}
-            serverId={activeServer!.id}
-            members={memberListData}
-            ownerId={activeServer!.owner_id || ''}
-            onOpenDM={handleOpenDM}
-          />
-        );
-      case 'media':
-        return <MediaChannel channel={channelForChat} {...commonProps} />;
-      case 'forum':
-        return <ForumChannel channel={channelForChat} {...commonProps} />;
-      case 'tasks':
-        return <TasksChannel channel={channelForChat} {...commonProps} />;
-      case 'calendar':
-        return <CalendarChannel channel={channelForChat} {...commonProps} />;
-      case 'announcement':
-        return <AnnouncementChannel channel={channelForChat} {...commonProps} />;
-      default:
-        return (
-          <ChatArea
-            channel={channelForChat}
-            messages={messagesData}
-            onSendMessage={handleSendMessage}
-            memberRoles={memberRolesMap}
-            onOpenDM={handleOpenDM}
-            {...commonProps}
-          />
-        );
-    }
-  };
-
-  // Render left drawer content (ServerList + ChannelList)
-  const renderLeftDrawerContent = () => (
-    <div className="flex h-full">
+  return (
+    <div className="h-screen flex bg-background overflow-hidden">
+      {/* Server List */}
       <ServerList
         servers={serverListData}
         activeServerId={activeServerId}
         onServerSelect={handleServerSelect}
-        onDiscoverClick={() => { setShowDiscover(true); closeDrawer(); }}
-        onCreateClick={() => { setShowCreate(true); closeDrawer(); }}
+        onDiscoverClick={() => setShowDiscover(true)}
+        onCreateClick={() => setShowCreate(true)}
         onOpenServerSettings={handleOpenServerSettings}
       />
-      {activeServer && serverForChannelList ? (
-        <ChannelList
-          server={serverForChannelList}
-          activeChannelId={activeChannelId}
-          onChannelSelect={handleChannelSelect}
-          onOpenServerSettings={() => { setShowServerSettings(true); closeDrawer(); }}
-          orphanChannels={channelsData?.orphanChannels || []}
+
+      {/* Home/DM View */}
+      {isHomeView ? (
+        <DMPage
+          activeDMId={activeDMId}
+          onConversationSelect={handleOpenDM}
+          onShowFriends={handleShowFriends}
         />
-      ) : (
-        <div className="flex-1 bg-card" />
-      )}
-    </div>
-  );
-
-  // Render right drawer content (MemberList)
-  const renderRightDrawerContent = () => {
-    if (!activeServer) return null;
-    return (
-      <MemberList 
-        members={memberListData} 
-        ownerId={activeServer.owner_id || ''} 
-        serverId={activeServer.id}
-        onOpenDM={(id) => { handleOpenDM(id); closeDrawer(); }}
-      />
-    );
-  };
-
-  return (
-    <div className={cn("h-screen flex bg-background overflow-hidden", isMobile && "pb-14")}>
-      {/* Desktop Layout */}
-      {!isMobile && (
+      ) : activeServer && serverForChannelList ? (
         <>
-          {/* Server List */}
-          <ServerList
-            servers={serverListData}
-            activeServerId={activeServerId}
-            onServerSelect={handleServerSelect}
-            onDiscoverClick={() => setShowDiscover(true)}
-            onCreateClick={() => setShowCreate(true)}
-            onOpenServerSettings={handleOpenServerSettings}
+          {/* Channel List */}
+          <ChannelList
+            server={serverForChannelList}
+            activeChannelId={activeChannelId}
+            onChannelSelect={setActiveChannelId}
+            onOpenServerSettings={() => setShowServerSettings(true)}
+            orphanChannels={channelsData?.orphanChannels || []}
           />
 
-          {/* Home/DM View */}
-          {isHomeView ? (
-            <DMPage
-              activeDMId={activeDMId}
-              onConversationSelect={handleOpenDM}
-              onShowFriends={handleShowFriends}
-            />
-          ) : activeServer && serverForChannelList ? (
+          {/* Main Content Area - Conditional based on channel type */}
+          {channelForChat && (
             <>
-              {/* Channel List */}
-              <ChannelList
-                server={serverForChannelList}
-                activeChannelId={activeChannelId}
-                onChannelSelect={handleChannelSelect}
-                onOpenServerSettings={() => setShowServerSettings(true)}
-                orphanChannels={channelsData?.orphanChannels || []}
-              />
-
-              {/* Main Content Area */}
-              {renderMainContent()}
-
-              {/* Member List - Conditionally rendered (not for voice channels) */}
-              {showMembers && channelForChat?.type !== 'voice' && (
-                <MemberList 
-                  members={memberListData} 
-                  ownerId={activeServer.owner_id || ''} 
+              {channelForChat.type === 'voice' ? (
+                <VoiceChannelView 
+                  channel={channelForChat}
                   serverId={activeServer.id}
+                  members={memberListData}
+                  ownerId={activeServer.owner_id || ''}
                   onOpenDM={handleOpenDM}
+                />
+              ) : channelForChat.type === 'media' ? (
+                <MediaChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'forum' ? (
+                <ForumChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'tasks' ? (
+                <TasksChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'calendar' ? (
+                <CalendarChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'announcement' ? (
+                <AnnouncementChannel 
+                  channel={channelForChat}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
+                />
+              ) : (
+                <ChatArea
+                  channel={channelForChat}
+                  messages={messagesData}
+                  onSendMessage={handleSendMessage}
+                  memberRoles={memberRolesMap}
+                  onOpenDM={handleOpenDM}
+                  onToggleMembers={handleToggleMembers}
+                  showMembers={showMembers}
                 />
               )}
             </>
-          ) : null}
+          )}
+
+          {/* Member List - Conditionally rendered (not for voice channels) */}
+          {showMembers && channelForChat?.type !== 'voice' && (
+            <MemberList 
+              members={memberListData} 
+              ownerId={activeServer.owner_id || ''} 
+              serverId={activeServer.id}
+              onOpenDM={handleOpenDM}
+            />
+          )}
         </>
-      )}
-
-      {/* Mobile Layout */}
-      {isMobile && (
-        <>
-          {/* Main Content - Always visible on mobile */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {isHomeView ? (
-              <DMPage
-                activeDMId={activeDMId}
-                onConversationSelect={handleOpenDM}
-                onShowFriends={handleShowFriends}
-                isMobile={true}
-              />
-            ) : activeServer && serverForChannelList ? (
-              renderMainContent()
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                Sélectionnez un serveur
-              </div>
-            )}
-          </div>
-
-          {/* Left Drawer - Servers + Channels */}
-          <MobileDrawer
-            isOpen={isLeftOpen}
-            onClose={closeDrawer}
-            direction="left"
-          >
-            {renderLeftDrawerContent()}
-          </MobileDrawer>
-
-          {/* Right Drawer - Members */}
-          <MobileDrawer
-            isOpen={isRightOpen}
-            onClose={closeDrawer}
-            direction="right"
-          >
-            {renderRightDrawerContent()}
-          </MobileDrawer>
-
-          {/* Mobile Navigation Bar */}
-          <MobileNavBar
-            onOpenLeft={openLeft}
-            onOpenRight={openRight}
-            isHomeView={isHomeView}
-            showMembersButton={!isHomeView && channelForChat?.type !== 'voice'}
-          />
-        </>
-      )}
+      ) : null}
 
       {/* Modals */}
       {showDiscover && (
@@ -538,6 +439,7 @@ const Index = () => {
           onNavigateToMessage={(channelId, messageId) => {
             setActiveChannelId(channelId);
             setShowGlobalSearch(false);
+            // TODO: Scroll to message
           }}
         />
       )}

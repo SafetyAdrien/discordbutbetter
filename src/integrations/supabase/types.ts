@@ -783,6 +783,7 @@ export type Database = {
           custom_status: string | null
           display_name: string
           id: string
+          phone: string | null
           status: Database["public"]["Enums"]["user_status"] | null
           updated_at: string | null
           username: string
@@ -795,6 +796,7 @@ export type Database = {
           custom_status?: string | null
           display_name: string
           id: string
+          phone?: string | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username: string
@@ -807,6 +809,7 @@ export type Database = {
           custom_status?: string | null
           display_name?: string
           id?: string
+          phone?: string | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username?: string
@@ -1402,6 +1405,10 @@ export type Database = {
       }
       can_view_webhook_token: {
         Args: { _user_id: string; _webhook_id: string }
+        Returns: boolean
+      }
+      check_username_availability: {
+        Args: { p_username: string }
         Returns: boolean
       }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }

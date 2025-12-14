@@ -558,7 +558,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
               <ContextMenuTrigger asChild>
                 <div
                   className={cn(
-                    'group message-hover rounded-md px-2 py-0.5 -mx-2 relative',
+                    'group message-hover rounded-md px-2 py-px -mx-2 relative',
                     !showAuthor && 'mt-0'
                   )}
                   onMouseEnter={() => setHoveredMessageId(message.id)}

@@ -1,7 +1,7 @@
-import { forwardRef, useState, useMemo, useRef, useEffect } from 'react';
+import { forwardRef, useState, useMemo, useRef } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle, HelpCircle, Trash2, Users } from 'lucide-react';
+import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
@@ -53,41 +53,32 @@ const statusColors: Record<string, string> = {
   offline: 'bg-[hsl(var(--offline))]',
 };
 
-// Search filter prefixes with full descriptions
+// Search filter prefixes
 const searchFilters = [
-  { prefix: 'from:', label: 'user', description: 'from a specific user', icon: UserIcon },
-  { prefix: 'mentions:', label: 'user', description: 'mentioning a specific user', icon: AtSign },
-  { prefix: 'has:', label: 'link, embed or file', description: 'containing attachments', icon: FileText },
-  { prefix: 'before:', label: 'specific date', description: 'before a date', icon: Calendar },
-  { prefix: 'during:', label: 'specific date', description: 'on a specific date', icon: Calendar },
-  { prefix: 'after:', label: 'specific date', description: 'after a date', icon: Calendar },
-  { prefix: 'in:', label: 'channel', description: 'in a specific channel', icon: Hash },
-  { prefix: 'pinned:', label: 'true or false', description: 'pinned messages', icon: Pin },
-  { prefix: 'authorType:', label: 'user, bot or webhook', description: 'by author type', icon: UserCircle },
+  { prefix: 'de:', label: 'de la personne', icon: UserIcon },
+  { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign },
+  { prefix: 'contient:', label: 'dispose de données spécifiques', icon: FileText },
+  { prefix: 'dans:', label: 'dans un salon spécifique', icon: Hash },
+  { prefix: 'pendant:', label: 'envoyé à une date', icon: Calendar },
+  { prefix: 'avant:', label: 'avant la date', icon: Calendar },
+  { prefix: 'après:', label: 'après la date', icon: Calendar },
+  { prefix: 'épinglé:', label: 'épinglé', icon: Pin },
+  { prefix: 'auteur:', label: 'par type d\'auteur', icon: UserCircle },
 ];
-
-const SEARCH_HISTORY_KEY = 'member-search-history';
-const MAX_HISTORY_ITEMS = 5;
 
 // Search Filters Component
 function SearchFilters({ 
   onSelectFilter,
   searchQuery,
-  searchHistory,
-  onClearHistory,
-  onSelectHistory,
 }: {
   onSelectFilter: (prefix: string) => void;
   searchQuery: string;
-  searchHistory: string[];
-  onClearHistory: () => void;
-  onSelectHistory: (query: string) => void;
 }) {
   // Filter suggestions based on current query
   const availableFilters = useMemo(() => {
     const lowerQuery = searchQuery.toLowerCase();
     // If query already has a prefix, don't show suggestions
-    if (searchFilters.some(f => lowerQuery.startsWith(f.prefix.toLowerCase()))) {
+    if (searchFilters.some(f => lowerQuery.startsWith(f.prefix))) {
       return [];
     }
     // If typing, filter suggestions that match
@@ -100,83 +91,25 @@ function SearchFilters({
     return searchFilters;
   }, [searchQuery]);
 
-  const showHistory = searchHistory.length > 0 && !searchQuery.trim();
-
-  if (availableFilters.length === 0 && !showHistory) return null;
+  if (availableFilters.length === 0) return null;
 
   return (
-    <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-xl z-50 overflow-hidden">
-      {/* Search Options Header */}
-      {availableFilters.length > 0 && (
-        <>
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Search Options</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="text-muted-foreground hover:text-foreground transition-colors">
-                  <HelpCircle className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p className="text-xs">Use prefixes to filter your search</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="py-1">
-            {availableFilters.map(filter => {
-              const Icon = filter.icon;
-              return (
-                <button
-                  key={filter.prefix}
-                  onClick={() => onSelectFilter(filter.prefix)}
-                  className="flex items-center gap-3 w-full px-3 py-1.5 hover:bg-accent text-sm text-left transition-colors"
-                >
-                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-primary font-medium">{filter.prefix}</span>
-                  <span className="text-muted-foreground">{filter.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* History Section */}
-      {showHistory && (
-        <>
-          <div className="flex items-center justify-between px-3 py-2 border-t border-border">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">History</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClearHistory();
-                  }}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p className="text-xs">Clear search history</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="py-1">
-            {searchHistory.map((query, index) => (
-              <button
-                key={index}
-                onClick={() => onSelectHistory(query)}
-                className="flex items-center gap-3 w-full px-3 py-1.5 hover:bg-accent text-sm text-left transition-colors text-muted-foreground"
-              >
-                <Search className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{query}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+    <div className="bg-card border border-border rounded-lg shadow-lg p-2 mt-2 animate-slide-down">
+      <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
+      {availableFilters.map(filter => {
+        const Icon = filter.icon;
+        return (
+          <button
+            key={filter.prefix}
+            onClick={() => onSelectFilter(filter.prefix)}
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted text-sm text-left transition-colors"
+          >
+            <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-primary font-medium min-w-[80px]">{filter.prefix}</span>
+            <span className="text-muted-foreground/70 truncate">{filter.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -205,34 +138,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [selectedRoleFilters, setSelectedRoleFilters] = useState<string[]>([]);
-    const [searchHistory, setSearchHistory] = useState<string[]>([]);
     const searchRef = useRef<HTMLInputElement>(null);
-    const searchContainerRef = useRef<HTMLDivElement>(null);
-
-    // Load search history from localStorage
-    useEffect(() => {
-      const saved = localStorage.getItem(SEARCH_HISTORY_KEY);
-      if (saved) {
-        try {
-          setSearchHistory(JSON.parse(saved));
-        } catch (e) {
-          console.error('Failed to parse search history:', e);
-        }
-      }
-    }, []);
-
-    // Save search to history
-    const saveToHistory = (query: string) => {
-      if (!query.trim()) return;
-      const updated = [query, ...searchHistory.filter(h => h !== query)].slice(0, MAX_HISTORY_ITEMS);
-      setSearchHistory(updated);
-      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
-    };
-
-    const clearHistory = () => {
-      setSearchHistory([]);
-      localStorage.removeItem(SEARCH_HISTORY_KEY);
-    };
 
     // Fetch roles for filter and management
     const { data: allRoles = [] } = useServerRoles(serverId || null);
@@ -266,19 +172,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
       setSearchQuery(prefix);
       setShowFilters(false);
       searchRef.current?.focus();
-    };
-
-    const handleSelectHistory = (query: string) => {
-      setSearchQuery(query);
-      setShowFilters(false);
-      searchRef.current?.focus();
-    };
-
-    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && searchQuery.trim()) {
-        saveToHistory(searchQuery);
-        setShowFilters(false);
-      }
     };
 
     const handleRoleFilterToggle = (roleId: string) => {
@@ -477,45 +370,31 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     return (
       <>
         <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
-          {/* Search input - Discord style */}
+          {/* Search input */}
           <div className="px-3 pt-3">
-            <div ref={searchContainerRef} className="relative">
-              <div className="flex items-center gap-1 bg-input rounded-md border border-border focus-within:border-primary/50 transition-colors">
-                {/* Left icons */}
-                <div className="flex items-center pl-2 gap-1">
-                  <Pin className="w-4 h-4 text-muted-foreground" />
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                </div>
-                
-                {/* Input field */}
+            <div className="flex gap-1.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input 
                   ref={searchRef}
-                  placeholder="Search"
+                  placeholder="Rechercher"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowFilters(true)}
-                  onBlur={() => setTimeout(() => setShowFilters(false), 200)}
-                  onKeyDown={handleSearchKeyDown}
-                  className="h-8 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2 text-sm"
+                  onBlur={() => setTimeout(() => setShowFilters(false), 150)}
+                  className="h-8 pl-8 text-sm bg-input"
                 />
-                
-                {/* Right search icon */}
-                <div className="pr-2">
-                  <Search className="w-4 h-4 text-muted-foreground" />
-                </div>
               </div>
               
-              {/* Filters suggestions dropdown */}
-              {showFilters && (
-                <SearchFilters
-                  onSelectFilter={handleSelectFilter}
-                  searchQuery={searchQuery}
-                  searchHistory={searchHistory}
-                  onClearHistory={clearHistory}
-                  onSelectHistory={handleSelectHistory}
-                />
-              )}
             </div>
+            
+            {/* Filters suggestions */}
+            {showFilters && (
+              <SearchFilters
+                onSelectFilter={handleSelectFilter}
+                searchQuery={searchQuery}
+              />
+            )}
           </div>
           <Separator className="mt-3" />
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">

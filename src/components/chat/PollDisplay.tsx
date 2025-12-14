@@ -1,14 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Poll, PollVote, useVotePoll, useRemoveVote } from '@/hooks/usePolls';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatDistanceToNow, isPast } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Check, Clock } from 'lucide-react';
+import { isPast } from 'date-fns';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
-
 interface VoterAvatarsProps {
   votes: PollVote[];
 }
@@ -94,6 +92,70 @@ export function PollDisplay({
   const hasVoted = userVotes.length > 0;
   const totalVotes = poll.votes.length;
   const isExpired = poll.expires_at ? isPast(new Date(poll.expires_at)) : false;
+
+  // Real-time countdown state
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+
+  useEffect(() => {
+    if (!poll.expires_at || isExpired) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const updateTimeLeft = () => {
+      const now = new Date();
+      const expiry = new Date(poll.expires_at!);
+      const diff = expiry.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setTimeLeft(null);
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setTimeLeft({ days, hours, minutes, seconds });
+    };
+
+    updateTimeLeft();
+    const interval = setInterval(updateTimeLeft, 1000);
+    
+    return () => clearInterval(interval);
+  }, [poll.expires_at, isExpired]);
+
+  // Progress percentage calculation
+  const progressPercentage = useMemo(() => {
+    if (!poll.expires_at || !poll.created_at) return 0;
+    
+    const start = new Date(poll.created_at).getTime();
+    const end = new Date(poll.expires_at).getTime();
+    const now = Date.now();
+    
+    if (now >= end) return 100;
+    if (now <= start) return 0;
+    
+    return Math.round(((now - start) / (end - start)) * 100);
+  }, [poll.created_at, poll.expires_at, timeLeft]);
+
+  const formatTimeLeft = () => {
+    if (!timeLeft) return null;
+    
+    const { days, hours, minutes, seconds } = timeLeft;
+    
+    if (days > 0) {
+      return `${days}j ${hours}h`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
 
   const voteCountByOption = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -256,13 +318,29 @@ export function PollDisplay({
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="my-0 px-0 py-0">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
             {poll.expires_at && (
-              <span className="flex items-center gap-1 my-0 mx-0">
-                <Clock className="w-3 h-3" />
-                {isExpired 
-                  ? 'Terminé' 
-                  : `Se termine ${formatDistanceToNow(new Date(poll.expires_at), { locale: fr, addSuffix: true })}`
-                }
-              </span>
+              <div className="flex items-center gap-2">
+                {isExpired ? (
+                  <span className="text-muted-foreground">Terminé</span>
+                ) : (
+                  <>
+                    <div className="relative w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "absolute inset-y-0 left-0 rounded-full transition-all duration-1000",
+                          progressPercentage > 80 ? "bg-destructive" : progressPercentage > 50 ? "bg-yellow-500" : "bg-primary"
+                        )}
+                        style={{ width: `${progressPercentage}%` }}
+                      />
+                    </div>
+                    <span className={cn(
+                      "font-mono text-xs tabular-nums",
+                      progressPercentage > 80 ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      {formatTimeLeft()}
+                    </span>
+                  </>
+                )}
+              </div>
             )}
           </div>
 

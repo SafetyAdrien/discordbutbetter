@@ -7,6 +7,7 @@ import { fr } from 'date-fns/locale';
 import { Check, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface VoterAvatarsProps {
   votes: PollVote[];
@@ -22,27 +23,40 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
   return (
     <div className="flex items-center -space-x-1.5 transition-all duration-300 ease-out">
       {visibleVotes.map((vote, index) => (
-        <Avatar 
-          key={vote.id} 
-          className="w-5 h-5 border-2 border-card transition-transform duration-300"
-          style={{ 
-            zIndex: maxVisible - index,
-            animationDelay: `${index * 50}ms`
-          }}
-        >
-          <AvatarImage src={vote.user?.avatar_url || undefined} />
-          <AvatarFallback className="text-[8px] bg-muted">
-            {vote.user?.display_name?.charAt(0).toUpperCase() || '?'}
-          </AvatarFallback>
-        </Avatar>
+        <Tooltip key={vote.id}>
+          <TooltipTrigger asChild>
+            <Avatar 
+              className="w-5 h-5 border-2 border-card transition-transform duration-300 cursor-pointer"
+              style={{ 
+                zIndex: maxVisible - index,
+                animationDelay: `${index * 50}ms`
+              }}
+            >
+              <AvatarImage src={vote.user?.avatar_url || undefined} />
+              <AvatarFallback className="text-[8px] bg-muted">
+                {vote.user?.display_name?.charAt(0).toUpperCase() || '?'}
+              </AvatarFallback>
+            </Avatar>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            {vote.user?.display_name || 'Utilisateur inconnu'}
+          </TooltipContent>
+        </Tooltip>
       ))}
       {remainingCount > 0 && (
-        <div 
-          className="w-5 h-5 rounded-full bg-primary border-2 border-card flex items-center justify-center text-[9px] font-medium text-primary-foreground"
-          style={{ zIndex: 0 }}
-        >
-          +{remainingCount}
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div 
+              className="w-5 h-5 rounded-full bg-primary border-2 border-card flex items-center justify-center text-[9px] font-medium text-primary-foreground cursor-pointer"
+              style={{ zIndex: 0 }}
+            >
+              +{remainingCount}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs max-w-[200px]">
+            {votes.slice(maxVisible).map(v => v.user?.display_name || 'Inconnu').join(', ')}
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

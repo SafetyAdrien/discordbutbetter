@@ -8,6 +8,7 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
+import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -83,7 +84,8 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   announcement: StreamlineMegaphone,
   media: StreamlineMedia,
   calendar: StreamlineCalendar,
-  tasks: StreamlineTasks
+  tasks: StreamlineTasks,
+  stage: StreamlineStage
 };
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -287,7 +289,7 @@ function SortableChannel({
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
               <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
-            <span className="truncate flex-1 text-left font-ginto text-base text-[#9b9ca3] font-normal">{channel.name}</span>
+            <span className="truncate flex-1 text-left font-ginto text-sm text-[#9b9ca3] font-normal">{channel.name}</span>
             
               {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                   {channel.unreadCount}

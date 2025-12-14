@@ -16,6 +16,7 @@ import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
+import { StageChannel } from '@/components/channels/StageChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -224,7 +225,7 @@ const Index = () => {
       channels: cat.channels.map(ch => ({
         id: ch.id,
         name: ch.name,
-        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks',
+        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
         description: ch.description || undefined,
       })),
     })),
@@ -242,9 +243,9 @@ const Index = () => {
       id: cat.id,
       name: cat.name,
       channels: cat.channels.map(ch => ({
-        id: ch.id,
+      id: ch.id,
         name: ch.name,
-        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks',
+        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
         description: ch.description || undefined,
       })),
     })),
@@ -283,7 +284,7 @@ const Index = () => {
   const channelForChat = activeChannel ? {
     id: activeChannel.id,
     name: activeChannel.name,
-    type: (activeChannel.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks',
+    type: (activeChannel.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
     description: activeChannel.description || undefined,
   } : null;
 
@@ -374,6 +375,12 @@ const Index = () => {
                   channel={channelForChat}
                   onToggleMembers={handleToggleMembers}
                   showMembers={showMembers}
+                />
+              ) : channelForChat.type === 'stage' ? (
+                <StageChannel 
+                  channel={channelForChat}
+                  serverId={activeServer.id}
+                  canModerate={activeServer.owner_id === user?.id}
                 />
               ) : (
                 <ChatArea

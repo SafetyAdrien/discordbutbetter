@@ -345,7 +345,14 @@ const Index = () => {
           {/* Main Content Area - Conditional based on channel type */}
           {channelForChat && (
             <>
-              {channelForChat.type === 'voice' ? (
+              {/* PRIORITÉ 1 : ThreadView si un thread est actif */}
+              {activeThreadId ? (
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelName={channelForChat.name}
+                  onBack={() => setActiveThreadId(null)}
+                />
+              ) : channelForChat.type === 'voice' ? (
                 <VoiceChannelView 
                   channel={channelForChat}
                   serverId={activeServer.id}
@@ -388,23 +395,6 @@ const Index = () => {
                   channel={channelForChat}
                   serverId={activeServer.id}
                   canModerate={activeServer.owner_id === user?.id}
-                />
-              ) : activeThreadId ? (
-                <ThreadView
-                  threadId={activeThreadId}
-                  channelName={channelForChat.name}
-                  onBack={() => setActiveThreadId(null)}
-                />
-              ) : channelForChat.type === 'text' ? (
-                <ChatArea
-                  channel={channelForChat}
-                  messages={messagesData}
-                  onSendMessage={handleSendMessage}
-                  memberRoles={memberRolesMap}
-                  onOpenDM={handleOpenDM}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                  onSelectThread={(threadId) => setActiveThreadId(threadId)}
                 />
               ) : (
                 <ChatArea

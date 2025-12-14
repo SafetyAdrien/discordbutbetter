@@ -1,4 +1,4 @@
-import { forwardRef, useState, useMemo, useRef } from 'react';
+import { forwardRef, useState, useMemo, useRef, useEffect } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
@@ -71,28 +71,17 @@ function SearchFilters({
   onSelectFilter,
   searchQuery,
   isClosing,
+  selectedIndex,
+  onMouseEnterItem,
+  availableFilters,
 }: {
   onSelectFilter: (prefix: string) => void;
   searchQuery: string;
   isClosing: boolean;
+  selectedIndex: number;
+  onMouseEnterItem: (index: number) => void;
+  availableFilters: typeof searchFilters;
 }) {
-  // Filter suggestions based on current query
-  const availableFilters = useMemo(() => {
-    const lowerQuery = searchQuery.toLowerCase();
-    // If query already has a prefix, don't show suggestions
-    if (searchFilters.some(f => lowerQuery.startsWith(f.prefix))) {
-      return [];
-    }
-    // If typing, filter suggestions that match
-    if (lowerQuery.trim()) {
-      return searchFilters.filter(f => 
-        f.prefix.toLowerCase().includes(lowerQuery) ||
-        f.label.toLowerCase().includes(lowerQuery)
-      );
-    }
-    return searchFilters;
-  }, [searchQuery]);
-
   if (availableFilters.length === 0) return null;
 
   return (
@@ -101,13 +90,18 @@ function SearchFilters({
       isClosing ? "animate-slide-up" : "animate-slide-down"
     )}>
       <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
-      {availableFilters.map(filter => {
+      {availableFilters.map((filter, index) => {
         const Icon = filter.icon;
+        const isSelected = index === selectedIndex;
         return (
           <button
             key={filter.prefix}
             onClick={() => onSelectFilter(filter.prefix)}
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted text-sm text-left transition-colors"
+            onMouseEnter={() => onMouseEnterItem(index)}
+            className={cn(
+              "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left transition-colors",
+              isSelected ? "bg-muted" : "hover:bg-muted"
+            )}
           >
             <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <span className="text-primary font-medium min-w-[80px]">{filter.prefix}</span>
@@ -144,7 +138,61 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
     const [showFilters, setShowFilters] = useState(false);
     const [isClosingFilters, setIsClosingFilters] = useState(false);
     const [selectedRoleFilters, setSelectedRoleFilters] = useState<string[]>([]);
+    const [filterSelectedIndex, setFilterSelectedIndex] = useState(0);
     const searchRef = useRef<HTMLInputElement>(null);
+
+    // Calculate available filters based on search query
+    const availableFilters = useMemo(() => {
+      const lowerQuery = searchQuery.toLowerCase();
+      // If query already has a prefix, don't show suggestions
+      if (searchFilters.some(f => lowerQuery.startsWith(f.prefix))) {
+        return [];
+      }
+      // If typing, filter suggestions that match
+      if (lowerQuery.trim()) {
+        return searchFilters.filter(f => 
+          f.prefix.toLowerCase().includes(lowerQuery) ||
+          f.label.toLowerCase().includes(lowerQuery)
+        );
+      }
+      return searchFilters;
+    }, [searchQuery]);
+
+    // Reset selected index when filters change or dropdown opens
+    useEffect(() => {
+      setFilterSelectedIndex(0);
+    }, [searchQuery, showFilters]);
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!showFilters || availableFilters.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setFilterSelectedIndex(prev => 
+            (prev + 1) % availableFilters.length
+          );
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFilterSelectedIndex(prev => 
+            prev <= 0 ? availableFilters.length - 1 : prev - 1
+          );
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (availableFilters[filterSelectedIndex]) {
+            handleSelectFilter(availableFilters[filterSelectedIndex].prefix);
+          }
+          break;
+        case 'Tab':
+          if (availableFilters.length > 0) {
+            e.preventDefault();
+            handleSelectFilter(availableFilters[filterSelectedIndex].prefix);
+          }
+          break;
+      }
+    };
 
     // Fetch roles for filter and management
     const { data: allRoles = [] } = useServerRoles(serverId || null);
@@ -385,6 +433,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                 placeholder="Rechercher"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 onFocus={() => {
                   setIsClosingFilters(false);
                   setShowFilters(true);
@@ -404,6 +453,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
                   onSelectFilter={handleSelectFilter}
                   searchQuery={searchQuery}
                   isClosing={isClosingFilters}
+                  selectedIndex={filterSelectedIndex}
+                  onMouseEnterItem={setFilterSelectedIndex}
+                  availableFilters={availableFilters}
                 />
               )}
             </div>

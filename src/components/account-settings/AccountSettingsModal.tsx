@@ -1,5 +1,19 @@
 import { useState } from 'react';
-import { X, User, Shield, Link2, AppWindow, Smartphone, LogOut, Palette } from 'lucide-react';
+import { X, User, Shield, Link2, AppWindow, Smartphone, LogOut, Palette, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AccountSettings } from './AccountSettings';
@@ -26,11 +40,21 @@ const tabs = [
 
 export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const { signOut } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
     onClose();
+  };
+
+  const handleDeleteAccount = () => {
+    if (deleteConfirmation === 'SUPPRIMER') {
+      toast.info('Fonctionnalité de suppression de compte non implémentée');
+      setDeleteDialogOpen(false);
+      setDeleteConfirmation('');
+    }
   };
 
   const renderContent = () => {
@@ -93,6 +117,51 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
               <LogOut className="w-4 h-4" />
               Se déconnecter
             </button>
+            
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Supprimer mon compte
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer votre compte ?</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-4">
+                    <span>
+                      Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                    </span>
+                    <div className="pt-2">
+                      <Label htmlFor="delete-confirm-sidebar" className="text-sm font-medium">
+                        Tapez <span className="font-bold text-destructive">SUPPRIMER</span> pour confirmer
+                      </Label>
+                      <Input
+                        id="delete-confirm-sidebar"
+                        className="mt-2"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        placeholder="SUPPRIMER"
+                      />
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteConfirmation('')}>
+                    Annuler
+                  </AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDeleteAccount} 
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={deleteConfirmation !== 'SUPPRIMER'}
+                  >
+                    Supprimer définitivement
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

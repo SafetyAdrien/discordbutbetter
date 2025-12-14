@@ -37,6 +37,11 @@ export interface PollVote {
   option_id: string;
   user_id: string;
   created_at: string;
+  user?: {
+    id: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
 }
 
 export interface CreatePollData {
@@ -80,7 +85,10 @@ export function usePolls(channelId: string | null) {
               .order('position', { ascending: true }),
             supabase
               .from('poll_votes')
-              .select('*')
+              .select(`
+                *,
+                user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)
+              `)
               .eq('poll_id', poll.id)
           ]);
 
@@ -155,7 +163,10 @@ export function useThreadPolls(threadId: string | null) {
               .order('position', { ascending: true }),
             supabase
               .from('poll_votes')
-              .select('*')
+              .select(`
+                *,
+                user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)
+              `)
               .eq('poll_id', poll.id)
           ]);
 

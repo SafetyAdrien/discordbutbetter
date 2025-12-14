@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Hash, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
@@ -11,8 +10,9 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MarkdownText } from '@/lib/markdown';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
-import { useTypingIndicator, useTypingUsers } from '@/hooks/useTypingIndicator';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
+import { MessageInput } from '@/components/chat/MessageInput';
 
 interface ThreadViewProps {
   threadId: string;
@@ -34,7 +34,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
   
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
-  const { data: typingUsers = [] } = useTypingUsers(null, null, threadId);
 
   // Mark thread as read when opened
   useEffect(() => {
@@ -225,30 +224,19 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, onBack }
       </div>
 
       {/* Typing Indicator */}
-      {typingUsers.length > 0 && (
-        <TypingIndicator threadId={threadId} />
-      )}
+      <TypingIndicator threadId={threadId} />
 
       {/* Input */}
-      <div className="p-4 border-t border-border shrink-0">
-        <div className="flex items-center gap-2">
-          <Input
-            value={messageContent}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={`Message dans ${thread?.name || 'le thread'}...`}
-            className="flex-1"
-            maxLength={2000}
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!messageContent.trim() || sendMessage.isPending}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      <MessageInput
+        value={messageContent}
+        onChange={setMessageContent}
+        onSend={handleSend}
+        placeholder={`Envoyer un message dans ${thread?.name || 'le thread'}`}
+        disabled={sendMessage.isPending}
+        isSending={sendMessage.isPending}
+        onTypingStart={startTyping}
+        onTypingStop={stopTyping}
+      />
     </div>
   );
 };

@@ -6,13 +6,13 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useDMCalls } from '@/hooks/useDMCalls';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Send, Loader2, ArrowLeft, Copy, Pencil, Trash2, Hash, Smile, Reply, Phone, Video, Pin } from 'lucide-react';
+import { Loader2, ArrowLeft, Copy, Pencil, Trash2, Smile, Reply, Phone, Video, Pin, Hash } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
+import { MessageInput } from '@/components/chat/MessageInput';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -215,21 +215,24 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       <TypingIndicator conversationId={conversationId} />
 
       {/* Input */}
-      <form onSubmit={handleSend} className="p-4 border-t border-border">
-        <div className="flex gap-2 items-end bg-muted/50 rounded-lg px-3 py-2">
-          <textarea
-            value={messageInput}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={`Envoyer un message à ${displayName}`}
-            className="flex-1 bg-transparent py-2 text-foreground placeholder:text-muted-foreground focus:outline-none resize-none min-h-[24px] max-h-[200px] overflow-y-auto"
-            rows={1}
-          />
-          <Button type="submit" size="icon" disabled={!messageInput.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </form>
+      <MessageInput
+        value={messageInput}
+        onChange={setMessageInput}
+        onSend={() => {
+          if (!messageInput.trim()) return;
+          sendMessage.mutate({
+            conversationId,
+            content: messageInput.trim(),
+          });
+          setMessageInput('');
+          stopTyping();
+        }}
+        placeholder={`Envoyer un message à ${displayName}`}
+        disabled={sendMessage.isPending}
+        isSending={sendMessage.isPending}
+        onTypingStart={startTyping}
+        onTypingStop={stopTyping}
+      />
     </div>
   );
 }

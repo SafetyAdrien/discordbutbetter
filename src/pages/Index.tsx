@@ -332,9 +332,14 @@ const Index = () => {
           <ChannelList
             server={serverForChannelList}
             activeChannelId={activeChannelId}
-            onChannelSelect={setActiveChannelId}
+            onChannelSelect={(channelId) => {
+              setActiveChannelId(channelId);
+              setActiveThreadId(null); // Reset thread when changing channel
+            }}
             onOpenServerSettings={() => setShowServerSettings(true)}
             orphanChannels={channelsData?.orphanChannels || []}
+            activeThreadId={activeThreadId}
+            onThreadSelect={(threadId) => setActiveThreadId(threadId)}
           />
 
           {/* Main Content Area - Conditional based on channel type */}

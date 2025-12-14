@@ -296,6 +296,21 @@
     animation: slide-down 200ms ease-out;
   }
 
+  @keyframes slide-up {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 150ms ease-in forwards;
+  }
+
   @keyframes voice-glow {
     0%,
     100% {

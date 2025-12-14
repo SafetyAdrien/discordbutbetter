@@ -190,7 +190,7 @@ export function useCreateChannel() {
           server_id: serverId,
           category_id: categoryId || null,
           name,
-          type: type as 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks',
+          type: type as any, // 'stage' type added via migration, cast to bypass generated types
           position: nextPosition,
         })
         .select()

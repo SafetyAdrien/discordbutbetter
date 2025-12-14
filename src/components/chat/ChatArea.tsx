@@ -649,7 +649,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(
                       </div>
                     </div>
                   ) : (
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                       <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
                         {formatTime(message.timestamp)}
                       </span>

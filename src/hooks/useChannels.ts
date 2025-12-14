@@ -380,7 +380,33 @@ export function useReorderCategories() {
       await Promise.all(updates);
       return { serverId };
     },
-    onSuccess: (_, { serverId }) => {
+    onMutate: async ({ serverId, orderedIds }) => {
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      const previousData = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      if (previousData) {
+        // Reorder categories based on orderedIds
+        const reorderedCategories = orderedIds
+          .map(id => previousData.categories.find(cat => cat.id === id))
+          .filter((cat): cat is CategoryWithChannels => !!cat)
+          .map((cat, index) => ({ ...cat, position: index }));
+        
+        queryClient.setQueryData(['channels', serverId], {
+          ...previousData,
+          categories: reorderedCategories
+        });
+      }
+      
+      return { previousData, serverId };
+    },
+    onError: (_, { serverId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['channels', serverId], context.previousData);
+      }
+      toast.error('Erreur lors du réordonnancement');
+    },
+    onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
     },
   });

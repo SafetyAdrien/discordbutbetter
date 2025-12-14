@@ -503,9 +503,10 @@ export function ChannelList({
     setEditingCategoryName(category.name);
   };
   const handleSaveCategory = () => {
-    if (editingCategoryId && editingCategoryName.trim()) {
+    if (editingCategoryId && editingCategoryName.trim() && server?.id) {
       updateCategory.mutate({
         categoryId: editingCategoryId,
+        serverId: server.id,
         name: editingCategoryName.trim()
       });
     }

@@ -14,16 +14,17 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
-import { useDeleteChannel } from '@/hooks/useChannelSettings';
+import { useDeleteChannel } from '@/hooks/useChannels';
 import { toast } from 'sonner';
 
 interface ChannelDangerZoneProps {
   channelId: string;
   channelName: string;
+  serverId: string;
   onDeleted: () => void;
 }
 
-export function ChannelDangerZone({ channelId, channelName, onDeleted }: ChannelDangerZoneProps) {
+export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted }: ChannelDangerZoneProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const deleteChannel = useDeleteChannel();
@@ -32,8 +33,7 @@ export function ChannelDangerZone({ channelId, channelName, onDeleted }: Channel
 
   const handleDelete = async () => {
     try {
-      await deleteChannel.mutateAsync(channelId);
-      toast.success('Salon supprimé');
+      await deleteChannel.mutateAsync({ channelId, serverId });
       onDeleted();
     } catch {
       toast.error('Erreur lors de la suppression');

@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChannelType } from './useChannels';
+import { ChannelType, CategoryWithChannels, OrphanChannel } from './useChannels';
+import { toast } from 'sonner';
 
 export interface ChannelDetails {
   id: string;
@@ -38,35 +39,64 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, name, description }: { channelId: string; name: string; description?: string }) => {
+    mutationFn: async ({ channelId, serverId, name, description }: { channelId: string; serverId: string; name: string; description?: string }) => {
       const { error } = await supabase
         .from('channels')
         .update({ name, description })
         .eq('id', channelId);
 
       if (error) throw error;
+      return { channelId, serverId, name, description };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['channel-details', variables.channelId] });
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
+    onMutate: async ({ channelId, serverId, name, description }) => {
+      await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      
+      const previousDetails = queryClient.getQueryData<ChannelDetails>(['channel-details', channelId]);
+      const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+      
+      // Update channel details cache
+      if (previousDetails) {
+        queryClient.setQueryData(['channel-details', channelId], {
+          ...previousDetails,
+          name,
+          description: description ?? previousDetails.description
+        });
+      }
+      
+      // Update channels cache
+      if (previousChannels) {
+        const updateChannel = (ch: any) => 
+          ch.id === channelId 
+            ? { ...ch, name, description: description ?? ch.description } 
+            : ch;
+        
+        queryClient.setQueryData(['channels', serverId], {
+          categories: previousChannels.categories.map(cat => ({
+            ...cat,
+            channels: cat.channels.map(updateChannel)
+          })),
+          orphanChannels: previousChannels.orphanChannels.map(updateChannel)
+        });
+      }
+      
+      return { previousDetails, previousChannels, channelId, serverId };
     },
-  });
-}
-
-export function useDeleteChannel() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (channelId: string) => {
-      const { error } = await supabase
-        .from('channels')
-        .delete()
-        .eq('id', channelId);
-
-      if (error) throw error;
+    onError: (_, { channelId, serverId }, context) => {
+      if (context?.previousDetails) {
+        queryClient.setQueryData(['channel-details', channelId], context.previousDetails);
+      }
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', serverId], context.previousChannels);
+      }
+      toast.error('Erreur lors de la mise à jour');
+    },
+    onSettled: (_, __, { channelId, serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['channel-details', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      toast.success('Salon mis à jour');
     },
   });
 }

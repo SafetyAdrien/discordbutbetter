@@ -66,7 +66,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
             <div className="flex-1 overflow-y-auto mt-4">
               <TabsContent value="overview" className="mt-0 space-y-6">
                 <ChannelOverview channel={channel} />
-                <ChannelDangerZone channelId={channelId} channelName={channel.name} onDeleted={onClose} />
+                <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
               </TabsContent>
 
               <TabsContent value="permissions" className="mt-0">

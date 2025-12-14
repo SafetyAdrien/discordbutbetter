@@ -1,7 +1,7 @@
-import { forwardRef, useState, useMemo, useRef } from 'react';
+import { forwardRef, useState, useMemo } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
+import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
@@ -18,8 +18,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { copyToClipboard } from '@/lib/clipboard';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,67 +51,6 @@ const statusColors: Record<string, string> = {
   offline: 'bg-[hsl(var(--offline))]',
 };
 
-// Search filter prefixes
-const searchFilters = [
-  { prefix: 'de:', label: 'de la personne', icon: UserIcon },
-  { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign },
-  { prefix: 'contient:', label: 'dispose de données spécifiques', icon: FileText },
-  { prefix: 'dans:', label: 'dans un salon spécifique', icon: Hash },
-  { prefix: 'pendant:', label: 'envoyé à une date', icon: Calendar },
-  { prefix: 'avant:', label: 'avant la date', icon: Calendar },
-  { prefix: 'après:', label: 'après la date', icon: Calendar },
-  { prefix: 'épinglé:', label: 'épinglé', icon: Pin },
-  { prefix: 'auteur:', label: 'par type d\'auteur', icon: UserCircle },
-];
-
-// Search Filters Component
-function SearchFilters({ 
-  onSelectFilter,
-  searchQuery,
-}: {
-  onSelectFilter: (prefix: string) => void;
-  searchQuery: string;
-}) {
-  // Filter suggestions based on current query
-  const availableFilters = useMemo(() => {
-    const lowerQuery = searchQuery.toLowerCase();
-    // If query already has a prefix, don't show suggestions
-    if (searchFilters.some(f => lowerQuery.startsWith(f.prefix))) {
-      return [];
-    }
-    // If typing, filter suggestions that match
-    if (lowerQuery.trim()) {
-      return searchFilters.filter(f => 
-        f.prefix.toLowerCase().includes(lowerQuery) ||
-        f.label.toLowerCase().includes(lowerQuery)
-      );
-    }
-    return searchFilters;
-  }, [searchQuery]);
-
-  if (availableFilters.length === 0) return null;
-
-  return (
-    <div className="bg-card border border-border rounded-lg shadow-lg p-2 mt-2 animate-slide-down">
-      <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
-      {availableFilters.map(filter => {
-        const Icon = filter.icon;
-        return (
-          <button
-            key={filter.prefix}
-            onClick={() => onSelectFilter(filter.prefix)}
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted text-sm text-left transition-colors"
-          >
-            <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-primary font-medium min-w-[80px]">{filter.prefix}</span>
-            <span className="text-muted-foreground/70 truncate">{filter.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // Role Icon Component
 function RoleIcon({ role }: { role: Role | RoleWithPermissions }) {
   if (role.icon_url) {
@@ -135,10 +72,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
   function MemberList({ members, ownerId, serverId, onOpenDM, serverRoles = [] }, ref) {
     const { user: currentUser } = useAuth();
     const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
-    const [selectedRoleFilters, setSelectedRoleFilters] = useState<string[]>([]);
-    const searchRef = useRef<HTMLInputElement>(null);
 
     // Fetch roles for filter and management
     const { data: allRoles = [] } = useServerRoles(serverId || null);
@@ -168,89 +101,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
       );
     }, [currentUser, serverId, ownerId, membersData, allRoles]);
 
-    const handleSelectFilter = (prefix: string) => {
-      setSearchQuery(prefix);
-      setShowFilters(false);
-      searchRef.current?.focus();
-    };
+    const sortedMembers = useMemo(() => {
+      return [...members].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    }, [members]);
 
-    const handleRoleFilterToggle = (roleId: string) => {
-      setSelectedRoleFilters(prev => 
-        prev.includes(roleId) 
-          ? prev.filter(id => id !== roleId)
-          : [...prev, roleId]
-      );
-    };
-
-    const clearRoleFilters = () => {
-      setSelectedRoleFilters([]);
-    };
-
-    // Parse search query for prefixes
-    const parseSearchQuery = (query: string) => {
-      const parsed: { prefix: string; value: string }[] = [];
-      let remaining = query;
-      
-      // Check for each known prefix
-      for (const filter of searchFilters) {
-        const regex = new RegExp(`${filter.prefix}(\\S+)`, 'gi');
-        const match = regex.exec(remaining);
-        if (match) {
-          parsed.push({ prefix: filter.prefix, value: match[1] });
-          remaining = remaining.replace(match[0], '').trim();
-        }
-      }
-      
-      return { parsed, freeText: remaining };
-    };
-
-    const filteredMembers = useMemo(() => {
-      let result = [...members];
-      
-      const { parsed, freeText } = parseSearchQuery(searchQuery);
-      
-      // Apply free text filter on name
-      if (freeText.trim()) {
-        const query = freeText.toLowerCase();
-        result = result.filter(m => 
-          m.displayName.toLowerCase().includes(query) ||
-          m.username.toLowerCase().includes(query)
-        );
-      }
-      
-      // Apply prefix filters
-      for (const { prefix, value } of parsed) {
-        switch (prefix) {
-          case 'de:':
-            result = result.filter(m => 
-              m.displayName.toLowerCase().includes(value.toLowerCase()) ||
-              m.username.toLowerCase().includes(value.toLowerCase())
-            );
-            break;
-          case 'auteur:':
-            // Filter by author type (e.g., bot, user)
-            if (value.toLowerCase() === 'bot') {
-              result = result.filter(m => m.username.toLowerCase().includes('bot'));
-            }
-            break;
-        }
-      }
-      
-      // Apply role filter
-      if (selectedRoleFilters.length > 0) {
-        result = result.filter(m => 
-          m.roles?.some(role => selectedRoleFilters.includes(role.id))
-        );
-      }
-      
-      // Sort by display name
-      result.sort((a, b) => a.displayName.localeCompare(b.displayName));
-      
-      return result;
-    }, [members, searchQuery, selectedRoleFilters]);
-
-    const onlineMembers = filteredMembers.filter((m) => m.status !== 'offline');
-    const offlineMembers = filteredMembers.filter((m) => m.status === 'offline');
+    const onlineMembers = sortedMembers.filter((m) => m.status !== 'offline');
+    const offlineMembers = sortedMembers.filter((m) => m.status === 'offline');
 
     const handleCopyId = (id: string) => {
       copyToClipboard(id, 'ID utilisateur copié');
@@ -364,39 +220,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
       );
     };
 
-    // Get displayable roles for filter (non-default roles)
-    const filterableRoles = allRoles.filter(r => !r.is_default);
-
     return (
       <>
         <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
-          {/* Search input */}
-          <div className="px-3 pt-3">
-            <div className="flex gap-1.5">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  ref={searchRef}
-                  placeholder="Rechercher"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setShowFilters(true)}
-                  onBlur={() => setTimeout(() => setShowFilters(false), 150)}
-                  className="h-8 pl-8 text-sm bg-input"
-                />
-              </div>
-              
-            </div>
-            
-            {/* Filters suggestions */}
-            {showFilters && (
-              <SearchFilters
-                onSelectFilter={handleSelectFilter}
-                searchQuery={searchQuery}
-              />
-            )}
-          </div>
-          <Separator className="mt-3" />
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
             {/* Online Members */}
             {onlineMembers.length > 0 && (

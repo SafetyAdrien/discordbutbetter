@@ -472,7 +472,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/${messageId}`;
     copyToClipboard(link, 'Lien du message copié');
   };
-  return <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0">
+  return <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">

@@ -32,9 +32,9 @@ import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, ChannelType, OrphanChannel } from '@/hooks/useChannels';
-import { useThreads } from '@/hooks/useThreads';
 import { Thread } from '@/types/thread';
 import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
+import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -496,21 +496,21 @@ export function ChannelList({
     return ids;
   }, [server.categories, orphanChannels]);
 
-  // Fetch threads for all text channels (we'll use active channel for unread counts)
+  // Fetch ONLY followed threads for the active channel
   const {
-    data: threads = []
-  } = useThreads(activeChannelId || undefined);
+    data: followedThreads = []
+  } = useFollowedThreads(activeChannelId || undefined);
   const {
     data: unreadCounts = {}
   } = useThreadUnreadCounts(activeChannelId || undefined);
 
-  // Create a map of threads with unread counts
+  // Create a map of followed threads with unread counts
   const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
-    return threads.map(thread => ({
+    return followedThreads.map(thread => ({
       ...thread,
       unreadCount: unreadCounts[thread.id] || 0
     }));
-  }, [threads, unreadCounts]);
+  }, [followedThreads, unreadCounts]);
   const ownerProfile = membersData?.find(m => m.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {

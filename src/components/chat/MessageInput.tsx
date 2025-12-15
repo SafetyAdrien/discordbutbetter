@@ -126,15 +126,14 @@ export function MessageInput({
       // Only trigger if # is at start or after whitespace
       if (hashIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {
         const afterHash = beforeCursor.slice(hashIndex + 1);
-        // Verify the part after # contains only valid channel name characters
-        if (/^[\w\u00C0-\u024F_-]*$/.test(afterHash)) {
-          return {
-            type: 'channel' as const,
-            query: afterHash,
-            startIndex: hashIndex,
-            triggerLength: 1,
-          };
-        }
+        // Accept any characters after # - MentionAutocomplete handles filtering with normalizeForSearch
+        // This supports channel names with spaces, emojis, and special characters
+        return {
+          type: 'channel' as const,
+          query: afterHash,
+          startIndex: hashIndex,
+          triggerLength: 1,
+        };
       }
     }
     

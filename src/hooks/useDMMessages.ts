@@ -16,6 +16,7 @@ export interface DMMessage {
   id: string;
   content: string;
   created_at: string | null;
+  edited_at: string | null;
   attachments: any;
   conversation_id: string;
   author: {
@@ -42,6 +43,7 @@ export function useDMMessages(conversationId: string | null) {
           id,
           content,
           created_at,
+          edited_at,
           attachments,
           conversation_id,
           author:profiles!dm_messages_author_id_fkey (
@@ -86,6 +88,7 @@ export function useDMMessages(conversationId: string | null) {
               id,
               content,
               created_at,
+              edited_at,
               attachments,
               conversation_id,
               author:profiles!dm_messages_author_id_fkey (
@@ -148,6 +151,7 @@ export function useSendDMMessage() {
           id,
           content,
           created_at,
+          edited_at,
           attachments,
           conversation_id,
           author:profiles!dm_messages_author_id_fkey (
@@ -174,6 +178,7 @@ export function useSendDMMessage() {
         id: `temp-${Date.now()}`,
         content,
         created_at: new Date().toISOString(),
+        edited_at: null,
         attachments: [],
         conversation_id: conversationId,
         author: profile ? {
@@ -236,7 +241,7 @@ export function useEditDMMessage() {
 
       const { data, error } = await supabase
         .from('dm_messages')
-        .update({ content: validated.content })
+        .update({ content: validated.content, edited_at: new Date().toISOString() })
         .eq('id', messageId)
         .eq('author_id', user.id)
         .select()
@@ -255,7 +260,7 @@ export function useEditDMMessage() {
 
       queryClient.setQueryData<DMMessage[]>(
         ['dm-messages', conversationId],
-        (old) => old?.map((m) => (m.id === messageId ? { ...m, content } : m)) || []
+        (old) => old?.map((m) => (m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m)) || []
       );
 
       return { previousMessages };

@@ -287,6 +287,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             {message.author?.display_name || 'Utilisateur'}
                           </span>
                           <span className="text-xs text-muted-foreground">{timestamp}</span>
+                          {message.edited_at && (
+                            <span className="text-xs text-muted-foreground/50">(modifié)</span>
+                          )}
                         </div>
                       )}
                       {editingMessageId === message.id ? (

@@ -103,7 +103,7 @@ export function MessageInput({
     const beforeCursor = text.slice(0, cursorPos);
     
     // Check for role mention (@& prefix)
-    const roleMatch = beforeCursor.match(/@&(\w*)$/);
+    const roleMatch = beforeCursor.match(/@&([\w\u00C0-\u024F]*)$/);
     if (roleMatch) {
       return {
         type: 'role' as const,
@@ -113,8 +113,8 @@ export function MessageInput({
       };
     }
     
-    // Check for channel mention (# prefix)
-    const channelMatch = beforeCursor.match(/#(\w*)$/);
+    // Check for channel mention (# prefix) - supports hyphens, underscores, accents
+    const channelMatch = beforeCursor.match(/#([\w\u00C0-\u024F-]*)$/);
     if (channelMatch) {
       return {
         type: 'channel' as const,
@@ -125,7 +125,7 @@ export function MessageInput({
     }
     
     // Check for user mention (@ prefix, not followed by &)
-    const userMatch = beforeCursor.match(/@(\w*)$/);
+    const userMatch = beforeCursor.match(/@([\w\u00C0-\u024F]*)$/);
     if (userMatch && !beforeCursor.endsWith('@&')) {
       return {
         type: 'user' as const,

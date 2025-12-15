@@ -34,7 +34,10 @@ const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
 // Tokenize inline content (bold, italic, etc.)
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
-  let remaining = text;
+  
+  // Handle escape characters first - replace \* \_ \~ etc. with placeholders
+  let processedText = text.replace(/\\([*_~|`#\->\[\]\\])/g, '___ESC_$1___');
+  let remaining = processedText;
   
   while (remaining.length > 0) {
     // Check for masked links first [text](url)
@@ -194,7 +197,9 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
 
   switch (token.type) {
     case 'text':
-      return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
+      // Restore escaped characters
+      const textContent = (token.content as string).replace(/___ESC_(.+?)___/g, '$1');
+      return <React.Fragment key={key}>{textContent}</React.Fragment>;
     case 'bold':
       return <strong key={key}>{renderContent(token.content)}</strong>;
     case 'italic':
@@ -253,19 +258,19 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
   switch (block.type) {
     case 'header1':
       return (
-        <h1 key={key} className="text-xl font-bold my-1">
+        <h1 key={key} className="text-2xl font-bold text-white my-2">
           {renderInlineContent(block.content)}
         </h1>
       );
     case 'header2':
       return (
-        <h2 key={key} className="text-lg font-bold my-1">
+        <h2 key={key} className="text-xl font-bold text-white my-1.5">
           {renderInlineContent(block.content)}
         </h2>
       );
     case 'header3':
       return (
-        <h3 key={key} className="text-base font-semibold my-0.5">
+        <h3 key={key} className="text-lg font-semibold text-white my-1">
           {renderInlineContent(block.content)}
         </h3>
       );
@@ -277,13 +282,13 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
       );
     case 'blockquote':
       return (
-        <blockquote key={key} className="border-l-4 border-muted-foreground/50 pl-3 my-1 text-muted-foreground italic">
+        <blockquote key={key} className="border-l-[4px] border-[#4e5058] pl-3 my-1 text-muted-foreground">
           {renderInlineContent(block.content)}
         </blockquote>
       );
     case 'multiBlockquote':
       return (
-        <blockquote key={key} className="border-l-4 border-muted-foreground/50 pl-3 my-1 text-muted-foreground italic whitespace-pre-wrap">
+        <blockquote key={key} className="border-l-[4px] border-[#4e5058] pl-3 my-1 text-muted-foreground whitespace-pre-wrap">
           {renderInlineContent(block.content)}
         </blockquote>
       );

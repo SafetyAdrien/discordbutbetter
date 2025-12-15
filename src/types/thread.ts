@@ -1,3 +1,18 @@
+export interface ThreadParticipant {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+export interface ThreadLastMessage {
+  content: string;
+  created_at: string;
+  author: {
+    display_name: string;
+    avatar_url: string | null;
+  };
+}
+
 export interface Thread {
   id: string;
   channel_id: string;
@@ -15,6 +30,9 @@ export interface Thread {
     avatar_url: string | null;
   };
   message_count?: number;
+  last_message?: ThreadLastMessage;
+  participants?: ThreadParticipant[];
+  participant_count?: number;
 }
 
 export interface ThreadMessage {

@@ -1,7 +1,7 @@
-import { useState, forwardRef, useEffect, useMemo } from 'react';
+import { useState, forwardRef, useEffect, useMemo, useCallback } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile } from 'lucide-react';
+import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag, ClipboardCopy } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -91,15 +91,20 @@ function MessageReactions({
     </div>;
 }
 
-// Quick reactions for SHIFT mode
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+// Quick reactions - exactement 3 émojis les plus populaires pour le hover standard
+const QUICK_REACTIONS_HOVER = ['👍', '❤️', '😂'];
 
-// Message Actions Component (shown on hover) - Discord style
+// Émojis favoris pour le menu contextuel
+const CONTEXT_MENU_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
+// Message Actions Component (shown on hover) - Discord style with SHIFT support
 function MessageActions({
   isVisible,
+  isShiftPressed,
   onReply,
   onAddReaction,
   onCopyLink,
+  onCopyId,
   onEdit,
   onDelete,
   onCreateThread,
@@ -108,9 +113,11 @@ function MessageActions({
   isPinned
 }: {
   isVisible: boolean;
+  isShiftPressed: boolean;
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   onCopyLink: () => void;
+  onCopyId: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onCreateThread?: () => void;
@@ -120,10 +127,74 @@ function MessageActions({
 }) {
   if (!isVisible) return null;
   
+  // Mode SHIFT : affiche des actions alternatives
+  if (isShiftPressed) {
+    return (
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-destructive/30 rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+        {/* Copier l'ID */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onCopyId} className="p-1.5 hover:bg-muted rounded transition-colors">
+              <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Copier l'ID</TooltipContent>
+        </Tooltip>
+        
+        {/* Copier le lien */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
+              <Link className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Copier le lien</TooltipContent>
+        </Tooltip>
+        
+        {/* Épingler */}
+        {onPin && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onPin} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Pin className={cn("w-4 h-4", isPinned ? "text-primary" : "text-muted-foreground")} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{isPinned ? 'Désépingler' : 'Épingler'}</TooltipContent>
+          </Tooltip>
+        )}
+        
+        {isOwnMessage && (
+          <>
+            {/* Modifier */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Modifier</TooltipContent>
+            </Tooltip>
+            
+            {/* Supprimer - toujours en rouge */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Supprimer</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
+    );
+  }
+  
+  // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
   return (
     <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
-      {/* 1. Réactions rapides - TOUJOURS VISIBLES */}
-      {QUICK_REACTIONS.map((emoji) => (
+      {/* 1. Exactement 3 réactions rapides */}
+      {QUICK_REACTIONS_HOVER.map((emoji) => (
         <Tooltip key={emoji}>
           <TooltipTrigger asChild>
             <button
@@ -137,7 +208,7 @@ function MessageActions({
         </Tooltip>
       ))}
       
-      {/* 2. Picker emoji complet */}
+      {/* 2. Bouton ajouter réaction (visage +) */}
       <Popover>
         <PopoverTrigger asChild>
           <button className="p-1.5 hover:bg-muted rounded transition-colors">
@@ -169,7 +240,7 @@ function MessageActions({
         <TooltipContent side="top">Répondre</TooltipContent>
       </Tooltip>
       
-      {/* 4. Menu Plus d'options */}
+      {/* 4. Menu Plus d'options - 3 points HORIZONTAUX */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="p-1.5 hover:bg-muted rounded transition-colors">
@@ -234,8 +305,8 @@ function PollActions({
   
   return (
     <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
-      {/* 1. Réactions rapides - TOUJOURS VISIBLES */}
-      {QUICK_REACTIONS.map((emoji) => (
+      {/* 1. Réactions rapides - 3 émojis */}
+      {QUICK_REACTIONS_HOVER.map((emoji) => (
         <Tooltip key={emoji}>
           <TooltipTrigger asChild>
             <button
@@ -375,6 +446,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isSending, setIsSending] = useState(false);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
+  
+  // SHIFT key detection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftPressed(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftPressed(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
   const {
     user
   } = useAuth();
@@ -796,7 +884,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         return <ContextMenu key={message.id}>
               <ContextMenuTrigger asChild>
                 <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => setHoveredMessageId(null)}>
-                  <MessageActions isVisible={hoveredMessageId === message.id} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} />
+                  <MessageActions isVisible={hoveredMessageId === message.id} isShiftPressed={isShiftPressed} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} />
                   {showAuthor ? <div className="flex gap-3">
                       <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                         <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
@@ -891,23 +979,48 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     </div>}
                 </div>
               </ContextMenuTrigger>
-              <ContextMenuContent className="w-48">
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger>
-                    <Smile className="w-4 h-4 mr-2" />
-                    Ajouter une réaction
-                  </ContextMenuSubTrigger>
-                  <ContextMenuSubContent className="p-2">
-                    <div className="flex gap-1">
-                      {QUICK_REACTIONS.map(emoji => <button key={emoji} onClick={() => handleAddReaction(message.id, emoji)} className="p-1.5 hover:bg-muted rounded text-lg transition-colors">
-                          {emoji}
-                        </button>)}
-                    </div>
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
+              <ContextMenuContent className="min-w-[220px] p-1.5 rounded-lg shadow-xl" collisionPadding={8}>
+                {/* Haut : Rangée d'émojis favoris */}
+                <div className="flex items-center gap-1 p-1 pb-2 border-b border-border mb-1">
+                  {CONTEXT_MENU_REACTIONS.map(emoji => (
+                    <button 
+                      key={emoji} 
+                      onClick={() => handleAddReaction(message.id, emoji)} 
+                      className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                        <SmilePlus className="w-5 h-5 text-muted-foreground" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" align="start" className="w-64 p-2">
+                      <div className="grid grid-cols-8 gap-1">
+                        {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleAddReaction(message.id, emoji)}
+                            className="p-1 hover:bg-muted rounded text-lg transition-colors"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                {/* Milieu : Actions principales */}
                 <ContextMenuItem onClick={() => handleReply(message)}>
                   <Reply className="w-4 h-4 mr-2" />
                   Répondre
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copier le texte
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => handlePinMessage(message.id)}>
                   <Pin className="w-4 h-4 mr-2" />
@@ -917,30 +1030,34 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   <StreamlineThreads className="w-4 h-4 mr-2" />
                   Créer un thread
                 </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copier le texte
-                </ContextMenuItem>
                 <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
                   <Link className="w-4 h-4 mr-2" />
-                  Copier le lien du message
+                  Copier le lien
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => handleCopyId(message.id)}>
                   <Hash className="w-4 h-4 mr-2" />
                   Copier l'ID
                 </ContextMenuItem>
-                {isOwnMessage && <>
-                    <ContextMenuSeparator />
+                
+                {/* Bas : Zone Danger */}
+                <ContextMenuSeparator />
+                {isOwnMessage ? (
+                  <>
                     <ContextMenuItem onClick={() => handleStartEdit(message)}>
                       <Pencil className="w-4 h-4 mr-2" />
                       Modifier
                     </ContextMenuItem>
-                    <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(message.id)}>
-                      <Trash2 className="w-4 h-4 mr-2" />
+                    <ContextMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(message.id)}>
+                      <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                       Supprimer
                     </ContextMenuItem>
-                  </>}
+                  </>
+                ) : (
+                  <ContextMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <Flag className="w-4 h-4 mr-2 text-destructive" />
+                    Signaler
+                  </ContextMenuItem>
+                )}
               </ContextMenuContent>
             </ContextMenu>;
       })}

@@ -212,7 +212,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
       return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
     case 'code':
       return (
-        <code key={key} className="px-1.5 py-0.5 bg-[#2b2d31] rounded text-sm font-mono text-[#e8912d]">
+        <code key={key} className="px-1.5 py-0.5 bg-[#2b2d31] rounded text-sm font-mono text-[#d4d7dc]">
           {token.content as string}
         </code>
       );
@@ -270,7 +270,7 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
       );
     case 'subtext':
       return (
-        <p key={key} className="text-xs text-muted-foreground">
+        <p key={key} className="text-[12px] text-[#949BA4] leading-4">
           {renderInlineContent(block.content)}
         </p>
       );
@@ -300,8 +300,13 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
       );
     case 'codeBlock':
       return (
-        <pre key={key} className="bg-[#2b2d31] rounded-md p-3 my-2 overflow-x-auto">
-          <code className="text-sm font-mono text-[#b5b9c1]">{block.content}</code>
+        <pre key={key} className="bg-[#2b2d31] border border-[#1e1f22] rounded-md my-2 overflow-hidden">
+          {block.language && (
+            <div className="px-3 py-1.5 text-xs text-[#949BA4] border-b border-[#1e1f22] bg-[#2b2d31]">
+              {block.language}
+            </div>
+          )}
+          <code className="block px-3 py-2 text-sm font-mono text-[#dcddde] overflow-x-auto">{block.content}</code>
         </pre>
       );
     case 'empty':

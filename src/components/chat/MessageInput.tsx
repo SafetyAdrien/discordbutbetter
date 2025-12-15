@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
+import { MarkdownPreview } from './MarkdownPreview';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
 
 interface MessageInputProps {
   value: string;
@@ -37,6 +38,7 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
@@ -100,7 +102,10 @@ export function MessageInput({
   };
 
   return (
-    <div className={compact ? "p-3 border-t border-white/10" : "px-4 py-3 flex-shrink-0 flex items-center w-full"}>
+    <div className={compact ? "p-3 border-t border-white/10" : "px-4 py-3 flex-shrink-0 flex flex-col w-full"}>
+      {showPreview && value.trim() && (
+        <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin" />
+      )}
       <form onSubmit={handleSubmit} className="relative w-full shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         <div className={`flex items-center gap-2 rounded-lg border transition-colors ${
           compact 
@@ -183,6 +188,14 @@ export function MessageInput({
                 </button>
               }
             />
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
+              title={showPreview ? "Masquer l'aperçu" : "Aperçu Markdown"}
+            >
+              {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
+            </button>
             {value.trim() && (
               <button 
                 type="submit" 

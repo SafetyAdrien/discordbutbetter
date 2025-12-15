@@ -1,4 +1,5 @@
 import React from 'react';
+import { CodeBlock } from '@/components/ui/code-block';
 
 interface MarkdownToken {
   type: 'text' | 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock';
@@ -299,16 +300,7 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
         </li>
       );
     case 'codeBlock':
-      return (
-        <pre key={key} className="bg-[#2b2d31] border border-[#1e1f22] rounded-md my-2 overflow-hidden">
-          {block.language && (
-            <div className="px-3 py-1.5 text-xs text-[#949BA4] border-b border-[#1e1f22] bg-[#2b2d31]">
-              {block.language}
-            </div>
-          )}
-          <code className="block px-3 py-2 text-sm font-mono text-[#dcddde] overflow-x-auto">{block.content}</code>
-        </pre>
-      );
+      return <CodeBlock key={key} code={block.content} language={block.language} />;
     case 'empty':
       return <br key={key} />;
     case 'paragraph':

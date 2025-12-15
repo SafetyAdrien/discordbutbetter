@@ -652,8 +652,18 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           {editingMessageId === message.id ? (
                             <div className="space-y-2">
                               <Textarea
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.height = 'auto';
+                                    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                                  }
+                                }}
                                 value={editingContent}
-                                onChange={(e) => setEditingContent(e.target.value)}
+                                onChange={(e) => {
+                                  setEditingContent(e.target.value);
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();

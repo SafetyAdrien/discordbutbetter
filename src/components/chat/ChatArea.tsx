@@ -1,4 +1,4 @@
-import { useState, forwardRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag } from 'lucide-react';
@@ -746,6 +746,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         </div>
                         {isEditing ? <div className="mt-1 space-y-2">
                             <Textarea 
+                              ref={(el) => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                                }
+                              }}
                               value={editingContent} 
                               onChange={e => {
                                 setEditingContent(e.target.value);
@@ -801,6 +807,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       <div className="flex-1 min-w-0">
                         {isEditing ? <div className="space-y-2">
                             <Textarea 
+                              ref={(el) => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                                }
+                              }}
                               value={editingContent} 
                               onChange={e => {
                                 setEditingContent(e.target.value);

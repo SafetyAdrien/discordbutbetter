@@ -415,19 +415,21 @@ const Index = () => {
             </>
           )}
 
-          {/* Right Panel - Thread OR Member List */}
+          {/* Right Panel - Thread (50%) OR Member List */}
           {channelForChat?.type !== 'voice' && (
             activeThreadId ? (
-              <ThreadView
-                threadId={activeThreadId}
-                channelId={threadChannelId || activeChannelId || undefined}
-                serverId={activeServerId}
-                channelName={channelForChat?.name || ''}
-                onBack={() => {
-                  setActiveThreadId(null);
-                  setThreadChannelId(null);
-                }}
-              />
+              <div className="flex-1 min-w-0">
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelId={threadChannelId || activeChannelId || undefined}
+                  serverId={activeServerId}
+                  channelName={channelForChat?.name || ''}
+                  onBack={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                  }}
+                />
+              </div>
             ) : showMembers ? (
               <MemberList 
                 members={memberListData} 

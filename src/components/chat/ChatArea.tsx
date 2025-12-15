@@ -2,7 +2,7 @@ import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from 'r
 import { useNavigate } from 'react-router-dom';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag } from 'lucide-react';
+import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag, Menu } from 'lucide-react';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -210,6 +210,10 @@ interface ChatAreaProps {
   activeThreadId?: string | null;
   onCloseThread?: () => void;
   members?: Array<{ id: string; displayName: string; username: string; avatar?: string }>;
+  // Responsive props
+  onOpenSidebar?: () => void;
+  showSidebarButton?: boolean;
+  showMembersButton?: boolean;
 }
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('fr-FR', {
@@ -244,6 +248,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   activeThreadId,
   onCloseThread,
   members = [],
+  onOpenSidebar,
+  showSidebarButton = false,
+  showMembersButton = false,
 }, ref) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState('');
@@ -570,6 +577,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   return <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
+        {/* Hamburger button for sidebar on tablet/mobile */}
+        {showSidebarButton && (
+          <Button variant="ghost" size="icon" onClick={onOpenSidebar} className="flex-shrink-0">
+            <Menu className="w-5 h-5" />
+          </Button>
+        )}
+
         <div className="flex items-center gap-2">
           <Hash className="w-5 h-5 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
@@ -702,12 +716,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               } else {
                 onToggleMembers?.();
               }
-            }} className={cn(showMembers && !activeThreadId && 'bg-surface-hover')}>
+            }} className={cn((showMembers || showMembersButton) && !activeThreadId && 'bg-surface-hover')}>
                 <Users className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {activeThreadId ? 'Fermer le thread' : showMembers ? 'Masquer les membres' : 'Afficher les membres'}
+              {activeThreadId ? 'Fermer le thread' : showMembersButton ? 'Afficher les membres' : showMembers ? 'Masquer les membres' : 'Afficher les membres'}
             </TooltipContent>
           </Tooltip>
         </div>

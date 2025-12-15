@@ -1,7 +1,8 @@
 import { useState, forwardRef, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile } from 'lucide-react';
+import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -891,56 +892,97 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     </div>}
                 </div>
               </ContextMenuTrigger>
-              <ContextMenuContent className="w-48">
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger>
-                    <Smile className="w-4 h-4 mr-2" />
-                    Ajouter une réaction
-                  </ContextMenuSubTrigger>
-                  <ContextMenuSubContent className="p-2">
-                    <div className="flex gap-1">
-                      {QUICK_REACTIONS.map(emoji => <button key={emoji} onClick={() => handleAddReaction(message.id, emoji)} className="p-1.5 hover:bg-muted rounded text-lg transition-colors">
-                          {emoji}
-                        </button>)}
-                    </div>
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
+              <ContextMenuContent>
+                {/* 1. Rangée d'émojis favoris - EN HAUT */}
+                <div className="flex items-center gap-1 px-2 py-2 border-b border-border mb-1">
+                  {QUICK_REACTIONS.map(emoji => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleAddReaction(message.id, emoji)}
+                      className="p-1.5 hover:bg-muted rounded-md text-lg transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
+                        <SmilePlus className="w-5 h-5 text-muted-foreground" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" align="start" className="w-64 p-2">
+                      <div className="grid grid-cols-8 gap-1">
+                        {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleAddReaction(message.id, emoji)}
+                            className="p-1 hover:bg-muted rounded text-lg transition-colors"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* 2. Actions principales */}
                 <ContextMenuItem onClick={() => handleReply(message)}>
                   <Reply className="w-4 h-4 mr-2" />
                   Répondre
                 </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copier le texte
+                </ContextMenuItem>
                 <ContextMenuItem onClick={() => handlePinMessage(message.id)}>
                   <Pin className="w-4 h-4 mr-2" />
-                  {pinnedMessageIds.has(message.id) ? 'Désépingler' : 'Épingler'}
+                  {pinnedMessageIds.has(message.id) ? 'Désépingler' : 'Épingler le message'}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => setCreateThreadForMessageId(message.id)}>
                   <StreamlineThreads className="w-4 h-4 mr-2" />
                   Créer un thread
                 </ContextMenuItem>
+
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copier le texte
-                </ContextMenuItem>
+
                 <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
                   <Link className="w-4 h-4 mr-2" />
-                  Copier le lien du message
+                  Copier le lien
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => handleCopyId(message.id)}>
                   <Hash className="w-4 h-4 mr-2" />
                   Copier l'ID
                 </ContextMenuItem>
-                {isOwnMessage && <>
+
+                {/* 3. Zone Danger - séparée visuellement */}
+                {isOwnMessage ? (
+                  <>
                     <ContextMenuSeparator />
                     <ContextMenuItem onClick={() => handleStartEdit(message)}>
                       <Pencil className="w-4 h-4 mr-2" />
                       Modifier
                     </ContextMenuItem>
-                    <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(message.id)}>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Supprimer
+                    <ContextMenuItem 
+                      onClick={() => handleDelete(message.id)}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                      Supprimer le message
                     </ContextMenuItem>
-                  </>}
+                  </>
+                ) : (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem 
+                      onClick={() => toast.info('Fonctionnalité de signalement à venir')}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Flag className="w-4 h-4 mr-2 text-destructive" />
+                      Signaler le message
+                    </ContextMenuItem>
+                  </>
+                )}
               </ContextMenuContent>
             </ContextMenu>;
       })}

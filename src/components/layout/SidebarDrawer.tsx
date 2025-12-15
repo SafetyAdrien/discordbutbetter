@@ -68,7 +68,7 @@ export function SidebarDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-fit p-0 flex gap-0 border-r border-border">
+      <SheetContent side="right" className="w-fit p-0 flex gap-0 border-l border-border">
         <ServerList
           servers={servers}
           activeServerId={activeServerId}

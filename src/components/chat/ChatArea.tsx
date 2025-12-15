@@ -577,9 +577,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   return <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
-        {/* Hamburger button for sidebar on tablet (not mobile - bottom nav handles it) */}
+        {/* Hamburger button for sidebar - only on tablet (600-1200px), hidden on mobile and desktop */}
         {showSidebarButton && (
-          <Button variant="ghost" size="icon" onClick={onOpenSidebar} className="flex-shrink-0 hidden sm:flex">
+          <Button variant="ghost" size="icon" onClick={onOpenSidebar} className="flex-shrink-0 hidden sm:flex lg:hidden">
             <Menu className="w-5 h-5" />
           </Button>
         )}

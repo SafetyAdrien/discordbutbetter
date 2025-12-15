@@ -6,6 +6,7 @@ import { MemberList } from '@/components/layout/MemberList';
 import { MemberDrawer } from '@/components/layout/MemberDrawer';
 import { SidebarDrawer } from '@/components/layout/SidebarDrawer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { MobileProfileView } from '@/components/profile/MobileProfileView';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DMPage } from '@/components/dm/DMPage';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
@@ -51,6 +52,7 @@ const Index = () => {
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
   const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showMobileProfile, setShowMobileProfile] = useState(false);
 
   // Responsive layout
   const { showServerList, showChannelSidebar, showMemberList, showBottomNav, isMobile, isTablet } = useResponsiveLayout();
@@ -564,14 +566,20 @@ const Index = () => {
       {/* Mobile Bottom Navigation */}
       {showBottomNav && (
         <MobileBottomNav
-          activeView={isHomeView ? 'home' : 'servers'}
+          activeView={showMobileProfile ? 'profile' : (isHomeView ? 'home' : 'servers')}
           onOpenHome={() => handleServerSelect(null)}
           onOpenServers={() => setSidebarDrawerOpen(true)}
-          onOpenMembers={() => setMemberDrawerOpen(true)}
-          onOpenSettings={() => setShowAccountSettings(true)}
-          showMembersButton={!isHomeView}
+          onOpenProfile={() => setShowMobileProfile(true)}
+          showServersButton={!isHomeView}
         />
       )}
+
+      {/* Mobile Profile View */}
+      <MobileProfileView
+        open={showMobileProfile}
+        onOpenChange={setShowMobileProfile}
+        onOpenSettings={() => setShowAccountSettings(true)}
+      />
 
       {/* Account Settings Modal */}
       {showAccountSettings && (

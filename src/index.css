@@ -498,8 +498,21 @@
     }
     100% {
       transform: scale(1) rotate(0deg);
-      opacity: 1;
     }
+  }
+
+  /* Message highlight animation for Jump to Message */
+  @keyframes message-highlight {
+    0%, 30% {
+      background-color: rgba(88, 101, 242, 0.3);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .highlight-flash {
+    animation: message-highlight 2s ease-out;
   }
 
   .animate-send-fly {

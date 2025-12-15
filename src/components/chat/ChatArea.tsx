@@ -1,4 +1,5 @@
 import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag } from 'lucide-react';
@@ -16,12 +17,14 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
-import { MarkdownText } from '@/lib/markdown';
+import { MarkdownText, setMarkdownContext } from '@/lib/markdown';
 import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePinnedMessages';
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
 import { usePolls, useDeletePoll, Poll } from '@/hooks/usePolls';
 import { useThreads } from '@/hooks/useThreads';
+import { useServerRoles } from '@/hooks/useRoles';
+import { useChannels } from '@/hooks/useChannels';
 import { Thread } from '@/types/thread';
 import { PollDisplay } from './PollDisplay';
 import { CreatePollModal } from './CreatePollModal';
@@ -206,6 +209,7 @@ interface ChatAreaProps {
   onSelectThread?: (threadId: string) => void;
   activeThreadId?: string | null;
   onCloseThread?: () => void;
+  members?: Array<{ id: string; displayName: string; username: string; avatar?: string }>;
 }
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('fr-FR', {
@@ -238,8 +242,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   showMembers = true,
   onSelectThread,
   activeThreadId,
-  onCloseThread
+  onCloseThread,
+  members = [],
 }, ref) {
+  const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState('');
   const [selectedUser, setSelectedUser] = useState<{
     user: User;
@@ -257,6 +263,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -291,6 +298,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const deleteMessage = useDeleteMessage();
   const deletePoll = useDeletePoll();
 
+  // Fetch server roles and channels for markdown context
+  const { data: serverRoles = [] } = useServerRoles(channel.server_id);
+  const { data: channelsData } = useChannels(channel.server_id);
+
   // Pinned messages
   const {
     data: pinnedMessages
@@ -315,6 +326,96 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const {
     data: threads = []
   } = useThreads(channel.id);
+
+  // Scroll to message function for "Jump to Message"
+  const scrollToMessage = useCallback((messageId: string) => {
+    const element = messageRefs.current.get(messageId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('highlight-flash');
+      setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+    }
+  }, []);
+
+  // Build all channels list for mention autocomplete
+  const allChannels = useMemo(() => {
+    const channels: Array<{ id: string; name: string; type: string }> = [];
+    channelsData?.categories.forEach(cat => {
+      cat.channels.forEach(ch => {
+        channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
+      });
+    });
+    channelsData?.orphanChannels?.forEach(ch => {
+      channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
+    });
+    return channels;
+  }, [channelsData]);
+
+  // Set up Markdown Context with real data
+  useEffect(() => {
+    // Build users map from messages authors
+    const usersMap = new Map<string, { displayName: string; avatarUrl?: string }>();
+    messages.forEach(m => {
+      usersMap.set(m.author.id, {
+        displayName: m.author.displayName,
+        avatarUrl: m.author.avatar,
+      });
+    });
+    // Add members data
+    members.forEach(m => {
+      usersMap.set(m.id, {
+        displayName: m.displayName,
+        avatarUrl: m.avatar,
+      });
+    });
+
+    // Build roles map
+    const rolesMap = new Map<string, { name: string; color: string }>();
+    serverRoles.forEach(r => {
+      rolesMap.set(r.id, { name: r.name, color: r.color || '#99aab5' });
+    });
+
+    // Build channels map
+    const channelsMap = new Map<string, { name: string; serverId?: string }>();
+    allChannels.forEach(ch => {
+      channelsMap.set(ch.id, { name: ch.name, serverId: channel.server_id });
+    });
+
+    setMarkdownContext({
+      currentUserId: user?.id,
+      users: usersMap,
+      roles: rolesMap,
+      channels: channelsMap,
+      onUserClick: (userId) => {
+        const userData = usersMap.get(userId);
+        if (userData) {
+          const roles = memberRoles?.get(userId);
+          setSelectedUser({
+            user: {
+              id: userId,
+              username: userData.displayName.toLowerCase(),
+              displayName: userData.displayName,
+              avatar: userData.avatarUrl,
+              status: 'online',
+            },
+            roles,
+          });
+        }
+      },
+      onChannelNavigate: (channelId) => {
+        navigate(`/channels/${channel.server_id}/${channelId}`);
+      },
+      onMessageJump: (serverId, channelId, messageId) => {
+        // If same channel, just scroll
+        if (channelId === channel.id) {
+          scrollToMessage(messageId);
+        } else {
+          // Navigate to channel first
+          navigate(`/channels/${serverId}/${channelId}?messageId=${messageId}`);
+        }
+      },
+    });
+  }, [messages, members, serverRoles, allChannels, user?.id, channel, memberRoles, navigate, scrollToMessage]);
 
   // Build a map of message_id -> thread for messages that have threads
   const threadsByMessageId = useMemo(() => {
@@ -711,9 +812,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           const isEditing = editingMessageId === message.id;
           return <ContextMenu key={message.id}>
               <ContextMenuTrigger asChild>
-                <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => {
-                if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
-              }}>
+                <div 
+                  ref={(el) => { if (el) messageRefs.current.set(message.id, el); }}
+                  className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} 
+                  onMouseEnter={() => setHoveredMessageId(message.id)} 
+                  onMouseLeave={() => {
+                    if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+                  }}
+                >
                   <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} onReply={() => handleReply(message)} onAddReaction={emoji => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={open => {
                   setOpenDropdownMessageId(open ? message.id : null);
                   if (!open) setHoveredMessageId(null);
@@ -940,7 +1046,20 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       <div className="flex-shrink-0 border-t border-border bg-background px-0 py-0">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
-        <MessageInput value={messageInput} onChange={setMessageInput} onSend={handleSubmit} placeholder={`Envoyer un message dans #${channel.name}`} isSending={isSending} onTypingStart={startTyping} onTypingStop={stopTyping} serverId={channel.server_id} channelId={channel.id} />
+        <MessageInput 
+          value={messageInput} 
+          onChange={setMessageInput} 
+          onSend={handleSubmit} 
+          placeholder={`Envoyer un message dans #${channel.name}`} 
+          isSending={isSending} 
+          onTypingStart={startTyping} 
+          onTypingStop={stopTyping} 
+          serverId={channel.server_id} 
+          channelId={channel.id}
+          members={members}
+          roles={serverRoles.map(r => ({ id: r.id, name: r.name, color: r.color }))}
+          channels={allChannels}
+        />
       </div>
 
       <UserProfilePopup user={selectedUser?.user ?? null} open={!!selectedUser} onOpenChange={open => !open && setSelectedUser(null)} roles={selectedUser?.roles} onOpenDM={onOpenDM} />

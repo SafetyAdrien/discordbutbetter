@@ -411,6 +411,7 @@ const Index = () => {
                       setActiveThreadId(null);
                       setThreadChannelId(null);
                     }}
+                    members={searchMembers}
                   />
                 )}
               </div>

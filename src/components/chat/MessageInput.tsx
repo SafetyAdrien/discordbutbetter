@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { MarkdownPreview } from './MarkdownPreview';
+import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
 
 interface MessageInputProps {
@@ -18,6 +19,17 @@ interface MessageInputProps {
   serverId?: string | null;
   channelId?: string | null;
   threadId?: string | null;
+  // Mention autocomplete data
+  members?: MentionMember[];
+  roles?: MentionRole[];
+  channels?: MentionChannel[];
+}
+
+interface MentionState {
+  type: 'user' | 'channel' | 'role';
+  query: string;
+  startIndex: number;
+  triggerLength: number;
 }
 
 export function MessageInput({
@@ -33,12 +45,17 @@ export function MessageInput({
   serverId = null,
   channelId = null,
   threadId = null,
+  members = [],
+  roles = [],
+  channels = [],
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [mentionState, setMentionState] = useState<MentionState | null>(null);
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
@@ -81,8 +98,60 @@ export function MessageInput({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Detect mention triggers
+  const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
+    const beforeCursor = text.slice(0, cursorPos);
+    
+    // Check for role mention (@& prefix)
+    const roleMatch = beforeCursor.match(/@&(\w*)$/);
+    if (roleMatch) {
+      return {
+        type: 'role' as const,
+        query: roleMatch[1],
+        startIndex: cursorPos - roleMatch[0].length,
+        triggerLength: 2,
+      };
+    }
+    
+    // Check for channel mention (# prefix)
+    const channelMatch = beforeCursor.match(/#(\w*)$/);
+    if (channelMatch) {
+      return {
+        type: 'channel' as const,
+        query: channelMatch[1],
+        startIndex: cursorPos - channelMatch[0].length,
+        triggerLength: 1,
+      };
+    }
+    
+    // Check for user mention (@ prefix, not followed by &)
+    const userMatch = beforeCursor.match(/@(\w*)$/);
+    if (userMatch && !beforeCursor.endsWith('@&')) {
+      return {
+        type: 'user' as const,
+        query: userMatch[1],
+        startIndex: cursorPos - userMatch[0].length,
+        triggerLength: 1,
+      };
+    }
+    
+    return null;
+  }, []);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    
+    onChange(newValue);
+    
+    // Detect mention triggers
+    const mentionTrigger = detectMentionTrigger(newValue, cursorPos);
+    if (mentionTrigger) {
+      setMentionState(mentionTrigger);
+      setMentionSelectedIndex(0);
+    } else {
+      setMentionState(null);
+    }
     
     if (onTypingStart && onTypingStop) {
       onTypingStart();
@@ -95,16 +164,90 @@ export function MessageInput({
         onTypingStop();
       }, 2000);
     }
-  }, [onChange, onTypingStart, onTypingStop]);
+  }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
+
+  const handleMentionSelect = useCallback((mention: string, displayText: string) => {
+    if (!mentionState || !textareaRef.current) return;
+    
+    const before = value.slice(0, mentionState.startIndex);
+    const after = value.slice(textareaRef.current.selectionStart);
+    const newValue = before + mention + ' ' + after;
+    
+    onChange(newValue);
+    setMentionState(null);
+    
+    // Set cursor position after the mention
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newPos = mentionState.startIndex + mention.length + 1;
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
+        textareaRef.current.focus();
+      }
+    }, 0);
+  }, [mentionState, value, onChange]);
+
+  // Get filtered suggestions count for keyboard navigation
+  const getSuggestionsCount = useCallback(() => {
+    if (!mentionState) return 0;
+    const q = mentionState.query.toLowerCase();
+    
+    if (mentionState.type === 'user') {
+      return members.filter(m => 
+        m.displayName.toLowerCase().includes(q) || 
+        m.username.toLowerCase().includes(q)
+      ).slice(0, 10).length;
+    }
+    if (mentionState.type === 'role') {
+      const special = ['everyone', 'here'].filter(r => r.includes(q)).length;
+      const filtered = roles.filter(r => r.name.toLowerCase().includes(q)).slice(0, 8).length;
+      return special + filtered;
+    }
+    if (mentionState.type === 'channel') {
+      return channels.filter(c => c.name.toLowerCase().includes(q)).slice(0, 10).length;
+    }
+    return 0;
+  }, [mentionState, members, roles, channels]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle mention autocomplete navigation
+    if (mentionState) {
+      const count = getSuggestionsCount();
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionSelectedIndex(prev => (prev + 1) % count);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionSelectedIndex(prev => (prev - 1 + count) % count);
+        return;
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && count > 0)) {
+        e.preventDefault();
+        // Trigger selection of current item - handled by MentionAutocomplete
+        const autocompleteContainer = document.querySelector('[data-mention-item]');
+        if (autocompleteContainer) {
+          const items = document.querySelectorAll('[data-mention-item]');
+          (items[mentionSelectedIndex] as HTMLElement)?.click();
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionState(null);
+        return;
+      }
+    }
+    
+    // Send message on Enter (without shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (value.trim() && !disabled) {
         onSend();
       }
     }
-  }, [value, disabled, onSend]);
+  }, [value, disabled, onSend, mentionState, getSuggestionsCount, mentionSelectedIndex]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +262,21 @@ export function MessageInput({
         <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin" />
       )}
       <form onSubmit={handleSubmit} className="relative w-full shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
+        {/* Mention Autocomplete */}
+        {mentionState && (
+          <MentionAutocomplete
+            type={mentionState.type}
+            query={mentionState.query}
+            members={members}
+            roles={roles}
+            channels={channels}
+            onSelect={handleMentionSelect}
+            onClose={() => setMentionState(null)}
+            selectedIndex={mentionSelectedIndex}
+            onIndexChange={setMentionSelectedIndex}
+          />
+        )}
+        
         <div className={`flex items-center gap-2 rounded-lg border transition-colors ${
           compact 
             ? "bg-[hsl(var(--input))] border-transparent" 

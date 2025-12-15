@@ -16,7 +16,6 @@ export interface DMMessage {
   id: string;
   content: string;
   created_at: string | null;
-  edited_at: string | null;
   attachments: any;
   conversation_id: string;
   author: {
@@ -43,7 +42,6 @@ export function useDMMessages(conversationId: string | null) {
           id,
           content,
           created_at,
-          edited_at,
           attachments,
           conversation_id,
           author:profiles!dm_messages_author_id_fkey (
@@ -88,7 +86,6 @@ export function useDMMessages(conversationId: string | null) {
               id,
               content,
               created_at,
-              edited_at,
               attachments,
               conversation_id,
               author:profiles!dm_messages_author_id_fkey (
@@ -151,7 +148,6 @@ export function useSendDMMessage() {
           id,
           content,
           created_at,
-          edited_at,
           attachments,
           conversation_id,
           author:profiles!dm_messages_author_id_fkey (
@@ -178,7 +174,6 @@ export function useSendDMMessage() {
         id: `temp-${Date.now()}`,
         content,
         created_at: new Date().toISOString(),
-        edited_at: null,
         attachments: [],
         conversation_id: conversationId,
         author: profile ? {
@@ -217,111 +212,6 @@ export function useSendDMMessage() {
         );
       }
       toast.error("Erreur lors de l'envoi du message");
-    },
-  });
-}
-
-export function useEditDMMessage() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      messageId,
-      conversationId,
-      content,
-    }: {
-      messageId: string;
-      conversationId: string;
-      content: string;
-    }) => {
-      if (!user) throw new Error('Not authenticated');
-
-      const validated = messageSchema.parse({ content });
-
-      const { data, error } = await supabase
-        .from('dm_messages')
-        .update({ content: validated.content, edited_at: new Date().toISOString() })
-        .eq('id', messageId)
-        .eq('author_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onMutate: async ({ messageId, conversationId, content }) => {
-      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
-
-      const previousMessages = queryClient.getQueryData<DMMessage[]>([
-        'dm-messages',
-        conversationId,
-      ]);
-
-      queryClient.setQueryData<DMMessage[]>(
-        ['dm-messages', conversationId],
-        (old) => old?.map((m) => (m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m)) || []
-      );
-
-      return { previousMessages };
-    },
-    onSuccess: () => {
-      toast.success('Message modifié');
-    },
-    onError: (error, { conversationId }, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['dm-messages', conversationId], context.previousMessages);
-      }
-      toast.error('Erreur lors de la modification');
-    },
-  });
-}
-
-export function useDeleteDMMessage() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      messageId,
-      conversationId,
-    }: {
-      messageId: string;
-      conversationId: string;
-    }) => {
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('dm_messages')
-        .delete()
-        .eq('id', messageId)
-        .eq('author_id', user.id);
-
-      if (error) throw error;
-    },
-    onMutate: async ({ messageId, conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
-
-      const previousMessages = queryClient.getQueryData<DMMessage[]>([
-        'dm-messages',
-        conversationId,
-      ]);
-
-      queryClient.setQueryData<DMMessage[]>(
-        ['dm-messages', conversationId],
-        (old) => old?.filter((m) => m.id !== messageId) || []
-      );
-
-      return { previousMessages };
-    },
-    onSuccess: () => {
-      toast.success('Message supprimé');
-    },
-    onError: (error, { conversationId }, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['dm-messages', conversationId], context.previousMessages);
-      }
-      toast.error('Erreur lors de la suppression');
     },
   });
 }

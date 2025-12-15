@@ -1,8 +1,7 @@
-import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, forwardRef, useEffect, useMemo, useCallback } from 'react';
 import { Message, Channel, User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag } from 'lucide-react';
-import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
+import { Hash, Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, MoreHorizontal, Smile, Flag, ClipboardCopy } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -104,7 +103,193 @@ const QUICK_REACTIONS_HOVER = ['👍', '❤️', '😂'];
 // Émojis favoris pour le menu contextuel
 const CONTEXT_MENU_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
-// QUICK_REACTIONS for PollActions
+// Message Actions Component (shown on hover) - Discord style with SHIFT support
+function MessageActions({
+  isVisible,
+  isShiftPressed,
+  onReply,
+  onAddReaction,
+  onCopyLink,
+  onCopyId,
+  onEdit,
+  onDelete,
+  onCreateThread,
+  onPin,
+  isOwnMessage,
+  isPinned,
+  onDropdownOpenChange
+}: {
+  isVisible: boolean;
+  isShiftPressed: boolean;
+  onReply: () => void;
+  onAddReaction: (emoji: string) => void;
+  onCopyLink: () => void;
+  onCopyId: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onCreateThread?: () => void;
+  onPin?: () => void;
+  isOwnMessage: boolean;
+  isPinned?: boolean;
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
+  if (!isVisible) return null;
+  
+  // Mode SHIFT : affiche des actions alternatives
+  if (isShiftPressed) {
+    return (
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-destructive/30 rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+        {/* Copier l'ID */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onCopyId} className="p-1.5 hover:bg-muted rounded transition-colors">
+              <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Copier l'ID</TooltipContent>
+        </Tooltip>
+        
+        {/* Copier le lien */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
+              <Link className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Copier le lien</TooltipContent>
+        </Tooltip>
+        
+        {/* Épingler */}
+        {onPin && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onPin} className="p-1.5 hover:bg-muted rounded transition-colors">
+                <Pin className={cn("w-4 h-4", isPinned ? "text-primary" : "text-muted-foreground")} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{isPinned ? 'Désépingler' : 'Épingler'}</TooltipContent>
+          </Tooltip>
+        )}
+        
+        {isOwnMessage && (
+          <>
+            {/* Modifier */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Modifier</TooltipContent>
+            </Tooltip>
+            
+            {/* Supprimer - toujours en rouge */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Supprimer</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
+    );
+  }
+  
+  // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
+  return (
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+      {/* 1. Exactement 3 réactions rapides */}
+      {QUICK_REACTIONS_HOVER.map((emoji) => (
+        <Tooltip key={emoji}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onAddReaction(emoji)}
+              className="p-1 hover:bg-muted rounded transition-colors text-base"
+            >
+              {emoji}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{emoji}</TooltipContent>
+        </Tooltip>
+      ))}
+      
+      {/* 2. Bouton ajouter réaction (visage +) */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="p-1.5 hover:bg-muted rounded transition-colors">
+            <SmilePlus className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" align="end" className="w-64 p-2">
+          <div className="grid grid-cols-8 gap-1">
+            {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => onAddReaction(emoji)}
+                className="p-1 hover:bg-muted rounded text-lg transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      
+      {/* 3. Répondre */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onReply} className="p-1.5 hover:bg-muted rounded transition-colors">
+            <Reply className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Répondre</TooltipContent>
+      </Tooltip>
+      
+      {/* 4. Menu Plus d'options - 3 points HORIZONTAUX */}
+      <DropdownMenu onOpenChange={onDropdownOpenChange}>
+        <DropdownMenuTrigger asChild>
+          <button className="p-1.5 hover:bg-muted rounded transition-colors">
+            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {onCreateThread && (
+            <DropdownMenuItem onClick={onCreateThread}>
+              <StreamlineThreads className="w-4 h-4 mr-2" />
+              Créer un thread
+            </DropdownMenuItem>
+          )}
+          {onPin && (
+            <DropdownMenuItem onClick={onPin}>
+              <Pin className="w-4 h-4 mr-2" />
+              {isPinned ? 'Désépingler' : 'Épingler'}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={onCopyLink}>
+            <Link className="w-4 h-4 mr-2" />
+            Copier le lien
+          </DropdownMenuItem>
+          {isOwnMessage && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Modifier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 // Poll Actions Component (shown on hover) - Discord style
 function PollActions({
@@ -724,193 +909,159 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         return <ContextMenu key={message.id}>
               <ContextMenuTrigger asChild>
                 <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => { if (openDropdownMessageId !== message.id) setHoveredMessageId(null); }}>
-                  <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={(open) => { setOpenDropdownMessageId(open ? message.id : null); if (!open) setHoveredMessageId(null); }} />
-                {showAuthor ? (
-                    <div className="relative">
-                      {/* Thread Spine - positioned from avatar center */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
-                          {/* Vertical line descending from avatar */}
-                          <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
-                          {/* L-shaped curve */}
-                          <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                  <MessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={(open) => { setOpenDropdownMessageId(open ? message.id : null); if (!open) setHoveredMessageId(null); }} />
+                  {showAuthor ? <div className="flex gap-3">
+                      <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                        <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                          <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                          <AvatarFallback className="bg-primary/20 text-primary">
+                            {message.author.displayName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </button>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                          <button onClick={() => handleUserClick(message.author)} className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
+                            {message.author.displayName}
+                          </button>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {formatTime(message.timestamp)}
+                          </span>
+                          {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
                         </div>
-                      )}
-                      
-                      <div className="flex gap-3 items-start">
-                        <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
-                          <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
-                            <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
-                            <AvatarFallback className="bg-primary/20 text-primary">
-                              {message.author.displayName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </button>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                            <button onClick={() => handleUserClick(message.author)} className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
-                              {message.author.displayName}
-                            </button>
-                            <span className="text-xs text-muted-foreground flex-shrink-0">
-                              {formatTime(message.timestamp)}
-                            </span>
+                        {isEditing ? <div className="mt-1 space-y-2">
+                            <Textarea 
+                              value={editingContent} 
+                              onChange={e => {
+                                setEditingContent(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                              }} 
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }} 
+                              autoFocus 
+                              className="bg-input min-h-[40px] max-h-[200px] resize-none" 
+                              rows={1}
+                            />
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>Échap pour annuler</span>
+                              <span>•</span>
+                              <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                              <span className={cn(
+                                "ml-auto",
+                                editingContent.length > 1900 && "text-yellow-500",
+                                editingContent.length > 1980 && "text-destructive font-medium"
+                              )}>
+                                {editingContent.length}/2000
+                              </span>
+                              <div className="flex gap-1">
+                                <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div> : <p className="text-foreground break-words font-ginto"><MarkdownText content={message.content} /></p>}
+                        
+                        {message.reactions && message.reactions.length > 0 && <div className="flex gap-1 mt-1">
+                            {message.reactions.map((reaction, i) => <button key={i} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors">
+                                <span>{reaction.emoji}</span>
+                                <span className="text-xs text-muted-foreground">{reaction.count}</span>
+                              </button>)}
+                          </div>}
+                      </div>
+                    </div> : <div className="flex gap-3">
+                      <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
+                        {formatTime(message.timestamp)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        {isEditing ? <div className="space-y-2">
+                            <Textarea 
+                              value={editingContent} 
+                              onChange={e => {
+                                setEditingContent(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                              }} 
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }} 
+                              autoFocus 
+                              className="bg-input min-h-[40px] max-h-[200px] resize-none" 
+                              rows={1}
+                            />
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>Échap pour annuler</span>
+                              <span>•</span>
+                              <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                              <span className={cn(
+                                "ml-auto",
+                                editingContent.length > 1900 && "text-yellow-500",
+                                editingContent.length > 1980 && "text-destructive font-medium"
+                              )}>
+                                {editingContent.length}/2000
+                              </span>
+                              <div className="flex gap-1">
+                                <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div> : <>
+                            <p className="text-foreground break-words font-ginto"><MarkdownText content={message.content} /></p>
                             {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
-                          </div>
-                          {isEditing ? <div className="mt-1 space-y-2">
-                              <Textarea 
-                                ref={(el) => {
-                                  if (el) {
-                                    el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                                  }
-                                }}
-                                value={editingContent} 
-                                onChange={e => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                                }} 
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit();
-                                  }
-                                  if (e.key === 'Escape') {
-                                    handleCancelEdit();
-                                  }
-                                }} 
-                                autoFocus 
-                                className="bg-input min-h-[40px] max-h-[200px] resize-none" 
-                                rows={1}
-                              />
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>Échap pour annuler</span>
-                                <span>•</span>
-                                <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                                <span className={cn(
-                                  "ml-auto",
-                                  editingContent.length > 1900 && "text-yellow-500",
-                                  editingContent.length > 1980 && "text-destructive font-medium"
-                                )}>
-                                  {editingContent.length}/2000
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                  <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
-                                    <Check className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div> : <p className="text-foreground break-words font-ginto"><MarkdownText content={message.content} /></p>}
-                          
-                          {message.reactions && message.reactions.length > 0 && <div className="flex gap-1 mt-1">
-                              {message.reactions.map((reaction, i) => <button key={i} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors">
-                                  <span>{reaction.emoji}</span>
-                                  <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                                </button>)}
-                            </div>}
-                        </div>
+                          </>}
+                        
+                        {message.reactions && message.reactions.length > 0 && <div className="flex gap-1 mt-1">
+                            {message.reactions.map((reaction, i) => <button key={i} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors">
+                                <span>{reaction.emoji}</span>
+                                <span className="text-xs text-muted-foreground">{reaction.count}</span>
+                              </button>)}
+                          </div>}
+                      </div>
+                    </div>}
+                    
+                  {/* Thread Spine & System Message - if this message has a thread */}
+                  {threadsByMessageId.has(message.id) && (
+                    <div className="relative mt-1 ml-[52px]">
+                      {/* Thread Spine - L-shaped connector */}
+                      <div className="absolute -left-[32px] -top-1 bottom-0 w-[32px]">
+                        {/* Vertical line */}
+                        <div 
+                          className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30"
+                          style={{ height: 'calc(100% - 8px)' }}
+                        />
+                        {/* Curved corner */}
+                        <div 
+                          className="absolute left-0 bottom-0 w-[20px] h-[8px] 
+                                     border-l-2 border-b-2 border-muted-foreground/30 
+                                     rounded-bl-lg"
+                        />
                       </div>
                       
-                      {/* Thread System Message - indented to align with spine curve */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="mt-1 ml-[52px]">
-                          <ThreadSystemMessage 
-                            thread={threadsByMessageId.get(message.id)!}
-                            onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      {/* Thread Spine for grouped messages */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="absolute left-[19px] top-0 bottom-0 pointer-events-none">
-                          {/* Vertical line */}
-                          <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
-                          {/* L-shaped curve */}
-                          <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-3 items-start">
-                        <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
-                          {formatTime(message.timestamp)}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          {isEditing ? <div className="space-y-2">
-                              <Textarea 
-                                ref={(el) => {
-                                  if (el) {
-                                    el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                                  }
-                                }}
-                                value={editingContent} 
-                                onChange={e => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                                }} 
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit();
-                                  }
-                                  if (e.key === 'Escape') {
-                                    handleCancelEdit();
-                                  }
-                                }} 
-                                autoFocus 
-                                className="bg-input min-h-[40px] max-h-[200px] resize-none" 
-                                rows={1}
-                              />
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>Échap pour annuler</span>
-                                <span>•</span>
-                                <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                                <span className={cn(
-                                  "ml-auto",
-                                  editingContent.length > 1900 && "text-yellow-500",
-                                  editingContent.length > 1980 && "text-destructive font-medium"
-                                )}>
-                                  {editingContent.length}/2000
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                  <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
-                                    <Check className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div> : <>
-                              <p className="text-foreground break-words font-ginto"><MarkdownText content={message.content} /></p>
-                              {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
-                            </>}
-                          
-                          {message.reactions && message.reactions.length > 0 && <div className="flex gap-1 mt-1">
-                              {message.reactions.map((reaction, i) => <button key={i} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors">
-                                  <span>{reaction.emoji}</span>
-                                  <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                                </button>)}
-                            </div>}
-                        </div>
-                      </div>
-                      
-                      {/* Thread System Message for grouped messages */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="mt-1 ml-[52px]">
-                          <ThreadSystemMessage 
-                            thread={threadsByMessageId.get(message.id)!}
-                            onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                          />
-                        </div>
-                      )}
+                      {/* Thread System Message */}
+                      <ThreadSystemMessage 
+                        thread={threadsByMessageId.get(message.id)!}
+                        onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                      />
                     </div>
                   )}
                 </div>

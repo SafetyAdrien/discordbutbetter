@@ -152,18 +152,6 @@ export function UniversalMessageActions({
         </PopoverContent>
       </Popover>
       
-      {/* 2.5 Modifier (uniquement pour ses propres messages) */}
-      {isOwnMessage && onEdit && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
-              <Pencil className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Modifier</TooltipContent>
-        </Tooltip>
-      )}
-      
       {/* 3. Répondre */}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -198,9 +186,13 @@ export function UniversalMessageActions({
             <Link className="w-4 h-4 mr-2" />
             Copier le lien
           </DropdownMenuItem>
-          {isOwnMessage && onDelete && (
+          {isOwnMessage && onEdit && onDelete && (
             <>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Modifier
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Supprimer

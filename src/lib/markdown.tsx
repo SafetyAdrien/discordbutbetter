@@ -8,7 +8,7 @@ interface MarkdownToken {
 }
 
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock';
   content: string;
   language?: string;
 }
@@ -146,8 +146,7 @@ function parseBlocks(content: string): BlockToken[] {
     
     for (const line of lines) {
       if (line.trim() === '') {
-        blocks.push({ type: 'empty', content: '' });
-        continue;
+        continue; // Skip empty lines
       }
       
       // Header patterns
@@ -304,8 +303,6 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
           <code className="text-sm font-mono text-[#b5b9c1]">{block.content}</code>
         </pre>
       );
-    case 'empty':
-      return <br key={key} />;
     case 'paragraph':
     default:
       return (
@@ -321,14 +318,9 @@ export function parseMarkdown(content: string): React.ReactNode {
   const hasBlockElements = /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/.test(content) || content.includes('```');
   
   if (!hasBlockElements) {
-    // Simple inline-only parsing with line break support
-    const lines = content.split('\n');
-    return lines.map((line, i) => (
-      <React.Fragment key={i}>
-        {tokenizeInline(line).map((token, j) => renderInlineToken(token, j))}
-        {i < lines.length - 1 && <br />}
-      </React.Fragment>
-    ));
+    // Simple inline-only parsing for performance
+    const tokens = tokenizeInline(content);
+    return tokens.map((token, index) => renderInlineToken(token, index));
   }
   
   // Full block + inline parsing

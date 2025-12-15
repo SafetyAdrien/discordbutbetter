@@ -335,7 +335,9 @@ const Index = () => {
             activeChannelId={activeChannelId}
             onChannelSelect={(channelId) => {
               setActiveChannelId(channelId);
-              // Ne pas reset le thread lors du changement de salon - il reste affiché
+              // Fermer le thread quand on clique sur un salon
+              setActiveThreadId(null);
+              setThreadChannelId(null);
             }}
             onOpenServerSettings={() => setShowServerSettings(true)}
             orphanChannels={channelsData?.orphanChannels || []}
@@ -346,22 +348,10 @@ const Index = () => {
             }}
           />
 
-          {/* Main Content Area - Conditional based on channel type */}
+          {/* Main Content Area - Always show channel content */}
           {channelForChat && (
             <>
-              {/* PRIORITÉ 1 : ThreadView si un thread est actif */}
-              {activeThreadId ? (
-                <ThreadView
-                  threadId={activeThreadId}
-                  channelId={threadChannelId || activeChannelId || undefined}
-                  serverId={activeServerId}
-                  channelName={channelForChat.name}
-                  onBack={() => {
-                    setActiveThreadId(null);
-                    setThreadChannelId(null);
-                  }}
-                />
-              ) : channelForChat.type === 'voice' ? (
+              {channelForChat.type === 'voice' ? (
                 <VoiceChannelView 
                   channel={channelForChat}
                   serverId={activeServer.id}
@@ -420,14 +410,27 @@ const Index = () => {
             </>
           )}
 
-          {/* Member List - Conditionally rendered (not for voice channels) */}
-          {showMembers && channelForChat?.type !== 'voice' && (
-            <MemberList 
-              members={memberListData} 
-              ownerId={activeServer.owner_id || ''} 
-              serverId={activeServer.id}
-              onOpenDM={handleOpenDM}
-            />
+          {/* Right Panel - Thread OR Member List */}
+          {channelForChat?.type !== 'voice' && (
+            activeThreadId ? (
+              <ThreadView
+                threadId={activeThreadId}
+                channelId={threadChannelId || activeChannelId || undefined}
+                serverId={activeServerId}
+                channelName={channelForChat?.name || ''}
+                onBack={() => {
+                  setActiveThreadId(null);
+                  setThreadChannelId(null);
+                }}
+              />
+            ) : showMembers ? (
+              <MemberList 
+                members={memberListData} 
+                ownerId={activeServer.owner_id || ''} 
+                serverId={activeServer.id}
+                onOpenDM={handleOpenDM}
+              />
+            ) : null
           )}
         </>
       ) : null}

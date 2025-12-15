@@ -194,7 +194,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
+    <div className="w-80 flex flex-col bg-card border-l border-border min-w-0 shrink-0">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 h-12 border-b border-border shrink-0">
         <Button
@@ -224,7 +224,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
               size="sm"
               onClick={() => {
                 if (isFollowing) {
-                  unfollowThread.mutate(threadId);
+                  unfollowThread.mutate(threadId, {
+                    onSuccess: () => {
+                      // Fermer le thread quand on arrête de le suivre
+                      onBack();
+                    }
+                  });
                 } else {
                   followThread.mutate(threadId);
                 }

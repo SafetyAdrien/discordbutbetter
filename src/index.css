@@ -184,7 +184,11 @@
   }
 
   .message-hover {
-    @apply hover:bg-surface-hover/50 transition-colors duration-150;
+    @apply transition-colors duration-150;
+  }
+
+  .message-hover:hover {
+    background-color: hsl(var(--muted) / 0.3);
   }
 
   .scrollbar-thin {

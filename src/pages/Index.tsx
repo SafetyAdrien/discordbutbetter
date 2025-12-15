@@ -335,33 +335,29 @@ const Index = () => {
             activeChannelId={activeChannelId}
             onChannelSelect={(channelId) => {
               setActiveChannelId(channelId);
-              // Ne pas reset le thread lors du changement de salon - il reste affiché
+              // Fermer le thread si on change de salon
+              if (threadChannelId && channelId !== threadChannelId) {
+                setActiveThreadId(null);
+                setThreadChannelId(null);
+              }
             }}
             onOpenServerSettings={() => setShowServerSettings(true)}
             orphanChannels={channelsData?.orphanChannels || []}
             activeThreadId={activeThreadId}
-            onThreadSelect={(threadId) => {
+            onThreadSelect={(threadId, parentChannelId) => {
+              // S'assurer que le bon channel parent est sélectionné
+              if (parentChannelId && parentChannelId !== activeChannelId) {
+                setActiveChannelId(parentChannelId);
+              }
               setActiveThreadId(threadId);
-              setThreadChannelId(activeChannelId); // Stocker le channel d'origine du thread
+              setThreadChannelId(parentChannelId || activeChannelId);
             }}
           />
 
           {/* Main Content Area - Conditional based on channel type */}
           {channelForChat && (
             <>
-              {/* PRIORITÉ 1 : ThreadView si un thread est actif */}
-              {activeThreadId ? (
-                <ThreadView
-                  threadId={activeThreadId}
-                  channelId={threadChannelId || activeChannelId || undefined}
-                  serverId={activeServerId}
-                  channelName={channelForChat.name}
-                  onBack={() => {
-                    setActiveThreadId(null);
-                    setThreadChannelId(null);
-                  }}
-                />
-              ) : channelForChat.type === 'voice' ? (
+              {channelForChat.type === 'voice' ? (
                 <VoiceChannelView 
                   channel={channelForChat}
                   serverId={activeServer.id}
@@ -414,7 +410,24 @@ const Index = () => {
                   onOpenDM={handleOpenDM}
                   onToggleMembers={handleToggleMembers}
                   showMembers={showMembers}
-                  onSelectThread={(threadId) => setActiveThreadId(threadId)}
+                  onSelectThread={(threadId) => {
+                    setActiveThreadId(threadId);
+                    setThreadChannelId(activeChannelId);
+                  }}
+                />
+              )}
+
+              {/* ThreadView côte-à-côte avec le ChatArea */}
+              {activeThreadId && channelForChat.type === 'text' && (
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelId={threadChannelId || activeChannelId || undefined}
+                  serverId={activeServerId}
+                  channelName={channelForChat.name}
+                  onBack={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                  }}
                 />
               )}
             </>

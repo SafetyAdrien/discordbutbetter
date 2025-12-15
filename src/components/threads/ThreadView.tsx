@@ -76,6 +76,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   
   const { user } = useAuth();
@@ -183,12 +184,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     lastMessageCountRef.current = messages.length;
   }, [messages.length, isAtBottom]);
 
-  // Auto-scroll to bottom on initial load
-  useEffect(() => {
-    if (scrollRef.current && lastMessageCountRef.current === 0) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current && channelId) {
@@ -261,6 +256,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       return groups;
     }, {} as Record<string, TimelineItem[]>);
   }, [timelineItems]);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [timelineItems.length]);
 
   // Handle input change with typing indicator
   const handleRename = () => {
@@ -421,7 +421,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
           onScroll={handleScroll}
           className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
         >
-          <div className="p-4 space-y-4">
+          <div className="flex flex-col justify-end min-h-full p-4 space-y-4">
           {Object.entries(groupedTimelineItems).map(([date, items]) => (
             <div key={date}>
               {/* Date separator */}
@@ -723,6 +723,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
               </p>
             </div>
           )}
+          <div ref={messagesEndRef} />
           </div>
         </div>
       </div>

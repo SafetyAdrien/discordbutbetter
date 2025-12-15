@@ -20,11 +20,15 @@ import { useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from '@/hooks/usePinnedMessages';
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
 import { usePolls, useDeletePoll, Poll } from '@/hooks/usePolls';
+import { useThreads } from '@/hooks/useThreads';
+import { Thread } from '@/types/thread';
 import { PollDisplay } from './PollDisplay';
 import { CreatePollModal } from './CreatePollModal';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import ThreadsPopover from '@/components/threads/ThreadsPopover';
 import CreateThreadModal from '@/components/threads/CreateThreadModal';
+import { ThreadSpine } from '@/components/threads/ThreadSpine';
+import { ThreadSystemMessage } from '@/components/threads/ThreadSystemMessage';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { ReportModal } from '@/components/chat/ReportModal';
 import { toast } from 'sonner';
@@ -499,6 +503,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const {
     data: polls = []
   } = usePolls(channel.id);
+  
+  // Threads - fetch all threads for this channel to find message-linked threads
+  const { data: threads = [] } = useThreads(channel.id);
+  
+  // Build a map of message_id -> thread for messages that have threads
+  const threadsByMessageId = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach(thread => {
+      if (thread.message_id) {
+        map.set(thread.message_id, thread);
+      }
+    });
+    return map;
+  }, [threads]);
+  
   const pinnedMessageIds = useMemo(() => new Set(pinnedMessages?.map(pm => pm.message_id) || []), [pinnedMessages]);
 
   // Create unified timeline of messages and polls
@@ -983,6 +1002,32 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>}
                       </div>
                     </div>}
+                    
+                  {/* Thread Spine & System Message - if this message has a thread */}
+                  {threadsByMessageId.has(message.id) && (
+                    <div className="relative mt-1 ml-[52px]">
+                      {/* Thread Spine - L-shaped connector */}
+                      <div className="absolute -left-[32px] -top-1 bottom-0 w-[32px]">
+                        {/* Vertical line */}
+                        <div 
+                          className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30"
+                          style={{ height: 'calc(100% - 8px)' }}
+                        />
+                        {/* Curved corner */}
+                        <div 
+                          className="absolute left-0 bottom-0 w-[20px] h-[8px] 
+                                     border-l-2 border-b-2 border-muted-foreground/30 
+                                     rounded-bl-lg"
+                        />
+                      </div>
+                      
+                      {/* Thread System Message */}
+                      <ThreadSystemMessage 
+                        thread={threadsByMessageId.get(message.id)!}
+                        onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                      />
+                    </div>
+                  )}
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent className="min-w-[220px] p-1.5 rounded-lg shadow-xl" collisionPadding={8}>

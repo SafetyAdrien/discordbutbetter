@@ -34,7 +34,11 @@ import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
 import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
 import { PollDisplay } from '@/components/chat/PollDisplay';
 import { CreatePollModal } from '@/components/chat/CreatePollModal';
+import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
+import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
+import { ReportModal } from '@/components/chat/ReportModal';
 import { ThreadMessage } from '@/types/thread';
+import { Message } from '@/types/app';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MarkdownText } from '@/lib/markdown';
@@ -45,6 +49,8 @@ import { MessageInput } from '@/components/chat/MessageInput';
 import { cn } from '@/lib/utils';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useShiftKey } from '@/hooks/useShiftKey';
+import { toast } from 'sonner';
 
 interface ThreadViewProps {
   threadId: string;
@@ -63,10 +69,14 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
+  const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   
   const { user } = useAuth();
+  const isShiftPressed = useShiftKey();
   const { data: thread } = useThread(threadId);
   const { data: messages = [] } = useThreadMessages(threadId);
   const { data: polls = [] } = useThreadPolls(threadId);
@@ -89,6 +99,16 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
   const handleCopyId = (id: string) => {
     copyToClipboard(id, 'ID copié');
+  };
+
+  const handleCopyMessageLink = (messageId: string) => {
+    const link = `${window.location.origin}/channels/${serverId}/${channelId}/thread/${threadId}/${messageId}`;
+    copyToClipboard(link, 'Lien du message copié');
+  };
+
+  const handleAddReaction = (messageId: string, emoji: string) => {
+    console.log('Add reaction', messageId, emoji);
+    toast.success(`Réaction ${emoji} ajoutée`);
   };
 
   const handleDeletePoll = (poll: Poll) => {
@@ -515,13 +535,89 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                     (prevItem.data as ThreadMessage).author_id !== message.author_id ||
                     item.timestamp.getTime() - prevItem.timestamp.getTime() > 5 * 60 * 1000;
 
+                  const isOwnMessage = user?.id === message.author_id;
+
                   return (
-                    <MessageItem
+                    <UniversalMessageContextMenu
                       key={message.id}
-                      message={message}
-                      showAuthor={showAuthor}
-                      formatTime={formatTime}
-                    />
+                      isOwnMessage={isOwnMessage}
+                      messageId={message.id}
+                      onReply={() => console.log('Reply to', message.id)}
+                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                      onCopyText={() => copyToClipboard(message.content, 'Message copié')}
+                      onCopyLink={() => handleCopyMessageLink(message.id)}
+                      onCopyId={() => handleCopyId(message.id)}
+                      onEdit={isOwnMessage ? () => console.log('Edit', message.id) : undefined}
+                      onDelete={isOwnMessage ? () => console.log('Delete', message.id) : undefined}
+                      onReport={!isOwnMessage ? () => setReportingMessage({
+                        id: message.id,
+                        content: message.content,
+                        author: {
+                          id: message.author?.id || '',
+                          displayName: message.author?.display_name || 'Utilisateur',
+                          username: message.author?.username || 'unknown',
+                          avatar: message.author?.avatar_url || undefined,
+                          status: 'offline',
+                        },
+                        timestamp: new Date(message.created_at),
+                        edited: !!message.edited_at,
+                      }) : undefined}
+                    >
+                      <div 
+                        className={cn(
+                          'flex gap-3 px-2 py-1 message-hover rounded relative',
+                          showAuthor ? 'pt-2' : '',
+                        )}
+                        onMouseEnter={() => setHoveredMessageId(message.id)}
+                        onMouseLeave={() => { 
+                          if (openDropdownMessageId !== message.id) setHoveredMessageId(null); 
+                        }}
+                      >
+                        <UniversalMessageActions
+                          isVisible={hoveredMessageId === message.id || openDropdownMessageId === message.id}
+                          isShiftPressed={isShiftPressed}
+                          isOwnMessage={isOwnMessage}
+                          onReply={() => console.log('Reply to', message.id)}
+                          onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                          onCopyLink={() => handleCopyMessageLink(message.id)}
+                          onCopyId={() => handleCopyId(message.id)}
+                          onEdit={isOwnMessage ? () => console.log('Edit', message.id) : undefined}
+                          onDelete={isOwnMessage ? () => console.log('Delete', message.id) : undefined}
+                          onDropdownOpenChange={(open) => {
+                            setOpenDropdownMessageId(open ? message.id : null);
+                            if (!open) setHoveredMessageId(null);
+                          }}
+                        />
+                        {showAuthor ? (
+                          <Avatar className="w-8 h-8 mt-0.5 shrink-0">
+                            <AvatarImage src={message.author?.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs">
+                              {message.author?.display_name?.[0] || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div className="w-8 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          {showAuthor && (
+                            <div className="flex items-baseline gap-2 mb-0.5">
+                              <span className="font-medium text-foreground text-sm">
+                                {message.author?.display_name || 'Inconnu'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(message.created_at)}
+                              </span>
+                              {message.edited_at && (
+                                <span className="text-xs text-muted-foreground">(modifié)</span>
+                              )}
+                            </div>
+                          )}
+                          <div className="text-sm text-foreground break-words">
+                            <MarkdownText content={message.content} />
+                          </div>
+                        </div>
+                      </div>
+                    </UniversalMessageContextMenu>
                   );
                 })}
               </div>
@@ -569,45 +665,18 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         onOpenChange={(open) => !open && setEditingPoll(null)}
         editPoll={editingPoll}
       />
-    </div>
-  );
-};
 
-const MessageItem: React.FC<{
-  message: ThreadMessage;
-  showAuthor: boolean;
-  formatTime: (date: string) => string;
-}> = ({ message, showAuthor, formatTime }) => {
-  return (
-    <div className={`flex gap-3 px-2 py-1 hover:bg-muted/50 rounded ${showAuthor ? 'pt-2' : ''}`}>
-      {showAuthor ? (
-        <Avatar className="w-8 h-8 mt-0.5 shrink-0">
-          <AvatarImage src={message.author?.avatar_url || undefined} />
-          <AvatarFallback className="text-xs">
-            {message.author?.display_name?.[0] || '?'}
-          </AvatarFallback>
-        </Avatar>
-      ) : (
-        <div className="w-8 shrink-0" />
-      )}
-      <div className="flex-1 min-w-0">
-        {showAuthor && (
-          <div className="flex items-baseline gap-2 mb-0.5">
-            <span className="font-medium text-foreground text-sm">
-              {message.author?.display_name || 'Inconnu'}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {formatTime(message.created_at)}
-            </span>
-            {message.edited_at && (
-              <span className="text-xs text-muted-foreground">(modifié)</span>
-            )}
-          </div>
-        )}
-        <div className="text-sm text-foreground break-words">
-          <MarkdownText content={message.content} />
-        </div>
-      </div>
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={!!reportingMessage}
+        onClose={() => setReportingMessage(null)}
+        message={reportingMessage}
+        onSubmit={(reason, details) => {
+          console.log('Report submitted:', { reason, details, messageId: reportingMessage?.id });
+          toast.success('Signalement envoyé. Merci !');
+          setReportingMessage(null);
+        }}
+      />
     </div>
   );
 };

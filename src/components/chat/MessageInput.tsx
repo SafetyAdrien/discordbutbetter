@@ -100,39 +100,49 @@ export function MessageInput({
   }, []);
 
   // Detect mention triggers - require space or start of line before trigger
+  // Using non-capturing groups for browser compatibility (Safari, Firefox)
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
     
-    // Check for role mention (@& prefix) - lookbehind ensures start or after space
-    const roleMatch = beforeCursor.match(/(?<=^|\s)@&([\w\u00C0-\u024F]*)$/);
+    // Check for role mention (@& prefix) - non-capturing group for compatibility
+    const roleMatch = beforeCursor.match(/(?:^|\s)(@&[\w\u00C0-\u024F]*)$/);
     if (roleMatch) {
+      const fullMatch = roleMatch[1]; // "@&admin"
+      const query = fullMatch.slice(2); // Remove @&
+      const matchStart = beforeCursor.lastIndexOf(fullMatch);
       return {
         type: 'role' as const,
-        query: roleMatch[1],
-        startIndex: beforeCursor.length - roleMatch[0].length,
+        query,
+        startIndex: matchStart,
         triggerLength: 2,
       };
     }
     
-    // Check for channel mention (# prefix) - lookbehind ensures start or after space
+    // Check for channel mention (# prefix) - non-capturing group for compatibility
     // Capture spaces and underscores to support "Général Discussion" style input
-    const channelMatch = beforeCursor.match(/(?<=^|\s)#([\w\u00C0-\u024F\s_-]*)$/);
+    const channelMatch = beforeCursor.match(/(?:^|\s)(#[\w\u00C0-\u024F\s_-]*)$/);
     if (channelMatch) {
+      const fullMatch = channelMatch[1]; // "#Général Discussion"
+      const query = fullMatch.slice(1); // Remove #
+      const matchStart = beforeCursor.lastIndexOf(fullMatch);
       return {
         type: 'channel' as const,
-        query: channelMatch[1],
-        startIndex: beforeCursor.length - channelMatch[0].length,
+        query,
+        startIndex: matchStart,
         triggerLength: 1,
       };
     }
     
-    // Check for user mention (@ prefix) - lookbehind ensures start or after space
-    const userMatch = beforeCursor.match(/(?<=^|\s)@(?!&)([\w\u00C0-\u024F]*)$/);
+    // Check for user mention (@ prefix, not followed by &) - non-capturing group for compatibility
+    const userMatch = beforeCursor.match(/(?:^|\s)(@(?!&)[\w\u00C0-\u024F]*)$/);
     if (userMatch) {
+      const fullMatch = userMatch[1]; // "@username"
+      const query = fullMatch.slice(1); // Remove @
+      const matchStart = beforeCursor.lastIndexOf(fullMatch);
       return {
         type: 'user' as const,
-        query: userMatch[1],
-        startIndex: beforeCursor.length - userMatch[0].length,
+        query,
+        startIndex: matchStart,
         triggerLength: 1,
       };
     }

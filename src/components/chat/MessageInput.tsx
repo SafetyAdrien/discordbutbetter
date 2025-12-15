@@ -106,8 +106,7 @@ export function MessageInput({
     const roleMatch = beforeCursor.match(/(?:^|\s)@&([\w\u00C0-\u024F]*)$/);
     if (roleMatch) {
       const matchStart = beforeCursor.length - roleMatch[0].length;
-      const atPosition = roleMatch[0].indexOf('@');
-      const triggerIndex = matchStart + atPosition;
+      const triggerIndex = roleMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'role' as const,
         query: roleMatch[1],
@@ -120,8 +119,7 @@ export function MessageInput({
     const channelMatch = beforeCursor.match(/(?:^|\s)#([\w\u00C0-\u024F-]*)$/);
     if (channelMatch) {
       const matchStart = beforeCursor.length - channelMatch[0].length;
-      const hashPosition = channelMatch[0].indexOf('#');
-      const triggerIndex = matchStart + hashPosition;
+      const triggerIndex = channelMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'channel' as const,
         query: channelMatch[1],
@@ -134,8 +132,7 @@ export function MessageInput({
     const userMatch = beforeCursor.match(/(?:^|\s)@([\w\u00C0-\u024F]*)$/);
     if (userMatch && !beforeCursor.endsWith('@&')) {
       const matchStart = beforeCursor.length - userMatch[0].length;
-      const atPosition = userMatch[0].indexOf('@');
-      const triggerIndex = matchStart + atPosition;
+      const triggerIndex = userMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'user' as const,
         query: userMatch[1],

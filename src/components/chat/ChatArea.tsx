@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from '@/components/ui/context-menu';
@@ -930,19 +930,30 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
                         </div>
                         {isEditing ? <div className="mt-1 space-y-2">
-                            <Input value={editingContent} onChange={e => setEditingContent(e.target.value)} onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSaveEdit();
-                      }
-                      if (e.key === 'Escape') {
-                        handleCancelEdit();
-                      }
-                    }} autoFocus className="bg-input" />
+                            <Textarea 
+                              value={editingContent} 
+                              onChange={e => {
+                                setEditingContent(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                              }} 
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }} 
+                              autoFocus 
+                              className="bg-input min-h-[40px] max-h-[200px] resize-none" 
+                              rows={1}
+                            />
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span>Échap pour annuler</span>
                               <span>•</span>
-                              <span>Entrée pour sauvegarder</span>
+                              <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
                               <div className="flex gap-1 ml-auto">
                                 <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
                                   <X className="w-4 h-4" />
@@ -967,19 +978,30 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       </span>
                       <div className="flex-1 min-w-0">
                         {isEditing ? <div className="space-y-2">
-                            <Input value={editingContent} onChange={e => setEditingContent(e.target.value)} onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSaveEdit();
-                      }
-                      if (e.key === 'Escape') {
-                        handleCancelEdit();
-                      }
-                    }} autoFocus className="bg-input" />
+                            <Textarea 
+                              value={editingContent} 
+                              onChange={e => {
+                                setEditingContent(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                              }} 
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }} 
+                              autoFocus 
+                              className="bg-input min-h-[40px] max-h-[200px] resize-none" 
+                              rows={1}
+                            />
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span>Échap pour annuler</span>
                               <span>•</span>
-                              <span>Entrée pour sauvegarder</span>
+                              <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
                               <div className="flex gap-1 ml-auto">
                                 <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
                                   <X className="w-4 h-4" />

@@ -125,23 +125,16 @@ function PollActions({
   isOwnPoll: boolean;
 }) {
   if (!isVisible) return null;
-  
-  return (
-    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
       {/* 1. Réactions rapides - 3 émojis */}
-      {QUICK_REACTIONS_HOVER.map((emoji) => (
-        <Tooltip key={emoji}>
+      {QUICK_REACTIONS_HOVER.map(emoji => <Tooltip key={emoji}>
           <TooltipTrigger asChild>
-            <button
-              onClick={() => onAddReaction(emoji)}
-              className="p-1 hover:bg-muted rounded transition-colors text-base"
-            >
+            <button onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded transition-colors text-base">
               {emoji}
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">{emoji}</TooltipContent>
-        </Tooltip>
-      ))}
+        </Tooltip>)}
       
       {/* 2. Picker emoji complet */}
       <Popover>
@@ -152,15 +145,9 @@ function PollActions({
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-64 p-2">
           <div className="grid grid-cols-8 gap-1">
-            {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => onAddReaction(emoji)}
-                className="p-1 hover:bg-muted rounded text-lg transition-colors"
-              >
+            {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded text-lg transition-colors">
                 {emoji}
-              </button>
-            ))}
+              </button>)}
           </div>
         </PopoverContent>
       </Popover>
@@ -187,8 +174,7 @@ function PollActions({
             <Link className="w-4 h-4 mr-2" />
             Copier le lien
           </DropdownMenuItem>
-          {isOwnPoll && (
-            <>
+          {isOwnPoll && <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="w-4 h-4 mr-2" />
@@ -198,12 +184,10 @@ function PollActions({
                 <Trash2 className="w-4 h-4 mr-2" />
                 Supprimer
               </DropdownMenuItem>
-            </>
-          )}
+            </>}
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
-  );
+    </div>;
 }
 interface Role {
   id: string;
@@ -272,7 +256,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
-  
+
   // SHIFT key detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -318,10 +302,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const {
     data: polls = []
   } = usePolls(channel.id);
-  
+
   // Threads - fetch all threads for this channel to find message-linked threads
-  const { data: threads = [] } = useThreads(channel.id);
-  
+  const {
+    data: threads = []
+  } = useThreads(channel.id);
+
   // Build a map of message_id -> thread for messages that have threads
   const threadsByMessageId = useMemo(() => {
     const map = new Map<string, Thread>();
@@ -332,7 +318,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     });
     return map;
   }, [threads]);
-  
   const pinnedMessageIds = useMemo(() => new Set(pinnedMessages?.map(pm => pm.message_id) || []), [pinnedMessages]);
 
   // Create unified timeline of messages and polls
@@ -386,7 +371,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const handleReply = (message: Message) => {
     setReplyingTo(message);
   };
-
   const handleReplyToPoll = (poll: Poll) => {
     // Créer un pseudo-message de réponse référençant le sondage
     setReplyingTo({
@@ -601,18 +585,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           {/* Members Toggle / Thread Close */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="iconSm" 
-                onClick={() => {
-                  if (activeThreadId) {
-                    onCloseThread?.();
-                  } else {
-                    onToggleMembers?.();
-                  }
-                }} 
-                className={cn(showMembers && !activeThreadId && 'bg-surface-hover')}
-              >
+              <Button variant="ghost" size="iconSm" onClick={() => {
+              if (activeThreadId) {
+                onCloseThread?.();
+              } else {
+                onToggleMembers?.();
+              }
+            }} className={cn(showMembers && !activeThreadId && 'bg-surface-hover')}>
                 <Users className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
@@ -658,7 +637,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           return <ContextMenu key={`poll-${poll.id}`}>
                 <ContextMenuTrigger asChild>
                   <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredPollId(poll.id)} onMouseLeave={() => setHoveredPollId(null)}>
-                    <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} onReply={() => handleReplyToPoll(poll)} onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)} isOwnPoll={isOwnPoll} />
+                    <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} onReply={() => handleReplyToPoll(poll)} onAddReaction={emoji => handleAddReaction(poll.id, emoji)} isOwnPoll={isOwnPoll} />
                     {showAuthor ? <div className="flex gap-3 my-0 py-[5px]">
                         <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                           <AvatarImage src={poll.author?.avatar_url || undefined} />
@@ -723,19 +702,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         const isEditing = editingMessageId === message.id;
         return <ContextMenu key={message.id}>
               <ContextMenuTrigger asChild>
-                <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => { if (openDropdownMessageId !== message.id) setHoveredMessageId(null); }}>
-                  <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={(open) => { setOpenDropdownMessageId(open ? message.id : null); if (!open) setHoveredMessageId(null); }} />
-                {showAuthor ? (
-                    <div className="relative">
+                <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => {
+              if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+            }}>
+                  <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} onReply={() => handleReply(message)} onAddReaction={emoji => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={open => {
+                setOpenDropdownMessageId(open ? message.id : null);
+                if (!open) setHoveredMessageId(null);
+              }} />
+                {showAuthor ? <div className="relative">
                       {/* Thread Spine - positioned from avatar center */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
+                      {threadsByMessageId.has(message.id) && <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
                           {/* Vertical line descending from avatar */}
                           <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
                           {/* L-shaped curve */}
                           <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                        </div>
-                      )}
+                        </div>}
                       
                       <div className="flex gap-3 items-start">
                         <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
@@ -757,41 +738,29 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
                           </div>
                           {isEditing ? <div className="mt-1 space-y-2">
-                              <Textarea 
-                                ref={(el) => {
-                                  if (el) {
-                                    el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                                  }
-                                }}
-                                value={editingContent} 
-                                onChange={e => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                                }} 
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit();
-                                  }
-                                  if (e.key === 'Escape') {
-                                    handleCancelEdit();
-                                  }
-                                }} 
-                                autoFocus 
-                                className="bg-input min-h-[40px] max-h-[200px] resize-none" 
-                                rows={1}
-                              />
+                              <Textarea ref={el => {
+                        if (el) {
+                          el.style.height = 'auto';
+                          el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                        }
+                      }} value={editingContent} onChange={e => {
+                        setEditingContent(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }} onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSaveEdit();
+                        }
+                        if (e.key === 'Escape') {
+                          handleCancelEdit();
+                        }
+                      }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
                                 <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                                <span className={cn(
-                                  "ml-auto",
-                                  editingContent.length > 1900 && "text-yellow-500",
-                                  editingContent.length > 1980 && "text-destructive font-medium"
-                                )}>
+                                <span className={cn("ml-auto", editingContent.length > 1900 && "text-yellow-500", editingContent.length > 1980 && "text-destructive font-medium")}>
                                   {editingContent.length}/2000
                                 </span>
                                 <div className="flex gap-1">
@@ -815,26 +784,17 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       </div>
                       
                       {/* Thread System Message - indented to align with spine curve */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="mt-1 ml-[52px]">
-                          <ThreadSystemMessage 
-                            thread={threadsByMessageId.get(message.id)!}
-                            onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="relative">
+                      {threadsByMessageId.has(message.id) && <div className="mt-1 ml-[52px]">
+                          <ThreadSystemMessage thread={threadsByMessageId.get(message.id)!} onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)} />
+                        </div>}
+                    </div> : <div className="relative">
                       {/* Thread Spine for grouped messages */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="absolute left-[19px] top-0 bottom-0 pointer-events-none">
+                      {threadsByMessageId.has(message.id) && <div className="absolute left-[19px] top-0 bottom-0 pointer-events-none">
                           {/* Vertical line */}
                           <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
                           {/* L-shaped curve */}
                           <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                        </div>
-                      )}
+                        </div>}
                       
                       <div className="flex gap-3 items-start">
                         <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
@@ -842,41 +802,29 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         </span>
                         <div className="flex-1 min-w-0">
                           {isEditing ? <div className="space-y-2">
-                              <Textarea 
-                                ref={(el) => {
-                                  if (el) {
-                                    el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                                  }
-                                }}
-                                value={editingContent} 
-                                onChange={e => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                                }} 
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit();
-                                  }
-                                  if (e.key === 'Escape') {
-                                    handleCancelEdit();
-                                  }
-                                }} 
-                                autoFocus 
-                                className="bg-input min-h-[40px] max-h-[200px] resize-none" 
-                                rows={1}
-                              />
+                              <Textarea ref={el => {
+                        if (el) {
+                          el.style.height = 'auto';
+                          el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                        }
+                      }} value={editingContent} onChange={e => {
+                        setEditingContent(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }} onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSaveEdit();
+                        }
+                        if (e.key === 'Escape') {
+                          handleCancelEdit();
+                        }
+                      }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
                                 <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                                <span className={cn(
-                                  "ml-auto",
-                                  editingContent.length > 1900 && "text-yellow-500",
-                                  editingContent.length > 1980 && "text-destructive font-medium"
-                                )}>
+                                <span className={cn("ml-auto", editingContent.length > 1900 && "text-yellow-500", editingContent.length > 1980 && "text-destructive font-medium")}>
                                   {editingContent.length}/2000
                                 </span>
                                 <div className="flex gap-1">
@@ -903,30 +851,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       </div>
                       
                       {/* Thread System Message for grouped messages */}
-                      {threadsByMessageId.has(message.id) && (
-                        <div className="mt-1 ml-[52px]">
-                          <ThreadSystemMessage 
-                            thread={threadsByMessageId.get(message.id)!}
-                            onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                      {threadsByMessageId.has(message.id) && <div className="mt-1 ml-[52px]">
+                          <ThreadSystemMessage thread={threadsByMessageId.get(message.id)!} onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)} />
+                        </div>}
+                    </div>}
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent className="min-w-[220px] p-1.5 rounded-lg shadow-xl" collisionPadding={8}>
                 {/* Haut : Rangée d'émojis favoris */}
                 <div className="flex items-center gap-1 p-1 pb-2 border-b border-border mb-1">
-                  {CONTEXT_MENU_REACTIONS.map(emoji => (
-                    <button 
-                      key={emoji} 
-                      onClick={() => handleAddReaction(message.id, emoji)} 
-                      className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
-                    >
+                  {CONTEXT_MENU_REACTIONS.map(emoji => <button key={emoji} onClick={() => handleAddReaction(message.id, emoji)} className="p-1.5 hover:bg-muted rounded text-lg transition-colors">
                       {emoji}
-                    </button>
-                  ))}
+                    </button>)}
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="p-1.5 hover:bg-muted rounded transition-colors">
@@ -935,15 +871,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     </PopoverTrigger>
                     <PopoverContent side="right" align="start" className="w-64 p-2">
                       <div className="grid grid-cols-8 gap-1">
-                        {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map((emoji) => (
-                          <button
-                            key={emoji}
-                            onClick={() => handleAddReaction(message.id, emoji)}
-                            className="p-1 hover:bg-muted rounded text-lg transition-colors"
-                          >
+                        {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'].map(emoji => <button key={emoji} onClick={() => handleAddReaction(message.id, emoji)} className="p-1 hover:bg-muted rounded text-lg transition-colors">
                             {emoji}
-                          </button>
-                        ))}
+                          </button>)}
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -977,8 +907,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 
                 {/* Bas : Zone Danger */}
                 <ContextMenuSeparator />
-                {isOwnMessage ? (
-                  <>
+                {isOwnMessage ? <>
                     <ContextMenuItem onClick={() => handleStartEdit(message)}>
                       <Pencil className="w-4 h-4 mr-2" />
                       Modifier
@@ -987,24 +916,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                       Supprimer
                     </ContextMenuItem>
-                  </>
-                ) : (
-                  <ContextMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => setReportingMessage(message)}>
+                  </> : <ContextMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => setReportingMessage(message)}>
                     <Flag className="w-4 h-4 mr-2 text-destructive" />
                     Signaler
-                  </ContextMenuItem>
-                )}
+                  </ContextMenuItem>}
               </ContextMenuContent>
             </ContextMenu>;
       })}
       </div>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 border-t border-border bg-background px-4 py-3">
+      <div className="flex-shrink-0 border-t border-border bg-background px-0 py-0">
         <TypingIndicator channelId={channel.id} />
-        {replyingTo && (
-          <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />
-        )}
+        {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
         <MessageInput value={messageInput} onChange={setMessageInput} onSend={handleSubmit} placeholder={`Envoyer un message dans #${channel.name}`} isSending={isSending} onTypingStart={startTyping} onTypingStop={stopTyping} serverId={channel.server_id} channelId={channel.id} />
       </div>
 
@@ -1020,15 +944,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       <CreatePollModal channelId={channel.id} serverId={channel.server_id} open={!!editingPoll} onOpenChange={open => !open && setEditingPoll(null)} editPoll={editingPoll} />
 
       {/* Report Modal */}
-      <ReportModal
-        isOpen={!!reportingMessage}
-        onClose={() => setReportingMessage(null)}
-        message={reportingMessage}
-        onSubmit={(reason, details) => {
-          console.log('Report submitted:', { reason, details, messageId: reportingMessage?.id });
-          toast.success('Signalement envoyé. Merci !');
-          setReportingMessage(null);
-        }}
-      />
+      <ReportModal isOpen={!!reportingMessage} onClose={() => setReportingMessage(null)} message={reportingMessage} onSubmit={(reason, details) => {
+      console.log('Report submitted:', {
+        reason,
+        details,
+        messageId: reportingMessage?.id
+      });
+      toast.success('Signalement envoyé. Merci !');
+      setReportingMessage(null);
+    }} />
     </div>;
 });

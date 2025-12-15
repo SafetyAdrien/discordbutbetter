@@ -215,3 +215,108 @@ export function useSendDMMessage() {
     },
   });
 }
+
+export function useEditDMMessage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      conversationId,
+      content,
+    }: {
+      messageId: string;
+      conversationId: string;
+      content: string;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const validated = messageSchema.parse({ content });
+
+      const { data, error } = await supabase
+        .from('dm_messages')
+        .update({ content: validated.content })
+        .eq('id', messageId)
+        .eq('author_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ messageId, conversationId, content }) => {
+      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
+
+      const previousMessages = queryClient.getQueryData<DMMessage[]>([
+        'dm-messages',
+        conversationId,
+      ]);
+
+      queryClient.setQueryData<DMMessage[]>(
+        ['dm-messages', conversationId],
+        (old) => old?.map((m) => (m.id === messageId ? { ...m, content } : m)) || []
+      );
+
+      return { previousMessages };
+    },
+    onSuccess: () => {
+      toast.success('Message modifié');
+    },
+    onError: (error, { conversationId }, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['dm-messages', conversationId], context.previousMessages);
+      }
+      toast.error('Erreur lors de la modification');
+    },
+  });
+}
+
+export function useDeleteDMMessage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      conversationId,
+    }: {
+      messageId: string;
+      conversationId: string;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('dm_messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('author_id', user.id);
+
+      if (error) throw error;
+    },
+    onMutate: async ({ messageId, conversationId }) => {
+      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
+
+      const previousMessages = queryClient.getQueryData<DMMessage[]>([
+        'dm-messages',
+        conversationId,
+      ]);
+
+      queryClient.setQueryData<DMMessage[]>(
+        ['dm-messages', conversationId],
+        (old) => old?.filter((m) => m.id !== messageId) || []
+      );
+
+      return { previousMessages };
+    },
+    onSuccess: () => {
+      toast.success('Message supprimé');
+    },
+    onError: (error, { conversationId }, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['dm-messages', conversationId], context.previousMessages);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+}

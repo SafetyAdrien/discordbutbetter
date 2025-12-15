@@ -12,6 +12,7 @@ interface BlockToken {
   type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty';
   content: string;
   language?: string;
+  indentLevel?: number; // For nested lists
 }
 
 const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
@@ -170,14 +171,17 @@ function parseBlocks(content: string): BlockToken[] {
       else if (line.startsWith('> ')) {
         blocks.push({ type: 'blockquote', content: line.slice(2) });
       }
-      // Unordered list
-      else if (/^[-*] /.test(line)) {
-        blocks.push({ type: 'listItem', content: line.slice(2) });
+      // Unordered list (with indentation support)
+      else if (/^(\s*)[-*] /.test(line)) {
+        const match = line.match(/^(\s*)[-*] /);
+        const indentLevel = match ? Math.floor(match[1].length / 2) : 0;
+        blocks.push({ type: 'listItem', content: line.slice(match![0].length), indentLevel });
       }
-      // Ordered list
-      else if (/^\d+\. /.test(line)) {
-        const match = line.match(/^\d+\. /);
-        blocks.push({ type: 'orderedListItem', content: line.slice(match![0].length) });
+      // Ordered list (with indentation support)
+      else if (/^(\s*)\d+\. /.test(line)) {
+        const match = line.match(/^(\s*)\d+\. /);
+        const indentLevel = match ? Math.floor(match[1].length / 2) : 0;
+        blocks.push({ type: 'orderedListItem', content: line.slice(match![0].length), indentLevel });
       }
       // Regular paragraph
       else {
@@ -293,14 +297,16 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
         </blockquote>
       );
     case 'listItem':
+      const ulIndent = (block.indentLevel || 0) * 4 + 4;
       return (
-        <li key={key} className="ml-4 list-disc">
+        <li key={key} className="list-disc" style={{ marginLeft: `${ulIndent * 4}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );
     case 'orderedListItem':
+      const olIndent = (block.indentLevel || 0) * 4 + 4;
       return (
-        <li key={key} className="ml-4 list-decimal">
+        <li key={key} className="list-decimal" style={{ marginLeft: `${olIndent * 4}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );
@@ -391,7 +397,7 @@ export function parseMarkdown(content: string): React.ReactNode {
     );
   }
   
-  return <div className="markdown-content">{groupedBlocks}</div>;
+  return <div className="markdown-content text-[#dbdee1]">{groupedBlocks}</div>;
 }
 
 export const MarkdownText = React.forwardRef<HTMLSpanElement, { content: string; className?: string }>(

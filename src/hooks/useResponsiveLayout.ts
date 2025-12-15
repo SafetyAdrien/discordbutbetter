@@ -7,6 +7,7 @@ interface ResponsiveLayout {
   showServerList: boolean;
   showChannelSidebar: boolean;
   showMemberList: boolean;
+  showBottomNav: boolean;
   isMobile: boolean;
   isTablet: boolean;
   isMedium: boolean;
@@ -52,6 +53,8 @@ export function useResponsiveLayout(): ResponsiveLayout {
       showChannelSidebar: isMedium || isLarge,
       // Member list only visible on large screens
       showMemberList: isLarge,
+      // Bottom nav only on mobile
+      showBottomNav: isMobile,
       isMobile,
       isTablet,
       isMedium,

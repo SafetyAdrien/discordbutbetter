@@ -5,6 +5,7 @@ import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
 import { MemberDrawer } from '@/components/layout/MemberDrawer';
 import { SidebarDrawer } from '@/components/layout/SidebarDrawer';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DMPage } from '@/components/dm/DMPage';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
@@ -20,6 +21,7 @@ import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
 import ThreadView from '@/components/threads/ThreadView';
+import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -48,9 +50,10 @@ const Index = () => {
   const [showMembers, setShowMembers] = useState(true);
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
   const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   // Responsive layout
-  const { showServerList, showChannelSidebar, showMemberList, isMobile, isTablet } = useResponsiveLayout();
+  const { showServerList, showChannelSidebar, showMemberList, showBottomNav, isMobile, isTablet } = useResponsiveLayout();
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -318,7 +321,7 @@ const Index = () => {
   const isHomeView = activeServerId === null;
 
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
+    <div className={`h-screen flex bg-background overflow-hidden ${isMobile ? 'pb-20' : ''}`}>
       {/* Server List - Hidden on mobile/tablet, shown in drawer */}
       {showServerList && (
         <ServerList
@@ -556,6 +559,23 @@ const Index = () => {
             // TODO: Scroll to message
           }}
         />
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      {showBottomNav && (
+        <MobileBottomNav
+          activeView={isHomeView ? 'home' : 'servers'}
+          onOpenHome={() => handleServerSelect(null)}
+          onOpenServers={() => setSidebarDrawerOpen(true)}
+          onOpenMembers={() => setMemberDrawerOpen(true)}
+          onOpenSettings={() => setShowAccountSettings(true)}
+          showMembersButton={!isHomeView}
+        />
+      )}
+
+      {/* Account Settings Modal */}
+      {showAccountSettings && (
+        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
       )}
     </div>
   );

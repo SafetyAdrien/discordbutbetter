@@ -115,26 +115,6 @@ export function DMPage({
 
   return (
     <div className="flex-1 flex">
-      {/* Hamburger button for mobile/tablet */}
-      {(showSidebarButton || showDMListInDrawer) && (
-        <div className="absolute top-0 left-0 z-40 h-12 flex items-center px-2">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => {
-              if (showSidebarButton) {
-                onOpenSidebar?.();
-              } else {
-                setDmListDrawerOpen(true);
-              }
-            }}
-            className="lg:hidden"
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
-        </div>
-      )}
-
       {/* Left Sidebar - DM List */}
       {showChannelSidebar ? (
         <DMListSidebar />
@@ -148,6 +128,19 @@ export function DMPage({
 
       {/* Main Content */}
       <div className="flex-1 relative">
+        {/* Hamburger button for tablet (not mobile - bottom nav handles it) */}
+        {!isMobile && showSidebarButton && (
+          <div className="absolute top-0 left-0 z-40 h-12 flex items-center px-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={onOpenSidebar}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+          </div>
+        )}
+
         {currentView === 'friends' ? (
           <FriendsPanel onOpenDM={handleOpenDM} />
         ) : activeDMId ? (

@@ -102,43 +102,35 @@ export function MessageInput({
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
     
-    // Check for role mention (@& prefix) - must be at start or after space
-    const roleMatch = beforeCursor.match(/(?:^|\s)@&([\w\u00C0-\u024F]*)$/);
+    // Check for role mention (@& prefix) - lookbehind ensures start or after space
+    const roleMatch = beforeCursor.match(/(?<=^|\s)@&([\w\u00C0-\u024F]*)$/);
     if (roleMatch) {
-      const matchStart = beforeCursor.length - roleMatch[0].length;
-      const triggerIndex = roleMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'role' as const,
         query: roleMatch[1],
-        startIndex: triggerIndex,
+        startIndex: beforeCursor.length - roleMatch[0].length,
         triggerLength: 2,
       };
     }
     
-    // Check for channel mention (# prefix) - must be at start or after space
-    const channelMatch = beforeCursor.match(/(?:^|\s)#([\w\u00C0-\u024F-]*)$/);
+    // Check for channel mention (# prefix) - lookbehind ensures start or after space
+    const channelMatch = beforeCursor.match(/(?<=^|\s)#([\w\u00C0-\u024F-]*)$/);
     if (channelMatch) {
-      const matchStart = beforeCursor.length - channelMatch[0].length;
-      const hashPosition = channelMatch[0].indexOf('#');
-      const triggerIndex = matchStart + hashPosition;
       return {
         type: 'channel' as const,
         query: channelMatch[1],
-        startIndex: triggerIndex,
+        startIndex: beforeCursor.length - channelMatch[0].length,
         triggerLength: 1,
       };
     }
     
-    // Check for user mention (@ prefix) - must be at start or after space, not followed by &
-    const userMatch = beforeCursor.match(/(?:^|\s)@([\w\u00C0-\u024F]*)$/);
-    if (userMatch && !beforeCursor.endsWith('@&')) {
-      const matchStart = beforeCursor.length - userMatch[0].length;
-      const atPosition = userMatch[0].indexOf('@');
-      const triggerIndex = matchStart + atPosition;
+    // Check for user mention (@ prefix) - lookbehind ensures start or after space
+    const userMatch = beforeCursor.match(/(?<=^|\s)@(?!&)([\w\u00C0-\u024F]*)$/);
+    if (userMatch) {
       return {
         type: 'user' as const,
         query: userMatch[1],
-        startIndex: triggerIndex,
+        startIndex: beforeCursor.length - userMatch[0].length,
         triggerLength: 1,
       };
     }

@@ -289,6 +289,7 @@ const Index = () => {
     name: activeChannel.name,
     type: (activeChannel.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
     description: activeChannel.description || undefined,
+    server_id: activeServerId || undefined,
   } : null;
 
   // Filter public servers that user hasn't joined

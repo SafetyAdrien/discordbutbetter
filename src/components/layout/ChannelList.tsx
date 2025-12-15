@@ -172,7 +172,7 @@ function SortableCategory({
               onToggle();
             }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
+              <span className="tracking-wide font-ginto text-[14px] text-[#9b9ca3] font-normal my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();

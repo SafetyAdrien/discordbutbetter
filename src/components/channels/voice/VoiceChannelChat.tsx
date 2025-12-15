@@ -1,8 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
+import { useChannels } from '@/hooks/useChannels';
+import { useServerRoles } from '@/hooks/useRoles';
+import { useMembers } from '@/hooks/useMembers';
 import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -11,15 +14,54 @@ import { MessageInput } from '@/components/chat/MessageInput';
 interface VoiceChannelChatProps {
   channelId: string;
   channelName: string;
+  serverId: string;
   onClose: () => void;
 }
 
-export function VoiceChannelChat({ channelId, channelName, onClose }: VoiceChannelChatProps) {
+export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: VoiceChannelChatProps) {
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { data: messages = [] } = useMessages(channelId);
   const sendMessage = useSendMessage();
+  
+  // Fetch data for mention autocomplete
+  const { data: channelsData } = useChannels(serverId);
+  const { data: serverRoles = [] } = useServerRoles(serverId);
+  const { data: membersData = [] } = useMembers(serverId);
+  
+  // Build channels list for mentions
+  const allChannels = useMemo(() => {
+    const channels: Array<{ id: string; name: string; type: string }> = [];
+    channelsData?.categories.forEach(cat => {
+      cat.channels.forEach(ch => {
+        channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
+      });
+    });
+    channelsData?.orphanChannels?.forEach(ch => {
+      channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
+    });
+    return channels;
+  }, [channelsData]);
+  
+  // Build members list for mentions
+  const mentionMembers = useMemo(() => {
+    return membersData.map(m => ({
+      id: m.user?.id || m.id,
+      displayName: m.user?.display_name || m.nickname || 'Unknown',
+      username: m.user?.username || '',
+      avatar: m.user?.avatar_url || undefined
+    }));
+  }, [membersData]);
+  
+  // Build roles list for mentions
+  const mentionRoles = useMemo(() => {
+    return serverRoles.map(r => ({
+      id: r.id,
+      name: r.name,
+      color: r.color || undefined
+    }));
+  }, [serverRoles]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -91,6 +133,11 @@ export function VoiceChannelChat({ channelId, channelName, onClose }: VoiceChann
         disabled={sendMessage.isPending}
         isSending={sendMessage.isPending}
         compact
+        serverId={serverId}
+        channelId={channelId}
+        members={mentionMembers}
+        roles={mentionRoles}
+        channels={allChannels}
       />
     </div>
   );

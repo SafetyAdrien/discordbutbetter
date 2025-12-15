@@ -110,6 +110,7 @@ export function VoiceChannelView({
             <VoiceChannelChat 
               channelId={channel.id} 
               channelName={channel.name}
+              serverId={serverId}
               onClose={() => setShowChat(false)}
             />
           )}
@@ -198,6 +199,7 @@ export function VoiceChannelView({
           <VoiceChannelChat 
             channelId={channel.id} 
             channelName={channel.name}
+            serverId={serverId}
             onClose={() => setShowChat(false)}
           />
         )}

@@ -844,7 +844,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <ContextMenuTrigger asChild>
                   <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredPollId(poll.id)} onMouseLeave={() => setHoveredPollId(null)}>
                     <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} onReply={() => handleReplyToPoll(poll)} onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)} isOwnPoll={isOwnPoll} />
-                    {showAuthor ? <div className="flex gap-3 my-0 py-[5px]">
+                    {showAuthor ? <div className="flex items-start gap-3 my-0 py-[5px]">
                         <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                           <AvatarImage src={poll.author?.avatar_url || undefined} />
                           <AvatarFallback className="bg-primary/20 text-primary">
@@ -868,7 +868,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             <PollDisplay poll={poll} channelId={channel.id} />
                           </div>
                         </div>
-                      </div> : <div className="flex gap-3">
+                      </div> : <div className="flex items-start gap-3">
                         <span className="w-10 flex-shrink-0" />
                         <div className="flex-1">
                           <PollDisplay poll={poll} channelId={channel.id} />
@@ -910,7 +910,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               <ContextMenuTrigger asChild>
                 <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => { if (openDropdownMessageId !== message.id) setHoveredMessageId(null); }}>
                   <MessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={(open) => { setOpenDropdownMessageId(open ? message.id : null); if (!open) setHoveredMessageId(null); }} />
-                  {showAuthor ? <div className="flex gap-3">
+                  {showAuthor ? <div className="flex items-start gap-3">
                       <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                         <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
                           <AvatarImage src={message.author.avatar} alt={message.author.displayName} />

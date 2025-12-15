@@ -69,6 +69,18 @@ export function MessageInput({
     adjustTextareaHeight();
   }, [value, adjustTextareaHeight]);
 
+  // Ctrl+P keyboard shortcut for markdown preview toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        setShowPreview(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
     
@@ -192,7 +204,7 @@ export function MessageInput({
               type="button"
               onClick={() => setShowPreview(!showPreview)}
               className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
-              title={showPreview ? "Masquer l'aperçu" : "Aperçu Markdown"}
+              title={showPreview ? "Masquer l'aperçu (Ctrl+P)" : "Aperçu Markdown (Ctrl+P)"}
             >
               {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
             </button>

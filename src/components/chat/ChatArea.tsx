@@ -1000,13 +1000,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </div>
 
       {/* Typing Indicator */}
-      <TypingIndicator channelId={channel.id} />
+      <div className="flex-shrink-0">
+        <TypingIndicator channelId={channel.id} />
+      </div>
 
       {/* Reply Reference */}
-      {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
+      {replyingTo && (
+        <div className="flex-shrink-0">
+          <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />
+        </div>
+      )}
 
       {/* Message Input */}
-      <MessageInput value={messageInput} onChange={setMessageInput} onSend={handleSubmit} placeholder={`Envoyer un message dans #${channel.name}`} isSending={isSending} onTypingStart={startTyping} onTypingStop={stopTyping} serverId={channel.server_id} channelId={channel.id} />
+      <div className="flex-shrink-0">
+        <MessageInput value={messageInput} onChange={setMessageInput} onSend={handleSubmit} placeholder={`Envoyer un message dans #${channel.name}`} isSending={isSending} onTypingStart={startTyping} onTypingStop={stopTyping} serverId={channel.server_id} channelId={channel.id} />
+      </div>
 
       <UserProfilePopup user={selectedUser?.user ?? null} open={!!selectedUser} onOpenChange={open => !open && setSelectedUser(null)} roles={selectedUser?.roles} onOpenDM={onOpenDM} />
 

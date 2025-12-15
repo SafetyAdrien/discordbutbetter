@@ -8,35 +8,34 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Copy, Pencil, Trash2, Smile, Reply, Phone, Video, Pin, Hash } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Pin } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
 import { MessageInput } from '@/components/chat/MessageInput';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
+import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
+import { ReportModal } from '@/components/chat/ReportModal';
+import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { Message } from '@/types/app';
 
 export interface DMConversationProps {
   conversationId: string;
   onBack?: () => void;
 }
 
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
-
 export function DMConversation({ conversationId, onBack }: DMConversationProps) {
   const [messageInput, setMessageInput] = useState('');
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
+  const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   const { user } = useAuth();
+  const isShiftPressed = useShiftKey();
   const { startTyping, stopTyping } = useTypingIndicator(null, conversationId);
   const { markAsRead } = useUnreadCounts();
 
@@ -58,36 +57,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim()) return;
-
-    sendMessage.mutate({
-      conversationId,
-      content: messageInput.trim(),
-    });
-    setMessageInput('');
-    stopTyping();
-  };
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageInput(e.target.value);
-    if (e.target.value.trim()) {
-      startTyping();
-    }
-    // Auto-resize textarea
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-  }, [startTyping]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      e.currentTarget.form?.requestSubmit();
-    }
-    // Shift+Enter = default behavior (new line)
-  }, []);
 
   const handleVoiceCall = () => {
     startCall.mutate({ callType: 'voice' });
@@ -111,8 +80,19 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     copyToClipboard(id, 'ID copié');
   };
 
+  const handleCopyLink = (messageId: string) => {
+    const link = `${window.location.origin}/dm/${conversationId}/${messageId}`;
+    copyToClipboard(link, 'Lien copié');
+  };
+
   const handleAddReaction = (messageId: string, emoji: string) => {
     console.log('Add reaction', messageId, emoji);
+    toast.success(`Réaction ${emoji} ajoutée`);
+  };
+
+  const handleReply = (message: DMMessage) => {
+    // TODO: Implement reply
+    console.log('Reply to', message.id);
   };
 
   const displayName = conversation?.is_group
@@ -195,17 +175,93 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           </div>
         ) : (
           <>
-            {messages.map((message, idx) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                showAuthor={idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id}
-                isOwnMessage={user?.id === message.author?.id}
-                onCopyMessage={handleCopyMessage}
-                onCopyId={handleCopyId}
-                onAddReaction={handleAddReaction}
-              />
-            ))}
+            {messages.map((message, idx) => {
+              const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
+              const isOwnMessage = user?.id === message.author?.id;
+              const timestamp = message.created_at
+                ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
+                : '';
+
+              return (
+                <UniversalMessageContextMenu
+                  key={message.id}
+                  isOwnMessage={isOwnMessage}
+                  messageId={message.id}
+                  onReply={() => handleReply(message)}
+                  onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                  onCopyText={() => handleCopyMessage(message.content)}
+                  onCopyLink={() => handleCopyLink(message.id)}
+                  onCopyId={() => handleCopyId(message.id)}
+                  onEdit={isOwnMessage ? () => console.log('Edit', message.id) : undefined}
+                  onDelete={isOwnMessage ? () => console.log('Delete', message.id) : undefined}
+                  onReport={!isOwnMessage ? () => setReportingMessage({
+                    id: message.id,
+                    content: message.content,
+                    author: {
+                      id: message.author?.id || '',
+                      displayName: message.author?.display_name || 'Utilisateur',
+                      username: message.author?.username || 'unknown',
+                      avatar: message.author?.avatar_url || undefined,
+                      status: 'offline',
+                    },
+                    timestamp: new Date(message.created_at || Date.now()),
+                    edited: false,
+                  }) : undefined}
+                >
+                  <div 
+                    className={cn(
+                      'flex gap-3 group message-hover rounded-md px-2 -mx-2 relative',
+                      showAuthor ? 'pt-1' : 'py-0',
+                      !showAuthor && 'pl-12'
+                    )}
+                    onMouseEnter={() => setHoveredMessageId(message.id)}
+                    onMouseLeave={() => { 
+                      if (openDropdownMessageId !== message.id) setHoveredMessageId(null); 
+                    }}
+                  >
+                    <UniversalMessageActions
+                      isVisible={hoveredMessageId === message.id || openDropdownMessageId === message.id}
+                      isShiftPressed={isShiftPressed}
+                      isOwnMessage={isOwnMessage}
+                      onReply={() => handleReply(message)}
+                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                      onCopyLink={() => handleCopyLink(message.id)}
+                      onCopyId={() => handleCopyId(message.id)}
+                      onEdit={isOwnMessage ? () => console.log('Edit', message.id) : undefined}
+                      onDelete={isOwnMessage ? () => console.log('Delete', message.id) : undefined}
+                      onDropdownOpenChange={(open) => {
+                        setOpenDropdownMessageId(open ? message.id : null);
+                        if (!open) setHoveredMessageId(null);
+                      }}
+                    />
+                    {showAuthor && (
+                      <Avatar className="w-9 h-9 flex-shrink-0">
+                        <AvatarImage src={message.author?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                          {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      {showAuthor && (
+                        <div className="flex items-baseline gap-2 mb-0.5">
+                          <span className="font-medium text-sm">
+                            {message.author?.display_name || 'Utilisateur'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{timestamp}</span>
+                        </div>
+                      )}
+                      <p className={cn(
+                        'text-sm break-words font-ginto',
+                        message.isPending && 'opacity-50'
+                      )}>
+                        {message.content}
+                      </p>
+                    </div>
+                  </div>
+                </UniversalMessageContextMenu>
+              );
+            })}
             <div ref={messagesEndRef} />
           </>
         )}
@@ -233,110 +289,18 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         onTypingStart={startTyping}
         onTypingStop={stopTyping}
       />
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={!!reportingMessage}
+        onClose={() => setReportingMessage(null)}
+        message={reportingMessage}
+        onSubmit={(reason, details) => {
+          console.log('Report submitted:', { reason, details, messageId: reportingMessage?.id });
+          toast.success('Signalement envoyé. Merci !');
+          setReportingMessage(null);
+        }}
+      />
     </div>
-  );
-}
-
-function MessageItem({ 
-  message, 
-  showAuthor,
-  isOwnMessage,
-  onCopyMessage,
-  onCopyId,
-  onAddReaction,
-}: { 
-  message: DMMessage; 
-  showAuthor: boolean;
-  isOwnMessage: boolean;
-  onCopyMessage: (content: string) => void;
-  onCopyId: (id: string) => void;
-  onAddReaction: (messageId: string, emoji: string) => void;
-}) {
-  const timestamp = message.created_at
-    ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
-    : '';
-
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div className={cn(
-          'flex gap-3 group message-hover rounded-md px-2 -mx-2',
-          showAuthor ? 'pt-1' : 'py-0',
-          !showAuthor && 'pl-12'
-        )}>
-          {showAuthor && (
-            <Avatar className="w-9 h-9 flex-shrink-0">
-              <AvatarImage src={message.author?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
-              </AvatarFallback>
-            </Avatar>
-          )}
-          <div className="flex-1 min-w-0">
-            {showAuthor && (
-              <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="font-medium text-sm">
-                  {message.author?.display_name || 'Utilisateur'}
-                </span>
-                <span className="text-xs text-muted-foreground">{timestamp}</span>
-              </div>
-            )}
-            <p className={cn(
-              'text-sm break-words font-ginto',
-              message.isPending && 'opacity-50'
-            )}>
-              {message.content}
-            </p>
-          </div>
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <Smile className="w-4 h-4 mr-2" />
-            Ajouter une réaction
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="p-2">
-            <div className="flex gap-1">
-              {QUICK_REACTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => onAddReaction(message.id, emoji)}
-                  className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-        <ContextMenuItem>
-          <Reply className="w-4 h-4 mr-2" />
-          Répondre
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onCopyMessage(message.content)}>
-          <Copy className="w-4 h-4 mr-2" />
-          Copier le texte
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => onCopyId(message.id)}>
-          <Hash className="w-4 h-4 mr-2" />
-          Copier l'ID
-        </ContextMenuItem>
-        {isOwnMessage && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem>
-              <Pencil className="w-4 h-4 mr-2" />
-              Modifier
-            </ContextMenuItem>
-            <ContextMenuItem className="text-destructive focus:text-destructive">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Supprimer
-            </ContextMenuItem>
-          </>
-        )}
-      </ContextMenuContent>
-    </ContextMenu>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -28,7 +29,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useThread, useDeleteThread, useUpdateThread } from '@/hooks/useThreads';
-import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
+import { useThreadMessages, useSendThreadMessage, useEditThreadMessage, useDeleteThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
 import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
 import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
@@ -72,6 +73,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   
@@ -86,6 +89,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const deleteThread = useDeleteThread();
   const updateThread = useUpdateThread();
   const sendMessage = useSendThreadMessage();
+  const editMessage = useEditThreadMessage();
+  const deleteMessage = useDeleteThreadMessage();
   const markAsRead = useMarkThreadAsRead();
   const deletePoll = useDeletePoll();
   
@@ -109,6 +114,38 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const handleAddReaction = (messageId: string, emoji: string) => {
     console.log('Add reaction', messageId, emoji);
     toast.success(`Réaction ${emoji} ajoutée`);
+  };
+
+  const handleStartEdit = (message: ThreadMessage) => {
+    setEditingMessageId(message.id);
+    setEditingContent(message.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingMessageId && editingContent.trim()) {
+      await editMessage.mutateAsync({
+        messageId: editingMessageId,
+        threadId,
+        content: editingContent.trim(),
+      });
+      setEditingMessageId(null);
+      setEditingContent('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingContent('');
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    deleteMessage.mutate({ messageId, threadId });
+  };
+
+  const getCharacterCountColor = () => {
+    if (editingContent.length > 1980) return 'text-destructive';
+    if (editingContent.length > 1900) return 'text-yellow-500';
+    return 'text-muted-foreground';
   };
 
   const handleDeletePoll = (poll: Poll) => {
@@ -547,8 +584,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       onCopyText={() => copyToClipboard(message.content, 'Message copié')}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
-                      onEdit={isOwnMessage ? () => console.log('Edit', message.id) : undefined}
-                      onDelete={isOwnMessage ? () => console.log('Delete', message.id) : undefined}
+                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                      onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                       onReport={!isOwnMessage ? () => setReportingMessage({
                         id: message.id,
                         content: message.content,
@@ -574,15 +611,15 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         }}
                       >
                         <UniversalMessageActions
-                          isVisible={hoveredMessageId === message.id || openDropdownMessageId === message.id}
+                          isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && editingMessageId !== message.id}
                           isShiftPressed={isShiftPressed}
                           isOwnMessage={isOwnMessage}
                           onReply={() => console.log('Reply to', message.id)}
                           onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                           onCopyLink={() => handleCopyMessageLink(message.id)}
                           onCopyId={() => handleCopyId(message.id)}
-                          onEdit={isOwnMessage ? () => console.log('Edit', message.id) : undefined}
-                          onDelete={isOwnMessage ? () => console.log('Delete', message.id) : undefined}
+                          onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                          onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                           onDropdownOpenChange={(open) => {
                             setOpenDropdownMessageId(open ? message.id : null);
                             if (!open) setHoveredMessageId(null);
@@ -612,9 +649,60 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               )}
                             </div>
                           )}
-                          <div className="text-sm text-foreground break-words">
-                            <MarkdownText content={message.content} />
-                          </div>
+                          {editingMessageId === message.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.height = 'auto';
+                                    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                                  }
+                                }}
+                                value={editingContent}
+                                onChange={(e) => {
+                                  setEditingContent(e.target.value);
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSaveEdit();
+                                  }
+                                  if (e.key === 'Escape') {
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                className="min-h-[40px] max-h-[200px] resize-none text-sm"
+                                autoFocus
+                              />
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">
+                                  Entrée pour sauvegarder • Maj+Entrée nouvelle ligne
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={cn('text-xs font-mono', getCharacterCountColor())}>
+                                    {editingContent.length}/2000
+                                  </span>
+                                  <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    size="iconSm" 
+                                    variant="ghost" 
+                                    onClick={handleSaveEdit}
+                                    disabled={!editingContent.trim() || editingContent.length > 2000}
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-foreground break-words">
+                              <MarkdownText content={message.content} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </UniversalMessageContextMenu>

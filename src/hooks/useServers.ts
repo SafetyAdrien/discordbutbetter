@@ -183,12 +183,14 @@ export function useCreateServer() {
     mutationFn: async ({
       name,
       icon_url,
+      banner_url,
       description,
       is_public,
       templateId,
     }: {
       name: string;
       icon_url?: string;
+      banner_url?: string;
       description?: string;
       is_public?: boolean;
       templateId?: string | null;
@@ -201,6 +203,7 @@ export function useCreateServer() {
         .insert({
           name,
           icon_url: icon_url || null,
+          banner_url: banner_url || null,
           description: description || null,
           is_public: is_public ?? false,
           owner_id: user.id,

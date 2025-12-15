@@ -41,17 +41,17 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Drop Indicator Component
-function DropIndicator({
-  isVisible,
-  position = 'after'
-}: {
-  isVisible: boolean;
-  position?: 'before' | 'after';
-}) {
+import React from 'react';
+
+// Drop Indicator Component with forwardRef
+const DropIndicator = React.forwardRef<
+  HTMLDivElement,
+  { isVisible: boolean; position?: 'before' | 'after' }
+>(({ isVisible, position = 'after' }, ref) => {
   if (!isVisible) return null;
-  return <div className="drop-indicator mx-2 my-0.5" />;
-}
+  return <div ref={ref} className="drop-indicator mx-2 my-0.5" />;
+});
+DropIndicator.displayName = 'DropIndicator';
 interface Channel {
   id: string;
   name: string;

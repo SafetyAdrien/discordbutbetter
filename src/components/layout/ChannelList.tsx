@@ -172,7 +172,7 @@ function SortableCategory({
               onToggle();
             }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-[14px] text-[#9b9ca3] font-semibold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
+              <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();
@@ -306,7 +306,7 @@ function SortableChannel({
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
               <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
-            <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9b9ca3] font-medium">{channel.name}</span>
+            <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9b9ca3] font-normal">{channel.name}</span>
             
               {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                   {channel.unreadCount}
@@ -377,27 +377,18 @@ function SortableChannel({
       
       {/* Threads for text channels - OUTSIDE draggable div */}
       {channel.type === 'text' && threads.length > 0 && <div className="mt-1 space-y-0.5">
-          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => (
-                          <div key={thread.id} className="flex items-start w-full px-2">
+          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <div key={thread.id} className="flex items-start w-full px-2">
                             <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
-              <button 
-                onClick={e => {
-                  e.stopPropagation();
-                  onThreadSelect?.(thread.id);
-                }} 
-                className={cn(
-                  "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
-                  activeThreadId === thread.id && "bg-muted",
-                  thread.archived && "opacity-50"
-                )}
-              >
+              <button onClick={e => {
+          e.stopPropagation();
+          onThreadSelect?.(thread.id);
+        }} className={cn("flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
                 <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
                   {thread.name}
                   {thread.archived && " (archivé)"}
                 </span>
               </button>
-            </div>
-          ))}
+            </div>)}
         </div>}
       {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
@@ -846,39 +837,32 @@ export function ChannelList({
   // Sidebar resizing
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const isResizing = useRef(false);
-
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isResizing.current = true;
     const startX = e.clientX;
     const startWidth = sidebarWidth;
-
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return;
       const delta = e.clientX - startX;
       const newWidth = Math.max(240, Math.min(340, startWidth + delta));
       setSidebarWidth(newWidth);
     };
-
     const handleMouseUp = () => {
       isResizing.current = false;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   }, [sidebarWidth]);
-
-  return <div 
-    className="bg-card flex flex-col border-r border-border relative"
-    style={{ width: `${sidebarWidth}px`, minWidth: '240px', maxWidth: '340px' }}
-  >
+  return <div className="bg-card flex flex-col border-r border-border relative" style={{
+    width: `${sidebarWidth}px`,
+    minWidth: '240px',
+    maxWidth: '340px'
+  }}>
     {/* Resize handle */}
-    <div 
-      className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10"
-      onMouseDown={handleResizeMouseDown}
-    />
+    <div className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10" onMouseDown={handleResizeMouseDown} />
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>

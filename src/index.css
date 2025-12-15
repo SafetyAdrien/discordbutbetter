@@ -426,6 +426,14 @@
   .hljs-selector-id { color: #61afef; }
   .hljs-property { color: #e06c75; }
 
+  /* Monospace font for code elements - Consolas stack */
+  .font-mono,
+  code,
+  pre,
+  .markdown-content code {
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
+  }
+
   /* Drag and drop animations */
   .dragging-item {
     box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);

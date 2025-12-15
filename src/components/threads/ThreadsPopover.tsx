@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, Pencil, Bell, BellOff, MoreVertical, Trash2, Check, X } from 'lucide-react';
+import { Search, Plus, MessageSquare, Star, Pencil, Bell, BellOff, MoreVertical, Trash2, Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -131,23 +131,22 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
     }
   };
 
-  // Truncate last message content
-  const truncateContent = (content: string, maxLength: number = 50) => {
-    if (content.length <= maxLength) return content;
-    return content.slice(0, maxLength) + '...';
-  };
-
-  const participants = thread.participants || [];
-  const participantCount = thread.participant_count || 0;
-
   return (
     <>
-      <div className="w-full flex items-start gap-3 p-3 rounded-md hover:bg-muted transition-colors group cursor-pointer" onClick={onClick}>
-        <div className="flex-1 min-w-0">
-          {/* Row 1: Thread name + stacked avatars + participant count */}
-          <div className="flex items-center justify-between gap-2 mb-1">
+      <div className="w-full flex items-start gap-3 p-2 rounded-md hover:bg-muted transition-colors group">
+        <button
+          onClick={onClick}
+          className="flex-1 flex items-start gap-3 text-left min-w-0"
+        >
+          <Avatar className="w-8 h-8 mt-0.5 flex-shrink-0">
+            <AvatarImage src={thread.creator?.avatar_url || undefined} />
+            <AvatarFallback className="text-xs">
+              {thread.creator?.display_name?.[0] || '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
             {isRenaming ? (
-              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -172,68 +171,36 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
                 </Button>
               </div>
             ) : (
-              <span className="font-semibold text-foreground truncate">
+              <span className="font-medium text-foreground truncate block">
                 {thread.name}
               </span>
             )}
-            
-            {/* Stacked avatars + participant count */}
-            {!isRenaming && participants.length > 0 && (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <div className="flex -space-x-2">
-                  {participants.slice(0, 4).map((participant, index) => (
-                    <Avatar 
-                      key={participant.id} 
-                      className="w-6 h-6 border-2 border-card"
-                      style={{ zIndex: 4 - index }}
-                    >
-                      <AvatarImage src={participant.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px]">
-                        {participant.display_name?.[0] || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                </div>
-                {participantCount > 0 && (
-                  <span className="text-xs text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded-full">
-                    {participantCount}+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <span>{thread.creator?.display_name || 'Inconnu'}</span>
+              <span>•</span>
+              <span>
+                {thread.last_message_at
+                  ? formatDistanceToNow(new Date(thread.last_message_at), {
+                      addSuffix: true,
+                      locale: fr,
+                    })
+                  : 'Aucun message'}
+              </span>
+              {thread.message_count !== undefined && thread.message_count > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" />
+                    {thread.message_count}
                   </span>
-                )}
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
-          
-          {/* Row 2: Last message preview with author avatar */}
-          {thread.last_message ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Avatar className="w-4 h-4 shrink-0">
-                <AvatarImage src={thread.last_message.author.avatar_url || undefined} />
-                <AvatarFallback className="text-[8px]">
-                  {thread.last_message.author.display_name?.[0] || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-foreground/80">
-                {thread.last_message.author.display_name}:
-              </span>
-              <span className="truncate flex-1">
-                {truncateContent(thread.last_message.content)}
-              </span>
-              <span className="shrink-0 text-xs">
-                • {formatDistanceToNow(new Date(thread.last_message.created_at), {
-                    addSuffix: false,
-                    locale: fr,
-                  })}
-              </span>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              Aucun message
-            </div>
-          )}
-        </div>
+        </button>
 
         {/* Actions - visible on hover */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -338,6 +305,15 @@ const EmptyState: React.FC<{
     <div className="flex flex-col items-center justify-center h-full py-8 px-4 text-center">
       <div className="relative mb-4">
         <StreamlineThreads className="w-16 h-16 text-muted-foreground/30" />
+        <div className="absolute -top-2 -right-2">
+          <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+        </div>
+        <div className="absolute -bottom-1 -left-3">
+          <Star className="w-4 h-4 text-yellow-500/70 fill-yellow-500/70" />
+        </div>
+        <div className="absolute top-0 -left-4">
+          <Star className="w-3 h-3 text-yellow-500/50 fill-yellow-500/50" />
+        </div>
       </div>
       <h4 className="font-semibold text-foreground mb-1">
         Pas encore de threads

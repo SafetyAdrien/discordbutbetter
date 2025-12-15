@@ -22,72 +22,19 @@ export const useThreads = (channelId: string | undefined) => {
 
       if (error) throw error;
       
-      // Get message counts, last message, and participants for each thread
-      const threadsWithDetails = await Promise.all(
+      // Get message counts
+      const threadsWithCounts = await Promise.all(
         (data || []).map(async (thread) => {
-          // Get message count
           const { count } = await supabase
             .from('thread_messages')
             .select('*', { count: 'exact', head: true })
             .eq('thread_id', thread.id);
           
-          // Get last message with author
-          const { data: lastMessages } = await supabase
-            .from('thread_messages')
-            .select(`
-              content,
-              created_at,
-              author:profiles!thread_messages_author_id_fkey(display_name, avatar_url)
-            `)
-            .eq('thread_id', thread.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          
-          const lastMessage = lastMessages?.[0] ? {
-            content: lastMessages[0].content,
-            created_at: lastMessages[0].created_at,
-            author: {
-              display_name: (lastMessages[0].author as any)?.display_name || 'Inconnu',
-              avatar_url: (lastMessages[0].author as any)?.avatar_url || null,
-            }
-          } : undefined;
-          
-          // Get unique participants (authors of messages)
-          const { data: participantsData } = await supabase
-            .from('thread_messages')
-            .select(`
-              author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
-            `)
-            .eq('thread_id', thread.id)
-            .order('created_at', { ascending: false });
-          
-          // Deduplicate participants
-          const uniqueParticipants: { id: string; display_name: string; avatar_url: string | null }[] = [];
-          const seenIds = new Set<string>();
-          
-          participantsData?.forEach((msg) => {
-            const author = msg.author as any;
-            if (author?.id && !seenIds.has(author.id)) {
-              seenIds.add(author.id);
-              uniqueParticipants.push({
-                id: author.id,
-                display_name: author.display_name,
-                avatar_url: author.avatar_url,
-              });
-            }
-          });
-          
-          return { 
-            ...thread, 
-            message_count: count || 0,
-            last_message: lastMessage,
-            participants: uniqueParticipants.slice(0, 4),
-            participant_count: uniqueParticipants.length,
-          } as Thread;
+          return { ...thread, message_count: count || 0 } as Thread;
         })
       );
       
-      return threadsWithDetails;
+      return threadsWithCounts;
     },
     enabled: !!channelId,
   });

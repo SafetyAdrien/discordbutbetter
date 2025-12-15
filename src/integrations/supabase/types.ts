@@ -1146,6 +1146,67 @@ export type Database = {
           },
         ]
       }
+      server_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          recipient_id: string
+          responded_at: string | null
+          sender_id: string | null
+          server_id: string
+          status: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          recipient_id: string
+          responded_at?: string | null
+          sender_id?: string | null
+          server_id: string
+          status?: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          recipient_id?: string
+          responded_at?: string | null
+          sender_id?: string | null
+          server_id?: string
+          status?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_notifications_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_notifications_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_read_states: {
         Row: {
           id: string
@@ -1879,6 +1940,7 @@ export type Database = {
         Args: { p_other_user_id?: string }
         Returns: string
       }
+      delete_server_as_owner: { Args: { _server_id: string }; Returns: boolean }
       generate_invite_code: { Args: never; Returns: string }
       get_channel_webhooks: {
         Args: { _channel_id: string }
@@ -1947,6 +2009,14 @@ export type Database = {
       remove_secondary_owner: {
         Args: { _server_id: string }
         Returns: undefined
+      }
+      request_server_deletion: {
+        Args: { _server_id: string }
+        Returns: boolean
+      }
+      respond_to_deletion_request: {
+        Args: { _accept: boolean; _notification_id: string }
+        Returns: boolean
       }
       server_deafen_participant: {
         Args: {

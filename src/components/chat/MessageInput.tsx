@@ -100,8 +100,8 @@ export function MessageInput({
   };
 
   return (
-    <div className={compact ? "p-3 border-t border-white/10" : "px-4 py-3 flex-shrink-0 flex items-center"}>
-      <form onSubmit={handleSubmit} className="relative shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
+    <div className={compact ? "p-3 border-t border-white/10" : "px-4 py-3 flex-shrink-0 flex items-center w-full"}>
+      <form onSubmit={handleSubmit} className="relative w-full shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         <div className={`flex items-center gap-2 rounded-lg border transition-colors ${
           compact 
             ? "bg-[#383a40] border-transparent" 

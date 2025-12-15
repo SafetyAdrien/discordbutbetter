@@ -8,7 +8,6 @@ import { VoiceControls } from '@/components/layout/VoiceControls';
 import { UserProfileCard } from '@/components/profile/UserProfileCard';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
-
 type DMView = 'friends' | 'conversation';
 interface DMPageProps {
   activeDMId: string | null;
@@ -52,7 +51,7 @@ export function DMPage({
 
         {/* DM List Section */}
         <div className="px-2 pt-4">
-          <h3 className="px-2 text-xs font-semibold text-muted-foreground capitalize tracking-wide mb-2">
+          <h3 className="px-2 text-xs font-normal text-muted-foreground capitalize tracking-wide mb-2">
             Messages privés
           </h3>
         </div>
@@ -66,10 +65,7 @@ export function DMPage({
         {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute.mutate()} onToggleDeafen={() => toggleDeafen.mutate()} onDisconnect={() => leaveChannel.mutate()} />}
 
         {/* User Panel */}
-        <UserProfileCard 
-          onOpenSettings={() => setShowAccountSettings(true)}
-          onOpenProfile={() => setShowAccountSettings(true)}
-        />
+        <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} />
       </div>
 
       {/* Main Content */}

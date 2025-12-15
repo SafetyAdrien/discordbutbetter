@@ -382,21 +382,21 @@
 
   /* Spoiler style Discord */
   .spoiler {
-    background-color: hsl(var(--muted));
+    background-color: #1a1a1d;
     color: transparent;
     border-radius: 4px;
     padding: 0 2px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
     user-select: none;
   }
 
-  .spoiler:hover {
-    background-color: hsl(var(--muted) / 0.8);
+  .spoiler:hover:not(.revealed) {
+    background-color: #232428;
   }
 
   .spoiler.revealed {
-    background-color: hsl(var(--muted) / 0.3);
+    background-color: rgba(79, 84, 92, 0.48);
     color: inherit;
     user-select: text;
   }

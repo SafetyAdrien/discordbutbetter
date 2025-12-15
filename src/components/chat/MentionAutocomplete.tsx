@@ -109,7 +109,7 @@ export function MentionAutocomplete({
       ref={containerRef}
       className="absolute bottom-full left-0 right-0 mb-1 bg-[#2b2d31] border border-border rounded-lg shadow-lg overflow-hidden z-50"
     >
-      <ScrollArea className="max-h-[200px] [&_[data-radix-scroll-area-thumb]]:bg-[#1a1b1e]">
+      <ScrollArea type="always" className="max-h-[200px] [&_[data-radix-scroll-area-thumb]]:bg-[#1a1b1e]">
         <div className="p-1">
           {type === "user" && (
             <>

@@ -26,6 +26,8 @@ import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import ThreadsPopover from '@/components/threads/ThreadsPopover';
 import CreateThreadModal from '@/components/threads/CreateThreadModal';
 import { MessageInput } from '@/components/chat/MessageInput';
+import { ReportModal } from '@/components/chat/ReportModal';
+import { toast } from 'sonner';
 
 // Reply Reference Component
 function ReplyReference({
@@ -110,7 +112,8 @@ function MessageActions({
   onCreateThread,
   onPin,
   isOwnMessage,
-  isPinned
+  isPinned,
+  onDropdownOpenChange
 }: {
   isVisible: boolean;
   isShiftPressed: boolean;
@@ -124,6 +127,7 @@ function MessageActions({
   onPin?: () => void;
   isOwnMessage: boolean;
   isPinned?: boolean;
+  onDropdownOpenChange?: (open: boolean) => void;
 }) {
   if (!isVisible) return null;
   
@@ -241,7 +245,7 @@ function MessageActions({
       </Tooltip>
       
       {/* 4. Menu Plus d'options - 3 points HORIZONTAUX */}
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <button className="p-1.5 hover:bg-muted rounded transition-colors">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
@@ -447,6 +451,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
+  const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
+  const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   
   // SHIFT key detection
   useEffect(() => {
@@ -883,8 +889,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         const isEditing = editingMessageId === message.id;
         return <ContextMenu key={message.id}>
               <ContextMenuTrigger asChild>
-                <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => setHoveredMessageId(null)}>
-                  <MessageActions isVisible={hoveredMessageId === message.id} isShiftPressed={isShiftPressed} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} />
+                <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => { if (openDropdownMessageId !== message.id) setHoveredMessageId(null); }}>
+                  <MessageActions isVisible={hoveredMessageId === message.id || openDropdownMessageId === message.id} isShiftPressed={isShiftPressed} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={(open) => { setOpenDropdownMessageId(open ? message.id : null); if (!open) setHoveredMessageId(null); }} />
                   {showAuthor ? <div className="flex gap-3">
                       <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                         <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
@@ -1053,7 +1059,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     </ContextMenuItem>
                   </>
                 ) : (
-                  <ContextMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <ContextMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => setReportingMessage(message)}>
                     <Flag className="w-4 h-4 mr-2 text-destructive" />
                     Signaler
                   </ContextMenuItem>
@@ -1082,5 +1088,17 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Edit Poll Modal */}
       <CreatePollModal channelId={channel.id} serverId={channel.server_id} open={!!editingPoll} onOpenChange={open => !open && setEditingPoll(null)} editPoll={editingPoll} />
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={!!reportingMessage}
+        onClose={() => setReportingMessage(null)}
+        message={reportingMessage}
+        onSubmit={(reason, details) => {
+          console.log('Report submitted:', { reason, details, messageId: reportingMessage?.id });
+          toast.success('Signalement envoyé. Merci !');
+          setReportingMessage(null);
+        }}
+      />
     </div>;
 });

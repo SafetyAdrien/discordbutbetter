@@ -124,7 +124,7 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: "Inter", sans-serif;
+    font-family: "gg-sans", sans-serif;
   }
 
   h1,

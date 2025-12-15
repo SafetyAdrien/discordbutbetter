@@ -125,8 +125,8 @@ export function MentionAutocomplete({
       ref={containerRef}
       className="absolute bottom-full left-0 right-0 mb-1 bg-[#2b2d31] border border-border rounded-lg shadow-lg overflow-hidden z-50"
     >
-      <ScrollArea className="max-h-[200px]">
-        <div className="p-1">
+      <ScrollArea className="max-h-[240px] [&>[data-radix-scroll-area-viewport]]:max-h-[240px]">
+        <div className="p-1.5">
           {type === 'user' && (
             <>
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">

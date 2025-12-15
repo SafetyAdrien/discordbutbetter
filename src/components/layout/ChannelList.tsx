@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle, GripVertical } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -10,7 +10,7 @@ import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import StreamlineThreadBranch from '@/components/icons/StreamlineThreadBranch';
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -44,57 +44,13 @@ import { CSS } from '@dnd-kit/utilities';
 // Drop Indicator Component
 function DropIndicator({
   isVisible,
-  position = 'after',
-  isCategory = false
+  position = 'after'
 }: {
   isVisible: boolean;
   position?: 'before' | 'after';
-  isCategory?: boolean;
 }) {
   if (!isVisible) return null;
-  return <div className={cn("mx-2 my-0.5", isCategory ? "drop-indicator-category" : "drop-indicator")} />;
-}
-
-// Resize Handle Component
-function ResizeHandle({
-  onResize,
-  minWidth,
-  currentWidth
-}: {
-  onResize: (newWidth: number) => void;
-  minWidth: number;
-  currentWidth: number;
-}) {
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = currentWidth;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - startX;
-      const newWidth = Math.max(minWidth, startWidth + deltaX);
-      onResize(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
-  };
-
-  return (
-    <div
-      className="resize-handle"
-      onMouseDown={handleMouseDown}
-    />
-  );
+  return <div className="drop-indicator mx-2 my-0.5" />;
 }
 interface Channel {
   id: string;
@@ -205,15 +161,12 @@ function SortableCategory({
     opacity: isDragging ? 0.4 : 1
   };
   return <>
-    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" isCategory={true} />}
+    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
     {/* En-tête de catégorie (zone draggable uniquement) */}
     <div ref={setNodeRef} style={style} className={cn(isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group">
-            <div {...attributes} {...listeners} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical className="w-3 h-3" />
-            </div>
+          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
@@ -221,7 +174,7 @@ function SortableCategory({
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
               <span className="tracking-wide font-ginto text-[14px] text-[#9b9ca3] font-semibold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
-            <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-primary" onClick={e => {
+            <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();
               onCreateChannel();
             }} />
@@ -245,7 +198,7 @@ function SortableCategory({
         </ContextMenuContent>
       </ContextMenu>
     </div>
-    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" isCategory={true} />}
+    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
     
     {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
     {!isCollapsed && <div className="mb-2">{children}</div>}
@@ -503,8 +456,6 @@ export function ChannelList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
-  const [sidebarWidth, setSidebarWidth] = useState(240);
-  const MIN_SIDEBAR_WIDTH = 240;
   const {
     profile,
     signOut,
@@ -892,16 +843,7 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div 
-    className="relative bg-card flex flex-col border-r border-border"
-    style={{ width: `${sidebarWidth}px`, minWidth: `${MIN_SIDEBAR_WIDTH}px` }}
-  >
-      {/* Resize Handle */}
-      <ResizeHandle 
-        onResize={setSidebarWidth}
-        minWidth={MIN_SIDEBAR_WIDTH}
-        currentWidth={sidebarWidth}
-      />
+  return <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>

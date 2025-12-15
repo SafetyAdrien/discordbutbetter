@@ -423,7 +423,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(
 
     return (
       <>
-        <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border">
+        <div ref={ref} className="w-60 bg-background flex flex-col border-l border-border/50">
           {/* Search input */}
           <div className="px-3 pt-3">
             <div className="relative">

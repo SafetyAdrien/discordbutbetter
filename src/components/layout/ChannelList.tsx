@@ -864,7 +864,7 @@ export function ChannelList({
     {/* Resize handle */}
     <div className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10" onMouseDown={handleResizeMouseDown} />
       {/* Server Header - styled like User Panel */}
-      <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
+      <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50">
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">

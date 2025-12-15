@@ -99,7 +99,7 @@ export function ServerList({
   };
 
   return (
-    <div className="w-[72px] bg-sidebar flex flex-col items-center py-3 gap-2 border-r border-border">
+    <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2 border-r border-border/50">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>

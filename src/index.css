@@ -47,33 +47,40 @@
 
 @layer base {
   :root {
-    /* Dark gaming theme - always dark */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
+    /* Dark Space Theme */
+    /* Main Chat + Member List: #191C2B */
+    --background: 231 24% 13%;
+    /* Primary text: #DCDDDE */
+    --foreground: 220 6% 86%;
 
-    --card: 230 25% 12%;
-    --card-foreground: 210 40% 98%;
+    /* Sidebar Channels: #151724 */
+    --card: 233 27% 11%;
+    --card-foreground: 220 6% 86%;
 
-    --popover: 230 25% 10%;
-    --popover-foreground: 210 40% 98%;
+    /* Popovers/Menus */
+    --popover: 231 24% 11%;
+    --popover-foreground: 220 6% 86%;
 
     --primary: 186 100% 50%;
-    --primary-foreground: 230 25% 8%;
+    --primary-foreground: 233 30% 8%;
 
     --secondary: 270 60% 60%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary-foreground: 220 6% 86%;
 
-    --muted: 230 20% 18%;
-    --muted-foreground: 215 20% 65%;
+    /* Muted surfaces and secondary text: #B9BBBE */
+    --muted: 231 20% 18%;
+    --muted-foreground: 216 7% 73%;
 
     --accent: 186 80% 40%;
-    --accent-foreground: 210 40% 98%;
+    --accent-foreground: 220 6% 86%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 220 6% 86%;
 
-    --border: 230 20% 20%;
-    --input: 230 20% 15%;
+    /* Borders */
+    --border: 231 20% 18%;
+    /* Inputs: #232635 */
+    --input: 231 23% 17%;
     --ring: 186 100% 50%;
 
     --radius: 0.75rem;
@@ -81,39 +88,43 @@
     /* Custom gaming colors */
     --glow-primary: 186 100% 50%;
     --glow-secondary: 270 60% 60%;
-    --surface-elevated: 230 25% 14%;
-    --surface-hover: 230 25% 18%;
+    --surface-elevated: 231 24% 15%;
+    --surface-hover: 231 24% 20%;
     --online: 142 76% 46%;
     --idle: 38 92% 50%;
     --dnd: 0 72% 51%;
     --offline: 215 20% 45%;
     --voice-active: 142 76% 46%;
-    --poll-background: 230 25% 10%;
+    --poll-background: 231 24% 11%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
     --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(230 25% 14%), hsl(230 25% 10%));
+    --gradient-surface: linear-gradient(180deg, hsl(231 24% 15%), hsl(231 24% 11%));
 
     /* Shadows */
     --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
     --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
 
-    --sidebar-background: 230 25% 10%;
-    --sidebar-foreground: 210 40% 98%;
+    /* Server List Sidebar: #10121B */
+    --sidebar-background: 233 30% 8%;
+    --sidebar-foreground: 220 6% 86%;
     --sidebar-primary: 186 100% 50%;
-    --sidebar-primary-foreground: 230 25% 8%;
-    --sidebar-accent: 230 25% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 230 20% 18%;
+    --sidebar-primary-foreground: 233 30% 8%;
+    --sidebar-accent: 231 24% 18%;
+    --sidebar-accent-foreground: 220 6% 86%;
+    --sidebar-border: 231 20% 18%;
     --sidebar-ring: 186 100% 50%;
+
+    /* User Profile Panel: #12151F */
+    --user-panel: 230 28% 10%;
   }
 
   .dark {
     /* Same as root - always dark */
-    --background: 230 25% 8%;
-    --foreground: 210 40% 98%;
+    --background: 231 24% 13%;
+    --foreground: 220 6% 86%;
   }
 }
 

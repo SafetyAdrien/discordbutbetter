@@ -392,7 +392,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   // Get displayable roles for filter (non-default roles)
   const filterableRoles = allRoles.filter(r => !r.is_default);
   return <>
-        <div ref={ref} className="w-60 bg-background flex flex-col border-l border-border/50">
+        <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50">
           {/* Search input */}
           <div className="px-3 pt-3 border-[#151723] bg-[#191c29]">
             <div className="relative">

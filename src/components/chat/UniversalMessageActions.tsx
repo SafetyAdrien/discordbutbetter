@@ -46,7 +46,7 @@ export function UniversalMessageActions({
 
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
   if (isShiftPressed) {
-    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-destructive/30 rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[#2b3250] border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
         {/* Copier l'ID */}
         <Tooltip>
           <TooltipTrigger asChild>

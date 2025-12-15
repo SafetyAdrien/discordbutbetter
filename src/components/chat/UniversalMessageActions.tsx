@@ -98,7 +98,7 @@ export function UniversalMessageActions({
   }
 
   // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
-  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-[#272c3f]">
+  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-[#2b3250]">
       {/* 1. Exactement 3 réactions rapides */}
       {QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
           <TooltipTrigger asChild>

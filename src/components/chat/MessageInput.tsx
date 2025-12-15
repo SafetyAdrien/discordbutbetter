@@ -4,6 +4,7 @@ import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
+import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
 
 interface MessageInputProps {
@@ -114,7 +115,8 @@ export function MessageInput({
     }
     
     // Check for channel mention (# prefix) - lookbehind ensures start or after space
-    const channelMatch = beforeCursor.match(/(?<=^|\s)#([\w\u00C0-\u024F-]*)$/);
+    // Capture spaces and underscores to support "Général Discussion" style input
+    const channelMatch = beforeCursor.match(/(?<=^|\s)#([\w\u00C0-\u024F\s_-]*)$/);
     if (channelMatch) {
       return {
         type: 'channel' as const,
@@ -203,7 +205,9 @@ export function MessageInput({
       return special + filtered;
     }
     if (mentionState.type === 'channel') {
-      return channels.filter(c => c.name.toLowerCase().includes(q)).slice(0, 10).length;
+      // Smart match using normalized search
+      const normalizedQuery = normalizeForSearch(mentionState.query);
+      return channels.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
     }
     return 0;
   }, [mentionState, members, roles, channels]);

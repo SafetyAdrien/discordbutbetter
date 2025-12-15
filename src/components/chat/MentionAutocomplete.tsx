@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Hash, AtSign } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, normalizeForSearch, formatChannelName } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface MentionMember {
@@ -76,8 +76,10 @@ export function MentionAutocomplete({
     }
     
     if (type === 'channel') {
+      // Smart match: normalize query and channel names for comparison
+      const normalizedQuery = normalizeForSearch(query);
       return channels
-        .filter(c => c.name.toLowerCase().includes(q))
+        .filter(c => normalizeForSearch(c.name).includes(normalizedQuery))
         .slice(0, 10);
     }
     
@@ -105,7 +107,9 @@ export function MentionAutocomplete({
         onSelect(`<@&${item.id}>`, `@${item.name}`);
       }
     } else if (type === 'channel') {
-      onSelect(`<#${item.id}>`, `#${item.name}`);
+      // Format channel name based on type (kebab-case for text, exact for voice)
+      const formattedName = formatChannelName(item.name, item.type);
+      onSelect(`<#${item.id}>`, `#${formattedName}`);
     }
   };
 

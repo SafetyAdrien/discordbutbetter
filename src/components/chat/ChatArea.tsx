@@ -260,7 +260,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth'
+    });
   }, [messages.length]);
 
   // SHIFT key detection
@@ -464,7 +466,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   return <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-background">
+      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
         <div className="flex items-center gap-2">
           <Hash className="w-5 h-5 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">{channel.name}</h2>
@@ -635,13 +637,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
         {/* Timeline Items (Messages + Polls) */}
         {timelineItems.map((item, index) => {
-        // Render Poll
-        if (item.type === 'poll') {
-          const poll = item.data as Poll;
-          const prevItem = index > 0 ? timelineItems[index - 1] : null;
-          const showAuthor = !prevItem || prevItem.type !== 'poll' || (prevItem.data as Poll).author?.id !== poll.author?.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
-          const isOwnPoll = user?.id === poll.author_id;
-          return <ContextMenu key={`poll-${poll.id}`}>
+          // Render Poll
+          if (item.type === 'poll') {
+            const poll = item.data as Poll;
+            const prevItem = index > 0 ? timelineItems[index - 1] : null;
+            const showAuthor = !prevItem || prevItem.type !== 'poll' || (prevItem.data as Poll).author?.id !== poll.author?.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
+            const isOwnPoll = user?.id === poll.author_id;
+            return <ContextMenu key={`poll-${poll.id}`}>
                 <ContextMenuTrigger asChild>
                   <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredPollId(poll.id)} onMouseLeave={() => setHoveredPollId(null)}>
                     <PollActions isVisible={hoveredPollId === poll.id} onCopyLink={() => handleCopyPollLink(poll.id)} onEdit={() => setEditingPoll(poll)} onDelete={() => handleDeletePoll(poll)} onReply={() => handleReplyToPoll(poll)} onAddReaction={emoji => handleAddReaction(poll.id, emoji)} isOwnPoll={isOwnPoll} />
@@ -699,23 +701,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     </>}
                 </ContextMenuContent>
               </ContextMenu>;
-        }
+          }
 
-        // Render Message
-        const message = item.data as Message;
-        const prevItem = index > 0 ? timelineItems[index - 1] : null;
-        const showAuthor = !prevItem || prevItem.type !== 'message' || (prevItem.data as Message).author.id !== message.author.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
-        const isOwnMessage = user?.id === message.author.id;
-        const isEditing = editingMessageId === message.id;
-        return <ContextMenu key={message.id}>
+          // Render Message
+          const message = item.data as Message;
+          const prevItem = index > 0 ? timelineItems[index - 1] : null;
+          const showAuthor = !prevItem || prevItem.type !== 'message' || (prevItem.data as Message).author.id !== message.author.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
+          const isOwnMessage = user?.id === message.author.id;
+          const isEditing = editingMessageId === message.id;
+          return <ContextMenu key={message.id}>
               <ContextMenuTrigger asChild>
                 <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => {
-              if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
-            }}>
+                if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+              }}>
                   <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} onReply={() => handleReply(message)} onAddReaction={emoji => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={open => {
-                setOpenDropdownMessageId(open ? message.id : null);
-                if (!open) setHoveredMessageId(null);
-              }} />
+                  setOpenDropdownMessageId(open ? message.id : null);
+                  if (!open) setHoveredMessageId(null);
+                }} />
                 {showAuthor ? <div className="relative">
                       {/* Thread Spine - positioned from avatar center */}
                       {threadsByMessageId.has(message.id) && <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
@@ -746,23 +748,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                           {isEditing ? <div className="mt-1 space-y-2">
                               <Textarea ref={el => {
-                        if (el) {
-                          el.style.height = 'auto';
-                          el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                        }
-                      }} value={editingContent} onChange={e => {
-                        setEditingContent(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                      }} onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSaveEdit();
-                        }
-                        if (e.key === 'Escape') {
-                          handleCancelEdit();
-                        }
-                      }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
+                          if (el) {
+                            el.style.height = 'auto';
+                            el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                          }
+                        }} value={editingContent} onChange={e => {
+                          setEditingContent(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                        }} onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSaveEdit();
+                          }
+                          if (e.key === 'Escape') {
+                            handleCancelEdit();
+                          }
+                        }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
@@ -810,23 +812,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         <div className="flex-1 min-w-0">
                           {isEditing ? <div className="space-y-2">
                               <Textarea ref={el => {
-                        if (el) {
-                          el.style.height = 'auto';
-                          el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                        }
-                      }} value={editingContent} onChange={e => {
-                        setEditingContent(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                      }} onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSaveEdit();
-                        }
-                        if (e.key === 'Escape') {
-                          handleCancelEdit();
-                        }
-                      }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
+                          if (el) {
+                            el.style.height = 'auto';
+                            el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                          }
+                        }} value={editingContent} onChange={e => {
+                          setEditingContent(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                        }} onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSaveEdit();
+                          }
+                          if (e.key === 'Escape') {
+                            handleCancelEdit();
+                          }
+                        }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
@@ -929,7 +931,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   </ContextMenuItem>}
               </ContextMenuContent>
             </ContextMenu>;
-      })}
+        })}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>

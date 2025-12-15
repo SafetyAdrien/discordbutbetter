@@ -78,13 +78,6 @@ export function MentionAutocomplete({
     if (type === 'channel') {
       // Smart match: normalize query and channel names for comparison
       const normalizedQuery = normalizeForSearch(query);
-      console.log('[MentionAutocomplete] Filtering channels:', {
-        channelsCount: channels.length,
-        query,
-        normalizedQuery,
-        firstChannel: channels[0],
-        allChannels: channels.map(c => c.name)
-      });
       return channels
         .filter(c => normalizeForSearch(c.name).includes(normalizedQuery))
         .slice(0, 10);

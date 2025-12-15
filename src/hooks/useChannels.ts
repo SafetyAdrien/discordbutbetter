@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -26,6 +27,55 @@ export interface OrphanChannel extends ChannelWithCategory {}
 
 export function useChannels(serverId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription for channels and categories
+  useEffect(() => {
+    if (!serverId || !user) return;
+
+    const channel = supabase
+      .channel(`channels-realtime-${serverId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'channels',
+          filter: `server_id=eq.${serverId}`
+        },
+        () => {
+          // Debounce to avoid flickering during drag-and-drop
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+            queryClient.invalidateQueries({ queryKey: ['servers'] });
+          }, 150);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'categories',
+          filter: `server_id=eq.${serverId}`
+        },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+            queryClient.invalidateQueries({ queryKey: ['servers'] });
+          }, 150);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, user, queryClient]);
 
   return useQuery({
     queryKey: ['channels', serverId],

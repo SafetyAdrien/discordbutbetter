@@ -9,13 +9,7 @@ import { cn } from '@/lib/utils';
 const QUICK_REACTIONS = ['👍', '❤️', '😂'];
 
 // Grille d'émojis pour le picker
-const EMOJI_PICKER_GRID = [
-  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂',
-  '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗',
-  '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝',
-  '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐',
-];
-
+const EMOJI_PICKER_GRID = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐'];
 export interface UniversalMessageActionsProps {
   isVisible: boolean;
   isShiftPressed: boolean;
@@ -33,7 +27,6 @@ export interface UniversalMessageActionsProps {
   // Dropdown state control to prevent closing on hover out
   onDropdownOpenChange?: (open: boolean) => void;
 }
-
 export function UniversalMessageActions({
   isVisible,
   isShiftPressed,
@@ -47,14 +40,13 @@ export function UniversalMessageActions({
   onDelete,
   onCreateThread,
   onPin,
-  onDropdownOpenChange,
+  onDropdownOpenChange
 }: UniversalMessageActionsProps) {
   if (!isVisible) return null;
-  
+
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
   if (isShiftPressed) {
-    return (
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-destructive/30 rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-destructive/30 rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
         {/* Copier l'ID */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -76,59 +68,46 @@ export function UniversalMessageActions({
         </Tooltip>
         
         {/* Épingler */}
-        {onPin && (
-          <Tooltip>
+        {onPin && <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={onPin} className="p-1.5 hover:bg-muted rounded transition-colors">
                 <Pin className={cn("w-4 h-4", isPinned ? "text-primary" : "text-muted-foreground")} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">{isPinned ? 'Désépingler' : 'Épingler'}</TooltipContent>
-          </Tooltip>
-        )}
+          </Tooltip>}
         
-        {isOwnMessage && onEdit && (
-          <Tooltip>
+        {isOwnMessage && onEdit && <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Modifier</TooltipContent>
-          </Tooltip>
-        )}
+          </Tooltip>}
         
-        {isOwnMessage && onDelete && (
-          <Tooltip>
+        {isOwnMessage && onDelete && <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
                 <Trash2 className="w-4 h-4 text-destructive" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Supprimer</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    );
+          </Tooltip>}
+      </div>;
   }
-  
+
   // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
-  return (
-    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-[#8a95bc]">
       {/* 1. Exactement 3 réactions rapides */}
-      {QUICK_REACTIONS.map((emoji) => (
-        <Tooltip key={emoji}>
+      {QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
           <TooltipTrigger asChild>
-            <button
-              onClick={() => onAddReaction(emoji)}
-              className="p-1 hover:bg-muted rounded transition-colors text-base"
-            >
+            <button onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded transition-colors text-base">
               {emoji}
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">{emoji}</TooltipContent>
-        </Tooltip>
-      ))}
+        </Tooltip>)}
       
       {/* 2. Bouton ajouter réaction (visage +) */}
       <Popover>
@@ -139,30 +118,22 @@ export function UniversalMessageActions({
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-64 p-2">
           <div className="grid grid-cols-8 gap-1">
-            {EMOJI_PICKER_GRID.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => onAddReaction(emoji)}
-                className="p-1 hover:bg-muted rounded text-lg transition-colors"
-              >
+            {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded text-lg transition-colors">
                 {emoji}
-              </button>
-            ))}
+              </button>)}
           </div>
         </PopoverContent>
       </Popover>
       
       {/* 2.5 Modifier (uniquement pour ses propres messages) */}
-      {isOwnMessage && onEdit && (
-        <Tooltip>
+      {isOwnMessage && onEdit && <Tooltip>
           <TooltipTrigger asChild>
             <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
               <Pencil className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">Modifier</TooltipContent>
-        </Tooltip>
-      )}
+        </Tooltip>}
       
       {/* 3. Répondre */}
       <Tooltip>
@@ -182,33 +153,26 @@ export function UniversalMessageActions({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {onCreateThread && (
-            <DropdownMenuItem onClick={onCreateThread}>
+          {onCreateThread && <DropdownMenuItem onClick={onCreateThread}>
               <StreamlineThreads className="w-4 h-4 mr-2" />
               Créer un thread
-            </DropdownMenuItem>
-          )}
-          {onPin && (
-            <DropdownMenuItem onClick={onPin}>
+            </DropdownMenuItem>}
+          {onPin && <DropdownMenuItem onClick={onPin}>
               <Pin className="w-4 h-4 mr-2" />
               {isPinned ? 'Désépingler' : 'Épingler'}
-            </DropdownMenuItem>
-          )}
+            </DropdownMenuItem>}
           <DropdownMenuItem onClick={onCopyLink}>
             <Link className="w-4 h-4 mr-2" />
             Copier le lien
           </DropdownMenuItem>
-          {isOwnMessage && onDelete && (
-            <>
+          {isOwnMessage && onDelete && <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Supprimer
               </DropdownMenuItem>
-            </>
-          )}
+            </>}
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
-  );
+    </div>;
 }

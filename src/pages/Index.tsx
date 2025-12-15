@@ -159,9 +159,9 @@ const Index = () => {
     setShowDiscover(false);
   };
 
-  const handleCreateServer = (name: string, icon: string, templateId?: string | null) => {
+  const handleCreateServer = (name: string, iconUrl: string | null, templateId?: string | null) => {
     createServer.mutate(
-      { name, icon_url: icon || undefined, is_public: false, templateId },
+      { name, icon_url: iconUrl || undefined, is_public: false, templateId },
       {
         onSuccess: (server) => {
           setActiveServerId(server.id);

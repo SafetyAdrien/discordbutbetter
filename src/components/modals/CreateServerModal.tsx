@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { X, Camera, ChevronRight, ArrowLeft } from 'lucide-react';
+import { X, Camera, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { JoinServerModal } from './JoinServerModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreateServerModalProps {
   onClose: () => void;
-  onCreate: (name: string, icon: string | File | null, templateId?: string | null) => void;
+  onCreate: (name: string, iconUrl: string | null, templateId?: string | null) => void;
   onDiscoverClick?: () => void;
 }
 
@@ -23,6 +24,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [step, setStep] = useState<'choice' | 'type' | 'customize' | 'join'>('choice');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -36,10 +38,46 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
     }
   };
 
-  const handleCreate = () => {
-    if (serverName.trim()) {
-      onCreate(serverName, iconFile, selectedTemplate);
+  const handleRemoveIcon = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIconFile(null);
+    setIconPreview(null);
+  };
+
+  const uploadIconToStorage = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `temp/${Date.now()}.${fileExt}`;
+    
+    const { error } = await supabase.storage
+      .from('server-icons')
+      .upload(fileName, file);
+    
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('server-icons')
+      .getPublicUrl(fileName);
+    
+    return publicUrl;
+  };
+
+  const handleCreate = async () => {
+    if (!serverName.trim()) return;
+    
+    setIsUploading(true);
+    try {
+      let iconUrl: string | null = null;
+      if (iconFile) {
+        iconUrl = await uploadIconToStorage(iconFile);
+      }
+      
+      onCreate(serverName, iconUrl, selectedTemplate);
       onClose();
+    } catch (error) {
+      console.error('Error uploading icon:', error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -217,26 +255,36 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
           <div className="px-6 pb-6">
             {/* Icon Upload */}
             <div className="flex justify-center mb-6">
-              <label className="relative group cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleIconUpload}
-                  className="hidden"
-                />
-                <div className="w-20 h-20 rounded-full bg-surface-elevated border-2 border-dashed border-muted-foreground/50 flex items-center justify-center shadow-lg group-hover:scale-105 group-hover:border-primary/50 transition-all overflow-hidden">
-                  {iconPreview ? (
-                    <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" />
-                  ) : (
-                    <Camera className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                  )}
-                </div>
-                {iconPreview && (
-                  <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Camera className="w-6 h-6 text-foreground" />
+              <div className="relative group">
+                <label className="cursor-pointer block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIconUpload}
+                    className="hidden"
+                  />
+                  <div className="w-20 h-20 rounded-full bg-surface-elevated border-2 border-dashed border-muted-foreground/50 flex items-center justify-center shadow-lg group-hover:scale-105 group-hover:border-primary/50 transition-all overflow-hidden">
+                    {iconPreview ? (
+                      <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                    )}
                   </div>
+                  {iconPreview && (
+                    <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                      <Camera className="w-6 h-6 text-foreground" />
+                    </div>
+                  )}
+                </label>
+                {iconPreview && (
+                  <button
+                    onClick={handleRemoveIcon}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 )}
-              </label>
+              </div>
             </div>
 
             {/* Server Name */}
@@ -261,6 +309,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                 variant="ghost"
                 className="flex-1"
                 onClick={() => setStep(selectedTemplate ? 'type' : 'choice')}
+                disabled={isUploading}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Retour
@@ -269,9 +318,16 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                 variant="gaming"
                 className="flex-1"
                 onClick={handleCreate}
-                disabled={!serverName.trim()}
+                disabled={!serverName.trim() || isUploading}
               >
-                Créer
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  'Créer'
+                )}
               </Button>
             </div>
           </div>

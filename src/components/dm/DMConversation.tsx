@@ -7,6 +7,7 @@ import { useDMCalls } from '@/hooks/useDMCalls';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X } from 'lucide-react';
@@ -193,171 +194,173 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Avatar className="w-16 h-16 mb-4">
-              <AvatarImage src={participant?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                {displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <h3 className="text-lg font-semibold">{displayName}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              C'est le début de votre conversation avec {displayName}
-            </p>
-          </div>
-        ) : (
-          <>
-            {messages.map((message, idx) => {
-              const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
-              const isOwnMessage = user?.id === message.author?.id;
-              const timestamp = message.created_at
-                ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
-                : '';
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col justify-end min-h-full p-4 space-y-0.5">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <Avatar className="w-16 h-16 mb-4">
+                <AvatarImage src={participant?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <h3 className="text-lg font-semibold">{displayName}</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                C'est le début de votre conversation avec {displayName}
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((message, idx) => {
+                const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
+                const isOwnMessage = user?.id === message.author?.id;
+                const timestamp = message.created_at
+                  ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
+                  : '';
 
-              return (
-                <UniversalMessageContextMenu
-                  key={message.id}
-                  isOwnMessage={isOwnMessage}
-                  messageId={message.id}
-                  onReply={() => handleReply(message)}
-                  onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                  onCopyText={() => handleCopyMessage(message.content)}
-                  onCopyLink={() => handleCopyLink(message.id)}
-                  onCopyId={() => handleCopyId(message.id)}
-                  onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                  onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
-                  onReport={!isOwnMessage ? () => setReportingMessage({
-                    id: message.id,
-                    content: message.content,
-                    author: {
-                      id: message.author?.id || '',
-                      displayName: message.author?.display_name || 'Utilisateur',
-                      username: message.author?.username || 'unknown',
-                      avatar: message.author?.avatar_url || undefined,
-                      status: 'offline',
-                    },
-                    timestamp: new Date(message.created_at || Date.now()),
-                    edited: false,
-                  }) : undefined}
-                >
-                  <div 
-                    className={cn(
-                      'flex gap-3 group message-hover rounded-md px-2 -mx-2 relative',
-                      showAuthor ? 'pt-1' : 'py-0',
-                      !showAuthor && 'pl-12'
-                    )}
-                    onMouseEnter={() => setHoveredMessageId(message.id)}
-                    onMouseLeave={() => { 
-                      if (openDropdownMessageId !== message.id) setHoveredMessageId(null); 
-                    }}
+                return (
+                  <UniversalMessageContextMenu
+                    key={message.id}
+                    isOwnMessage={isOwnMessage}
+                    messageId={message.id}
+                    onReply={() => handleReply(message)}
+                    onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                    onCopyText={() => handleCopyMessage(message.content)}
+                    onCopyLink={() => handleCopyLink(message.id)}
+                    onCopyId={() => handleCopyId(message.id)}
+                    onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                    onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
+                    onReport={!isOwnMessage ? () => setReportingMessage({
+                      id: message.id,
+                      content: message.content,
+                      author: {
+                        id: message.author?.id || '',
+                        displayName: message.author?.display_name || 'Utilisateur',
+                        username: message.author?.username || 'unknown',
+                        avatar: message.author?.avatar_url || undefined,
+                        status: 'offline',
+                      },
+                      timestamp: new Date(message.created_at || Date.now()),
+                      edited: false,
+                    }) : undefined}
                   >
-                    <UniversalMessageActions
-                      isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && editingMessageId !== message.id}
-                      isShiftPressed={isShiftPressed}
-                      isOwnMessage={isOwnMessage}
-                      onReply={() => handleReply(message)}
-                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                      onCopyLink={() => handleCopyLink(message.id)}
-                      onCopyId={() => handleCopyId(message.id)}
-                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                      onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
-                      onDropdownOpenChange={(open) => {
-                        setOpenDropdownMessageId(open ? message.id : null);
-                        if (!open) setHoveredMessageId(null);
-                      }}
-                    />
-                    {showAuthor && (
-                      <Avatar className="w-9 h-9 flex-shrink-0">
-                        <AvatarImage src={message.author?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                          {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      {showAuthor && (
-                        <div className="flex items-baseline gap-2 mb-0.5">
-                          <span className="font-medium text-sm">
-                            {message.author?.display_name || 'Utilisateur'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{timestamp}</span>
-                          {message.edited_at && (
-                            <span className="text-xs text-muted-foreground/50">(modifié)</span>
-                          )}
-                        </div>
+                    <div 
+                      className={cn(
+                        'flex gap-3 group message-hover rounded-md px-2 -mx-2 relative',
+                        showAuthor ? 'pt-1' : 'py-0',
+                        !showAuthor && 'pl-12'
                       )}
-                      {editingMessageId === message.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            ref={(el) => {
-                              if (el) {
-                                el.style.height = 'auto';
-                                el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-                              }
-                            }}
-                            value={editingContent}
-                            onChange={(e) => {
-                              setEditingContent(e.target.value);
-                              e.target.style.height = 'auto';
-                              e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSaveEdit();
-                              }
-                              if (e.key === 'Escape') {
-                                handleCancelEdit();
-                              }
-                            }}
-                            className="min-h-[40px] max-h-[200px] resize-none text-sm"
-                            autoFocus
-                          />
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">
-                              Entrée pour sauvegarder • Maj+Entrée nouvelle ligne
+                      onMouseEnter={() => setHoveredMessageId(message.id)}
+                      onMouseLeave={() => { 
+                        if (openDropdownMessageId !== message.id) setHoveredMessageId(null); 
+                      }}
+                    >
+                      <UniversalMessageActions
+                        isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && editingMessageId !== message.id}
+                        isShiftPressed={isShiftPressed}
+                        isOwnMessage={isOwnMessage}
+                        onReply={() => handleReply(message)}
+                        onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                        onCopyLink={() => handleCopyLink(message.id)}
+                        onCopyId={() => handleCopyId(message.id)}
+                        onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                        onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
+                        onDropdownOpenChange={(open) => {
+                          setOpenDropdownMessageId(open ? message.id : null);
+                          if (!open) setHoveredMessageId(null);
+                        }}
+                      />
+                      {showAuthor && (
+                        <Avatar className="w-9 h-9 flex-shrink-0">
+                          <AvatarImage src={message.author?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                            {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {showAuthor && (
+                          <div className="flex items-baseline gap-2 mb-0.5">
+                            <span className="font-medium text-sm">
+                              {message.author?.display_name || 'Utilisateur'}
                             </span>
-                            <div className="flex items-center gap-2">
-                              <span className={cn('text-xs font-mono', getCharacterCountColor())}>
-                                {editingContent.length}/2000
+                            <span className="text-xs text-muted-foreground">{timestamp}</span>
+                            {message.edited_at && (
+                              <span className="text-xs text-muted-foreground/50">(modifié)</span>
+                            )}
+                          </div>
+                        )}
+                        {editingMessageId === message.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              ref={(el) => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                                }
+                              }}
+                              value={editingContent}
+                              onChange={(e) => {
+                                setEditingContent(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              className="min-h-[40px] max-h-[200px] resize-none text-sm"
+                              autoFocus
+                            />
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">
+                                Entrée pour sauvegarder • Maj+Entrée nouvelle ligne
                               </span>
-                              <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
-                                <X className="w-4 h-4" />
-                              </Button>
-                              <Button 
-                                size="iconSm" 
-                                variant="ghost" 
-                                onClick={handleSaveEdit}
-                                disabled={!editingContent.trim() || editingContent.length > 2000}
-                              >
-                                <Check className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <span className={cn('text-xs font-mono', getCharacterCountColor())}>
+                                  {editingContent.length}/2000
+                                </span>
+                                <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="iconSm" 
+                                  variant="ghost" 
+                                  onClick={handleSaveEdit}
+                                  disabled={!editingContent.trim() || editingContent.length > 2000}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className={cn(
-                          'text-sm break-words font-ginto',
-                          message.isPending && 'opacity-50'
-                        )}>
-                          <MarkdownText content={message.content} />
-                        </div>
-                      )}
+                        ) : (
+                          <div className={cn(
+                            'text-sm break-words font-ginto',
+                            message.isPending && 'opacity-50'
+                          )}>
+                            <MarkdownText content={message.content} />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </UniversalMessageContextMenu>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </div>
+                  </UniversalMessageContextMenu>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
+      </ScrollArea>
 
       {/* Typing Indicator */}
       <TypingIndicator conversationId={conversationId} />

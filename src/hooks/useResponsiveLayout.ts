@@ -15,9 +15,9 @@ interface ResponsiveLayout {
 }
 
 const BREAKPOINTS = {
-  mobile: 600,
-  tablet: 900,
-  medium: 1200,
+  mobile: 640,   // sm breakpoint (Tailwind)
+  tablet: 768,   // md breakpoint (Tailwind)
+  medium: 1024,  // lg breakpoint (Tailwind)
 };
 
 export function useResponsiveLayout(): ResponsiveLayout {
@@ -49,11 +49,11 @@ export function useResponsiveLayout(): ResponsiveLayout {
       breakpoint,
       // Server list always visible (except on mobile where it's in drawer)
       showServerList: !isMobile,
-      // Channel sidebar visible on medium+ screens
-      showChannelSidebar: isMedium || isLarge,
-      // Member list only visible on large screens
-      showMemberList: isLarge,
-      // Bottom nav only on mobile
+      // Channel sidebar visible on tablet+ screens (>= 768px)
+      showChannelSidebar: isTablet || isMedium || isLarge,
+      // Member list visible on medium+ screens (>= 1024px / lg breakpoint)
+      showMemberList: isMedium || isLarge,
+      // Bottom nav only on mobile (< 640px)
       showBottomNav: isMobile,
       isMobile,
       isTablet,

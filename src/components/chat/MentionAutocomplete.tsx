@@ -54,8 +54,7 @@ export function MentionAutocomplete({
 
     if (type === "user") {
       return members
-        .filter((m) => m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q))
-        .slice(0, 10);
+        .filter((m) => m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q));
     }
 
     if (type === "role") {
@@ -65,22 +64,14 @@ export function MentionAutocomplete({
         { id: "here", name: "here", color: "#5865f2" },
       ].filter((r) => r.name.includes(q));
 
-      const filteredRoles = roles.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
+      const filteredRoles = roles.filter((r) => r.name.toLowerCase().includes(q));
 
       return [...specialRoles, ...filteredRoles];
     }
 
     if (type === "channel") {
-      // Smart match: normalize query and channel names for comparison
       const normalizedQuery = normalizeForSearch(query);
-      console.log("[MentionAutocomplete] Filtering channels:", {
-        channelsCount: channels.length,
-        query,
-        normalizedQuery,
-        firstChannel: channels[0],
-        allChannels: channels.map((c) => c.name),
-      });
-      return channels.filter((c) => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10);
+      return channels.filter((c) => normalizeForSearch(c.name).includes(normalizedQuery));
     }
 
     return [];
@@ -118,7 +109,7 @@ export function MentionAutocomplete({
       ref={containerRef}
       className="absolute bottom-full left-0 right-0 mb-1 bg-[#2b2d31] border border-border rounded-lg shadow-lg overflow-hidden z-50"
     >
-      <ScrollArea className="max-h-[200px]">
+      <ScrollArea className="max-h-[200px] [&_[data-radix-scroll-area-thumb]]:bg-[#1a1b1e]">
         <div className="p-1">
           {type === "user" && (
             <>

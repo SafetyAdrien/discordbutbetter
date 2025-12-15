@@ -20,22 +20,9 @@ export function normalizeForSearch(text: string): string {
 }
 
 /**
- * Format channel name based on type:
- * - Text/forum/announcement: kebab-case (lowercase, dashes)
- * - Voice/stage/others: preserve exact name
+ * Format channel name for display:
+ * - All channel types: preserve exact name (case, spaces, special chars)
  */
-export function formatChannelName(name: string, type: string): string {
-  // Text-based channels: force kebab-case
-  if (type === 'text' || type === 'forum' || type === 'announcement') {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove accents
-      .replace(/\s+/g, '-')            // Spaces → dashes
-      .replace(/_+/g, '-')             // Underscores → dashes
-      .replace(/-+/g, '-')             // Multiple dashes → single
-      .replace(/[^a-z0-9-]/g, '');     // Keep only alphanumeric + dashes
-  }
-  // Voice/stage/other channels: keep exact name
+export function formatChannelName(name: string, _type: string): string {
   return name;
 }

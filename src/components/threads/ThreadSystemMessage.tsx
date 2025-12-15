@@ -26,7 +26,7 @@ export function ThreadSystemMessage({ thread, onClick }: ThreadSystemMessageProp
   return (
     <button
       onClick={onClick}
-      className="group/thread flex items-start gap-2 flex-1 text-left py-1.5 px-2 rounded hover:bg-surface-hover transition-colors"
+      className="group/thread flex items-start gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded hover:bg-surface-hover transition-colors"
     >
       {/* Thread icon */}
       <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />

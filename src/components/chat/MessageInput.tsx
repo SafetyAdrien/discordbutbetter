@@ -50,6 +50,10 @@ export function MessageInput({
   roles = [],
   channels = [],
 }: MessageInputProps) {
+  // DEBUG: Log channels prop
+  console.log('[MessageInput] channels prop:', channels?.length, channels);
+  console.log('[MessageInput] members prop:', members?.length);
+  console.log('[MessageInput] roles prop:', roles?.length);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
@@ -162,6 +166,7 @@ export function MessageInput({
     
     // Detect mention triggers
     const mentionTrigger = detectMentionTrigger(newValue, cursorPos);
+    console.log('[MessageInput] mentionTrigger:', mentionTrigger);
     if (mentionTrigger) {
       setMentionState(mentionTrigger);
       setMentionSelectedIndex(0);

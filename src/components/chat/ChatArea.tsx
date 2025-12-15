@@ -339,7 +339,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Build all channels list for mention autocomplete
   const allChannels = useMemo(() => {
-    console.log('[ChatArea] channelsData:', channelsData);
     const channels: Array<{ id: string; name: string; type: string }> = [];
     channelsData?.categories.forEach(cat => {
       cat.channels.forEach(ch => {
@@ -349,7 +348,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     channelsData?.orphanChannels?.forEach(ch => {
       channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
     });
-    console.log('[ChatArea] allChannels built:', channels.length, channels);
     return channels;
   }, [channelsData]);
 

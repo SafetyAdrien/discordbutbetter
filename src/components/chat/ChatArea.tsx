@@ -999,20 +999,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       })}
       </div>
 
-      {/* Typing Indicator */}
-      <div className="flex-shrink-0">
+      {/* Input Container - aligned with UserProfileCard (h-14) */}
+      <div className="flex-shrink-0 border-t border-border bg-background px-4 py-3">
         <TypingIndicator channelId={channel.id} />
-      </div>
-
-      {/* Reply Reference */}
-      {replyingTo && (
-        <div className="flex-shrink-0">
+        {replyingTo && (
           <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />
-        </div>
-      )}
-
-      {/* Message Input */}
-      <div className="flex-shrink-0">
+        )}
         <MessageInput value={messageInput} onChange={setMessageInput} onSend={handleSubmit} placeholder={`Envoyer un message dans #${channel.name}`} isSending={isSending} onTypingStart={startTyping} onTypingStop={stopTyping} serverId={channel.server_id} channelId={channel.id} />
       </div>
 

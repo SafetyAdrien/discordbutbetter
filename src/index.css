@@ -574,4 +574,26 @@
   .modal-xl {
     max-width: min(95vw, 900px) !important;
   }
+
+  /* Mobile touch targets */
+  @media (max-width: 600px) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Increase spacing between clickable elements */
+    .mobile-spacing > * + * {
+      margin-top: 8px;
+    }
+  }
+
+  /* Safe area for iPhone notch/home indicator */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 12px);
+  }
 }

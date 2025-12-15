@@ -348,10 +348,10 @@ const Index = () => {
             }}
           />
 
-          {/* Main Content Area - flex container for 50/50 split when thread is open */}
-          <div className={`flex-1 flex min-w-0 ${activeThreadId && channelForChat?.type === 'text' ? '' : ''}`}>
+          {/* Main Content Area - flex container for 60/40 split when thread is open */}
+          <div className="flex-1 flex min-w-0">
             {channelForChat && (
-              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-1 min-w-0' : 'flex-1'} flex flex-col`}>
+              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-[6] min-w-0' : 'flex-1'} flex flex-col`}>
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
                     channel={channelForChat}
@@ -416,18 +416,20 @@ const Index = () => {
               </div>
             )}
 
-            {/* Thread View - 50/50 split with chat */}
+            {/* Thread View - 60/40 split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
-              <ThreadView
-                threadId={activeThreadId}
-                channelId={threadChannelId || activeChannelId || undefined}
-                serverId={activeServerId}
-                channelName={channelForChat?.name || ''}
-                onBack={() => {
-                  setActiveThreadId(null);
-                  setThreadChannelId(null);
-                }}
-              />
+              <div className="flex-[4] min-w-0">
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelId={threadChannelId || activeChannelId || undefined}
+                  serverId={activeServerId}
+                  channelName={channelForChat?.name || ''}
+                  onBack={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                  }}
+                />
+              </div>
             )}
           </div>
 

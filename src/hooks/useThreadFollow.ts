@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Thread } from '@/types/thread';
 
 export const useIsFollowingThread = (threadId: string | undefined) => {
   const { user } = useAuth();
@@ -23,54 +22,6 @@ export const useIsFollowingThread = (threadId: string | undefined) => {
       return !!data;
     },
     enabled: !!threadId && !!user,
-  });
-};
-
-// Hook pour récupérer les threads suivis par l'utilisateur pour un serveur
-export const useFollowedThreads = (serverId: string | undefined) => {
-  const { user } = useAuth();
-  
-  return useQuery({
-    queryKey: ['followed-threads', serverId, user?.id],
-    queryFn: async () => {
-      if (!serverId || !user) return [];
-      
-      // Récupérer les threads suivis qui appartiennent aux channels du serveur
-      const { data, error } = await supabase
-        .from('thread_followers')
-        .select(`
-          thread_id,
-          threads!inner (
-            id,
-            name,
-            channel_id,
-            created_at,
-            created_by,
-            archived,
-            archived_at,
-            last_message_at,
-            message_id,
-            channels!inner (
-              server_id
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('threads.channels.server_id', serverId)
-        .eq('threads.archived', false);
-
-      if (error) throw error;
-      
-      // Transformer les données en format Thread avec channel_id
-      return (data || []).map(item => {
-        const thread = item.threads as unknown as Thread & { channels: { server_id: string } };
-        return {
-          ...thread,
-          parentChannelId: thread.channel_id,
-        };
-      });
-    },
-    enabled: !!serverId && !!user,
   });
 };
 
@@ -116,7 +67,6 @@ export const useFollowThread = () => {
     onSettled: (_, __, threadId) => {
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['thread-follow', threadId, user.id] });
-        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       }
     },
   });
@@ -161,7 +111,6 @@ export const useUnfollowThread = () => {
     onSettled: (_, __, threadId) => {
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['thread-follow', threadId, user.id] });
-        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       }
     },
   });

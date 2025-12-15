@@ -32,10 +32,9 @@ import { useUpdateCategory } from '@/hooks/useCategories';
 import { useServerEmojis } from '@/hooks/useServerAssets';
 import { useMembers } from '@/hooks/useMembers';
 import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, ChannelType, OrphanChannel } from '@/hooks/useChannels';
-
+import { useThreads } from '@/hooks/useThreads';
 import { Thread } from '@/types/thread';
 import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
-import { useFollowedThreads } from '@/hooks/useThreadFollow';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -82,7 +81,7 @@ interface ChannelListProps {
   onOpenServerSettings?: () => void;
   orphanChannels?: OrphanChannel[];
   activeThreadId?: string | null;
-  onThreadSelect?: (threadId: string, parentChannelId?: string) => void;
+  onThreadSelect?: (threadId: string) => void;
 }
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;
@@ -497,27 +496,21 @@ export function ChannelList({
     return ids;
   }, [server.categories, orphanChannels]);
 
-  // Fetch followed threads for this server
+  // Fetch threads for all text channels (we'll use active channel for unread counts)
   const {
-    data: followedThreads = []
-  } = useFollowedThreads(server.id);
+    data: threads = []
+  } = useThreads(activeChannelId || undefined);
   const {
     data: unreadCounts = {}
   } = useThreadUnreadCounts(activeChannelId || undefined);
 
-  // Group followed threads by channel_id with unread counts
-  const threadsByChannel = useMemo(() => {
-    const map: Record<string, ThreadWithUnread[]> = {};
-    followedThreads.forEach(thread => {
-      const channelId = thread.channel_id;
-      if (!map[channelId]) map[channelId] = [];
-      map[channelId].push({
-        ...thread,
-        unreadCount: unreadCounts[thread.id] || 0
-      });
-    });
-    return map;
-  }, [followedThreads, unreadCounts]);
+  // Create a map of threads with unread counts
+  const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
+    return threads.map(thread => ({
+      ...thread,
+      unreadCount: unreadCounts[thread.id] || 0
+    }));
+  }, [threads, unreadCounts]);
   const ownerProfile = membersData?.find(m => m.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
@@ -937,7 +930,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={threadsByChannel[channel.id] || []} activeThreadId={activeThreadId} onThreadSelect={(threadId) => onThreadSelect?.(threadId, channel.id)} showArchivedThreads={showArchivedThreads} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                   </SortableContext>
                 </div>}
 
@@ -955,7 +948,7 @@ export function ChannelList({
                 })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={threadsByChannel[channel.id] || []} activeThreadId={activeThreadId} onThreadSelect={(threadId) => onThreadSelect?.(threadId, channel.id)} showArchivedThreads={showArchivedThreads} />)}
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                           </SortableContext>
                         </div>
                       </SortableCategory>}

@@ -384,6 +384,9 @@ export function parseMarkdown(content: string): React.ReactNode {
   return <div className="markdown-content">{groupedBlocks}</div>;
 }
 
-export function MarkdownText({ content, className }: { content: string; className?: string }) {
-  return <span className={className}>{parseMarkdown(content)}</span>;
-}
+export const MarkdownText = React.forwardRef<HTMLSpanElement, { content: string; className?: string }>(
+  ({ content, className }, ref) => {
+    return <span ref={ref} className={className}>{parseMarkdown(content)}</span>;
+  }
+);
+MarkdownText.displayName = 'MarkdownText';

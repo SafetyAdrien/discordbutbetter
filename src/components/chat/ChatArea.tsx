@@ -954,7 +954,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <span>Échap pour annuler</span>
                               <span>•</span>
                               <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                              <div className="flex gap-1 ml-auto">
+                              <span className={cn(
+                                "ml-auto",
+                                editingContent.length > 1900 && "text-yellow-500",
+                                editingContent.length > 1980 && "text-destructive font-medium"
+                              )}>
+                                {editingContent.length}/2000
+                              </span>
+                              <div className="flex gap-1">
                                 <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -1002,7 +1009,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <span>Échap pour annuler</span>
                               <span>•</span>
                               <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                              <div className="flex gap-1 ml-auto">
+                              <span className={cn(
+                                "ml-auto",
+                                editingContent.length > 1900 && "text-yellow-500",
+                                editingContent.length > 1980 && "text-destructive font-medium"
+                              )}>
+                                {editingContent.length}/2000
+                              </span>
+                              <div className="flex gap-1">
                                 <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
                                   <X className="w-4 h-4" />
                                 </Button>

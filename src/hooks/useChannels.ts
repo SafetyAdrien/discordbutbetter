@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -25,6 +25,9 @@ export interface CategoryWithChannels {
 
 export interface OrphanChannel extends ChannelWithCategory {}
 
+// Shared ref to prevent Realtime conflicts during mutations
+const mutationLockRef = { current: false };
+
 export function useChannels(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -45,12 +48,15 @@ export function useChannels(serverId: string | null) {
           filter: `server_id=eq.${serverId}`
         },
         () => {
-          // Debounce to avoid flickering during drag-and-drop
+          // Skip invalidation if a local mutation is in progress
+          if (mutationLockRef.current) return;
+          
+          // Debounce to avoid flickering
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
             queryClient.invalidateQueries({ queryKey: ['servers'] });
-          }, 150);
+          }, 300);
         }
       )
       .on(
@@ -62,11 +68,14 @@ export function useChannels(serverId: string | null) {
           filter: `server_id=eq.${serverId}`
         },
         () => {
+          // Skip invalidation if a local mutation is in progress
+          if (mutationLockRef.current) return;
+          
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
             queryClient.invalidateQueries({ queryKey: ['servers'] });
-          }, 150);
+          }, 300);
         }
       )
       .subscribe();
@@ -472,6 +481,9 @@ export function useReorderCategories() {
       return { serverId };
     },
     onMutate: async ({ serverId, orderedIds }) => {
+      // Lock Realtime updates during mutation
+      mutationLockRef.current = true;
+      
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
@@ -520,6 +532,10 @@ export function useReorderCategories() {
       toast.error('Erreur lors du réordonnancement');
     },
     onSettled: (_, __, { serverId }) => {
+      // Unlock Realtime after a delay to let optimistic update settle
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
@@ -547,6 +563,9 @@ export function useReorderChannels() {
       return { serverId, categoryId, orderedIds };
     },
     onMutate: async ({ serverId, categoryId, orderedIds }) => {
+      // Lock Realtime updates during mutation
+      mutationLockRef.current = true;
+      
       // Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
@@ -627,6 +646,10 @@ export function useReorderChannels() {
       }
     },
     onSettled: (_, __, { serverId }) => {
+      // Unlock Realtime after a delay to let optimistic update settle
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },

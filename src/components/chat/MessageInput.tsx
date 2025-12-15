@@ -98,39 +98,45 @@ export function MessageInput({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Detect mention triggers
+  // Detect mention triggers - require space or start of line before trigger
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
     
-    // Check for role mention (@& prefix)
-    const roleMatch = beforeCursor.match(/@&([\w\u00C0-\u024F]*)$/);
+    // Check for role mention (@& prefix) - must be at start or after space
+    const roleMatch = beforeCursor.match(/(?:^|\s)@&([\w\u00C0-\u024F]*)$/);
     if (roleMatch) {
+      const matchStart = beforeCursor.length - roleMatch[0].length;
+      const triggerIndex = roleMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'role' as const,
         query: roleMatch[1],
-        startIndex: cursorPos - roleMatch[0].length,
+        startIndex: triggerIndex,
         triggerLength: 2,
       };
     }
     
-    // Check for channel mention (# prefix) - supports hyphens, underscores, accents
-    const channelMatch = beforeCursor.match(/#([\w\u00C0-\u024F-]*)$/);
+    // Check for channel mention (# prefix) - must be at start or after space
+    const channelMatch = beforeCursor.match(/(?:^|\s)#([\w\u00C0-\u024F-]*)$/);
     if (channelMatch) {
+      const matchStart = beforeCursor.length - channelMatch[0].length;
+      const triggerIndex = channelMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'channel' as const,
         query: channelMatch[1],
-        startIndex: cursorPos - channelMatch[0].length,
+        startIndex: triggerIndex,
         triggerLength: 1,
       };
     }
     
-    // Check for user mention (@ prefix, not followed by &)
-    const userMatch = beforeCursor.match(/@([\w\u00C0-\u024F]*)$/);
+    // Check for user mention (@ prefix) - must be at start or after space, not followed by &
+    const userMatch = beforeCursor.match(/(?:^|\s)@([\w\u00C0-\u024F]*)$/);
     if (userMatch && !beforeCursor.endsWith('@&')) {
+      const matchStart = beforeCursor.length - userMatch[0].length;
+      const triggerIndex = userMatch[0].startsWith(' ') ? matchStart + 1 : matchStart;
       return {
         type: 'user' as const,
         query: userMatch[1],
-        startIndex: cursorPos - userMatch[0].length,
+        startIndex: triggerIndex,
         triggerLength: 1,
       };
     }

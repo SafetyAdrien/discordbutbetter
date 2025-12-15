@@ -15,7 +15,7 @@ export function ThreadSpine() {
       
       {/* Curved corner (L shape with rounded bottom-left) */}
       <div 
-        className="absolute left-5 bottom-0 w-[18px] h-[10px] 
+        className="absolute left-5 top-1/2 -translate-y-1/2 w-[18px] h-[10px] 
                    border-l-2 border-b-2 border-muted-foreground/30 
                    rounded-bl-lg"
       />

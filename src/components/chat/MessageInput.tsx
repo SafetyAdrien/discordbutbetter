@@ -118,19 +118,24 @@ export function MessageInput({
       };
     }
     
-    // Check for channel mention (# prefix) - non-capturing group for compatibility
-    // Capture spaces and underscores to support "Général Discussion" style input
-    const channelMatch = beforeCursor.match(/(?:^|\s)(#[\w\u00C0-\u024F\s_-]*)$/);
-    if (channelMatch) {
-      const fullMatch = channelMatch[1]; // "#Général Discussion"
-      const query = fullMatch.slice(1); // Remove #
-      const matchStart = beforeCursor.lastIndexOf(fullMatch);
-      return {
-        type: 'channel' as const,
-        query,
-        startIndex: matchStart,
-        triggerLength: 1,
-      };
+    // Check for channel mention (# prefix) - explicit logic for full browser compatibility
+    // Using lastIndexOf instead of regex to avoid alternation issues
+    const hashIndex = beforeCursor.lastIndexOf('#');
+    if (hashIndex !== -1) {
+      const charBefore = hashIndex === 0 ? '' : beforeCursor[hashIndex - 1];
+      // Only trigger if # is at start or after whitespace
+      if (hashIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {
+        const afterHash = beforeCursor.slice(hashIndex + 1);
+        // Verify the part after # contains only valid channel name characters
+        if (/^[\w\u00C0-\u024F_-]*$/.test(afterHash)) {
+          return {
+            type: 'channel' as const,
+            query: afterHash,
+            startIndex: hashIndex,
+            triggerLength: 1,
+          };
+        }
+      }
     }
     
     // Check for user mention (@ prefix, not followed by &) - non-capturing group for compatibility

@@ -223,7 +223,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   };
 
   return (
-    <div className="w-80 flex flex-col bg-card border-l-2 border-border min-w-0 shrink-0">
+    <div className="flex-1 flex flex-col bg-card border-l border-border shadow-[inset_4px_0_12px_-4px_rgba(0,0,0,0.25)] min-w-0">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 h-12 border-b border-border shrink-0">
         <Button

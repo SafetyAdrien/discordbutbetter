@@ -1,0 +1,224 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Hash, BookOpen, Search, List, MessageSquare } from 'lucide-react';
+
+// ============================================
+// USER MENTION COMPONENT
+// ============================================
+interface UserMentionProps {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  isSelf?: boolean;
+  onClick?: () => void;
+}
+
+export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick }: UserMentionProps) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            onClick={onClick}
+            className={`
+              inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
+              transition-colors duration-100
+              ${isSelf 
+                ? 'bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a] hover:bg-[rgba(250,166,26,0.5)]' 
+                : 'bg-[rgba(88,101,242,0.3)] text-[#dee0fc] hover:bg-[#5865F2] hover:text-white'
+              }
+            `}
+          >
+            @{displayName}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="bg-[#111214] border-[#1e1f22] p-2">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={avatarUrl} />
+              <AvatarFallback className="bg-primary text-xs">{displayName[0]?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold text-white">{displayName}</p>
+              <p className="text-xs text-muted-foreground">Cliquer pour voir le profil</p>
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ============================================
+// ROLE MENTION COMPONENT
+// ============================================
+interface RoleMentionProps {
+  roleId: string;
+  roleName: string;
+  roleColor: string;
+}
+
+export function RoleMention({ roleId, roleName, roleColor }: RoleMentionProps) {
+  // Convert hex to rgba for background
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-default font-medium transition-colors duration-100"
+            style={{
+              backgroundColor: hexToRgba(roleColor || '#99aab5', 0.3),
+              color: roleColor || '#99aab5',
+            }}
+          >
+            @{roleName}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="bg-[#111214] border-[#1e1f22] p-2">
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-4 h-4 rounded-full" 
+              style={{ backgroundColor: roleColor || '#99aab5' }} 
+            />
+            <div>
+              <p className="font-semibold" style={{ color: roleColor || '#99aab5' }}>{roleName}</p>
+              <p className="text-xs text-muted-foreground">Rôle du serveur</p>
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ============================================
+// CHANNEL MENTION COMPONENT
+// ============================================
+interface ChannelMentionProps {
+  channelId: string;
+  channelName: string;
+  serverId?: string;
+  onNavigate?: (channelId: string) => void;
+}
+
+export function ChannelMention({ channelId, channelName, serverId, onNavigate }: ChannelMentionProps) {
+  return (
+    <span
+      onClick={() => onNavigate?.(channelId)}
+      className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
+        bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white
+        transition-colors duration-100"
+    >
+      <Hash className="w-3.5 h-3.5" />
+      {channelName}
+    </span>
+  );
+}
+
+// ============================================
+// SPECIAL MENTION COMPONENTS (guide, browse, customize)
+// ============================================
+interface SpecialMentionProps {
+  type: 'guide' | 'browse' | 'customize';
+}
+
+const SPECIAL_CONFIGS = {
+  guide: { label: 'Guide du serveur', icon: BookOpen },
+  browse: { label: 'Chercher des salons', icon: Search },
+  customize: { label: 'Salons et rôles', icon: List },
+};
+
+export function SpecialMention({ type }: SpecialMentionProps) {
+  const config = SPECIAL_CONFIGS[type];
+  const Icon = config.icon;
+
+  return (
+    <span className="inline-flex items-center gap-1 px-1 rounded-[3px] cursor-pointer font-medium
+      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white
+      transition-colors duration-100">
+      <Icon className="w-3.5 h-3.5" />
+      {config.label}
+    </span>
+  );
+}
+
+// ============================================
+// MESSAGE LINK EMBED COMPONENT
+// ============================================
+interface MessageLinkEmbedProps {
+  serverId: string;
+  channelId: string;
+  messageId: string;
+  serverName?: string;
+  channelName?: string;
+  authorName?: string;
+  authorAvatar?: string;
+  contentPreview?: string;
+  onJump?: () => void;
+}
+
+export function MessageLinkEmbed({
+  serverId,
+  channelId,
+  messageId,
+  serverName = 'Serveur',
+  channelName = 'salon',
+  authorName = 'Utilisateur',
+  authorAvatar,
+  contentPreview = 'Message...',
+  onJump,
+}: MessageLinkEmbedProps) {
+  return (
+    <div 
+      onClick={onJump}
+      className="mt-2 p-3 bg-[#2b2d31] border border-[#1e1f22] rounded-lg cursor-pointer hover:bg-[#32353b] transition-colors max-w-md"
+    >
+      <div className="flex items-start gap-3">
+        <Avatar className="h-8 w-8 flex-shrink-0">
+          <AvatarImage src={authorAvatar} />
+          <AvatarFallback className="bg-primary text-xs">{authorName[0]?.toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <span className="font-medium text-white">{authorName}</span>
+            <span>•</span>
+            <span>{serverName}</span>
+            <span>•</span>
+            <Hash className="w-3 h-3" />
+            <span>{channelName}</span>
+          </div>
+          <p className="text-sm text-[#dcddde] line-clamp-2">{contentPreview}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center gap-1 text-xs text-[#00a8fc]">
+        <MessageSquare className="w-3 h-3" />
+        <span>Aller au message</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// EVERYONE / HERE MENTIONS
+// ============================================
+interface EveryoneMentionProps {
+  type: 'everyone' | 'here';
+}
+
+export function EveryoneMention({ type }: EveryoneMentionProps) {
+  return (
+    <span className="inline-flex items-center px-1 rounded-[3px] font-medium
+      bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a]">
+      @{type}
+    </span>
+  );
+}

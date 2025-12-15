@@ -1,20 +1,66 @@
 import React from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
+import { 
+  UserMention, 
+  RoleMention, 
+  ChannelMention, 
+  SpecialMention, 
+  MessageLinkEmbed,
+  EveryoneMention 
+} from '@/components/chat/mentions/MentionComponents';
 
+// ============================================
+// TYPES
+// ============================================
 interface MarkdownToken {
-  type: 'text' | 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock';
+  type: 
+    | 'text' | 'bold' | 'italic' | 'underline' | 'strikethrough' 
+    | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' 
+    | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock'
+    | 'userMention' | 'roleMention' | 'channelMention' | 'specialMention'
+    | 'everyoneMention' | 'messageLinkEmbed';
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
+  // Mention-specific data
+  mentionId?: string;
+  mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
+  // Message link embed data
+  embedData?: {
+    serverId: string;
+    channelId: string;
+    messageId: string;
+  };
 }
 
 interface BlockToken {
   type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty';
   content: string;
   language?: string;
-  indentLevel?: number; // For nested lists
+  indentLevel?: number;
 }
 
+// Context for providing user/role/channel data
+export interface MarkdownContext {
+  currentUserId?: string;
+  users?: Map<string, { displayName: string; avatarUrl?: string }>;
+  roles?: Map<string, { name: string; color: string }>;
+  channels?: Map<string, { name: string; serverId?: string }>;
+  onUserClick?: (userId: string) => void;
+  onChannelNavigate?: (channelId: string) => void;
+  onMessageJump?: (serverId: string, channelId: string, messageId: string) => void;
+}
+
+// Default context
+let markdownContext: MarkdownContext = {};
+
+export function setMarkdownContext(ctx: MarkdownContext) {
+  markdownContext = ctx;
+}
+
+// ============================================
+// INLINE PATTERNS
+// ============================================
 const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
   // Order matters - more specific patterns first
   { regex: /\*\*\*(.+?)\*\*\*/g, type: 'boldItalic' },
@@ -32,21 +78,125 @@ const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
   { regex: /\|\|(.+?)\|\|/g, type: 'spoiler' },
 ];
 
-// Tokenize inline content (bold, italic, etc.)
+// ============================================
+// MENTION PATTERNS
+// ============================================
+const MENTION_PATTERNS = {
+  user: /<@!?([0-9a-f-]+)>/gi,
+  role: /<@&([0-9a-f-]+)>/gi,
+  channel: /<#([0-9a-f-]+)>/gi,
+  special: /<id:(guide|browse|customize)>/gi,
+  everyone: /@(everyone|here)/gi,
+  messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/([0-9a-f-]+)\/([0-9a-f-]+)\/([0-9a-f-]+)/gi,
+};
+
+// ============================================
+// TOKENIZE INLINE CONTENT
+// ============================================
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
   
-  // Handle escape characters first - replace \* \_ \~ etc. with placeholders
-  let processedText = text.replace(/\\([*_~|`#\->\[\]\\])/g, '___ESC_$1___');
+  // Handle escape characters first
+  let processedText = text.replace(/\\([*_~|`#\->\[\]\\<@])/g, '___ESC_$1___');
   let remaining = processedText;
   
   while (remaining.length > 0) {
-    // Check for masked links first [text](url)
+    let earliestMatch: { 
+      index: number; 
+      length: number; 
+      content: string; 
+      type: MarkdownToken['type']; 
+      url?: string;
+      mentionId?: string;
+      mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
+      embedData?: { serverId: string; channelId: string; messageId: string };
+    } | null = null;
+    
+    // Check for message link embed (highest priority for URLs)
+    MENTION_PATTERNS.messageLink.lastIndex = 0;
+    const msgLinkMatch = MENTION_PATTERNS.messageLink.exec(remaining);
+    if (msgLinkMatch && (earliestMatch === null || msgLinkMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: msgLinkMatch.index,
+        length: msgLinkMatch[0].length,
+        content: '',
+        type: 'messageLinkEmbed',
+        embedData: {
+          serverId: msgLinkMatch[1],
+          channelId: msgLinkMatch[2],
+          messageId: msgLinkMatch[3],
+        },
+      };
+    }
+
+    // Check for user mentions <@USER_ID> or <@!USER_ID>
+    MENTION_PATTERNS.user.lastIndex = 0;
+    const userMatch = MENTION_PATTERNS.user.exec(remaining);
+    if (userMatch && (earliestMatch === null || userMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: userMatch.index,
+        length: userMatch[0].length,
+        content: userMatch[1],
+        type: 'userMention',
+        mentionId: userMatch[1],
+      };
+    }
+
+    // Check for role mentions <@&ROLE_ID>
+    MENTION_PATTERNS.role.lastIndex = 0;
+    const roleMatch = MENTION_PATTERNS.role.exec(remaining);
+    if (roleMatch && (earliestMatch === null || roleMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: roleMatch.index,
+        length: roleMatch[0].length,
+        content: roleMatch[1],
+        type: 'roleMention',
+        mentionId: roleMatch[1],
+      };
+    }
+
+    // Check for channel mentions <#CHANNEL_ID>
+    MENTION_PATTERNS.channel.lastIndex = 0;
+    const channelMatch = MENTION_PATTERNS.channel.exec(remaining);
+    if (channelMatch && (earliestMatch === null || channelMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: channelMatch.index,
+        length: channelMatch[0].length,
+        content: channelMatch[1],
+        type: 'channelMention',
+        mentionId: channelMatch[1],
+      };
+    }
+
+    // Check for special mentions <id:guide>, <id:browse>, <id:customize>
+    MENTION_PATTERNS.special.lastIndex = 0;
+    const specialMatch = MENTION_PATTERNS.special.exec(remaining);
+    if (specialMatch && (earliestMatch === null || specialMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: specialMatch.index,
+        length: specialMatch[0].length,
+        content: specialMatch[1],
+        type: 'specialMention',
+        mentionType: specialMatch[1] as 'guide' | 'browse' | 'customize',
+      };
+    }
+
+    // Check for @everyone and @here
+    MENTION_PATTERNS.everyone.lastIndex = 0;
+    const everyoneMatch = MENTION_PATTERNS.everyone.exec(remaining);
+    if (everyoneMatch && (earliestMatch === null || everyoneMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: everyoneMatch.index,
+        length: everyoneMatch[0].length,
+        content: everyoneMatch[1],
+        type: 'everyoneMention',
+        mentionType: everyoneMatch[1].toLowerCase() as 'everyone' | 'here',
+      };
+    }
+
+    // Check for masked links [text](url)
     const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(remaining);
-    
-    let earliestMatch: { index: number; length: number; content: string; type: MarkdownToken['type']; url?: string } | null = null;
-    
-    if (linkMatch) {
+    if (linkMatch && (earliestMatch === null || linkMatch.index < earliestMatch.index)) {
       earliestMatch = {
         index: linkMatch.index,
         length: linkMatch[0].length,
@@ -56,6 +206,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
       };
     }
     
+    // Check for inline patterns (bold, italic, etc.)
     for (const { regex, type } of INLINE_PATTERNS) {
       regex.lastIndex = 0;
       const match = regex.exec(remaining);
@@ -83,10 +234,45 @@ function tokenizeInline(text: string): MarkdownToken[] {
           url: earliestMatch.url,
         });
       } else if (earliestMatch.type === 'code') {
-        // Don't parse inline content for code
         tokens.push({
           type: earliestMatch.type,
           content: earliestMatch.content,
+        });
+      } else if (earliestMatch.type === 'userMention') {
+        tokens.push({
+          type: 'userMention',
+          content: earliestMatch.content,
+          mentionId: earliestMatch.mentionId,
+        });
+      } else if (earliestMatch.type === 'roleMention') {
+        tokens.push({
+          type: 'roleMention',
+          content: earliestMatch.content,
+          mentionId: earliestMatch.mentionId,
+        });
+      } else if (earliestMatch.type === 'channelMention') {
+        tokens.push({
+          type: 'channelMention',
+          content: earliestMatch.content,
+          mentionId: earliestMatch.mentionId,
+        });
+      } else if (earliestMatch.type === 'specialMention') {
+        tokens.push({
+          type: 'specialMention',
+          content: earliestMatch.content,
+          mentionType: earliestMatch.mentionType,
+        });
+      } else if (earliestMatch.type === 'everyoneMention') {
+        tokens.push({
+          type: 'everyoneMention',
+          content: earliestMatch.content,
+          mentionType: earliestMatch.mentionType,
+        });
+      } else if (earliestMatch.type === 'messageLinkEmbed') {
+        tokens.push({
+          type: 'messageLinkEmbed',
+          content: '',
+          embedData: earliestMatch.embedData,
         });
       } else {
         // Recursively parse content for other types
@@ -110,11 +296,13 @@ function tokenizeInline(text: string): MarkdownToken[] {
   return tokens;
 }
 
-// Parse block-level elements (headers, lists, quotes, code blocks)
+// ============================================
+// PARSE BLOCK-LEVEL ELEMENTS
+// ============================================
 function parseBlocks(content: string): BlockToken[] {
   const blocks: BlockToken[] = [];
   
-  // First, handle multi-line code blocks
+  // Handle multi-line code blocks
   const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
   let lastIndex = 0;
   let match;
@@ -173,15 +361,15 @@ function parseBlocks(content: string): BlockToken[] {
       }
       // Unordered list (with indentation support)
       else if (/^(\s*)[-*] /.test(line)) {
-        const match = line.match(/^(\s*)[-*] /);
-        const indentLevel = match ? Math.floor(match[1].length / 2) : 0;
-        blocks.push({ type: 'listItem', content: line.slice(match![0].length), indentLevel });
+        const listMatch = line.match(/^(\s*)[-*] /);
+        const indentLevel = listMatch ? Math.floor(listMatch[1].length / 2) : 0;
+        blocks.push({ type: 'listItem', content: line.slice(listMatch![0].length), indentLevel });
       }
       // Ordered list (with indentation support)
       else if (/^(\s*)\d+\. /.test(line)) {
-        const match = line.match(/^(\s*)\d+\. /);
-        const indentLevel = match ? Math.floor(match[1].length / 2) : 0;
-        blocks.push({ type: 'orderedListItem', content: line.slice(match![0].length), indentLevel });
+        const listMatch = line.match(/^(\s*)\d+\. /);
+        const indentLevel = listMatch ? Math.floor(listMatch[1].length / 2) : 0;
+        blocks.push({ type: 'orderedListItem', content: line.slice(listMatch![0].length), indentLevel });
       }
       // Regular paragraph
       else {
@@ -193,6 +381,9 @@ function parseBlocks(content: string): BlockToken[] {
   return blocks;
 }
 
+// ============================================
+// RENDER INLINE TOKEN
+// ============================================
 function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
   const renderContent = (content: string | MarkdownToken[]): React.ReactNode => {
     if (typeof content === 'string') return content;
@@ -204,28 +395,38 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
       // Restore escaped characters
       const textContent = (token.content as string).replace(/___ESC_(.+?)___/g, '$1');
       return <React.Fragment key={key}>{textContent}</React.Fragment>;
+    
     case 'bold':
       return <strong key={key}>{renderContent(token.content)}</strong>;
+    
     case 'italic':
       return <em key={key}>{renderContent(token.content)}</em>;
+    
     case 'underline':
       return <u key={key}>{renderContent(token.content)}</u>;
+    
     case 'boldItalic':
       return <strong key={key}><em>{renderContent(token.content)}</em></strong>;
+    
     case 'underlineBold':
       return <u key={key}><strong>{renderContent(token.content)}</strong></u>;
+    
     case 'underlineItalic':
       return <u key={key}><em>{renderContent(token.content)}</em></u>;
+    
     case 'underlineBoldItalic':
       return <u key={key}><strong><em>{renderContent(token.content)}</em></strong></u>;
+    
     case 'strikethrough':
       return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
+    
     case 'code':
       return (
         <code key={key} className="px-1.5 py-0.5 bg-[#2b2d31] rounded text-sm font-mono text-[#d4d7dc]">
           {token.content as string}
         </code>
       );
+    
     case 'spoiler':
       return (
         <span 
@@ -236,6 +437,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
           {renderContent(token.content)}
         </span>
       );
+    
     case 'link':
       return (
         <a 
@@ -248,11 +450,95 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
           {token.content as string}
         </a>
       );
+
+    // ============================================
+    // MENTION RENDERS
+    // ============================================
+    case 'userMention': {
+      const userId = token.mentionId || (token.content as string);
+      const userData = markdownContext.users?.get(userId);
+      const isSelf = markdownContext.currentUserId === userId;
+      
+      return (
+        <UserMention
+          key={key}
+          userId={userId}
+          displayName={userData?.displayName || 'Utilisateur inconnu'}
+          avatarUrl={userData?.avatarUrl}
+          isSelf={isSelf}
+          onClick={() => markdownContext.onUserClick?.(userId)}
+        />
+      );
+    }
+
+    case 'roleMention': {
+      const roleId = token.mentionId || (token.content as string);
+      const roleData = markdownContext.roles?.get(roleId);
+      
+      return (
+        <RoleMention
+          key={key}
+          roleId={roleId}
+          roleName={roleData?.name || 'Rôle inconnu'}
+          roleColor={roleData?.color || '#99aab5'}
+        />
+      );
+    }
+
+    case 'channelMention': {
+      const channelId = token.mentionId || (token.content as string);
+      const channelData = markdownContext.channels?.get(channelId);
+      
+      return (
+        <ChannelMention
+          key={key}
+          channelId={channelId}
+          channelName={channelData?.name || 'salon-inconnu'}
+          serverId={channelData?.serverId}
+          onNavigate={markdownContext.onChannelNavigate}
+        />
+      );
+    }
+
+    case 'specialMention':
+      return (
+        <SpecialMention
+          key={key}
+          type={token.mentionType as 'guide' | 'browse' | 'customize'}
+        />
+      );
+
+    case 'everyoneMention':
+      return (
+        <EveryoneMention
+          key={key}
+          type={token.mentionType as 'everyone' | 'here'}
+        />
+      );
+
+    case 'messageLinkEmbed': {
+      const embed = token.embedData;
+      if (!embed) return null;
+      
+      return (
+        <MessageLinkEmbed
+          key={key}
+          serverId={embed.serverId}
+          channelId={embed.channelId}
+          messageId={embed.messageId}
+          onJump={() => markdownContext.onMessageJump?.(embed.serverId, embed.channelId, embed.messageId)}
+        />
+      );
+    }
+    
     default:
       return <React.Fragment key={key}>{renderContent(token.content)}</React.Fragment>;
   }
 }
 
+// ============================================
+// RENDER BLOCK TOKEN
+// ============================================
 function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
   const renderInlineContent = (content: string): React.ReactNode => {
     const tokens = tokenizeInline(content);
@@ -296,20 +582,22 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
           {renderInlineContent(block.content)}
         </blockquote>
       );
-    case 'listItem':
+    case 'listItem': {
       const ulIndent = (block.indentLevel || 0) * 4 + 4;
       return (
         <li key={key} className="list-disc" style={{ marginLeft: `${ulIndent * 4}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );
-    case 'orderedListItem':
+    }
+    case 'orderedListItem': {
       const olIndent = (block.indentLevel || 0) * 4 + 4;
       return (
         <li key={key} className="list-decimal" style={{ marginLeft: `${olIndent * 4}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );
+    }
     case 'codeBlock':
       return <CodeBlock key={key} code={block.content} language={block.language} />;
     case 'empty':
@@ -324,6 +612,9 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
   }
 }
 
+// ============================================
+// MAIN PARSE FUNCTION
+// ============================================
 export function parseMarkdown(content: string): React.ReactNode {
   // Check if content has any block-level elements
   const hasBlockElements = /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/.test(content) || content.includes('```');
@@ -400,6 +691,9 @@ export function parseMarkdown(content: string): React.ReactNode {
   return <div className="markdown-content text-[#dbdee1]">{groupedBlocks}</div>;
 }
 
+// ============================================
+// MARKDOWN TEXT COMPONENT (forwardRef)
+// ============================================
 export const MarkdownText = React.forwardRef<HTMLSpanElement, { content: string; className?: string }>(
   ({ content, className }, ref) => {
     return <span ref={ref} className={className}>{parseMarkdown(content)}</span>;

@@ -974,13 +974,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         {/* Thread System Message with L-curve connector */}
                         {threadsByMessageId.has(message.id) && (
                           <div className="flex items-center mt-2 -ml-[52px]">
-                            {/* Container pour le coin arrondi + ligne horizontale */}
-                            <div className="flex items-center w-[52px]">
-                              {/* Coin arrondi L-shape */}
+                            {/* Zone alignée avec l'avatar - juste le coin arrondi */}
+                            <div className="w-[52px] flex items-center justify-end pr-1">
                               <div className="w-[20px] h-[20px] border-l-2 border-b-2 border-[#404249] rounded-bl-lg flex-shrink-0" />
-                              {/* Ligne horizontale qui s'étend jusqu'au thread message */}
-                              <div className="flex-1 h-0.5 bg-[#404249] -ml-px" />
                             </div>
+                            {/* Ligne horizontale visible entre le coin et le thread message */}
+                            <div className="h-0.5 bg-[#404249] w-3 flex-shrink-0" />
                             {/* Thread System Message */}
                             <ThreadSystemMessage 
                               thread={threadsByMessageId.get(message.id)!}

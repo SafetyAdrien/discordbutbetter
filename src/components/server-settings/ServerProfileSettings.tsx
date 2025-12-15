@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ServerProfileSettingsProps {
   serverId: string;
@@ -50,6 +51,34 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
     }
   };
 
+  const handleRemoveIcon = async () => {
+    try {
+      const { error } = await supabase
+        .from('servers')
+        .update({ icon_url: null })
+        .eq('id', serverId);
+      
+      if (error) throw error;
+      toast.success('Icône supprimée');
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const handleRemoveBanner = async () => {
+    try {
+      const { error } = await supabase
+        .from('servers')
+        .update({ banner_url: null })
+        .eq('id', serverId);
+      
+      if (error) throw error;
+      toast.success('Bannière supprimée');
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
   if (!server) return null;
 
   return (
@@ -57,63 +86,88 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
       {/* Banner & Icon */}
       <div>
         <Label className="mb-3 block">Apparence du serveur</Label>
-        <div 
-          className="h-32 relative rounded-lg bg-muted"
-          style={{
-            background: server.banner_url
-              ? `url(${server.banner_url}) center/cover`
-              : undefined,
-          }}
-        >
-          <button
-            onClick={() => bannerInputRef.current?.click()}
-            className="absolute top-2 right-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+        
+        {/* Banner */}
+        <div className="relative group">
+          <div 
+            className="h-32 rounded-lg bg-muted overflow-hidden"
+            style={{
+              background: server.banner_url
+                ? `url(${server.banner_url}) center/cover`
+                : undefined,
+            }}
           >
-            {uploadBanner.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Camera className="w-4 h-4" />
-            )}
-          </button>
-          <input
-            ref={bannerInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleBannerChange}
-            className="hidden"
-          />
+            <label className="absolute inset-0 flex items-center justify-center bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleBannerChange}
+                className="hidden"
+              />
+              {uploadBanner.isPending ? (
+                <Loader2 className="w-8 h-8 animate-spin text-foreground" />
+              ) : (
+                <div className="flex flex-col items-center gap-1">
+                  <Camera className="w-8 h-8 text-foreground" />
+                  <span className="text-xs text-foreground">Modifier la bannière</span>
+                </div>
+              )}
+            </label>
+          </div>
+          {server.banner_url && (
+            <button
+              onClick={handleRemoveBanner}
+              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        <div className="-mt-10 ml-4 relative inline-block">
-          <Avatar className="w-20 h-20 border-4 border-card">
-            <AvatarImage src={server.icon_url || undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-              {server.name.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <button
-            onClick={() => iconInputRef.current?.click()}
-            className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            {uploadIcon.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Camera className="w-3.5 h-3.5" />
+        {/* Icon - centered below banner */}
+        <div className="flex justify-center -mt-10">
+          <div className="relative group">
+            <label className="cursor-pointer block">
+              <input
+                ref={iconInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleIconChange}
+                className="hidden"
+              />
+              <div className="w-20 h-20 rounded-full bg-surface-elevated border-4 border-card flex items-center justify-center shadow-lg group-hover:scale-105 transition-all overflow-hidden">
+                {server.icon_url ? (
+                  <img src={server.icon_url} alt="Server icon" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-bold text-primary">
+                    {server.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                {uploadIcon.isPending ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-foreground" />
+                ) : (
+                  <Camera className="w-6 h-6 text-foreground" />
+                )}
+              </div>
+            </label>
+            {server.icon_url && (
+              <button
+                onClick={handleRemoveIcon}
+                className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
-          </button>
-          <input
-            ref={iconInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleIconChange}
-            className="hidden"
-          />
+          </div>
         </div>
       </div>
 
       {/* Name */}
       <div className="space-y-2">
-        <Label htmlFor="name">Nom du serveur</Label>
+        <Label htmlFor="name">Nom du Serveur</Label>
         <Input
           id="name"
           value={formData.name}

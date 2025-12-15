@@ -195,6 +195,7 @@ export const useDeleteThread = () => {
     },
     onMutate: async ({ threadId, channelId }) => {
       await queryClient.cancelQueries({ queryKey: ['threads', channelId] });
+      await queryClient.cancelQueries({ queryKey: ['followed-threads'] });
       const previousThreads = queryClient.getQueryData(['threads', channelId]);
       
       queryClient.setQueryData(['threads', channelId], (old: Thread[] | undefined) =>
@@ -214,6 +215,51 @@ export const useDeleteThread = () => {
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+    },
+  });
+};
+
+export const useUpdateThread = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ threadId, name }: { threadId: string; name: string }) => {
+      const { data, error } = await supabase
+        .from('threads')
+        .update({ name })
+        .eq('id', threadId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ threadId, name }) => {
+      await queryClient.cancelQueries({ queryKey: ['thread', threadId] });
+      const previousThread = queryClient.getQueryData(['thread', threadId]);
+      
+      queryClient.setQueryData(['thread', threadId], (old: Thread | undefined) =>
+        old ? { ...old, name } : old
+      );
+      
+      return { previousThread, threadId };
+    },
+    onError: (_, { threadId }, context) => {
+      if (context?.previousThread) {
+        queryClient.setQueryData(['thread', threadId], context.previousThread);
+      }
+      toast.error('Erreur lors du renommage');
+    },
+    onSuccess: () => {
+      toast.success('Thread renommé');
+    },
+    onSettled: (data) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
+        queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+      }
     },
   });
 };

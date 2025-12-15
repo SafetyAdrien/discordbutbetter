@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -10,7 +11,23 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { useThread } from '@/hooks/useThreads';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useThread, useDeleteThread, useUpdateThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
 import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
@@ -43,6 +60,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   
@@ -53,6 +73,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const { data: isFollowing } = useIsFollowingThread(threadId);
   const followThread = useFollowThread();
   const unfollowThread = useUnfollowThread();
+  const deleteThread = useDeleteThread();
+  const updateThread = useUpdateThread();
   const sendMessage = useSendThreadMessage();
   const markAsRead = useMarkThreadAsRead();
   const deletePoll = useDeletePoll();
@@ -184,19 +206,26 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   }, [timelineItems]);
 
   // Handle input change with typing indicator
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMessageContent(e.target.value);
-    if (e.target.value.trim()) {
-      startTyping();
-    } else {
-      stopTyping();
+  const handleRename = () => {
+    if (newName.trim() && newName !== thread?.name) {
+      updateThread.mutate({ threadId, name: newName.trim() });
     }
+    setIsRenaming(false);
+  };
+
+  const handleDeleteThread = () => {
+    if (channelId) {
+      deleteThread.mutate({ threadId, channelId }, {
+        onSuccess: () => onBack()
+      });
+    }
+    setShowDeleteDialog(false);
   };
 
   return (
-    <div className="w-80 flex flex-col bg-card border-l border-border min-w-0 shrink-0">
+    <div className="w-80 flex flex-col bg-card border-l-2 border-border min-w-0 shrink-0">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 h-12 border-b border-border shrink-0">
+      <div className="flex items-center gap-2 px-3 h-12 border-b border-border shrink-0">
         <Button
           variant="ghost"
           size="iconSm"
@@ -205,59 +234,117 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
+        
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <StreamlineThreads className="w-5 h-5 text-muted-foreground shrink-0" />
-          <span className="font-semibold text-foreground truncate">
-            {thread?.name || 'Thread'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Hash className="w-3 h-3" />
-          <span>{channelName}</span>
+          {isRenaming ? (
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onBlur={handleRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename();
+                if (e.key === 'Escape') setIsRenaming(false);
+              }}
+              className="h-7 text-sm font-semibold"
+              autoFocus
+            />
+          ) : (
+            <span className="font-semibold text-foreground truncate">
+              {thread?.name || 'Thread'}
+            </span>
+          )}
         </div>
         
-        {/* Bouton Suivre/Ne plus suivre */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (isFollowing) {
-                  unfollowThread.mutate(threadId, {
-                    onSuccess: () => {
-                      // Fermer le thread quand on arrête de le suivre
-                      onBack();
-                    }
-                  });
-                } else {
-                  followThread.mutate(threadId);
-                }
-              }}
-              className={cn(
-                "gap-1.5 ml-2",
-                isFollowing && "text-primary"
-              )}
-              disabled={followThread.isPending || unfollowThread.isPending}
-            >
-              {isFollowing ? (
-                <>
+        {/* Actions groupées */}
+        <div className="flex items-center gap-0.5">
+          {/* Renommer */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={() => {
+                  setNewName(thread?.name || '');
+                  setIsRenaming(true);
+                }}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Renommer</TooltipContent>
+          </Tooltip>
+          
+          {/* Suivre/Ne plus suivre */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={() => {
+                  if (isFollowing) {
+                    unfollowThread.mutate(threadId, {
+                      onSuccess: () => onBack()
+                    });
+                  } else {
+                    followThread.mutate(threadId);
+                  }
+                }}
+                className={cn(isFollowing && "text-primary")}
+                disabled={followThread.isPending || unfollowThread.isPending}
+              >
+                {isFollowing ? (
                   <Bell className="w-4 h-4 fill-current" />
-                  <span className="text-sm">Suivi</span>
-                </>
-              ) : (
-                <>
+                ) : (
                   <BellOff className="w-4 h-4" />
-                  <span className="text-sm">Suivre</span>
-                </>
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {isFollowing ? 'Ne plus suivre ce thread' : 'Suivre ce thread'}
-          </TooltipContent>
-        </Tooltip>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {isFollowing ? 'Ne plus suivre' : 'Suivre'}
+            </TooltipContent>
+          </Tooltip>
+          
+          {/* Menu 3 points */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem 
+                className="text-destructive focus:text-destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer le thread
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce thread ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Tous les messages de ce thread seront supprimés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteThread}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Messages */}
       <div className="relative flex-1 overflow-hidden">

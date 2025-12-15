@@ -911,14 +911,24 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <div className={cn('group message-hover rounded-md px-2 -mx-2 relative', showAuthor ? 'pt-1' : 'py-0')} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => { if (openDropdownMessageId !== message.id) setHoveredMessageId(null); }}>
                   <MessageActions isVisible={hoveredMessageId === message.id || openDropdownMessageId === message.id} isShiftPressed={isShiftPressed} onReply={() => handleReply(message)} onAddReaction={(emoji) => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={() => handleStartEdit(message)} onDelete={() => handleDelete(message.id)} onCreateThread={() => setCreateThreadForMessageId(message.id)} onPin={() => handlePinMessage(message.id)} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={(open) => { setOpenDropdownMessageId(open ? message.id : null); if (!open) setHoveredMessageId(null); }} />
                   {showAuthor ? <div className="flex gap-3">
-                      <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
-                        <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
-                          <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
-                          <AvatarFallback className="bg-primary/20 text-primary">
-                            {message.author.displayName.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </button>
+                      {/* Avatar column with Thread Spine underneath */}
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <button onClick={() => handleUserClick(message.author)}>
+                          <Avatar className="w-10 h-10 hover:opacity-80 transition-opacity">
+                            <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                            <AvatarFallback className="bg-primary/20 text-primary">
+                              {message.author.displayName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </button>
+                        {/* Thread Spine - vertical line starting below avatar */}
+                        {threadsByMessageId.has(message.id) && (
+                          <div className="flex-1 flex flex-col items-center w-10 mt-1">
+                            {/* Vertical line that stretches dynamically */}
+                            <div className="w-0.5 flex-1 bg-[#404249]" />
+                          </div>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                           <button onClick={() => handleUserClick(message.author)} className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
@@ -960,6 +970,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 <span className="text-xs text-muted-foreground">{reaction.count}</span>
                               </button>)}
                           </div>}
+                        
+                        {/* Thread System Message with L-curve connector */}
+                        {threadsByMessageId.has(message.id) && (
+                          <div className="flex items-center mt-2 -ml-[52px]">
+                            {/* L-curve connector */}
+                            <div className="w-10 flex items-center justify-center">
+                              <div className="w-[20px] h-[20px] border-l-2 border-b-2 border-[#404249] rounded-bl-lg" />
+                            </div>
+                            <div className="w-3" /> {/* Gap between curve and thread message */}
+                            <ThreadSystemMessage 
+                              thread={threadsByMessageId.get(message.id)!}
+                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div> : <div className="flex gap-3">
                       <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
@@ -1002,27 +1027,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>}
                       </div>
                     </div>}
-                    
-                  {/* Thread Spine & System Message - if this message has a thread */}
-                  {threadsByMessageId.has(message.id) && (
-                    <div className="flex items-center mt-1">
-                      {/* Thread Spine - L-shaped connector (short, centered) */}
-                      <div className="w-[52px] flex items-center justify-end pr-2">
-                        <div className="relative h-[32px] w-[24px]">
-                          {/* Vertical line - short fixed height */}
-                          <div className="absolute left-0 top-0 w-0.5 h-[18px] bg-[#404249]" />
-                          {/* Curved corner - L shape */}
-                          <div className="absolute left-0 top-[16px] w-[20px] h-[16px] border-l-2 border-b-2 border-[#404249] rounded-bl-lg" />
-                        </div>
-                      </div>
-                      
-                      {/* Thread System Message */}
-                      <ThreadSystemMessage 
-                        thread={threadsByMessageId.get(message.id)!}
-                        onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                      />
-                    </div>
-                  )}
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent className="min-w-[220px] p-1.5 rounded-lg shadow-xl" collisionPadding={8}>

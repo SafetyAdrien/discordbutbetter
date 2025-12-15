@@ -3,10 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
-import { MemberDrawer } from '@/components/layout/MemberDrawer';
-import { SidebarDrawer } from '@/components/layout/SidebarDrawer';
-import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { MobileProfileView } from '@/components/profile/MobileProfileView';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DMPage } from '@/components/dm/DMPage';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
@@ -22,7 +18,6 @@ import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
 import ThreadView from '@/components/threads/ThreadView';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -30,7 +25,6 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
@@ -49,13 +43,6 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
-  const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
-  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
-  const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const [showMobileProfile, setShowMobileProfile] = useState(false);
-
-  // Responsive layout
-  const { showServerList, showChannelSidebar, showMemberList, showBottomNav, isMobile, isTablet } = useResponsiveLayout();
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -323,18 +310,16 @@ const Index = () => {
   const isHomeView = activeServerId === null;
 
   return (
-    <div className={`h-screen flex bg-background overflow-hidden ${isMobile ? 'pb-20' : ''}`}>
-      {/* Server List - Hidden on mobile/tablet, shown in drawer */}
-      {showServerList && (
-        <ServerList
-          servers={serverListData}
-          activeServerId={activeServerId}
-          onServerSelect={handleServerSelect}
-          onDiscoverClick={() => setShowDiscover(true)}
-          onCreateClick={() => setShowCreate(true)}
-          onOpenServerSettings={handleOpenServerSettings}
-        />
-      )}
+    <div className="h-screen flex bg-background overflow-hidden">
+      {/* Server List */}
+      <ServerList
+        servers={serverListData}
+        activeServerId={activeServerId}
+        onServerSelect={handleServerSelect}
+        onDiscoverClick={() => setShowDiscover(true)}
+        onCreateClick={() => setShowCreate(true)}
+        onOpenServerSettings={handleOpenServerSettings}
+      />
 
       {/* Home/DM View */}
       {isHomeView ? (
@@ -342,30 +327,27 @@ const Index = () => {
           activeDMId={activeDMId}
           onConversationSelect={handleOpenDM}
           onShowFriends={handleShowFriends}
-          onOpenSidebar={() => setSidebarDrawerOpen(true)}
-          showSidebarButton={!showServerList}
         />
       ) : activeServer && serverForChannelList ? (
         <>
-          {/* Channel List - Hidden on tablet/mobile, shown in drawer */}
-          {showChannelSidebar && (
-            <ChannelList
-              server={serverForChannelList}
-              activeChannelId={activeChannelId}
-              onChannelSelect={(channelId) => {
-                setActiveChannelId(channelId);
-                setActiveThreadId(null);
-                setThreadChannelId(null);
-              }}
-              onOpenServerSettings={() => setShowServerSettings(true)}
-              orphanChannels={channelsData?.orphanChannels || []}
-              activeThreadId={activeThreadId}
-              onThreadSelect={(threadId) => {
-                setActiveThreadId(threadId);
-                setThreadChannelId(activeChannelId);
-              }}
-            />
-          )}
+          {/* Channel List */}
+          <ChannelList
+            server={serverForChannelList}
+            activeChannelId={activeChannelId}
+            onChannelSelect={(channelId) => {
+              setActiveChannelId(channelId);
+              // Fermer le thread quand on clique sur un salon
+              setActiveThreadId(null);
+              setThreadChannelId(null);
+            }}
+            onOpenServerSettings={() => setShowServerSettings(true)}
+            orphanChannels={channelsData?.orphanChannels || []}
+            activeThreadId={activeThreadId}
+            onThreadSelect={(threadId) => {
+              setActiveThreadId(threadId);
+              setThreadChannelId(activeChannelId); // Stocker le channel d'origine du thread
+            }}
+          />
 
           {/* Main Content Area - flex container for 60/40 split when thread is open */}
           <div className="flex-1 flex min-w-0">
@@ -422,13 +404,7 @@ const Index = () => {
                     onSendMessage={handleSendMessage}
                     memberRoles={memberRolesMap}
                     onOpenDM={handleOpenDM}
-                    onToggleMembers={() => {
-                      if (showMemberList) {
-                        handleToggleMembers();
-                      } else {
-                        setMemberDrawerOpen(true);
-                      }
-                    }}
+                    onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                     onSelectThread={(threadId) => setActiveThreadId(threadId)}
                     activeThreadId={activeThreadId}
@@ -437,9 +413,6 @@ const Index = () => {
                       setThreadChannelId(null);
                     }}
                     members={searchMembers}
-                    onOpenSidebar={() => setSidebarDrawerOpen(true)}
-                    showSidebarButton={!showChannelSidebar}
-                    showMembersButton={!showMemberList}
                   />
                 )}
               </div>
@@ -462,8 +435,8 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Panel - Member List (only on large screens, when no thread is open) */}
-          {showMemberList && channelForChat?.type !== 'voice' && !activeThreadId && showMembers && (
+          {/* Right Panel - Member List (only when no thread is open for text channels) */}
+          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && (
             <MemberList 
               members={memberListData} 
               ownerId={activeServer.owner_id || ''} 
@@ -471,54 +444,8 @@ const Index = () => {
               onOpenDM={handleOpenDM}
             />
           )}
-
-          {/* Member Drawer for medium screens */}
-          <MemberDrawer
-            open={memberDrawerOpen}
-            onOpenChange={setMemberDrawerOpen}
-            members={memberListData}
-            ownerId={activeServer.owner_id || ''}
-            serverId={activeServer.id}
-            onOpenDM={(conversationId) => {
-              handleOpenDM(conversationId);
-              setMemberDrawerOpen(false);
-            }}
-          />
         </>
       ) : null}
-
-      {/* Sidebar Drawer for tablet/mobile */}
-      {activeServer && serverForChannelList && (
-        <SidebarDrawer
-          open={sidebarDrawerOpen}
-          onOpenChange={setSidebarDrawerOpen}
-          servers={serverListData}
-          activeServerId={activeServerId}
-          onServerSelect={handleServerSelect}
-          onDiscoverClick={() => {
-            setShowDiscover(true);
-            setSidebarDrawerOpen(false);
-          }}
-          onCreateClick={() => {
-            setShowCreate(true);
-            setSidebarDrawerOpen(false);
-          }}
-          onOpenServerSettings={handleOpenServerSettings}
-          server={serverForChannelList}
-          activeChannelId={activeChannelId}
-          onChannelSelect={(channelId) => {
-            setActiveChannelId(channelId);
-            setActiveThreadId(null);
-            setThreadChannelId(null);
-          }}
-          orphanChannels={channelsData?.orphanChannels || []}
-          activeThreadId={activeThreadId}
-          onThreadSelect={(threadId) => {
-            setActiveThreadId(threadId);
-            setThreadChannelId(activeChannelId);
-          }}
-        />
-      )}
 
       {/* Modals */}
       {showDiscover && (
@@ -561,29 +488,6 @@ const Index = () => {
             // TODO: Scroll to message
           }}
         />
-      )}
-
-      {/* Mobile Bottom Navigation */}
-      {showBottomNav && (
-        <MobileBottomNav
-          activeView={showMobileProfile ? 'profile' : (isHomeView ? 'home' : 'servers')}
-          onOpenHome={() => handleServerSelect(null)}
-          onOpenServers={() => setSidebarDrawerOpen(true)}
-          onOpenProfile={() => setShowMobileProfile(true)}
-          showServersButton={!isHomeView}
-        />
-      )}
-
-      {/* Mobile Profile View */}
-      <MobileProfileView
-        open={showMobileProfile}
-        onOpenChange={setShowMobileProfile}
-        onOpenSettings={() => setShowAccountSettings(true)}
-      />
-
-      {/* Account Settings Modal */}
-      {showAccountSettings && (
-        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
       )}
     </div>
   );

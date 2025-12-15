@@ -158,7 +158,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Role badges */}
+                {/* Role badges with 3-dot menu */}
                 <div className="flex items-center gap-1">
                   {member.roles?.slice(0, 2).map((role) => (
                     <Badge
@@ -175,9 +175,26 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                       +{(member.roles?.length || 0) - 2}
                     </Badge>
                   )}
+                  
+                  {/* 3-dot menu for role management */}
+                  {isOwner && !isMemberOwner && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Shield className="w-4 h-4 mr-2" />
+                          Gérer les rôles
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
 
-                {/* Single actions menu - only show if current user is owner and member is not owner */}
+                {/* Actions menu - only show if current user is owner and member is not owner */}
                 {isOwner && !isMemberOwner && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -185,7 +202,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover">
+                    <DropdownMenuContent align="end">
                       <DropdownMenuItem>
                         <Shield className="w-4 h-4 mr-2" />
                         Gérer les rôles

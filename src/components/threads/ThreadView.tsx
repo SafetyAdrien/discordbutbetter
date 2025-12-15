@@ -33,6 +33,9 @@ import { useThreadMessages, useSendThreadMessage, useEditThreadMessage, useDelet
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
 import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
 import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
+import { useChannels } from '@/hooks/useChannels';
+import { useServerRoles } from '@/hooks/useRoles';
+import { useMembers } from '@/hooks/useMembers';
 import { PollDisplay } from '@/components/chat/PollDisplay';
 import { CreatePollModal } from '@/components/chat/CreatePollModal';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
@@ -94,6 +97,44 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const deleteMessage = useDeleteThreadMessage();
   const markAsRead = useMarkThreadAsRead();
   const deletePoll = useDeletePoll();
+  
+  // Fetch channels, roles and members for mention autocomplete
+  const { data: channelsData } = useChannels(serverId || null);
+  const { data: serverRoles = [] } = useServerRoles(serverId || '');
+  const { data: membersData = [] } = useMembers(serverId || '');
+  
+  // Build channels list for mentions
+  const allChannels = useMemo(() => {
+    const channels: Array<{ id: string; name: string; type: string }> = [];
+    channelsData?.categories.forEach(cat => {
+      cat.channels.forEach(ch => {
+        channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
+      });
+    });
+    channelsData?.orphanChannels?.forEach(ch => {
+      channels.push({ id: ch.id, name: ch.name, type: ch.type || 'text' });
+    });
+    return channels;
+  }, [channelsData]);
+  
+  // Build members list for mentions
+  const mentionMembers = useMemo(() => {
+    return membersData.map(m => ({
+      id: m.user?.id || m.id,
+      displayName: m.user?.display_name || m.nickname || 'Unknown',
+      username: m.user?.username || '',
+      avatar: m.user?.avatar_url || undefined
+    }));
+  }, [membersData]);
+  
+  // Build roles list for mentions
+  const mentionRoles = useMemo(() => {
+    return serverRoles.map(r => ({
+      id: r.id,
+      name: r.name,
+      color: r.color || undefined
+    }));
+  }, [serverRoles]);
   
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
@@ -744,6 +785,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         serverId={serverId}
         channelId={channelId || thread?.channel_id}
         threadId={threadId}
+        members={mentionMembers}
+        roles={mentionRoles}
+        channels={allChannels}
       />
       {/* Edit Poll Modal */}
       <CreatePollModal

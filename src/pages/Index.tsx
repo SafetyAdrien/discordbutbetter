@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
@@ -335,7 +336,9 @@ const Index = () => {
             activeChannelId={activeChannelId}
             onChannelSelect={(channelId) => {
               setActiveChannelId(channelId);
-              // Ne pas reset le thread lors du changement de salon - il reste affiché
+              // Fermer le thread lors du changement de salon
+              setActiveThreadId(null);
+              setThreadChannelId(null);
             }}
             onOpenServerSettings={() => setShowServerSettings(true)}
             orphanChannels={channelsData?.orphanChannels || []}
@@ -346,11 +349,73 @@ const Index = () => {
             }}
           />
 
-          {/* Main Content Area - Conditional based on channel type */}
-          {channelForChat && (
-            <>
-              {/* PRIORITÉ 1 : ThreadView si un thread est actif */}
-              {activeThreadId ? (
+          {/* Main Content Area - Side-by-side layout for threads */}
+          <div className="flex flex-1 min-w-0">
+            {/* Chat Area - toujours visible */}
+            {channelForChat && (
+              <div className={cn("flex-1 min-w-0", activeThreadId && "border-r border-border")}>
+                {channelForChat.type === 'voice' ? (
+                  <VoiceChannelView 
+                    channel={channelForChat}
+                    serverId={activeServer.id}
+                    members={memberListData}
+                    ownerId={activeServer.owner_id || ''}
+                    onOpenDM={handleOpenDM}
+                  />
+                ) : channelForChat.type === 'media' ? (
+                  <MediaChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'forum' ? (
+                  <ForumChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'tasks' ? (
+                  <TasksChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'calendar' ? (
+                  <CalendarChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'announcement' ? (
+                  <AnnouncementChannel 
+                    channel={channelForChat}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                  />
+                ) : channelForChat.type === 'stage' ? (
+                  <StageChannel 
+                    channel={channelForChat}
+                    serverId={activeServer.id}
+                    canModerate={activeServer.owner_id === user?.id}
+                  />
+                ) : (
+                  <ChatArea
+                    channel={channelForChat}
+                    messages={messagesData}
+                    onSendMessage={handleSendMessage}
+                    memberRoles={memberRolesMap}
+                    onOpenDM={handleOpenDM}
+                    onToggleMembers={handleToggleMembers}
+                    showMembers={showMembers}
+                    onSelectThread={(threadId) => setActiveThreadId(threadId)}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Thread Panel - à côté du chat si actif */}
+            {activeThreadId && channelForChat && (
+              <div className="w-[400px] flex-shrink-0 border-l border-border">
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}
@@ -361,67 +426,12 @@ const Index = () => {
                     setThreadChannelId(null);
                   }}
                 />
-              ) : channelForChat.type === 'voice' ? (
-                <VoiceChannelView 
-                  channel={channelForChat}
-                  serverId={activeServer.id}
-                  members={memberListData}
-                  ownerId={activeServer.owner_id || ''}
-                  onOpenDM={handleOpenDM}
-                />
-              ) : channelForChat.type === 'media' ? (
-                <MediaChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'forum' ? (
-                <ForumChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'tasks' ? (
-                <TasksChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'calendar' ? (
-                <CalendarChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'announcement' ? (
-                <AnnouncementChannel 
-                  channel={channelForChat}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                />
-              ) : channelForChat.type === 'stage' ? (
-                <StageChannel 
-                  channel={channelForChat}
-                  serverId={activeServer.id}
-                  canModerate={activeServer.owner_id === user?.id}
-                />
-              ) : (
-                <ChatArea
-                  channel={channelForChat}
-                  messages={messagesData}
-                  onSendMessage={handleSendMessage}
-                  memberRoles={memberRolesMap}
-                  onOpenDM={handleOpenDM}
-                  onToggleMembers={handleToggleMembers}
-                  showMembers={showMembers}
-                  onSelectThread={(threadId) => setActiveThreadId(threadId)}
-                />
-              )}
-            </>
-          )}
+              </div>
+            )}
+          </div>
 
           {/* Member List - Conditionally rendered (not for voice channels) */}
-          {showMembers && channelForChat?.type !== 'voice' && (
+          {showMembers && channelForChat?.type !== 'voice' && !activeThreadId && (
             <MemberList 
               members={memberListData} 
               ownerId={activeServer.owner_id || ''} 

@@ -67,6 +67,7 @@ export const useFollowThread = () => {
     onSettled: (_, __, threadId) => {
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['thread-follow', threadId, user.id] });
+        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       }
     },
   });
@@ -111,6 +112,7 @@ export const useUnfollowThread = () => {
     onSettled: (_, __, threadId) => {
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['thread-follow', threadId, user.id] });
+        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       }
     },
   });

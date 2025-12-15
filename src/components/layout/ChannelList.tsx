@@ -617,35 +617,25 @@ export function ChannelList({
   // Custom collision detection that filters by dragged item type
   const customCollisionDetection: CollisionDetection = useCallback(args => {
     const {
-      active,
-      droppableRects,
-      droppableContainers
+      active
     } = args;
     const activeIdStr = active.id.toString();
     const isCategory = activeIdStr.startsWith('category-');
 
-    if (isCategory) {
-      // For categories, only detect collisions with other category items
-      // Filter droppable containers to only include categories
-      const categoryContainers = args.droppableContainers.filter(container => 
-        container.id.toString().startsWith('category-')
-      );
-      
-      // Create filtered args with only category containers
-      const filteredArgs = {
-        ...args,
-        droppableContainers: categoryContainers
-      };
-      
-      return closestCenter(filteredArgs);
-    } else {
-      // For channels, use all containers (channels and categories)
-      const collisions = closestCenter(args);
-      return collisions.filter(collision => {
-        const collidedId = collision.id.toString();
+    // Use closestCenter as base detection
+    const collisions = closestCenter(args);
+
+    // Filter collisions to only allow same-type drops
+    return collisions.filter(collision => {
+      const collidedId = collision.id.toString();
+      if (isCategory) {
+        // Categories can only be dropped on other categories
+        return collidedId.startsWith('category-');
+      } else {
+        // Channels can be dropped on channels OR on category headers (to add to category)
         return collidedId.startsWith('channel-') || collidedId.startsWith('category-');
-      });
-    }
+      }
+    });
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
     const {
@@ -853,7 +843,7 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="h-full bg-card flex flex-col border-r border-border">
+  return <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>

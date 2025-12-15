@@ -326,6 +326,8 @@ interface ChatAreaProps {
   onToggleMembers?: () => void;
   showMembers?: boolean;
   onSelectThread?: (threadId: string) => void;
+  activeThreadId?: string | null;
+  onCloseThread?: () => void;
 }
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('fr-FR', {
@@ -356,7 +358,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   onOpenDM,
   onToggleMembers,
   showMembers = true,
-  onSelectThread
+  onSelectThread,
+  activeThreadId,
+  onCloseThread
 }, ref) {
   const [messageInput, setMessageInput] = useState('');
   const [selectedUser, setSelectedUser] = useState<{
@@ -666,14 +670,27 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverContent>
           </Popover>
 
-          {/* Members Toggle */}
+          {/* Members Toggle / Thread Close */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="iconSm" onClick={onToggleMembers} className={cn(showMembers && 'bg-surface-hover')}>
+              <Button 
+                variant="ghost" 
+                size="iconSm" 
+                onClick={() => {
+                  if (activeThreadId) {
+                    onCloseThread?.();
+                  } else {
+                    onToggleMembers?.();
+                  }
+                }} 
+                className={cn(showMembers && !activeThreadId && 'bg-surface-hover')}
+              >
                 <Users className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{showMembers ? 'Masquer les membres' : 'Afficher les membres'}</TooltipContent>
+            <TooltipContent>
+              {activeThreadId ? 'Fermer le thread' : showMembers ? 'Masquer les membres' : 'Afficher les membres'}
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>

@@ -405,6 +405,11 @@ const Index = () => {
                   onToggleMembers={handleToggleMembers}
                   showMembers={showMembers}
                   onSelectThread={(threadId) => setActiveThreadId(threadId)}
+                  activeThreadId={activeThreadId}
+                  onCloseThread={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                  }}
                 />
               )}
             </>

@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Search, Plus, MessageSquare, Star } from 'lucide-react';
+import { Search, Plus, MessageSquare, Star, Pencil, Bell, BellOff, MoreVertical, Trash2, Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useThreads } from '@/hooks/useThreads';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useThreads, useUpdateThread, useDeleteThread } from '@/hooks/useThreads';
+import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
 import { Thread } from '@/types/thread';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -96,46 +100,191 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
   thread,
   onClick,
 }) => {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState(thread.name);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  const updateThread = useUpdateThread();
+  const deleteThread = useDeleteThread();
+  const { data: isFollowing } = useIsFollowingThread(thread.id);
+  const followThread = useFollowThread();
+  const unfollowThread = useUnfollowThread();
+
+  const handleRename = () => {
+    if (newName.trim() && newName !== thread.name) {
+      updateThread.mutate({ threadId: thread.id, name: newName.trim() });
+    }
+    setIsRenaming(false);
+  };
+
+  const handleDelete = () => {
+    deleteThread.mutate({ threadId: thread.id, channelId: thread.channel_id });
+    setShowDeleteDialog(false);
+  };
+
+  const handleToggleFollow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isFollowing) {
+      unfollowThread.mutate(thread.id);
+    } else {
+      followThread.mutate(thread.id);
+    }
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-start gap-3 p-2 rounded-md hover:bg-muted transition-colors text-left"
-    >
-      <Avatar className="w-8 h-8 mt-0.5">
-        <AvatarImage src={thread.creator?.avatar_url || undefined} />
-        <AvatarFallback className="text-xs">
-          {thread.creator?.display_name?.[0] || '?'}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground truncate">
-            {thread.name}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-          <span>{thread.creator?.display_name || 'Inconnu'}</span>
-          <span>•</span>
-          <span>
-            {thread.last_message_at
-              ? formatDistanceToNow(new Date(thread.last_message_at), {
-                  addSuffix: true,
-                  locale: fr,
-                })
-              : 'Aucun message'}
-          </span>
-          {thread.message_count !== undefined && thread.message_count > 0 && (
-            <>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" />
-                {thread.message_count}
+    <>
+      <div className="w-full flex items-start gap-3 p-2 rounded-md hover:bg-muted transition-colors group">
+        <button
+          onClick={onClick}
+          className="flex-1 flex items-start gap-3 text-left min-w-0"
+        >
+          <Avatar className="w-8 h-8 mt-0.5 flex-shrink-0">
+            <AvatarImage src={thread.creator?.avatar_url || undefined} />
+            <AvatarFallback className="text-xs">
+              {thread.creator?.display_name?.[0] || '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            {isRenaming ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="h-6 text-sm"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRename();
+                    if (e.key === 'Escape') {
+                      setNewName(thread.name);
+                      setIsRenaming(false);
+                    }
+                  }}
+                />
+                <Button size="iconSm" variant="ghost" onClick={handleRename}>
+                  <Check className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="iconSm" variant="ghost" onClick={() => {
+                  setNewName(thread.name);
+                  setIsRenaming(false);
+                }}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <span className="font-medium text-foreground truncate block">
+                {thread.name}
               </span>
-            </>
-          )}
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <span>{thread.creator?.display_name || 'Inconnu'}</span>
+              <span>•</span>
+              <span>
+                {thread.last_message_at
+                  ? formatDistanceToNow(new Date(thread.last_message_at), {
+                      addSuffix: true,
+                      locale: fr,
+                    })
+                  : 'Aucun message'}
+              </span>
+              {thread.message_count !== undefined && thread.message_count > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" />
+                    {thread.message_count}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </button>
+
+        {/* Actions - visible on hover */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="iconSm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsRenaming(true);
+                }}
+                className="h-7 w-7"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Renommer</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="iconSm"
+                variant="ghost"
+                onClick={handleToggleFollow}
+                className="h-7 w-7"
+              >
+                {isFollowing ? (
+                  <BellOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Bell className="w-3.5 h-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {isFollowing ? 'Ne plus suivre' : 'Suivre'}
+            </TooltipContent>
+          </Tooltip>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="iconSm"
+                variant="ghost"
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-7"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteDialog(true);
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer le thread
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-    </button>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le thread</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer "{thread.name}" ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

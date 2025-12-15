@@ -349,9 +349,9 @@ const Index = () => {
           />
 
           {/* Main Content Area - flex container for 50/50 split when thread is open */}
-          <div className={`flex-1 flex min-w-0 ${activeThreadId && channelForChat?.type === 'text' ? '' : ''}`}>
+          <div className={`flex-1 flex min-w-0 ${activeThreadId && channelForChat?.type === 'text' ? 'gap-0' : ''}`}>
             {channelForChat && (
-              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-1 min-w-0' : 'flex-1'} flex flex-col`}>
+              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-1 min-w-0 rounded-r-lg overflow-hidden' : 'flex-1'} flex flex-col bg-card`}>
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
                     channel={channelForChat}
@@ -418,16 +418,20 @@ const Index = () => {
 
             {/* Thread View - 50/50 split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
-              <ThreadView
-                threadId={activeThreadId}
-                channelId={threadChannelId || activeChannelId || undefined}
-                serverId={activeServerId}
-                channelName={channelForChat?.name || ''}
-                onBack={() => {
-                  setActiveThreadId(null);
-                  setThreadChannelId(null);
-                }}
-              />
+              <>
+                {/* Separator gap */}
+                <div className="w-[2px] bg-background shrink-0" />
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelId={threadChannelId || activeChannelId || undefined}
+                  serverId={activeServerId}
+                  channelName={channelForChat?.name || ''}
+                  onBack={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                  }}
+                />
+              </>
             )}
           </div>
 

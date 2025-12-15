@@ -1005,20 +1005,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     
                   {/* Thread Spine & System Message - if this message has a thread */}
                   {threadsByMessageId.has(message.id) && (
-                    <div className="relative mt-1 ml-[52px]">
-                      {/* Thread Spine - L-shaped connector */}
-                      <div className="absolute -left-[32px] -top-1 bottom-0 w-[32px]">
-                        {/* Vertical line */}
-                        <div 
-                          className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30"
-                          style={{ height: 'calc(100% - 8px)' }}
-                        />
-                        {/* Curved corner */}
-                        <div 
-                          className="absolute left-0 bottom-0 w-[20px] h-[8px] 
-                                     border-l-2 border-b-2 border-muted-foreground/30 
-                                     rounded-bl-lg"
-                        />
+                    <div className="flex items-center mt-1">
+                      {/* Thread Spine - L-shaped connector (short, centered) */}
+                      <div className="w-[52px] flex items-center justify-end pr-2">
+                        <div className="relative h-[32px] w-[24px]">
+                          {/* Vertical line - short fixed height */}
+                          <div className="absolute left-0 top-0 w-0.5 h-[18px] bg-[#404249]" />
+                          {/* Curved corner - L shape */}
+                          <div className="absolute left-0 top-[16px] w-[20px] h-[16px] border-l-2 border-b-2 border-[#404249] rounded-bl-lg" />
+                        </div>
                       </div>
                       
                       {/* Thread System Message */}

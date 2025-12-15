@@ -37,9 +37,8 @@ import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, UniqueIdentifier, pointerWithin, rectIntersection } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 
 // Drop Indicator Component
@@ -618,33 +617,25 @@ export function ChannelList({
   // Custom collision detection that filters by dragged item type
   const customCollisionDetection: CollisionDetection = useCallback(args => {
     const {
-      active,
-      droppableRects,
-      droppableContainers
+      active
     } = args;
     const activeIdStr = active.id.toString();
     const isCategory = activeIdStr.startsWith('category-');
 
-    // Filter droppable containers based on active type BEFORE collision detection
-    const filteredContainers = droppableContainers.filter(container => {
-      const containerId = container.id.toString();
+    // Use closestCenter as base detection
+    const collisions = closestCenter(args);
+
+    // Filter collisions to only allow same-type drops
+    return collisions.filter(collision => {
+      const collidedId = collision.id.toString();
       if (isCategory) {
         // Categories can only be dropped on other categories
-        return containerId.startsWith('category-');
+        return collidedId.startsWith('category-');
       } else {
-        // Channels can be dropped on channels OR on category headers
-        return containerId.startsWith('channel-') || containerId.startsWith('category-');
+        // Channels can be dropped on channels OR on category headers (to add to category)
+        return collidedId.startsWith('channel-') || collidedId.startsWith('category-');
       }
     });
-
-    // Create filtered args with only valid droppable containers
-    const filteredArgs = {
-      ...args,
-      droppableContainers: filteredContainers
-    };
-
-    // Use closestCenter with filtered containers for better precision
-    return closestCenter(filteredArgs);
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
     const {
@@ -852,7 +843,7 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="w-full h-full bg-card flex flex-col">
+  return <div className="w-60 bg-card flex flex-col border-r border-border">
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>
@@ -925,7 +916,7 @@ export function ChannelList({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
-            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} modifiers={[restrictToVerticalAxis]} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {orphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>

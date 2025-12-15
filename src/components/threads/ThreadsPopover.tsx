@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, MessageSquare, Star, Pencil, Bell, BellOff, MoreVertical, Trash2, Check, X } from 'lucide-react';
+import { Search, Plus, Pencil, Bell, BellOff, MoreVertical, Trash2, Check, X, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import CreateThreadModal from './CreateThreadModal';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
+import { cn } from '@/lib/utils';
 
 interface ThreadsPopoverProps {
   channelId: string;
@@ -34,7 +35,7 @@ const ThreadsPopover: React.FC<ThreadsPopoverProps> = ({ channelId, onSelectThre
   };
 
   return (
-    <div className="flex flex-col h-[400px]">
+    <div className="flex flex-col h-[450px] w-[380px]">
       {/* Header */}
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-3">
@@ -131,26 +132,25 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
     }
   };
 
+  // Truncate last message content
+  const truncateMessage = (content: string, maxLength: number = 50) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength).trim() + '...';
+  };
+
   return (
     <>
-      <div className="w-full flex items-start gap-3 p-2 rounded-md hover:bg-muted transition-colors group">
-        <button
-          onClick={onClick}
-          className="flex-1 flex items-start gap-3 text-left min-w-0"
-        >
-          <Avatar className="w-8 h-8 mt-0.5 flex-shrink-0">
-            <AvatarImage src={thread.creator?.avatar_url || undefined} />
-            <AvatarFallback className="text-xs">
-              {thread.creator?.display_name?.[0] || '?'}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
+      <div className="w-full flex items-start gap-3 p-2.5 rounded-md hover:bg-muted transition-colors group cursor-pointer" onClick={onClick}>
+        {/* Main content area */}
+        <div className="flex-1 min-w-0">
+          {/* Top row: Thread name + Avatars + Count */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
             {isRenaming ? (
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="h-6 text-sm"
+                  className="h-6 text-sm flex-1"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleRename();
@@ -160,47 +160,88 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
                     }
                   }}
                 />
-                <Button size="iconSm" variant="ghost" onClick={handleRename}>
-                  <Check className="w-3.5 h-3.5" />
+                <Button size="iconSm" variant="ghost" onClick={handleRename} className="h-6 w-6">
+                  <Check className="w-3 h-3" />
                 </Button>
                 <Button size="iconSm" variant="ghost" onClick={() => {
                   setNewName(thread.name);
                   setIsRenaming(false);
-                }}>
-                  <X className="w-3.5 h-3.5" />
+                }} className="h-6 w-6">
+                  <X className="w-3 h-3" />
                 </Button>
               </div>
             ) : (
-              <span className="font-medium text-foreground truncate block">
+              <span className="font-semibold text-foreground truncate text-sm">
                 {thread.name}
               </span>
             )}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-              <span>{thread.creator?.display_name || 'Inconnu'}</span>
-              <span>•</span>
-              <span>
-                {thread.last_message_at
-                  ? formatDistanceToNow(new Date(thread.last_message_at), {
-                      addSuffix: true,
-                      locale: fr,
-                    })
-                  : 'Aucun message'}
-              </span>
-              {thread.message_count !== undefined && thread.message_count > 0 && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    {thread.message_count}
+            
+            {/* Right side: Stacked avatars + participant count */}
+            {!isRenaming && (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Stacked avatars */}
+                {thread.participants && thread.participants.length > 0 && (
+                  <div className="flex -space-x-2">
+                    {thread.participants.slice(0, 4).map((participant, index) => (
+                      <Avatar
+                        key={participant.id}
+                        className={cn(
+                          "w-5 h-5 border-2 border-card",
+                          "ring-0"
+                        )}
+                        style={{ zIndex: 4 - index }}
+                      >
+                        <AvatarImage src={participant.avatar_url || undefined} />
+                        <AvatarFallback className="text-[8px]">
+                          {participant.display_name?.[0] || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Participant count badge */}
+                {thread.participant_count !== undefined && thread.participant_count > 0 && (
+                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                    {thread.participant_count}+
                   </span>
-                </>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
-        </button>
+          
+          {/* Bottom row: Last message preview with author and time */}
+          {thread.last_message ? (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Avatar className="w-4 h-4 flex-shrink-0">
+                <AvatarImage src={thread.last_message.author?.avatar_url || undefined} />
+                <AvatarFallback className="text-[8px]">
+                  {thread.last_message.author?.display_name?.[0] || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-foreground/80 flex-shrink-0">
+                {thread.last_message.author?.display_name || 'Inconnu'}:
+              </span>
+              <span className="truncate flex-1">
+                {truncateMessage(thread.last_message.content)}
+              </span>
+              <span className="flex-shrink-0">•</span>
+              <span className="flex-shrink-0">
+                {formatDistanceToNow(new Date(thread.last_message.created_at), {
+                  addSuffix: false,
+                  locale: fr,
+                })}
+              </span>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              Aucun message
+            </div>
+          )}
+        </div>
 
         {/* Actions - visible on hover */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -210,9 +251,9 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
                   e.stopPropagation();
                   setIsRenaming(true);
                 }}
-                className="h-7 w-7"
+                className="h-6 w-6"
               >
-                <Pencil className="w-3.5 h-3.5" />
+                <Pencil className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">Renommer</TooltipContent>
@@ -224,12 +265,12 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
                 size="iconSm"
                 variant="ghost"
                 onClick={handleToggleFollow}
-                className="h-7 w-7"
+                className={cn("h-6 w-6", isFollowing && "text-primary")}
               >
                 {isFollowing ? (
-                  <BellOff className="w-3.5 h-3.5" />
+                  <Bell className="w-3 h-3 fill-current" />
                 ) : (
-                  <Bell className="w-3.5 h-3.5" />
+                  <BellOff className="w-3 h-3" />
                 )}
               </Button>
             </TooltipTrigger>
@@ -244,9 +285,9 @@ const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
                 size="iconSm"
                 variant="ghost"
                 onClick={(e) => e.stopPropagation()}
-                className="h-7 w-7"
+                className="h-6 w-6"
               >
-                <MoreVertical className="w-3.5 h-3.5" />
+                <MoreVertical className="w-3 h-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

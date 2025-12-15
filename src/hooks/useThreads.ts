@@ -22,19 +22,68 @@ export const useThreads = (channelId: string | undefined) => {
 
       if (error) throw error;
       
-      // Get message counts
-      const threadsWithCounts = await Promise.all(
+      // Get message counts, last message, and participants for each thread
+      const threadsWithData = await Promise.all(
         (data || []).map(async (thread) => {
+          // Get message count
           const { count } = await supabase
             .from('thread_messages')
             .select('*', { count: 'exact', head: true })
             .eq('thread_id', thread.id);
           
-          return { ...thread, message_count: count || 0 } as Thread;
+          // Get last message with author
+          const { data: lastMessageData } = await supabase
+            .from('thread_messages')
+            .select(`
+              content,
+              created_at,
+              author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
+            `)
+            .eq('thread_id', thread.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          // Get unique participants (up to 4 for display)
+          const { data: participantsData } = await supabase
+            .from('thread_messages')
+            .select(`
+              author_id,
+              author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
+            `)
+            .eq('thread_id', thread.id)
+            .order('created_at', { ascending: false });
+          
+          // Dedupe participants
+          const uniqueParticipants = new Map<string, { id: string; display_name: string; avatar_url: string | null }>();
+          participantsData?.forEach((msg) => {
+            if (msg.author_id && msg.author && !uniqueParticipants.has(msg.author_id)) {
+              uniqueParticipants.set(msg.author_id, {
+                id: msg.author.id,
+                display_name: msg.author.display_name,
+                avatar_url: msg.author.avatar_url,
+              });
+            }
+          });
+          
+          const participants = Array.from(uniqueParticipants.values()).slice(0, 4);
+          const participantCount = uniqueParticipants.size;
+          
+          return {
+            ...thread,
+            message_count: count || 0,
+            last_message: lastMessageData ? {
+              content: lastMessageData.content,
+              created_at: lastMessageData.created_at,
+              author: lastMessageData.author,
+            } : undefined,
+            participants,
+            participant_count: participantCount,
+          } as Thread;
         })
       );
       
-      return threadsWithCounts;
+      return threadsWithData;
     },
     enabled: !!channelId,
   });

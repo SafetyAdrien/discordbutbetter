@@ -1,28 +1,25 @@
-import { Home, Compass, Users, Settings } from 'lucide-react';
+import { Home, Compass, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
-  activeView: 'home' | 'servers' | 'members' | 'settings';
+  activeView: 'home' | 'servers' | 'profile';
   onOpenHome: () => void;
   onOpenServers: () => void;
-  onOpenMembers: () => void;
-  onOpenSettings: () => void;
-  showMembersButton?: boolean;
+  onOpenProfile: () => void;
+  showServersButton?: boolean;
 }
 
 export function MobileBottomNav({
   activeView,
   onOpenHome,
   onOpenServers,
-  onOpenMembers,
-  onOpenSettings,
-  showMembersButton = true,
+  onOpenProfile,
+  showServersButton = true,
 }: MobileBottomNavProps) {
   const navItems = [
     { id: 'home', icon: Home, label: 'Accueil', onClick: onOpenHome },
-    { id: 'servers', icon: Compass, label: 'Serveurs', onClick: onOpenServers },
-    ...(showMembersButton ? [{ id: 'members', icon: Users, label: 'Membres', onClick: onOpenMembers }] : []),
-    { id: 'settings', icon: Settings, label: 'Paramètres', onClick: onOpenSettings },
+    ...(showServersButton ? [{ id: 'servers', icon: Compass, label: 'Serveurs', onClick: onOpenServers }] : []),
+    { id: 'profile', icon: User, label: 'Profil', onClick: onOpenProfile },
   ];
 
   return (

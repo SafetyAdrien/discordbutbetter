@@ -974,11 +974,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         {/* Thread System Message with L-curve connector */}
                         {threadsByMessageId.has(message.id) && (
                           <div className="flex items-center mt-2 -ml-[52px]">
-                            {/* L-curve connector */}
-                            <div className="w-10 flex items-center justify-center">
-                              <div className="w-[20px] h-[20px] border-l-2 border-b-2 border-[#404249] rounded-bl-lg" />
+                            {/* Container pour le coin arrondi + ligne horizontale */}
+                            <div className="flex items-center w-[52px]">
+                              {/* Coin arrondi L-shape */}
+                              <div className="w-[20px] h-[20px] border-l-2 border-b-2 border-[#404249] rounded-bl-lg flex-shrink-0" />
+                              {/* Ligne horizontale qui s'étend jusqu'au thread message */}
+                              <div className="flex-1 h-0.5 bg-[#404249] -ml-px" />
                             </div>
-                            <div className="w-3" /> {/* Gap between curve and thread message */}
+                            {/* Thread System Message */}
                             <ThreadSystemMessage 
                               thread={threadsByMessageId.get(message.id)!}
                               onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}

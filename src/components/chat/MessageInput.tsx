@@ -104,8 +104,8 @@ export function MessageInput({
       <form onSubmit={handleSubmit} className="relative w-full shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         <div className={`flex items-center gap-2 rounded-lg border transition-colors ${
           compact 
-            ? "bg-[#383a40] border-transparent" 
-            : "bg-input border-border focus-within:border-primary/50"
+            ? "bg-[hsl(var(--input))] border-transparent" 
+            : "bg-[hsl(var(--input))] border-border/50 focus-within:border-primary/50"
         }`}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>

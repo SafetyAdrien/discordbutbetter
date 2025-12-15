@@ -256,6 +256,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
 
   // SHIFT key detection
   useEffect(() => {
@@ -603,7 +609,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-4 py-4 space-y-0.5">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5">
         {/* Welcome message */}
         <div className="mb-8 animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
@@ -923,7 +930,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </ContextMenuContent>
             </ContextMenu>;
       })}
-      </div>
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="flex-shrink-0 border-t border-border bg-background px-0 py-0">

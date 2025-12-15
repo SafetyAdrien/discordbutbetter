@@ -10,7 +10,7 @@ import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import StreamlineThreadBranch from '@/components/icons/StreamlineThreadBranch';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -166,7 +166,7 @@ function SortableCategory({
     <div ref={setNodeRef} style={style} className={cn(isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group hover:cursor-grab">
+          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
@@ -843,7 +843,42 @@ export function ChannelList({
   // Get all sortable IDs
   const categoryIds = server.categories.map(c => `category-${c.id}`);
   const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
-  return <div className="w-60 bg-card flex flex-col border-r border-border">
+  // Sidebar resizing
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const isResizing = useRef(false);
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = e.clientX - startX;
+      const newWidth = Math.max(240, Math.min(340, startWidth + delta));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [sidebarWidth]);
+
+  return <div 
+    className="bg-card flex flex-col border-r border-border relative"
+    style={{ width: `${sidebarWidth}px`, minWidth: '240px', maxWidth: '340px' }}
+  >
+    {/* Resize handle */}
+    <div 
+      className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10"
+      onMouseDown={handleResizeMouseDown}
+    />
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-background/50 border-b border-border">
         <Popover>

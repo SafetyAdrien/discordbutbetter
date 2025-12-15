@@ -624,7 +624,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-0.5">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-4 py-4 space-y-0.5">
         {/* Welcome message */}
         <div className="mb-8 animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">

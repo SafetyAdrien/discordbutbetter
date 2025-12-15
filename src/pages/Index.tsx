@@ -349,9 +349,9 @@ const Index = () => {
           />
 
           {/* Main Content Area - flex container for 50/50 split when thread is open */}
-          <div className={`flex-1 flex min-w-0 ${activeThreadId && channelForChat?.type === 'text' ? '' : ''}`}>
+          <div className={`flex-1 flex min-w-0 ${activeThreadId && channelForChat?.type === 'text' ? 'gap-0.5 bg-background' : ''}`}>
             {channelForChat && (
-              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-1 min-w-0' : 'flex-1'} flex flex-col`}>
+              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-1 min-w-0 rounded-r-lg overflow-hidden' : 'flex-1'} flex flex-col`}>
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
                     channel={channelForChat}

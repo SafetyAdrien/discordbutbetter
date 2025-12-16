@@ -32,14 +32,14 @@ export function usePinnedMessages(channelId: string) {
           *,
           message:messages(
             id, content, created_at,
-            author:profiles(id, username, display_name, avatar_url)
+            author:profiles!messages_author_id_fkey(id, username, display_name, avatar_url)
           )
         `)
         .eq('channel_id', channelId)
         .order('pinned_at', { ascending: false });
 
       if (error) throw error;
-      return data as PinnedMessage[];
+      return data as unknown as PinnedMessage[];
     },
     enabled: !!channelId,
   });

@@ -28,20 +28,59 @@ interface SettingToggleProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
+  channelSelector?: React.ReactNode;
 }
 
-function SettingToggle({ title, description, checked, onCheckedChange, disabled }: SettingToggleProps) {
+function SettingToggle({ title, description, checked, onCheckedChange, disabled, channelSelector }: SettingToggleProps) {
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors">
-      <div className="flex-1 mr-4">
-        <Label className="text-sm font-medium cursor-pointer">{title}</Label>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+    <div className="p-4 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 mr-4">
+          <Label className="text-sm font-medium cursor-pointer">{title}</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+        <Switch
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+          disabled={disabled}
+        />
       </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-      />
+      {checked && channelSelector && (
+        <div className="pt-2 border-t border-border/50">
+          {channelSelector}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ChannelSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  channels: { id: string; name: string }[];
+  label: string;
+}
+
+function ChannelSelector({ value, onChange, channels, label }: ChannelSelectorProps) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Select value={value || 'none'} onValueChange={(v) => onChange(v === 'none' ? '' : v)}>
+        <SelectTrigger className="bg-background h-8 text-sm">
+          <SelectValue placeholder="Sélectionner un canal" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Aucun (utiliser le canal système)</SelectItem>
+          {channels.map(channel => (
+            <SelectItem key={channel.id} value={channel.id}>
+              <div className="flex items-center gap-2">
+                <Hash className="w-3 h-3 text-muted-foreground" />
+                {channel.name}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -58,6 +97,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
     welcome_message: '',
     welcome_channel_id: '',
     system_channel_id: '',
+    sticker_channel_id: '',
+    boost_channel_id: '',
+    tips_channel_id: '',
+    activity_channel_id: '',
     system_messages_enabled: true,
     sticker_reply_enabled: true,
     boost_message_enabled: true,
@@ -80,6 +123,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         welcome_message: settings.welcome_message || '',
         welcome_channel_id: settings.welcome_channel_id || '',
         system_channel_id: settings.system_channel_id || '',
+        sticker_channel_id: settings.sticker_channel_id || '',
+        boost_channel_id: settings.boost_channel_id || '',
+        tips_channel_id: settings.tips_channel_id || '',
+        activity_channel_id: settings.activity_channel_id || '',
         system_messages_enabled: settings.system_messages_enabled ?? true,
         sticker_reply_enabled: settings.sticker_reply_enabled ?? true,
         boost_message_enabled: settings.boost_message_enabled ?? true,
@@ -101,6 +148,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         welcome_message: localSettings.welcome_message || null,
         welcome_channel_id: localSettings.welcome_channel_id || null,
         system_channel_id: localSettings.system_channel_id || null,
+        sticker_channel_id: localSettings.sticker_channel_id || null,
+        boost_channel_id: localSettings.boost_channel_id || null,
+        tips_channel_id: localSettings.tips_channel_id || null,
+        activity_channel_id: localSettings.activity_channel_id || null,
         system_messages_enabled: localSettings.system_messages_enabled,
         sticker_reply_enabled: localSettings.sticker_reply_enabled,
         boost_message_enabled: localSettings.boost_message_enabled,
@@ -125,6 +176,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         localSettings.welcome_message !== (settings.welcome_message || '') ||
         localSettings.welcome_channel_id !== (settings.welcome_channel_id || '') ||
         localSettings.system_channel_id !== (settings.system_channel_id || '') ||
+        localSettings.sticker_channel_id !== (settings.sticker_channel_id || '') ||
+        localSettings.boost_channel_id !== (settings.boost_channel_id || '') ||
+        localSettings.tips_channel_id !== (settings.tips_channel_id || '') ||
+        localSettings.activity_channel_id !== (settings.activity_channel_id || '') ||
         localSettings.system_messages_enabled !== settings.system_messages_enabled ||
         localSettings.sticker_reply_enabled !== (settings.sticker_reply_enabled ?? true) ||
         localSettings.boost_message_enabled !== (settings.boost_message_enabled ?? true) ||
@@ -205,33 +260,33 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         </h4>
         
         <div className="space-y-2">
-          <Label className="text-sm">Canal de destination</Label>
-        <Select 
-          value={localSettings.system_channel_id || 'none'} 
-          onValueChange={(v) => updateLocalSetting('system_channel_id', v === 'none' ? '' : v)}
-        >
-          <SelectTrigger className="bg-background">
-            <SelectValue placeholder="Sélectionner un canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Aucun</SelectItem>
-            {textChannels.map(channel => (
-              <SelectItem key={channel.id} value={channel.id}>
-                <div className="flex items-center gap-2">
-                  <Hash className="w-4 h-4 text-muted-foreground" />
-                  {channel.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Label className="text-sm">Canal principal (par défaut)</Label>
+          <Select 
+            value={localSettings.system_channel_id || 'none'} 
+            onValueChange={(v) => updateLocalSetting('system_channel_id', v === 'none' ? '' : v)}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Sélectionner un canal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Aucun</SelectItem>
+              {textChannels.map(channel => (
+                <SelectItem key={channel.id} value={channel.id}>
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-muted-foreground" />
+                    {channel.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground">
-            Ce canal recevra les messages de bienvenue et autres messages système
+            Ce canal recevra les messages de bienvenue et autres messages système par défaut
           </p>
         </div>
       </div>
 
-      {/* System Messages Toggles */}
+      {/* System Messages Toggles with individual channel selectors */}
       <div className="space-y-4">
         <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
           Messages système
@@ -250,6 +305,14 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
             description="Permettre les réponses rapides avec des stickers"
             checked={localSettings.sticker_reply_enabled ?? true}
             onCheckedChange={(checked) => updateLocalSetting('sticker_reply_enabled', checked)}
+            channelSelector={
+              <ChannelSelector
+                value={localSettings.sticker_channel_id || ''}
+                onChange={(v) => updateLocalSetting('sticker_channel_id', v)}
+                channels={textChannels}
+                label="Canal de destination"
+              />
+            }
           />
           
           <SettingToggle
@@ -257,6 +320,14 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
             description="Afficher les notifications quand quelqu'un boost le serveur"
             checked={localSettings.boost_message_enabled ?? true}
             onCheckedChange={(checked) => updateLocalSetting('boost_message_enabled', checked)}
+            channelSelector={
+              <ChannelSelector
+                value={localSettings.boost_channel_id || ''}
+                onChange={(v) => updateLocalSetting('boost_channel_id', v)}
+                channels={textChannels}
+                label="Canal de destination"
+              />
+            }
           />
           
           <SettingToggle
@@ -264,6 +335,14 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
             description="Afficher des conseils pour améliorer votre serveur"
             checked={localSettings.setup_tips_enabled ?? true}
             onCheckedChange={(checked) => updateLocalSetting('setup_tips_enabled', checked)}
+            channelSelector={
+              <ChannelSelector
+                value={localSettings.tips_channel_id || ''}
+                onChange={(v) => updateLocalSetting('tips_channel_id', v)}
+                channels={textChannels}
+                label="Canal de destination"
+              />
+            }
           />
           
           <SettingToggle
@@ -271,6 +350,14 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
             description="Afficher les activités récentes des membres dans le serveur"
             checked={localSettings.activity_feed_enabled ?? true}
             onCheckedChange={(checked) => updateLocalSetting('activity_feed_enabled', checked)}
+            channelSelector={
+              <ChannelSelector
+                value={localSettings.activity_channel_id || ''}
+                onChange={(v) => updateLocalSetting('activity_channel_id', v)}
+                channels={textChannels}
+                label="Canal de destination"
+              />
+            }
           />
         </div>
       </div>
@@ -283,25 +370,25 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
 
         <div className="space-y-2">
           <Label className="text-sm">Canal de bienvenue</Label>
-        <Select 
-          value={localSettings.welcome_channel_id || 'none'} 
-          onValueChange={(v) => updateLocalSetting('welcome_channel_id', v === 'none' ? '' : v)}
-        >
-          <SelectTrigger className="bg-background">
-            <SelectValue placeholder="Sélectionner un canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Aucun</SelectItem>
-            {textChannels.map(channel => (
-              <SelectItem key={channel.id} value={channel.id}>
-                <div className="flex items-center gap-2">
-                  <Hash className="w-4 h-4 text-muted-foreground" />
-                  {channel.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select 
+            value={localSettings.welcome_channel_id || 'none'} 
+            onValueChange={(v) => updateLocalSetting('welcome_channel_id', v === 'none' ? '' : v)}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Sélectionner un canal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Aucun</SelectItem>
+              {textChannels.map(channel => (
+                <SelectItem key={channel.id} value={channel.id}>
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-muted-foreground" />
+                    {channel.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

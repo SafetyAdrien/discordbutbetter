@@ -1,25 +1,25 @@
-import { useState, useRef } from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import * as Portal from '@radix-ui/react-portal';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
-import { Settings, Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy } from 'lucide-react';
-import { CustomStatusModal } from './CustomStatusModal';
+import { useState, useRef } from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import * as Portal from "@radix-ui/react-portal";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Settings, Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy } from "lucide-react";
+import { CustomStatusModal } from "./CustomStatusModal";
 
 const statusColors = {
-  online: 'bg-[hsl(var(--online))]',
-  idle: 'bg-[hsl(var(--idle))]',
-  dnd: 'bg-[hsl(var(--dnd))]',
-  offline: 'bg-[hsl(var(--offline))]'
+  online: "bg-[hsl(var(--online))]",
+  idle: "bg-[hsl(var(--idle))]",
+  dnd: "bg-[hsl(var(--dnd))]",
+  offline: "bg-[hsl(var(--offline))]",
 };
 
 const statusLabels = {
-  online: 'En ligne',
-  idle: 'Inactif',
-  dnd: 'Ne pas déranger',
-  offline: 'Hors ligne'
+  online: "En ligne",
+  idle: "Inactif",
+  dnd: "Ne pas déranger",
+  offline: "Hors ligne",
 };
 
 const activityIcons: Record<string, React.ElementType> = {
@@ -30,10 +30,10 @@ const activityIcons: Record<string, React.ElementType> = {
 };
 
 const activityLabels: Record<string, string> = {
-  playing: 'Joue à',
-  listening: 'Écoute',
-  watching: 'Regarde',
-  competing: 'En compétition sur',
+  playing: "Joue à",
+  listening: "Écoute",
+  watching: "Regarde",
+  competing: "En compétition sur",
 };
 
 interface UserProfileCardProps {
@@ -49,10 +49,12 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   const statusButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
-  const currentStatus = profile?.status || 'offline';
+  const currentStatus = profile?.status || "offline";
 
   // Get activity icon if present
-  const ActivityIcon = profile?.activity_type ? activityIcons[profile.activity_type as keyof typeof activityIcons] : null;
+  const ActivityIcon = profile?.activity_type
+    ? activityIcons[profile.activity_type as keyof typeof activityIcons]
+    : null;
 
   // Display text: activity > custom status > status label
   const getDisplayText = () => {
@@ -60,7 +62,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
       return (
         <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
           <ActivityIcon className="w-3 h-3 text-primary flex-shrink-0" />
-          <span className="truncate">{activityLabels[profile.activity_type as keyof typeof activityLabels]} {profile.activity_text}</span>
+          <span className="truncate">
+            {activityLabels[profile.activity_type as keyof typeof activityLabels]} {profile.activity_text}
+          </span>
         </span>
       );
     }
@@ -71,7 +75,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
     if (statusButtonRef.current) {
       const rect = statusButtonRef.current.getBoundingClientRect();
       const menuHeight = 160;
-      
+
       setMenuPosition({
         top: Math.max(10, rect.top - menuHeight + rect.height + 50),
         left: rect.right + 4,
@@ -80,7 +84,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
     setShowStatusMenu(true);
   };
 
-  const handleStatusChange = (status: 'online' | 'idle' | 'dnd' | 'offline') => {
+  const handleStatusChange = (status: "online" | "idle" | "dnd" | "offline") => {
     updateStatus(status);
     setShowStatusMenu(false);
   };
@@ -91,27 +95,29 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
             <div className="relative">
-              <Avatar className={cn(
-                "w-8 h-8 transition-all",
-                profile?.id && speakingUsers?.has(profile.id) 
-                  ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" 
-                  : "ring-2 ring-primary/30"
-              )}>
+              <Avatar
+                className={cn(
+                  "w-8 h-8 transition-all",
+                  profile?.id && speakingUsers?.has(profile.id)
+                    ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring"
+                    : "ring-2 ring-primary/30",
+                )}
+              >
                 <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                  {profile?.display_name?.charAt(0).toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
-              <div className={cn(
-                'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background',
-                statusColors[currentStatus]
-              )} />
+              <div
+                className={cn(
+                  "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background",
+                  statusColors[currentStatus],
+                )}
+              />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium truncate">{profile?.display_name || 'Chargement...'}</p>
-              <div className="text-xs text-muted-foreground truncate">
-                {getDisplayText()}
-              </div>
+              <p className="text-sm font-medium truncate">{profile?.display_name || "Chargement..."}</p>
+              <div className="text-xs text-muted-foreground truncate">{getDisplayText()}</div>
             </div>
           </button>
         </PopoverTrigger>
@@ -119,27 +125,25 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           {/* Profile Header with Banner */}
           <div className="relative">
             {profile?.banner_url ? (
-              <img 
-                src={profile.banner_url} 
-                alt="Banner" 
-                className="h-16 w-full object-cover" 
-              />
+              <img src={profile.banner_url} alt="Banner" className="h-16 w-full object-cover" />
             ) : (
               <div className="h-16 bg-gradient-to-r from-primary to-primary/50" />
             )}
-            
+
             {/* Avatar overlapping banner */}
             <div className="absolute -bottom-6 left-3">
               <Avatar className="w-14 h-14 border-4 border-card">
                 <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary/20 text-primary text-lg">
-                  {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                  {profile?.display_name?.charAt(0).toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
-              <div className={cn(
-                'absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-card',
-                statusColors[currentStatus]
-              )} />
+              <div
+                className={cn(
+                  "absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-card",
+                  statusColors[currentStatus],
+                )}
+              />
             </div>
           </div>
 
@@ -147,33 +151,25 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           <div className="pt-8 px-3 pb-3">
             <div className="mb-2">
               <p className="font-semibold text-foreground">{profile?.display_name}</p>
-              <p className="text-xs text-muted-foreground">@{profile?.username?.toLowerCase()}</p>
+              <p className="text-xs text-muted-foreground">{profile?.username?.toLowerCase()}</p>
             </div>
 
             {/* Edit Profile Button */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full mb-3"
-              onClick={onOpenProfile}
-            >
+            <Button variant="outline" size="sm" className="w-full mb-3" onClick={onOpenProfile}>
               <Pencil className="w-3.5 h-3.5 mr-2" />
               Modifier profil
             </Button>
 
             <div className="border-t border-border pt-2 space-y-0.5">
               {/* Status Selector with Portal */}
-              <div
-                className="relative"
-                onMouseLeave={() => setShowStatusMenu(false)}
-              >
+              <div className="relative" onMouseLeave={() => setShowStatusMenu(false)}>
                 <button
                   ref={statusButtonRef}
                   onMouseEnter={handleStatusHover}
                   className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
                 >
                   <div className="flex items-center gap-2">
-                    <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[currentStatus])} />
+                    <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[currentStatus])} />
                     <span>{statusLabels[currentStatus]}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -182,7 +178,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 {/* Status Menu via Portal */}
                 {showStatusMenu && (
                   <Portal.Root>
-                    <div 
+                    <div
                       className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-right"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
                       onMouseEnter={() => setShowStatusMenu(true)}
@@ -195,10 +191,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                           onClick={() => handleStatusChange(status)}
                           className={cn(
                             "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                            currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted"
+                            currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted",
                           )}
                         >
-                          <div className={cn('w-2.5 h-2.5 rounded-full', statusColors[status])} />
+                          <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[status])} />
                           <span>{statusLabels[status]}</span>
                         </button>
                       ))}
@@ -228,19 +224,13 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           </div>
         </PopoverContent>
       </Popover>
-      
-      <button 
-        onClick={onOpenSettings} 
-        className="p-1.5 hover:bg-muted rounded-md transition-colors"
-      >
+
+      <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
         <Settings className="w-4 h-4 text-muted-foreground" />
       </button>
 
       {/* Custom Status Modal */}
-      <CustomStatusModal 
-        open={showCustomStatusModal} 
-        onOpenChange={setShowCustomStatusModal} 
-      />
+      <CustomStatusModal open={showCustomStatusModal} onOpenChange={setShowCustomStatusModal} />
     </div>
   );
 }

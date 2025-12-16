@@ -588,14 +588,24 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         <Separator className="mt-3" />
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
           {groupedMembers.map((group, index) => (
-            <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-4">
+          <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-4">
               <h3 className="px-2 py-1 text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 text-muted-foreground">
-                {group.role?.icon_url &&
-                  (group.role.icon_url.startsWith("http") ? (
-                    <img src={group.role.icon_url} alt="" className="w-3 h-3 object-contain" />
-                  ) : (
-                    <span className="text-xs">{group.role.icon_url}</span>
-                  ))}
+                {group.role?.icon_url && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-pointer hover:scale-110 transition-transform">
+                        {group.role.icon_url.startsWith("http") ? (
+                          <img src={group.role.icon_url} alt="" className="w-3 h-3 object-contain" />
+                        ) : (
+                          <span className="text-xs">{group.role.icon_url}</span>
+                        )}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="bg-[#111214] border-none px-2 py-1">
+                      <p className="text-white text-xs font-medium">{group.role.name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 <span className="text-xs font-semibold text-muted-foreground capitalize tracking-wide">
                   {group.isOffline ? "Hors ligne" : group.role?.name || "En ligne"}
                 </span>

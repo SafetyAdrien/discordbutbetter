@@ -132,7 +132,7 @@ export function AccountSettings() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-lg">{profile?.username}</p>
-              <p className="text-sm text-muted-foreground">@{profile?.username}</p>
+              <p className="text-sm text-muted-foreground">{profile?.username}</p>
             </div>
           </div>
 

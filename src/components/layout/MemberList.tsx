@@ -593,7 +593,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 {group.role?.icon_url && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="cursor-pointer hover:scale-110 transition-transform">
+                      <span className="cursor-default">
                         {group.role.icon_url.startsWith("http") ? (
                           <img src={group.role.icon_url} alt="" className="w-4 h-4 object-contain" />
                         ) : (

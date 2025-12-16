@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AuditLog {
@@ -40,10 +41,12 @@ export const ACTION_TYPES = [
 export type ActionType = typeof ACTION_TYPES[number]['value'];
 
 export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[] }) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['audit-logs', serverId, filters],
     queryFn: async () => {
-      let query = supabase
+      let q = supabase
         .from('audit_logs')
         .select(`
           *,
@@ -55,14 +58,42 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
         .limit(100);
 
       if (filters?.actionTypes && filters.actionTypes.length > 0) {
-        query = query.in('action_type', filters.actionTypes);
+        q = q.in('action_type', filters.actionTypes);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await q;
 
       if (error) throw error;
       return data as AuditLog[];
     },
     enabled: !!serverId,
   });
+
+  // Real-time subscription for new audit logs
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`audit-logs:${serverId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'audit_logs',
+          filter: `server_id=eq.${serverId}`,
+        },
+        () => {
+          // Refetch to get the full log data with actor/target profiles
+          queryClient.invalidateQueries({ queryKey: ['audit-logs', serverId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
+
+  return query;
 }

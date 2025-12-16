@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle, LogOut } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -36,6 +36,8 @@ import { Thread } from '@/types/thread';
 import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 import { useCanAccessServerSettings, usePermissions } from '@/hooks/usePermissions';
+import { useLeaveServer } from '@/hooks/useLeaveServer';
+import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -504,6 +506,9 @@ export function ChannelList({
   const reorderChannels = useReorderChannels();
   const deleteChannel = useDeleteChannel();
   const deleteCategory = useDeleteCategory();
+  const leaveServer = useLeaveServer();
+  const navigate = useNavigate();
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const {
     data: serverEmojis = []
   } = useServerEmojis(server.id);
@@ -517,6 +522,9 @@ export function ChannelList({
   // Check if user can manage channels
   const { hasPermission, isGod } = usePermissions(server.id);
   const canManageChannels = isGod || hasPermission('manage_channels') || hasPermission('administrator');
+  
+  // Check if user is the owner (cannot leave, must delete)
+  const isOwner = profile?.id === server.ownerId;
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {
@@ -597,6 +605,14 @@ export function ChannelList({
   };
   const handleSignOut = async () => {
     await signOut();
+  };
+  const handleLeaveServer = () => {
+    leaveServer.mutate(server.id, {
+      onSuccess: () => {
+        setShowLeaveDialog(false);
+        navigate('/channels/@me');
+      },
+    });
   };
   const handleCopyLink = (channelId: string) => {
     const link = `${window.location.origin}/channels/${server.id}/${channelId}`;
@@ -921,7 +937,31 @@ export function ChannelList({
             </button>
           </PopoverTrigger>
           <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden">
-            {server.bannerUrl ? <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" /> : <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />}
+            {/* Banner with Leave Button */}
+            <div className="relative">
+              {server.bannerUrl ? (
+                <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" />
+              ) : (
+                <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
+              )}
+              
+              {/* Leave Server Button - Only visible for non-owners */}
+              {!isOwner && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowLeaveDialog(true)}
+                      className="absolute top-2 right-2 p-1.5 rounded-md bg-background/20 hover:bg-destructive/90 text-white transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Quitter le serveur</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
             
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -1091,5 +1131,26 @@ export function ChannelList({
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
 
       {inviteChannelId && <CreateInviteModal serverId={server.id} channelName={getChannelName(inviteChannelId)} onClose={() => setInviteChannelId(null)} />}
+
+      {/* Leave Server Confirmation Dialog */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quitter le serveur</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir quitter <strong>{server.name}</strong> ? Vous pourrez rejoindre à nouveau avec une invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveServer}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Quitter le serveur
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }

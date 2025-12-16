@@ -601,7 +601,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                         )}
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="bg-[#111214] border-none px-2 py-1">
+                    <TooltipContent 
+                      side="top" 
+                      className="bg-[#111214] border-none px-2 py-1 relative after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-[#111214]"
+                    >
                       <p className="text-white text-xs font-medium">{group.role.name}</p>
                     </TooltipContent>
                   </Tooltip>

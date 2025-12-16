@@ -11,15 +11,12 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
-
 type DMView = 'friends' | 'inbox' | 'conversation';
-
 interface DMPageProps {
   activeDMId: string | null;
   onConversationSelect: (conversationId: string) => void;
   onShowFriends: () => void;
 }
-
 export function DMPage({
   activeDMId,
   onConversationSelect,
@@ -35,82 +32,50 @@ export function DMPage({
     toggleDeafen,
     isConnected
   } = useVoiceState();
-
   const getCurrentView = (): DMView => {
     if (showInbox) return 'inbox';
     if (activeDMId) return 'conversation';
     return 'friends';
   };
-
   const currentView = getCurrentView();
-
   const handleOpenDM = (conversationId: string) => {
     setShowInbox(false);
     onConversationSelect(conversationId);
   };
-
   const handleShowInbox = () => {
     setShowInbox(true);
   };
-
   const handleShowFriends = () => {
     setShowInbox(false);
     onShowFriends();
   };
-
-  return (
-    <div className="flex-1 flex">
+  return <div className="flex-1 flex">
       {/* Left Sidebar - DM List */}
       <div className="w-60 bg-card flex flex-col border-r border-border">
         {/* Header */}
         <div className="h-12 px-4 flex items-center border-b border-border">
           <div className="relative w-full">
-            <input 
-              type="text" 
-              placeholder="Trouver ou commencer une conversation" 
-              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50" 
-            />
+            <input type="text" placeholder="Trouver ou commencer une conversation" className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
         </div>
 
         {/* Navigation */}
         <div className="p-2 space-y-1">
           {/* Inbox Button */}
-          <button 
-            onClick={handleShowInbox} 
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
-              currentView === 'inbox' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            )}
-          >
+          <button onClick={handleShowInbox} className={cn('w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', currentView === 'inbox' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
             <div className="relative">
               <Inbox className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-                >
+              {unreadCount > 0 && <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center">
                   {unreadCount > 99 ? '99+' : unreadCount}
-                </Badge>
-              )}
+                </Badge>}
             </div>
-            <span className="font-medium">Boîte de réception</span>
+            <span className="font-normal">Boîte de réception</span>
           </button>
 
           {/* Friends Button */}
-          <button 
-            onClick={handleShowFriends} 
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
-              currentView === 'friends' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            )}
-          >
+          <button onClick={handleShowFriends} className={cn('w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', currentView === 'friends' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
             <Users className="w-5 h-5" />
-            <span className="font-medium">Amis</span>
+            <span className="font-normal">Amis</span>
           </button>
         </div>
 
@@ -127,38 +92,16 @@ export function DMPage({
         </div>
 
         {/* Voice Controls */}
-        {isConnected && voiceState.channelName && (
-          <VoiceControls 
-            channelName={voiceState.channelName} 
-            serverName={voiceState.serverName} 
-            isMuted={voiceState.isMuted} 
-            isDeafened={voiceState.isDeafened} 
-            onToggleMute={() => toggleMute.mutate()} 
-            onToggleDeafen={() => toggleDeafen.mutate()} 
-            onDisconnect={() => leaveChannel.mutate()} 
-          />
-        )}
+        {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute.mutate()} onToggleDeafen={() => toggleDeafen.mutate()} onDisconnect={() => leaveChannel.mutate()} />}
 
         {/* User Panel */}
-        <UserProfileCard 
-          onOpenSettings={() => setShowAccountSettings(true)} 
-          onOpenProfile={() => setShowAccountSettings(true)} 
-        />
+        <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} />
       </div>
 
       {/* Main Content */}
-      {currentView === 'inbox' ? (
-        <InboxPanel />
-      ) : currentView === 'friends' ? (
-        <FriendsPanel onOpenDM={handleOpenDM} />
-      ) : activeDMId ? (
-        <DMConversation conversationId={activeDMId} onBack={handleShowFriends} />
-      ) : null}
+      {currentView === 'inbox' ? <InboxPanel /> : currentView === 'friends' ? <FriendsPanel onOpenDM={handleOpenDM} /> : activeDMId ? <DMConversation conversationId={activeDMId} onBack={handleShowFriends} /> : null}
 
       {/* Modals */}
-      {showAccountSettings && (
-        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
-      )}
-    </div>
-  );
+      {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
+    </div>;
 }

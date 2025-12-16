@@ -32,7 +32,12 @@ export function CreateCategoryModal({ serverId, onClose }: CreateCategoryModalPr
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+      }}>
         <DialogHeader>
           <DialogTitle>Créer une catégorie</DialogTitle>
         </DialogHeader>

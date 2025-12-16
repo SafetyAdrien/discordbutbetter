@@ -15,6 +15,9 @@ export interface MemberWithProfile {
     banner_url: string | null;
     status: 'online' | 'idle' | 'dnd' | 'offline' | null;
     custom_status: string | null;
+    activity_type: string | null;
+    activity_text: string | null;
+    pronouns: string | null;
   };
   roles: {
     id: string;
@@ -47,7 +50,10 @@ export function useMembers(serverId: string | null) {
             avatar_url,
             banner_url,
             status,
-            custom_status
+            custom_status,
+            activity_type,
+            activity_text,
+            pronouns
           ),
           member_roles (
             role:roles (
@@ -108,6 +114,9 @@ export function useMembers(serverId: string | null) {
                         display_name: updated.display_name,
                         avatar_url: updated.avatar_url,
                         banner_url: updated.banner_url,
+                        activity_type: updated.activity_type,
+                        activity_text: updated.activity_text,
+                        pronouns: updated.pronouns,
                       },
                     }
                   : member

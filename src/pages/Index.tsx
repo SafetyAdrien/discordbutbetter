@@ -254,7 +254,7 @@ const Index = () => {
     })),
   } : null;
 
-  const memberListData: (User & { roles?: MemberWithProfile['roles'] })[] = members.map(m => ({
+  const memberListData: (User & { roles?: MemberWithProfile['roles']; activity_type?: string | null; activity_text?: string | null })[] = members.map(m => ({
     id: m.user.id,
     username: m.user.username,
     displayName: m.nickname || m.user.display_name,
@@ -262,6 +262,8 @@ const Index = () => {
     banner: m.user.banner_url || undefined,
     status: m.user.status || 'offline',
     customStatus: m.user.custom_status || undefined,
+    activity_type: m.user.activity_type,
+    activity_text: m.user.activity_text,
     roles: m.roles,
   }));
 

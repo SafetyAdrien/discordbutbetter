@@ -41,16 +41,17 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
-
 import React from 'react';
 
 // Drop Indicator Component - Discord style blue line
-const DropIndicator = React.forwardRef<HTMLDivElement, { isVisible: boolean }>(
-  ({ isVisible }, ref) => {
-    if (!isVisible) return null;
-    return <div ref={ref} className="drop-indicator my-0.5" aria-hidden="true" />;
-  }
-);
+const DropIndicator = React.forwardRef<HTMLDivElement, {
+  isVisible: boolean;
+}>(({
+  isVisible
+}, ref) => {
+  if (!isVisible) return null;
+  return <div ref={ref} className="drop-indicator my-0.5" aria-hidden="true" />;
+});
 DropIndicator.displayName = 'DropIndicator';
 interface Channel {
   id: string;
@@ -157,7 +158,7 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? undefined : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
+    transition: isDragging ? undefined : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)'
   };
   return <>
     <DropIndicator isVisible={showDropBefore} />
@@ -169,7 +170,7 @@ function SortableCategory({
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
-            }} className="flex items-center gap-px flex-1">
+            }} className="flex items-center gap-px flex-1 font-extralight">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
               <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
@@ -290,7 +291,7 @@ function SortableChannel({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? undefined : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
+    transition: isDragging ? undefined : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)'
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
@@ -974,9 +975,9 @@ export function ChannelList({
 
               {/* Drag Overlay - Ghost element following cursor */}
               <DragOverlay dropAnimation={{
-                duration: 200,
-                easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
-              }}>
+              duration: 200,
+              easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
+            }}>
                 {activeId && <div className="drag-overlay-item px-3 py-1.5 rounded-md flex items-center gap-2">
                     {activeId.startsWith('category-') && <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
                         {server.categories.find(c => `category-${c.id}` === activeId)?.name}

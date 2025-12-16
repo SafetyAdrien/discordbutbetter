@@ -37,20 +37,19 @@ import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
+
 import React from 'react';
 
-// Drop Indicator Component - Discord style blue line
-const DropIndicator = React.forwardRef<HTMLDivElement, {
-  isVisible: boolean;
-}>(({
-  isVisible
-}, ref) => {
+// Drop Indicator Component with forwardRef
+const DropIndicator = React.forwardRef<
+  HTMLDivElement,
+  { isVisible: boolean; position?: 'before' | 'after' }
+>(({ isVisible, position = 'after' }, ref) => {
   if (!isVisible) return null;
-  return <div ref={ref} className="drop-indicator my-0.5" aria-hidden="true" />;
+  return <div ref={ref} className="drop-indicator mx-2 my-0.5" />;
 });
 DropIndicator.displayName = 'DropIndicator';
 interface Channel {
@@ -128,8 +127,8 @@ function SortableCategory({
   onEdit,
   onCreateChannel,
   onDelete,
-  showDropBefore = false,
-  showDropAfter = false
+  showDropIndicator = false,
+  dropPosition = 'after'
 }: {
   category: Category;
   children: React.ReactNode;
@@ -138,8 +137,8 @@ function SortableCategory({
   onEdit: () => void;
   onCreateChannel: () => void;
   onDelete: () => void;
-  showDropBefore?: boolean;
-  showDropAfter?: boolean;
+  showDropIndicator?: boolean;
+  dropPosition?: 'before' | 'after';
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -158,21 +157,22 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? undefined : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)'
+    transition: transition || 'transform 200ms ease, opacity 200ms ease',
+    opacity: isDragging ? 0.4 : 1
   };
   return <>
-    <DropIndicator isVisible={showDropBefore} />
-    {/* En-tête de catégorie (zone draggable) */}
-    <div ref={setNodeRef} style={style} className={cn("channel-transition", isDragging && "sortable-ghost")}>
+    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
+    {/* En-tête de catégorie (zone draggable uniquement) */}
+    <div ref={setNodeRef} style={style} className={cn(isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex items-center w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default gap-[4px] px-0 py-0">
+          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
-            }} className="flex items-center flex-1 font-extralight py-0 my-0 gap-0">
+            }} className="flex items-center gap-px flex-1">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-[14px] text-[#9b9ca3] font-normal my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
+              <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();
@@ -198,9 +198,9 @@ function SortableCategory({
         </ContextMenuContent>
       </ContextMenu>
     </div>
-    <DropIndicator isVisible={showDropAfter} />
+    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
     
-    {/* Salons enfants */}
+    {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
     {!isCollapsed && <div className="mb-2">{children}</div>}
 
     {/* Delete Category Confirmation Dialog */}
@@ -249,8 +249,8 @@ function SortableChannel({
   onOpenSettings,
   onCreateInvite,
   onDelete,
-  showDropBefore = false,
-  showDropAfter = false,
+  showDropIndicator = false,
+  dropPosition = 'after',
   threads = [],
   activeThreadId,
   onThreadSelect,
@@ -267,8 +267,8 @@ function SortableChannel({
   onOpenSettings: () => void;
   onCreateInvite: () => void;
   onDelete: () => void;
-  showDropBefore?: boolean;
-  showDropAfter?: boolean;
+  showDropIndicator?: boolean;
+  dropPosition?: 'before' | 'after';
   threads?: ThreadWithUnread[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
@@ -291,7 +291,8 @@ function SortableChannel({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? undefined : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)'
+    transition: isDragging ? 'opacity 200ms ease' : 'transform 250ms cubic-bezier(0.25, 1, 0.5, 1), opacity 200ms ease, background-color 200ms ease',
+    opacity: isDragging ? 0.4 : 1
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
@@ -299,8 +300,8 @@ function SortableChannel({
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
   return <>
-      <DropIndicator isVisible={showDropBefore} />
-      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("channel-transition", isDragging && "sortable-ghost")}>
+      {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("hover:cursor-grab channel-transition", isDragging && "sortable-ghost")}>
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
@@ -389,7 +390,7 @@ function SortableChannel({
               </button>
             </div>)}
         </div>}
-      <DropIndicator isVisible={showDropAfter} />
+      {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -934,7 +935,7 @@ export function ChannelList({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
-            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} modifiers={[restrictToVerticalAxis, restrictToWindowEdges]} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {orphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
@@ -948,7 +949,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropBefore={overId === `channel-${channel.id}` && dropPosition === 'before'} showDropAfter={overId === `channel-${channel.id}` && dropPosition === 'after'} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                   </SortableContext>
                 </div>}
 
@@ -963,32 +964,29 @@ export function ChannelList({
                       </div> : <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                   id: category.id,
                   name: category.name
-                })} onDelete={() => handleDeleteCategory(category.id)} showDropBefore={overId === `category-${category.id}` && dropPosition === 'before'} showDropAfter={overId === `category-${category.id}` && dropPosition === 'after'}>
+                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropBefore={overId === `channel-${channel.id}` && dropPosition === 'before'} showDropAfter={overId === `channel-${channel.id}` && dropPosition === 'after'} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                           </SortableContext>
                         </div>
                       </SortableCategory>}
                   </div>)}
               </SortableContext>
 
-              {/* Drag Overlay - Ghost element following cursor */}
-              <DragOverlay dropAnimation={{
-              duration: 200,
-              easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
-            }}>
-                {activeId && <div className="drag-overlay-item px-3 py-1.5 rounded-md flex items-center gap-2">
-                    {activeId.startsWith('category-') && <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+              {/* Drag Overlay for visual feedback */}
+              <DragOverlay>
+                {activeId && <div className="bg-card border border-border rounded-md px-3 py-2 drag-overlay-item">
+                    {activeId.startsWith('category-') && <span className="text-sm font-semibold text-foreground">
                         {server.categories.find(c => `category-${c.id}` === activeId)?.name}
                       </span>}
                     {activeId.startsWith('channel-') && (() => {
                   const channel = findChannelById(activeId.replace('channel-', ''));
                   const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
-                  return <>
+                  return <div className="flex items-center gap-2 text-sm text-foreground">
                           <Icon className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">{channel?.name || 'Channel'}</span>
-                        </>;
+                          <span>{channel?.name || 'Channel'}</span>
+                        </div>;
                 })()}
                   </div>}
               </DragOverlay>

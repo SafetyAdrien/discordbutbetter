@@ -434,57 +434,92 @@
     font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
   }
 
-  /* Drag and drop animations */
-  .dragging-item {
-    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
-    transform: scale(1.02);
-    z-index: 1000;
-  }
+  /* ============================================= */
+  /* Discord-style Drag and Drop System           */
+  /* ============================================= */
 
+  /* Ghost placeholder - the original item stays visible but faded */
   .sortable-ghost {
-    opacity: 0.4;
+    opacity: 0.35;
+    background: hsl(var(--muted) / 0.5) !important;
   }
 
-  /* Drop indicator line - Discord style */
+  /* Drop indicator - blue horizontal line between elements */
   .drop-indicator {
-    height: 3.5px;
-    background-color: #5865f2;
-    border-radius: 1px;
+    position: relative;
+    height: 2px;
+    margin: 0 8px;
+    background: linear-gradient(90deg, transparent 0%, #5865f2 10%, #5865f2 90%, transparent 100%);
+    border-radius: 2px;
+    pointer-events: none;
   }
 
-  /* Smooth channel transition animation */
-  .channel-transition {
-    transition:
-      transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      opacity 200ms ease,
-      background-color 200ms ease;
+  .drop-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: #5865f2;
+    border-radius: 50%;
   }
 
-  /* Animation when channel enters a new category */
-  @keyframes slide-into-place {
-    from {
-      opacity: 0.5;
-      transform: translateX(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .animate-slide-into-place {
-    animation: slide-into-place 200ms ease-out;
-  }
-
+  /* Drag overlay - semi-transparent ghost following cursor */
   .drag-overlay-item {
-    box-shadow: 0 12px 28px hsl(0 0% 0% / 0.5);
-    backdrop-filter: blur(4px);
+    opacity: 0.95;
+    background: hsl(var(--card));
+    border: 1px solid #5865f2;
+    border-radius: 6px;
+    box-shadow: 
+      0 8px 32px hsl(0 0% 0% / 0.4),
+      0 0 0 1px hsl(0 0% 100% / 0.05),
+      0 0 16px #5865f2 / 0.2;
+    transform: scale(1.02);
+    cursor: grabbing;
+  }
+
+  /* Smooth channel/role transition animation */
+  .channel-transition,
+  .role-transition {
+    transition:
+      transform 200ms cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 150ms ease,
+      background-color 150ms ease;
+  }
+
+  /* Animation when item settles into new position */
+  @keyframes settle-into-place {
+    0% {
+      transform: scale(1.02);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-settle {
+    animation: settle-into-place 200ms ease-out;
   }
 
   /* Remove focus outline on drag-and-drop elements */
   [data-dnd-kit-draggable]:focus,
   [data-dnd-kit-draggable]:focus-visible {
     outline: none;
+  }
+
+  /* Draggable item hover state */
+  [data-dnd-kit-draggable] {
+    touch-action: none;
+  }
+
+  [data-dnd-kit-draggable]:not(.sortable-ghost):hover {
+    cursor: grab;
+  }
+
+  [data-dnd-kit-draggable]:active {
+    cursor: grabbing;
   }
 
   /* Send button animations */

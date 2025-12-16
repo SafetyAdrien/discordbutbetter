@@ -78,7 +78,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
   const uploadToStorage = async (file: File, bucket: string): Promise<string> => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `temp/${Date.now()}.${fileExt}`;
+    const fileName = `${crypto.randomUUID()}/${Date.now()}.${fileExt}`;
     
     const { error } = await supabase.storage
       .from(bucket)

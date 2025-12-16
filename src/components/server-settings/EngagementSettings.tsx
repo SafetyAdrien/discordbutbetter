@@ -206,25 +206,25 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         
         <div className="space-y-2">
           <Label className="text-sm">Canal de destination</Label>
-          <Select 
-            value={localSettings.system_channel_id || ''} 
-            onValueChange={(v) => updateLocalSetting('system_channel_id', v)}
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Sélectionner un canal" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Aucun</SelectItem>
-              {textChannels.map(channel => (
-                <SelectItem key={channel.id} value={channel.id}>
-                  <div className="flex items-center gap-2">
-                    <Hash className="w-4 h-4 text-muted-foreground" />
-                    {channel.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Select 
+          value={localSettings.system_channel_id || 'none'} 
+          onValueChange={(v) => updateLocalSetting('system_channel_id', v === 'none' ? '' : v)}
+        >
+          <SelectTrigger className="bg-background">
+            <SelectValue placeholder="Sélectionner un canal" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Aucun</SelectItem>
+            {textChannels.map(channel => (
+              <SelectItem key={channel.id} value={channel.id}>
+                <div className="flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-muted-foreground" />
+                  {channel.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
           <p className="text-xs text-muted-foreground">
             Ce canal recevra les messages de bienvenue et autres messages système
           </p>
@@ -283,25 +283,25 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
 
         <div className="space-y-2">
           <Label className="text-sm">Canal de bienvenue</Label>
-          <Select 
-            value={localSettings.welcome_channel_id || ''} 
-            onValueChange={(v) => updateLocalSetting('welcome_channel_id', v)}
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Sélectionner un canal" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Aucun</SelectItem>
-              {textChannels.map(channel => (
-                <SelectItem key={channel.id} value={channel.id}>
-                  <div className="flex items-center gap-2">
-                    <Hash className="w-4 h-4 text-muted-foreground" />
-                    {channel.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Select 
+          value={localSettings.welcome_channel_id || 'none'} 
+          onValueChange={(v) => updateLocalSetting('welcome_channel_id', v === 'none' ? '' : v)}
+        >
+          <SelectTrigger className="bg-background">
+            <SelectValue placeholder="Sélectionner un canal" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Aucun</SelectItem>
+            {textChannels.map(channel => (
+              <SelectItem key={channel.id} value={channel.id}>
+                <div className="flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-muted-foreground" />
+                  {channel.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         </div>
 
         <div className="space-y-2">

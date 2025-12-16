@@ -241,14 +241,14 @@ export function ProfileSettingsTab() {
           <div className="space-y-2">
             <Label htmlFor="featured_server">Serveur mis en avant</Label>
             <Select
-              value={formData.featured_server_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, featured_server_id: value }))}
+              value={formData.featured_server_id || 'none'}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, featured_server_id: value === 'none' ? '' : value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Aucun serveur" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun</SelectItem>
+                <SelectItem value="none">Aucun</SelectItem>
                 {servers.map((server) => (
                   <SelectItem key={server.id} value={server.id}>
                     {server.name}

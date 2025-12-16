@@ -13,7 +13,197 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
-import { useState, useEffect, useRef } from 'react';
+import { useServerOrder } from '@/hooks/useServerOrder';
+import { useState, useEffect, useRef, useMemo } from 'react';
+
+// DnD Kit imports
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+
+// Discord-style Drop Indicator for servers
+const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
+  if (!isVisible) return null;
+  return (
+    <div 
+      className={cn(
+        "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
+        "bg-[#5865f2] rounded-full",
+        position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
+      )}
+    />
+  );
+};
+
+// Sortable Server Icon Component
+function SortableServerIcon({
+  server,
+  isActive,
+  unreadCount,
+  isShaking,
+  showDropIndicator,
+  dropPosition,
+  onClick,
+  onOpenSettings,
+  onMarkAsRead,
+  onInvite,
+  onCopyId,
+  onLeave,
+}: {
+  server: Server;
+  isActive: boolean;
+  unreadCount: number;
+  isShaking: boolean;
+  showDropIndicator: boolean;
+  dropPosition: 'before' | 'after';
+  onClick: () => void;
+  onOpenSettings?: () => void;
+  onMarkAsRead: () => void;
+  onInvite: () => void;
+  onCopyId: () => void;
+  onLeave: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: server.id,
+    data: { type: 'server', server },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'opacity 150ms ease' : transition,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={cn("relative", isDragging && "z-50")}
+    >
+      <ServerDropIndicator isVisible={showDropIndicator} position={dropPosition} />
+      
+      <ContextMenu>
+        <Tooltip>
+          <ContextMenuTrigger asChild>
+            <TooltipTrigger asChild>
+              <button
+                {...attributes}
+                {...listeners}
+                onClick={onClick}
+                className={cn(
+                  'server-icon relative group select-none',
+                  isActive
+                    ? 'bg-[#5865f2] text-white rounded-[16px]'
+                    : 'bg-card hover:bg-[#5865f2]/80 hover:text-white',
+                  isDragging && 'opacity-30 scale-95'
+                )}
+              >
+                {/* Active indicator */}
+                <div
+                  className={cn(
+                    'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
+                    isActive
+                      ? 'h-10'
+                      : unreadCount > 0
+                        ? 'h-2'
+                        : 'h-0 group-hover:h-5'
+                  )}
+                />
+                
+                {server.icon ? (
+                  server.icon.startsWith('http') ? (
+                    <img 
+                      src={server.icon} 
+                      alt={server.name}
+                      className="w-full h-full object-cover rounded-[inherit] pointer-events-none"
+                      draggable={false}
+                    />
+                  ) : (
+                    <span className="text-xl pointer-events-none">{server.icon}</span>
+                  )
+                ) : (
+                  <span className="text-sm font-semibold pointer-events-none">
+                    {server.name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+
+                {/* Unread notification badge */}
+                {unreadCount > 0 && (
+                  <div className={cn(
+                    "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                    isShaking && "animate-badge-shake"
+                  )}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </div>
+                )}
+              </button>
+            </TooltipTrigger>
+          </ContextMenuTrigger>
+          <TooltipContent side="right">
+            <p>{server.name}</p>
+          </TooltipContent>
+        </Tooltip>
+        <ContextMenuContent className="w-48">
+          <ContextMenuItem onClick={onMarkAsRead}>
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Marquer comme lu
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onInvite}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Inviter des personnes
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={onOpenSettings}>
+            <Settings className="w-4 h-4 mr-2" />
+            Paramètres du serveur
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onCopyId}>
+            <Hash className="w-4 h-4 mr-2" />
+            Copier l'ID
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem 
+            onClick={onLeave}
+            className="text-destructive focus:text-destructive"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Quitter le serveur
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    </div>
+  );
+}
+
+// Server Drag Overlay
+function ServerDragOverlay({ server }: { server: Server }) {
+  return (
+    <div className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
+      {server.icon ? (
+        server.icon.startsWith('http') ? (
+          <img 
+            src={server.icon} 
+            alt={server.name}
+            className="w-full h-full object-cover rounded-[inherit]"
+          />
+        ) : (
+          <span className="text-xl">{server.icon}</span>
+        )
+      ) : (
+        <span className="text-sm font-semibold">
+          {server.name.slice(0, 2).toUpperCase()}
+        </span>
+      )}
+    </div>
+  );
+}
 
 interface ServerListProps {
   servers: Server[];
@@ -34,12 +224,29 @@ export function ServerList({
 }: ServerListProps) {
   const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
+  const { sortServers, reorderServers } = useServerOrder();
+
+  // Sort servers by user's custom order
+  const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);
+  const serverIds = useMemo(() => sortedServers.map(s => s.id), [sortedServers]);
 
   // Calculate total unread DMs
   const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((acc, count) => acc + count, 0);
-
-  // Check if there are any unread DMs
   const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
+
+  // DnD state
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  
+  const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
 
   // Track previous counts for shake animation
   const prevUnreadCounts = useRef<Record<string, number>>({});
@@ -48,7 +255,6 @@ export function ServerList({
   const [shakingDMs, setShakingDMs] = useState(false);
 
   useEffect(() => {
-    // Detect servers where count increased
     const newShaking = new Set<string>();
     Object.entries(unreadCounts).forEach(([serverId, count]) => {
       const prevCount = prevUnreadCounts.current[serverId] || 0;
@@ -66,7 +272,6 @@ export function ServerList({
   }, [unreadCounts]);
 
   useEffect(() => {
-    // Detect DM count increase
     if (totalUnreadDMs > prevDMCount.current) {
       setShakingDMs(true);
       setTimeout(() => setShakingDMs(false), 500);
@@ -89,13 +294,71 @@ export function ServerList({
   };
 
   const handleLeaveServer = (serverId: string) => {
-    // TODO: Implement leave server
     console.log('Leave server', serverId);
   };
 
   const handleServerClick = (serverId: string) => {
     onServerSelect(serverId);
     markServerAsRead(serverId);
+  };
+
+  // DnD handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over, delta } = event;
+    if (!over || over.id === active.id) {
+      setOverId(null);
+      return;
+    }
+
+    setOverId(over.id as string);
+
+    // Calculate cursor position
+    const overRect = over.rect;
+    if (overRect) {
+      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
+      let clientY = 0;
+      if (activatorEvent) {
+        if ('clientY' in activatorEvent) {
+          clientY = activatorEvent.clientY + delta.y;
+        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
+          clientY = activatorEvent.touches[0].clientY + delta.y;
+        }
+      }
+      const middleY = overRect.top + overRect.height / 2;
+      setDropPosition(clientY < middleY ? 'before' : 'after');
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedServers.findIndex(s => s.id === active.id);
+    const overIndex = sortedServers.findIndex(s => s.id === over.id);
+
+    if (oldIndex === -1 || overIndex === -1) return;
+
+    // Calculate new index based on drop position
+    let newIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+    if (oldIndex < overIndex) newIndex--;
+    newIndex = Math.max(0, Math.min(newIndex, sortedServers.length - 1));
+
+    if (oldIndex !== newIndex) {
+      const newOrder = arrayMove(serverIds, oldIndex, newIndex);
+      reorderServers(newOrder);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setOverId(null);
   };
 
   return (
@@ -110,7 +373,6 @@ export function ServerList({
               activeServerId === null && 'bg-primary text-primary-foreground rounded-[16px]'
             )}
           >
-            {/* Active indicator */}
             <div
               className={cn(
                 'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
@@ -123,7 +385,6 @@ export function ServerList({
             />
             <MessageCircle className="w-6 h-6" />
             
-            {/* Unread DMs notification badge */}
             {totalUnreadDMs > 0 && (
               <div className={cn(
                 "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
@@ -141,96 +402,42 @@ export function ServerList({
 
       <div className="w-8 h-[2px] bg-border rounded-full my-1" />
 
-      {/* Server Icons */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
-        {servers.map((server) => (
-          <ContextMenu key={server.id}>
-            <Tooltip>
-              <ContextMenuTrigger asChild>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleServerClick(server.id)}
-                    className={cn(
-                      'server-icon relative group',
-                      activeServerId === server.id
-                        ? 'bg-[#5865f2] text-white rounded-[16px]'
-                        : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
-                    )}
-                  >
-                    {/* Active indicator */}
-                    <div
-                      className={cn(
-                        'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
-                        activeServerId === server.id
-                          ? 'h-10'
-                          : (unreadCounts[server.id] ?? 0) > 0
-                            ? 'h-2'
-                            : 'h-0 group-hover:h-5'
-                      )}
-                    />
-                    
-                    {server.icon ? (
-                      server.icon.startsWith('http') ? (
-                        <img 
-                          src={server.icon} 
-                          alt={server.name}
-                          className="w-full h-full object-cover rounded-[inherit]"
-                        />
-                      ) : (
-                        <span className="text-xl">{server.icon}</span>
-                      )
-                    ) : (
-                      <span className="text-sm font-semibold">
-                        {server.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    )}
+      {/* Server Icons with DnD */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
+          <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
+            {sortedServers.map((server) => (
+              <SortableServerIcon
+                key={server.id}
+                server={server}
+                isActive={activeServerId === server.id}
+                unreadCount={unreadCounts[server.id] ?? 0}
+                isShaking={shakingServers.has(server.id)}
+                showDropIndicator={overId === server.id && activeId !== server.id}
+                dropPosition={dropPosition}
+                onClick={() => handleServerClick(server.id)}
+                onOpenSettings={() => onOpenServerSettings?.(server.id)}
+                onMarkAsRead={() => handleMarkAsRead(server.id)}
+                onInvite={() => handleInvite(server.id)}
+                onCopyId={() => handleCopyId(server.id)}
+                onLeave={() => handleLeaveServer(server.id)}
+              />
+            ))}
+          </div>
+        </SortableContext>
 
-                    {/* Unread notification badge */}
-                    {(unreadCounts[server.id] ?? 0) > 0 && (
-                      <div className={cn(
-                        "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
-                        shakingServers.has(server.id) && "animate-badge-shake"
-                      )}>
-                        {unreadCounts[server.id] > 99 ? '99+' : unreadCounts[server.id]}
-                      </div>
-                    )}
-                  </button>
-                </TooltipTrigger>
-              </ContextMenuTrigger>
-              <TooltipContent side="right">
-                <p>{server.name}</p>
-              </TooltipContent>
-            </Tooltip>
-            <ContextMenuContent className="w-48">
-              <ContextMenuItem onClick={() => handleMarkAsRead(server.id)}>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Marquer comme lu
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleInvite(server.id)}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Inviter des personnes
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => onOpenServerSettings?.(server.id)}>
-                <Settings className="w-4 h-4 mr-2" />
-                Paramètres du serveur
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleCopyId(server.id)}>
-                <Hash className="w-4 h-4 mr-2" />
-                Copier l'ID
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem 
-                onClick={() => handleLeaveServer(server.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Quitter le serveur
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        ))}
-      </div>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activeServer && <ServerDragOverlay server={activeServer} />}
+        </DragOverlay>
+      </DndContext>
 
       <div className="w-8 h-[2px] bg-border rounded-full my-1" />
 

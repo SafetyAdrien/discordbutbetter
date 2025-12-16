@@ -21,12 +21,12 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
         <div 
           ref={ref}
           className={cn(
-            "absolute top-0 bottom-0 w-[2px] z-5 pointer-events-none",
+            "absolute top-0 bottom-0 w-[2px] z-10 pointer-events-none",
             "bg-[#5865f2]",
             "before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:-translate-y-[3px]",
-            "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+            "before:w-[1px] before:h-[1px] before:rounded-full before:bg-[#5865f2]",
             "after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:translate-y-[3px]",
-            "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+            "after:w-[1px] after:h-[1px] after:rounded-full after:bg-[#5865f2]",
             position === 'before' ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"
           )}
         />
@@ -37,13 +37,13 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
       <div 
         ref={ref}
         className={cn(
-          "absolute left-0 right-0 h-[2px] z-50 pointer-events-none",
+          "absolute left-0 right-0 h-[2px] z-10 pointer-events-none",
           "bg-[#5865f2]",
           // Circles at endpoints
           "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-          "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+          "before:w-[1px] before:h-[1px] before:rounded-full before:bg-[#5865f2]",
           "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-          "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+          "after:w-[1px] after:h-[1px] after:rounded-full after:bg-[#5865f2]",
           // Position based on 'before' or 'after'
           position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
         )}

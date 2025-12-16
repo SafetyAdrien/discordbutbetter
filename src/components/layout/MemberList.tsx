@@ -1,7 +1,7 @@
 import { forwardRef, useState, useMemo, useRef, useEffect } from 'react';
 import { User } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle } from 'lucide-react';
+import { MessageCircle, UserPlus, Hash, VolumeX, LogOut, Ban, User as UserIcon, Search, AtSign, FileText, Calendar, Pin, UserCircle, Gamepad2, Headphones, Eye, Trophy } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
@@ -24,6 +24,8 @@ interface Role {
 interface MemberWithRoles extends User {
   roles?: Role[];
   memberId?: string;
+  activity_type?: string | null;
+  activity_text?: string | null;
 }
 interface MemberListProps {
   members: MemberWithRoles[];
@@ -37,6 +39,27 @@ const statusColors: Record<string, string> = {
   idle: 'bg-[hsl(var(--idle))]',
   dnd: 'bg-[hsl(var(--dnd))]',
   offline: 'bg-[hsl(var(--offline))]'
+};
+
+const activityIcons: Record<string, React.ElementType> = {
+  playing: Gamepad2,
+  listening: Headphones,
+  watching: Eye,
+  competing: Trophy,
+};
+
+const activityLabels: Record<string, string> = {
+  playing: 'Joue à',
+  listening: 'Écoute',
+  watching: 'Regarde',
+  competing: 'En compétition sur',
+};
+
+const activityColors: Record<string, string> = {
+  playing: 'text-violet-400',
+  listening: 'text-green-400',
+  watching: 'text-red-400',
+  competing: 'text-yellow-400',
 };
 
 // Search filter prefixes
@@ -401,9 +424,21 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                       </TooltipContent>
                     </Tooltip>}
                 </div>
-                {member.customStatus && <p className="text-xs text-muted-foreground truncate">
-                    {member.customStatus}
-                  </p>}
+                {/* Activity or Custom Status */}
+                {member.activity_type && member.activity_text ? (
+                  <div className="flex items-center gap-1 text-xs truncate">
+                    {(() => {
+                      const ActivityIcon = activityIcons[member.activity_type];
+                      return ActivityIcon ? <ActivityIcon className={cn("w-3 h-3 flex-shrink-0", activityColors[member.activity_type])} /> : null;
+                    })()}
+                    <span className={cn("flex-shrink-0", activityColors[member.activity_type] || 'text-muted-foreground')}>
+                      {activityLabels[member.activity_type] || ''}
+                    </span>
+                    <span className="text-muted-foreground truncate">{member.activity_text}</span>
+                  </div>
+                ) : member.customStatus ? (
+                  <p className="text-xs text-muted-foreground truncate">{member.customStatus}</p>
+                ) : null}
               </div>
             </button>
           </ContextMenuTrigger>

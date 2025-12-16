@@ -5,7 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import * as Portal from '@radix-ui/react-portal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, Pencil, ChevronRight } from 'lucide-react';
+import { Settings, Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy } from 'lucide-react';
+import { CustomStatusModal } from './CustomStatusModal';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -21,6 +22,20 @@ const statusLabels = {
   offline: 'Hors ligne'
 };
 
+const activityIcons: Record<string, React.ElementType> = {
+  playing: Gamepad2,
+  listening: Headphones,
+  watching: Eye,
+  competing: Trophy,
+};
+
+const activityLabels: Record<string, string> = {
+  playing: 'Joue à',
+  listening: 'Écoute',
+  watching: 'Regarde',
+  competing: 'En compétition sur',
+};
+
 interface UserProfileCardProps {
   onOpenSettings: () => void;
   onOpenProfile: () => void;
@@ -30,18 +45,34 @@ interface UserProfileCardProps {
 export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
   const { profile, updateStatus } = useAuth();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [showCustomStatusModal, setShowCustomStatusModal] = useState(false);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   const currentStatus = profile?.status || 'offline';
 
+  // Get activity icon if present
+  const ActivityIcon = profile?.activity_type ? activityIcons[profile.activity_type as keyof typeof activityIcons] : null;
+
+  // Display text: activity > custom status > status label
+  const getDisplayText = () => {
+    if (profile?.activity_type && profile?.activity_text && ActivityIcon) {
+      return (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+          <ActivityIcon className="w-3 h-3 text-primary flex-shrink-0" />
+          <span className="truncate">{activityLabels[profile.activity_type as keyof typeof activityLabels]} {profile.activity_text}</span>
+        </span>
+      );
+    }
+    return profile?.custom_status || statusLabels[currentStatus];
+  };
+
   const handleStatusHover = () => {
     if (statusButtonRef.current) {
       const rect = statusButtonRef.current.getBoundingClientRect();
-      const menuHeight = 160; // Hauteur approximative du menu (4 statuts + header)
+      const menuHeight = 160;
       
       setMenuPosition({
-        // Remonter le menu pour qu'il soit bien visible
         top: Math.max(10, rect.top - menuHeight + rect.height + 50),
         left: rect.right + 4,
       });
@@ -78,9 +109,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium truncate">{profile?.display_name || 'Chargement...'}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {profile?.custom_status || statusLabels[currentStatus]}
-              </p>
+              <div className="text-xs text-muted-foreground truncate">
+                {getDisplayText()}
+              </div>
             </div>
           </button>
         </PopoverTrigger>
@@ -176,6 +207,15 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 )}
               </div>
 
+              {/* Custom Status Button */}
+              <button
+                onClick={() => setShowCustomStatusModal(true)}
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
+              >
+                <Smile className="w-4 h-4 text-muted-foreground" />
+                <span>Définir un statut personnalisé</span>
+              </button>
+
               {/* Settings */}
               <button
                 onClick={onOpenSettings}
@@ -195,6 +235,12 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
       >
         <Settings className="w-4 h-4 text-muted-foreground" />
       </button>
+
+      {/* Custom Status Modal */}
+      <CustomStatusModal 
+        open={showCustomStatusModal} 
+        onOpenChange={setShowCustomStatusModal} 
+      />
     </div>
   );
 }

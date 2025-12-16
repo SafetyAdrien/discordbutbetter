@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useUpdateRole, RoleWithPermissions, PERMISSION_CATEGORIES, ServerPermission } from '@/hooks/useRoles';
+import { useUpdateRole, RoleWithPermissions, ALL_PERMISSIONS, ServerPermission } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, ImagePlus, X, Shield, ChevronDown } from 'lucide-react';
+import { Loader2, ImagePlus, X, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface RoleEditorProps {
   role: RoleWithPermissions;
@@ -26,9 +25,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [permissions, setPermissions] = useState<Set<ServerPermission>>(
     new Set(role.permissions)
-  );
-  const [openCategories, setOpenCategories] = useState<Set<string>>(
-    new Set(PERMISSION_CATEGORIES.map(c => c.name))
   );
 
   // Reset form when role changes
@@ -48,16 +44,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
       newPerms.add(permission);
     }
     setPermissions(newPerms);
-  };
-
-  const toggleCategory = (categoryName: string) => {
-    const newOpen = new Set(openCategories);
-    if (newOpen.has(categoryName)) {
-      newOpen.delete(categoryName);
-    } else {
-      newOpen.add(categoryName);
-    }
-    setOpenCategories(newOpen);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +223,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
         </p>
       </div>
 
-      {/* Permissions grouped by category */}
+      {/* Permissions */}
       <div>
         <Label className="mb-4 block">Permissions</Label>
         {role.is_default && (
@@ -246,59 +232,30 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
           </p>
         )}
 
-        <div className="space-y-3">
-          {PERMISSION_CATEGORIES.map((category) => {
-            const isOpen = openCategories.has(category.name);
-            const enabledCount = category.permissions.filter(p => 
-              permissions.has(p.key) || (p.key !== 'administrator' && isAdmin)
-            ).length;
-            
-            return (
-              <Collapsible
-                key={category.name}
-                open={isOpen}
-                onOpenChange={() => toggleCategory(category.name)}
-              >
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <ChevronDown className={cn(
-                      "w-4 h-4 transition-transform",
-                      !isOpen && "-rotate-90"
-                    )} />
-                    <span className="font-medium text-sm">{category.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {enabledCount}/{category.permissions.length}
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2 space-y-1">
-                  {category.permissions.map((perm) => {
-                    const isEnabled = permissions.has(perm.key);
-                    const isDisabled = perm.key !== 'administrator' && isAdmin;
+        <div className="space-y-2">
+          {ALL_PERMISSIONS.map((perm) => {
+            const isEnabled = permissions.has(perm.key);
+            const isDisabled = perm.key !== 'administrator' && isAdmin;
 
-                    return (
-                      <div
-                        key={perm.key}
-                        className={cn(
-                          'flex items-center justify-between p-3 rounded-lg transition-colors ml-4',
-                          isEnabled ? 'bg-primary/5' : 'bg-muted/20',
-                          isDisabled && 'opacity-50'
-                        )}
-                      >
-                        <div className="flex-1 mr-4">
-                          <p className="text-sm font-medium">{perm.label}</p>
-                          <p className="text-xs text-muted-foreground">{perm.description}</p>
-                        </div>
-                        <Switch
-                          checked={isEnabled || isDisabled}
-                          onCheckedChange={() => togglePermission(perm.key)}
-                          disabled={isDisabled}
-                        />
-                      </div>
-                    );
-                  })}
-                </CollapsibleContent>
-              </Collapsible>
+            return (
+              <div
+                key={perm.key}
+                className={cn(
+                  'flex items-center justify-between p-3 rounded-lg transition-colors',
+                  isEnabled ? 'bg-primary/5' : 'bg-muted/30',
+                  isDisabled && 'opacity-50'
+                )}
+              >
+                <div className="flex-1 mr-4">
+                  <p className="text-sm font-medium">{perm.label}</p>
+                  <p className="text-xs text-muted-foreground">{perm.description}</p>
+                </div>
+                <Switch
+                  checked={isEnabled || isDisabled}
+                  onCheckedChange={() => togglePermission(perm.key)}
+                  disabled={isDisabled}
+                />
+              </div>
             );
           })}
         </div>

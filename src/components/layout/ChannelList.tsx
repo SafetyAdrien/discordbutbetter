@@ -35,7 +35,7 @@ import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel
 import { Thread } from '@/types/thread';
 import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
-import { useCanAccessServerSettings, usePermissions } from '@/hooks/usePermissions';
+import { useCanAccessServerSettings } from '@/hooks/usePermissions';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -278,8 +278,7 @@ function SortableChannel({
   threads = [],
   activeThreadId,
   onThreadSelect,
-  showArchivedThreads = false,
-  canManageChannels = false
+  showArchivedThreads = false
 }: {
   channel: Channel;
   serverId: string;
@@ -298,7 +297,6 @@ function SortableChannel({
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
   showArchivedThreads?: boolean;
-  canManageChannels?: boolean;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -350,12 +348,10 @@ function SortableChannel({
                 e.stopPropagation();
                 onCreateInvite();
               }} />
-                {canManageChannels && (
-                  <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
-                  e.stopPropagation();
-                  onOpenSettings();
-                }} />
-                )}
+                <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
+                e.stopPropagation();
+                onOpenSettings();
+              }} />
               </div>
             </button>
           </ContextMenuTrigger>
@@ -372,24 +368,20 @@ function SortableChannel({
               <UserPlus className="w-4 h-4 mr-2" />
               Créer une invitation
             </ContextMenuItem>
-            {canManageChannels && (
-              <>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={onOpenSettings}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Modifier le channel
-                </ContextMenuItem>
-                <ContextMenuItem>
-                  <Bell className="w-4 h-4 mr-2" />
-                  Notifications
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer le channel
-                </ContextMenuItem>
-              </>
-            )}
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onOpenSettings}>
+              <Settings className="w-4 h-4 mr-2" />
+              Modifier le channel
+            </ContextMenuItem>
+            <ContextMenuItem>
+              <Bell className="w-4 h-4 mr-2" />
+              Notifications
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer le channel
+            </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
 
@@ -513,10 +505,6 @@ export function ChannelList({
   
   // Check if user can access server settings
   const canAccessSettings = useCanAccessServerSettings(server.id);
-  
-  // Check if user can manage channels (for showing settings icons on channels/categories)
-  const { hasPermission, isGod } = usePermissions(server.id);
-  const canManageChannels = isGod || hasPermission('manage_channels') || hasPermission('administrator');
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {
@@ -997,7 +985,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                   </SortableContext>
                 </div>}
 
@@ -1015,7 +1003,7 @@ export function ChannelList({
                 })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
                           </SortableContext>
                         </div>
                       </SortableCategory>}

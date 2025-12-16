@@ -695,7 +695,6 @@ export type Database = {
           created_at: string | null
           edited_at: string | null
           id: string
-          target_user_id: string | null
         }
         Insert: {
           attachments?: Json | null
@@ -705,7 +704,6 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
-          target_user_id?: string | null
         }
         Update: {
           attachments?: Json | null
@@ -715,7 +713,6 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
-          target_user_id?: string | null
         }
         Relationships: [
           {
@@ -730,13 +727,6 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1258,77 +1248,51 @@ export type Database = {
       }
       server_settings: {
         Row: {
-          activity_channel_id: string | null
           activity_feed_enabled: boolean | null
           auto_assign_roles: string[] | null
-          boost_channel_id: string | null
           boost_message_enabled: boolean | null
           created_at: string | null
           id: string
           server_id: string
           setup_tips_enabled: boolean | null
-          sticker_channel_id: string | null
           sticker_reply_enabled: boolean | null
           system_channel_id: string | null
           system_messages_enabled: boolean | null
-          tips_channel_id: string | null
           updated_at: string | null
           welcome_channel_id: string | null
           welcome_message: string | null
         }
         Insert: {
-          activity_channel_id?: string | null
           activity_feed_enabled?: boolean | null
           auto_assign_roles?: string[] | null
-          boost_channel_id?: string | null
           boost_message_enabled?: boolean | null
           created_at?: string | null
           id?: string
           server_id: string
           setup_tips_enabled?: boolean | null
-          sticker_channel_id?: string | null
           sticker_reply_enabled?: boolean | null
           system_channel_id?: string | null
           system_messages_enabled?: boolean | null
-          tips_channel_id?: string | null
           updated_at?: string | null
           welcome_channel_id?: string | null
           welcome_message?: string | null
         }
         Update: {
-          activity_channel_id?: string | null
           activity_feed_enabled?: boolean | null
           auto_assign_roles?: string[] | null
-          boost_channel_id?: string | null
           boost_message_enabled?: boolean | null
           created_at?: string | null
           id?: string
           server_id?: string
           setup_tips_enabled?: boolean | null
-          sticker_channel_id?: string | null
           sticker_reply_enabled?: boolean | null
           system_channel_id?: string | null
           system_messages_enabled?: boolean | null
-          tips_channel_id?: string | null
           updated_at?: string | null
           welcome_channel_id?: string | null
           welcome_message?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "server_settings_activity_channel_id_fkey"
-            columns: ["activity_channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "server_settings_boost_channel_id_fkey"
-            columns: ["boost_channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "server_settings_server_id_fkey"
             columns: ["server_id"]
@@ -1337,22 +1301,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "server_settings_sticker_channel_id_fkey"
-            columns: ["sticker_channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "server_settings_system_channel_id_fkey"
             columns: ["system_channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "server_settings_tips_channel_id_fkey"
-            columns: ["tips_channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
             referencedColumns: ["id"]
@@ -2147,19 +2097,6 @@ export type Database = {
         | "speak_voice"
         | "mention_everyone"
         | "administrator"
-        | "stream"
-        | "use_vad"
-        | "priority_speaker"
-        | "mute_members"
-        | "deafen_members"
-        | "move_members"
-        | "request_to_speak"
-        | "send_posts"
-        | "manage_threads"
-        | "manage_events"
-        | "manage_tasks"
-        | "use_soundboard"
-        | "use_external_stickers"
       user_status: "online" | "idle" | "dnd" | "offline"
     }
     CompositeTypes: {
@@ -2312,19 +2249,6 @@ export const Constants = {
         "speak_voice",
         "mention_everyone",
         "administrator",
-        "stream",
-        "use_vad",
-        "priority_speaker",
-        "mute_members",
-        "deafen_members",
-        "move_members",
-        "request_to_speak",
-        "send_posts",
-        "manage_threads",
-        "manage_events",
-        "manage_tasks",
-        "use_soundboard",
-        "use_external_stickers",
       ],
       user_status: ["online", "idle", "dnd", "offline"],
     },

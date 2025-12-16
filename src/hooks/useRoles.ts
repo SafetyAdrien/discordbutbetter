@@ -8,7 +8,7 @@ import type { Database } from '@/integrations/supabase/types';
 type DBPermission = Database['public']['Enums']['server_permission'];
 
 // Extended permissions (includes new ones from migration)
-export type ServerPermission = DBPermission | 'manage_emojis' | 'manage_stickers' | 'view_audit_log' | 'create_invites' | 'attach_files' | 'embed_links' | 'use_external_emojis' | 'mute_members' | 'stream' | 'use_vad' | 'priority_speaker' | 'deafen_members' | 'move_members' | 'request_to_speak' | 'send_posts' | 'manage_threads' | 'manage_events' | 'manage_tasks' | 'use_soundboard' | 'use_external_stickers';
+export type ServerPermission = DBPermission | 'manage_emojis' | 'manage_stickers' | 'view_audit_log' | 'create_invites' | 'attach_files' | 'embed_links' | 'use_external_emojis' | 'mute_members';
 
 export interface RoleWithPermissions {
   id: string;
@@ -21,80 +21,28 @@ export interface RoleWithPermissions {
   permissions: ServerPermission[];
 }
 
-// Permissions grouped by category for the UI
-export interface PermissionCategory {
-  name: string;
-  permissions: { key: ServerPermission; label: string; description: string }[];
-}
-
-export const PERMISSION_CATEGORIES: PermissionCategory[] = [
-  {
-    name: 'Général',
-    permissions: [
-      { key: 'administrator', label: 'Administrateur', description: 'Tous les droits sur le serveur' },
-      { key: 'manage_server', label: 'Gérer le serveur', description: 'Modifier les paramètres du serveur' },
-      { key: 'manage_channels', label: 'Gérer les salons', description: 'Créer/modifier/supprimer des salons' },
-      { key: 'manage_roles', label: 'Gérer les rôles', description: 'Créer/modifier/supprimer des rôles' },
-      { key: 'view_audit_log', label: 'Voir le journal', description: 'Voir le journal d\'audit' },
-      { key: 'create_invites', label: 'Créer des invitations', description: 'Créer des liens d\'invitation' },
-      { key: 'use_soundboard', label: 'Utiliser le Soundboard', description: 'Jouer des sons dans les salons vocaux' },
-      { key: 'use_external_stickers', label: 'Stickers externes', description: 'Utiliser des stickers d\'autres serveurs' },
-    ]
-  },
-  {
-    name: 'Membres',
-    permissions: [
-      { key: 'kick_members', label: 'Expulser des membres', description: 'Expulser des membres du serveur' },
-      { key: 'ban_members', label: 'Bannir des membres', description: 'Bannir des membres du serveur' },
-      { key: 'mention_everyone', label: 'Mentionner @everyone', description: 'Mentionner tous les membres' },
-    ]
-  },
-  {
-    name: 'Messages',
-    permissions: [
-      { key: 'manage_messages', label: 'Gérer les messages', description: 'Supprimer les messages des autres' },
-      { key: 'send_messages', label: 'Envoyer des messages', description: 'Envoyer des messages dans les salons' },
-      { key: 'read_messages', label: 'Lire les messages', description: 'Lire les messages des salons' },
-      { key: 'attach_files', label: 'Joindre des fichiers', description: 'Envoyer des fichiers et images' },
-      { key: 'embed_links', label: 'Intégrer des liens', description: 'Les liens affichent un aperçu' },
-      { key: 'use_external_emojis', label: 'Emojis externes', description: 'Utiliser des emojis d\'autres serveurs' },
-      { key: 'manage_emojis', label: 'Gérer les emojis', description: 'Ajouter/supprimer des emojis custom' },
-      { key: 'manage_stickers', label: 'Gérer les stickers', description: 'Ajouter/supprimer des stickers' },
-    ]
-  },
-  {
-    name: 'Vocal & Conférence',
-    permissions: [
-      { key: 'connect_voice', label: 'Se connecter', description: 'Rejoindre les salons vocaux' },
-      { key: 'speak_voice', label: 'Parler', description: 'Parler dans les salons vocaux' },
-      { key: 'stream', label: 'Vidéo / Partage d\'écran', description: 'Partager sa caméra ou son écran' },
-      { key: 'use_vad', label: 'Détection de voix', description: 'Utiliser la détection automatique de voix' },
-      { key: 'priority_speaker', label: 'Voix prioritaire', description: 'Être entendu au-dessus des autres' },
-      { key: 'mute_members', label: 'Rendre muet', description: 'Rendre muet des membres' },
-      { key: 'deafen_members', label: 'Mettre en sourdine', description: 'Mettre en sourdine des membres' },
-      { key: 'move_members', label: 'Déplacer des membres', description: 'Déplacer des membres entre salons vocaux' },
-      { key: 'request_to_speak', label: 'Demander la parole', description: 'Lever la main pour parler (Stage)' },
-    ]
-  },
-  {
-    name: 'Forum & Médias',
-    permissions: [
-      { key: 'send_posts', label: 'Créer des posts', description: 'Créer des posts dans les forums' },
-      { key: 'manage_threads', label: 'Gérer les fils', description: 'Gérer les fils de discussion/posts' },
-    ]
-  },
-  {
-    name: 'Calendrier & Tâches',
-    permissions: [
-      { key: 'manage_events', label: 'Gérer les événements', description: 'Créer/modifier des événements calendrier' },
-      { key: 'manage_tasks', label: 'Gérer les tâches', description: 'Créer/modifier des tâches' },
-    ]
-  },
+export const ALL_PERMISSIONS: { key: ServerPermission; label: string; description: string }[] = [
+  { key: 'administrator', label: 'Administrateur', description: 'Tous les droits sur le serveur' },
+  { key: 'manage_server', label: 'Gérer le serveur', description: 'Modifier les paramètres du serveur' },
+  { key: 'manage_channels', label: 'Gérer les salons', description: 'Créer/modifier/supprimer des salons' },
+  { key: 'manage_roles', label: 'Gérer les rôles', description: 'Créer/modifier/supprimer des rôles' },
+  { key: 'manage_messages', label: 'Gérer les messages', description: 'Supprimer les messages des autres' },
+  { key: 'manage_emojis', label: 'Gérer les emojis', description: 'Ajouter/supprimer des emojis custom' },
+  { key: 'manage_stickers', label: 'Gérer les stickers', description: 'Ajouter/supprimer des stickers' },
+  { key: 'kick_members', label: 'Expulser des membres', description: 'Expulser des membres du serveur' },
+  { key: 'ban_members', label: 'Bannir des membres', description: 'Bannir des membres du serveur' },
+  { key: 'mute_members', label: 'Rendre muet', description: 'Rendre muet des membres' },
+  { key: 'view_audit_log', label: 'Voir le journal', description: 'Voir le journal d\'audit' },
+  { key: 'create_invites', label: 'Créer des invitations', description: 'Créer des liens d\'invitation' },
+  { key: 'send_messages', label: 'Envoyer des messages', description: 'Envoyer des messages dans les salons' },
+  { key: 'read_messages', label: 'Lire les messages', description: 'Lire les messages des salons' },
+  { key: 'attach_files', label: 'Joindre des fichiers', description: 'Envoyer des fichiers et images' },
+  { key: 'embed_links', label: 'Intégrer des liens', description: 'Les liens affichent un aperçu' },
+  { key: 'use_external_emojis', label: 'Emojis externes', description: 'Utiliser des emojis d\'autres serveurs' },
+  { key: 'connect_voice', label: 'Se connecter en vocal', description: 'Rejoindre les salons vocaux' },
+  { key: 'speak_voice', label: 'Parler en vocal', description: 'Parler dans les salons vocaux' },
+  { key: 'mention_everyone', label: 'Mentionner @everyone', description: 'Mentionner tous les membres' },
 ];
-
-// Flat list for backward compatibility
-export const ALL_PERMISSIONS: { key: ServerPermission; label: string; description: string }[] = 
-  PERMISSION_CATEGORIES.flatMap(cat => cat.permissions);
 
 export function useServerRoles(serverId: string | null) {
   const { user } = useAuth();

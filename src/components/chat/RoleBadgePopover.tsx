@@ -33,7 +33,7 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <button className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform inline-flex items-center self-center translate-y-[2px]">
+            <button className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform inline-flex items-center self-center translate-y-[0px]">
               {iconElement}
             </button>
           </PopoverTrigger>

@@ -35,7 +35,7 @@ import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel
 import { Thread } from '@/types/thread';
 import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
-import { useCanAccessServerSettings } from '@/hooks/usePermissions';
+import { useCanAccessServerSettings, usePermissions } from '@/hooks/usePermissions';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -146,7 +146,8 @@ function SortableCategory({
   onCreateChannel,
   onDelete,
   showDropIndicator = false,
-  dropPosition = 'after'
+  dropPosition = 'after',
+  canManageChannels = false
 }: {
   category: Category;
   children: React.ReactNode;
@@ -157,6 +158,7 @@ function SortableCategory({
   onDelete: () => void;
   showDropIndicator?: boolean;
   dropPosition?: 'before' | 'after';
+  canManageChannels?: boolean;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -199,10 +201,12 @@ function SortableCategory({
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
               <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
-            <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
-              e.stopPropagation();
-              onCreateChannel();
-            }} />
+            {canManageChannels && (
+              <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
+                e.stopPropagation();
+                onCreateChannel();
+              }} />
+            )}
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
@@ -278,7 +282,8 @@ function SortableChannel({
   threads = [],
   activeThreadId,
   onThreadSelect,
-  showArchivedThreads = false
+  showArchivedThreads = false,
+  canManageChannels = false
 }: {
   channel: Channel;
   serverId: string;
@@ -297,6 +302,7 @@ function SortableChannel({
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
   showArchivedThreads?: boolean;
+  canManageChannels?: boolean;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -348,10 +354,12 @@ function SortableChannel({
                 e.stopPropagation();
                 onCreateInvite();
               }} />
-                <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
-                e.stopPropagation();
-                onOpenSettings();
-              }} />
+                {canManageChannels && (
+                  <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
+                  e.stopPropagation();
+                  onOpenSettings();
+                }} />
+                )}
               </div>
             </button>
           </ContextMenuTrigger>
@@ -505,6 +513,10 @@ export function ChannelList({
   
   // Check if user can access server settings
   const canAccessSettings = useCanAccessServerSettings(server.id);
+  
+  // Check if user can manage channels
+  const { hasPermission, isGod } = usePermissions(server.id);
+  const canManageChannels = isGod || hasPermission('manage_channels') || hasPermission('administrator');
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {
@@ -985,7 +997,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || 'text') as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
                   </SortableContext>
                 </div>}
 
@@ -1000,10 +1012,10 @@ export function ChannelList({
                       </div> : <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                   id: category.id,
                   name: category.name
-                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition}>
+                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} />)}
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
                           </SortableContext>
                         </div>
                       </SortableCategory>}

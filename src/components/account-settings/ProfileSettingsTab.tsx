@@ -37,8 +37,6 @@ export function ProfileSettingsTab() {
       bio: formData.bio,
       pronouns: formData.pronouns || null,
       custom_status: formData.custom_status || null,
-      profile_theme: formData.profile_theme,
-      featured_server_id: formData.featured_server_id || null,
     });
   };
 

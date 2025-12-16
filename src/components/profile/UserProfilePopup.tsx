@@ -5,12 +5,13 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Settings, Clock } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Settings, Clock, Gamepad2, Radio, Headphones, Eye, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, useAssignRoleToMember, useRemoveRoleFromMember, RoleWithPermissions } from '@/hooks/useRoles';
+import { parseMarkdown } from '@/lib/markdown';
 import * as Portal from '@radix-ui/react-portal';
 
 interface Role {
@@ -47,6 +48,22 @@ const statusLabels = {
   idle: 'Inactif',
   dnd: 'Ne pas déranger',
   offline: 'Hors ligne',
+};
+
+const activityIcons: Record<string, React.ElementType> = {
+  playing: Gamepad2,
+  streaming: Radio,
+  listening: Headphones,
+  watching: Eye,
+  competing: Swords,
+};
+
+const activityLabels: Record<string, string> = {
+  playing: 'Joue à',
+  streaming: 'Diffuse',
+  listening: 'Écoute',
+  watching: 'Regarde',
+  competing: 'En compétition sur',
 };
 
 function formatMemberSince(dateString: string): string {
@@ -143,19 +160,31 @@ export function UserProfilePopup({
     .filter(role => !role.is_default)
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
+  // Get banner style based on theme settings
+  const getBannerStyle = () => {
+    if (user.banner) {
+      return { background: `url(${user.banner}) center/cover` };
+    }
+    if ((user as any).theme_gradient) {
+      const [start, end] = (user as any).theme_gradient.split(',');
+      return { background: `linear-gradient(135deg, ${start}, ${end})` };
+    }
+    if ((user as any).theme_color) {
+      return { background: (user as any).theme_color };
+    }
+    return {};
+  };
+
+  const ActivityIcon = (user as any).activity_type ? activityIcons[(user as any).activity_type] : null;
+
   const ProfileContent = () => (
     <>
       {/* Banner */}
       <div className="relative">
-        {user.banner ? (
-          <img 
-            src={user.banner} 
-            alt="Banner" 
-            className="h-24 w-full object-cover" 
-          />
-        ) : (
-          <div className="h-24 bg-[hsl(var(--primary))]" />
-        )}
+        <div 
+          className="h-24 w-full bg-[hsl(var(--primary))]"
+          style={getBannerStyle()}
+        />
         
         {/* Header Actions - Message & Friend */}
         {!isOwnProfile && (
@@ -234,10 +263,41 @@ export function UserProfilePopup({
         {/* User Info */}
         <div className="space-y-3">
           <div>
-            <h3 className="text-xl font-bold text-foreground">{user.displayName}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-bold text-foreground">{user.displayName}</h3>
+              {/* Pronouns Badge */}
+              {(user as any).pronouns && (
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <span className="px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
+                      {(user as any).pronouns}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Pronoms de l'utilisateur</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">{user.username.toLowerCase()}</p>
           </div>
 
+          {/* Activity / Rich Presence */}
+          {(user as any).activity_type && (user as any).activity_text && ActivityIcon && (
+            <div className="flex items-center gap-2 text-sm">
+              <ActivityIcon className="w-4 h-4 text-primary" />
+              <span className="text-muted-foreground">
+                {activityLabels[(user as any).activity_type]}
+              </span>
+              <span className="font-medium text-foreground">
+                {(user as any).activity_type === 'streaming' ? (
+                  <a href={(user as any).activity_text} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    {(user as any).activity_text}
+                  </a>
+                ) : (
+                  (user as any).activity_text
+                )}
+              </span>
+            </div>
+          )}
 
           {user.customStatus && (
             <p className="text-sm text-foreground/80 italic">"{user.customStatus}"</p>
@@ -325,12 +385,15 @@ export function UserProfilePopup({
             <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-1">
               À Propos de Moi
             </h4>
-            <p className={cn(
-              "text-sm",
-              user.bio ? "text-foreground/90" : "text-muted-foreground/50"
-            )}>
-              {user.bio || 'Aucune biographie définie.'}
-            </p>
+            {user.bio ? (
+              <div className="text-sm text-foreground/90 prose prose-invert prose-sm max-w-none">
+                {parseMarkdown(user.bio)}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground/50">
+                Aucune biographie définie.
+              </p>
+            )}
           </div>
 
         </div>

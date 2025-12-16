@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, useRoleMemberCounts, RoleWithPermissions } from '@/hooks/useRoles';
-import { useAuth } from '@/contexts/AuthContext';
-import { useMembers } from '@/hooks/useMembers';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy, Users, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 // DnD Kit imports
@@ -156,10 +155,9 @@ function SortableRole({
 }
 
 export function RoleManager({ serverId }: RoleManagerProps) {
-  const { user } = useAuth();
   const { data: roles = [], isLoading } = useServerRoles(serverId);
   const { data: memberCounts = {} } = useRoleMemberCounts(serverId);
-  const { data: membersData = [] } = useMembers(serverId);
+  const { isGod, canDragRole: canDragRolePosition, canManageRole, userHighestRolePosition } = usePermissions(serverId);
   const createRole = useCreateRole();
   const deleteRole = useDeleteRole();
   const reorderRoles = useReorderRoles();
@@ -174,24 +172,15 @@ export function RoleManager({ serverId }: RoleManagerProps) {
 
   const selectedRole = roles.find(r => r.id === selectedRoleId);
 
-  // Find current user's highest role position
-  const currentMember = membersData.find(m => m.user?.id === user?.id);
-  const userHighestRolePosition = currentMember?.roles?.reduce((max, role) => {
-    const roleData = roles.find(r => r.id === role.id);
-    return roleData ? Math.max(max, roleData.position ?? 0) : max;
-  }, 0) ?? 0;
-
-  // Check if user can drag a role (can't drag above own highest role)
+  // Check if user can drag a role using the permission hook
   const canDragRole = (role: RoleWithPermissions) => {
-    // Admins can drag any role
-    const isAdmin = currentMember?.roles?.some(r => {
-      const roleData = roles.find(rd => rd.id === r.id);
-      return roleData?.permissions?.includes('administrator');
-    });
-    if (isAdmin) return true;
-    
-    // Can only drag roles below own highest role
-    return (role.position ?? 0) < userHighestRolePosition;
+    return canDragRolePosition(role.position);
+  };
+  
+  // Check if user can delete/modify a role
+  const canModifyRole = (role: RoleWithPermissions) => {
+    if (role.is_default) return false; // Can't delete @everyone
+    return canManageRole(role.position);
   };
 
   // DnD sensors with 5px activation distance
@@ -254,12 +243,12 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     const activeRole = roles.find(r => r.id === active.id);
     const overRole = roles.find(r => r.id === over.id);
 
-    // Security: Check if target position is allowed
-    if (activeRole && overRole) {
+    // Security: Check if target position is allowed (Gods can move anything)
+    if (activeRole && overRole && !isGod) {
       const targetPosition = overRole.position ?? 0;
       
       // Can't move a role above own highest role
-      if (targetPosition >= userHighestRolePosition && !canDragRole(activeRole)) {
+      if (targetPosition >= userHighestRolePosition) {
         toast.error('Vous ne pouvez pas déplacer un rôle au-dessus du vôtre');
         return;
       }

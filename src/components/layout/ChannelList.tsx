@@ -35,6 +35,7 @@ import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel
 import { Thread } from '@/types/thread';
 import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
+import { useCanAccessServerSettings } from '@/hooks/usePermissions';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -501,6 +502,9 @@ export function ChannelList({
   const {
     data: membersData
   } = useMembers(server.id);
+  
+  // Check if user can access server settings
+  const canAccessSettings = useCanAccessServerSettings(server.id);
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {
@@ -955,9 +959,12 @@ export function ChannelList({
           </PopoverContent>
         </Popover>
         
-        <button onClick={onOpenServerSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
-          <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
-        </button>
+        {/* Settings button - only visible for users with permissions */}
+        {canAccessSettings && (
+          <button onClick={onOpenServerSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
+            <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+          </button>
+        )}
       </div>
 
       {/* Channels with DnD */}

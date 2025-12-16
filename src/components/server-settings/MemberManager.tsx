@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMembers } from '@/hooks/useMembers';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
 import { useSetSecondaryOwner, useRemoveSecondaryOwner } from '@/hooks/useSecondaryOwner';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,10 +30,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Search, MoreHorizontal, Shield, UserMinus, Ban } from 'lucide-react';
+import { Search, MoreHorizontal, UserMinus, Ban, Plus } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
+import { RoleAssignmentPopover } from '@/components/members/RoleAssignmentPopover';
 
 interface MemberManagerProps {
   serverId: string;
@@ -54,12 +56,15 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   const [banReason, setBanReason] = useState('');
   const [secondOwnerTarget, setSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
 
+  const { isGod, hasPermission } = usePermissions(serverId);
+
   const filteredMembers = members.filter(member => 
     member.user.display_name.toLowerCase().includes(search.toLowerCase()) ||
     member.user.username.toLowerCase().includes(search.toLowerCase())
   );
 
   const isOwner = server?.owner_id === user?.id;
+  const canManageMembers = isGod || hasPermission('kick_members') || hasPermission('ban_members');
 
   const handleKick = () => {
     if (!kickTarget) return;
@@ -177,8 +182,21 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                   )}
                 </div>
 
-                {/* Single Actions menu - only show if current user is owner and member is not owner */}
-                {isOwner && !isMemberOwner && (
+                {/* Role Assignment Popover */}
+                {hasPermission('manage_roles') && (
+                  <RoleAssignmentPopover
+                    member={member}
+                    serverId={serverId}
+                    trigger={
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    }
+                  />
+                )}
+
+                {/* Actions menu - only show if current user can manage and member is not owner */}
+                {canManageMembers && !isMemberOwner && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -186,45 +204,47 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Gérer les rôles
-                      </DropdownMenuItem>
-                      
-                      {/* Secondary owner options */}
-                      <DropdownMenuSeparator />
-                      {!isMemberSecondaryOwner ? (
-                        <DropdownMenuItem 
-                          onClick={() => setSecondOwnerTarget({ id: member.user.id, name: member.user.display_name })}
-                        >
-                          <StreamlineCrown size={16} className="mr-2 text-yellow-500" />
-                          Ajouter second propriétaire
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={handleRemoveSecondaryOwner}
-                        >
-                          <StreamlineCrown size={16} className="mr-2" />
-                          Retirer second propriétaire
-                        </DropdownMenuItem>
+                      {/* Secondary owner options - only for primary owner */}
+                      {isOwner && (
+                        <>
+                          {!isMemberSecondaryOwner ? (
+                            <DropdownMenuItem 
+                              onClick={() => setSecondOwnerTarget({ id: member.user.id, name: member.user.display_name })}
+                            >
+                              <StreamlineCrown size={16} className="mr-2 text-yellow-500" />
+                              Ajouter second propriétaire
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={handleRemoveSecondaryOwner}
+                            >
+                              <StreamlineCrown size={16} className="mr-2" />
+                              Retirer second propriétaire
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                        </>
                       )}
                       
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-yellow-500"
-                        onClick={() => setKickTarget({ id: member.user.id, name: member.user.display_name })}
-                      >
-                        <UserMinus className="w-4 h-4 mr-2" />
-                        Expulser
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => setBanTarget({ id: member.user.id, name: member.user.display_name })}
-                      >
-                        <Ban className="w-4 h-4 mr-2" />
-                        Bannir
-                      </DropdownMenuItem>
+                      {(isGod || hasPermission('kick_members')) && (
+                        <DropdownMenuItem 
+                          className="text-yellow-500"
+                          onClick={() => setKickTarget({ id: member.user.id, name: member.user.display_name })}
+                        >
+                          <UserMinus className="w-4 h-4 mr-2" />
+                          Expulser
+                        </DropdownMenuItem>
+                      )}
+                      {(isGod || hasPermission('ban_members')) && (
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => setBanTarget({ id: member.user.id, name: member.user.display_name })}
+                        >
+                          <Ban className="w-4 h-4 mr-2" />
+                          Bannir
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}

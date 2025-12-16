@@ -8,8 +8,13 @@ export interface ServerSettings {
   server_id: string;
   welcome_message: string | null;
   welcome_channel_id: string | null;
+  system_channel_id: string | null;
   auto_assign_roles: string[];
   system_messages_enabled: boolean;
+  sticker_reply_enabled: boolean;
+  boost_message_enabled: boolean;
+  setup_tips_enabled: boolean;
+  activity_feed_enabled: boolean;
 }
 
 export function useServerSettings(serverId: string) {
@@ -25,9 +30,22 @@ export function useServerSettings(serverId: string) {
         .maybeSingle();
 
       if (error) throw error;
+      
+      // Return with defaults for new fields
+      if (data) {
+        return {
+          ...data,
+          system_channel_id: data.system_channel_id || null,
+          sticker_reply_enabled: data.sticker_reply_enabled ?? true,
+          boost_message_enabled: data.boost_message_enabled ?? true,
+          setup_tips_enabled: data.setup_tips_enabled ?? true,
+          activity_feed_enabled: data.activity_feed_enabled ?? true,
+        };
+      }
       return data;
     },
     enabled: !!serverId && !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache for better performance
   });
 }
 
@@ -75,8 +93,13 @@ export function useUpdateServerSettings() {
             server_id: serverId,
             welcome_message: settings.welcome_message ?? null,
             welcome_channel_id: settings.welcome_channel_id ?? null,
+            system_channel_id: settings.system_channel_id ?? null,
             auto_assign_roles: settings.auto_assign_roles ?? [],
             system_messages_enabled: settings.system_messages_enabled ?? true,
+            sticker_reply_enabled: settings.sticker_reply_enabled ?? true,
+            boost_message_enabled: settings.boost_message_enabled ?? true,
+            setup_tips_enabled: settings.setup_tips_enabled ?? true,
+            activity_feed_enabled: settings.activity_feed_enabled ?? true,
           };
         }
         return { ...old, ...settings };

@@ -1248,30 +1248,45 @@ export type Database = {
       }
       server_settings: {
         Row: {
+          activity_feed_enabled: boolean | null
           auto_assign_roles: string[] | null
+          boost_message_enabled: boolean | null
           created_at: string | null
           id: string
           server_id: string
+          setup_tips_enabled: boolean | null
+          sticker_reply_enabled: boolean | null
+          system_channel_id: string | null
           system_messages_enabled: boolean | null
           updated_at: string | null
           welcome_channel_id: string | null
           welcome_message: string | null
         }
         Insert: {
+          activity_feed_enabled?: boolean | null
           auto_assign_roles?: string[] | null
+          boost_message_enabled?: boolean | null
           created_at?: string | null
           id?: string
           server_id: string
+          setup_tips_enabled?: boolean | null
+          sticker_reply_enabled?: boolean | null
+          system_channel_id?: string | null
           system_messages_enabled?: boolean | null
           updated_at?: string | null
           welcome_channel_id?: string | null
           welcome_message?: string | null
         }
         Update: {
+          activity_feed_enabled?: boolean | null
           auto_assign_roles?: string[] | null
+          boost_message_enabled?: boolean | null
           created_at?: string | null
           id?: string
           server_id?: string
+          setup_tips_enabled?: boolean | null
+          sticker_reply_enabled?: boolean | null
+          system_channel_id?: string | null
           system_messages_enabled?: boolean | null
           updated_at?: string | null
           welcome_channel_id?: string | null
@@ -1283,6 +1298,13 @@ export type Database = {
             columns: ["server_id"]
             isOneToOne: true
             referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_settings_system_channel_id_fkey"
+            columns: ["system_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {

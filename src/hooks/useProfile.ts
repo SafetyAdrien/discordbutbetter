@@ -6,10 +6,12 @@ import { toast } from 'sonner';
 interface ProfileData {
   display_name?: string;
   bio?: string;
-  pronouns?: string;
-  custom_status?: string;
-  profile_theme?: { primary: string; accent: string };
-  featured_server_id?: string | null;
+  pronouns?: string | null;
+  custom_status?: string | null;
+  activity_type?: string | null;
+  activity_text?: string | null;
+  theme_color?: string | null;
+  theme_gradient?: string | null;
   avatar_decoration_url?: string | null;
   avatar_url?: string;
   banner_url?: string;

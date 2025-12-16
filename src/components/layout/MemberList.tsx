@@ -292,8 +292,55 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     result.sort((a, b) => a.displayName.localeCompare(b.displayName));
     return result;
   }, [members, searchQuery, selectedRoleFilters]);
-  const onlineMembers = filteredMembers.filter(m => m.status !== 'offline');
-  const offlineMembers = filteredMembers.filter(m => m.status === 'offline');
+
+  // Group members by hoisted roles
+  const groupedMembers = useMemo(() => {
+    // Get hoisted roles sorted by position (highest first)
+    const hoistedRoles = allRoles
+      .filter(r => r.hoist && !r.is_default)
+      .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+    
+    const online = filteredMembers.filter(m => m.status !== 'offline');
+    const offline = filteredMembers.filter(m => m.status === 'offline');
+    
+    // Create groups for hoisted roles
+    const groups: { role: RoleWithPermissions | null; members: MemberWithRoles[]; isOffline?: boolean }[] = [];
+    const assignedMemberIds = new Set<string>();
+    
+    // For each hoisted role, find online members with that role as their highest
+    for (const role of hoistedRoles) {
+      const roleMembers = online.filter(member => {
+        if (assignedMemberIds.has(member.id)) return false;
+        // Check if this role is the member's highest hoisted role
+        const memberRoleIds = member.roles?.map(r => r.id) || [];
+        if (!memberRoleIds.includes(role.id)) return false;
+        
+        // Check if any higher hoisted role exists for this member
+        const higherHoistedRole = hoistedRoles.find(hr => 
+          (hr.position ?? 0) > (role.position ?? 0) && memberRoleIds.includes(hr.id)
+        );
+        return !higherHoistedRole;
+      });
+      
+      if (roleMembers.length > 0) {
+        roleMembers.forEach(m => assignedMemberIds.add(m.id));
+        groups.push({ role, members: roleMembers });
+      }
+    }
+    
+    // Add remaining online members (no hoisted role)
+    const remainingOnline = online.filter(m => !assignedMemberIds.has(m.id));
+    if (remainingOnline.length > 0) {
+      groups.push({ role: null, members: remainingOnline });
+    }
+    
+    // Add offline members
+    if (offline.length > 0) {
+      groups.push({ role: null, members: offline, isOffline: true });
+    }
+    
+    return groups;
+  }, [filteredMembers, allRoles]);
   const handleCopyId = (id: string) => {
     copyToClipboard(id, 'ID utilisateur copié');
   };
@@ -422,25 +469,24 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           </div>
           <Separator className="mt-3" />
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
-            {/* Online Members */}
-            {onlineMembers.length > 0 && <div className="mb-4">
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
-                  En Ligne — {onlineMembers.length}
+            {groupedMembers.map((group, index) => (
+              <div key={group.role?.id || (group.isOffline ? 'offline' : 'online')} className="mb-4">
+                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide flex items-center gap-1.5">
+                  {group.role?.icon_url && (
+                    group.role.icon_url.startsWith('http') 
+                      ? <img src={group.role.icon_url} alt="" className="w-3 h-3 object-contain" />
+                      : <span className="text-xs">{group.role.icon_url}</span>
+                  )}
+                  <span style={{ color: group.role?.color || undefined }}>
+                    {group.isOffline ? 'Hors Ligne' : group.role?.name || 'En Ligne'}
+                  </span>
+                  <span className="text-muted-foreground"> — {group.members.length}</span>
                 </h3>
                 <div className="space-y-0.5">
-                  {onlineMembers.map(renderMember)}
+                  {group.members.map(renderMember)}
                 </div>
-              </div>}
-
-            {/* Offline Members */}
-            {offlineMembers.length > 0 && <div>
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
-                  Hors Ligne — {offlineMembers.length}
-                </h3>
-                <div className="space-y-0.5">
-                  {offlineMembers.map(renderMember)}
-                </div>
-              </div>}
+              </div>
+            ))}
           </div>
         </div>
 

@@ -699,13 +699,13 @@ export function useDuplicateChannel() {
 
       const nextPosition = (existing?.[0]?.position ?? -1) + 1;
 
-      // Create duplicate
+      // Create duplicate (keep exact same name)
       const { data, error } = await supabase
         .from('channels')
         .insert({
           server_id: serverId,
           category_id: original.category_id,
-          name: `${original.name}-copie`,
+          name: original.name,
           type: original.type,
           description: original.description,
           position: nextPosition,

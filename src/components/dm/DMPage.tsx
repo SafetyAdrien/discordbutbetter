@@ -79,8 +79,9 @@ export function DMPage({
           </button>
         </div>
 
-        {/* DM List Section */}
+        {/* Separator */}
         <div className="px-2 pt-4">
+          <div className="h-px bg-border mb-3" />
           <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2">
             Messages privés
           </h3>

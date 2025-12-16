@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMembers } from '@/hooks/useMembers';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { useSetSecondaryOwner, useRemoveSecondaryOwner } from '@/hooks/useSecondaryOwner';
+import { useSetSecondaryOwner, useRemoveSecondaryOwner, useTransferOwnership } from '@/hooks/useSecondaryOwner';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Search, MoreHorizontal, UserMinus, Ban, Plus } from 'lucide-react';
+import { Search, MoreHorizontal, UserMinus, Ban, Plus, ArrowRightLeft } from 'lucide-react';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,6 +48,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   const banMember = useBanMember();
   const setSecondaryOwner = useSetSecondaryOwner();
   const removeSecondaryOwner = useRemoveSecondaryOwner();
+  const transferOwnership = useTransferOwnership();
   
   const server = servers.find(s => s.id === serverId);
   const [search, setSearch] = useState('');
@@ -55,6 +56,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   const [banTarget, setBanTarget] = useState<{ id: string; name: string } | null>(null);
   const [banReason, setBanReason] = useState('');
   const [secondOwnerTarget, setSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const [transferTarget, setTransferTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { isGod, hasPermission } = usePermissions(serverId);
 

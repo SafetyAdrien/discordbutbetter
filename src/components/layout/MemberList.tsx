@@ -506,16 +506,16 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
             {groupedMembers.map((group, index) => (
               <div key={group.role?.id || (group.isOffline ? 'offline' : 'online')} className="mb-4">
-                <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide flex items-center gap-1.5">
+                <h3 className="px-2 py-1 text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 text-muted-foreground">
                   {group.role?.icon_url && (
                     group.role.icon_url.startsWith('http') 
                       ? <img src={group.role.icon_url} alt="" className="w-3 h-3 object-contain" />
                       : <span className="text-xs">{group.role.icon_url}</span>
                   )}
-                  <span style={{ color: group.role?.color || undefined }}>
-                    {group.isOffline ? 'Hors Ligne' : group.role?.name || 'En Ligne'}
+                  <span>
+                    {group.isOffline ? 'HORS LIGNE' : group.role?.name?.toUpperCase() || 'EN LIGNE'}
                   </span>
-                  <span className="text-muted-foreground"> — {group.members.length}</span>
+                  <span> — {group.members.length}</span>
                 </h3>
                 <div className="space-y-0.5">
                   {group.members.map(renderMember)}

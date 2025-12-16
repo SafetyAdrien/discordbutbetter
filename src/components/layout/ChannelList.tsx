@@ -41,24 +41,32 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+
 import React from 'react';
 
 // Discord-style Drop Indicator - Blue horizontal line with absolute positioning
-const DropIndicator = React.forwardRef<HTMLDivElement, {
-  isVisible: boolean;
-  position: 'before' | 'after';
-}>(({
-  isVisible,
-  position
-}, ref) => {
+const DropIndicator = React.forwardRef<
+  HTMLDivElement,
+  { isVisible: boolean; position: 'before' | 'after' }
+>(({ isVisible, position }, ref) => {
   if (!isVisible) return null;
-  return <div ref={ref} className={cn(
-  // Absolute positioning, full width with overflow for circles
-  "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none", "bg-[#5865f2]",
-  // Circles at endpoints using pseudo-elements
-  "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]", "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]", "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]", "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-  // Position based on 'before' or 'after'
-  position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2")} />;
+  return (
+    <div 
+      ref={ref} 
+      className={cn(
+        // Absolute positioning, full width with overflow for circles
+        "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
+        "bg-[#5865f2]",
+        // Circles at endpoints using pseudo-elements
+        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
+        "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
+        "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+        // Position based on 'before' or 'after'
+        position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
+      )}
+    />
+  );
 });
 DropIndicator.displayName = 'DropIndicator';
 interface Channel {
@@ -166,18 +174,23 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
-    opacity: isDragging ? 0.3 : 1
+    transition: isDragging 
+      ? 'opacity 150ms ease' 
+      : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    opacity: isDragging ? 0.3 : 1,
   };
   return <>
     {/* En-tête de catégorie (zone draggable uniquement) */}
-    <div ref={setNodeRef} style={style} className={cn("relative transition-all duration-150", isDragging && "bg-muted/20 rounded-md scale-[0.98]")}>
+    <div ref={setNodeRef} style={style} className={cn(
+      "relative transition-all duration-150",
+      isDragging && "bg-muted/20 rounded-md scale-[0.98]"
+    )}>
       {/* Drop Indicator - Absolute positioned */}
       {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
       
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex items-center gap-1 px-2 py-1 w-full text-xs font-normal text-muted-foreground hover:text-foreground transition-colors group cursor-default">
+          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
@@ -301,8 +314,10 @@ function SortableChannel({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
-    opacity: isDragging ? 0.3 : 1
+    transition: isDragging 
+      ? 'opacity 150ms ease' 
+      : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    opacity: isDragging ? 0.3 : 1,
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
@@ -310,7 +325,10 @@ function SortableChannel({
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
   return <>
-      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("relative hover:cursor-grab channel-transition rounded-md transition-all duration-150", isDragging && "bg-muted/20 scale-[0.98]")}>
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn(
+        "relative hover:cursor-grab channel-transition rounded-md transition-all duration-150",
+        isDragging && "bg-muted/20 scale-[0.98]"
+      )}>
         {/* Drop Indicator - Absolute positioned */}
         {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
         
@@ -987,25 +1005,35 @@ export function ChannelList({
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
               <DragOverlay dropAnimation={{
-              duration: 200,
-              easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
-            }}>
-                {activeId && <div className={cn("bg-card/95 backdrop-blur-sm border border-[#5865f2]/50 rounded-md px-3 py-2", "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]", "scale-105 cursor-grabbing")}>
-                    {activeId.startsWith('category-') && <div className="flex items-center gap-2">
+                duration: 200,
+                easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+              }}>
+                {activeId && (
+                  <div className={cn(
+                    "bg-card/95 backdrop-blur-sm border border-[#5865f2]/50 rounded-md px-3 py-2",
+                    "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
+                    "scale-105 cursor-grabbing"
+                  )}>
+                    {activeId.startsWith('category-') && (
+                      <div className="flex items-center gap-2">
                         <ChevronDown className="w-3 h-3 text-muted-foreground" />
                         <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
                           {server.categories.find(c => `category-${c.id}` === activeId)?.name}
                         </span>
-                      </div>}
+                      </div>
+                    )}
                     {activeId.startsWith('channel-') && (() => {
-                  const channel = findChannelById(activeId.replace('channel-', ''));
-                  const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
-                  return <div className="flex items-center gap-2 text-sm text-foreground">
+                      const channel = findChannelById(activeId.replace('channel-', ''));
+                      const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
+                      return (
+                        <div className="flex items-center gap-2 text-sm text-foreground">
                           <Icon className="w-4 h-4 text-[#5865f2]" />
                           <span className="font-medium">{channel?.name || 'Channel'}</span>
-                        </div>;
-                })()}
-                  </div>}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </DragOverlay>
             </DndContext>
           </div>

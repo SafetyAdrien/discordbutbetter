@@ -466,6 +466,23 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 >
                   {member.displayName}
                 </span>
+                {/* Role badge icon with tooltip */}
+                {member.roles?.[0]?.icon_url && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform">
+                        {member.roles[0].icon_url.startsWith('http') ? (
+                          <img src={member.roles[0].icon_url} alt={member.roles[0].name} className="w-4 h-4 object-contain" />
+                        ) : (
+                          <span className="text-sm">{member.roles[0].icon_url}</span>
+                        )}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-foreground">{member.roles[0].name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {(isOwner || isSecondaryOwner) && (
                   <Tooltip>
                     <TooltipTrigger asChild>

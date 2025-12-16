@@ -348,12 +348,12 @@ export function useDuplicateRole() {
         .select('permission')
         .eq('role_id', roleId);
 
-      // 3. Create new role with "(copie)" suffix
+      // 3. Create new role (keep exact same name)
       const { data: newRole, error: createError } = await supabase
         .from('roles')
         .insert({
           server_id: serverId,
-          name: `${sourceRole.name} (copie)`,
+          name: sourceRole.name,
           color: sourceRole.color,
           icon_url: sourceRole.icon_url,
           position: (sourceRole.position || 0) + 1,
@@ -379,13 +379,13 @@ export function useDuplicateRole() {
       await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
       const previousRoles = queryClient.getQueryData<RoleWithPermissions[]>(['roles', serverId]);
       
-      // Create optimistic duplicate role
+      // Create optimistic duplicate role (keep exact same name)
       if (previousRoles) {
         const sourceRole = previousRoles.find(r => r.id === roleId);
         if (sourceRole) {
           const tempRole: RoleWithPermissions = {
             id: `temp-${Date.now()}`,
-            name: `${sourceRole.name} (copie)`,
+            name: sourceRole.name,
             color: sourceRole.color,
             icon_url: sourceRole.icon_url,
             position: (sourceRole.position || 0) + 1,

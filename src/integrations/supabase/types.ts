@@ -1889,7 +1889,9 @@ export type Database = {
           channel_id: string | null
           created_at: string | null
           id: string
+          mute_until: string | null
           muted: boolean | null
+          notification_setting: string | null
           updated_at: string | null
           user_id: string
         }
@@ -1898,7 +1900,9 @@ export type Database = {
           channel_id?: string | null
           created_at?: string | null
           id?: string
+          mute_until?: string | null
           muted?: boolean | null
+          notification_setting?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -1907,7 +1911,9 @@ export type Database = {
           channel_id?: string | null
           created_at?: string | null
           id?: string
+          mute_until?: string | null
           muted?: boolean | null
+          notification_setting?: string | null
           updated_at?: string | null
           user_id?: string
         }

@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Bell, Trash2, MicOff, HeadphoneOff, AlertTriangle, LogOut, Copy } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Trash2, MicOff, HeadphoneOff, AlertTriangle, LogOut, Copy } from 'lucide-react';
+import { ChannelNotificationMenu } from '@/components/channels/ChannelNotificationMenu';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -149,7 +150,8 @@ function SortableCategory({
   onDelete,
   showDropIndicator = false,
   dropPosition = 'after',
-  canManageChannels = false
+  canManageChannels = false,
+  serverId
 }: {
   category: Category;
   children: React.ReactNode;
@@ -161,6 +163,7 @@ function SortableCategory({
   showDropIndicator?: boolean;
   dropPosition?: 'before' | 'after';
   canManageChannels?: boolean;
+  serverId: string;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -216,6 +219,8 @@ function SortableCategory({
             <Plus className="w-4 h-4 mr-2" />
             Créer un salon
           </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ChannelNotificationMenu categoryId={category.id} serverId={serverId} />
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onEdit}>
             <Pencil className="w-4 h-4 mr-2" />
@@ -391,10 +396,7 @@ function SortableChannel({
                 Dupliquer le salon
               </ContextMenuItem>
             )}
-            <ContextMenuItem>
-              <Bell className="w-4 h-4 mr-2" />
-              Notifications
-            </ContextMenuItem>
+            <ChannelNotificationMenu channelId={channel.id} serverId={serverId} />
             <ContextMenuSeparator />
             <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
               <Trash2 className="w-4 h-4 mr-2" />
@@ -1064,7 +1066,7 @@ export function ChannelList({
                       </div> : <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                   id: category.id,
                   name: category.name
-                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels}>
+                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels} serverId={server.id}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
                             {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}

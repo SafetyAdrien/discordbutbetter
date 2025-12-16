@@ -40,18 +40,21 @@ function RoleIcon({ role, size = 'sm' }: { role: RoleWithPermissions; size?: 'sm
   );
 }
 
-// Discord-style Drop Indicator
-function RoleDropIndicator({ isVisible }: { isVisible: boolean }) {
+// Discord-style Drop Indicator - Absolute positioned
+function RoleDropIndicator({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) {
   if (!isVisible) return null;
   return (
     <div 
       className={cn(
-        "relative h-[2px] mx-2 my-0.5 rounded-full",
-        "bg-[#5865f2] shadow-[0_0_8px_rgba(88,101,242,0.6)]",
-        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
-        "before:w-2 before:h-2 before:rounded-full before:bg-[#5865f2]",
-        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2",
-        "after:w-2 after:h-2 after:rounded-full after:bg-[#5865f2]"
+        "absolute left-0 right-0 h-[2px] z-50 pointer-events-none",
+        "bg-[#5865f2]",
+        // Circles at endpoints
+        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
+        "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
+        "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+        // Position based on 'before' or 'after'
+        position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
       )}
     />
   );
@@ -99,57 +102,56 @@ function SortableRole({
   };
 
   return (
-    <>
-      {showDropIndicator && dropPosition === 'before' && <RoleDropIndicator isVisible={true} />}
-      <div
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        style={style}
-        className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-150 group',
-          'cursor-grab active:cursor-grabbing',
-          isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
-          isDragging && 'bg-muted/20 scale-[0.98]',
-          !canDragAbove && 'opacity-50 cursor-not-allowed'
-        )}
-        onClick={onSelect}
-      >
-        <RoleIcon role={role} />
-        <span className="flex-1 truncate text-sm">{role.name}</span>
-        
-        {/* Member count */}
-        <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
-          <Users className="w-3 h-3" />
-          <span>{memberCount}</span>
-        </div>
-
-        {!role.is_default && (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDuplicate();
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
-              title="Dupliquer ce rôle"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </>
-        )}
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={style}
+      className={cn(
+        'relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-150 group',
+        'cursor-grab active:cursor-grabbing',
+        isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
+        isDragging && 'bg-muted/20 scale-[0.98]',
+        !canDragAbove && 'opacity-50 cursor-not-allowed'
+      )}
+      onClick={onSelect}
+    >
+      {/* Drop Indicator - Absolute positioned */}
+      {showDropIndicator && <RoleDropIndicator isVisible={true} position={dropPosition || 'after'} />}
+      
+      <RoleIcon role={role} />
+      <span className="flex-1 truncate text-sm">{role.name}</span>
+      
+      {/* Member count */}
+      <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+        <Users className="w-3 h-3" />
+        <span>{memberCount}</span>
       </div>
-      {showDropIndicator && dropPosition === 'after' && <RoleDropIndicator isVisible={true} />}
-    </>
+
+      {!role.is_default && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
+            title="Dupliquer ce rôle"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 

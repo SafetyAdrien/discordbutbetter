@@ -331,7 +331,16 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 
               <div className="flex-1 min-w-0 text-left overflow-hidden">
                 <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-                  <span className={cn('text-sm font-medium truncate block flex-1 min-w-0', member.status === 'offline' ? 'text-muted-foreground' : 'text-foreground')}>
+                  {/* Role icon if highest role has one */}
+                  {member.roles?.[0]?.icon_url && (
+                    member.roles[0].icon_url.startsWith('http') 
+                      ? <img src={member.roles[0].icon_url} alt="" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                      : <span className="text-xs flex-shrink-0">{member.roles[0].icon_url}</span>
+                  )}
+                  <span 
+                    className={cn('text-sm font-medium truncate block flex-1 min-w-0', member.status === 'offline' && 'opacity-60')}
+                    style={{ color: member.roles?.[0]?.color || undefined }}
+                  >
                     {member.displayName}
                   </span>
                   {(isOwner || isSecondaryOwner) && <Tooltip>

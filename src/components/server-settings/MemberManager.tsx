@@ -206,7 +206,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {/* Secondary owner options - only for primary owner */}
+                      {/* Secondary owner and transfer options - only for primary owner */}
                       {isOwner && (
                         <>
                           {!isMemberSecondaryOwner ? (
@@ -225,6 +225,12 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                               Retirer second propriétaire
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem 
+                            onClick={() => setTransferTarget({ id: member.user.id, name: member.user.display_name })}
+                          >
+                            <ArrowRightLeft className="w-4 h-4 mr-2 text-orange-500" />
+                            Transférer la propriété
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>
                       )}
@@ -332,6 +338,40 @@ export function MemberManager({ serverId }: MemberManagerProps) {
               disabled={setSecondaryOwner.isPending}
             >
               {setSecondaryOwner.isPending ? 'Confirmation...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Transfer Ownership Confirmation Dialog */}
+      <AlertDialog open={!!transferTarget} onOpenChange={() => setTransferTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-orange-500">
+              <ArrowRightLeft className="w-5 h-5" />
+              Transférer la propriété à {transferTarget?.name} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong className="text-destructive">Cette action est irréversible.</strong>
+              <br /><br />
+              Vous perdrez tous vos droits de propriétaire et {transferTarget?.name} deviendra le nouveau propriétaire du serveur.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel autoFocus>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (transferTarget) {
+                  transferOwnership.mutate(
+                    { serverId, newOwnerId: transferTarget.id },
+                    { onSuccess: () => setTransferTarget(null) }
+                  );
+                }
+              }}
+              className="bg-orange-600 hover:bg-orange-700"
+              disabled={transferOwnership.isPending}
+            >
+              {transferOwnership.isPending ? 'Transfert...' : 'Transférer'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

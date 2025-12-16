@@ -76,7 +76,12 @@ export function CreateChannelModal({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+      }}>
         <DialogHeader>
           <DialogTitle>Créer un salon</DialogTitle>
           <p className="text-sm text-muted-foreground">

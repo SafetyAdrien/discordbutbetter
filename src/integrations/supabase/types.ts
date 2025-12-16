@@ -2253,6 +2253,10 @@ export type Database = {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean
       }
+      transfer_server_ownership: {
+        Args: { _new_owner_id: string; _server_id: string }
+        Returns: undefined
+      }
       unban_member: {
         Args: { _server_id: string; _user_id: string }
         Returns: undefined

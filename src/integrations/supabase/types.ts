@@ -1049,6 +1049,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string | null
+          description: string | null
           hoist: boolean | null
           icon_url: string | null
           id: string
@@ -1060,6 +1061,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string | null
+          description?: string | null
           hoist?: boolean | null
           icon_url?: string | null
           id?: string
@@ -1071,6 +1073,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string | null
+          description?: string | null
           hoist?: boolean | null
           icon_url?: string | null
           id?: string

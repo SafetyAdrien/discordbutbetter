@@ -89,3 +89,41 @@ export function useRemoveSecondaryOwner() {
     }
   });
 }
+
+export function useTransferOwnership() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, newOwnerId }: { serverId: string; newOwnerId: string }) => {
+      const { error } = await supabase.rpc('transfer_server_ownership', {
+        _server_id: serverId,
+        _new_owner_id: newOwnerId
+      });
+      if (error) throw error;
+      return { serverId, newOwnerId };
+    },
+    onMutate: async ({ serverId, newOwnerId }) => {
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData<Server[]>(['servers']);
+      
+      queryClient.setQueryData<Server[]>(['servers'], old =>
+        old?.map(s => s.id === serverId ? { ...s, owner_id: newOwnerId, secondary_owner_id: null } : s)
+      );
+      
+      return { previousServers };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
+      toast.error('Impossible de transférer la propriété');
+    },
+    onSuccess: () => {
+      toast.success('Propriété transférée avec succès');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    }
+  });
+}

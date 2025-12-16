@@ -655,3 +655,93 @@ export function useReorderChannels() {
     },
   });
 }
+
+export function useDuplicateChannel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      channelId,
+      serverId,
+    }: {
+      channelId: string;
+      serverId: string;
+    }) => {
+      // Fetch the original channel
+      const { data: original, error: fetchError } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('id', channelId)
+        .single();
+
+      if (fetchError || !original) throw fetchError || new Error('Channel not found');
+
+      // Get max position
+      let existing;
+      if (original.category_id) {
+        const result = await supabase
+          .from('channels')
+          .select('position')
+          .eq('category_id', original.category_id)
+          .order('position', { ascending: false })
+          .limit(1);
+        existing = result.data;
+      } else {
+        const result = await supabase
+          .from('channels')
+          .select('position')
+          .eq('server_id', serverId)
+          .is('category_id', null)
+          .order('position', { ascending: false })
+          .limit(1);
+        existing = result.data;
+      }
+
+      const nextPosition = (existing?.[0]?.position ?? -1) + 1;
+
+      // Create duplicate
+      const { data, error } = await supabase
+        .from('channels')
+        .insert({
+          server_id: serverId,
+          category_id: original.category_id,
+          name: `${original.name}-copie`,
+          type: original.type,
+          description: original.description,
+          position: nextPosition,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Copy channel permission overrides if any
+      const { data: permissions } = await supabase
+        .from('channel_permission_overrides')
+        .select('*')
+        .eq('channel_id', channelId);
+
+      if (permissions && permissions.length > 0) {
+        await supabase.from('channel_permission_overrides').insert(
+          permissions.map((p) => ({
+            channel_id: data.id,
+            role_id: p.role_id,
+            permission: p.permission,
+            type: p.type,
+            sync_with_category: p.sync_with_category,
+          }))
+        );
+      }
+
+      return { ...data, serverId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['channels', data.serverId] });
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
+      toast.success('Salon dupliqué avec succès');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la duplication du salon');
+    },
+  });
+}

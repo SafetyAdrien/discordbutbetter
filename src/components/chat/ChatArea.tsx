@@ -197,6 +197,7 @@ interface Role {
   name: string;
   color: string | null;
   position: number | null;
+  icon_url?: string | null;
 }
 interface ChatAreaProps {
   channel: Channel;
@@ -847,6 +848,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             <button onClick={() => handleUserClick(message.author)} className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
                               {message.author.displayName}
                             </button>
+                            {/* Role badge icon - displayed to the right of username */}
+                            {memberRoles?.get(message.author.id)?.[0]?.icon_url && (
+                              memberRoles.get(message.author.id)![0].icon_url!.startsWith('http') ? (
+                                <img src={memberRoles.get(message.author.id)![0].icon_url!} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
+                              ) : (
+                                <span className="text-sm flex-shrink-0">{memberRoles.get(message.author.id)![0].icon_url}</span>
+                              )
+                            )}
                             <span className="text-xs text-muted-foreground flex-shrink-0">
                               {formatTime(message.timestamp)}
                             </span>

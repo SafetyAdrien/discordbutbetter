@@ -37,49 +37,21 @@ import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
 import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
 
 import React from 'react';
 
-// Drop Indicator Component - Discord style blue line
-const DropIndicator = React.memo(({ isVisible }: { isVisible: boolean }) => {
+// Drop Indicator Component with forwardRef
+const DropIndicator = React.forwardRef<
+  HTMLDivElement,
+  { isVisible: boolean; position?: 'before' | 'after' }
+>(({ isVisible, position = 'after' }, ref) => {
   if (!isVisible) return null;
-  return <div className="drop-indicator" />;
+  return <div ref={ref} className="drop-indicator mx-2 my-0.5" />;
 });
 DropIndicator.displayName = 'DropIndicator';
-
-// Drag Overlay for Channel - Semi-transparent ghost
-const ChannelDragOverlay = React.memo(({ channel }: { channel: Channel | null }) => {
-  if (!channel) return null;
-  const Icon = channelIcons[channel.type];
-  return (
-    <div className="dnd-overlay dnd-overlay-channel flex items-center gap-2">
-      <Icon className="w-4 h-4 text-muted-foreground" />
-      <span className="text-sm text-foreground font-medium">{channel.name}</span>
-    </div>
-  );
-});
-ChannelDragOverlay.displayName = 'ChannelDragOverlay';
-
-// Drag Overlay for Category
-const CategoryDragOverlay = React.memo(({ category }: { category: Category | null }) => {
-  if (!category) return null;
-  return (
-    <div className="dnd-overlay dnd-overlay-category flex items-center gap-1">
-      <ChevronDown className="w-3 h-3 text-muted-foreground" />
-      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        {category.name}
-      </span>
-      <span className="text-xs text-muted-foreground/60 ml-1">
-        ({category.channels.length} salons)
-      </span>
-    </div>
-  );
-});
-CategoryDragOverlay.displayName = 'CategoryDragOverlay';
 interface Channel {
   id: string;
   name: string;
@@ -185,12 +157,13 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    transition: transition || 'transform 200ms ease, opacity 200ms ease',
+    opacity: isDragging ? 0.4 : 1
   };
   return <>
-    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} />}
+    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
     {/* En-tête de catégorie (zone draggable uniquement) */}
-    <div ref={setNodeRef} style={style} className={cn("dnd-item relative", isDragging && "sortable-ghost")}>
+    <div ref={setNodeRef} style={style} className={cn(isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
@@ -225,7 +198,7 @@ function SortableCategory({
         </ContextMenuContent>
       </ContextMenu>
     </div>
-    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} />}
+    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
     
     {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
     {!isCollapsed && <div className="mb-2">{children}</div>}
@@ -318,7 +291,8 @@ function SortableChannel({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    transition: isDragging ? 'opacity 200ms ease' : 'transform 250ms cubic-bezier(0.25, 1, 0.5, 1), opacity 200ms ease, background-color 200ms ease',
+    opacity: isDragging ? 0.4 : 1
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
@@ -326,8 +300,8 @@ function SortableChannel({
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
   return <>
-      {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} />}
-      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("dnd-item channel-transition relative", isDragging && "sortable-ghost")}>
+      {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("hover:cursor-grab channel-transition", isDragging && "sortable-ghost")}>
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
@@ -416,7 +390,7 @@ function SortableChannel({
               </button>
             </div>)}
         </div>}
-      {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} />}
+      {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -961,14 +935,7 @@ export function ChannelList({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
-            <DndContext 
-              sensors={sensors} 
-              collisionDetection={customCollisionDetection} 
-              modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
-              onDragStart={handleDragStart} 
-              onDragOver={handleDragOver} 
-              onDragEnd={handleDragEnd}
-            >
+            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {orphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
@@ -1007,17 +974,21 @@ export function ChannelList({
                   </div>)}
               </SortableContext>
 
-              {/* Drag Overlay - Discord style semi-transparent ghost */}
-              <DragOverlay dropAnimation={{
-                duration: 200,
-                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-              }}>
-                {activeId && activeId.startsWith('category-') && (
-                  <CategoryDragOverlay category={server.categories.find(c => `category-${c.id}` === activeId) || null} />
-                )}
-                {activeId && activeId.startsWith('channel-') && (
-                  <ChannelDragOverlay channel={findChannelById(activeId.replace('channel-', '')) || null} />
-                )}
+              {/* Drag Overlay for visual feedback */}
+              <DragOverlay>
+                {activeId && <div className="bg-card border border-border rounded-md px-3 py-2 drag-overlay-item">
+                    {activeId.startsWith('category-') && <span className="text-sm font-semibold text-foreground">
+                        {server.categories.find(c => `category-${c.id}` === activeId)?.name}
+                      </span>}
+                    {activeId.startsWith('channel-') && (() => {
+                  const channel = findChannelById(activeId.replace('channel-', ''));
+                  const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
+                  return <div className="flex items-center gap-2 text-sm text-foreground">
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <span>{channel?.name || 'Channel'}</span>
+                        </div>;
+                })()}
+                  </div>}
               </DragOverlay>
             </DndContext>
           </div>

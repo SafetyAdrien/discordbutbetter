@@ -434,109 +434,41 @@
     font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
   }
 
-  /* ========== DND Kit - Discord-style Drag and Drop ========== */
-  
-  /* Drag overlay (ghost following cursor) */
-  .dnd-overlay {
-    opacity: 0.92;
-    box-shadow: 
-      0 12px 32px hsl(0 0% 0% / 0.5),
-      0 0 0 1px hsl(var(--border) / 0.5);
-    border-radius: 6px;
-    backdrop-filter: blur(8px);
+  /* Drag and drop animations */
+  .dragging-item {
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
     transform: scale(1.02);
-    z-index: 9999;
-    pointer-events: none;
-  }
-  
-  .dnd-overlay-channel {
-    background: hsl(var(--card));
-    padding: 6px 8px;
-  }
-  
-  .dnd-overlay-category {
-    background: hsl(var(--sidebar-background));
-    padding: 4px 8px;
-  }
-  
-  .dnd-overlay-role {
-    background: hsl(var(--card));
-    padding: 8px 12px;
+    z-index: 1000;
   }
 
-  /* Original item placeholder (grayed out) */
   .sortable-ghost {
-    opacity: 0.3;
-    background: hsl(var(--muted) / 0.3) !important;
-    border: 2px dashed hsl(var(--border) / 0.5);
-    border-radius: 6px;
+    opacity: 0.4;
   }
 
-  /* Drop indicator line - Discord style (Blurple) */
+  /* Drop indicator line - Discord style */
   .drop-indicator {
-    position: relative;
-    height: 2px;
-    background: linear-gradient(90deg, transparent 0%, #5865f2 10%, #5865f2 90%, transparent 100%);
-    margin: 2px 8px;
+    height: 3.5px;
+    background-color: #5865f2;
     border-radius: 1px;
-    pointer-events: none;
-  }
-  
-  .drop-indicator::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    background: #5865f2;
-    border-radius: 50%;
-    box-shadow: 0 0 8px #5865f2;
-  }
-  
-  .drop-indicator::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    background: #5865f2;
-    border-radius: 50%;
-    animation: drop-indicator-pulse 1s ease-in-out infinite;
-  }
-  
-  @keyframes drop-indicator-pulse {
-    0%, 100% {
-      transform: translateY(-50%) scale(1);
-      opacity: 1;
-    }
-    50% {
-      transform: translateY(-50%) scale(1.5);
-      opacity: 0.5;
-    }
   }
 
-  /* Smooth channel/category transition animation */
+  /* Smooth channel transition animation */
   .channel-transition {
     transition:
-      transform 200ms cubic-bezier(0.25, 1, 0.5, 1),
-      opacity 150ms ease,
-      background-color 150ms ease;
-    will-change: transform, opacity;
+      transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 200ms ease,
+      background-color 200ms ease;
   }
 
-  /* Animation when item enters new position */
+  /* Animation when channel enters a new category */
   @keyframes slide-into-place {
     from {
-      opacity: 0.6;
-      transform: translateY(-4px);
+      opacity: 0.5;
+      transform: translateX(-8px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(0);
     }
   }
 
@@ -544,39 +476,15 @@
     animation: slide-into-place 200ms ease-out;
   }
 
-  /* Draggable item hover state */
-  .dnd-item {
-    cursor: grab;
-    user-select: none;
-  }
-  
-  .dnd-item:active {
-    cursor: grabbing;
+  .drag-overlay-item {
+    box-shadow: 0 12px 28px hsl(0 0% 0% / 0.5);
+    backdrop-filter: blur(4px);
   }
 
   /* Remove focus outline on drag-and-drop elements */
   [data-dnd-kit-draggable]:focus,
   [data-dnd-kit-draggable]:focus-visible {
     outline: none;
-  }
-  
-  /* Drag handle indicator on hover */
-  .dnd-item:hover::before {
-    content: '';
-    position: absolute;
-    left: 2px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 60%;
-    background: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 2px;
-    opacity: 0;
-    transition: opacity 150ms ease;
-  }
-  
-  .dnd-item:hover::before {
-    opacity: 1;
   }
 
   /* Send button animations */

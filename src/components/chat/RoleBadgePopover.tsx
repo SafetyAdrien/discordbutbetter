@@ -22,10 +22,10 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
     <img 
       src={role.icon_url} 
       alt={role.name} 
-      className="w-4 h-4 object-contain" 
+      className="w-5 h-5 object-contain" 
     />
   ) : (
-    <span className="text-sm">{role.icon_url}</span>
+    <span className="text-xl leading-none">{role.icon_url}</span>
   );
 
   return (
@@ -33,7 +33,7 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <button className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform">
+            <button className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform inline-flex items-center align-middle">
               {iconElement}
             </button>
           </PopoverTrigger>

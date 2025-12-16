@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Mail, Lock, Trash2, ShieldCheck, Loader2, LogOut } from 'lucide-react';
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, Mail, Lock, Trash2, ShieldCheck, Loader2, LogOut } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,31 +16,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AccountSettings() {
   const { profile, user, signOut } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
+  const [newEmail, setNewEmail] = useState("");
   const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Les mots de passe ne correspondent pas');
+      toast.error("Les mots de passe ne correspondent pas");
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      toast.error("Le mot de passe doit contenir au moins 6 caractères");
       return;
     }
 
@@ -52,11 +52,11 @@ export function AccountSettings() {
 
       if (error) throw error;
 
-      toast.success('Mot de passe mis à jour avec succès');
+      toast.success("Mot de passe mis à jour avec succès");
       setIsChangingPassword(false);
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error: any) {
-      toast.error(error.message || 'Erreur lors du changement de mot de passe');
+      toast.error(error.message || "Erreur lors du changement de mot de passe");
     } finally {
       setIsLoading(false);
     }
@@ -73,9 +73,9 @@ export function AccountSettings() {
 
       if (error) throw error;
 
-      toast.success('Un email de réinitialisation a été envoyé à votre adresse');
+      toast.success("Un email de réinitialisation a été envoyé à votre adresse");
     } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de l\'envoi de l\'email');
+      toast.error(error.message || "Erreur lors de l'envoi de l'email");
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +83,7 @@ export function AccountSettings() {
 
   const handleChangeEmail = async () => {
     if (!newEmail.trim()) {
-      toast.error('Veuillez entrer une adresse email');
+      toast.error("Veuillez entrer une adresse email");
       return;
     }
 
@@ -95,11 +95,11 @@ export function AccountSettings() {
 
       if (error) throw error;
 
-      toast.success('Un email de confirmation a été envoyé à votre nouvelle adresse');
+      toast.success("Un email de confirmation a été envoyé à votre nouvelle adresse");
       setIsChangingEmail(false);
-      setNewEmail('');
+      setNewEmail("");
     } catch (error: any) {
-      toast.error(error.message || 'Erreur lors du changement d\'email');
+      toast.error(error.message || "Erreur lors du changement d'email");
     } finally {
       setIsLoading(false);
     }
@@ -107,11 +107,11 @@ export function AccountSettings() {
 
   const handleLogout = async () => {
     await signOut();
-    toast.success('Déconnexion réussie');
+    toast.success("Déconnexion réussie");
   };
 
   const handleDeleteAccount = async () => {
-    toast.info('La suppression de compte sera bientôt disponible');
+    toast.info("La suppression de compte sera bientôt disponible");
   };
 
   return (
@@ -127,11 +127,11 @@ export function AccountSettings() {
             <Avatar className="w-16 h-16">
               <AvatarImage src={profile?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/20 text-primary text-xl">
-                {profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                {profile?.display_name?.charAt(0).toUpperCase() || "?"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-lg">{profile?.display_name}</p>
+              <p className="font-semibold text-lg">{profile?.username}</p>
               <p className="text-sm text-muted-foreground">@{profile?.username}</p>
             </div>
           </div>
@@ -159,16 +159,14 @@ export function AccountSettings() {
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="nouveau@email.com"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Un email de confirmation sera envoyé à cette adresse.
-                </p>
+                <p className="text-xs text-muted-foreground">Un email de confirmation sera envoyé à cette adresse.</p>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   onClick={() => {
                     setIsChangingEmail(false);
-                    setNewEmail('');
+                    setNewEmail("");
                   }}
                 >
                   Annuler
@@ -211,7 +209,7 @@ export function AccountSettings() {
                   id="newPassword"
                   type="password"
                   value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                  onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
                   placeholder="••••••••"
                 />
               </div>
@@ -221,7 +219,7 @@ export function AccountSettings() {
                   id="confirmPassword"
                   type="password"
                   value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="••••••••"
                 />
               </div>
@@ -230,7 +228,7 @@ export function AccountSettings() {
                   variant="outline"
                   onClick={() => {
                     setIsChangingPassword(false);
-                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
                   }}
                 >
                   Annuler
@@ -267,7 +265,6 @@ export function AccountSettings() {
           </div>
         </CardContent>
       </Card>
-
     </div>
   );
 }

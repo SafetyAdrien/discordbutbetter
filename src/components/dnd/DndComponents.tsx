@@ -21,7 +21,7 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
         <div 
           ref={ref}
           className={cn(
-            "absolute top-0 bottom-0 w-[2px] z-50 pointer-events-none",
+            "absolute top-0 bottom-0 w-[2px] z-5 pointer-events-none",
             "bg-[#5865f2]",
             "before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:-translate-y-[3px]",
             "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",

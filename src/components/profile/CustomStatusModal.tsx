@@ -174,7 +174,10 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
           {/* Activity Type Selector */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Type d'activité</Label>
-            <Select value={activityType} onValueChange={setActivityType}>
+            <Select 
+              value={activityType || "none"} 
+              onValueChange={(value) => setActivityType(value === "none" ? "" : value)}
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Sélectionner une activité">
                   {selectedActivity && (
@@ -186,7 +189,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">
+                <SelectItem value="none">
                   <span className="text-muted-foreground">Aucune activité</span>
                 </SelectItem>
                 {ACTIVITY_TYPES.map((activity) => (

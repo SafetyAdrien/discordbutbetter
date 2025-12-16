@@ -1138,6 +1138,41 @@ export type Database = {
           },
         ]
       }
+      server_emojis: {
+        Row: {
+          created_at: string | null
+          creator_id: string | null
+          id: string
+          name: string
+          server_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id?: string | null
+          id?: string
+          name: string
+          server_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string | null
+          id?: string
+          name?: string
+          server_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_emojis_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_members: {
         Row: {
           id: string
@@ -1380,6 +1415,44 @@ export type Database = {
             columns: ["welcome_channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_stickers: {
+        Row: {
+          created_at: string | null
+          creator_id: string | null
+          description: string | null
+          id: string
+          name: string
+          server_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          server_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          server_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_stickers_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
             referencedColumns: ["id"]
           },
         ]

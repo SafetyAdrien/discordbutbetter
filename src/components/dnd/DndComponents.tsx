@@ -1,7 +1,7 @@
-import React, { forwardRef } from 'react';
-import { cn } from '@/lib/utils';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import React, { forwardRef } from "react";
+import { cn } from "@/lib/utils";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ============================================
 // DROP INDICATOR - Discord-style blue line with circles
@@ -9,19 +9,19 @@ import { CSS } from '@dnd-kit/utilities';
 // ============================================
 export interface DropIndicatorProps {
   isVisible: boolean;
-  position: 'before' | 'after';
-  orientation?: 'horizontal' | 'vertical';
+  position: "before" | "after";
+  orientation?: "horizontal" | "vertical";
   /** Full-width indicator ignoring parent padding */
   fullWidth?: boolean;
 }
 
 export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
-  ({ isVisible, position, orientation = 'horizontal', fullWidth = false }, ref) => {
+  ({ isVisible, position, orientation = "horizontal", fullWidth = false }, ref) => {
     if (!isVisible) return null;
-    
-    if (orientation === 'vertical') {
+
+    if (orientation === "vertical") {
       return (
-        <div 
+        <div
           ref={ref}
           className={cn(
             "absolute top-0 bottom-0 w-[2px] z-10 pointer-events-none",
@@ -31,14 +31,14 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
             "before:w-[8px] before:h-[3px] before:rounded-full before:bg-[#5865f2]",
             "after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:translate-y-[3px]",
             "after:w-[8px] after:h-[3px] after:rounded-full after:bg-[#5865f2]",
-            position === 'before' ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"
+            position === "before" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2",
           )}
         />
       );
     }
-    
+
     return (
-      <div 
+      <div
         ref={ref}
         className={cn(
           // Absolute positioning with z-index above everything
@@ -53,13 +53,13 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
           "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
           "after:w-[8px] after:h-[3px] after:rounded-full after:bg-[#5865f2]",
           // Position based on 'before' or 'after'
-          position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
+          position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
         )}
       />
     );
-  }
+  },
 );
-DropIndicator.displayName = 'DropIndicator';
+DropIndicator.displayName = "DropIndicator";
 
 // ============================================
 // DRAG OVERLAY WRAPPER - Semi-transparent ghost
@@ -71,11 +71,11 @@ export interface DragOverlayItemProps {
 
 export const DragOverlayItem = ({ children, className }: DragOverlayItemProps) => {
   return (
-    <div 
+    <div
       className={cn(
         "opacity-90 shadow-2xl rounded-lg border border-[#5865f2]/50 bg-card/95 backdrop-blur-sm",
         "scale-105 cursor-grabbing",
-        className
+        className,
       )}
     >
       {children}
@@ -95,15 +95,7 @@ export interface SortableItemProps {
 }
 
 export const SortableItem = ({ id, children, className, data, disabled }: SortableItemProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-    isOver,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id,
     data,
     disabled,
@@ -111,9 +103,7 @@ export const SortableItem = ({ id, children, className, data, disabled }: Sortab
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging 
-      ? 'opacity 150ms ease' 
-      : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    transition: isDragging ? "opacity 100ms ease" : "transform 100ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease",
   };
 
   return (
@@ -126,7 +116,7 @@ export const SortableItem = ({ id, children, className, data, disabled }: Sortab
         "touch-none",
         isDragging && "opacity-40 scale-[0.98]",
         isOver && "ring-2 ring-[#5865f2]/30 rounded",
-        className
+        className,
       )}
     >
       {children}
@@ -144,12 +134,9 @@ export interface DragPlaceholderProps {
 
 export const DragPlaceholder = ({ height = 40, className }: DragPlaceholderProps) => {
   return (
-    <div 
-      className={cn(
-        "rounded-md bg-muted/30 border-2 border-dashed border-muted-foreground/20",
-        className
-      )}
-      style={{ height: typeof height === 'number' ? `${height}px` : height }}
+    <div
+      className={cn("rounded-md bg-muted/30 border-2 border-dashed border-muted-foreground/20", className)}
+      style={{ height: typeof height === "number" ? `${height}px` : height }}
     />
   );
 };
@@ -166,12 +153,8 @@ export const CategoryDragOverlay = ({ name, channelCount }: CategoryOverlayProps
   return (
     <DragOverlayItem className="px-3 py-2 min-w-[200px]">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          {name}
-        </span>
-        <span className="text-[10px] text-muted-foreground/60">
-          ({channelCount} salons)
-        </span>
+        <span className="text-xs font-normal text-muted-foreground uppercase tracking-wide">{name}</span>
+        <span className="text-[14px] text-muted-foreground/60">({channelCount} salons)</span>
       </div>
     </DragOverlayItem>
   );
@@ -191,7 +174,7 @@ export const ChannelDragOverlay = ({ name, icon, type }: ChannelOverlayProps) =>
     <DragOverlayItem className="px-3 py-2 min-w-[180px]">
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-sm font-medium truncate">{name}</span>
+        <span className="text-sm font-normal truncate">{name}</span>
       </div>
     </DragOverlayItem>
   );
@@ -210,15 +193,12 @@ export const RoleDragOverlay = ({ name, color, iconUrl }: RoleOverlayProps) => {
   return (
     <DragOverlayItem className="px-3 py-2 min-w-[160px]">
       <div className="flex items-center gap-2">
-        {iconUrl && !iconUrl.startsWith('http') ? (
+        {iconUrl && !iconUrl.startsWith("http") ? (
           <span className="text-sm">{iconUrl}</span>
         ) : iconUrl ? (
           <img src={iconUrl} alt="" className="w-4 h-4 object-contain" />
         ) : (
-          <div 
-            className="w-3 h-3 rounded-full flex-shrink-0" 
-            style={{ backgroundColor: color || '#99AAB5' }}
-          />
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color || "#99AAB5" }} />
         )}
         <span className="text-sm font-medium truncate">{name}</span>
       </div>
@@ -247,12 +227,12 @@ export const DroppableZone = forwardRef<HTMLDivElement, DroppableZoneProps>(
           "transition-all duration-150",
           isOver && canDrop && "bg-[#5865f2]/5 ring-1 ring-[#5865f2]/30 rounded-md",
           isOver && !canDrop && "bg-destructive/5 ring-1 ring-destructive/30 rounded-md",
-          className
+          className,
         )}
       >
         {children}
       </div>
     );
-  }
+  },
 );
-DroppableZone.displayName = 'DroppableZone';
+DroppableZone.displayName = "DroppableZone";

@@ -920,6 +920,7 @@ export type Database = {
           display_name: string
           id: string
           phone: string | null
+          server_order: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
           updated_at: string | null
           username: string
@@ -933,6 +934,7 @@ export type Database = {
           display_name: string
           id: string
           phone?: string | null
+          server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username: string
@@ -946,6 +948,7 @@ export type Database = {
           display_name?: string
           id?: string
           phone?: string | null
+          server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username?: string

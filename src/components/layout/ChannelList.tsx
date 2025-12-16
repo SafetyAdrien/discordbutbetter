@@ -54,7 +54,8 @@ const DropIndicator = React.forwardRef<
     <div 
       ref={ref} 
       className={cn(
-        "absolute left-0 right-0 h-[2px] z-50 pointer-events-none",
+        // Absolute positioning, full width with overflow for circles
+        "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
         "bg-[#5865f2]",
         // Circles at endpoints using pseudo-elements
         "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",

@@ -81,7 +81,7 @@ export function DMPage({
 
         {/* DM List Section */}
         <div className="px-2 pt-4">
-          <h3 className="px-2 text-xs font-normal text-muted-foreground capitalize tracking-wide mb-2">
+          <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2">
             Messages privés
           </h3>
         </div>

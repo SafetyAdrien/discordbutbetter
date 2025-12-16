@@ -35,6 +35,7 @@ import { ThreadSpine } from '@/components/threads/ThreadSpine';
 import { ThreadSystemMessage } from '@/components/threads/ThreadSystemMessage';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { ReportModal } from '@/components/chat/ReportModal';
+import { RoleBadgePopover } from '@/components/chat/RoleBadgePopover';
 import { toast } from 'sonner';
 
 // Reply Reference Component
@@ -198,6 +199,7 @@ interface Role {
   color: string | null;
   position: number | null;
   icon_url?: string | null;
+  description?: string | null;
 }
 interface ChatAreaProps {
   channel: Channel;
@@ -849,12 +851,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               {message.author.displayName}
                             </button>
                             {/* Role badge icon - displayed to the right of username */}
-                            {memberRoles?.get(message.author.id)?.[0]?.icon_url && (
-                              memberRoles.get(message.author.id)![0].icon_url!.startsWith('http') ? (
-                                <img src={memberRoles.get(message.author.id)![0].icon_url!} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
-                              ) : (
-                                <span className="text-sm flex-shrink-0">{memberRoles.get(message.author.id)![0].icon_url}</span>
-                              )
+                            {memberRoles?.get(message.author.id)?.[0] && memberRoles.get(message.author.id)![0].icon_url && (
+                              <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
                             )}
                             <span className="text-xs text-muted-foreground flex-shrink-0">
                               {formatTime(message.timestamp)}

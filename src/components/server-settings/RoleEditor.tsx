@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useUpdateRole, RoleWithPermissions, ALL_PERMISSIONS, ServerPermission } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, ImagePlus, X, Shield, Users } from 'lucide-react';
@@ -23,6 +24,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const [iconUrl, setIconUrl] = useState(role.icon_url || '');
   const [emojiInput, setEmojiInput] = useState('');
   const [hoist, setHoist] = useState(role.hoist || false);
+  const [description, setDescription] = useState(role.description || '');
   const [isUploading, setIsUploading] = useState(false);
   const [permissions, setPermissions] = useState<Set<ServerPermission>>(
     new Set(role.permissions)
@@ -35,6 +37,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
     setIconUrl(role.icon_url || '');
     setEmojiInput('');
     setHoist(role.hoist || false);
+    setDescription(role.description || '');
     setPermissions(new Set(role.permissions));
   }, [role.id]);
 
@@ -111,6 +114,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
       color,
       iconUrl: iconUrl || null,
       hoist,
+      description: description || null,
       permissions: Array.from(permissions),
     });
   };
@@ -120,6 +124,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
     color !== (role.color || '#99AAB5') ||
     iconUrl !== (role.icon_url || '') ||
     hoist !== (role.hoist || false) ||
+    description !== (role.description || '') ||
     JSON.stringify([...permissions].sort()) !==
       JSON.stringify([...role.permissions].sort());
 
@@ -160,6 +165,22 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
             />
           </div>
         </div>
+      </div>
+
+      {/* Description */}
+      <div className="space-y-2">
+        <Label htmlFor="role-description">Description</Label>
+        <Textarea
+          id="role-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={role.is_default}
+          placeholder="Décrivez le rôle et ses responsabilités..."
+          maxLength={200}
+          rows={2}
+          className="resize-none"
+        />
+        <p className="text-xs text-muted-foreground">{description.length}/200 caractères</p>
       </div>
 
       {/* Role Icon */}

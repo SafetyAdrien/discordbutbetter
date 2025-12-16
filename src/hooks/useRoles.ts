@@ -19,6 +19,7 @@ export interface RoleWithPermissions {
   is_default: boolean | null;
   hoist: boolean | null;
   server_id: string;
+  description: string | null;
   permissions: ServerPermission[];
 }
 
@@ -55,7 +56,7 @@ export function useServerRoles(serverId: string | null) {
 
       const { data: roles, error: rolesError } = await supabase
         .from('roles')
-        .select('id, name, color, icon_url, position, is_default, hoist, server_id')
+        .select('id, name, color, icon_url, position, is_default, hoist, server_id, description')
         .eq('server_id', serverId)
         .order('position', { ascending: false });
 
@@ -134,6 +135,7 @@ export function useCreateRole() {
         is_default: false,
         hoist: false,
         server_id: serverId,
+        description: null,
         permissions: [],
       };
       
@@ -169,6 +171,7 @@ export function useUpdateRole() {
       color,
       iconUrl,
       hoist,
+      description,
       permissions,
     }: {
       roleId: string;
@@ -177,15 +180,17 @@ export function useUpdateRole() {
       color?: string;
       iconUrl?: string | null;
       hoist?: boolean;
+      description?: string | null;
       permissions?: ServerPermission[];
     }) => {
       // Update role basic info
-      if (name || color || iconUrl !== undefined || hoist !== undefined) {
-        const updateData: { name?: string; color?: string; icon_url?: string | null; hoist?: boolean } = {};
+      if (name || color || iconUrl !== undefined || hoist !== undefined || description !== undefined) {
+        const updateData: { name?: string; color?: string; icon_url?: string | null; hoist?: boolean; description?: string | null } = {};
         if (name) updateData.name = name;
         if (color) updateData.color = color;
         if (iconUrl !== undefined) updateData.icon_url = iconUrl;
         if (hoist !== undefined) updateData.hoist = hoist;
+        if (description !== undefined) updateData.description = description;
         
         const { error } = await supabase
           .from('roles')
@@ -392,6 +397,7 @@ export function useDuplicateRole() {
             is_default: false,
             hoist: sourceRole.hoist,
             server_id: serverId,
+            description: sourceRole.description,
             permissions: [...sourceRole.permissions],
           };
           

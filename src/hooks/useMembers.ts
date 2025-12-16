@@ -25,6 +25,7 @@ export interface MemberWithProfile {
     color: string | null;
     icon_url: string | null;
     position: number | null;
+    description: string | null;
   }[];
 }
 
@@ -61,7 +62,8 @@ export function useMembers(serverId: string | null) {
               name,
               color,
               icon_url,
-              position
+              position,
+              description
             )
           )
         `)

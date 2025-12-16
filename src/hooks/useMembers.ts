@@ -84,12 +84,13 @@ export function useMembers(serverId: string | null) {
     enabled: !!serverId && !!user,
   });
 
-  // Real-time subscription for profile status updates
+  // Real-time subscription for profile status updates AND member changes (kick/ban)
   useEffect(() => {
     if (!serverId || !user) return;
 
     const channel = supabase
-      .channel(`presence:${serverId}`)
+      .channel(`members-realtime:${serverId}`)
+      // Listen for profile updates (status, activity, etc.)
       .on(
         'postgres_changes',
         {
@@ -123,6 +124,37 @@ export function useMembers(serverId: string | null) {
               );
             }
           );
+        }
+      )
+      // Listen for member deletions (kick/leave)
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'server_members',
+          filter: `server_id=eq.${serverId}`,
+        },
+        (payload) => {
+          const deleted = payload.old as any;
+          queryClient.setQueryData<MemberWithProfile[]>(
+            ['members', serverId],
+            (old) => old?.filter((member) => member.id !== deleted.id) || []
+          );
+        }
+      )
+      // Listen for new members
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'server_members',
+          filter: `server_id=eq.${serverId}`,
+        },
+        () => {
+          // Refetch to get full member data with profile
+          queryClient.invalidateQueries({ queryKey: ['members', serverId] });
         }
       )
       .subscribe();

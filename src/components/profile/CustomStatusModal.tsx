@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Smile, X, Gamepad2, Headphones, Eye, Trophy } from 'lucide-react';
 import { useUpdateProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 interface CustomStatusModalProps {
@@ -35,6 +36,7 @@ const COMMON_EMOJIS = ['😀', '😎', '🎮', '🎧', '📺', '🏆', '💤', '
 export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps) {
   const { profile } = useAuth();
   const { mutate: updateProfile, isPending } = useUpdateProfile();
+  const queryClient = useQueryClient();
   
   const [statusEmoji, setStatusEmoji] = useState('');
   const [statusText, setStatusText] = useState('');
@@ -45,7 +47,16 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
   // Load current status on open
   useEffect(() => {
     if (open && profile) {
-      setStatusText(profile.custom_status || '');
+      // Parse emoji from existing status
+      const existingStatus = profile.custom_status || '';
+      const emojiMatch = existingStatus.match(/^(\p{Emoji})\s*/u);
+      if (emojiMatch) {
+        setStatusEmoji(emojiMatch[1]);
+        setStatusText(existingStatus.slice(emojiMatch[0].length));
+      } else {
+        setStatusEmoji('');
+        setStatusText(existingStatus);
+      }
       setActivityType(profile.activity_type || '');
       setActivityText(profile.activity_text || '');
     }
@@ -61,7 +72,12 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
       activity_type: activityType || null,
       activity_text: activityText || null,
     }, {
-      onSuccess: () => onOpenChange(false),
+      onSuccess: () => {
+        // Force refresh all related queries immediately
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        queryClient.invalidateQueries({ queryKey: ['members'] });
+        onOpenChange(false);
+      },
     });
   };
 
@@ -76,7 +92,11 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
       activity_type: null,
       activity_text: null,
     }, {
-      onSuccess: () => onOpenChange(false),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        queryClient.invalidateQueries({ queryKey: ['members'] });
+        onOpenChange(false);
+      },
     });
   };
 

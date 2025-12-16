@@ -166,13 +166,13 @@ function SortableCategory({
     <div ref={setNodeRef} style={style} className={cn("channel-transition", isDragging && "sortable-ghost")}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
+          <div className="flex items-center w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default gap-[4px] px-0 py-0">
             <button onClick={e => {
               e.stopPropagation();
               onToggle();
-            }} className="flex items-center gap-px flex-1 font-extralight">
+            }} className="flex items-center flex-1 font-extralight py-0 my-0 gap-0">
               <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
+              <span className="tracking-wide font-ginto text-[14px] text-[#9b9ca3] font-normal my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
             </button>
             <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
               e.stopPropagation();

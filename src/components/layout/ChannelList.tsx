@@ -44,22 +44,25 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 import React from 'react';
 
-// Discord-style Drop Indicator - Blue horizontal line
+// Discord-style Drop Indicator - Blue horizontal line with absolute positioning
 const DropIndicator = React.forwardRef<
   HTMLDivElement,
-  { isVisible: boolean; position?: 'before' | 'after' }
->(({ isVisible, position = 'after' }, ref) => {
+  { isVisible: boolean; position: 'before' | 'after' }
+>(({ isVisible, position }, ref) => {
   if (!isVisible) return null;
   return (
     <div 
       ref={ref} 
       className={cn(
-        "relative h-[2px] mx-2 my-0.5 rounded-full",
-        "bg-[#5865f2] shadow-[0_0_8px_rgba(88,101,242,0.6)]",
-        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
-        "before:w-2 before:h-2 before:rounded-full before:bg-[#5865f2]",
-        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2",
-        "after:w-2 after:h-2 after:rounded-full after:bg-[#5865f2]"
+        "absolute left-0 right-0 h-[2px] z-50 pointer-events-none",
+        "bg-[#5865f2]",
+        // Circles at endpoints using pseudo-elements
+        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
+        "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
+        "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+        // Position based on 'before' or 'after'
+        position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
       )}
     />
   );
@@ -176,12 +179,14 @@ function SortableCategory({
     opacity: isDragging ? 0.3 : 1,
   };
   return <>
-    {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
     {/* En-tête de catégorie (zone draggable uniquement) */}
     <div ref={setNodeRef} style={style} className={cn(
-      "transition-all duration-150",
+      "relative transition-all duration-150",
       isDragging && "bg-muted/20 rounded-md scale-[0.98]"
     )}>
+      {/* Drop Indicator - Absolute positioned */}
+      {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
+      
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
@@ -216,7 +221,6 @@ function SortableCategory({
         </ContextMenuContent>
       </ContextMenu>
     </div>
-    {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
     
     {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
     {!isCollapsed && <div className="mb-2">{children}</div>}
@@ -320,11 +324,13 @@ function SortableChannel({
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
   return <>
-      {showDropIndicator && dropPosition === 'before' && <DropIndicator isVisible={true} position="before" />}
       <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn(
-        "hover:cursor-grab channel-transition rounded-md transition-all duration-150",
+        "relative hover:cursor-grab channel-transition rounded-md transition-all duration-150",
         isDragging && "bg-muted/20 scale-[0.98]"
       )}>
+        {/* Drop Indicator - Absolute positioned */}
+        {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
+        
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
@@ -413,7 +419,6 @@ function SortableChannel({
               </button>
             </div>)}
         </div>}
-      {showDropIndicator && dropPosition === 'after' && <DropIndicator isVisible={true} position="after" />}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

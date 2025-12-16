@@ -42,7 +42,7 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
         ref={ref}
         className={cn(
           // Absolute positioning with z-index above everything
-          "absolute h-[2px] z-50 pointer-events-none",
+          "absolute h-[2px] z-10 pointer-events-none",
           // Full width, ignoring parent padding
           fullWidth ? "-left-2 -right-2" : "left-0 right-0",
           // Discord blue color

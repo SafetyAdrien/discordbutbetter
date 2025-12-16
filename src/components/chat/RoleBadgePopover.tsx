@@ -1,4 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Role {
   id: string;
@@ -17,21 +18,30 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
 
   const isImageUrl = role.icon_url.startsWith('http');
 
+  const iconElement = isImageUrl ? (
+    <img 
+      src={role.icon_url} 
+      alt={role.name} 
+      className="w-4 h-4 object-contain" 
+    />
+  ) : (
+    <span className="text-sm">{role.icon_url}</span>
+  );
+
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <button className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform">
-          {isImageUrl ? (
-            <img 
-              src={role.icon_url} 
-              alt={role.name} 
-              className="w-4 h-4 object-contain" 
-            />
-          ) : (
-            <span className="text-sm">{role.icon_url}</span>
-          )}
-        </button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform">
+              {iconElement}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          <p className="text-foreground">{role.name}</p>
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent 
         side="top" 
         align="start" 
@@ -57,10 +67,7 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
           
           {/* Role Info */}
           <div className="flex-1 min-w-0">
-            <h4 
-              className="font-semibold text-sm truncate"
-              style={{ color: role.color || 'hsl(var(--foreground))' }}
-            >
+            <h4 className="font-semibold text-sm truncate text-foreground">
               {role.name}
             </h4>
             {role.description && (

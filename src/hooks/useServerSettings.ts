@@ -9,6 +9,10 @@ export interface ServerSettings {
   welcome_message: string | null;
   welcome_channel_id: string | null;
   system_channel_id: string | null;
+  sticker_channel_id: string | null;
+  boost_channel_id: string | null;
+  tips_channel_id: string | null;
+  activity_channel_id: string | null;
   auto_assign_roles: string[];
   system_messages_enabled: boolean;
   sticker_reply_enabled: boolean;
@@ -36,6 +40,10 @@ export function useServerSettings(serverId: string) {
         return {
           ...data,
           system_channel_id: data.system_channel_id || null,
+          sticker_channel_id: data.sticker_channel_id || null,
+          boost_channel_id: data.boost_channel_id || null,
+          tips_channel_id: data.tips_channel_id || null,
+          activity_channel_id: data.activity_channel_id || null,
           sticker_reply_enabled: data.sticker_reply_enabled ?? true,
           boost_message_enabled: data.boost_message_enabled ?? true,
           setup_tips_enabled: data.setup_tips_enabled ?? true,
@@ -94,6 +102,10 @@ export function useUpdateServerSettings() {
             welcome_message: settings.welcome_message ?? null,
             welcome_channel_id: settings.welcome_channel_id ?? null,
             system_channel_id: settings.system_channel_id ?? null,
+            sticker_channel_id: settings.sticker_channel_id ?? null,
+            boost_channel_id: settings.boost_channel_id ?? null,
+            tips_channel_id: settings.tips_channel_id ?? null,
+            activity_channel_id: settings.activity_channel_id ?? null,
             auto_assign_roles: settings.auto_assign_roles ?? [],
             system_messages_enabled: settings.system_messages_enabled ?? true,
             sticker_reply_enabled: settings.sticker_reply_enabled ?? true,

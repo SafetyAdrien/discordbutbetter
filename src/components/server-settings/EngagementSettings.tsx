@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageSquare, Users, TrendingUp, Loader2, Hash } from 'lucide-react';
+import { Heart, MessageSquare, Users, TrendingUp, Loader2, Hash, Sticker, Sparkles, Lightbulb, Activity } from 'lucide-react';
 import { useEngagementStats } from '@/hooks/useEngagementStats';
 import { useServerSettings, useUpdateServerSettings, ServerSettings } from '@/hooks/useServerSettings';
 import { useChannels } from '@/hooks/useChannels';
@@ -46,6 +46,43 @@ function SettingToggle({ title, description, checked, onCheckedChange, disabled 
   );
 }
 
+interface ChannelSelectorProps {
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  value: string;
+  onChange: (value: string) => void;
+  channels: { id: string; name: string }[];
+}
+
+function ChannelSelector({ label, description, icon: Icon, value, onChange, channels }: ChannelSelectorProps) {
+  return (
+    <div className="space-y-2 p-4 rounded-lg bg-muted/20 border border-border">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4 text-muted-foreground" />
+        <Label className="text-sm font-medium">{label}</Label>
+      </div>
+      <Select value={value || 'none'} onValueChange={(v) => onChange(v === 'none' ? '' : v)}>
+        <SelectTrigger className="bg-background">
+          <SelectValue placeholder="Sélectionner un canal" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Aucun</SelectItem>
+          {channels.map(channel => (
+            <SelectItem key={channel.id} value={channel.id}>
+              <div className="flex items-center gap-2">
+                <Hash className="w-4 h-4 text-muted-foreground" />
+                {channel.name}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
 export function EngagementSettings({ serverId }: EngagementSettingsProps) {
   const { data: stats, isLoading: statsLoading } = useEngagementStats(serverId);
   const { data: settings, isLoading: settingsLoading } = useServerSettings(serverId);
@@ -58,6 +95,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
     welcome_message: '',
     welcome_channel_id: '',
     system_channel_id: '',
+    sticker_channel_id: '',
+    boost_channel_id: '',
+    tips_channel_id: '',
+    activity_channel_id: '',
     system_messages_enabled: true,
     sticker_reply_enabled: true,
     boost_message_enabled: true,
@@ -80,6 +121,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         welcome_message: settings.welcome_message || '',
         welcome_channel_id: settings.welcome_channel_id || '',
         system_channel_id: settings.system_channel_id || '',
+        sticker_channel_id: settings.sticker_channel_id || '',
+        boost_channel_id: settings.boost_channel_id || '',
+        tips_channel_id: settings.tips_channel_id || '',
+        activity_channel_id: settings.activity_channel_id || '',
         system_messages_enabled: settings.system_messages_enabled ?? true,
         sticker_reply_enabled: settings.sticker_reply_enabled ?? true,
         boost_message_enabled: settings.boost_message_enabled ?? true,
@@ -101,6 +146,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         welcome_message: localSettings.welcome_message || null,
         welcome_channel_id: localSettings.welcome_channel_id || null,
         system_channel_id: localSettings.system_channel_id || null,
+        sticker_channel_id: localSettings.sticker_channel_id || null,
+        boost_channel_id: localSettings.boost_channel_id || null,
+        tips_channel_id: localSettings.tips_channel_id || null,
+        activity_channel_id: localSettings.activity_channel_id || null,
         system_messages_enabled: localSettings.system_messages_enabled,
         sticker_reply_enabled: localSettings.sticker_reply_enabled,
         boost_message_enabled: localSettings.boost_message_enabled,
@@ -125,6 +174,10 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         localSettings.welcome_message !== (settings.welcome_message || '') ||
         localSettings.welcome_channel_id !== (settings.welcome_channel_id || '') ||
         localSettings.system_channel_id !== (settings.system_channel_id || '') ||
+        localSettings.sticker_channel_id !== (settings.sticker_channel_id || '') ||
+        localSettings.boost_channel_id !== (settings.boost_channel_id || '') ||
+        localSettings.tips_channel_id !== (settings.tips_channel_id || '') ||
+        localSettings.activity_channel_id !== (settings.activity_channel_id || '') ||
         localSettings.system_messages_enabled !== settings.system_messages_enabled ||
         localSettings.sticker_reply_enabled !== (settings.sticker_reply_enabled ?? true) ||
         localSettings.boost_message_enabled !== (settings.boost_message_enabled ?? true) ||
@@ -198,36 +251,60 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
         </div>
       </div>
 
-      {/* System Messages Channel */}
+      {/* Separate Channel Selectors for each event type */}
       <div className="space-y-4 pt-4 border-t border-border">
         <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-          Canal des messages système
+          Canaux des messages système
         </h4>
+        <p className="text-sm text-muted-foreground mb-4">
+          Configurez un canal distinct pour chaque type de message système
+        </p>
         
-        <div className="space-y-2">
-          <Label className="text-sm">Canal de destination</Label>
-        <Select 
-          value={localSettings.system_channel_id || 'none'} 
-          onValueChange={(v) => updateLocalSetting('system_channel_id', v === 'none' ? '' : v)}
-        >
-          <SelectTrigger className="bg-background">
-            <SelectValue placeholder="Sélectionner un canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Aucun</SelectItem>
-            {textChannels.map(channel => (
-              <SelectItem key={channel.id} value={channel.id}>
-                <div className="flex items-center gap-2">
-                  <Hash className="w-4 h-4 text-muted-foreground" />
-                  {channel.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-          <p className="text-xs text-muted-foreground">
-            Ce canal recevra les messages de bienvenue et autres messages système
-          </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <ChannelSelector
+            label="Messages de bienvenue"
+            description="Canal pour les messages d'accueil des nouveaux membres"
+            icon={MessageSquare}
+            value={localSettings.system_channel_id || ''}
+            onChange={(v) => updateLocalSetting('system_channel_id', v)}
+            channels={textChannels}
+          />
+          
+          <ChannelSelector
+            label="Réponses autocollants"
+            description="Canal pour les réponses automatiques avec stickers"
+            icon={Sticker}
+            value={localSettings.sticker_channel_id || ''}
+            onChange={(v) => updateLocalSetting('sticker_channel_id', v)}
+            channels={textChannels}
+          />
+          
+          <ChannelSelector
+            label="Messages de boost"
+            description="Canal pour les notifications de boost serveur"
+            icon={Sparkles}
+            value={localSettings.boost_channel_id || ''}
+            onChange={(v) => updateLocalSetting('boost_channel_id', v)}
+            channels={textChannels}
+          />
+          
+          <ChannelSelector
+            label="Conseils de configuration"
+            description="Canal pour les conseils d'amélioration du serveur"
+            icon={Lightbulb}
+            value={localSettings.tips_channel_id || ''}
+            onChange={(v) => updateLocalSetting('tips_channel_id', v)}
+            channels={textChannels}
+          />
+          
+          <ChannelSelector
+            label="Fil d'activité"
+            description="Canal pour le fil d'activité des membres"
+            icon={Activity}
+            value={localSettings.activity_channel_id || ''}
+            onChange={(v) => updateLocalSetting('activity_channel_id', v)}
+            channels={textChannels}
+          />
         </div>
       </div>
 
@@ -283,25 +360,25 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
 
         <div className="space-y-2">
           <Label className="text-sm">Canal de bienvenue</Label>
-        <Select 
-          value={localSettings.welcome_channel_id || 'none'} 
-          onValueChange={(v) => updateLocalSetting('welcome_channel_id', v === 'none' ? '' : v)}
-        >
-          <SelectTrigger className="bg-background">
-            <SelectValue placeholder="Sélectionner un canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Aucun</SelectItem>
-            {textChannels.map(channel => (
-              <SelectItem key={channel.id} value={channel.id}>
-                <div className="flex items-center gap-2">
-                  <Hash className="w-4 h-4 text-muted-foreground" />
-                  {channel.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select 
+            value={localSettings.welcome_channel_id || 'none'} 
+            onValueChange={(v) => updateLocalSetting('welcome_channel_id', v === 'none' ? '' : v)}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Sélectionner un canal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Aucun</SelectItem>
+              {textChannels.map(channel => (
+                <SelectItem key={channel.id} value={channel.id}>
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-muted-foreground" />
+                    {channel.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

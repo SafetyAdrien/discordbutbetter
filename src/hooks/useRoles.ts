@@ -17,6 +17,7 @@ export interface RoleWithPermissions {
   icon_url: string | null;
   position: number | null;
   is_default: boolean | null;
+  hoist: boolean | null;
   server_id: string;
   permissions: ServerPermission[];
 }
@@ -54,7 +55,7 @@ export function useServerRoles(serverId: string | null) {
 
       const { data: roles, error: rolesError } = await supabase
         .from('roles')
-        .select('id, name, color, icon_url, position, is_default, server_id')
+        .select('id, name, color, icon_url, position, is_default, hoist, server_id')
         .eq('server_id', serverId)
         .order('position', { ascending: false });
 
@@ -131,6 +132,7 @@ export function useCreateRole() {
         icon_url: null,
         position: 999,
         is_default: false,
+        hoist: false,
         server_id: serverId,
         permissions: [],
       };
@@ -166,6 +168,7 @@ export function useUpdateRole() {
       name,
       color,
       iconUrl,
+      hoist,
       permissions,
     }: {
       roleId: string;
@@ -173,14 +176,16 @@ export function useUpdateRole() {
       name?: string;
       color?: string;
       iconUrl?: string | null;
+      hoist?: boolean;
       permissions?: ServerPermission[];
     }) => {
       // Update role basic info
-      if (name || color || iconUrl !== undefined) {
-        const updateData: { name?: string; color?: string; icon_url?: string | null } = {};
+      if (name || color || iconUrl !== undefined || hoist !== undefined) {
+        const updateData: { name?: string; color?: string; icon_url?: string | null; hoist?: boolean } = {};
         if (name) updateData.name = name;
         if (color) updateData.color = color;
         if (iconUrl !== undefined) updateData.icon_url = iconUrl;
+        if (hoist !== undefined) updateData.hoist = hoist;
         
         const { error } = await supabase
           .from('roles')
@@ -210,7 +215,7 @@ export function useUpdateRole() {
 
       return { roleId, serverId };
     },
-    onMutate: async ({ roleId, serverId, name, color, iconUrl, permissions }) => {
+    onMutate: async ({ roleId, serverId, name, color, iconUrl, hoist, permissions }) => {
       await queryClient.cancelQueries({ queryKey: ['roles', serverId] });
       const previousRoles = queryClient.getQueryData(['roles', serverId]);
       
@@ -220,6 +225,7 @@ export function useUpdateRole() {
           name: name ?? r.name,
           color: color ?? r.color,
           icon_url: iconUrl !== undefined ? iconUrl : r.icon_url,
+          hoist: hoist !== undefined ? hoist : r.hoist,
           permissions: permissions ?? r.permissions,
         } : r)
       );
@@ -384,6 +390,7 @@ export function useDuplicateRole() {
             icon_url: sourceRole.icon_url,
             position: (sourceRole.position || 0) + 1,
             is_default: false,
+            hoist: sourceRole.hoist,
             server_id: serverId,
             permissions: [...sourceRole.permissions],
           };

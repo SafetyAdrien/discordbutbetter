@@ -922,6 +922,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_text: string | null
+          activity_type: string | null
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
@@ -930,12 +932,17 @@ export type Database = {
           display_name: string
           id: string
           phone: string | null
+          pronouns: string | null
           server_order: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
+          theme_color: string | null
+          theme_gradient: string | null
           updated_at: string | null
           username: string
         }
         Insert: {
+          activity_text?: string | null
+          activity_type?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
@@ -944,12 +951,17 @@ export type Database = {
           display_name: string
           id: string
           phone?: string | null
+          pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
+          theme_color?: string | null
+          theme_gradient?: string | null
           updated_at?: string | null
           username: string
         }
         Update: {
+          activity_text?: string | null
+          activity_type?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
@@ -958,8 +970,11 @@ export type Database = {
           display_name?: string
           id?: string
           phone?: string | null
+          pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
+          theme_color?: string | null
+          theme_gradient?: string | null
           updated_at?: string | null
           username?: string
         }
@@ -1034,6 +1049,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string | null
+          hoist: boolean | null
           icon_url: string | null
           id: string
           is_default: boolean | null
@@ -1044,6 +1060,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string | null
+          hoist?: boolean | null
           icon_url?: string | null
           id?: string
           is_default?: boolean | null
@@ -1054,6 +1071,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string | null
+          hoist?: boolean | null
           icon_url?: string | null
           id?: string
           is_default?: boolean | null
@@ -1788,6 +1806,51 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_channel_settings: {
+        Row: {
+          category_id: string | null
+          channel_id: string | null
+          created_at: string | null
+          id: string
+          muted: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          channel_id?: string | null
+          created_at?: string | null
+          id?: string
+          muted?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category_id?: string | null
+          channel_id?: string | null
+          created_at?: string | null
+          id?: string
+          muted?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_channel_settings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_channel_settings_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
         ]

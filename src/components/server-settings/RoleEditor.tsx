@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, ImagePlus, X, Shield } from 'lucide-react';
+import { Loader2, ImagePlus, X, Shield, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,6 +22,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const [color, setColor] = useState(role.color || '#99AAB5');
   const [iconUrl, setIconUrl] = useState(role.icon_url || '');
   const [emojiInput, setEmojiInput] = useState('');
+  const [hoist, setHoist] = useState(role.hoist || false);
   const [isUploading, setIsUploading] = useState(false);
   const [permissions, setPermissions] = useState<Set<ServerPermission>>(
     new Set(role.permissions)
@@ -33,6 +34,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
     setColor(role.color || '#99AAB5');
     setIconUrl(role.icon_url || '');
     setEmojiInput('');
+    setHoist(role.hoist || false);
     setPermissions(new Set(role.permissions));
   }, [role.id]);
 
@@ -108,6 +110,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
       name,
       color,
       iconUrl: iconUrl || null,
+      hoist,
       permissions: Array.from(permissions),
     });
   };
@@ -116,6 +119,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
     name !== role.name ||
     color !== (role.color || '#99AAB5') ||
     iconUrl !== (role.icon_url || '') ||
+    hoist !== (role.hoist || false) ||
     JSON.stringify([...permissions].sort()) !==
       JSON.stringify([...role.permissions].sort());
 
@@ -221,6 +225,26 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
         <p className="text-xs text-muted-foreground">
           Uploadez une image (max 256 Ko) ou entrez un emoji
         </p>
+      </div>
+
+      {/* Hoist Option - Above permissions */}
+      <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 text-primary" />
+            <div>
+              <Label className="text-sm font-medium">Afficher séparément dans la liste des membres</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Les membres ayant ce rôle seront affichés dans un groupe séparé
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={hoist}
+            onCheckedChange={setHoist}
+            disabled={role.is_default}
+          />
+        </div>
       </div>
 
       {/* Permissions */}

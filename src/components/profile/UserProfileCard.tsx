@@ -6,7 +6,9 @@ import * as Portal from "@radix-ui/react-portal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
-import { Settings, Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy } from "lucide-react";
+import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy, Copy, Settings } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
+import { uuidToSnowflake } from "@/lib/snowflake";
 import { CustomStatusModal } from "./CustomStatusModal";
 
 const statusColors = {
@@ -217,13 +219,18 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 <span>Définir un statut personnalisé</span>
               </button>
 
-              {/* Settings */}
+              {/* Copy ID */}
               <button
-                onClick={onOpenSettings}
+                onClick={() => {
+                  if (profile?.id) {
+                    const snowflakeId = uuidToSnowflake(profile.id);
+                    copyToClipboard(snowflakeId, "Identifiant copié !");
+                  }
+                }}
                 className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
               >
-                <Settings className="w-4 h-4 text-muted-foreground" />
-                <span>Paramètres</span>
+                <Copy className="w-4 h-4 text-muted-foreground" />
+                <span>Copier ton identifiant</span>
               </button>
             </div>
           </div>

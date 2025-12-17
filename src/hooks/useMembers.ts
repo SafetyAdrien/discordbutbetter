@@ -134,35 +134,11 @@ export function useMembers(serverId: string | null) {
           schema: 'public',
           table: 'member_roles',
         },
-        async (payload) => {
+        () => {
           // Skip if a local mutation is in progress to avoid flickering
-          if (membersMutationLockRef.current) return;
-
-          const { member_id, role_id } = payload.new as { member_id: string; role_id: string };
-
-          // Fetch role details
-          const { data: roleData } = await supabase
-            .from('roles')
-            .select('id, name, color, icon_url, position, description')
-            .eq('id', role_id)
-            .single();
-
-          if (!roleData) return;
-
-          // Update cache directly for instant UI update
-          queryClient.setQueryData<MemberWithProfile[]>(
-            ['members', serverId],
-            (old) =>
-              old?.map((m) => {
-                if (m.id !== member_id) return m;
-                const alreadyHasRole = m.roles.some((r) => r.id === role_id);
-                if (alreadyHasRole) return m;
-                return {
-                  ...m,
-                  roles: [...m.roles, roleData].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)),
-                };
-              }) || []
-          );
+          if (!membersMutationLockRef.current) {
+            queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          }
         }
       )
       // Listen for role removals (DELETE on member_roles)
@@ -173,24 +149,11 @@ export function useMembers(serverId: string | null) {
           schema: 'public',
           table: 'member_roles',
         },
-        (payload) => {
+        () => {
           // Skip if a local mutation is in progress to avoid flickering
-          if (membersMutationLockRef.current) return;
-
-          const { member_id, role_id } = payload.old as { member_id: string; role_id: string };
-
-          // Update cache directly for instant UI update
-          queryClient.setQueryData<MemberWithProfile[]>(
-            ['members', serverId],
-            (old) =>
-              old?.map((m) => {
-                if (m.id !== member_id) return m;
-                return {
-                  ...m,
-                  roles: m.roles.filter((r) => r.id !== role_id),
-                };
-              }) || []
-          );
+          if (!membersMutationLockRef.current) {
+            queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          }
         }
       )
       .subscribe();

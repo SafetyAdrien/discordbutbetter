@@ -1,31 +1,19 @@
-import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { StreamlineHash } from '@/components/icons/StreamlineHash';
-import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
-import { StreamlineForum } from '@/components/icons/StreamlineForum';
-import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
-import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
-import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
-import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
-import { StreamlineStage } from '@/components/icons/StreamlineStage';
-import { useCreateChannel, ChannelType } from '@/hooks/useChannels';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { StreamlineHash } from "@/components/icons/StreamlineHash";
+import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
+import { StreamlineForum } from "@/components/icons/StreamlineForum";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
+import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
+import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
+import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
+import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import { useCreateChannel, ChannelType } from "@/hooks/useChannels";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CreateChannelModalProps {
   serverId: string;
@@ -37,14 +25,54 @@ interface CreateChannelModalProps {
 }
 
 const channelTypes: { value: ChannelType; label: string; icon: React.ElementType; description: string }[] = [
-  { value: 'text', label: 'Textuel', icon: StreamlineHash, description: 'Envoyer des messages' },
-  { value: 'voice', label: 'Vocal', icon: StreamlineVoice, description: 'Parler en temps réel' },
-  { value: 'stage', label: 'Conférence', icon: StreamlineStage, description: 'Sessions avec speakers et audience' },
-  { value: 'forum', label: 'Forum', icon: StreamlineForum, description: 'Discussions organisées' },
-  { value: 'announcement', label: 'Annonce', icon: StreamlineMegaphone, description: 'Messages importants' },
-  { value: 'media', label: 'Médias', icon: StreamlineMedia, description: 'Partager des images/vidéos' },
-  { value: 'calendar', label: 'Calendrier', icon: StreamlineCalendar, description: 'Événements et rendez-vous' },
-  { value: 'tasks', label: 'Tâches', icon: StreamlineTasks, description: 'Liste de tâches' },
+  {
+    value: "text",
+    label: "Texte",
+    icon: StreamlineHash,
+    description: "Partage des images, des GIF, des émojis, des opinions et des blagues.",
+  },
+  {
+    value: "voice",
+    label: "Vocal",
+    icon: StreamlineVoice,
+    description: "Rejoins tes amis en vocal, en vidéo et avec le partage d'écran.",
+  },
+  {
+    value: "stage",
+    label: "Conférence",
+    icon: StreamlineStage,
+    description: "Organise des évènements, des groupes et des sessions de questions-réponses en public.",
+  },
+  {
+    value: "forum",
+    label: "Forum",
+    icon: StreamlineForum,
+    description: "Créer un espace pour organiser des sujets de discussions.",
+  },
+  {
+    value: "announcement",
+    label: "Annonce",
+    icon: StreamlineMegaphone,
+    description: "Récapitulatif pour les personnes qui entrant et sortant du serveur.",
+  },
+  {
+    value: "media",
+    label: "Contenu multimédia",
+    icon: StreamlineMedia,
+    description: "Partage des vidéos, des photos et des fichiers avec les membres de ton serveur.",
+  },
+  {
+    value: "calendar",
+    label: "Calendrier",
+    icon: StreamlineCalendar,
+    description: "Planifiez et programmez des événements.",
+  },
+  {
+    value: "tasks",
+    label: "Tâches",
+    icon: StreamlineTasks,
+    description: "Créer et gère ta liste de tâche à accomplir sur ton serveur.",
+  },
 ];
 
 export function CreateChannelModal({
@@ -55,8 +83,8 @@ export function CreateChannelModal({
   showCategorySelector,
   onClose,
 }: CreateChannelModalProps) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState<ChannelType>('text');
+  const [name, setName] = useState("");
+  const [type, setType] = useState<ChannelType>("text");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(categoryId);
   const createChannel = useCreateChannel();
 
@@ -64,28 +92,30 @@ export function CreateChannelModal({
     e.preventDefault();
     if (!name.trim()) return;
 
-    createChannel.mutate(
-      { serverId, categoryId: selectedCategoryId, name: name.trim(), type },
-      { onSuccess: onClose }
-    );
+    createChannel.mutate({ serverId, categoryId: selectedCategoryId, name: name.trim(), type }, { onSuccess: onClose });
   };
 
   const displayCategoryName = showCategorySelector
-    ? (selectedCategoryId ? categories?.find(c => c.id === selectedCategoryId)?.name || 'Sans catégorie' : 'Sans catégorie')
+    ? selectedCategoryId
+      ? categories?.find((c) => c.id === selectedCategoryId)?.name || "Sans catégorie"
+      : "Sans catégorie"
     : categoryName;
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md" onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onClose();
-        }
-      }}>
+      <DialogContent
+        className="sm:max-w-md"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            onClose();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Créer un salon</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {selectedCategoryId ? `Dans ${displayCategoryName}` : 'Sans catégorie'}
+            {selectedCategoryId ? `Dans ${displayCategoryName}` : "Sans catégorie"}
           </p>
         </DialogHeader>
 
@@ -93,17 +123,19 @@ export function CreateChannelModal({
           {showCategorySelector && categories && (
             <div className="space-y-2">
               <Label>Catégorie</Label>
-              <Select 
-                value={selectedCategoryId || 'none'} 
-                onValueChange={(value) => setSelectedCategoryId(value === 'none' ? null : value)}
+              <Select
+                value={selectedCategoryId || "none"}
+                onValueChange={(value) => setSelectedCategoryId(value === "none" ? null : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner une catégorie" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sans catégorie</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -123,20 +155,14 @@ export function CreateChannelModal({
 
           <div className="space-y-2">
             <Label>Type de salon</Label>
-            <RadioGroup
-              value={type}
-              onValueChange={(value) => setType(value as ChannelType)}
-              className="grid gap-2"
-            >
+            <RadioGroup value={type} onValueChange={(value) => setType(value as ChannelType)} className="grid gap-2">
               {channelTypes.map((channelType) => {
                 const Icon = channelType.icon;
                 return (
                   <label
                     key={channelType.value}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      type === channelType.value
-                        ? 'border-[#5865f2] bg-[#5865f2]/10'
-                        : 'border-border hover:bg-muted'
+                      type === channelType.value ? "border-[#5865f2] bg-[#5865f2]/10" : "border-border hover:bg-muted"
                     }`}
                   >
                     <RadioGroupItem value={channelType.value} className="sr-only" />
@@ -160,7 +186,7 @@ export function CreateChannelModal({
               disabled={!name.trim() || createChannel.isPending}
               className="bg-[#5865f2] hover:bg-[#5865f2]/90"
             >
-              {createChannel.isPending ? 'Création...' : 'Créer le salon'}
+              {createChannel.isPending ? "Création..." : "Créer le salon"}
             </Button>
           </DialogFooter>
         </form>

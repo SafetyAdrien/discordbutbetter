@@ -736,7 +736,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-96 p-0">
               <div className="p-3 border-b border-border">
-                <h4 className="font-semibold text-foreground">Messages épinglés</h4>
+                <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
               </div>
               <ScrollArea className="max-h-80">
                 {pinnedMessages && pinnedMessages.length > 0 ? (
@@ -776,7 +776,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground/70 text-center py-8">
-                    Ce salon n'a pas encore de message épinglé... pour l'instant.
+                    Aucun message épinglé dans ce salon.
                   </div>
                 )}
               </ScrollArea>
@@ -792,7 +792,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-80 p-3">
               <h4 className="font-semibold text-foreground mb-3">Boîte de réception</h4>
-              <div className="text-sm text-muted-foreground/70 text-center py-6">Il n'y a rien ici pour le moment.</div>
+
+              <div className="flex flex-col items-center justify-center text-center py-6 space-y-2">
+                {/* Premier paragraphe : Gras et plus visible */}
+                <p className="font-bold text-foreground">Il n'y a rien ici pour le moment.</p>
+
+                {/* Deuxième paragraphe : Plus petit et couleur atténuée */}
+                <p className="text-sm text-muted-foreground">
+                  Reviens pour les notifications d'événements, les streams et bien plus encore.
+                </p>
+              </div>
             </PopoverContent>
           </Popover>
 
@@ -815,11 +824,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {activeThreadId
-                ? "Fermer le thread"
-                : showMembers
-                  ? "Masquer la liste des membres"
-                  : "Afficher la liste des membres"}
+              {activeThreadId ? "Fermer le thread" : showMembers ? "Masquer les membres" : "Afficher les membres"}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -833,8 +838,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
               <Hash className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
-            <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
+            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue sur #{channel.name} !</h1>
+            <p className="text-muted-foreground">
+              C'est le début du salon #{channel.name}. Commencez la conversation !
+            </p>
           </div>
 
           {/* Date Separator */}

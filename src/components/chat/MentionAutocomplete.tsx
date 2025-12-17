@@ -3,6 +3,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Hash, AtSign } from "lucide-react";
 import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { uuidToSnowflake } from "@/lib/snowflake";
 
 export interface MentionMember {
   id: string;
@@ -92,17 +93,23 @@ export function MentionAutocomplete({
 
   const handleSelect = (item: any) => {
     if (type === "user") {
-      onSelect(`<@${item.id}>`, item.displayName);
+      // Use Snowflake ID (18 digits) for user mentions
+      const snowflakeId = uuidToSnowflake(item.id);
+      onSelect(`<@${snowflakeId}>`, item.displayName);
     } else if (type === "role") {
       if (item.id === "everyone" || item.id === "here") {
         onSelect(`@${item.name}`, `@${item.name}`);
       } else {
-        onSelect(`<@&${item.id}>`, `@${item.name}`);
+        // Use Snowflake ID for role mentions
+        const snowflakeId = uuidToSnowflake(item.id);
+        onSelect(`<@&${snowflakeId}>`, `@${item.name}`);
       }
     } else if (type === "channel") {
+      // Use Snowflake ID for channel mentions
+      const snowflakeId = uuidToSnowflake(item.id);
       // Format channel name based on type (kebab-case for text, exact for voice)
       const formattedName = formatChannelName(item.name, item.type);
-      onSelect(`<#${item.id}>`, `#${formattedName}`);
+      onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
     }
   };
 

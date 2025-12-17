@@ -8,6 +8,7 @@ import {
   MessageLinkEmbed,
   EveryoneMention 
 } from '@/components/chat/mentions/MentionComponents';
+import { snowflakeToUuid, isValidSnowflake } from '@/lib/snowflake';
 
 // ============================================
 // TYPES
@@ -82,12 +83,13 @@ const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
 // MENTION PATTERNS
 // ============================================
 const MENTION_PATTERNS = {
-  user: /<@!?([0-9a-f-]+)>/gi,
-  role: /<@&([0-9a-f-]+)>/gi,
-  channel: /<#([0-9a-f-]+)>/gi,
+  // Support both 18-digit Snowflake IDs and UUIDs for backward compatibility
+  user: /<@!?(\d{18}|[0-9a-f-]+)>/gi,
+  role: /<@&(\d{18}|[0-9a-f-]+)>/gi,
+  channel: /<#(\d{18}|[0-9a-f-]+)>/gi,
   special: /<id:(guide|browse|customize)>/gi,
   everyone: /@(everyone|here)/gi,
-  messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/([0-9a-f-]+)\/([0-9a-f-]+)\/([0-9a-f-]+)/gi,
+  messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)/gi,
 };
 
 // ============================================
@@ -455,7 +457,11 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
     // MENTION RENDERS
     // ============================================
     case 'userMention': {
-      const userId = token.mentionId || (token.content as string);
+      const mentionId = token.mentionId || (token.content as string);
+      // Convert Snowflake ID to UUID if needed for lookup
+      const userId = isValidSnowflake(mentionId) 
+        ? (snowflakeToUuid(mentionId) || mentionId)
+        : mentionId;
       const userData = markdownContext.users?.get(userId);
       const isSelf = markdownContext.currentUserId === userId;
       
@@ -472,7 +478,11 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
     }
 
     case 'roleMention': {
-      const roleId = token.mentionId || (token.content as string);
+      const mentionId = token.mentionId || (token.content as string);
+      // Convert Snowflake ID to UUID if needed for lookup
+      const roleId = isValidSnowflake(mentionId)
+        ? (snowflakeToUuid(mentionId) || mentionId)
+        : mentionId;
       const roleData = markdownContext.roles?.get(roleId);
       
       return (
@@ -486,7 +496,11 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
     }
 
     case 'channelMention': {
-      const channelId = token.mentionId || (token.content as string);
+      const mentionId = token.mentionId || (token.content as string);
+      // Convert Snowflake ID to UUID if needed for lookup
+      const channelId = isValidSnowflake(mentionId)
+        ? (snowflakeToUuid(mentionId) || mentionId)
+        : mentionId;
       const channelData = markdownContext.channels?.get(channelId);
       
       return (

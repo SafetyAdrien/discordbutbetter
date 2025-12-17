@@ -55,6 +55,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { TypingIndicator } from "@/components/typing/TypingIndicator";
 import { MarkdownText, setMarkdownContext } from "@/lib/markdown";
+import { registerSnowflakeMappings } from "@/lib/snowflake";
 import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
@@ -438,11 +439,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   useEffect(() => {
     // Build users map from messages authors
     const usersMap = new Map<string, { displayName: string; avatarUrl?: string }>();
+    const userIds: string[] = [];
+    
     messages.forEach((m) => {
       usersMap.set(m.author.id, {
         displayName: m.author.displayName,
         avatarUrl: m.author.avatar,
       });
+      userIds.push(m.author.id);
     });
     // Add members data
     members.forEach((m) => {
@@ -450,19 +454,30 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         displayName: m.displayName,
         avatarUrl: m.avatar,
       });
+      userIds.push(m.id);
     });
+    
+    // Register all user UUIDs in Snowflake registry for reverse lookups
+    registerSnowflakeMappings(userIds);
 
     // Build roles map
     const rolesMap = new Map<string, { name: string; color: string }>();
+    const roleIds: string[] = [];
     serverRoles.forEach((r) => {
       rolesMap.set(r.id, { name: r.name, color: r.color || "#99aab5" });
+      roleIds.push(r.id);
     });
 
     // Build channels map
     const channelsMap = new Map<string, { name: string; serverId?: string }>();
+    const channelIds: string[] = [];
     allChannels.forEach((ch) => {
       channelsMap.set(ch.id, { name: ch.name, serverId: channel.server_id });
+      channelIds.push(ch.id);
     });
+    
+    // Register all IDs in Snowflake registry for reverse lookups
+    registerSnowflakeMappings([...roleIds, ...channelIds]);
 
     setMarkdownContext({
       currentUserId: user?.id,

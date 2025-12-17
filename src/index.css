@@ -11,7 +11,7 @@
 }
 
 .dnd-drop-indicator::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 8px;
   right: 8px;
@@ -39,7 +39,7 @@
 /* Drag overlay styling */
 .dnd-overlay {
   cursor: grabbing !important;
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(88, 101, 242, 0.3);
 }
@@ -318,7 +318,7 @@
 
   @keyframes slide-in-right {
     from {
-      transform: translateX(100%);
+      transform: translateX(10%);
       opacity: 0;
     }
     to {
@@ -337,11 +337,11 @@
   }
 
   .animate-slide-in-left {
-    animation: slide-in-left 0.3s ease-out;
+    animation: slide-in-left 0.1s ease-out;
   }
 
   .animate-slide-in-right {
-    animation: slide-in-right 0.3s ease-out;
+    animation: slide-in-right 0.1s ease-out;
   }
 
   .animate-fade-in {
@@ -351,7 +351,7 @@
   @keyframes slide-down {
     from {
       opacity: 0;
-      transform: translateY(-8px);
+      transform: translateY(-1px);
     }
     to {
       opacity: 1;
@@ -442,7 +442,9 @@
     border-radius: 4px;
     padding: 0 2px;
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
     user-select: none;
   }
 
@@ -461,32 +463,71 @@
     background: transparent !important;
     color: #dcddde;
   }
-  .hljs-keyword { color: #c678dd; }
-  .hljs-string { color: #98c379; }
-  .hljs-number { color: #d19a66; }
-  .hljs-comment { color: #5c6370; font-style: italic; }
-  .hljs-function { color: #61afef; }
-  .hljs-variable { color: #e06c75; }
-  .hljs-class { color: #e5c07b; }
-  .hljs-tag { color: #e06c75; }
-  .hljs-attr { color: #d19a66; }
-  .hljs-built_in { color: #e5c07b; }
-  .hljs-literal { color: #56b6c2; }
-  .hljs-params { color: #dcddde; }
-  .hljs-meta { color: #5c6370; }
-  .hljs-type { color: #e5c07b; }
-  .hljs-title { color: #61afef; }
-  .hljs-name { color: #e06c75; }
-  .hljs-selector-class { color: #d19a66; }
-  .hljs-selector-id { color: #61afef; }
-  .hljs-property { color: #e06c75; }
+  .hljs-keyword {
+    color: #c678dd;
+  }
+  .hljs-string {
+    color: #98c379;
+  }
+  .hljs-number {
+    color: #d19a66;
+  }
+  .hljs-comment {
+    color: #5c6370;
+    font-style: italic;
+  }
+  .hljs-function {
+    color: #61afef;
+  }
+  .hljs-variable {
+    color: #e06c75;
+  }
+  .hljs-class {
+    color: #e5c07b;
+  }
+  .hljs-tag {
+    color: #e06c75;
+  }
+  .hljs-attr {
+    color: #d19a66;
+  }
+  .hljs-built_in {
+    color: #e5c07b;
+  }
+  .hljs-literal {
+    color: #56b6c2;
+  }
+  .hljs-params {
+    color: #dcddde;
+  }
+  .hljs-meta {
+    color: #5c6370;
+  }
+  .hljs-type {
+    color: #e5c07b;
+  }
+  .hljs-title {
+    color: #61afef;
+  }
+  .hljs-name {
+    color: #e06c75;
+  }
+  .hljs-selector-class {
+    color: #d19a66;
+  }
+  .hljs-selector-id {
+    color: #61afef;
+  }
+  .hljs-property {
+    color: #e06c75;
+  }
 
   /* Monospace font for code elements - Consolas stack */
   .font-mono,
   code,
   pre,
   .markdown-content code {
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
+    font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace !important;
   }
 
   /* Drag and drop animations */
@@ -558,7 +599,8 @@
 
   /* Message highlight animation for Jump to Message */
   @keyframes message-highlight {
-    0%, 30% {
+    0%,
+    30% {
       background-color: rgba(88, 101, 242, 0.3);
     }
     100% {

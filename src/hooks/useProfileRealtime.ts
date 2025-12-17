@@ -18,7 +18,7 @@ export function useProfileRealtime(serverId: string | null) {
     // Create a presence channel for this server
     const channel = supabase.channel(`presence:${serverId}`, {
       config: {
-        broadcast: { self: false }, // Don't receive own broadcasts
+        broadcast: { self: true }, // Receive own broadcasts to update local cache
       },
     });
 

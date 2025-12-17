@@ -57,7 +57,7 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
             <h4 className="font-semibold text-sm truncate text-white">{role.name}</h4>
             {role.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{role.description}</p>}
             {!role.description && (
-              <p className="text-xs text-muted-foreground/60 mt-1">Custom Role Icon For "{role.name}"</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Icône de rôle personnalisée pour "{role.name}".</p>
             )}
           </div>
         </div>

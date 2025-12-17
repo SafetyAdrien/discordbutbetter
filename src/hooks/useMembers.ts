@@ -86,7 +86,7 @@ export function useMembers(serverId: string | null) {
     enabled: !!serverId && !!user,
   });
 
-  // Real-time subscription for member changes (join/leave/kick/ban) and role changes
+  // Real-time subscription for member changes (join/leave/kick/ban)
   useEffect(() => {
     if (!serverId || !user) return;
 
@@ -120,32 +120,6 @@ export function useMembers(serverId: string | null) {
         },
         () => {
           // Refetch to get full member data with profile
-          queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-        }
-      )
-      // Listen for role additions to members
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'member_roles',
-        },
-        () => {
-          // Invalidate to refresh member roles
-          queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-        }
-      )
-      // Listen for role removals from members
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'member_roles',
-        },
-        () => {
-          // Invalidate to refresh member roles
           queryClient.invalidateQueries({ queryKey: ['members', serverId] });
         }
       )

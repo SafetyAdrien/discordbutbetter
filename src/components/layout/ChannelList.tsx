@@ -11,7 +11,7 @@ import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import StreamlineThreadBranch from "@/components/icons/StreamlineThreadBranch";
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -265,27 +265,7 @@ function SortableCategory({
 }
 
 // Sortable Channel Component
-function SortableChannel({
-  channel,
-  serverId,
-  isActive,
-  isVoiceConnected,
-  speakingUsers,
-  onChannelClick,
-  onCopyLink,
-  onMarkAsRead,
-  onOpenSettings,
-  onCreateInvite,
-  onDelete,
-  onDuplicate,
-  showDropIndicator = false,
-  dropPosition = "after",
-  threads = [],
-  activeThreadId,
-  onThreadSelect,
-  showArchivedThreads = false,
-  canManageChannels = false
-}: {
+interface SortableChannelProps {
   channel: Channel;
   serverId: string;
   isActive: boolean;
@@ -305,7 +285,29 @@ function SortableChannel({
   onThreadSelect?: (threadId: string) => void;
   showArchivedThreads?: boolean;
   canManageChannels?: boolean;
-}) {
+}
+
+const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
+  channel,
+  serverId,
+  isActive,
+  isVoiceConnected,
+  speakingUsers,
+  onChannelClick,
+  onCopyLink,
+  onMarkAsRead,
+  onOpenSettings,
+  onCreateInvite,
+  onDelete,
+  onDuplicate,
+  showDropIndicator = false,
+  dropPosition = "after",
+  threads = [],
+  activeThreadId,
+  onThreadSelect,
+  showArchivedThreads = false,
+  canManageChannels = false
+}, ref) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
     attributes,
@@ -477,7 +479,8 @@ function SortableChannel({
         </AlertDialogContent>
       </AlertDialog>
     </>;
-}
+});
+SortableChannel.displayName = 'SortableChannel';
 export function ChannelList({
   server,
   activeChannelId,

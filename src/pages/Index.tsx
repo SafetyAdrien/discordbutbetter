@@ -23,7 +23,6 @@ import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/
 import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
-import { useProfileRealtime } from '@/hooks/useProfileRealtime';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { Loader2 } from 'lucide-react';
@@ -51,9 +50,6 @@ const Index = () => {
   const { data: channelsData } = useChannels(activeServerId);
   const { data: messages = [] } = useMessages(activeChannelId);
   const { data: members = [] } = useMembers(activeServerId);
-  
-  // Real-time profile status updates via broadcast
-  useProfileRealtime(activeServerId);
 
   // Voice state
   const { voiceState, toggleMute } = useVoiceState();

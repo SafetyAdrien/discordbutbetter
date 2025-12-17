@@ -704,7 +704,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 </button>
                 <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                   <BellOff className="w-4 h-4 text-muted-foreground" />
-                  <span>Désactiver</span>
+                  <span>Aucun message</span>
                 </button>
               </div>
             </PopoverContent>
@@ -776,7 +776,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground/70 text-center py-8">
-                    Aucun message épinglé dans ce salon.
+                    Ce salon n'a pas encore de message épinglé... pour l'instant.
                   </div>
                 )}
               </ScrollArea>
@@ -829,10 +829,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
               <Hash className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue sur #{channel.name} !</h1>
-            <p className="text-muted-foreground">
-              C'est le début du salon #{channel.name}. Commencez la conversation !
-            </p>
+            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
+            <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
           </div>
 
           {/* Date Separator */}
@@ -916,7 +914,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     </ContextMenuItem>
                     <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
                       <Hash className="w-4 h-4 mr-2" />
-                      Copier l'ID
+                      Copier l'ID du sondage
                     </ContextMenuItem>
                     {isOwnPoll && (
                       <>
@@ -1296,11 +1294,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
                     <Link className="w-4 h-4 mr-2" />
-                    Copier le lien
+                    Copier le lien du message
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => handleCopyId(message.id)}>
                     <Hash className="w-4 h-4 mr-2" />
-                    Copier l'ID
+                    Copier l'identifiant du message
                   </ContextMenuItem>
 
                   {/* Bas : Zone Danger */}
@@ -1309,14 +1307,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     <>
                       <ContextMenuItem onClick={() => handleStartEdit(message)}>
                         <Pencil className="w-4 h-4 mr-2" />
-                        Modifier
+                        Modifier le message
                       </ContextMenuItem>
                       <ContextMenuItem
                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
                         onClick={() => handleDelete(message.id)}
                       >
                         <Trash2 className="w-4 h-4 mr-2 text-destructive" />
-                        Supprimer
+                        Supprimer le message
                       </ContextMenuItem>
                     </>
                   ) : (
@@ -1325,7 +1323,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       onClick={() => setReportingMessage(message)}
                     >
                       <Flag className="w-4 h-4 mr-2 text-destructive" />
-                      Signaler
+                      Signaler ce message
                     </ContextMenuItem>
                   )}
                 </ContextMenuContent>

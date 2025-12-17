@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -185,8 +185,8 @@ export function UserProfilePopup({
 
   const ActivityIcon = (user as any).activity_type ? activityIcons[(user as any).activity_type] : null;
 
-  const ProfileContent = () => (
-    <>
+  const ProfileContent = forwardRef<HTMLDivElement>((_, ref) => (
+    <div ref={ref}>
       {/* Banner */}
       <div className="relative">
         <div 
@@ -390,8 +390,9 @@ export function UserProfilePopup({
 
         </div>
       </div>
-    </>
-  );
+    </div>
+  ));
+  ProfileContent.displayName = 'ProfileContent';
 
   // Role Management Side Panel Component
   const RoleSidePanel = () => {

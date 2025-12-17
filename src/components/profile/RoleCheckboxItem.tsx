@@ -46,10 +46,11 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
   const [isPending, setIsPending] = useState(false);
 
   // Keep in sync when switching user / reopening panel
+  // BUT never reset during a pending operation to prevent visual rollback
   useEffect(() => {
+    if (isPending) return; // Don't sync while mutation in progress
     setIsChecked(defaultChecked);
-    setIsPending(false);
-  }, [defaultChecked, memberId, role.id]);
+  }, [defaultChecked, memberId, role.id, isPending]);
 
   const handleClick = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {

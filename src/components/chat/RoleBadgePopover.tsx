@@ -77,7 +77,7 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
             )}
             {!role.description && (
               <p className="text-xs text-muted-foreground/60 mt-1 italic">
-                Aucune description
+                Custom Role Icon For "{role.name}"
               </p>
             )}
           </div>

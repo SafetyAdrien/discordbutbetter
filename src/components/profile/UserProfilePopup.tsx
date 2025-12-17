@@ -152,7 +152,9 @@ export function UserProfilePopup({
     if (!serverId || !memberId) return;
     
     if (checked) {
-      assignRole.mutate({ memberId, roleId, serverId });
+      // Pass full role data for complete optimistic update
+      const roleData = allRoles.find(r => r.id === roleId);
+      assignRole.mutate({ memberId, roleId, serverId, role: roleData });
     } else {
       removeRole.mutate({ memberId, roleId, serverId });
     }

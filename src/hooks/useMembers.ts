@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Mutation lock to prevent Realtime invalidations during local role mutations
+export const membersMutationLockRef = { current: false };
 
 export interface MemberWithProfile {
   id: string;
@@ -132,8 +135,10 @@ export function useMembers(serverId: string | null) {
           table: 'member_roles',
         },
         () => {
-          // Refetch to get updated roles
-          queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          // Skip if a local mutation is in progress to avoid flickering
+          if (!membersMutationLockRef.current) {
+            queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          }
         }
       )
       // Listen for role removals (DELETE on member_roles)
@@ -145,8 +150,10 @@ export function useMembers(serverId: string | null) {
           table: 'member_roles',
         },
         () => {
-          // Refetch to get updated roles
-          queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          // Skip if a local mutation is in progress to avoid flickering
+          if (!membersMutationLockRef.current) {
+            queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          }
         }
       )
       .subscribe();

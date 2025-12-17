@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import * as Portal from "@radix-ui/react-portal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePresenceContext } from "@/contexts/PresenceContext";
 import { Settings, Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy } from "lucide-react";
 import { CustomStatusModal } from "./CustomStatusModal";
 
@@ -44,6 +45,7 @@ interface UserProfileCardProps {
 
 export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
   const { profile, updateStatus } = useAuth();
+  const { setManualStatus } = usePresenceContext();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showCustomStatusModal, setShowCustomStatusModal] = useState(false);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
@@ -85,6 +87,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   const handleStatusChange = (status: "online" | "idle" | "dnd" | "offline") => {
+    // Informer le système de présence que c'est un changement manuel
+    setManualStatus(status);
+    // Mettre à jour le profil
     updateStatus(status);
     setShowStatusMenu(false);
   };

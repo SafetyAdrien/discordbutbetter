@@ -68,7 +68,13 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
 
       try {
         if (next) {
-          const { error } = await supabase.from("member_roles").insert({ member_id: memberId, role_id: role.id });
+          // Use upsert with onConflict to handle duplicate key gracefully
+          const { error } = await supabase
+            .from("member_roles")
+            .upsert(
+              { member_id: memberId, role_id: role.id },
+              { onConflict: "member_id,role_id", ignoreDuplicates: true }
+            );
           if (error) throw error;
         } else {
           const { error } = await supabase

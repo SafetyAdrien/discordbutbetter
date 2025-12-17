@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Users, Inbox } from 'lucide-react';
 import { DMList } from './DMList';
@@ -11,17 +11,20 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
+
 type DMView = 'friends' | 'inbox' | 'conversation';
+
 interface DMPageProps {
   activeDMId: string | null;
   onConversationSelect: (conversationId: string) => void;
   onShowFriends: () => void;
 }
-export function DMPage({
+
+export const DMPage = forwardRef<HTMLDivElement, DMPageProps>(({
   activeDMId,
   onConversationSelect,
   onShowFriends
-}: DMPageProps) {
+}, ref) => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const unreadCount = useUnreadNotificationsCount();
@@ -49,7 +52,7 @@ export function DMPage({
     setShowInbox(false);
     onShowFriends();
   };
-  return <div className="flex-1 flex">
+  return <div ref={ref} className="flex-1 flex">
       {/* Left Sidebar - DM List */}
       <div className="w-60 bg-card flex flex-col border-r border-border">
         {/* Header */}
@@ -105,4 +108,6 @@ export function DMPage({
       {/* Modals */}
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
     </div>;
-}
+});
+
+DMPage.displayName = 'DMPage';

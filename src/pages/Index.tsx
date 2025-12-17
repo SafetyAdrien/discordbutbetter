@@ -23,7 +23,7 @@ import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/
 import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
-import { useProfileRealtime } from '@/hooks/useProfileRealtime';
+import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { Loader2 } from 'lucide-react';
@@ -51,9 +51,8 @@ const Index = () => {
   const { data: channelsData } = useChannels(activeServerId);
   const { data: messages = [] } = useMessages(activeChannelId);
   const { data: members = [] } = useMembers(activeServerId);
-  
-  // Real-time profile status updates via broadcast
-  useProfileRealtime(activeServerId);
+  // Realtime profiles updates (DB -> postgres_changes)
+  useProfilesRealtime();
 
   // Voice state
   const { voiceState, toggleMute } = useVoiceState();

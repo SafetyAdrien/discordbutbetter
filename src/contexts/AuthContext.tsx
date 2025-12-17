@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { broadcastStatusUpdate } from '@/hooks/useProfileRealtime';
 import type { Database } from '@/integrations/supabase/types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -68,19 +67,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) throw error;
-      setProfile(data);
-      
-      // Set user as online
-      await supabase
-        .from('profiles')
-        .update({ status: 'online' })
-        .eq('id', userId);
+
+      // Au login, on met l'utilisateur en ligne (sauf si il était en DND)
+      const shouldGoOnline = data.status !== 'dnd';
+      const nextProfile = (shouldGoOnline ? { ...data, status: 'online' } : data) as Profile;
+      setProfile(nextProfile);
+
+      if (shouldGoOnline) {
+        await supabase.from('profiles').update({ status: 'online' }).eq('id', userId);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Realtime: garder le profil local sync (ex: statut idle/dnd depuis un autre onglet)
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`profile:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          setProfile(payload.new as Profile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -136,10 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateStatus = async (status: Database['public']['Enums']['user_status']) => {
     if (!user) return;
-    
     await updateProfile({ status });
-    // Broadcast le changement de statut à tous les serveurs
-    broadcastStatusUpdate(user.id, status);
   };
 
   return (

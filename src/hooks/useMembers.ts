@@ -134,10 +134,35 @@ export function useMembers(serverId: string | null) {
           schema: 'public',
           table: 'member_roles',
         },
-        () => {
+        async (payload) => {
           // Skip if a local mutation is in progress to avoid flickering
-          if (!membersMutationLockRef.current) {
-            queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          if (membersMutationLockRef.current) return;
+
+          const inserted = payload.new as { member_id: string; role_id: string };
+          
+          // Fetch role details for the newly assigned role
+          const { data: roleData } = await supabase
+            .from('roles')
+            .select('id, name, color, icon_url, position, description')
+            .eq('id', inserted.role_id)
+            .single();
+
+          if (roleData) {
+            queryClient.setQueryData<MemberWithProfile[]>(
+              ['members', serverId],
+              (old) =>
+                old?.map((m) => {
+                  if (m.id !== inserted.member_id) return m;
+                  const alreadyHas = m.roles.some((r) => r.id === roleData.id);
+                  if (alreadyHas) return m;
+                  return {
+                    ...m,
+                    roles: [...m.roles, roleData].sort(
+                      (a, b) => (b.position ?? 0) - (a.position ?? 0)
+                    ),
+                  };
+                }) || []
+            );
           }
         }
       )
@@ -149,11 +174,23 @@ export function useMembers(serverId: string | null) {
           schema: 'public',
           table: 'member_roles',
         },
-        () => {
+        (payload) => {
           // Skip if a local mutation is in progress to avoid flickering
-          if (!membersMutationLockRef.current) {
-            queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-          }
+          if (membersMutationLockRef.current) return;
+
+          const deleted = payload.old as { member_id: string; role_id: string };
+
+          queryClient.setQueryData<MemberWithProfile[]>(
+            ['members', serverId],
+            (old) =>
+              old?.map((m) => {
+                if (m.id !== deleted.member_id) return m;
+                return {
+                  ...m,
+                  roles: m.roles.filter((r) => r.id !== deleted.role_id),
+                };
+              }) || []
+          );
         }
       )
       .subscribe();

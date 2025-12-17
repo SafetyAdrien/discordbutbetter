@@ -425,8 +425,10 @@ export function UserProfilePopup({
                 htmlFor={`panel-role-${role.id}`} 
                 className="flex items-center gap-1.5 cursor-pointer text-sm flex-1"
               >
-                <RoleIcon role={role} />
-                <span style={{ color: role.color || undefined }}>{role.name}</span>
+                <span className="flex items-center gap-1.5 flex-1">
+                  <RoleIcon role={role} />
+                  <span style={{ color: role.color || undefined }}>{role.name}</span>
+                </span>
               </Label>
             </div>
           ))}

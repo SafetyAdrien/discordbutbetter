@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { broadcastStatusUpdate } from '@/hooks/useProfileRealtime';
 import type { Database } from '@/integrations/supabase/types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -138,8 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     
     await updateProfile({ status });
-    // Broadcast le changement de statut à tous les serveurs
-    broadcastStatusUpdate(user.id, status);
   };
 
   return (

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { broadcastStatusUpdate } from './useProfileRealtime';
 import type { Database } from '@/integrations/supabase/types';
 
 type UserStatus = Database['public']['Enums']['user_status'];
@@ -25,7 +24,7 @@ export function usePresence() {
     accessTokenRef.current = session?.access_token || null;
   }, [user?.id, session?.access_token]);
 
-  // Met à jour le statut dans Supabase et broadcast aux autres utilisateurs
+  // Met à jour le statut dans Supabase (la subscription postgres_changes propagera le changement)
   const updateStatus = useCallback(async (status: UserStatus, forceUpdate = false) => {
     if (!user) return;
     
@@ -47,8 +46,6 @@ export function usePresence() {
       
       if (!error) {
         currentStatusRef.current = status;
-        // Broadcast le changement de statut à tous les serveurs
-        broadcastStatusUpdate(user.id, status);
       }
     } catch (error) {
       console.error('Error updating presence status:', error);

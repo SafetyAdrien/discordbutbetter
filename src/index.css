@@ -318,7 +318,7 @@
 
   @keyframes slide-in-right {
     from {
-      transform: translateX(10%);
+      transform: translateX(100%);
       opacity: 0;
     }
     to {
@@ -351,7 +351,7 @@
   @keyframes slide-down {
     from {
       opacity: 0;
-      transform: translateY(-1px);
+      transform: translateY(-8px);
     }
     to {
       opacity: 1;

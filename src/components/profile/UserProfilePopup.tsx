@@ -5,7 +5,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Settings, Clock, Gamepad2, Radio, Headphones, Eye, Swords } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -112,6 +113,7 @@ export function UserProfilePopup({
   const assignRole = useAssignRoleToMember();
   const removeRole = useRemoveRoleFromMember();
   const [dmCreated, setDmCreated] = useState(false);
+  const [showRolePanel, setShowRolePanel] = useState(false);
 
   if (!user) return null;
 
@@ -314,9 +316,24 @@ export function UserProfilePopup({
             <>
               <div className="border-t border-border" />
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2">
-                  Rôles
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide">
+                    Rôles
+                  </h4>
+                  {canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setShowRolePanel(true)}
+                          className="p-1 hover:bg-muted rounded transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Gérer les rôles</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {displayRoles.map((role) => (
                     <div
@@ -348,37 +365,6 @@ export function UserProfilePopup({
             </>
           )}
 
-          {canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
-            <>
-              <div className="border-t border-border" />
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-2 flex items-center gap-1.5">
-                  <Settings className="w-3.5 h-3.5" />
-                  Gérer les rôles
-                </h4>
-                <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                  {assignableRoles.map((role) => (
-                    <div key={role.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`role-${role.id}`}
-                        checked={userRoleIds.includes(role.id)}
-                        onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
-                        disabled={assignRole.isPending || removeRole.isPending}
-                      />
-                      <Label 
-                        htmlFor={`role-${role.id}`} 
-                        className="flex items-center gap-1.5 cursor-pointer text-sm"
-                      >
-                        <RoleIcon role={role} />
-                        <span style={{ color: role.color || undefined }}>{role.name}</span>
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
           <div className="border-t border-border" />
 
           <div>
@@ -401,23 +387,70 @@ export function UserProfilePopup({
     </>
   );
 
+  // Role Management Side Panel Component
+  const RoleSidePanel = () => (
+    <div 
+      className="absolute top-0 right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="p-3 border-b border-border flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Gérer les rôles</h4>
+        <button 
+          onClick={() => setShowRolePanel(false)} 
+          className="p-1 hover:bg-muted rounded transition-colors"
+        >
+          <X className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
+      <ScrollArea className="max-h-[300px]">
+        <div className="p-2 space-y-1">
+          {assignableRoles.map((role) => (
+            <div key={role.id} className="flex items-center gap-2 p-1.5 hover:bg-muted/50 rounded transition-colors">
+              <Checkbox
+                id={`panel-role-${role.id}`}
+                checked={userRoleIds.includes(role.id)}
+                onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
+                disabled={assignRole.isPending || removeRole.isPending}
+              />
+              <Label 
+                htmlFor={`panel-role-${role.id}`} 
+                className="flex items-center gap-1.5 cursor-pointer text-sm flex-1"
+              >
+                <RoleIcon role={role} />
+                <span style={{ color: role.color || undefined }}>{role.name}</span>
+              </Label>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
   // Mode Card - affichage en carte latérale
   if (mode === 'card' && open) {
     return (
       <Portal.Root>
         <div 
           className="fixed inset-0 z-50"
-          onClick={() => onOpenChange(false)}
+          onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
         >
           <div 
-            className="absolute w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right"
+            className="absolute flex items-start"
             style={{ 
               top: cardPosition?.top ?? 100,
               right: cardPosition?.right ?? 280
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <ProfileContent />
+            {/* Role Side Panel */}
+            {showRolePanel && canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
+              <RoleSidePanel />
+            )}
+            
+            {/* Main Profile Card */}
+            <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
+              <ProfileContent />
+            </div>
           </div>
         </div>
       </Portal.Root>

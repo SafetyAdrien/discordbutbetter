@@ -307,7 +307,7 @@
 
   @keyframes slide-in-left {
     from {
-      transform: translateX(-100%);
+      transform: translateX(20px);
       opacity: 0;
     }
     to {
@@ -337,7 +337,7 @@
   }
 
   .animate-slide-in-left {
-    animation: slide-in-left 0.3s ease-out;
+    animation: slide-in-left 0.15s ease-out;
   }
 
   .animate-slide-in-right {

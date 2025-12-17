@@ -422,7 +422,7 @@ export function UserProfilePopup({
               role={role}
               serverId={serverId}
               memberId={memberId}
-              defaultChecked={userRoleIds.includes(role.id)}
+              isChecked={userRoleIds.includes(role.id)}
             />
           ))}
         </div>

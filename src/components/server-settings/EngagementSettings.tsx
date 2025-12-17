@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Heart, MessageSquare, Users, TrendingUp, Loader2, Hash, Sticker, Sparkles, Lightbulb, Activity } from 'lucide-react';
 import { useEngagementStats } from '@/hooks/useEngagementStats';
 import { useServerSettings, useUpdateServerSettings, ServerSettings } from '@/hooks/useServerSettings';
@@ -83,7 +83,7 @@ function ChannelSelector({ label, description, icon: Icon, value, onChange, chan
   );
 }
 
-export function EngagementSettings({ serverId }: EngagementSettingsProps) {
+export const EngagementSettings = forwardRef<HTMLDivElement, EngagementSettingsProps>(({ serverId }, ref) => {
   const { data: stats, isLoading: statsLoading } = useEngagementStats(serverId);
   const { data: settings, isLoading: settingsLoading } = useServerSettings(serverId);
   const { data: channelsData } = useChannels(serverId);
@@ -189,14 +189,14 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
 
   if (settingsLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div ref={ref} className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div ref={ref} className="space-y-8">
       <div>
         <h3 className="text-lg font-semibold mb-1">Engagement des membres</h3>
         <p className="text-sm text-muted-foreground">
@@ -454,4 +454,5 @@ export function EngagementSettings({ serverId }: EngagementSettingsProps) {
       )}
     </div>
   );
-}
+});
+EngagementSettings.displayName = 'EngagementSettings';

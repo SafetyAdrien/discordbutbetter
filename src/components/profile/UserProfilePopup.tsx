@@ -312,7 +312,8 @@ export function UserProfilePopup({
             </div>
           )}
 
-          {displayRoles && displayRoles.length > 0 && (
+          {/* Afficher la section Rôles si l'utilisateur a des rôles OU si on peut les gérer */}
+          {((displayRoles && displayRoles.length > 0) || (canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0)) && (
             <>
               <div className="border-t border-border" />
               <div>
@@ -334,33 +335,37 @@ export function UserProfilePopup({
                     </Tooltip>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {displayRoles.map((role) => (
-                    <div
-                      key={role.id}
-                      className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
-                      style={{
-                        backgroundColor: role.color ? `${role.color}20` : 'hsl(var(--muted))',
-                        borderLeft: `3px solid ${role.color || 'hsl(var(--muted-foreground))'}`,
-                        color: role.color || 'hsl(var(--foreground))',
-                      }}
-                    >
-                      {role.icon_url ? (
-                        role.icon_url.startsWith('http') ? (
-                          <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />
+                {displayRoles && displayRoles.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {displayRoles.map((role) => (
+                      <div
+                        key={role.id}
+                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
+                        style={{
+                          backgroundColor: role.color ? `${role.color}20` : 'hsl(var(--muted))',
+                          borderLeft: `3px solid ${role.color || 'hsl(var(--muted-foreground))'}`,
+                          color: role.color || 'hsl(var(--foreground))',
+                        }}
+                      >
+                        {role.icon_url ? (
+                          role.icon_url.startsWith('http') ? (
+                            <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />
+                          ) : (
+                            <span className="text-xs">{role.icon_url}</span>
+                          )
                         ) : (
-                          <span className="text-xs">{role.icon_url}</span>
-                        )
-                      ) : (
-                        <div
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
-                        />
-                      )}
-                      {role.name}
-                    </div>
-                  ))}
-                </div>
+                          <div
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
+                          />
+                        )}
+                        {role.name}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground/50">Aucun rôle assigné</p>
+                )}
               </div>
             </>
           )}

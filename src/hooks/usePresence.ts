@@ -17,6 +17,7 @@ export function usePresence() {
   const isManualStatusRef = useRef<boolean>(false);
   const userIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef<boolean>(false);
 
   // Stocker l'ID utilisateur et le token pour le cleanup
   useEffect(() => {
@@ -91,17 +92,24 @@ export function usePresence() {
     });
   }, []);
 
+  // Synchroniser le statut depuis le profil
+  useEffect(() => {
+    if (profile) {
+      currentStatusRef.current = profile.status;
+      isManualStatusRef.current = profile.status === 'dnd';
+    }
+  }, [profile?.status]);
+
   // Effet pour initialiser la détection de présence
   useEffect(() => {
     if (!user || !profile) return;
 
-    // Initialiser le statut courant
-    currentStatusRef.current = profile.status;
-    isManualStatusRef.current = profile.status === 'dnd';
-
-    // Mettre en ligne au démarrage (sauf si dnd)
-    if (profile.status !== 'dnd') {
-      updateStatus('online', true);
+    // Ne mettre en ligne qu'à la PREMIÈRE initialisation
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      if (profile.status !== 'dnd') {
+        updateStatus('online', true);
+      }
     }
 
     // Ajouter les listeners d'activité
@@ -147,7 +155,7 @@ export function usePresence() {
         clearTimeout(idleTimerRef.current);
       }
     };
-  }, [user?.id, profile?.id, handleActivity, handleBeforeUnload, updateStatus]);
+  }, [user?.id]); // Dépendances minimales - évite les ré-exécutions
 
   // Met à jour le statut manuel (appelé depuis le sélecteur de statut)
   const setManualStatus = useCallback((status: UserStatus) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
-  const updateProfile = async (data: Partial<Profile>) => {
+  const updateProfile = useCallback(async (data: Partial<Profile>) => {
     if (!user) return;
     
     const { error } = await supabase
@@ -158,12 +158,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
     
     setProfile(prev => prev ? { ...prev, ...data } : null);
-  };
+  }, [user]);
 
-  const updateStatus = async (status: Database['public']['Enums']['user_status']) => {
+  const updateStatus = useCallback(async (status: Database['public']['Enums']['user_status']) => {
     if (!user) return;
-    await updateProfile({ status });
-  };
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status })
+      .eq('id', user.id);
+
+    if (error) throw error;
+    
+    setProfile(prev => prev ? { ...prev, status } : null);
+  }, [user]);
 
   return (
     <AuthContext.Provider

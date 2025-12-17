@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -116,6 +116,7 @@ export function UserProfilePopup({
   const removeRole = useRemoveRoleFromMember();
   const [dmCreated, setDmCreated] = useState(false);
   const [showRolePanel, setShowRolePanel] = useState(false);
+  const rolesSectionRef = useRef<HTMLDivElement>(null);
 
   if (!user) return null;
 
@@ -319,7 +320,7 @@ export function UserProfilePopup({
           {((displayRoles && displayRoles.length > 0) || (canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0)) && (
             <>
               <div className="border-t border-border" />
-              <div>
+              <div ref={rolesSectionRef}>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-semibold text-muted-foreground tracking-wide">
                     Rôles
@@ -391,11 +392,16 @@ export function UserProfilePopup({
   );
 
   // Role Management Side Panel Component
-  const RoleSidePanel = () => (
-    <div 
-      className="absolute top-0 right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
-      onClick={(e) => e.stopPropagation()}
-    >
+  const RoleSidePanel = () => {
+    // Calculer l'offset vertical pour aligner avec la section Rôles
+    const topOffset = rolesSectionRef.current?.offsetTop ?? 0;
+    
+    return (
+      <div 
+        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
+        style={{ top: topOffset }}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className="p-3 border-b border-border flex items-center justify-between">
         <h4 className="font-semibold text-sm">Gérer les rôles</h4>
         <button 
@@ -428,6 +434,7 @@ export function UserProfilePopup({
       </ScrollArea>
     </div>
   );
+  };
 
   // Mode Card - affichage en carte latérale
   if (mode === 'card' && open) {

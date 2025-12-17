@@ -15,12 +15,8 @@ export function useProfileRealtime(serverId: string | null) {
   useEffect(() => {
     if (!serverId || !user) return;
 
-    // Create a presence channel for this server
-    const channel = supabase.channel(`presence:${serverId}`, {
-      config: {
-        broadcast: { self: true }, // Receive own broadcasts to update local cache
-      },
-    });
+    // Create a broadcast channel for this server
+    const channel = supabase.channel(`status:${serverId}`);
 
     // Listen for status updates broadcast by other users
     channel.on('broadcast', { event: 'status_update' }, (payload) => {
@@ -73,23 +69,31 @@ export async function broadcastStatusUpdate(
     .select('server_id')
     .eq('user_id', userId);
 
-  if (!memberships) return;
+  if (!memberships || memberships.length === 0) return;
 
-  // Broadcast to each server's presence channel
-  const broadcasts = memberships.map((membership) => {
-    const channel = supabase.channel(`presence:${membership.server_id}`);
-    return channel.send({
-      type: 'broadcast',
-      event: 'status_update',
-      payload: {
-        userId,
-        status,
-        custom_status,
-        activity_type,
-        activity_text,
-      },
+  // Broadcast to each server's status channel
+  for (const membership of memberships) {
+    const channel = supabase.channel(`status:${membership.server_id}`);
+    
+    // Subscribe and wait for connection before sending
+    channel.subscribe(async (status_sub) => {
+      if (status_sub === 'SUBSCRIBED') {
+        await channel.send({
+          type: 'broadcast',
+          event: 'status_update',
+          payload: {
+            userId,
+            status,
+            custom_status,
+            activity_type,
+            activity_text,
+          },
+        });
+        // Unsubscribe after sending
+        setTimeout(() => {
+          supabase.removeChannel(channel);
+        }, 100);
+      }
     });
-  });
-
-  await Promise.all(broadcasts);
+  }
 }

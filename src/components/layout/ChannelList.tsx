@@ -1,79 +1,140 @@
-import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Trash2, MicOff, HeadphoneOff, AlertTriangle, LogOut, Copy, Headphones } from 'lucide-react';
-import { ChannelNotificationMenu } from '@/components/channels/ChannelNotificationMenu';
-import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
-import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
-import { StreamlineForum } from '@/components/icons/StreamlineForum';
-import { StreamlineHash } from '@/components/icons/StreamlineHash';
-import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
-import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
-import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
-import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
-import { StreamlineStage } from '@/components/icons/StreamlineStage';
-import StreamlineThreadBranch from '@/components/icons/StreamlineThreadBranch';
-import { useState, useCallback, useMemo, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
-import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
-import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
-import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
-import { VoiceControls } from './VoiceControls';
-import { UserProfileCard } from '@/components/profile/UserProfileCard';
-import { copyToClipboard } from '@/lib/clipboard';
-import { toast } from '@/hooks/use-toast';
-import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
-import { useUpdateCategory } from '@/hooks/useCategories';
-import { useServerEmojis } from '@/hooks/useServerAssets';
-import { useMembers } from '@/hooks/useMembers';
-import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, useDuplicateChannel, ChannelType, OrphanChannel } from '@/hooks/useChannels';
-import { Thread } from '@/types/thread';
-import { useThreadUnreadCounts } from '@/hooks/useThreadUnreadCounts';
-import { useFollowedThreads } from '@/hooks/useFollowedThreads';
-import { useCanAccessServerSettings, usePermissions } from '@/hooks/usePermissions';
-import { useLeaveServer } from '@/hooks/useLeaveServer';
-import { useNavigate } from 'react-router-dom';
-import { useStageAudienceCount } from '@/hooks/useStageAudience';
+import { cn } from "@/lib/utils";
+import {
+  ChevronDown,
+  Settings,
+  Plus,
+  Pencil,
+  Calendar,
+  Users,
+  FolderPlus,
+  UserPlus,
+  CheckCircle,
+  Link,
+  Trash2,
+  MicOff,
+  HeadphoneOff,
+  AlertTriangle,
+  LogOut,
+  Copy,
+  Headphones,
+} from "lucide-react";
+import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
+import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
+import { StreamlineForum } from "@/components/icons/StreamlineForum";
+import { StreamlineHash } from "@/components/icons/StreamlineHash";
+import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
+import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
+import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
+import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
+import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import StreamlineThreadBranch from "@/components/icons/StreamlineThreadBranch";
+import { useState, useCallback, useMemo, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
+import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
+import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
+import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
+import { VoiceControls } from "./VoiceControls";
+import { UserProfileCard } from "@/components/profile/UserProfileCard";
+import { copyToClipboard } from "@/lib/clipboard";
+import { toast } from "@/hooks/use-toast";
+import { useVoice, useVoiceParticipants } from "@/contexts/VoiceContext";
+import { useUpdateCategory } from "@/hooks/useCategories";
+import { useServerEmojis } from "@/hooks/useServerAssets";
+import { useMembers } from "@/hooks/useMembers";
+import {
+  useChannels,
+  useReorderCategories,
+  useReorderChannels,
+  useDeleteChannel,
+  useDeleteCategory,
+  useDuplicateChannel,
+  ChannelType,
+  OrphanChannel,
+} from "@/hooks/useChannels";
+import { Thread } from "@/types/thread";
+import { useThreadUnreadCounts } from "@/hooks/useThreadUnreadCounts";
+import { useFollowedThreads } from "@/hooks/useFollowedThreads";
+import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
+import { useLeaveServer } from "@/hooks/useLeaveServer";
+import { useNavigate } from "react-router-dom";
+import { useStageAudienceCount } from "@/hooks/useStageAudience";
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverEvent,
+  DragOverlay,
+  CollisionDetection,
+  pointerWithin,
+  rectIntersection,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
-import React from 'react';
+import React from "react";
 
 // Discord-style Drop Indicator - Blue horizontal line with absolute positioning
-const DropIndicator = React.forwardRef<
-  HTMLDivElement,
-  { isVisible: boolean; position: 'before' | 'after' }
->(({ isVisible, position }, ref) => {
-  if (!isVisible) return null;
-  return (
-    <div 
-      ref={ref} 
-      className={cn(
-        // Absolute positioning, full width with overflow for circles
-        "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2]",
-        // Circles at endpoints using pseudo-elements
-        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-        "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
-        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-        "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-        // Position based on 'before' or 'after'
-        position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
-      )}
-    />
-  );
-});
-DropIndicator.displayName = 'DropIndicator';
+const DropIndicator = React.forwardRef<HTMLDivElement, { isVisible: boolean; position: "before" | "after" }>(
+  ({ isVisible, position }, ref) => {
+    if (!isVisible) return null;
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          // Absolute positioning, full width with overflow for circles
+          "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
+          "bg-[#5865f2]",
+          // Circles at endpoints using pseudo-elements
+          "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
+          "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+          "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
+          "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+          // Position based on 'before' or 'after'
+          position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
+        )}
+      />
+    );
+  },
+);
+DropIndicator.displayName = "DropIndicator";
 interface Channel {
   id: string;
   name: string;
@@ -116,27 +177,27 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   media: StreamlineMedia,
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
-  stage: StreamlineStage
+  stage: StreamlineStage,
 };
 const statusColors = {
-  online: 'bg-[hsl(var(--online))]',
-  idle: 'bg-[hsl(var(--idle))]',
-  dnd: 'bg-[hsl(var(--dnd))]',
-  offline: 'bg-[hsl(var(--offline))]'
+  online: "bg-[hsl(var(--online))]",
+  idle: "bg-[hsl(var(--idle))]",
+  dnd: "bg-[hsl(var(--dnd))]",
+  offline: "bg-[hsl(var(--offline))]",
 };
 const statusLabels = {
-  online: 'En ligne',
-  idle: 'Inactif',
-  dnd: 'Ne pas déranger',
-  offline: 'Hors ligne'
+  online: "En ligne",
+  idle: "Inactif",
+  dnd: "Ne pas déranger",
+  offline: "Hors ligne",
 };
 function formatServerDate(dateString?: string): string {
-  if (!dateString) return 'Date inconnue';
+  if (!dateString) return "Date inconnue";
   const date = new Date(dateString);
-  return date.toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 }
 
@@ -150,9 +211,9 @@ function SortableCategory({
   onCreateChannel,
   onDelete,
   showDropIndicator = false,
-  dropPosition = 'after',
+  dropPosition = "after",
   canManageChannels = false,
-  serverId
+  serverId,
 }: {
   category: Category;
   children: React.ReactNode;
@@ -162,114 +223,137 @@ function SortableCategory({
   onCreateChannel: () => void;
   onDelete: () => void;
   showDropIndicator?: boolean;
-  dropPosition?: 'before' | 'after';
+  dropPosition?: "before" | "after";
   canManageChannels?: boolean;
   serverId: string;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `category-${category.id}`,
     data: {
-      type: 'category',
-      categoryId: category.id
-    }
+      type: "category",
+      categoryId: category.id,
+    },
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging 
-      ? 'opacity 150ms ease' 
-      : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    transition: isDragging ? "opacity 150ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease",
     opacity: isDragging ? 0.3 : 1,
   };
-  return <>
-    {/* En-tête de catégorie (zone draggable uniquement) */}
-    <div ref={setNodeRef} style={style} className={cn(
-      "relative transition-all duration-150",
-      isDragging && "bg-muted/20 rounded-md scale-[0.98]"
-    )}>
-      {/* Drop Indicator - Absolute positioned */}
-      {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
-      
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
-            <button onClick={e => {
-              e.stopPropagation();
-              onToggle();
-            }} className="flex items-center gap-px flex-1">
-              <ChevronDown className={cn('w-3 h-3 transition-transform', isCollapsed && '-rotate-90')} />
-              <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">{category.name}</span>
-            </button>
-            {canManageChannels && (
-              <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={e => {
-                e.stopPropagation();
-                onCreateChannel();
-              }} />
-            )}
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-52">
-          <ContextMenuItem onClick={onCreateChannel}>
-            <Plus className="w-4 h-4 mr-2" />
-            Créer un salon
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ChannelNotificationMenu categoryId={category.id} serverId={serverId} />
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={onEdit}>
-            <Pencil className="w-4 h-4 mr-2" />
-            Modifier la catégorie
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Supprimer la catégorie
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-    </div>
-    
-    {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
-    {!isCollapsed && <div className="mb-2">{children}</div>}
+  return (
+    <>
+      {/* En-tête de catégorie (zone draggable uniquement) */}
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={cn("relative transition-all duration-150", isDragging && "bg-muted/20 rounded-md scale-[0.98]")}
+      >
+        {/* Drop Indicator - Absolute positioned */}
+        {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
-    {/* Delete Category Confirmation Dialog */}
-    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-      <AlertDialogContent>
-        <form onSubmit={e => {
-          e.preventDefault();
-          onDelete();
-          setShowDeleteConfirm(false);
-        }}>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Supprimer la catégorie "{category.name}" ?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="font-semibold text-destructive">
-                Cette action est immédiate et irréversible.
-              </span>
-              <br /><br />
-              {category.channels.length > 0 ? <>Les <strong>{category.channels.length} salon{category.channels.length > 1 ? 's' : ''}</strong> de cette catégorie deviendront des salons sans catégorie.</> : <>Cette catégorie est vide.</>}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-            <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Supprimer définitivement
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </form>
-      </AlertDialogContent>
-    </AlertDialog>
-  </>;
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              {...attributes}
+              {...listeners}
+              className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default"
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle();
+                }}
+                className="flex items-center gap-px flex-1"
+              >
+                <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
+                <span className="tracking-wide font-ginto text-[13.7px] text-[#9b9ca3] font-exrabold my-0 py-0 px-[2px] mx-[2px]">
+                  {category.name}
+                </span>
+              </button>
+              {canManageChannels && (
+                <Plus
+                  className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCreateChannel();
+                  }}
+                />
+              )}
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-52">
+            <ContextMenuItem onClick={onCreateChannel}>
+              <Plus className="w-4 h-4 mr-2" />
+              Créer un salon
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ChannelNotificationMenu categoryId={category.id} serverId={serverId} />
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onEdit}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Modifier la catégorie
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer la catégorie
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </div>
+
+      {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
+      {!isCollapsed && <div className="mb-2">{children}</div>}
+
+      {/* Delete Category Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onDelete();
+              setShowDeleteConfirm(false);
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Supprimer la catégorie "{category.name}" ?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
+                <br />
+                <br />
+                {category.channels.length > 0 ? (
+                  <>
+                    Les{" "}
+                    <strong>
+                      {category.channels.length} salon{category.channels.length > 1 ? "s" : ""}
+                    </strong>{" "}
+                    de cette catégorie deviendront des salons sans catégorie.
+                  </>
+                ) : (
+                  <>Cette catégorie est vide.</>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                type="submit"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Supprimer définitivement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }
 
 // Sortable Channel Component
@@ -287,12 +371,12 @@ function SortableChannel({
   onDelete,
   onDuplicate,
   showDropIndicator = false,
-  dropPosition = 'after',
+  dropPosition = "after",
   threads = [],
   activeThreadId,
   onThreadSelect,
   showArchivedThreads = false,
-  canManageChannels = false
+  canManageChannels = false,
 }: {
   channel: Channel;
   serverId: string;
@@ -307,7 +391,7 @@ function SortableChannel({
   onDelete: () => void;
   onDuplicate: () => void;
   showDropIndicator?: boolean;
-  dropPosition?: 'before' | 'after';
+  dropPosition?: "before" | "after";
   threads?: ThreadWithUnread[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
@@ -315,78 +399,89 @@ function SortableChannel({
   canManageChannels?: boolean;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `channel-${channel.id}`,
     data: {
-      type: 'channel',
-      channelId: channel.id
-    }
+      type: "channel",
+      channelId: channel.id,
+    },
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging 
-      ? 'opacity 150ms ease' 
-      : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+    transition: isDragging ? "opacity 150ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease",
     opacity: isDragging ? 0.3 : 1,
   };
   const Icon = channelIcons[channel.type];
-  const isVoice = channel.type === 'voice';
-  const isStage = channel.type === 'stage';
-  const {
-    data: participants = []
-  } = useVoiceParticipants(isVoice ? channel.id : null);
-  
+  const isVoice = channel.type === "voice";
+  const isStage = channel.type === "stage";
+  const { data: participants = [] } = useVoiceParticipants(isVoice ? channel.id : null);
+
   // Stage audience count with realtime
   const { data: stageData } = useStageAudienceCount(isStage ? channel.id : null);
   const hasActiveSession = stageData?.sessionId && stageData.count > 0;
   const isLiveStage = stageData?.isLive;
 
-  return <>
-      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn(
-        "relative hover:cursor-grab channel-transition rounded-md transition-all duration-150",
-        isDragging && "bg-muted/20 scale-[0.98]"
-      )}>
+  return (
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "relative hover:cursor-grab channel-transition rounded-md transition-all duration-150",
+          isDragging && "bg-muted/20 scale-[0.98]",
+        )}
+      >
         {/* Drop Indicator - Absolute positioned */}
         {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
-        
+
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <button onClick={onChannelClick} className={cn(
-              'channel-item w-full group', 
-              isActive && !isVoice && !isStage && 'active', 
-              isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]',
-              // Stage active/live highlight
-              isStage && isActive && 'bg-muted/80',
-              isStage && isLiveStage && 'bg-[hsl(var(--online))]/10'
-            )}>
-              <Icon className={cn(
-                'w-4 h-4 flex-shrink-0', 
-                isVoice && 'text-[hsl(var(--online))]',
-                isStage && isLiveStage && 'text-[hsl(var(--online))]'
-              )} />
-            <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9b9ca3] font-normal">{channel.name}</span>
-            
-              {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+            <button
+              onClick={onChannelClick}
+              className={cn(
+                "channel-item w-full group",
+                isActive && !isVoice && !isStage && "active",
+                isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
+                // Stage active/live highlight
+                isStage && isActive && "bg-muted/80",
+                isStage && isLiveStage && "bg-[hsl(var(--online))]/10",
+              )}
+            >
+              <Icon
+                className={cn(
+                  "w-4 h-4 flex-shrink-0",
+                  isVoice && "text-[hsl(var(--online))]",
+                  isStage && isLiveStage && "text-[hsl(var(--online))]",
+                )}
+              />
+              <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#818491] font-normal">
+                {channel.name}
+              </span>
+
+              {channel.unreadCount && channel.unreadCount > 0 && (
+                <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                   {channel.unreadCount}
-                </span>}
+                </span>
+              )}
 
               <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
-                <UserPlus className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
-                e.stopPropagation();
-                onCreateInvite();
-              }} />
+                <UserPlus
+                  className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCreateInvite();
+                  }}
+                />
                 {canManageChannels && (
-                  <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
-                  e.stopPropagation();
-                  onOpenSettings();
-                }} />
+                  <Settings
+                    className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenSettings();
+                    }}
+                  />
                 )}
               </div>
             </button>
@@ -417,7 +512,10 @@ function SortableChannel({
             )}
             <ChannelNotificationMenu channelId={channel.id} serverId={serverId} />
             <ContextMenuSeparator />
-            <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
               <Trash2 className="w-4 h-4 mr-2" />
               Supprimer le channel
             </ContextMenuItem>
@@ -425,24 +523,31 @@ function SortableChannel({
         </ContextMenu>
 
         {/* Voice Participants */}
-        {isVoice && participants.length > 0 && <div className="ml-6 mt-1 space-y-1">
-            {participants.map(participant => {
-          const isSpeaking = speakingUsers.has(participant.user_id);
-          return <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
-                  <Avatar className={cn("w-5 h-5 transition-all", isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border")}>
+        {isVoice && participants.length > 0 && (
+          <div className="ml-6 mt-1 space-y-1">
+            {participants.map((participant) => {
+              const isSpeaking = speakingUsers.has(participant.user_id);
+              return (
+                <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
+                  <Avatar
+                    className={cn(
+                      "w-5 h-5 transition-all",
+                      isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border",
+                    )}
+                  >
                     <AvatarImage src={participant.profile.avatar_url || undefined} />
                     <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
                       {participant.profile.display_name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate flex-1 text-xs">
-                    {participant.profile.display_name}
-                  </span>
+                  <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
                   {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
                   {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
-                </div>;
-        })}
-          </div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Stage Audience Indicator */}
         {isStage && hasActiveSession && (
@@ -459,31 +564,46 @@ function SortableChannel({
           </div>
         )}
       </div>
-      
+
       {/* Threads for text channels - OUTSIDE draggable div */}
-      {channel.type === 'text' && threads.length > 0 && <div className="mt-1 space-y-0.5">
-          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <div key={thread.id} className="flex items-start w-full px-2">
-                            <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
-              <button onClick={e => {
-          e.stopPropagation();
-          onThreadSelect?.(thread.id);
-        }} className={cn("flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
-                <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
-                  {thread.name}
-                  {thread.archived && " (archivé)"}
-                </span>
-              </button>
-            </div>)}
-        </div>}
+      {channel.type === "text" && threads.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {threads
+            .filter((thread) => showArchivedThreads || !thread.archived)
+            .map((thread) => (
+              <div key={thread.id} className="flex items-start w-full px-2">
+                <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onThreadSelect?.(thread.id);
+                  }}
+                  className={cn(
+                    "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
+                    activeThreadId === thread.id && "bg-muted",
+                    thread.archived && "opacity-50",
+                  )}
+                >
+                  <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
+                    {thread.name}
+                    {thread.archived && " (archivé)"}
+                  </span>
+                </button>
+              </div>
+            ))}
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
-          <form onSubmit={e => {
-          e.preventDefault();
-          onDelete();
-          setShowDeleteConfirm(false);
-        }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onDelete();
+              setShowDeleteConfirm(false);
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -491,20 +611,25 @@ function SortableChannel({
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-2">
                 <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
-                <br /><br />
+                <br />
+                <br />
                 Tous les messages, fichiers et webhooks de ce salon seront définitivement supprimés.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-              <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <AlertDialogAction
+                type="submit"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
                 Supprimer définitivement
               </AlertDialogAction>
             </AlertDialogFooter>
           </form>
         </AlertDialogContent>
       </AlertDialog>
-    </>;
+    </>
+  );
 }
 export function ChannelList({
   server,
@@ -513,14 +638,14 @@ export function ChannelList({
   onOpenServerSettings,
   orphanChannels = [],
   activeThreadId,
-  onThreadSelect
+  onThreadSelect,
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [editingCategoryName, setEditingCategoryName] = useState("");
   const [createChannelForCategory, setCreateChannelForCategory] = useState<{
     id: string | null;
     name: string;
@@ -530,21 +655,9 @@ export function ChannelList({
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
-  const {
-    profile,
-    signOut,
-    updateStatus
-  } = useAuth();
-  const {
-    voiceState,
-    joinChannel,
-    leaveChannel,
-    toggleMute,
-    toggleDeafen,
-    isConnected,
-    speakingUsers
-  } = useVoice();
+  const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
+  const { profile, signOut, updateStatus } = useAuth();
+  const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();
   const reorderCategories = useReorderCategories();
   const reorderChannels = useReorderChannels();
@@ -554,61 +667,53 @@ export function ChannelList({
   const leaveServer = useLeaveServer();
   const navigate = useNavigate();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const {
-    data: serverEmojis = []
-  } = useServerEmojis(server.id);
-  const {
-    data: membersData
-  } = useMembers(server.id);
-  
+  const { data: serverEmojis = [] } = useServerEmojis(server.id);
+  const { data: membersData } = useMembers(server.id);
+
   // Check if user can access server settings
   const canAccessSettings = useCanAccessServerSettings(server.id);
-  
+
   // Check if user can manage channels
   const { hasPermission, isGod } = usePermissions(server.id);
-  const canManageChannels = isGod || hasPermission('manage_channels') || hasPermission('administrator');
-  
+  const canManageChannels = isGod || hasPermission("manage_channels") || hasPermission("administrator");
+
   // Check if user is the owner (cannot leave, must delete)
   const isOwner = profile?.id === server.ownerId;
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {
     const ids: string[] = [];
-    server.categories.forEach(cat => {
-      cat.channels.forEach(ch => {
-        if (ch.type === 'text') ids.push(ch.id);
+    server.categories.forEach((cat) => {
+      cat.channels.forEach((ch) => {
+        if (ch.type === "text") ids.push(ch.id);
       });
     });
-    orphanChannels.forEach(ch => {
-      if (ch.type === 'text') ids.push(ch.id);
+    orphanChannels.forEach((ch) => {
+      if (ch.type === "text") ids.push(ch.id);
     });
     return ids;
   }, [server.categories, orphanChannels]);
 
   // Fetch ONLY followed threads for the active channel
-  const {
-    data: followedThreads = []
-  } = useFollowedThreads(activeChannelId || undefined);
-  const {
-    data: unreadCounts = {}
-  } = useThreadUnreadCounts(activeChannelId || undefined);
+  const { data: followedThreads = [] } = useFollowedThreads(activeChannelId || undefined);
+  const { data: unreadCounts = {} } = useThreadUnreadCounts(activeChannelId || undefined);
 
   // Create a map of followed threads with unread counts
   const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
-    return followedThreads.map(thread => ({
+    return followedThreads.map((thread) => ({
       ...thread,
-      unreadCount: unreadCounts[thread.id] || 0
+      unreadCount: unreadCounts[thread.id] || 0,
     }));
   }, [followedThreads, unreadCounts]);
-  const ownerProfile = membersData?.find(m => m.id === server.ownerId);
+  const ownerProfile = membersData?.find((m) => m.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
       await deleteChannel.mutateAsync({
         channelId,
-        serverId: server.id
+        serverId: server.id,
       });
       toast({
-        title: `Salon #${channelName} supprimé`
+        title: `Salon #${channelName} supprimé`,
       });
 
       // If deleted channel was active, clear selection
@@ -621,8 +726,8 @@ export function ChannelList({
       }
     } catch {
       toast({
-        title: 'Erreur lors de la suppression',
-        variant: 'destructive'
+        title: "Erreur lors de la suppression",
+        variant: "destructive",
       });
     }
   };
@@ -633,7 +738,7 @@ export function ChannelList({
     try {
       await deleteCategory.mutateAsync({
         categoryId,
-        serverId: server.id
+        serverId: server.id,
       });
     } catch {
       // Error already handled by the hook
@@ -641,15 +746,20 @@ export function ChannelList({
   };
 
   // DnD sensors
-  const sensors = useSensors(useSensor(PointerSensor, {
-    activationConstraint: {
-      distance: 8
-    }
-  }), useSensor(KeyboardSensor, {
-    coordinateGetter: sortableKeyboardCoordinates
-  }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
   const toggleCategory = (categoryId: string) => {
-    setCollapsedCategories(prev => prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]);
+    setCollapsedCategories((prev) =>
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+    );
   };
   const handleSignOut = async () => {
     await signOut();
@@ -658,17 +768,17 @@ export function ChannelList({
     leaveServer.mutate(server.id, {
       onSuccess: () => {
         setShowLeaveDialog(false);
-        navigate('/channels/@me');
+        navigate("/channels/@me");
       },
     });
   };
   const handleCopyLink = (channelId: string) => {
     const link = `${window.location.origin}/channels/${server.id}/${channelId}`;
-    copyToClipboard(link, 'Lien copié');
+    copyToClipboard(link, "Lien copié");
   };
   const handleMarkAsRead = (channelId: string) => {
     toast({
-      title: 'Marqué comme lu'
+      title: "Marqué comme lu",
     });
   };
   const handleCreateInvite = (channelId: string) => {
@@ -676,18 +786,18 @@ export function ChannelList({
   };
   const getChannelName = (channelId: string): string => {
     for (const cat of server.categories) {
-      const ch = cat.channels.find(c => c.id === channelId);
+      const ch = cat.channels.find((c) => c.id === channelId);
       if (ch) return ch.name;
     }
-    const orphan = orphanChannels.find(c => c.id === channelId);
-    return orphan?.name || '';
+    const orphan = orphanChannels.find((c) => c.id === channelId);
+    return orphan?.name || "";
   };
   const handleChannelClick = (channel: Channel) => {
     // Toujours sélectionner le canal pour afficher son interface
     onChannelSelect(channel.id);
 
     // Pour les salons vocaux et stage, également rejoindre automatiquement
-    if (channel.type === 'voice' || channel.type === 'stage') {
+    if (channel.type === "voice" || channel.type === "stage") {
       joinChannel(channel.id, channel.name, server.name);
     }
   };
@@ -700,49 +810,43 @@ export function ChannelList({
       updateCategory.mutate({
         categoryId: editingCategoryId,
         serverId: server.id,
-        name: editingCategoryName.trim()
+        name: editingCategoryName.trim(),
       });
     }
     setEditingCategoryId(null);
-    setEditingCategoryName('');
+    setEditingCategoryName("");
   };
   const handleCancelEditCategory = () => {
     setEditingCategoryId(null);
-    setEditingCategoryName('');
+    setEditingCategoryName("");
   };
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
   // Custom collision detection that filters by dragged item type
-  const customCollisionDetection: CollisionDetection = useCallback(args => {
-    const {
-      active
-    } = args;
+  const customCollisionDetection: CollisionDetection = useCallback((args) => {
+    const { active } = args;
     const activeIdStr = active.id.toString();
-    const isCategory = activeIdStr.startsWith('category-');
+    const isCategory = activeIdStr.startsWith("category-");
 
     // Use closestCenter as base detection
     const collisions = closestCenter(args);
 
     // Filter collisions to only allow same-type drops
-    return collisions.filter(collision => {
+    return collisions.filter((collision) => {
       const collidedId = collision.id.toString();
       if (isCategory) {
         // Categories can only be dropped on other categories
-        return collidedId.startsWith('category-');
+        return collidedId.startsWith("category-");
       } else {
         // Channels can be dropped on channels OR on category headers (to add to category)
-        return collidedId.startsWith('channel-') || collidedId.startsWith('category-');
+        return collidedId.startsWith("channel-") || collidedId.startsWith("category-");
       }
     });
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
-    const {
-      active,
-      over,
-      delta
-    } = event;
+    const { active, over, delta } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
@@ -751,8 +855,8 @@ export function ChannelList({
     const overIdStr = over.id.toString();
 
     // Strict type validation for drop indicator
-    const isActiveCategory = activeIdStr.startsWith('category-');
-    const isOverCategory = overIdStr.startsWith('category-');
+    const isActiveCategory = activeIdStr.startsWith("category-");
+    const isOverCategory = overIdStr.startsWith("category-");
 
     // Categories can only show indicator over other categories
     if (isActiveCategory && !isOverCategory) {
@@ -768,9 +872,9 @@ export function ChannelList({
       const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
       let clientY = 0;
       if (activatorEvent) {
-        if ('clientY' in activatorEvent) {
+        if ("clientY" in activatorEvent) {
           clientY = activatorEvent.clientY + delta.y;
-        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
+        } else if ("touches" in activatorEvent && activatorEvent.touches[0]) {
           clientY = activatorEvent.touches[0].clientY + delta.y;
         }
       }
@@ -779,33 +883,30 @@ export function ChannelList({
       const middleY = overRect.top + overRect.height / 2;
 
       // If cursor is in upper half → insert BEFORE, lower half → insert AFTER
-      const position: 'before' | 'after' = clientY < middleY ? 'before' : 'after';
+      const position: "before" | "after" = clientY < middleY ? "before" : "after";
       setDropPosition(position);
     }
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
     setOverId(null);
-    const {
-      active,
-      over
-    } = event;
+    const { active, over } = event;
     setActiveId(null);
     if (!over || active.id === over.id) return;
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
 
     // Handle category reordering with precise position
-    if (activeIdStr.startsWith('category-') && overIdStr.startsWith('category-')) {
-      const activeCatId = activeIdStr.replace('category-', '');
-      const overCatId = overIdStr.replace('category-', '');
-      const oldIndex = server.categories.findIndex(c => c.id === activeCatId);
-      const overIndex = server.categories.findIndex(c => c.id === overCatId);
+    if (activeIdStr.startsWith("category-") && overIdStr.startsWith("category-")) {
+      const activeCatId = activeIdStr.replace("category-", "");
+      const overCatId = overIdStr.replace("category-", "");
+      const oldIndex = server.categories.findIndex((c) => c.id === activeCatId);
+      const overIndex = server.categories.findIndex((c) => c.id === overCatId);
       if (oldIndex !== -1 && overIndex !== -1) {
         // Remove active category and insert at precise position based on dropPosition
         const activeCategory = server.categories[oldIndex];
-        const newCategories = server.categories.filter(c => c.id !== activeCatId);
-        let insertIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+        const newCategories = server.categories.filter((c) => c.id !== activeCatId);
+        let insertIndex = dropPosition === "before" ? overIndex : overIndex + 1;
         // Adjust if we removed an element before the insertion point
         if (oldIndex < overIndex) {
           insertIndex--;
@@ -814,68 +915,71 @@ export function ChannelList({
         newCategories.splice(insertIndex, 0, activeCategory);
         reorderCategories.mutate({
           serverId: server.id,
-          orderedIds: newCategories.map(cat => cat.id)
+          orderedIds: newCategories.map((cat) => cat.id),
         });
       }
     }
 
     // Handle channel reordering (inter-category support)
-    if (activeIdStr.startsWith('channel-')) {
-      const activeChannelId = activeIdStr.replace('channel-', '');
+    if (activeIdStr.startsWith("channel-")) {
+      const activeChannelId = activeIdStr.replace("channel-", "");
 
       // Find source category (null for orphans)
       let sourceCategoryId: string | null = null;
       for (const cat of server.categories) {
-        if (cat.channels.some(ch => ch.id === activeChannelId)) {
+        if (cat.channels.some((ch) => ch.id === activeChannelId)) {
           sourceCategoryId = cat.id;
           break;
         }
       }
-      if (!sourceCategoryId && orphanChannels.some(ch => ch.id === activeChannelId)) {
+      if (!sourceCategoryId && orphanChannels.some((ch) => ch.id === activeChannelId)) {
         sourceCategoryId = null;
       }
 
       // Dropping on another channel
-      if (overIdStr.startsWith('channel-')) {
-        const overChannelId = overIdStr.replace('channel-', '');
+      if (overIdStr.startsWith("channel-")) {
+        const overChannelId = overIdStr.replace("channel-", "");
 
         // Find target category
         let targetCategoryId: string | null = null;
         let targetChannels: Channel[] = [];
         for (const cat of server.categories) {
-          if (cat.channels.some(ch => ch.id === overChannelId)) {
+          if (cat.channels.some((ch) => ch.id === overChannelId)) {
             targetCategoryId = cat.id;
             targetChannels = cat.channels;
             break;
           }
         }
-        if (!targetCategoryId && orphanChannels.some(ch => ch.id === overChannelId)) {
+        if (!targetCategoryId && orphanChannels.some((ch) => ch.id === overChannelId)) {
           targetCategoryId = null;
-          targetChannels = orphanChannels.map(ch => ({
+          targetChannels = orphanChannels.map((ch) => ({
             id: ch.id,
             name: ch.name,
-            type: (ch.type || 'text') as ChannelType,
-            description: ch.description || undefined
+            type: (ch.type || "text") as ChannelType,
+            description: ch.description || undefined,
           }));
         }
 
         // Calculate new order
-        const activeChannel = [...server.categories.flatMap(c => c.channels), ...orphanChannels.map(ch => ({
-          id: ch.id,
-          name: ch.name,
-          type: (ch.type || 'text') as ChannelType,
-          description: ch.description || undefined
-        }))].find(ch => ch.id === activeChannelId);
+        const activeChannel = [
+          ...server.categories.flatMap((c) => c.channels),
+          ...orphanChannels.map((ch) => ({
+            id: ch.id,
+            name: ch.name,
+            type: (ch.type || "text") as ChannelType,
+            description: ch.description || undefined,
+          })),
+        ].find((ch) => ch.id === activeChannelId);
         if (activeChannel) {
           // Same category: use precise insertion based on dropPosition
-          if (sourceCategoryId === targetCategoryId || sourceCategoryId === null && targetCategoryId === null) {
-            const oldIndex = targetChannels.findIndex(ch => ch.id === activeChannelId);
-            const overIndex = targetChannels.findIndex(ch => ch.id === overChannelId);
+          if (sourceCategoryId === targetCategoryId || (sourceCategoryId === null && targetCategoryId === null)) {
+            const oldIndex = targetChannels.findIndex((ch) => ch.id === activeChannelId);
+            const overIndex = targetChannels.findIndex((ch) => ch.id === overChannelId);
             if (oldIndex !== -1 && overIndex !== -1) {
               // Remove the active channel from the array
-              const newChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
+              const newChannels = targetChannels.filter((ch) => ch.id !== activeChannelId);
               // Calculate insertion index based on dropPosition
-              let insertIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+              let insertIndex = dropPosition === "before" ? overIndex : overIndex + 1;
               // Adjust if we removed an element before the insertion point
               if (oldIndex < overIndex) {
                 insertIndex--;
@@ -887,35 +991,39 @@ export function ChannelList({
               reorderChannels.mutate({
                 serverId: server.id,
                 categoryId: targetCategoryId,
-                orderedIds: newChannels.map(ch => ch.id)
+                orderedIds: newChannels.map((ch) => ch.id),
               });
             }
           } else {
             // Different category: move channel to new category at precise position based on dropPosition
-            const filteredChannels = targetChannels.filter(ch => ch.id !== activeChannelId);
-            const overIdx = filteredChannels.findIndex(ch => ch.id === overChannelId);
+            const filteredChannels = targetChannels.filter((ch) => ch.id !== activeChannelId);
+            const overIdx = filteredChannels.findIndex((ch) => ch.id === overChannelId);
             // Calculate insertion index based on dropPosition
-            const insertIdx = dropPosition === 'before' ? overIdx : overIdx + 1;
-            const newOrder = [...filteredChannels.slice(0, insertIdx), activeChannel, ...filteredChannels.slice(insertIdx)];
+            const insertIdx = dropPosition === "before" ? overIdx : overIdx + 1;
+            const newOrder = [
+              ...filteredChannels.slice(0, insertIdx),
+              activeChannel,
+              ...filteredChannels.slice(insertIdx),
+            ];
             reorderChannels.mutate({
               serverId: server.id,
               categoryId: targetCategoryId,
-              orderedIds: newOrder.map(ch => ch.id)
+              orderedIds: newOrder.map((ch) => ch.id),
             });
           }
         }
       }
 
       // Dropping on a category header - add at end of category
-      else if (overIdStr.startsWith('category-')) {
-        const targetCategoryId = overIdStr.replace('category-', '');
-        const targetCategory = server.categories.find(c => c.id === targetCategoryId);
+      else if (overIdStr.startsWith("category-")) {
+        const targetCategoryId = overIdStr.replace("category-", "");
+        const targetCategory = server.categories.find((c) => c.id === targetCategoryId);
         if (targetCategory) {
-          const existingIds = targetCategory.channels.filter(ch => ch.id !== activeChannelId).map(ch => ch.id);
+          const existingIds = targetCategory.channels.filter((ch) => ch.id !== activeChannelId).map((ch) => ch.id);
           reorderChannels.mutate({
             serverId: server.id,
             categoryId: targetCategoryId,
-            orderedIds: [...existingIds, activeChannelId]
+            orderedIds: [...existingIds, activeChannelId],
           });
         }
       }
@@ -925,59 +1033,71 @@ export function ChannelList({
   // Helper to find a channel by ID for the DragOverlay
   const findChannelById = (id: string): Channel | undefined => {
     for (const cat of server.categories) {
-      const found = cat.channels.find(ch => ch.id === id);
+      const found = cat.channels.find((ch) => ch.id === id);
       if (found) return found;
     }
-    const orphan = orphanChannels.find(ch => ch.id === id);
+    const orphan = orphanChannels.find((ch) => ch.id === id);
     if (orphan) {
       return {
         id: orphan.id,
         name: orphan.name,
-        type: (orphan.type || 'text') as ChannelType,
-        description: orphan.description || undefined
+        type: (orphan.type || "text") as ChannelType,
+        description: orphan.description || undefined,
       };
     }
     return undefined;
   };
 
   // Get all sortable IDs
-  const categoryIds = server.categories.map(c => `category-${c.id}`);
-  const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
+  const categoryIds = server.categories.map((c) => `category-${c.id}`);
+  const allChannelIds = [
+    ...server.categories.flatMap((c) => c.channels.map((ch) => `channel-${ch.id}`)),
+    ...orphanChannels.map((ch) => `channel-${ch.id}`),
+  ];
   // Sidebar resizing
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const isResizing = useRef(false);
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizing.current = true;
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing.current) return;
-      const delta = e.clientX - startX;
-      const newWidth = Math.max(240, Math.min(340, startWidth + delta));
-      setSidebarWidth(newWidth);
-    };
-    const handleMouseUp = () => {
-      isResizing.current = false;
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [sidebarWidth]);
-  return <div className="bg-card flex flex-col border-r border-border relative" style={{
-    width: `${sidebarWidth}px`,
-    minWidth: '240px',
-    maxWidth: '340px'
-  }}>
-    {/* Resize handle */}
-    <div className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10" onMouseDown={handleResizeMouseDown} />
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizing.current = true;
+      const startX = e.clientX;
+      const startWidth = sidebarWidth;
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizing.current) return;
+        const delta = e.clientX - startX;
+        const newWidth = Math.max(240, Math.min(340, startWidth + delta));
+        setSidebarWidth(newWidth);
+      };
+      const handleMouseUp = () => {
+        isResizing.current = false;
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [sidebarWidth],
+  );
+  return (
+    <div
+      className="bg-card flex flex-col border-r border-border relative"
+      style={{
+        width: `${sidebarWidth}px`,
+        minWidth: "240px",
+        maxWidth: "340px",
+      }}
+    >
+      {/* Resize handle */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10"
+        onMouseDown={handleResizeMouseDown}
+      />
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]">
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">
-              
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-sm font-semibold truncate">{server.name}</p>
                 <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
@@ -992,7 +1112,7 @@ export function ChannelList({
               ) : (
                 <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
               )}
-              
+
               {/* Leave Server Button - Only visible for non-owners */}
               {!isOwner && (
                 <Tooltip>
@@ -1010,18 +1130,24 @@ export function ChannelList({
                 </Tooltip>
               )}
             </div>
-            
+
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-3">
-                {server.iconUrl ? <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" /> : <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
+                {server.iconUrl ? (
+                  <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
                     {server.name.charAt(0).toUpperCase()}
-                  </div>}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-lg text-foreground truncate">{server.name}</h3>
-                  {server.description && <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>}
+                  {server.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
+                  )}
                 </div>
               </div>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="w-4 h-4" />
@@ -1038,27 +1164,33 @@ export function ChannelList({
                       <p>Propriétaire du serveur</p>
                     </TooltipContent>
                   </Tooltip>
-                  <span>Fondateur: {ownerProfile?.user?.display_name || 'Inconnu'}</span>
+                  <span>Fondateur: {ownerProfile?.user?.display_name || "Inconnu"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="w-4 h-4" />
                   <span>{membersData?.length || 0} membres</span>
                 </div>
               </div>
-              
-              {serverEmojis.length > 0 && <div>
+
+              {serverEmojis.length > 0 && (
+                <div>
                   <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
                   <div className="flex flex-wrap gap-1">
-                    {serverEmojis.slice(0, 10).map(emoji => <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />)}
-                    {serverEmojis.length > 10 && <span className="text-xs text-muted-foreground self-center ml-1">
+                    {serverEmojis.slice(0, 10).map((emoji) => (
+                      <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />
+                    ))}
+                    {serverEmojis.length > 10 && (
+                      <span className="text-xs text-muted-foreground self-center ml-1">
                         +{serverEmojis.length - 10}
-                      </span>}
+                      </span>
+                    )}
                   </div>
-                </div>}
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>
-        
+
         {/* Settings button - only visible for users with permissions */}
         {canAccessSettings && (
           <button onClick={onOpenServerSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
@@ -1071,74 +1203,168 @@ export function ChannelList({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
-            <DndContext sensors={sensors} collisionDetection={customCollisionDetection} modifiers={[restrictToVerticalAxis]} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={customCollisionDetection}
+              modifiers={[restrictToVerticalAxis]}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
-              {orphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
-                  <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                    {orphanChannels.map(channel => <SortableChannel key={channel.id} channel={{
-                  id: channel.id,
-                  name: channel.name,
-                  type: (channel.type || 'text') as ChannelType,
-                  description: channel.description || undefined
-                }} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick({
-                  id: channel.id,
-                  name: channel.name,
-                  type: (channel.type || 'text') as ChannelType,
-                  description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+              {orphanChannels.length > 0 && (
+                <div className="px-2 space-y-0.5 mb-2">
+                  <SortableContext
+                    items={orphanChannels.map((ch) => `channel-${ch.id}`)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {orphanChannels.map((channel) => (
+                      <SortableChannel
+                        key={channel.id}
+                        channel={{
+                          id: channel.id,
+                          name: channel.name,
+                          type: (channel.type || "text") as ChannelType,
+                          description: channel.description || undefined,
+                        }}
+                        serverId={server.id}
+                        isActive={activeChannelId === channel.id}
+                        isVoiceConnected={voiceState.channelId === channel.id}
+                        speakingUsers={speakingUsers}
+                        onChannelClick={() =>
+                          handleChannelClick({
+                            id: channel.id,
+                            name: channel.name,
+                            type: (channel.type || "text") as ChannelType,
+                            description: channel.description || undefined,
+                          })
+                        }
+                        onCopyLink={() => handleCopyLink(channel.id)}
+                        onMarkAsRead={() => handleMarkAsRead(channel.id)}
+                        onOpenSettings={() => setSelectedChannelId(channel.id)}
+                        onCreateInvite={() => handleCreateInvite(channel.id)}
+                        onDelete={() => handleDeleteChannel(channel.id, channel.name)}
+                        onDuplicate={() => handleDuplicateChannel(channel.id)}
+                        showDropIndicator={overId === `channel-${channel.id}`}
+                        dropPosition={dropPosition}
+                        threads={activeChannelId === channel.id ? threadsWithUnread : []}
+                        activeThreadId={activeThreadId}
+                        onThreadSelect={onThreadSelect}
+                        showArchivedThreads={showArchivedThreads}
+                        canManageChannels={canManageChannels}
+                      />
+                    ))}
                   </SortableContext>
-                </div>}
+                </div>
+              )}
 
               {/* Categories */}
               <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-                {server.categories.map((category, index) => <div key={category.id} className={cn(index > 0 && "mt-4")}>
-                    {editingCategoryId === category.id ? <div className="px-2 py-1 mb-2">
-                        <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
-                    if (e.key === 'Enter') handleSaveCategory();
-                    if (e.key === 'Escape') handleCancelEditCategory();
-                  }} autoFocus className="h-6 text-xs font-semibold" />
-                      </div> : <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
-                  id: category.id,
-                  name: category.name
-                })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels} serverId={server.id}>
+                {server.categories.map((category, index) => (
+                  <div key={category.id} className={cn(index > 0 && "mt-4")}>
+                    {editingCategoryId === category.id ? (
+                      <div className="px-2 py-1 mb-2">
+                        <Input
+                          value={editingCategoryName}
+                          onChange={(e) => setEditingCategoryName(e.target.value)}
+                          onBlur={handleSaveCategory}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveCategory();
+                            if (e.key === "Escape") handleCancelEditCategory();
+                          }}
+                          autoFocus
+                          className="h-6 text-xs font-semibold"
+                        />
+                      </div>
+                    ) : (
+                      <SortableCategory
+                        category={category}
+                        isCollapsed={collapsedCategories.includes(category.id)}
+                        onToggle={() => toggleCategory(category.id)}
+                        onEdit={() => handleStartEditCategory(category)}
+                        onCreateChannel={() =>
+                          setCreateChannelForCategory({
+                            id: category.id,
+                            name: category.name,
+                          })
+                        }
+                        onDelete={() => handleDeleteCategory(category.id)}
+                        showDropIndicator={overId === `category-${category.id}`}
+                        dropPosition={dropPosition}
+                        canManageChannels={canManageChannels}
+                        serverId={server.id}
+                      >
                         <div className="mt-1 px-2 space-y-0.5">
-                          <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+                          <SortableContext
+                            items={category.channels.map((ch) => `channel-${ch.id}`)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {category.channels.map((channel) => (
+                              <SortableChannel
+                                key={channel.id}
+                                channel={channel}
+                                serverId={server.id}
+                                isActive={activeChannelId === channel.id}
+                                isVoiceConnected={voiceState.channelId === channel.id}
+                                speakingUsers={speakingUsers}
+                                onChannelClick={() => handleChannelClick(channel)}
+                                onCopyLink={() => handleCopyLink(channel.id)}
+                                onMarkAsRead={() => handleMarkAsRead(channel.id)}
+                                onOpenSettings={() => setSelectedChannelId(channel.id)}
+                                onCreateInvite={() => handleCreateInvite(channel.id)}
+                                onDelete={() => handleDeleteChannel(channel.id, channel.name)}
+                                onDuplicate={() => handleDuplicateChannel(channel.id)}
+                                showDropIndicator={overId === `channel-${channel.id}`}
+                                dropPosition={dropPosition}
+                                threads={activeChannelId === channel.id ? threadsWithUnread : []}
+                                activeThreadId={activeThreadId}
+                                onThreadSelect={onThreadSelect}
+                                showArchivedThreads={showArchivedThreads}
+                                canManageChannels={canManageChannels}
+                              />
+                            ))}
                           </SortableContext>
                         </div>
-                      </SortableCategory>}
-                  </div>)}
+                      </SortableCategory>
+                    )}
+                  </div>
+                ))}
               </SortableContext>
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
-              <DragOverlay dropAnimation={{
-                duration: 200,
-                easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
-              }}>
+              <DragOverlay
+                dropAnimation={{
+                  duration: 200,
+                  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+                }}
+              >
                 {activeId && (
-                  <div className={cn(
-                    "bg-card/95 backdrop-blur-sm border border-[#5865f2]/50 rounded-md px-3 py-2",
-                    "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
-                    "scale-105 cursor-grabbing"
-                  )}>
-                    {activeId.startsWith('category-') && (
+                  <div
+                    className={cn(
+                      "bg-card/95 backdrop-blur-sm border border-[#5865f2]/50 rounded-md px-3 py-2",
+                      "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
+                      "scale-105 cursor-grabbing",
+                    )}
+                  >
+                    {activeId.startsWith("category-") && (
                       <div className="flex items-center gap-2">
                         <ChevronDown className="w-3 h-3 text-muted-foreground" />
                         <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                          {server.categories.find(c => `category-${c.id}` === activeId)?.name}
+                          {server.categories.find((c) => `category-${c.id}` === activeId)?.name}
                         </span>
                       </div>
                     )}
-                    {activeId.startsWith('channel-') && (() => {
-                      const channel = findChannelById(activeId.replace('channel-', ''));
-                      const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
-                      return (
-                        <div className="flex items-center gap-2 text-sm text-foreground">
-                          <Icon className="w-4 h-4 text-[#5865f2]" />
-                          <span className="font-medium">{channel?.name || 'Channel'}</span>
-                        </div>
-                      );
-                    })()}
+                    {activeId.startsWith("channel-") &&
+                      (() => {
+                        const channel = findChannelById(activeId.replace("channel-", ""));
+                        const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
+                        return (
+                          <div className="flex items-center gap-2 text-sm text-foreground">
+                            <Icon className="w-4 h-4 text-[#5865f2]" />
+                            <span className="font-medium">{channel?.name || "Channel"}</span>
+                          </div>
+                        );
+                      })()}
                   </div>
                 )}
               </DragOverlay>
@@ -1146,11 +1372,15 @@ export function ChannelList({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
-          <ContextMenuItem onClick={() => setCreateChannelForCategory({
-          id: null,
-          name: 'Sans catégorie',
-          showSelector: true
-        })}>
+          <ContextMenuItem
+            onClick={() =>
+              setCreateChannelForCategory({
+                id: null,
+                name: "Sans catégorie",
+                showSelector: true,
+              })
+            }
+          >
             <Plus className="w-4 h-4 mr-2" />
             Créer un salon
           </ContextMenuItem>
@@ -1162,23 +1392,62 @@ export function ChannelList({
       </ContextMenu>
 
       {/* Voice Controls */}
-      {isConnected && voiceState.channelName && <VoiceControls channelName={voiceState.channelName} serverName={voiceState.serverName} isMuted={voiceState.isMuted} isDeafened={voiceState.isDeafened} onToggleMute={() => toggleMute()} onToggleDeafen={() => toggleDeafen()} onDisconnect={() => leaveChannel()} />}
+      {isConnected && voiceState.channelName && (
+        <VoiceControls
+          channelName={voiceState.channelName}
+          serverName={voiceState.serverName}
+          isMuted={voiceState.isMuted}
+          isDeafened={voiceState.isDeafened}
+          onToggleMute={() => toggleMute()}
+          onToggleDeafen={() => toggleDeafen()}
+          onDisconnect={() => leaveChannel()}
+        />
+      )}
 
       {/* User Panel */}
-      <UserProfileCard onOpenSettings={() => setShowAccountSettings(true)} onOpenProfile={() => setShowAccountSettings(true)} speakingUsers={speakingUsers} />
+      <UserProfileCard
+        onOpenSettings={() => setShowAccountSettings(true)}
+        onOpenProfile={() => setShowAccountSettings(true)}
+        speakingUsers={speakingUsers}
+      />
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 
-      {selectedChannelId && <ChannelSettingsModal channelId={selectedChannelId} serverId={server.id} onClose={() => setSelectedChannelId(null)} />}
+      {selectedChannelId && (
+        <ChannelSettingsModal
+          channelId={selectedChannelId}
+          serverId={server.id}
+          onClose={() => setSelectedChannelId(null)}
+        />
+      )}
 
-      {createChannelForCategory && <CreateChannelModal serverId={server.id} categoryId={createChannelForCategory.id} categoryName={createChannelForCategory.name} categories={createChannelForCategory.showSelector ? server.categories.map(c => ({
-      id: c.id,
-      name: c.name
-    })) : undefined} showCategorySelector={createChannelForCategory.showSelector} onClose={() => setCreateChannelForCategory(null)} />}
+      {createChannelForCategory && (
+        <CreateChannelModal
+          serverId={server.id}
+          categoryId={createChannelForCategory.id}
+          categoryName={createChannelForCategory.name}
+          categories={
+            createChannelForCategory.showSelector
+              ? server.categories.map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                }))
+              : undefined
+          }
+          showCategorySelector={createChannelForCategory.showSelector}
+          onClose={() => setCreateChannelForCategory(null)}
+        />
+      )}
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
 
-      {inviteChannelId && <CreateInviteModal serverId={server.id} channelName={getChannelName(inviteChannelId)} onClose={() => setInviteChannelId(null)} />}
+      {inviteChannelId && (
+        <CreateInviteModal
+          serverId={server.id}
+          channelName={getChannelName(inviteChannelId)}
+          onClose={() => setInviteChannelId(null)}
+        />
+      )}
 
       {/* Leave Server Confirmation Dialog */}
       <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
@@ -1186,7 +1455,8 @@ export function ChannelList({
           <AlertDialogHeader>
             <AlertDialogTitle>Quitter le serveur</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir quitter <strong>{server.name}</strong> ? Vous pourrez rejoindre à nouveau avec une invitation.
+              Êtes-vous sûr de vouloir quitter <strong>{server.name}</strong> ? Vous pourrez rejoindre à nouveau avec
+              une invitation.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1200,5 +1470,6 @@ export function ChannelList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>;
+    </div>
+  );
 }

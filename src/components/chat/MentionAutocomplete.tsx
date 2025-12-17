@@ -134,7 +134,7 @@ export function MentionAutocomplete({
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-medium">{member.displayName}</span>
-                  <span className="text-muted-foreground">@{member.username.toLowerCase()}</span>
+                  <span className="text-muted-foreground">{member.username.toLowerCase()}</span>
                 </button>
               ))}
             </>

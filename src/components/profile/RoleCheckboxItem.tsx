@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -76,14 +77,31 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
             .eq("role_id", role.id);
           if (error) throw error;
         }
-      } catch {
+      } catch (err: any) {
+        // Debug: surface backend errors (RLS / FK / etc.)
+        console.error("[RoleCheckboxItem] Failed to toggle member role", {
+          serverId,
+          memberId,
+          roleId: role.id,
+          roleName: role.name,
+          next,
+          err,
+        });
+
+        const code = err?.code ?? err?.status;
+        const message = err?.message ?? "Erreur inconnue";
+
+        toast.error("Échec de la modification du rôle", {
+          description: code ? `(${code}) ${message}` : message,
+        });
+
         // Rollback on error
         setIsChecked(prev);
       } finally {
         setIsPending(false);
       }
     },
-    [disabled, isPending, isChecked, memberId, role.id],
+    [disabled, isPending, isChecked, memberId, role.id, role.name, serverId],
   );
 
   return (

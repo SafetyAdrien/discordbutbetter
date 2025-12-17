@@ -2,11 +2,9 @@ import { useState, useRef } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -414,26 +412,42 @@ export function UserProfilePopup({
         </button>
       </div>
       <ScrollArea className="max-h-[300px]">
-        <div className="p-2 space-y-1">
-          {assignableRoles.map((role) => (
-            <div key={role.id} className="flex items-center gap-2 p-1.5 hover:bg-muted/50 rounded transition-colors">
-              <Checkbox
-                id={`panel-role-${role.id}`}
-                checked={userRoleIds.includes(role.id)}
-                onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
-                disabled={assignRole.isPending || removeRole.isPending}
-              />
-              <Label 
-                htmlFor={`panel-role-${role.id}`} 
-                className="flex items-center gap-1.5 cursor-pointer text-sm flex-1"
+        <div className="p-2 space-y-0.5">
+          {assignableRoles.map((role) => {
+            const hasRole = userRoleIds.includes(role.id);
+            const isPending = assignRole.isPending || removeRole.isPending;
+            
+            return (
+              <button
+                key={role.id}
+                onClick={() => handleRoleToggle(role.id, !hasRole)}
+                disabled={isPending}
+                className={cn(
+                  "w-full flex items-center gap-2 p-2 rounded transition-colors text-left",
+                  "hover:bg-muted/50",
+                  isPending && "opacity-50 cursor-not-allowed"
+                )}
               >
-                <span className="flex items-center gap-1.5 flex-1">
+                {/* Checkmark area */}
+                <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                  {hasRole && (
+                    <Check className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+                
+                {/* Role icon and name */}
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <RoleIcon role={role} />
-                  <span style={{ color: role.color || undefined }}>{role.name}</span>
-                </span>
-              </Label>
-            </div>
-          ))}
+                  <span 
+                    className="text-sm truncate"
+                    style={{ color: role.color || undefined }}
+                  >
+                    {role.name}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>

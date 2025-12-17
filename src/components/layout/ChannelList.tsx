@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Trash2, MicOff, HeadphoneOff, AlertTriangle, LogOut, Copy } from 'lucide-react';
+import { ChevronDown, Settings, Plus, Pencil, Calendar, Users, FolderPlus, UserPlus, CheckCircle, Link, Trash2, MicOff, HeadphoneOff, AlertTriangle, LogOut, Copy, Headphones } from 'lucide-react';
 import { ChannelNotificationMenu } from '@/components/channels/ChannelNotificationMenu';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
@@ -39,6 +39,7 @@ import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 import { useCanAccessServerSettings, usePermissions } from '@/hooks/usePermissions';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useNavigate } from 'react-router-dom';
+import { useStageAudienceCount } from '@/hooks/useStageAudience';
 
 // DnD Kit imports
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -337,9 +338,16 @@ function SortableChannel({
   };
   const Icon = channelIcons[channel.type];
   const isVoice = channel.type === 'voice';
+  const isStage = channel.type === 'stage';
   const {
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
+  
+  // Stage audience count with realtime
+  const { data: stageData } = useStageAudienceCount(isStage ? channel.id : null);
+  const hasActiveSession = stageData?.sessionId && stageData.count > 0;
+  const isLiveStage = stageData?.isLive;
+
   return <>
       <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn(
         "relative hover:cursor-grab channel-transition rounded-md transition-all duration-150",
@@ -350,8 +358,19 @@ function SortableChannel({
         
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <button onClick={onChannelClick} className={cn('channel-item w-full group', isActive && !isVoice && 'active', isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]')}>
-              <Icon className={cn('w-4 h-4 flex-shrink-0', isVoice && 'text-[hsl(var(--online))]')} />
+            <button onClick={onChannelClick} className={cn(
+              'channel-item w-full group', 
+              isActive && !isVoice && !isStage && 'active', 
+              isVoiceConnected && 'bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]',
+              // Stage active/live highlight
+              isStage && isActive && 'bg-muted/80',
+              isStage && isLiveStage && 'bg-[hsl(var(--online))]/10'
+            )}>
+              <Icon className={cn(
+                'w-4 h-4 flex-shrink-0', 
+                isVoice && 'text-[hsl(var(--online))]',
+                isStage && isLiveStage && 'text-[hsl(var(--online))]'
+              )} />
             <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9b9ca3] font-normal">{channel.name}</span>
             
               {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
@@ -424,6 +443,21 @@ function SortableChannel({
                 </div>;
         })}
           </div>}
+
+        {/* Stage Audience Indicator */}
+        {isStage && hasActiveSession && (
+          <div className="ml-6 mt-1 px-2 py-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Headphones className="w-3.5 h-3.5" />
+              <span>{stageData.count} en écoute</span>
+              {isLiveStage && (
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--online))] text-white rounded">
+                  LIVE
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Threads for text channels - OUTSIDE draggable div */}

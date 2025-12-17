@@ -463,9 +463,13 @@ export function useAssignRoleToMember() {
       serverId: string;
       role?: RoleWithPermissions;
     }) => {
+      // Ignore duplicates (23505) if the relation already exists
       const { error } = await supabase
         .from('member_roles')
-        .insert({ member_id: memberId, role_id: roleId });
+        .upsert(
+          { member_id: memberId, role_id: roleId },
+          { onConflict: 'member_id,role_id', ignoreDuplicates: true }
+        );
       if (error) throw error;
     },
     onMutate: async ({ memberId, roleId, serverId, role }) => {
@@ -486,10 +490,19 @@ export function useAssignRoleToMember() {
       } : { id: roleId };
       
       queryClient.setQueryData(['members', serverId], (old: any[] | undefined) =>
-        old?.map(m => m.id === memberId ? {
-          ...m,
-          roles: [...(m.roles || []), roleData].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)),
-        } : m)
+        old?.map(m => {
+          if (m.id !== memberId) return m;
+
+          const existingRoles = m.roles || [];
+          const alreadyHasRole = existingRoles.some((r: any) => r.id === roleId);
+
+          return {
+            ...m,
+            roles: alreadyHasRole
+              ? existingRoles
+              : [...existingRoles, roleData].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)),
+          };
+        })
       );
       
       return { previousMembers };

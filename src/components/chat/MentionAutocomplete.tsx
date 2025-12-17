@@ -178,7 +178,7 @@ export function MentionAutocomplete({
                   )}
                 >
                   <Hash className="w-4 h-4 text-muted-foreground" />
-                  <span>#{channel.name}</span>
+                  <span>{channel.name}</span>
                 </button>
               ))}
             </>

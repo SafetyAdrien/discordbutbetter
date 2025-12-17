@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { membersMutationLockRef } from './useMembers';
 
 // Use the database type for permissions that exist
 type DBPermission = Database['public']['Enums']['server_permission'];
@@ -456,24 +457,38 @@ export function useAssignRoleToMember() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ memberId, roleId, serverId }: { 
+    mutationFn: async ({ memberId, roleId, serverId, role }: { 
       memberId: string; 
       roleId: string; 
       serverId: string;
+      role?: RoleWithPermissions;
     }) => {
       const { error } = await supabase
         .from('member_roles')
         .insert({ member_id: memberId, role_id: roleId });
       if (error) throw error;
     },
-    onMutate: async ({ memberId, roleId, serverId }) => {
+    onMutate: async ({ memberId, roleId, serverId, role }) => {
+      // Lock to prevent Realtime invalidations during mutation
+      membersMutationLockRef.current = true;
+      
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
       const previousMembers = queryClient.getQueryData(['members', serverId]);
+      
+      // Include full role data for complete optimistic update (no flickering)
+      const roleData = role ? {
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        icon_url: role.icon_url,
+        position: role.position,
+        description: role.description,
+      } : { id: roleId };
       
       queryClient.setQueryData(['members', serverId], (old: any[] | undefined) =>
         old?.map(m => m.id === memberId ? {
           ...m,
-          roles: [...(m.roles || []), { id: roleId }],
+          roles: [...(m.roles || []), roleData].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)),
         } : m)
       );
       
@@ -489,7 +504,11 @@ export function useAssignRoleToMember() {
       toast.success('Rôle attribué !');
     },
     onSettled: (_, __, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      // Release lock after a delay to let optimistic update settle
+      setTimeout(() => {
+        membersMutationLockRef.current = false;
+      }, 500);
+      // Only invalidate role-member-counts, let Realtime handle members for other users
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
     },
   });
@@ -513,6 +532,9 @@ export function useRemoveRoleFromMember() {
       if (error) throw error;
     },
     onMutate: async ({ memberId, roleId, serverId }) => {
+      // Lock to prevent Realtime invalidations during mutation
+      membersMutationLockRef.current = true;
+      
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
       const previousMembers = queryClient.getQueryData(['members', serverId]);
       
@@ -535,7 +557,11 @@ export function useRemoveRoleFromMember() {
       toast.success('Rôle retiré !');
     },
     onSettled: (_, __, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      // Release lock after a delay to let optimistic update settle
+      setTimeout(() => {
+        membersMutationLockRef.current = false;
+      }, 500);
+      // Only invalidate role-member-counts, let Realtime handle members for other users
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
     },
   });

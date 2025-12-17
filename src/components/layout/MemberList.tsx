@@ -228,13 +228,16 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     // Owner can always manage
     if (currentUser.id === ownerId) return true;
 
+    // Secondary owner can always manage (GOD mode)
+    if (server?.secondary_owner_id === currentUser.id) return true;
+
     // Check if current user has administrator or manage_roles permission
     const currentMemberData = membersData.find(m => m.user.id === currentUser.id);
     if (!currentMemberData) return false;
     const userRoleIds = currentMemberData.roles?.map(r => r.id) || [];
     const userRoles = allRoles.filter(r => userRoleIds.includes(r.id));
     return userRoles.some(role => role.permissions.includes("administrator") || role.permissions.includes("manage_roles"));
-  }, [currentUser, serverId, ownerId, membersData, allRoles]);
+  }, [currentUser, serverId, ownerId, server?.secondary_owner_id, membersData, allRoles]);
   const handleSelectFilter = (prefix: string) => {
     setSearchQuery(prefix);
     setShowFilters(false);

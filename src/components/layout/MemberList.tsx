@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
 import { useMembers } from "@/hooks/useMembers";
+import { useProfileRealtime } from "@/hooks/useProfileRealtime";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
 interface Role {
@@ -263,6 +264,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const { data: allRoles = [] } = useServerRoles(serverId || null);
   const { data: membersData = [] } = useMembers(serverId || null);
   const { data: servers = [] } = useServers();
+  
+  // Real-time profile status updates via broadcast
+  useProfileRealtime(serverId || null);
 
   // Get the server to check for secondary owner
   const server = servers.find((s) => s.id === serverId);

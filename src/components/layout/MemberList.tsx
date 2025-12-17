@@ -522,7 +522,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         </div>
       </div>
 
-      <UserProfilePopup user={selectedMember} open={!!selectedMember} onOpenChange={open => !open && setSelectedMember(null)} roles={selectedMember?.roles} onOpenDM={onOpenDM} serverId={serverId} ownerId={ownerId} memberId={selectedMember?.memberId} canManageRoles={canManageRoles} mode="card" cardPosition={{
+      <UserProfilePopup user={selectedMember} open={!!selectedMember} onOpenChange={open => !open && setSelectedMember(null)} roles={selectedMember?.roles} onOpenDM={onOpenDM} serverId={serverId} ownerId={ownerId} secondaryOwnerId={server?.secondary_owner_id} memberId={selectedMember?.memberId} canManageRoles={canManageRoles} mode="card" cardPosition={{
       top: 60,
       right: 280
     }} />

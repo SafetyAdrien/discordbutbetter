@@ -29,6 +29,7 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
+// Main application component
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();

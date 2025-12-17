@@ -1,9 +1,7 @@
-import { useState, useRef, forwardRef } from 'react';
+import { useState, useRef, forwardRef, useEffect } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X } from 'lucide-react';
@@ -11,7 +9,10 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
-import { useServerRoles, useAssignRoleToMember, useRemoveRoleFromMember, RoleWithPermissions } from '@/hooks/useRoles';
+import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
+import { membersMutationLockRef } from '@/hooks/useMembers';
+import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
+import { useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
 import * as Portal from '@radix-ui/react-portal';
 
@@ -108,12 +109,11 @@ export function UserProfilePopup({
   cardPosition,
 }: UserProfilePopupProps) {
   const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { mutate: createDM, isPending: isCreatingDM } = useCreateDMConversation();
   const { mutate: sendFriendRequest, isPending: isSendingRequest } = useSendFriendRequest();
   const { data: friends } = useFriends();
   const { data: allRoles = [] } = useServerRoles(serverId || null);
-  const assignRole = useAssignRoleToMember();
-  const removeRole = useRemoveRoleFromMember();
   const [dmCreated, setDmCreated] = useState(false);
   const [showRolePanel, setShowRolePanel] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
@@ -146,18 +146,6 @@ export function UserProfilePopup({
 
   const handleAddFriend = () => {
     sendFriendRequest(user.username);
-  };
-
-  const handleRoleToggle = (roleId: string, checked: boolean) => {
-    if (!serverId || !memberId) return;
-    
-    if (checked) {
-      // Pass full role data for complete optimistic update
-      const roleData = allRoles.find(r => r.id === roleId);
-      assignRole.mutate({ memberId, roleId, serverId, role: roleData });
-    } else {
-      removeRole.mutate({ memberId, roleId, serverId });
-    }
   };
 
   const displayRoles = roles
@@ -398,6 +386,18 @@ export function UserProfilePopup({
   const RoleSidePanel = () => {
     // Calculer l'offset vertical pour aligner avec la section Rôles
     const topOffset = rolesSectionRef.current?.offsetTop ?? 0;
+
+    // While panel is open, block members-realtime invalidations.
+    // When it closes, refresh once (outside of interaction).
+    useEffect(() => {
+      if (!serverId) return;
+      membersMutationLockRef.current = true;
+
+      return () => {
+        membersMutationLockRef.current = false;
+        queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      };
+    }, [serverId]);
     
     return (
       <div 
@@ -416,24 +416,14 @@ export function UserProfilePopup({
       </div>
       <ScrollArea className="max-h-[300px]">
         <div className="p-2 space-y-1">
-          {assignableRoles.map((role) => (
-            <div key={role.id} className="flex items-center gap-2 p-1.5 hover:bg-muted/50 rounded transition-colors">
-              <Checkbox
-                id={`panel-role-${role.id}`}
-                checked={userRoleIds.includes(role.id)}
-                onCheckedChange={(checked) => handleRoleToggle(role.id, !!checked)}
-                disabled={assignRole.isPending || removeRole.isPending}
-              />
-              <Label 
-                htmlFor={`panel-role-${role.id}`} 
-                className="flex items-center gap-1.5 cursor-pointer text-sm flex-1"
-              >
-                <span className="flex items-center gap-1.5 flex-1">
-                  <RoleIcon role={role} />
-                  <span style={{ color: role.color || undefined }}>{role.name}</span>
-                </span>
-              </Label>
-            </div>
+          {serverId && memberId && assignableRoles.map((role) => (
+            <RoleCheckboxItem
+              key={role.id}
+              role={role}
+              serverId={serverId}
+              memberId={memberId}
+              defaultChecked={userRoleIds.includes(role.id)}
+            />
           ))}
         </div>
       </ScrollArea>

@@ -1,6 +1,5 @@
 import React, { createContext, useContext } from 'react';
 import { usePresence } from '@/hooks/usePresence';
-import { useStatusSync } from '@/hooks/useStatusSync';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -15,9 +14,6 @@ const PresenceContext = createContext<PresenceContextType | undefined>(undefined
 export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { setManualStatus } = usePresence();
-  
-  // Global status sync via postgres_changes
-  useStatusSync();
 
   // Si pas d'utilisateur, fournir une fonction no-op
   const contextValue: PresenceContextType = {

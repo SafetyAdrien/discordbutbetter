@@ -80,7 +80,7 @@ export function DMPage({
         </div>
 
         {/* Separator */}
-        <div className="px-2 pt-4 py-[5px]">
+        <div className="px-2 pt-4 py-[10px]">
           <div className="h-px bg-border mb-3" />
           <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2">
             Messages privés

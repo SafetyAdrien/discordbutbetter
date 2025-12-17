@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,11 +44,18 @@ interface RoleCheckboxItemProps {
 export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, disabled }: RoleCheckboxItemProps) {
   const [isChecked, setIsChecked] = useState(defaultChecked);
   const [isPending, setIsPending] = useState(false);
+  // Track if we just finished a local mutation to avoid syncing with stale defaultChecked
+  const justMutatedRef = useRef(false);
 
   // Keep in sync when switching user / reopening panel
-  // BUT never reset during a pending operation to prevent visual rollback
+  // BUT skip sync if we just completed our own mutation (wait for Realtime to update defaultChecked)
   useEffect(() => {
     if (isPending) return; // Don't sync while mutation in progress
+    if (justMutatedRef.current) {
+      // We just finished a mutation - skip this sync and wait for next defaultChecked update
+      justMutatedRef.current = false;
+      return;
+    }
     setIsChecked(defaultChecked);
   }, [defaultChecked, memberId, role.id, isPending]);
 
@@ -84,6 +91,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
             .eq("role_id", role.id);
           if (error) throw error;
         }
+        // Success - mark as just mutated so we skip the next stale sync
+        justMutatedRef.current = true;
       } catch (err: any) {
         // Debug: surface backend errors (RLS / FK / etc.)
         console.error("[RoleCheckboxItem] Failed to toggle member role", {

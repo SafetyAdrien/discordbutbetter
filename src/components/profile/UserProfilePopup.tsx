@@ -31,6 +31,7 @@ interface UserProfilePopupProps {
   onOpenDM?: (conversationId: string) => void;
   serverId?: string;
   ownerId?: string;
+  secondaryOwnerId?: string;
   memberId?: string;
   canManageRoles?: boolean;
   mode?: 'dialog' | 'card';
@@ -100,6 +101,7 @@ export function UserProfilePopup({
   onOpenDM,
   serverId,
   ownerId,
+  secondaryOwnerId,
   memberId,
   canManageRoles = false,
   mode = 'dialog',
@@ -118,6 +120,7 @@ export function UserProfilePopup({
   if (!user) return null;
 
   const isOwnProfile = currentUser?.id === user.id;
+  const isGodUser = currentUser?.id === ownerId || currentUser?.id === secondaryOwnerId;
   
   const friendship = friends?.find(
     f => (f.profile?.id === user.id)
@@ -313,7 +316,7 @@ export function UserProfilePopup({
           )}
 
           {/* Afficher la section Rôles si l'utilisateur a des rôles OU si on peut les gérer */}
-          {((displayRoles && displayRoles.length > 0) || (canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0)) && (
+          {((displayRoles && displayRoles.length > 0) || (canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0)) && (
             <>
               <div className="border-t border-border" />
               <div>
@@ -321,7 +324,7 @@ export function UserProfilePopup({
                   <h4 className="text-xs font-semibold text-muted-foreground tracking-wide">
                     Rôles
                   </h4>
-                  {canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
+                  {canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0 && (
                     <Tooltip delayDuration={0}>
                       <TooltipTrigger asChild>
                         <button

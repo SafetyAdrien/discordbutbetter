@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
-import { membersMutationLockRef } from '@/hooks/useMembers';
+
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
@@ -386,18 +386,6 @@ export function UserProfilePopup({
   const RoleSidePanel = () => {
     // Calculer l'offset vertical pour aligner avec la section Rôles
     const topOffset = rolesSectionRef.current?.offsetTop ?? 0;
-
-    // While panel is open, block members-realtime invalidations.
-    // When it closes, refresh once (outside of interaction).
-    useEffect(() => {
-      if (!serverId) return;
-      membersMutationLockRef.current = true;
-
-      return () => {
-        membersMutationLockRef.current = false;
-        queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      };
-    }, [serverId]);
     
     return (
       <div 

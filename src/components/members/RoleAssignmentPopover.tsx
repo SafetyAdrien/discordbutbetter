@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,25 @@ export function RoleAssignmentPopover({ member, serverId, trigger }: RoleAssignm
   const removeRole = useRemoveRoleFromMember();
   const { canAssignRole, isGod } = usePermissions(serverId);
 
-  // Get member's current role IDs
-  const memberRoleIds = member.roles?.map(r => r.id) || [];
+  // Local optimistic state for immediate UI feedback
+  const [optimisticRoleIds, setOptimisticRoleIds] = useState<Set<string>>(new Set());
+  const [pendingRoleIds, setPendingRoleIds] = useState<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+
+  // Initialize optimistic state from member roles
+  useEffect(() => {
+    if (member.roles && !initializedRef.current) {
+      setOptimisticRoleIds(new Set(member.roles.map(r => r.id)));
+      initializedRef.current = true;
+    }
+  }, [member.roles]);
+
+  // Sync optimistic state when member roles change (but not during pending operations)
+  useEffect(() => {
+    if (member.roles && pendingRoleIds.size === 0) {
+      setOptimisticRoleIds(new Set(member.roles.map(r => r.id)));
+    }
+  }, [member.roles, pendingRoleIds.size]);
 
   // Sort roles by position (highest first)
   const sortedRoles = [...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
@@ -31,25 +48,62 @@ export function RoleAssignmentPopover({ member, serverId, trigger }: RoleAssignm
   // Filter out @everyone (is_default) from the list - it's automatically assigned
   const assignableRoles = sortedRoles.filter(r => !r.is_default);
 
-  const handleToggleRole = async (role: RoleWithPermissions) => {
-    const hasRole = memberRoleIds.includes(role.id);
-    
-    if (hasRole) {
-      removeRole.mutate({
-        memberId: member.id,
-        roleId: role.id,
-        serverId,
+  const handleToggleRole = useCallback(async (e: React.MouseEvent, role: RoleWithPermissions) => {
+    // Prevent event bubbling to avoid closing popover or triggering parent rerenders
+    e.stopPropagation();
+    e.preventDefault();
+
+    const roleId = role.id;
+    const hasRole = optimisticRoleIds.has(roleId);
+
+    // Add to pending immediately
+    setPendingRoleIds(prev => new Set(prev).add(roleId));
+
+    // Optimistic update - change visual state immediately
+    setOptimisticRoleIds(prev => {
+      const newSet = new Set(prev);
+      if (hasRole) {
+        newSet.delete(roleId);
+      } else {
+        newSet.add(roleId);
+      }
+      return newSet;
+    });
+
+    try {
+      if (hasRole) {
+        await removeRole.mutateAsync({
+          memberId: member.id,
+          roleId: roleId,
+          serverId,
+        });
+      } else {
+        await assignRole.mutateAsync({
+          memberId: member.id,
+          roleId: roleId,
+          serverId,
+        });
+      }
+    } catch (error) {
+      // Rollback on error - revert to opposite state
+      setOptimisticRoleIds(prev => {
+        const newSet = new Set(prev);
+        if (hasRole) {
+          newSet.add(roleId); // Was removed, add back
+        } else {
+          newSet.delete(roleId); // Was added, remove
+        }
+        return newSet;
       });
-    } else {
-      assignRole.mutate({
-        memberId: member.id,
-        roleId: role.id,
-        serverId,
+    } finally {
+      // Remove from pending after operation completes
+      setPendingRoleIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(roleId);
+        return newSet;
       });
     }
-  };
-
-  const isPending = assignRole.isPending || removeRole.isPending;
+  }, [optimisticRoleIds, member.id, serverId, assignRole, removeRole]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -61,7 +115,7 @@ export function RoleAssignmentPopover({ member, serverId, trigger }: RoleAssignm
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="end">
+      <PopoverContent className="w-72 p-0" align="end" onClick={e => e.stopPropagation()}>
         <div className="p-3 border-b border-border">
           <h4 className="font-semibold text-sm">Gérer les rôles</h4>
           <p className="text-xs text-muted-foreground mt-1">
@@ -77,22 +131,24 @@ export function RoleAssignmentPopover({ member, serverId, trigger }: RoleAssignm
               </p>
             ) : (
               assignableRoles.map((role) => {
-                const hasRole = memberRoleIds.includes(role.id);
+                const hasRole = optimisticRoleIds.has(role.id);
+                const isPending = pendingRoleIds.has(role.id);
                 const canModify = canAssignRole(role.id);
                 
                 return (
-                  <label
+                  <div
                     key={role.id}
+                    onClick={(e) => canModify && !isPending && handleToggleRole(e, role)}
                     className={cn(
-                      "flex items-center gap-3 px-2 py-2 rounded-md transition-colors cursor-pointer",
-                      canModify ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
+                      "flex items-center gap-3 px-2 py-2 rounded-md transition-colors select-none",
+                      canModify && !isPending ? "hover:bg-muted cursor-pointer" : "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <Checkbox
                       checked={hasRole}
-                      onCheckedChange={() => canModify && handleToggleRole(role)}
                       disabled={!canModify || isPending}
-                      className="border-muted-foreground/30"
+                      className="border-muted-foreground/30 pointer-events-none"
+                      tabIndex={-1}
                     />
                     
                     {/* Role icon or color circle */}
@@ -117,7 +173,7 @@ export function RoleAssignmentPopover({ member, serverId, trigger }: RoleAssignm
                     {isPending && (
                       <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                     )}
-                  </label>
+                  </div>
                 );
               })
             )}

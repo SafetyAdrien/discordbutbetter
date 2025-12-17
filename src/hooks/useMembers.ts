@@ -86,48 +86,12 @@ export function useMembers(serverId: string | null) {
     enabled: !!serverId && !!user,
   });
 
-  // Real-time subscription for profile status updates AND member changes (kick/ban)
+  // Real-time subscription for member changes (join/leave/kick/ban)
   useEffect(() => {
     if (!serverId || !user) return;
 
     const channel = supabase
       .channel(`members-realtime:${serverId}`)
-      // Listen for profile updates (status, activity, etc.)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          queryClient.setQueryData<MemberWithProfile[]>(
-            ['members', serverId],
-            (old) => {
-              if (!old) return old;
-              return old.map((member) =>
-                member.user.id === updated.id
-                  ? {
-                      ...member,
-                      user: {
-                        ...member.user,
-                        status: updated.status,
-                        custom_status: updated.custom_status,
-                        display_name: updated.display_name,
-                        avatar_url: updated.avatar_url,
-                        banner_url: updated.banner_url,
-                        activity_type: updated.activity_type,
-                        activity_text: updated.activity_text,
-                        pronouns: updated.pronouns,
-                      },
-                    }
-                  : member
-              );
-            }
-          );
-        }
-      )
       // Listen for member deletions (kick/leave)
       .on(
         'postgres_changes',

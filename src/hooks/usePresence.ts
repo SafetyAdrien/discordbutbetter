@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { broadcastStatusUpdate } from './useProfileRealtime';
 import type { Database } from '@/integrations/supabase/types';
 
 type UserStatus = Database['public']['Enums']['user_status'];
@@ -11,7 +10,7 @@ const HIDDEN_TAB_IDLE_TIMEOUT = 60 * 1000; // 1 minute quand l'onglet est caché
 const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
 
 export function usePresence() {
-  const { user, profile, session } = useAuth();
+  const { user, profile, session, updateProfile } = useAuth();
   const lastActivityRef = useRef<number>(Date.now());
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentStatusRef = useRef<UserStatus | null>(null);
@@ -25,10 +24,10 @@ export function usePresence() {
     accessTokenRef.current = session?.access_token || null;
   }, [user?.id, session?.access_token]);
 
-  // Met à jour le statut dans Supabase et broadcast aux autres utilisateurs
+  // Met à jour le statut en base + état local (la propagation aux autres clients se fait via postgres_changes)
   const updateStatus = useCallback(async (status: UserStatus, forceUpdate = false) => {
     if (!user) return;
-    
+
     // Ne pas changer si le statut manuel est "dnd" (sauf si force)
     if (!forceUpdate && isManualStatusRef.current && currentStatusRef.current === 'dnd') {
       return;
@@ -40,20 +39,12 @@ export function usePresence() {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status })
-        .eq('id', user.id);
-      
-      if (!error) {
-        currentStatusRef.current = status;
-        // Broadcast le changement de statut à tous les serveurs
-        broadcastStatusUpdate(user.id, status);
-      }
+      await updateProfile({ status });
+      currentStatusRef.current = status;
     } catch (error) {
       console.error('Error updating presence status:', error);
     }
-  }, [user]);
+  }, [user, updateProfile]);
 
   // Gère l'activité détectée
   const handleActivity = useCallback(() => {

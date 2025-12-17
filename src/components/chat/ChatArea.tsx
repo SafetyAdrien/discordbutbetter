@@ -676,7 +676,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 </button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="start" className="w-80 p-3">
-                <h4 className="font-semibold text-foreground mb-2">Topic du Salon</h4>
+                <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
                 <p className="text-sm text-muted-foreground">{channel.description}</p>
               </PopoverContent>
             </Popover>
@@ -791,17 +791,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </Button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-80 p-3">
-              <h4 className="font-semibold text-foreground mb-3">Boîte de réception</h4>
-
-              <div className="flex flex-col items-center justify-center text-center py-6 space-y-2">
-                {/* Premier paragraphe : Gras et plus visible */}
-                <p className="font-bold text-foreground">Il n'y a rien ici pour le moment.</p>
-
-                {/* Deuxième paragraphe : Plus petit et couleur atténuée */}
-                <p className="text-sm text-muted-foreground">
-                  Reviens pour les notifications d'événements, les streams et bien plus encore.
-                </p>
-              </div>
+              <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
+              <div className="text-sm text-muted-foreground/70 text-center py-6">Aucune notification récente.</div>
             </PopoverContent>
           </Popover>
 
@@ -1301,7 +1292,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => setCreateThreadForMessageId(message.id)}>
                     <StreamlineThreads className="w-4 h-4 mr-2" />
-                    Créer un thread
+                    Créer un fil
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
                     <Link className="w-4 h-4 mr-2" />

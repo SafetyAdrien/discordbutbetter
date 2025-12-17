@@ -325,17 +325,12 @@ export function UserProfilePopup({
                     Rôles
                   </h4>
                   {canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0 && (
-                    <Tooltip delayDuration={0}>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => setShowRolePanel(true)}
-                          className="p-1 hover:bg-muted rounded transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-muted-foreground" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>Gérer les rôles</TooltipContent>
-                    </Tooltip>
+                    <button
+                      onClick={() => setShowRolePanel(true)}
+                      className="text-xs text-primary hover:underline transition-colors"
+                    >
+                      Gérer les rôles
+                    </button>
                   )}
                 </div>
                 {displayRoles && displayRoles.length > 0 ? (
@@ -451,7 +446,7 @@ export function UserProfilePopup({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Role Side Panel */}
-            {showRolePanel && canManageRoles && !isOwnProfile && serverId && memberId && assignableRoles.length > 0 && (
+            {showRolePanel && canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0 && (
               <RoleSidePanel />
             )}
             

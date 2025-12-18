@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Minus, Loader2, RefreshCw } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, X, Minus, Loader2, RefreshCw, Plus } from 'lucide-react';
 import { useServerRoles, ALL_PERMISSIONS } from '@/hooks/useRoles';
 import { 
   useCategoryPermissionOverrides, 
@@ -152,6 +153,34 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
               {role.name}
             </Button>
           ))}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="border-dashed">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground px-2 py-1">Ajouter un rôle</p>
+                {roles?.filter(role => !rolesWithOverrides.some(r => r.id === role.id)).map((role) => (
+                  <button
+                    key={role.id}
+                    onClick={() => setSelectedRole(role.id)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-sm text-left"
+                  >
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: role.color || '#99AAB5' }} 
+                    />
+                    {role.name}
+                  </button>
+                ))}
+                {roles?.filter(role => !rolesWithOverrides.some(r => r.id === role.id)).length === 0 && (
+                  <p className="text-xs text-muted-foreground px-2 py-2">Tous les rôles ont déjà des permissions</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

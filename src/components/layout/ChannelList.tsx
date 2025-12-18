@@ -192,7 +192,7 @@ function SortableCategory({
               onToggle();
             }} className="flex items-center gap-px flex-1">
                 <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
-                <span className="tracking-wide font-gg-sans text-[14px] font-normal my-0 py-0 px-[2px] mx-[2px] text-[#c6c7cd]">
+                <span className="tracking-wide font-ginto text-[14px] font-normal my-0 py-0 px-[2px] mx-[2px] text-[#c6c7cd]">
                   {category.name}
                 </span>
               </button>
@@ -341,145 +341,145 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
   const hasActiveSession = stageData?.sessionId && stageData.count > 0;
   const isLiveStage = stageData?.isLive;
   return <>
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("relative hover:cursor-grab channel-transition rounded-md transition-all duration-150", isDragging && "bg-muted/20 scale-[0.98]")}>
-          {/* Drop Indicator - Absolute positioned */}
-          {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={cn("relative hover:cursor-grab channel-transition rounded-md transition-all duration-150", isDragging && "bg-muted/20 scale-[0.98]")}>
+        {/* Drop Indicator - Absolute positioned */}
+        {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
-          <ContextMenu>
-            <ContextMenuTrigger asChild>
-              <button onClick={onChannelClick} className={cn("channel-item w-full group", isActive && !isVoice && !isStage && "active", isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button onClick={onChannelClick} className={cn("channel-item w-full group", isActive && !isVoice && !isStage && "active", isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
           // Stage active/live highlight
           isStage && isActive && "bg-muted/80", isStage && isLiveStage && "bg-[hsl(var(--online))]/10")}>
-                <Icon className={cn("w-4 h-4 flex-shrink-0", isVoice && "text-[hsl(var(--online))]", isStage && isLiveStage && "text-[hsl(var(--online))]")} />
-                <span className="truncate flex-1 text-left font-ginto text-[16px] font-normal text-[#8a8c99]">
-                  {channel.name}
-                </span>
+              <Icon className={cn("w-4 h-4 flex-shrink-0", isVoice && "text-[hsl(var(--online))]", isStage && isLiveStage && "text-[hsl(var(--online))]")} />
+              <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#8a8c99] font-medium">
+                {channel.name}
+              </span>
 
-                {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                    {channel.unreadCount}
-                  </span>}
+              {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                  {channel.unreadCount}
+                </span>}
 
-                <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
-                  <UserPlus className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
+              <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
+                <UserPlus className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
                 e.stopPropagation();
                 onCreateInvite();
               }} />
-                  {canManageChannels && <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
+                {canManageChannels && <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={e => {
                 e.stopPropagation();
                 onOpenSettings();
               }} />}
-                </div>
-              </button>
-            </ContextMenuTrigger>
-            <ContextMenuContent className="w-48">
-              <ContextMenuItem onClick={onMarkAsRead}>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Marquer comme lu
-              </ContextMenuItem>
-              <ContextMenuItem onClick={onCopyLink}>
-                <Link className="w-4 h-4 mr-2" />
-                Copier le lien
-              </ContextMenuItem>
-              <ContextMenuItem onClick={onCreateInvite}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Créer une invitation
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={onOpenSettings}>
-                <Settings className="w-4 h-4 mr-2" />
-                Modifier le channel
-              </ContextMenuItem>
-              {canManageChannels && <ContextMenuItem onClick={onDuplicate}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Dupliquer le salon
-                </ContextMenuItem>}
-              <ChannelNotificationMenu channelId={channel.id} serverId={serverId} />
-              <ContextMenuSeparator />
-              <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
-                <Trash2 className="w-4 h-4 mr-2" />
-                Supprimer le channel
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
+              </div>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            <ContextMenuItem onClick={onMarkAsRead}>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Marquer comme lu
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onCopyLink}>
+              <Link className="w-4 h-4 mr-2" />
+              Copier le lien
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onCreateInvite}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Créer une invitation
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onOpenSettings}>
+              <Settings className="w-4 h-4 mr-2" />
+              Modifier le channel
+            </ContextMenuItem>
+            {canManageChannels && <ContextMenuItem onClick={onDuplicate}>
+                <Copy className="w-4 h-4 mr-2" />
+                Dupliquer le salon
+              </ContextMenuItem>}
+            <ChannelNotificationMenu channelId={channel.id} serverId={serverId} />
+            <ContextMenuSeparator />
+            <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer le channel
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
-          {/* Voice Participants */}
-          {isVoice && participants.length > 0 && <div className="ml-6 mt-1 space-y-1">
-              {participants.map(participant => {
+        {/* Voice Participants */}
+        {isVoice && participants.length > 0 && <div className="ml-6 mt-1 space-y-1">
+            {participants.map(participant => {
           const isSpeaking = speakingUsers.has(participant.user_id);
           return <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
-                    <Avatar className={cn("w-5 h-5 transition-all", isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border")}>
-                      <AvatarImage src={participant.profile.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                        {participant.profile.display_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
-                    {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
-                    {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
-                  </div>;
+                  <Avatar className={cn("w-5 h-5 transition-all", isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border")}>
+                    <AvatarImage src={participant.profile.avatar_url || undefined} />
+                    <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                      {participant.profile.display_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
+                  {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
+                  {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
+                </div>;
         })}
-            </div>}
+          </div>}
 
-          {/* Stage Audience Indicator */}
-          {isStage && hasActiveSession && <div className="ml-6 mt-1 px-2 py-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Headphones className="w-3.5 h-3.5" />
-                <span>{stageData.count} en écoute</span>
-                {isLiveStage && <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--online))] text-white rounded">
-                    LIVE
-                  </span>}
-              </div>
-            </div>}
-        </div>
+        {/* Stage Audience Indicator */}
+        {isStage && hasActiveSession && <div className="ml-6 mt-1 px-2 py-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Headphones className="w-3.5 h-3.5" />
+              <span>{stageData.count} en écoute</span>
+              {isLiveStage && <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--online))] text-white rounded">
+                  LIVE
+                </span>}
+            </div>
+          </div>}
+      </div>
 
-        {/* Threads for text channels - OUTSIDE draggable div */}
-        {channel.type === "text" && threads.length > 0 && <div className="mt-1 space-y-0.5">
-            {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <div key={thread.id} className="flex items-start w-full px-2">
-                  <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
-                  <button onClick={e => {
+      {/* Threads for text channels - OUTSIDE draggable div */}
+      {channel.type === "text" && threads.length > 0 && <div className="mt-1 space-y-0.5">
+          {threads.filter(thread => showArchivedThreads || !thread.archived).map(thread => <div key={thread.id} className="flex items-start w-full px-2">
+                <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
+                <button onClick={e => {
           e.stopPropagation();
           onThreadSelect?.(thread.id);
         }} className={cn("flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors", activeThreadId === thread.id && "bg-muted", thread.archived && "opacity-50")}>
-                    <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
-                      {thread.name}
-                      {thread.archived && " (archivé)"}
-                    </span>
-                  </button>
-                </div>)}
-          </div>}
+                  <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
+                    {thread.name}
+                    {thread.archived && " (archivé)"}
+                  </span>
+                </button>
+              </div>)}
+        </div>}
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-          <AlertDialogContent>
-            <form onSubmit={e => {
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <form onSubmit={e => {
           e.preventDefault();
           onDelete();
           setShowDeleteConfirm(false);
         }}>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
-                  Supprimer #{channel.name} ?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="space-y-2">
-                  <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
-                  <br />
-                  <br />
-                  Tous les messages, fichiers et webhooks de ce salon seront définitivement supprimés.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-                <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Supprimer définitivement
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </form>
-          </AlertDialogContent>
-        </AlertDialog>
-      </>;
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Supprimer #{channel.name} ?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
+                <br />
+                <br />
+                Tous les messages, fichiers et webhooks de ce salon seront définitivement supprimés.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
+              <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Supprimer définitivement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>;
 });
-SortableChannel.displayName = "SortableChannel";
+SortableChannel.displayName = 'SortableChannel';
 export function ChannelList({
   server,
   activeChannelId,

@@ -1,15 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Loader2, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { useDeleteChannel } from '@/hooks/useChannels';
 import { toast } from 'sonner';
 
@@ -22,11 +26,12 @@ interface ChannelDangerZoneProps {
 
 export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted }: ChannelDangerZoneProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
   const deleteChannel = useDeleteChannel();
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  const canDelete = confirmText === channelName;
 
   const handleDelete = async () => {
-    if (deleteChannel.isPending) return;
     try {
       await deleteChannel.mutateAsync({ channelId, serverId });
       onDeleted();
@@ -34,28 +39,6 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
       toast.error('Erreur lors de la suppression');
     }
   };
-
-  // Global ENTER key listener when modal is open
-  useEffect(() => {
-    if (!showConfirm) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !deleteChannel.isPending) {
-        e.preventDefault();
-        handleDelete();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showConfirm, deleteChannel.isPending]);
-
-  // Focus cancel button on open for safety
-  useEffect(() => {
-    if (showConfirm && cancelButtonRef.current) {
-      cancelButtonRef.current.focus();
-    }
-  }, [showConfirm]);
 
   return (
     <>
@@ -81,37 +64,47 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
       </div>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent className="max-w-md">
-          <button 
-            onClick={() => setShowConfirm(false)}
-            className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le salon</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tu es sûr(e) de vouloir supprimer <strong className="text-foreground">#{channelName}</strong> ? Cette action est irréversible.
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Supprimer #{channelName} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>
+                Cette action est <strong>irréversible</strong>. Tous les messages, fichiers et webhooks associés seront définitivement supprimés.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-name">
+                  Tapez <strong>{channelName}</strong> pour confirmer
+                </Label>
+                <Input
+                  id="confirm-name"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && canDelete && !deleteChannel.isPending) {
+                      e.preventDefault();
+                      handleDelete();
+                    }
+                  }}
+                  placeholder={channelName}
+                />
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2 sm:justify-center">
-            <Button
-              ref={cancelButtonRef}
-              variant="secondary"
-              onClick={() => setShowConfirm(false)}
-              className="flex-1"
-            >
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmText('')}>
               Annuler
-            </Button>
-            <Button
-              variant="destructive"
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDelete}
-              disabled={deleteChannel.isPending}
-              className="flex-1"
+              disabled={!canDelete || deleteChannel.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Supprimer le salon
-            </Button>
+              Supprimer définitivement
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

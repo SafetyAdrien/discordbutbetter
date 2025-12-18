@@ -674,10 +674,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   return (
     <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
-        <div className="flex items-center gap-2">
-          <Hash className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] shadow-md z-10">
+        <div className="flex items-center gap-2 min-w-0">
+          <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
         {channel.description && (

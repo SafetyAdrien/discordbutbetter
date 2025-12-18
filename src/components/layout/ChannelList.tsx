@@ -945,7 +945,7 @@ export function ChannelList({
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
   }, [sidebarWidth]);
-  return <div className="bg-card flex flex-col border-r border-border relative" style={{
+  return <div className="bg-card flex flex-col border-r border-border relative shadow-md z-10" style={{
     width: `${sidebarWidth}px`,
     minWidth: "240px",
     maxWidth: "340px"

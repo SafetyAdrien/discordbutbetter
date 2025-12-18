@@ -349,7 +349,7 @@ export function MessageInput({
             rows={1}
           />
           
-          <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
+          <div className={`relative z-50 flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
             <EmojiStickerPicker
               serverId={serverId}
               onEmojiSelect={insertEmoji}

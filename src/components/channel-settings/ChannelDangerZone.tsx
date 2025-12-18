@@ -64,7 +64,14 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
       </div>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canDelete && !deleteChannel.isPending) {
+              e.preventDefault();
+              handleDelete();
+            }
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -82,13 +89,8 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
                   id="confirm-name"
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && canDelete && !deleteChannel.isPending) {
-                      e.preventDefault();
-                      handleDelete();
-                    }
-                  }}
                   placeholder={channelName}
+                  autoFocus
                 />
               </div>
             </AlertDialogDescription>

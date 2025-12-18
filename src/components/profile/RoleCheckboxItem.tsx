@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,7 +33,6 @@ interface RoleCheckboxItemProps {
   memberId: string;
   /** profile id (used to refresh profile queries instantly) */
   userId?: string;
-  defaultChecked: boolean;
   disabled?: boolean;
 }
 
@@ -44,31 +43,20 @@ interface RoleCheckboxItemProps {
  * - rollback on error
  * - prevents event bubbling
  */
-export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChecked, disabled }: RoleCheckboxItemProps) {
+export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }: RoleCheckboxItemProps) {
   const queryClient = useQueryClient();
-  const [isChecked, setIsChecked] = useState(defaultChecked);
   const [isPending, setIsPending] = useState(false);
-  // Track if we just finished a local mutation to avoid syncing with stale defaultChecked
-  const justMutatedRef = useRef(false);
 
-  // Keep in sync when switching user / reopening panel
-  // BUT skip sync if we just completed our own mutation (wait for Realtime to update defaultChecked)
-  useEffect(() => {
-    if (isPending) return; // Don't sync while mutation in progress
-    if (justMutatedRef.current) {
-      // We just finished a mutation - skip this sync and wait for next defaultChecked update
-      justMutatedRef.current = false;
-      return;
-    }
-    setIsChecked(defaultChecked);
-  }, [defaultChecked, memberId, role.id, isPending]);
-
+  // Single source of truth: read directly from React Query cache
   const getHasRoleNow = useCallback(() => {
     const members = queryClient.getQueryData<any[]>(["members", serverId]) as any[] | undefined;
     const member = members?.find((m) => m.id === memberId);
     const roles = member?.roles ?? [];
     return roles.some((r: any) => r.id === role.id);
   }, [memberId, queryClient, role.id, serverId]);
+
+  // Derive isChecked from cache - no local state needed
+  const isChecked = getHasRoleNow();
 
   const handleRoleToggle = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -81,11 +69,6 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChec
       const hasRoleNow = getHasRoleNow();
       const shouldRemove = hasRoleNow;
 
-      const prevChecked = isChecked;
-      const nextChecked = shouldRemove ? false : true;
-
-      // Optimistic UI: update immediately
-      setIsChecked(nextChecked);
       setIsPending(true);
       membersMutationLockRef.current = true;
 
@@ -98,7 +81,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChec
 
           const existingRoles = m.roles || [];
 
-          if (nextChecked) {
+          if (!shouldRemove) {
+            // Adding role
             const alreadyHas = existingRoles.some((r: any) => r.id === role.id);
             if (alreadyHas) return m;
 
@@ -117,6 +101,7 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChec
             };
           }
 
+          // Removing role
           return {
             ...m,
             roles: existingRoles.filter((r: any) => r.id !== role.id),
@@ -144,9 +129,6 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChec
           if (error && error.code !== "23505") throw error;
         }
 
-        // Success - mark as just mutated so we skip the next stale sync
-        justMutatedRef.current = true;
-
         // Force refresh profile-related queries so badges update behind without closing popover
         if (userId) {
           queryClient.invalidateQueries({ queryKey: ["profile", userId] });
@@ -170,8 +152,7 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChec
           description: code ? `(${code}) ${message}` : message,
         });
 
-        // Rollback UI + cache
-        setIsChecked(prevChecked);
+        // Rollback cache (UI will auto-update since isChecked is derived from cache)
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
       } finally {
         setIsPending(false);
@@ -183,7 +164,6 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChec
     [
       disabled,
       getHasRoleNow,
-      isChecked,
       isPending,
       memberId,
       queryClient,

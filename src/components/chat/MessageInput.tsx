@@ -341,10 +341,10 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className={`flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto ${
+            className={`flex-1 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap focus:outline-none resize-none overflow-y-auto ${
               compact 
-                ? "py-1 text-sm min-h-[24px] max-h-[120px]" 
-                : "py-3 min-h-[24px] max-h-[200px]"
+                ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
+                : "py-3 min-h-[24px] max-h-[200px] pr-28"
             }`}
             rows={1}
           />

@@ -120,6 +120,29 @@ export function CreateChannelModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 1. Type de salon - Grille 2 colonnes */}
+          <div className="space-y-2">
+            <Label>Type de salon</Label>
+            <RadioGroup value={type} onValueChange={(value) => setType(value as ChannelType)} className="grid grid-cols-2 gap-2">
+              {channelTypes.map((channelType) => {
+                const Icon = channelType.icon;
+                return (
+                  <label
+                    key={channelType.value}
+                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border cursor-pointer transition-colors min-h-[80px] text-center ${
+                      type === channelType.value ? "border-[#5865f2] bg-[#5865f2]/10" : "border-border hover:bg-muted"
+                    }`}
+                  >
+                    <RadioGroupItem value={channelType.value} className="sr-only" />
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                    <p className="font-medium text-sm">{channelType.label}</p>
+                  </label>
+                );
+              })}
+            </RadioGroup>
+          </div>
+
+          {/* 2. Catégorie */}
           {showCategorySelector && categories && (
             <div className="space-y-2">
               <Label>Catégorie</Label>
@@ -142,6 +165,7 @@ export function CreateChannelModal({
             </div>
           )}
 
+          {/* 3. Nom du salon */}
           <div className="space-y-2">
             <Label htmlFor="name">Nom du salon</Label>
             <Input
@@ -151,30 +175,6 @@ export function CreateChannelModal({
               placeholder="nouveau-salon"
               autoFocus
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Type de salon</Label>
-            <RadioGroup value={type} onValueChange={(value) => setType(value as ChannelType)} className="grid gap-2">
-              {channelTypes.map((channelType) => {
-                const Icon = channelType.icon;
-                return (
-                  <label
-                    key={channelType.value}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      type === channelType.value ? "border-[#5865f2] bg-[#5865f2]/10" : "border-border hover:bg-muted"
-                    }`}
-                  >
-                    <RadioGroupItem value={channelType.value} className="sr-only" />
-                    <Icon className="w-5 h-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{channelType.label}</p>
-                      <p className="text-xs text-muted-foreground">{channelType.description}</p>
-                    </div>
-                  </label>
-                );
-              })}
-            </RadioGroup>
           </div>
 
           <DialogFooter>

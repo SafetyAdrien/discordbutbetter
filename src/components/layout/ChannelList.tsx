@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { EditCategoryModal } from "@/components/category-settings/EditCategoryModal";
 import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
@@ -493,8 +494,7 @@ export function ChannelList({
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; channelCount: number } | null>(null);
   const [createChannelForCategory, setCreateChannelForCategory] = useState<{
     id: string | null;
     name: string;
@@ -672,23 +672,11 @@ export function ChannelList({
     }
   };
   const handleStartEditCategory = (category: Category) => {
-    setEditingCategoryId(category.id);
-    setEditingCategoryName(category.name);
-  };
-  const handleSaveCategory = () => {
-    if (editingCategoryId && editingCategoryName.trim() && server?.id) {
-      updateCategory.mutate({
-        categoryId: editingCategoryId,
-        serverId: server.id,
-        name: editingCategoryName.trim()
-      });
-    }
-    setEditingCategoryId(null);
-    setEditingCategoryName("");
-  };
-  const handleCancelEditCategory = () => {
-    setEditingCategoryId(null);
-    setEditingCategoryName("");
+    setEditingCategory({
+      id: category.id,
+      name: category.name,
+      channelCount: category.channels.length
+    });
   };
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -1060,12 +1048,7 @@ export function ChannelList({
               {/* Categories */}
               <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
                 {server.categories.map((category, index) => <div key={category.id} className={cn(index > 0 && "mt-4")}>
-                    {editingCategoryId === category.id ? <div className="px-2 py-1 mb-2">
-                        <Input value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} onBlur={handleSaveCategory} onKeyDown={e => {
-                    if (e.key === "Enter") handleSaveCategory();
-                    if (e.key === "Escape") handleCancelEditCategory();
-                  }} autoFocus className="h-6 text-xs font-semibold" />
-                      </div> : <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
+                    <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                   id: category.id,
                   name: category.name
                 })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels} serverId={server.id}>
@@ -1074,7 +1057,7 @@ export function ChannelList({
                             {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
                           </SortableContext>
                         </div>
-                      </SortableCategory>}
+                      </SortableCategory>
                   </div>)}
               </SortableContext>
 
@@ -1137,6 +1120,14 @@ export function ChannelList({
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
 
       {inviteChannelId && <CreateInviteModal serverId={server.id} channelName={getChannelName(inviteChannelId)} onClose={() => setInviteChannelId(null)} />}
+
+      {editingCategory && <EditCategoryModal 
+        categoryId={editingCategory.id} 
+        categoryName={editingCategory.name}
+        serverId={server.id} 
+        channelCount={editingCategory.channelCount}
+        onClose={() => setEditingCategory(null)} 
+      />}
 
       {/* Leave Server Confirmation Dialog */}
       <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>

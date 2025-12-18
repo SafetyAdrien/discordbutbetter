@@ -1,13 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
+
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useServerRoles, useAssignRoleToMember, useRemoveRoleFromMember, RoleWithPermissions } from '@/hooks/useRoles';
+import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { usePermissions } from '@/hooks/usePermissions';
 import { MemberWithProfile } from '@/hooks/useMembers';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RoleAssignmentPopoverProps {
   member: MemberWithProfile;
@@ -18,92 +21,148 @@ interface RoleAssignmentPopoverProps {
 export function RoleAssignmentPopover({ member, serverId, trigger }: RoleAssignmentPopoverProps) {
   const [open, setOpen] = useState(false);
   const { data: roles = [] } = useServerRoles(serverId);
-  const assignRole = useAssignRoleToMember();
-  const removeRole = useRemoveRoleFromMember();
   const { canAssignRole, isGod } = usePermissions(serverId);
 
   // Local optimistic state for immediate UI feedback
   const [optimisticRoleIds, setOptimisticRoleIds] = useState<Set<string>>(new Set());
   const [pendingRoleIds, setPendingRoleIds] = useState<Set<string>>(new Set());
-  const initializedRef = useRef(false);
+  const pendingRoleIdsRef = useRef<Set<string>>(new Set());
 
-  // Initialize optimistic state from member roles
+  // Reset local state when switching to another member
   useEffect(() => {
-    if (member.roles && !initializedRef.current) {
-      setOptimisticRoleIds(new Set(member.roles.map(r => r.id)));
-      initializedRef.current = true;
-    }
-  }, [member.roles]);
+    setOptimisticRoleIds(new Set((member.roles ?? []).map((r) => r.id)));
+    setPendingRoleIds(new Set());
+    pendingRoleIdsRef.current = new Set();
+  }, [member.id]);
 
-  // Sync optimistic state when member roles change (but not during pending operations)
+  // When opening the popover, sync once from current props (avoid flicker from stale props during mutations)
   useEffect(() => {
-    if (member.roles && pendingRoleIds.size === 0) {
-      setOptimisticRoleIds(new Set(member.roles.map(r => r.id)));
-    }
-  }, [member.roles, pendingRoleIds.size]);
+    if (!open) return;
+    setOptimisticRoleIds(new Set((member.roles ?? []).map((r) => r.id)));
+  }, [open, member.id]);
+
+  // Realtime: keep UI synced when another admin changes roles
+  useEffect(() => {
+    if (!open) return;
+
+    const channel = supabase
+      .channel(`member-roles:${member.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'member_roles',
+          filter: `member_id=eq.${member.id}`,
+        },
+        (payload) => {
+          const roleId = (payload.new as any)?.role_id as string | undefined;
+          if (!roleId) return;
+          setOptimisticRoleIds((prev) => {
+            if (prev.has(roleId)) return prev;
+            const next = new Set(prev);
+            next.add(roleId);
+            return next;
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'member_roles',
+          filter: `member_id=eq.${member.id}`,
+        },
+        (payload) => {
+          const roleId = (payload.old as any)?.role_id as string | undefined;
+          if (!roleId) return;
+          setOptimisticRoleIds((prev) => {
+            if (!prev.has(roleId)) return prev;
+            const next = new Set(prev);
+            next.delete(roleId);
+            return next;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, member.id]);
 
   // Sort roles by position (highest first)
   const sortedRoles = [...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
   // Filter out @everyone (is_default) from the list - it's automatically assigned
-  const assignableRoles = sortedRoles.filter(r => !r.is_default);
+  const assignableRoles = sortedRoles.filter((r) => !r.is_default);
 
-  const handleToggleRole = useCallback(async (e: React.MouseEvent, role: RoleWithPermissions) => {
-    // Prevent event bubbling to avoid closing popover or triggering parent rerenders
-    e.stopPropagation();
-    e.preventDefault();
+  const handleToggleRole = useCallback(
+    async (e: React.MouseEvent, role: RoleWithPermissions) => {
+      // Prevent event bubbling to avoid closing popover or triggering parent rerenders
+      e.stopPropagation();
+      e.preventDefault();
 
-    const roleId = role.id;
-    const hasRole = optimisticRoleIds.has(roleId);
+      const roleId = role.id;
+      if (pendingRoleIdsRef.current.has(roleId)) return;
 
-    // Add to pending immediately
-    setPendingRoleIds(prev => new Set(prev).add(roleId));
+      const hasRole = optimisticRoleIds.has(roleId);
+      const nextChecked = !hasRole;
 
-    // Optimistic update - change visual state immediately
-    setOptimisticRoleIds(prev => {
-      const newSet = new Set(prev);
-      if (hasRole) {
-        newSet.delete(roleId);
-      } else {
-        newSet.add(roleId);
-      }
-      return newSet;
-    });
+      // 1) État visuel immédiat (optimistic UI)
+      pendingRoleIdsRef.current.add(roleId);
+      setPendingRoleIds((prev) => new Set(prev).add(roleId));
+      setOptimisticRoleIds((prev) => {
+        const next = new Set(prev);
+        if (nextChecked) next.add(roleId);
+        else next.delete(roleId);
+        return next;
+      });
 
-    try {
-      if (hasRole) {
-        await removeRole.mutateAsync({
-          memberId: member.id,
-          roleId: roleId,
-          serverId,
-        });
-      } else {
-        await assignRole.mutateAsync({
-          memberId: member.id,
-          roleId: roleId,
-          serverId,
-        });
-      }
-    } catch (error) {
-      // Rollback on error - revert to opposite state
-      setOptimisticRoleIds(prev => {
-        const newSet = new Set(prev);
-        if (hasRole) {
-          newSet.add(roleId); // Was removed, add back
+      try {
+        // 2) Logique base de données (safe toggle)
+        if (nextChecked) {
+          const { error } = await supabase
+            .from('member_roles')
+            .insert({ member_id: member.id, role_id: roleId })
+            .select('id');
+
+          // Duplicate key = already present → treat as success
+          if (error && (error as any).code !== '23505') throw error;
         } else {
-          newSet.delete(roleId); // Was added, remove
+          const { error } = await supabase
+            .from('member_roles')
+            .delete()
+            .eq('member_id', member.id)
+            .eq('role_id', roleId);
+          if (error) throw error;
         }
-        return newSet;
-      });
-    } finally {
-      // Remove from pending after operation completes
-      setPendingRoleIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(roleId);
-        return newSet;
-      });
-    }
-  }, [optimisticRoleIds, member.id, serverId, assignRole, removeRole]);
+      } catch (err: any) {
+        // Rollback ONLY on real errors (not duplicates)
+        setOptimisticRoleIds((prev) => {
+          const next = new Set(prev);
+          if (nextChecked) next.delete(roleId);
+          else next.add(roleId);
+          return next;
+        });
+
+        const code = err?.code ?? err?.status;
+        const message = err?.message ?? 'Erreur inconnue';
+        toast.error('Impossible de modifier le rôle', {
+          description: code ? `(${code}) ${message}` : message,
+        });
+      } finally {
+        pendingRoleIdsRef.current.delete(roleId);
+        setPendingRoleIds((prev) => {
+          const next = new Set(prev);
+          next.delete(roleId);
+          return next;
+        });
+      }
+    },
+    [member.id, optimisticRoleIds],
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

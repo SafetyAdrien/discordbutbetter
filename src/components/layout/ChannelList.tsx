@@ -229,37 +229,41 @@ function SortableCategory({
 
       {/* Delete Category Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <form onSubmit={e => {
-          e.preventDefault();
-          onDelete();
-          setShowDeleteConfirm(false);
+        <AlertDialogContent onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onDelete();
+            setShowDeleteConfirm(false);
+          }
         }}>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
-                Supprimer la catégorie "{category.name}" ?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
-                <br />
-                <br />
-                {category.channels.length > 0 ? <>
-                    Les{" "}
-                    <strong>
-                      {category.channels.length} salon{category.channels.length > 1 ? "s" : ""}
-                    </strong>{" "}
-                    de cette catégorie deviendront des salons sans catégorie.
-                  </> : <>Cette catégorie est vide.</>}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-              <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Supprimer définitivement
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </form>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Supprimer la catégorie
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer <strong>{category.name}</strong> ? Cette action est irréversible.
+              {category.channels.length > 0 && (
+                <>
+                  <br /><br />
+                  Les {category.channels.length} salon{category.channels.length > 1 ? "s" : ""} de cette catégorie deviendront des salons sans catégorie.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              autoFocus
+              onClick={() => {
+                onDelete();
+                setShowDeleteConfirm(false);
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>;
@@ -451,31 +455,35 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <form onSubmit={e => {
-          e.preventDefault();
-          onDelete();
-          setShowDeleteConfirm(false);
+        <AlertDialogContent onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onDelete();
+            setShowDeleteConfirm(false);
+          }
         }}>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
-                Supprimer #{channel.name} ?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-2">
-                <span className="font-semibold text-destructive">Cette action est immédiate et irréversible.</span>
-                <br />
-                <br />
-                Tous les messages, fichiers et webhooks de ce salon seront définitivement supprimés.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel type="button">Annuler</AlertDialogCancel>
-              <AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Supprimer définitivement
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </form>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Supprimer le salon
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer <strong>#{channel.name}</strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              autoFocus
+              onClick={() => {
+                onDelete();
+                setShowDeleteConfirm(false);
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>;

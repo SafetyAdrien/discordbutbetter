@@ -344,12 +344,12 @@ export function MessageInput({
             className={`flex-1 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto ${
               compact 
                 ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
-                : "py-3 min-h-[24px] max-h-[200px] pr-36"
+                : "py-3 min-h-[24px] max-h-[200px] pr-1"
             }`}
             rows={1}
           />
           
-          <div className={`relative z-50 flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
+          <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
             <EmojiStickerPicker
               serverId={serverId}
               onEmojiSelect={insertEmoji}

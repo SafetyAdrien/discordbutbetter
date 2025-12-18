@@ -13,7 +13,6 @@ import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { useCreateChannel, ChannelType } from "@/hooks/useChannels";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CreateChannelModalProps {
   serverId: string;
@@ -79,32 +78,23 @@ export function CreateChannelModal({
   serverId,
   categoryId,
   categoryName,
-  categories,
-  showCategorySelector,
   onClose,
 }: CreateChannelModalProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<ChannelType>("text");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(categoryId);
   const createChannel = useCreateChannel();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    createChannel.mutate({ serverId, categoryId: selectedCategoryId, name: name.trim(), type }, { onSuccess: onClose });
+    createChannel.mutate({ serverId, categoryId, name: name.trim(), type }, { onSuccess: onClose });
   };
-
-  const displayCategoryName = showCategorySelector
-    ? selectedCategoryId
-      ? categories?.find((c) => c.id === selectedCategoryId)?.name || "Sans catégorie"
-      : "Sans catégorie"
-    : categoryName;
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent
-        className="sm:max-w-md"
+        className="sm:max-w-lg"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -115,32 +105,38 @@ export function CreateChannelModal({
         <DialogHeader>
           <DialogTitle>Créer un salon</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {selectedCategoryId ? `Dans ${displayCategoryName}` : "Sans catégorie"}
+            {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
           </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {showCategorySelector && categories && (
-            <div className="space-y-2">
-              <Label>Catégorie</Label>
-              <Select
-                value={selectedCategoryId || "none"}
-                onValueChange={(value) => setSelectedCategoryId(value === "none" ? null : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une catégorie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sans catégorie</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Type de salon</Label>
+            <RadioGroup 
+              value={type} 
+              onValueChange={(value) => setType(value as ChannelType)} 
+              className="grid grid-cols-2 gap-3"
+            >
+              {channelTypes.map((channelType) => {
+                const Icon = channelType.icon;
+                return (
+                  <label
+                    key={channelType.value}
+                    className={`flex flex-col gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      type === channelType.value ? "border-[#5865f2] bg-[#5865f2]/10" : "border-border hover:bg-muted"
+                    }`}
+                  >
+                    <RadioGroupItem value={channelType.value} className="sr-only" />
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-5 h-5 text-muted-foreground" />
+                      <p className="font-medium text-sm">{channelType.label}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{channelType.description}</p>
+                  </label>
+                );
+              })}
+            </RadioGroup>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="name">Nom du salon</Label>
@@ -150,31 +146,8 @@ export function CreateChannelModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="nouveau-salon"
               autoFocus
+              className="w-full"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Type de salon</Label>
-            <RadioGroup value={type} onValueChange={(value) => setType(value as ChannelType)} className="grid gap-2">
-              {channelTypes.map((channelType) => {
-                const Icon = channelType.icon;
-                return (
-                  <label
-                    key={channelType.value}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      type === channelType.value ? "border-[#5865f2] bg-[#5865f2]/10" : "border-border hover:bg-muted"
-                    }`}
-                  >
-                    <RadioGroupItem value={channelType.value} className="sr-only" />
-                    <Icon className="w-5 h-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{channelType.label}</p>
-                      <p className="text-xs text-muted-foreground">{channelType.description}</p>
-                    </div>
-                  </label>
-                );
-              })}
-            </RadioGroup>
           </div>
 
           <DialogFooter>

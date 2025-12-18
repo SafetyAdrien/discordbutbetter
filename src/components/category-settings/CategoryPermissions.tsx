@@ -2,8 +2,14 @@ import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Minus, Loader2 } from 'lucide-react';
+import { Check, X, Minus, Loader2, RefreshCw } from 'lucide-react';
 import { useServerRoles, ALL_PERMISSIONS } from '@/hooks/useRoles';
+import { 
+  useCategoryPermissionOverrides, 
+  useSetCategoryPermissionOverride, 
+  useRemoveCategoryPermissionOverride,
+  useSyncCategoryWithServer 
+} from '@/hooks/useCategoryPermissions';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -26,11 +32,54 @@ const CATEGORY_PERMISSIONS: ServerPermission[] = [
 export function CategoryPermissions({ categoryId, serverId }: CategoryPermissionsProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const { data: roles, isLoading: rolesLoading } = useServerRoles(serverId);
+  const { data: overrides, isLoading: overridesLoading } = useCategoryPermissionOverrides(categoryId);
+  const setOverride = useSetCategoryPermissionOverride();
+  const removeOverride = useRemoveCategoryPermissionOverride();
+  const syncWithServer = useSyncCategoryWithServer();
 
-  // For now, category permissions are inherited from server roles
-  // This is a placeholder UI that shows available permissions
+  const hasOverrides = overrides && overrides.length > 0;
 
-  if (rolesLoading) {
+  const handleSync = async () => {
+    try {
+      await syncWithServer.mutateAsync({ categoryId });
+      toast.success('Permissions synchronisées avec le serveur');
+    } catch {
+      toast.error('Erreur lors de la synchronisation');
+    }
+  };
+
+  const getPermissionState = (roleId: string, permission: ServerPermission): 'allow' | 'deny' | 'inherit' => {
+    const override = overrides?.find(
+      (o) => o.role_id === roleId && o.permission === permission
+    );
+    if (!override) return 'inherit';
+    return override.type;
+  };
+
+  const cyclePermission = async (roleId: string, permission: ServerPermission) => {
+    const current = getPermissionState(roleId, permission);
+    
+    try {
+      if (current === 'inherit') {
+        await setOverride.mutateAsync({ categoryId, roleId, permission, type: 'allow' });
+      } else if (current === 'allow') {
+        await setOverride.mutateAsync({ categoryId, roleId, permission, type: 'deny' });
+      } else {
+        await removeOverride.mutateAsync({ categoryId, roleId, permission });
+      }
+    } catch {
+      toast.error('Erreur lors de la modification');
+    }
+  };
+
+  // Get roles that have overrides for this category
+  const rolesWithOverrides = roles?.filter(role => 
+    overrides?.some(o => o.role_id === role.id)
+  ) || [];
+
+  const isLoading = rolesLoading || overridesLoading;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -40,12 +89,50 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
 
   return (
     <div className="space-y-4">
-      <div className="p-3 bg-muted/50 rounded-lg">
-        <p className="text-sm text-muted-foreground">
-          Les permissions de catégorie s'appliquent à tous les salons de cette catégorie.
-          Les salons peuvent avoir des permissions personnalisées qui remplacent celles de la catégorie.
-        </p>
+      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+        <div className="space-y-1">
+          <Label>Synchroniser avec le serveur</Label>
+          <p className="text-xs text-muted-foreground">
+            {hasOverrides 
+              ? `Cette catégorie a ${overrides.length} permission(s) personnalisée(s)`
+              : 'Les permissions suivent celles du serveur'
+            }
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSync}
+          disabled={!hasOverrides || syncWithServer.isPending}
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Synchroniser
+        </Button>
       </div>
+
+      {/* Roles with overrides */}
+      {rolesWithOverrides.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-muted-foreground text-xs">Rôles avec permissions personnalisées</Label>
+          <div className="flex flex-wrap gap-2">
+            {rolesWithOverrides.map((role) => (
+              <Badge 
+                key={role.id}
+                variant="secondary"
+                className="flex items-center gap-1 cursor-pointer hover:bg-muted"
+                style={{ borderColor: role.color || undefined }}
+                onClick={() => setSelectedRole(role.id)}
+              >
+                <div 
+                  className="w-2 h-2 rounded-full" 
+                  style={{ backgroundColor: role.color || '#99AAB5' }} 
+                />
+                {role.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>Sélectionner un rôle</Label>
@@ -74,26 +161,34 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
           <div className="space-y-1">
             {CATEGORY_PERMISSIONS.map((perm) => {
               const permInfo = ALL_PERMISSIONS.find((p) => p.key === perm);
+              const state = getPermissionState(selectedRole, perm);
               
               return (
-                <div
+                <button
                   key={perm}
-                  className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30"
+                  onClick={() => cyclePermission(selectedRole, perm)}
+                  className="w-full flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"
+                  disabled={setOverride.isPending || removeOverride.isPending}
                 >
                   <div className="text-left">
                     <p className="text-sm font-medium">{permInfo?.label || perm}</p>
                     <p className="text-xs text-muted-foreground">{permInfo?.description}</p>
                   </div>
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <Minus className="w-3 h-3" />
-                    Hériter du serveur
+                  <Badge 
+                    variant={state === 'allow' ? 'default' : state === 'deny' ? 'destructive' : 'secondary'}
+                    className="flex items-center gap-1"
+                  >
+                    {state === 'allow' && <Check className="w-3 h-3" />}
+                    {state === 'deny' && <X className="w-3 h-3" />}
+                    {state === 'inherit' && <Minus className="w-3 h-3" />}
+                    {state === 'allow' ? 'Autoriser' : state === 'deny' ? 'Refuser' : 'Hériter'}
                   </Badge>
-                </div>
+                </button>
               );
             })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Les permissions de catégorie héritent des permissions du serveur par défaut.
+            Cliquez pour basculer entre Hériter → Autoriser → Refuser
           </p>
         </div>
       )}

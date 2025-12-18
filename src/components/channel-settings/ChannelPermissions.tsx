@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Check, X, Minus, Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RefreshCw, Check, X, Minus, Loader2, Plus } from 'lucide-react';
 import { useServerRoles, ALL_PERMISSIONS } from '@/hooks/useRoles';
 import { 
   useChannelPermissionOverrides, 
@@ -37,6 +37,11 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
   const setOverride = useSetPermissionOverride();
   const removeOverride = useRemovePermissionOverride();
   const syncWithCategory = useSyncWithCategory();
+
+  // Get roles that already have overrides for this channel
+  const rolesWithOverrides = roles?.filter(role => 
+    overrides?.some(o => o.role_id === role.id)
+  ) || [];
 
   const hasOverrides = overrides && overrides.length > 0;
 
@@ -109,7 +114,7 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
       <div className="space-y-2">
         <Label>Sélectionner un rôle</Label>
         <div className="flex flex-wrap gap-2">
-          {roles?.map((role) => (
+          {rolesWithOverrides.map((role) => (
             <Button
               key={role.id}
               variant={selectedRole === role.id ? 'default' : 'outline'}
@@ -124,6 +129,34 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
               {role.name}
             </Button>
           ))}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="border-dashed">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground px-2 py-1">Ajouter un rôle</p>
+                {roles?.filter(role => !rolesWithOverrides.some(r => r.id === role.id)).map((role) => (
+                  <button
+                    key={role.id}
+                    onClick={() => setSelectedRole(role.id)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-sm text-left"
+                  >
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: role.color || '#99AAB5' }} 
+                    />
+                    {role.name}
+                  </button>
+                ))}
+                {roles?.filter(role => !rolesWithOverrides.some(r => r.id === role.id)).length === 0 && (
+                  <p className="text-xs text-muted-foreground px-2 py-2">Tous les rôles ont déjà des permissions</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

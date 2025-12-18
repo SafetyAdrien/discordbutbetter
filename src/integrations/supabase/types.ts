@@ -281,6 +281,48 @@ export type Database = {
           },
         ]
       }
+      category_permission_overrides: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          id: string
+          permission: Database["public"]["Enums"]["server_permission"]
+          role_id: string | null
+          type: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["server_permission"]
+          role_id?: string | null
+          type: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["server_permission"]
+          role_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_permission_overrides_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_permission_overrides_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_permission_overrides: {
         Row: {
           channel_id: string

@@ -5,7 +5,7 @@ import { CreatePollModal } from "./CreatePollModal";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from "./MentionAutocomplete";
 import { normalizeForSearch } from "@/lib/utils";
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from "lucide-react";
+import { PlusCircle, Plus, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from "lucide-react";
 
 interface MessageInputProps {
   value: string;

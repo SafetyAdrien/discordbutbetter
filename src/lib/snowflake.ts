@@ -8,10 +8,26 @@ const uuidToSnowflakeMap = new Map<string, string>();
 const snowflakeToUuidMap = new Map<string, string>();
 
 /**
+ * Validates if a string looks like a valid UUID
+ */
+function isValidUuid(str: string): boolean {
+  // UUID format: 8-4-4-4-12 hex characters with dashes, or 32 hex characters without
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hexOnlyRegex = /^[0-9a-f]{32}$/i;
+  return uuidRegex.test(str) || hexOnlyRegex.test(str);
+}
+
+/**
  * Converts a UUID to an 18-digit Snowflake-like ID
  * This creates a consistent, reproducible 18-digit number from any UUID
+ * Returns the original string if it's not a valid UUID (e.g., temp IDs)
  */
 export function uuidToSnowflake(uuid: string): string {
+  // Return original if not a valid UUID (e.g., temp-123456789)
+  if (!uuid || !isValidUuid(uuid)) {
+    return uuid;
+  }
+
   // Check cache first
   const cached = uuidToSnowflakeMap.get(uuid);
   if (cached) return cached;

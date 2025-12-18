@@ -80,6 +80,7 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
                 </Label>
                 <Input
                   id="confirm-name"
+                  autoFocus
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
                   onKeyDown={(e) => {

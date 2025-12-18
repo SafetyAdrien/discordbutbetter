@@ -386,18 +386,6 @@ export function UserProfilePopup({
   const RoleSidePanel = () => {
     // Calculer l'offset vertical pour aligner avec la section Rôles
     const topOffset = rolesSectionRef.current?.offsetTop ?? 0;
-
-    // While panel is open, block members-realtime invalidations.
-    // When it closes, refresh once (outside of interaction).
-    useEffect(() => {
-      if (!serverId) return;
-      membersMutationLockRef.current = true;
-
-      return () => {
-        membersMutationLockRef.current = false;
-        queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      };
-    }, [serverId]);
     
     return (
       <div 
@@ -423,7 +411,6 @@ export function UserProfilePopup({
                 serverId={serverId}
                 memberId={memberId}
                 userId={user.id}
-                defaultChecked={userRoleIds.includes(role.id)}
               />
             ))}
           </div>

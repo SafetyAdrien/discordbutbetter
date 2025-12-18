@@ -561,7 +561,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50 shadow-md z-10">
+      <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50 shadow-sm z-10">
         {/* Search input */}
         <div className="px-3 pt-3 border-[#151723] bg-[#161927]">
           <div className="relative">

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { membersMutationLockRef } from "@/hooks/useMembers";
 import type { RoleWithPermissions } from "@/hooks/useRoles";
-
 type RoleMini = Pick<RoleWithPermissions, "id" | "name" | "color" | "icon_url" | "position" | "description">;
 
 function RoleIconMini({ role }: { role: RoleMini }) {
@@ -30,6 +31,8 @@ interface RoleCheckboxItemProps {
   role: RoleMini;
   serverId: string;
   memberId: string;
+  /** profile id (used to refresh profile queries instantly) */
+  userId?: string;
   defaultChecked: boolean;
   disabled?: boolean;
 }
@@ -41,7 +44,8 @@ interface RoleCheckboxItemProps {
  * - rollback on error
  * - prevents event bubbling
  */
-export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, disabled }: RoleCheckboxItemProps) {
+export function RoleCheckboxItem({ role, serverId, memberId, userId, defaultChecked, disabled }: RoleCheckboxItemProps) {
+  const queryClient = useQueryClient();
   const [isChecked, setIsChecked] = useState(defaultChecked);
   const [isPending, setIsPending] = useState(false);
   // Track if we just finished a local mutation to avoid syncing with stale defaultChecked
@@ -59,48 +63,103 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
     setIsChecked(defaultChecked);
   }, [defaultChecked, memberId, role.id, isPending]);
 
-  const handleClick = useCallback(
+  const getHasRoleNow = useCallback(() => {
+    const members = queryClient.getQueryData<any[]>(["members", serverId]) as any[] | undefined;
+    const member = members?.find((m) => m.id === memberId);
+    const roles = member?.roles ?? [];
+    return roles.some((r: any) => r.id === role.id);
+  }, [memberId, queryClient, role.id, serverId]);
+
+  const handleRoleToggle = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       e.preventDefault();
 
       if (disabled || isPending) return;
 
-      const prev = isChecked;
-      const next = !prev;
+      // Source of truth: current roles list (from React Query cache)
+      const hasRoleNow = getHasRoleNow();
+      const shouldRemove = hasRoleNow;
+
+      const prevChecked = isChecked;
+      const nextChecked = shouldRemove ? false : true;
 
       // Optimistic UI: update immediately
-      setIsChecked(next);
+      setIsChecked(nextChecked);
       setIsPending(true);
+      membersMutationLockRef.current = true;
+
+      const previousMembers = queryClient.getQueryData(["members", serverId]);
+
+      // Optimistic global update (so the profile card behind updates instantly)
+      queryClient.setQueryData(["members", serverId], (old: any[] | undefined) =>
+        old?.map((m) => {
+          if (m.id !== memberId) return m;
+
+          const existingRoles = m.roles || [];
+
+          if (nextChecked) {
+            const alreadyHas = existingRoles.some((r: any) => r.id === role.id);
+            if (alreadyHas) return m;
+
+            const roleData = {
+              id: role.id,
+              name: role.name,
+              color: role.color,
+              icon_url: role.icon_url,
+              position: role.position,
+              description: role.description,
+            };
+
+            return {
+              ...m,
+              roles: [...existingRoles, roleData].sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0)),
+            };
+          }
+
+          return {
+            ...m,
+            roles: existingRoles.filter((r: any) => r.id !== role.id),
+          };
+        })
+      );
 
       try {
-        if (next) {
-          // Use upsert with onConflict to handle duplicate key gracefully
-          const { error } = await supabase
-            .from("member_roles")
-            .upsert(
-              { member_id: memberId, role_id: role.id },
-              { onConflict: "member_id,role_id", ignoreDuplicates: true }
-            );
-          if (error) throw error;
-        } else {
+        if (shouldRemove) {
+          // Remove role only
           const { error } = await supabase
             .from("member_roles")
             .delete()
             .eq("member_id", memberId)
             .eq("role_id", role.id);
           if (error) throw error;
+        } else {
+          // Add role only (ignore duplicate key 23505 for double-click / race)
+          const { error } = await supabase
+            .from("member_roles")
+            .insert({ member_id: memberId, role_id: role.id })
+            .select("id")
+            .maybeSingle();
+
+          if (error && error.code !== "23505") throw error;
         }
+
         // Success - mark as just mutated so we skip the next stale sync
         justMutatedRef.current = true;
+
+        // Force refresh profile-related queries so badges update behind without closing popover
+        if (userId) {
+          queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        }
+        queryClient.invalidateQueries({ queryKey: ["role-member-counts", serverId] });
       } catch (err: any) {
-        // Debug: surface backend errors (RLS / FK / etc.)
         console.error("[RoleCheckboxItem] Failed to toggle member role", {
           serverId,
           memberId,
+          userId,
           roleId: role.id,
           roleName: role.name,
-          next,
+          shouldRemove,
           err,
         });
 
@@ -111,13 +170,32 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
           description: code ? `(${code}) ${message}` : message,
         });
 
-        // Rollback on error
-        setIsChecked(prev);
+        // Rollback UI + cache
+        setIsChecked(prevChecked);
+        if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
       } finally {
         setIsPending(false);
+        setTimeout(() => {
+          membersMutationLockRef.current = false;
+        }, 350);
       }
     },
-    [disabled, isPending, isChecked, memberId, role.id, role.name, serverId],
+    [
+      disabled,
+      getHasRoleNow,
+      isChecked,
+      isPending,
+      memberId,
+      queryClient,
+      role.color,
+      role.description,
+      role.icon_url,
+      role.id,
+      role.name,
+      role.position,
+      serverId,
+      userId,
+    ]
   );
 
   return (
@@ -127,13 +205,13 @@ export function RoleCheckboxItem({ role, serverId, memberId, defaultChecked, dis
         // Prevent focus/click bubbling early
         e.stopPropagation();
       }}
-      onClick={handleClick}
+      onClick={handleRoleToggle}
       className={cn(
         "w-full flex items-center gap-2 p-1.5 rounded transition-colors",
         !disabled && !isPending ? "hover:bg-muted/50" : "opacity-60 cursor-not-allowed",
       )}
       aria-pressed={isChecked}
-      disabled={disabled}
+      disabled={disabled || isPending}
     >
       <Checkbox checked={isChecked} disabled={disabled || isPending} className="pointer-events-none" tabIndex={-1} />
 

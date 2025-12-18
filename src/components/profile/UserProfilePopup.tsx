@@ -415,17 +415,18 @@ export function UserProfilePopup({
         </button>
       </div>
       <ScrollArea className="max-h-[300px]">
-        <div className="p-2 space-y-1">
-          {serverId && memberId && assignableRoles.map((role) => (
-            <RoleCheckboxItem
-              key={role.id}
-              role={role}
-              serverId={serverId}
-              memberId={memberId}
-              defaultChecked={userRoleIds.includes(role.id)}
-            />
-          ))}
-        </div>
+          <div className="p-2 space-y-1">
+            {serverId && memberId && assignableRoles.map((role) => (
+              <RoleCheckboxItem
+                key={role.id}
+                role={role}
+                serverId={serverId}
+                memberId={memberId}
+                userId={user.id}
+                defaultChecked={userRoleIds.includes(role.id)}
+              />
+            ))}
+          </div>
       </ScrollArea>
     </div>
   );

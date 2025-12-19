@@ -1,8 +1,9 @@
 import { SummaryTopic } from "@/hooks/useSummaries";
-import { ScrollText, ChevronDown, CheckCheck } from "lucide-react";
+import { ChevronDown, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SummariesDropdown } from "./SummariesDropdown";
+import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 
 interface SummariesBarProps {
   activeTopic: SummaryTopic | null;
@@ -42,7 +43,7 @@ export function SummariesBar({
             isActiveMode ? "text-white" : "text-foreground"
           )}
         >
-          <ScrollText className="w-4 h-4" />
+          <StreamlineSummaries className="w-4 h-4" />
           <span className="text-sm font-medium">
             {isActiveMode ? activeTopic.title : "Voir Tous Les Résumés"}
           </span>

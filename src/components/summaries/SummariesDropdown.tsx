@@ -2,7 +2,7 @@ import { SummaryTopic } from "@/hooks/useSummaries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ScrollText } from "lucide-react";
+import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 
 interface SummariesDropdownProps {
   summaries: SummaryTopic[];
@@ -20,7 +20,7 @@ export function SummariesDropdown({
       <div className="mx-2 sm:mx-4 bg-[#111318] border border-border/50 rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50">
-          <ScrollText className="w-5 h-5 text-muted-foreground" />
+          <StreamlineSummaries className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold text-foreground">Résumés</h3>
           <Badge 
             variant="secondary" 
@@ -42,7 +42,7 @@ export function SummariesDropdown({
                 {/* Topic Title & Time */}
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2 min-w-0">
-                    <ScrollText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <StreamlineSummaries className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <span className="font-medium text-foreground truncate">
                       {topic.title}
                     </span>

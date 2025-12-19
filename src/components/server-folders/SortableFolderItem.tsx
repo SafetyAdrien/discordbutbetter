@@ -221,8 +221,8 @@ function NestedServerIcon({
     transition,
     isDragging,
   } = useSortable({
-    id: `nested-${folderId}-${server.id}`,
-    data: { type: 'nested-server', server, folderId },
+    id: `server-${server.id}`,
+    data: { type: 'server', server, containerId: `folder-${folderId}`, folderId },
   });
 
   const style = {

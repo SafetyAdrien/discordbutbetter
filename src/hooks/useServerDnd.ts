@@ -62,23 +62,24 @@ export function useServerDnd({
   const mergeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const mergeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastCursorY = useRef<number>(0);
+
+  const originRef = useRef<{ serverId: string; sourceFolderId: string | null } | null>(null);
+  const [previewState, setPreviewState] = useState<{
+    rootServerIds: string[];
+    folderServerIds: Record<string, string[]>;
+  } | null>(null);
+  const [draggingFromFolder, setDraggingFromFolder] = useState(false);
   
   // Get active server for overlay
   const activeServer = useMemo(() => {
     if (!activeId) return null;
     const idStr = String(activeId);
-    
+
     if (idStr.startsWith('server-')) {
       const serverId = idStr.replace('server-', '');
-      return servers.find(s => s.id === serverId) || null;
+      return servers.find((s) => s.id === serverId) || null;
     }
-    
-    if (idStr.startsWith('nested-')) {
-      const parts = idStr.split('-');
-      const serverId = parts[parts.length - 1];
-      return servers.find(s => s.id === serverId) || null;
-    }
-    
+
     return null;
   }, [activeId, servers]);
 
@@ -151,7 +152,20 @@ export function useServerDnd({
     setActiveId(event.active.id);
     clearMergeState();
     setDropIndicator({ targetId: null, type: null });
-  }, [clearMergeState]);
+    setPreviewState(null);
+
+    const activeIdStr = String(event.active.id);
+    if (!activeIdStr.startsWith('server-')) {
+      originRef.current = null;
+      setDraggingFromFolder(false);
+      return;
+    }
+
+    const serverId = activeIdStr.replace('server-', '');
+    const sourceFolderId = folders.find((f) => f.serverIds.includes(serverId))?.id ?? null;
+    originRef.current = { serverId, sourceFolderId };
+    setDraggingFromFolder(!!sourceFolderId);
+  }, [clearMergeState, folders]);
 
   // Handle drag move - track cursor position
   const handleDragMove = useCallback((event: DragMoveEvent) => {
@@ -164,11 +178,12 @@ export function useServerDnd({
   // Handle drag over
   const handleDragOver = useCallback((event: any) => {
     const { active, over } = event;
-    
+
     if (!over || over.id === active.id) {
       setOverId(null);
       setDropIndicator({ targetId: null, type: null });
       clearMergeState();
+      setPreviewState(null);
       return;
     }
 
@@ -176,93 +191,153 @@ export function useServerDnd({
 
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
-    
-    const isDraggingServer = activeIdStr.startsWith('server-') || activeIdStr.startsWith('nested-');
-    const isOverStandaloneServer = overIdStr.startsWith('server-');
-    const isOverFolder = overIdStr.startsWith('folder-');
-    const isOverNestedServer = overIdStr.startsWith('nested-');
-    
-    // Get over element rect
+
+    const origin = originRef.current;
+    const activeServerId = activeIdStr.startsWith('server-') ? activeIdStr.replace('server-', '') : null;
+    const isDraggingServer = !!activeServerId;
+
+    const overData = (over.data?.current || {}) as any;
     const overRect = over.rect;
     const cursorY = lastCursorY.current;
-    
-    // Dragging a server over a FOLDER -> add to folder mode
-    if (isDraggingServer && isOverFolder) {
+
+    const isOverRootDrop = overIdStr === 'root-drop';
+    const isOverFolderIcon = overIdStr.startsWith('folder-');
+    const isOverServer = overIdStr.startsWith('server-');
+
+    const overContainerId: 'root' | `folder-${string}` = isOverRootDrop
+      ? 'root'
+      : overData?.containerId === 'root'
+        ? 'root'
+        : typeof overData?.containerId === 'string' && overData.containerId.startsWith('folder-')
+          ? overData.containerId
+          : 'root';
+
+    // Dragging a server over a FOLDER icon -> add to folder mode
+    if (isDraggingServer && isOverFolderIcon) {
       clearMergeState();
+      setPreviewState(null);
       const folderId = overIdStr.replace('folder-', '');
       setDropIndicator({ targetId: folderId, type: 'add-to-folder' });
       return;
     }
-    
-    // Dragging a server over a NESTED server -> add to that folder
-    if (isDraggingServer && isOverNestedServer) {
+
+    // Dragging a server over a server INSIDE a folder -> add to that folder
+    if (isDraggingServer && isOverServer && overContainerId.startsWith('folder-')) {
       clearMergeState();
-      const parts = overIdStr.split('-');
-      const folderId = parts[1];
+      setPreviewState(null);
+      const folderId = overContainerId.replace('folder-', '');
       setDropIndicator({ targetId: folderId, type: 'add-to-folder' });
       return;
     }
-    
-    // Dragging a server over another STANDALONE server
-    if (isDraggingServer && isOverStandaloneServer && overRect) {
+
+    // Dragging a server over another ROOT server
+    if (isDraggingServer && isOverServer && overContainerId === 'root' && overRect) {
       const zone = determineZone(cursorY, { top: overRect.top, height: overRect.height });
       const overServerId = overIdStr.replace('server-', '');
-      
+
       if (zone === 'center') {
         // Center zone: merge mode (folder creation)
-        const activeServerId = activeIdStr.startsWith('nested-') 
-          ? activeIdStr.split('-').pop()! 
-          : activeIdStr.replace('server-', '');
-        
-        if (mergeState.sourceId !== activeServerId || mergeState.targetId !== overServerId) {
+        if (activeServerId && (mergeState.sourceId !== activeServerId || mergeState.targetId !== overServerId)) {
           startMergeTimer(activeServerId, overServerId);
         }
-        
         setDropIndicator({ targetId: overServerId, type: 'merge' });
+        setPreviewState(null);
       } else {
         // Edge zone: insert mode
         clearMergeState();
-        setDropIndicator({ 
-          targetId: overServerId, 
-          type: zone === 'before' ? 'insert-before' : 'insert-after' 
-        });
+        setDropIndicator({ targetId: overServerId, type: zone === 'before' ? 'insert-before' : 'insert-after' });
+
+        // Cross-container preview: Folder -> Root (edge zone only)
+        if (origin?.sourceFolderId && origin.serverId && activeServerId === origin.serverId) {
+          const rootIdsBase = standaloneServers
+            .map((s) => s.id)
+            .filter((id) => id !== origin.serverId);
+
+          const folderMap: Record<string, string[]> = {};
+          folders.forEach((f) => {
+            folderMap[f.id] = f.serverIds.filter((id) => !(f.id === origin.sourceFolderId && id === origin.serverId));
+          });
+
+          const targetIndex = rootIdsBase.indexOf(overServerId);
+          const insertIndex = targetIndex === -1
+            ? rootIdsBase.length
+            : zone === 'after'
+              ? targetIndex + 1
+              : targetIndex;
+
+          const nextRoot = [...rootIdsBase];
+          nextRoot.splice(insertIndex, 0, origin.serverId);
+
+          setPreviewState({ rootServerIds: nextRoot, folderServerIds: folderMap });
+        } else {
+          setPreviewState(null);
+        }
       }
       return;
     }
-    
+
+    // Root drop zone (end of list)
+    if (isDraggingServer && isOverRootDrop) {
+      clearMergeState();
+      setDropIndicator({ targetId: null, type: null });
+
+      if (origin?.sourceFolderId && origin.serverId && activeServerId === origin.serverId) {
+        const rootIdsBase = standaloneServers
+          .map((s) => s.id)
+          .filter((id) => id !== origin.serverId);
+
+        const folderMap: Record<string, string[]> = {};
+        folders.forEach((f) => {
+          folderMap[f.id] = f.serverIds.filter((id) => !(f.id === origin.sourceFolderId && id === origin.serverId));
+        });
+
+        setPreviewState({ rootServerIds: [...rootIdsBase, origin.serverId], folderServerIds: folderMap });
+      } else {
+        setPreviewState(null);
+      }
+      return;
+    }
+
     clearMergeState();
     setDropIndicator({ targetId: null, type: null });
-  }, [clearMergeState, startMergeTimer, mergeState.sourceId, mergeState.targetId, determineZone]);
+    setPreviewState(null);
+  }, [clearMergeState, determineZone, folders, mergeState.sourceId, mergeState.targetId, standaloneServers, startMergeTimer]);
 
   // Handle drag end
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     const activeIdStr = String(active.id);
     const currentIndicator = dropIndicator;
     const wasMerging = mergeState.progress >= 100;
-    
+
+    const origin = originRef.current;
+    originRef.current = null;
+
     // Reset all state
     setActiveId(null);
     setOverId(null);
     setDropIndicator({ targetId: null, type: null });
     clearMergeState();
+    setPreviewState(null);
+    setDraggingFromFolder(false);
 
     // If merge completed, folder was created - nothing else to do
     if (wasMerging) return;
 
-    if (!over) {
-      // Dropped outside - if nested server, extract to end
-      if (activeIdStr.startsWith('nested-')) {
-        const parts = activeIdStr.split('-');
-        const folderId = parts[1];
-        const serverId = parts[parts.length - 1];
+    const serverId = origin?.serverId ?? (activeIdStr.startsWith('server-') ? activeIdStr.replace('server-', '') : null);
+    if (!serverId) return;
 
+    const sourceFolderId = origin?.sourceFolderId ?? null;
+
+    // Dropped outside any droppable -> if dragged from folder, extract to end
+    if (!over) {
+      if (sourceFolderId) {
         const full = getFullServerOrder();
         const without = full.filter((id) => id !== serverId);
         without.push(serverId);
         onReorderServers(without);
-        onRemoveFromFolder(folderId, serverId);
+        onRemoveFromFolder(sourceFolderId, serverId);
       }
       return;
     }
@@ -270,92 +345,102 @@ export function useServerDnd({
     if (active.id === over.id) return;
 
     const overIdStr = String(over.id);
+    const overData = (over.data?.current || {}) as any;
 
-    // Handle nested server being dragged out
-    if (activeIdStr.startsWith('nested-')) {
-      const parts = activeIdStr.split('-');
-      const sourceFolderId = parts[1];
-      const serverId = parts[parts.length - 1];
+    const isOverRootDrop = overIdStr === 'root-drop';
+    const isOverFolderIcon = overIdStr.startsWith('folder-');
+    const isOverServer = overIdStr.startsWith('server-');
 
-      // Dropped onto a standalone server
-      if (overIdStr.startsWith('server-')) {
-        const targetServerId = overIdStr.replace('server-', '');
-        
-        const full = getFullServerOrder();
-        const without = full.filter((id) => id !== serverId);
-        const targetIndex = without.indexOf(targetServerId);
-        
-        if (targetIndex === -1) {
-          without.push(serverId);
-        } else {
-          // Use the drop indicator type if available
-          const insertAfter = currentIndicator.type === 'insert-after' || currentIndicator.type === 'merge';
-          const insertIndex = insertAfter ? targetIndex + 1 : targetIndex;
-          without.splice(insertIndex, 0, serverId);
-        }
-        
-        onReorderServers(without);
+    const overContainerId: 'root' | `folder-${string}` = isOverRootDrop
+      ? 'root'
+      : overData?.containerId === 'root'
+        ? 'root'
+        : typeof overData?.containerId === 'string' && overData.containerId.startsWith('folder-')
+          ? overData.containerId
+          : 'root';
+
+    // 1) Add to folder (drop indicator decided)
+    if (currentIndicator.type === 'add-to-folder' && currentIndicator.targetId) {
+      const targetFolderId = currentIndicator.targetId;
+      onAddToFolder(targetFolderId, serverId);
+      if (sourceFolderId && sourceFolderId !== targetFolderId) {
         onRemoveFromFolder(sourceFolderId, serverId);
-        return;
       }
-
-      // Dropped on a folder
-      if (overIdStr.startsWith('folder-')) {
-        const targetFolderId = overIdStr.replace('folder-', '');
-        if (targetFolderId !== sourceFolderId) {
-          onRemoveFromFolder(sourceFolderId, serverId);
-          onAddToFolder(targetFolderId, serverId);
-        }
-        return;
-      }
-
-      // Dropped on a nested server in a different folder
-      if (overIdStr.startsWith('nested-')) {
-        const overParts = overIdStr.split('-');
-        const targetFolderId = overParts[1];
-        if (targetFolderId !== sourceFolderId) {
-          onRemoveFromFolder(sourceFolderId, serverId);
-          onAddToFolder(targetFolderId, serverId);
-        }
-        return;
-      }
+      return;
     }
 
-    // Handle standalone server dragged onto a folder
-    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('folder-')) {
-      const serverId = activeIdStr.replace('server-', '');
+    // 2) Folder -> Root extraction
+    if (sourceFolderId && (isOverRootDrop || (isOverServer && overContainerId === 'root'))) {
+      const full = getFullServerOrder();
+      const without = full.filter((id) => id !== serverId);
+
+      if (isOverRootDrop) {
+        without.push(serverId);
+      } else {
+        const targetServerId = overIdStr.replace('server-', '');
+        const targetIndex = without.indexOf(targetServerId);
+        const insertAfter = currentIndicator.type === 'insert-after';
+        const insertIndex = targetIndex === -1 ? without.length : insertAfter ? targetIndex + 1 : targetIndex;
+        without.splice(insertIndex, 0, serverId);
+      }
+
+      onReorderServers(without);
+      onRemoveFromFolder(sourceFolderId, serverId);
+      return;
+    }
+
+    // 3) Root -> Folder (drop on folder icon)
+    if (!sourceFolderId && isOverFolderIcon) {
       const folderId = overIdStr.replace('folder-', '');
       onAddToFolder(folderId, serverId);
       return;
     }
 
-    // Handle standalone server dragged onto a nested server
-    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('nested-')) {
-      const serverId = activeIdStr.replace('server-', '');
-      const overParts = overIdStr.split('-');
-      const folderId = overParts[1];
+    // 4) Root -> Folder (drop on a server inside a folder)
+    if (!sourceFolderId && isOverServer && overContainerId.startsWith('folder-')) {
+      const folderId = overContainerId.replace('folder-', '');
       onAddToFolder(folderId, serverId);
       return;
     }
 
-    // Standalone server onto standalone server - reorder based on drop indicator
-    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('server-')) {
-      const activeServerId = activeIdStr.replace('server-', '');
+    // 5) Root reorder (server over root server)
+    if (!sourceFolderId && isOverServer && overContainerId === 'root') {
       const targetServerId = overIdStr.replace('server-', '');
-      
+
       const full = getFullServerOrder();
-      const without = full.filter((id) => id !== activeServerId);
+      const without = full.filter((id) => id !== serverId);
       const targetIndex = without.indexOf(targetServerId);
-      
+
       if (targetIndex === -1) {
-        without.push(activeServerId);
+        without.push(serverId);
       } else {
         const insertAfter = currentIndicator.type === 'insert-after' || currentIndicator.type === 'merge';
         const insertIndex = insertAfter ? targetIndex + 1 : targetIndex;
-        without.splice(insertIndex, 0, activeServerId);
+        without.splice(insertIndex, 0, serverId);
       }
-      
+
       onReorderServers(without);
+      return;
+    }
+
+    // 6) Folder -> Folder (drop on folder icon)
+    if (sourceFolderId && isOverFolderIcon) {
+      const targetFolderId = overIdStr.replace('folder-', '');
+      if (targetFolderId !== sourceFolderId) {
+        onRemoveFromFolder(sourceFolderId, serverId);
+        onAddToFolder(targetFolderId, serverId);
+      }
+      return;
+    }
+
+    // 7) Folder -> Folder (drop on a server inside another folder)
+    if (sourceFolderId && isOverServer && overContainerId.startsWith('folder-')) {
+      const targetFolderId = overContainerId.replace('folder-', '');
+      if (targetFolderId !== sourceFolderId) {
+        onRemoveFromFolder(sourceFolderId, serverId);
+        onAddToFolder(targetFolderId, serverId);
+      }
+      return;
     }
   }, [dropIndicator, mergeState.progress, clearMergeState, getFullServerOrder, onReorderServers, onRemoveFromFolder, onAddToFolder]);
 
@@ -365,14 +450,31 @@ export function useServerDnd({
     setOverId(null);
     setDropIndicator({ targetId: null, type: null });
     clearMergeState();
+    setPreviewState(null);
+    originRef.current = null;
+    setDraggingFromFolder(false);
   }, [clearMergeState]);
 
   // Check if we should restrict to vertical axis
   const shouldRestrictVertical = useMemo(() => {
     if (!activeId) return true;
-    const idStr = String(activeId);
-    return !idStr.startsWith('nested-');
-  }, [activeId]);
+    return !draggingFromFolder;
+  }, [activeId, draggingFromFolder]);
+
+  const previewFolders = useMemo(() => {
+    if (!previewState) return folders;
+    return folders.map((f) => ({
+      ...f,
+      serverIds: previewState.folderServerIds[f.id] ?? f.serverIds,
+    }));
+  }, [previewState, folders]);
+
+  const previewStandaloneServers = useMemo(() => {
+    if (!previewState) return standaloneServers;
+    return previewState.rootServerIds
+      .map((id) => servers.find((s) => s.id === id))
+      .filter((s): s is Server => !!s);
+  }, [previewState, standaloneServers, servers]);
 
   return {
     activeId,
@@ -381,6 +483,8 @@ export function useServerDnd({
     dropIndicator,
     mergeState,
     shouldRestrictVertical,
+    previewFolders,
+    previewStandaloneServers,
     handleDragStart,
     handleDragMove,
     handleDragOver,

@@ -2599,6 +2599,94 @@ export type Database = {
         | "manage_tasks"
         | "use_soundboard"
         | "use_external_stickers"
+        | "view_channel"
+        | "create_instant_invite"
+        | "change_nickname"
+        | "manage_nicknames"
+        | "manage_emojis"
+        | "manage_stickers"
+        | "view_audit_log"
+        | "view_server_insights"
+        | "manage_webhooks"
+        | "manage_guild_expressions"
+        | "add_reactions"
+        | "use_slash_commands"
+        | "use_external_emojis"
+        | "embed_links"
+        | "attach_files"
+        | "read_message_history"
+        | "send_tts_messages"
+        | "use_application_commands"
+        | "send_voice_messages"
+        | "create_public_threads"
+        | "create_private_threads"
+        | "send_messages_in_threads"
+        | "video"
+        | "use_external_sounds"
+        | "use_voice_activity"
+        | "use_embedded_activities"
+        | "start_embedded_activities"
+        | "moderate_stage"
+        | "become_speaker"
+        | "start_stage_session"
+        | "end_stage_session"
+        | "invite_stage_speaker"
+        | "create_forum_posts"
+        | "manage_forum_posts"
+        | "pin_forum_posts"
+        | "archive_forum_posts"
+        | "lock_forum_posts"
+        | "add_forum_tags"
+        | "manage_forum_tags"
+        | "moderate_forum"
+        | "publish_messages"
+        | "manage_announcements"
+        | "follow_announcements"
+        | "create_announcements"
+        | "edit_announcements"
+        | "delete_announcements"
+        | "pin_announcements"
+        | "feature_announcements"
+        | "moderate_announcements"
+        | "view_announcement_analytics"
+        | "upload_media"
+        | "download_media"
+        | "manage_media"
+        | "create_albums"
+        | "delete_albums"
+        | "organize_media"
+        | "tag_media"
+        | "share_media"
+        | "moderate_media"
+        | "view_media_analytics"
+        | "view_events"
+        | "create_events"
+        | "edit_events"
+        | "delete_events"
+        | "rsvp_events"
+        | "invite_to_events"
+        | "manage_event_rsvps"
+        | "create_recurring_events"
+        | "moderate_events"
+        | "view_tasks"
+        | "create_tasks"
+        | "edit_tasks"
+        | "delete_tasks"
+        | "assign_tasks"
+        | "complete_tasks"
+        | "reopen_tasks"
+        | "create_task_lists"
+        | "manage_task_lists"
+        | "create_polls"
+        | "vote_in_polls"
+        | "manage_polls"
+        | "view_poll_results"
+        | "end_polls"
+        | "edit_polls"
+        | "delete_polls"
+        | "create_anonymous_polls"
+        | "view_poll_voters"
+        | "moderate_polls"
       user_status: "online" | "idle" | "dnd" | "offline"
     }
     CompositeTypes: {
@@ -2764,6 +2852,94 @@ export const Constants = {
         "manage_tasks",
         "use_soundboard",
         "use_external_stickers",
+        "view_channel",
+        "create_instant_invite",
+        "change_nickname",
+        "manage_nicknames",
+        "manage_emojis",
+        "manage_stickers",
+        "view_audit_log",
+        "view_server_insights",
+        "manage_webhooks",
+        "manage_guild_expressions",
+        "add_reactions",
+        "use_slash_commands",
+        "use_external_emojis",
+        "embed_links",
+        "attach_files",
+        "read_message_history",
+        "send_tts_messages",
+        "use_application_commands",
+        "send_voice_messages",
+        "create_public_threads",
+        "create_private_threads",
+        "send_messages_in_threads",
+        "video",
+        "use_external_sounds",
+        "use_voice_activity",
+        "use_embedded_activities",
+        "start_embedded_activities",
+        "moderate_stage",
+        "become_speaker",
+        "start_stage_session",
+        "end_stage_session",
+        "invite_stage_speaker",
+        "create_forum_posts",
+        "manage_forum_posts",
+        "pin_forum_posts",
+        "archive_forum_posts",
+        "lock_forum_posts",
+        "add_forum_tags",
+        "manage_forum_tags",
+        "moderate_forum",
+        "publish_messages",
+        "manage_announcements",
+        "follow_announcements",
+        "create_announcements",
+        "edit_announcements",
+        "delete_announcements",
+        "pin_announcements",
+        "feature_announcements",
+        "moderate_announcements",
+        "view_announcement_analytics",
+        "upload_media",
+        "download_media",
+        "manage_media",
+        "create_albums",
+        "delete_albums",
+        "organize_media",
+        "tag_media",
+        "share_media",
+        "moderate_media",
+        "view_media_analytics",
+        "view_events",
+        "create_events",
+        "edit_events",
+        "delete_events",
+        "rsvp_events",
+        "invite_to_events",
+        "manage_event_rsvps",
+        "create_recurring_events",
+        "moderate_events",
+        "view_tasks",
+        "create_tasks",
+        "edit_tasks",
+        "delete_tasks",
+        "assign_tasks",
+        "complete_tasks",
+        "reopen_tasks",
+        "create_task_lists",
+        "manage_task_lists",
+        "create_polls",
+        "vote_in_polls",
+        "manage_polls",
+        "view_poll_results",
+        "end_polls",
+        "edit_polls",
+        "delete_polls",
+        "create_anonymous_polls",
+        "view_poll_voters",
+        "moderate_polls",
       ],
       user_status: ["online", "idle", "dnd", "offline"],
     },

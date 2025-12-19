@@ -73,7 +73,7 @@ export function InboxPanel() {
   }
 
   return (
-    <div className="flex flex-col bg-background">
+    <div className="flex flex-col bg-background border-t border-x border-border/50 rounded-t-md">
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-border bg-card">
         <div className="flex items-center gap-2">

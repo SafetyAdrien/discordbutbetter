@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -35,6 +35,8 @@ export interface MemberWithProfile {
 export function useMembers(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [hasRealtimeError, setHasRealtimeError] = useState(false);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const query = useQuery({
     queryKey: ['members', serverId],
@@ -87,14 +89,25 @@ export function useMembers(serverId: string | null) {
       }));
     },
     enabled: !!serverId && !!user,
+    // Polling fallback if realtime fails
+    refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
   // Real-time subscription for member changes (join/leave/kick/ban) and role changes
   useEffect(() => {
     if (!serverId || !user) return;
 
+    // Clear any existing retry timeout
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+
+    // Use unique channel name with timestamp to avoid conflicts
+    const channelName = `members-realtime:${serverId}:${Date.now()}`;
+
     const channel = supabase
-      .channel(`members-realtime:${serverId}`)
+      .channel(channelName)
       // Listen for member deletions (kick/leave) - NO filter, use client-side filtering
       .on(
         'postgres_changes',
@@ -108,6 +121,7 @@ export function useMembers(serverId: string | null) {
           // Client-side filtering for reliability
           if (deleted.server_id !== serverId) return;
           
+          console.log(`[useMembers] Member left server ${serverId}:`, deleted.id);
           queryClient.setQueryData<MemberWithProfile[]>(
             ['members', serverId],
             (old) => old?.filter((member) => member.id !== deleted.id) || []
@@ -127,8 +141,9 @@ export function useMembers(serverId: string | null) {
           // Client-side filtering for reliability
           if (inserted.server_id !== serverId) return;
           
-          // Refetch to get full member data with profile
-          queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+          console.log(`[useMembers] New member joined server ${serverId}:`, inserted.id);
+          // Force immediate refetch to get full member data with profile
+          queryClient.refetchQueries({ queryKey: ['members', serverId] });
         }
       )
       // Listen for role assignments (INSERT on member_roles)
@@ -198,15 +213,27 @@ export function useMembers(serverId: string | null) {
           );
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`[useMembers] Real-time subscription active for server ${serverId}`);
+          console.log(`[useMembers] ✅ Real-time subscription active for server ${serverId}`);
+          setHasRealtimeError(false);
         } else if (status === 'CHANNEL_ERROR') {
-          console.error(`[useMembers] Real-time subscription error for server ${serverId}`);
+          console.error(`[useMembers] ❌ Real-time subscription error for server ${serverId}:`, err);
+          setHasRealtimeError(true);
+          // Retry refetch after 2 seconds on error
+          retryTimeoutRef.current = setTimeout(() => {
+            queryClient.refetchQueries({ queryKey: ['members', serverId] });
+          }, 2000);
+        } else if (status === 'TIMED_OUT') {
+          console.warn(`[useMembers] ⏱️ Subscription timed out for server ${serverId}`);
+          setHasRealtimeError(true);
         }
       });
 
     return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
       supabase.removeChannel(channel);
     };
   }, [serverId, user, queryClient]);

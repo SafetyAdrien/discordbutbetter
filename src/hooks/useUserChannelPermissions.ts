@@ -40,7 +40,7 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
       return data ?? false;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 30000, // Cache pendant 30 secondes
+    staleTime: 5000, // 5 seconds - realtime handles immediate updates
   });
 }
 
@@ -104,6 +104,6 @@ export function useUserChannelPermissions(channelId: string | null) {
       };
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 30000, // Cache pendant 30 secondes
+    staleTime: 5000, // 5 seconds - realtime handles immediate updates
   });
 }

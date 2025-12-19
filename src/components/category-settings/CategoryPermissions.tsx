@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, X, Minus, Loader2, RefreshCw, Plus } from 'lucide-react';
+import { Check, X, Minus, Loader2, RefreshCw, Plus, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { useServerRoles, ALL_PERMISSIONS } from '@/hooks/useRoles';
 import { 
   useCategoryPermissionOverrides, 
   useSetCategoryPermissionOverride, 
   useRemoveCategoryPermissionOverride,
-  useSyncCategoryWithServer 
+  useSyncCategoryWithServer,
+  useResetRoleCategoryOverrides
 } from '@/hooks/useCategoryPermissions';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type ServerPermission = Database['public']['Enums']['server_permission'];
@@ -32,20 +34,47 @@ const CATEGORY_PERMISSIONS: ServerPermission[] = [
 
 export function CategoryPermissions({ categoryId, serverId }: CategoryPermissionsProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
   const { data: roles, isLoading: rolesLoading } = useServerRoles(serverId);
   const { data: overrides, isLoading: overridesLoading } = useCategoryPermissionOverrides(categoryId);
   const setOverride = useSetCategoryPermissionOverride();
   const removeOverride = useRemoveCategoryPermissionOverride();
   const syncWithServer = useSyncCategoryWithServer();
+  const resetRoleOverrides = useResetRoleCategoryOverrides();
 
   const hasOverrides = overrides && overrides.length > 0;
+  const selectedRoleHasOverrides = selectedRole && overrides?.some(o => o.role_id === selectedRole);
+  const selectedRoleOverrideCount = selectedRole 
+    ? overrides?.filter(o => o.role_id === selectedRole).length || 0 
+    : 0;
+
+  // Afficher l'indicateur de sauvegarde après chaque mutation réussie
+  useEffect(() => {
+    if (setOverride.isSuccess || removeOverride.isSuccess) {
+      setShowSavedIndicator(true);
+      const timer = setTimeout(() => setShowSavedIndicator(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [setOverride.isSuccess, removeOverride.isSuccess]);
 
   const handleSync = async () => {
     try {
       await syncWithServer.mutateAsync({ categoryId });
+      setSelectedRole(null);
       toast.success('Permissions synchronisées avec le serveur');
     } catch {
       toast.error('Erreur lors de la synchronisation');
+    }
+  };
+
+  const handleResetRole = async () => {
+    if (!selectedRole) return;
+    
+    try {
+      await resetRoleOverrides.mutateAsync({ categoryId, roleId: selectedRole });
+      toast.success('Permissions du rôle réinitialisées');
+    } catch {
+      toast.error('Erreur lors de la réinitialisation');
     }
   };
 
@@ -79,6 +108,7 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
   ) || [];
 
   const isLoading = rolesLoading || overridesLoading;
+  const isMutating = setOverride.isPending || removeOverride.isPending || resetRoleOverrides.isPending;
 
   if (isLoading) {
     return (
@@ -90,6 +120,31 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
 
   return (
     <div className="space-y-4">
+      {/* Indicateur de sauvegarde automatique */}
+      <div className={cn(
+        "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300",
+        showSavedIndicator 
+          ? "bg-green-500/10 border border-green-500/30" 
+          : "bg-muted/30 border border-transparent"
+      )}>
+        {showSavedIndicator ? (
+          <>
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <span className="text-sm text-green-500 font-medium">Modifications sauvegardées</span>
+          </>
+        ) : (
+          <>
+            <div className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+            <span className="text-xs text-muted-foreground">
+              Les modifications sont sauvegardées automatiquement
+            </span>
+          </>
+        )}
+        {isMutating && (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground ml-auto" />
+        )}
+      </div>
+
       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
         <div className="space-y-1">
           <Label>Synchroniser avec le serveur</Label>
@@ -106,39 +161,19 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
           onClick={handleSync}
           disabled={!hasOverrides || syncWithServer.isPending}
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
+          {syncWithServer.isPending ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4 mr-2" />
+          )}
           Synchroniser
         </Button>
       </div>
 
-      {/* Roles with overrides */}
-      {rolesWithOverrides.length > 0 && (
-        <div className="space-y-2">
-          <Label className="text-muted-foreground text-xs">Rôles avec permissions personnalisées</Label>
-          <div className="flex flex-wrap gap-2">
-            {rolesWithOverrides.map((role) => (
-              <Badge 
-                key={role.id}
-                variant="secondary"
-                className="flex items-center gap-1 cursor-pointer hover:bg-muted"
-                style={{ borderColor: role.color || undefined }}
-                onClick={() => setSelectedRole(role.id)}
-              >
-                <div 
-                  className="w-2 h-2 rounded-full" 
-                  style={{ backgroundColor: role.color || '#99AAB5' }} 
-                />
-                {role.name}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label>Sélectionner un rôle</Label>
         <div className="flex flex-wrap gap-2">
-          {roles?.map((role) => (
+          {rolesWithOverrides.map((role) => (
             <Button
               key={role.id}
               variant={selectedRole === role.id ? 'default' : 'outline'}
@@ -151,6 +186,9 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
                 style={{ backgroundColor: role.color || '#99AAB5' }} 
               />
               {role.name}
+              <Badge variant="secondary" className="ml-2 text-xs px-1.5">
+                {overrides?.filter(o => o.role_id === role.id).length || 0}
+              </Badge>
             </Button>
           ))}
           <Popover>
@@ -185,8 +223,26 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
       </div>
 
       {selectedRole && (
-        <div className="space-y-2 mt-4">
-          <Label>Permissions de la catégorie</Label>
+        <div className="space-y-3 mt-4">
+          <div className="flex items-center justify-between">
+            <Label>Permissions de la catégorie</Label>
+            {selectedRoleHasOverrides && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetRole}
+                disabled={resetRoleOverrides.isPending}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                {resetRoleOverrides.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Réinitialiser ({selectedRoleOverrideCount})
+              </Button>
+            )}
+          </div>
           <div className="space-y-1">
             {CATEGORY_PERMISSIONS.map((perm) => {
               const permInfo = ALL_PERMISSIONS.find((p) => p.key === perm);
@@ -196,8 +252,12 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
                 <button
                   key={perm}
                   onClick={() => cyclePermission(selectedRole, perm)}
-                  className="w-full flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"
-                  disabled={setOverride.isPending || removeOverride.isPending}
+                  className={cn(
+                    "w-full flex items-center justify-between p-2 rounded-md transition-colors",
+                    "hover:bg-muted/50",
+                    state !== 'inherit' && "bg-muted/30"
+                  )}
+                  disabled={isMutating}
                 >
                   <div className="text-left">
                     <p className="text-sm font-medium">{permInfo?.label || perm}</p>
@@ -205,7 +265,10 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
                   </div>
                   <Badge 
                     variant={state === 'allow' ? 'default' : state === 'deny' ? 'destructive' : 'secondary'}
-                    className="flex items-center gap-1"
+                    className={cn(
+                      "flex items-center gap-1 transition-all",
+                      state === 'allow' && "bg-green-600 hover:bg-green-600",
+                    )}
                   >
                     {state === 'allow' && <Check className="w-3 h-3" />}
                     {state === 'deny' && <X className="w-3 h-3" />}
@@ -216,7 +279,7 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground">
             Cliquez pour basculer entre Hériter → Autoriser → Refuser
           </p>
         </div>

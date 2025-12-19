@@ -18,7 +18,7 @@ export function SummariesDropdown({
 }: SummariesDropdownProps) {
   return (
     <div className="absolute left-0 right-0 top-full z-50 mt-0 animate-slide-down">
-      <div className="mx-2 sm:mx-4 bg-[#111214] border border-border/30 rounded-lg shadow-xl overflow-hidden">
+      <div className="mx-2 sm:mx-4 bg-popover border border-border/30 rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
           <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ export function SummariesDropdown({
               <button
                 key={topic.id}
                 onClick={() => onSelectTopic(topic)}
-                className="w-full px-4 py-3 hover:bg-[#1a1b1e] transition-colors text-left group"
+                className="w-full px-4 py-3 hover:bg-muted transition-colors text-left group"
               >
                 <div className="flex items-start justify-between">
                   {/* Left content */}
@@ -60,7 +60,7 @@ export function SummariesDropdown({
                       </div>
                       <Avatar className="w-4 h-4">
                         <AvatarImage src={`/avatars/${topic.participants[0]}`} />
-                        <AvatarFallback className="bg-[#36393f] text-[8px]">
+                        <AvatarFallback className="bg-muted text-[8px]">
                           {topic.title.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
@@ -81,13 +81,13 @@ export function SummariesDropdown({
                   <div className="flex flex-col gap-1 ml-3 flex-shrink-0">
                     <button 
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 rounded hover:bg-[#2f3136] text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <ThumbsUp className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 rounded hover:bg-[#2f3136] text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <ThumbsDown className="w-4 h-4" />
                     </button>

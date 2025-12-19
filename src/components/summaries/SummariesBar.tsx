@@ -22,31 +22,20 @@ export function SummariesBar({
   onSelectTopic,
   onMarkAsRead,
 }: SummariesBarProps) {
-  const isActiveMode = activeTopic !== null;
+  // Calculate total new messages from all summaries
+  const totalNewMessages = summaries.reduce((acc, s) => acc + (s.newMessages || 0), 0);
 
   return (
     <div className="relative w-full">
-      {/* The Bar */}
-      <div
-        className={cn(
-          "h-10 px-3 flex items-center justify-between transition-colors duration-200",
-          isActiveMode
-            ? "bg-[#5865F2]" // Discord brand blue
-            : "bg-[#2b2d31]" // Dark gray
-        )}
-      >
+      {/* The Bar - Always blue */}
+      <div className="h-10 px-3 flex items-center justify-between bg-[#5865F2]">
         {/* Left Section */}
         <button
           onClick={onToggleDropdown}
-          className={cn(
-            "flex items-center gap-2 hover:opacity-80 transition-opacity",
-            isActiveMode ? "text-white" : "text-foreground"
-          )}
+          className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity"
         >
           <StreamlineSummaries className="w-4 h-4" />
-          <span className="text-sm font-medium">
-            {isActiveMode ? activeTopic.title : "Voir Tous Les Résumés"}
-          </span>
+          <span className="text-sm font-medium">Voir Tous Les Résumés</span>
           <ChevronDown
             className={cn(
               "w-4 h-4 transition-transform duration-200",
@@ -55,29 +44,21 @@ export function SummariesBar({
           />
         </button>
 
-        {/* Center Section (Active Mode Only) */}
-        {isActiveMode && activeTopic && (
-          <div className="hidden sm:flex items-center gap-1 text-white/90 text-sm">
-            <span>{activeTopic.newMessages || 0}+ nouveaux messages</span>
-            <span>•</span>
-            <span>{activeTopic.newSummaries || 0} nouveaux résumés</span>
-          </div>
-        )}
+        {/* Center Section - Message count */}
+        <div className="hidden sm:flex items-center text-white/90 text-sm">
+          <span>{totalNewMessages} nouveaux messages</span>
+        </div>
 
         {/* Right Section */}
-        {isActiveMode ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onMarkAsRead}
-            className="text-white hover:text-white hover:bg-white/20 gap-1.5 h-7 px-2"
-          >
-            <CheckCheck className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm">Marquer Comme Lu</span>
-          </Button>
-        ) : (
-          <div className="w-8" /> // Spacer for alignment
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onMarkAsRead}
+          className="text-white hover:text-white hover:bg-white/20 gap-1.5 h-7 px-2"
+        >
+          <CheckCheck className="w-4 h-4" />
+          <span className="hidden sm:inline text-sm">Marquer Comme Lu</span>
+        </Button>
       </div>
 
       {/* Dropdown Panel */}

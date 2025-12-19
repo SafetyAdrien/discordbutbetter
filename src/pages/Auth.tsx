@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -85,9 +86,10 @@ export default function Auth() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   
-  // Password security state
-  const [checkingPassword, setCheckingPassword] = useState(false);
+  // Password security state - real-time HIBP check
+  const [checkingPasswordRealtime, setCheckingPasswordRealtime] = useState(false);
   const [passwordPwnedCount, setPasswordPwnedCount] = useState<number | null>(null);
+  const pwnedCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Listen for password recovery event
   useEffect(() => {
@@ -151,11 +153,56 @@ export default function Auth() {
     return () => clearTimeout(timeoutId);
   }, [username, checkUsernameAvailability]);
 
+  // Debounced real-time HIBP password check
+  useEffect(() => {
+    // Clear previous timeout
+    if (pwnedCheckTimeoutRef.current) {
+      clearTimeout(pwnedCheckTimeoutRef.current);
+    }
+
+    // Reset state when password is cleared or too short
+    if (!password || password.length < 8) {
+      setPasswordPwnedCount(null);
+      setCheckingPasswordRealtime(false);
+      return;
+    }
+
+    // Set checking state after a small delay to avoid flicker
+    const checkingTimeout = setTimeout(() => {
+      setCheckingPasswordRealtime(true);
+    }, 100);
+
+    // Debounce the actual API call
+    pwnedCheckTimeoutRef.current = setTimeout(async () => {
+      try {
+        const count = await checkPasswordPwned(password);
+        setPasswordPwnedCount(count);
+      } catch (error) {
+        console.error('Error checking password:', error);
+        setPasswordPwnedCount(null);
+      } finally {
+        setCheckingPasswordRealtime(false);
+      }
+    }, 800);
+
+    return () => {
+      clearTimeout(checkingTimeout);
+      if (pwnedCheckTimeoutRef.current) {
+        clearTimeout(pwnedCheckTimeoutRef.current);
+      }
+    };
+  }, [password]);
+
   const handleUsernameChange = (value: string) => {
     // Force lowercase and remove invalid characters
     const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setUsername(sanitized);
     setUsernameAvailable(null);
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    // Reset pwned count when password changes - will be rechecked by useEffect
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -221,28 +268,15 @@ export default function Auth() {
       return;
     }
 
-    // Check if password has been compromised
-    setCheckingPassword(true);
-    setLoading(true);
-    
-    try {
-      const pwnedCount = await checkPasswordPwned(password);
-      setPasswordPwnedCount(pwnedCount);
-      
-      if (pwnedCount > 0) {
-        setErrors({ 
-          password: `Ce mot de passe a été trouvé dans ${pwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
-        });
-        setLoading(false);
-        setCheckingPassword(false);
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking password:', error);
-      // Continue with registration if check fails
+    // Block submission if password is compromised (use real-time check result)
+    if (passwordPwnedCount && passwordPwnedCount > 0) {
+      setErrors({ 
+        password: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
+      });
+      return;
     }
-    
-    setCheckingPassword(false);
+
+    setLoading(true);
 
     const { data, error } = await signUp(email, password, username, displayName);
     
@@ -318,27 +352,15 @@ export default function Auth() {
       return;
     }
 
-    // Check if password has been compromised
-    setCheckingPassword(true);
-    setLoading(true);
-    
-    try {
-      const pwnedCount = await checkPasswordPwned(password);
-      setPasswordPwnedCount(pwnedCount);
-      
-      if (pwnedCount > 0) {
-        setErrors({ 
-          password: `Ce mot de passe a été trouvé dans ${pwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
-        });
-        setLoading(false);
-        setCheckingPassword(false);
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking password:', error);
+    // Block submission if password is compromised (use real-time check result)
+    if (passwordPwnedCount && passwordPwnedCount > 0) {
+      setErrors({ 
+        password: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
+      });
+      return;
     }
-    
-    setCheckingPassword(false);
+
+    setLoading(true);
 
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -360,6 +382,7 @@ export default function Auth() {
     setErrors({});
     setPassword('');
     setConfirmPassword('');
+    setPasswordPwnedCount(null);
   };
 
   if (authLoading) {
@@ -473,18 +496,18 @@ export default function Auth() {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reset-password">Nouveau mot de passe</Label>
-                <Input
+                <PasswordInput
                   id="reset-password"
-                  type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordPwnedCount(null);
-                  }}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
                   className={errors.password ? 'border-destructive' : ''}
                 />
-                <PasswordStrengthIndicator password={password} />
+                <PasswordStrengthIndicator 
+                  password={password} 
+                  pwnedCount={passwordPwnedCount}
+                  checkingPwned={checkingPasswordRealtime}
+                />
                 {errors.password && (
                   <div className="flex items-start gap-2 text-sm text-destructive">
                     <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
@@ -495,9 +518,8 @@ export default function Auth() {
 
               <div className="space-y-2">
                 <Label htmlFor="reset-confirm-password">Confirmer le mot de passe</Label>
-                <Input
+                <PasswordInput
                   id="reset-confirm-password"
-                  type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -511,12 +533,12 @@ export default function Auth() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loading || checkingPassword}
+                disabled={loading || checkingPasswordRealtime || (passwordPwnedCount !== null && passwordPwnedCount > 0)}
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {checkingPassword ? 'Vérification de sécurité...' : 'Modification...'}
+                    Modification...
                   </>
                 ) : (
                   'Modifier le mot de passe'
@@ -571,9 +593,8 @@ export default function Auth() {
 
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Mot de passe</Label>
-                  <Input
+                  <PasswordInput
                     id="login-password"
-                    type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -694,18 +715,18 @@ export default function Auth() {
 
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Mot de passe</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-password"
-                    type="password"
                     placeholder="••••••••"
                     value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setPasswordPwnedCount(null);
-                    }}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
                     className={errors.password ? 'border-destructive' : ''}
                   />
-                  <PasswordStrengthIndicator password={password} />
+                  <PasswordStrengthIndicator 
+                    password={password} 
+                    pwnedCount={passwordPwnedCount}
+                    checkingPwned={checkingPasswordRealtime}
+                  />
                   {errors.password && (
                     <div className="flex items-start gap-2 text-sm text-destructive">
                       <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
@@ -717,12 +738,12 @@ export default function Auth() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || usernameAvailable === false || checkingPassword}
+                  disabled={loading || usernameAvailable === false || checkingPasswordRealtime || (passwordPwnedCount !== null && passwordPwnedCount > 0)}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {checkingPassword ? 'Vérification de sécurité...' : 'Création...'}
+                      Création...
                     </>
                   ) : (
                     "S'inscrire"

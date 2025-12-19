@@ -1,12 +1,18 @@
 import { useMemo } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { calculatePasswordStrength, type PasswordStrength } from '@/lib/password-security';
 
 interface PasswordStrengthIndicatorProps {
   password: string;
+  pwnedCount?: number | null;
+  checkingPwned?: boolean;
 }
 
-export function PasswordStrengthIndicator({ password }: PasswordStrengthIndicatorProps) {
+export function PasswordStrengthIndicator({ 
+  password, 
+  pwnedCount, 
+  checkingPwned 
+}: PasswordStrengthIndicatorProps) {
   const strength = useMemo(() => calculatePasswordStrength(password), [password]);
 
   if (!password) return null;
@@ -39,6 +45,13 @@ export function PasswordStrengthIndicator({ password }: PasswordStrengthIndicato
         <CriteriaItem passed={strength.checks.hasNumber} label="Un chiffre" />
         <CriteriaItem passed={strength.checks.hasSpecial} label="Caractère spécial" optional />
       </div>
+
+      {/* HIBP Check Status */}
+      {(checkingPwned || pwnedCount !== undefined) && (
+        <div className="pt-2 border-t border-border/50">
+          <HibpStatus checkingPwned={checkingPwned} pwnedCount={pwnedCount} />
+        </div>
+      )}
     </div>
   );
 }
@@ -55,6 +68,37 @@ function CriteriaItem({ passed, label, optional }: { passed: boolean; label: str
         {label}
         {optional && <span className="text-muted-foreground/70"> (opt.)</span>}
       </span>
+    </div>
+  );
+}
+
+function HibpStatus({ checkingPwned, pwnedCount }: { checkingPwned?: boolean; pwnedCount?: number | null }) {
+  if (checkingPwned) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        <span>Vérification des fuites de données...</span>
+      </div>
+    );
+  }
+
+  if (pwnedCount === null || pwnedCount === undefined) {
+    return null;
+  }
+
+  if (pwnedCount === 0) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-green-500">
+        <ShieldCheck className="w-3.5 h-3.5" />
+        <span>Non trouvé dans les fuites de données</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-orange-500">
+      <ShieldAlert className="w-3.5 h-3.5" />
+      <span>Trouvé dans {pwnedCount.toLocaleString('fr-FR')} fuites de données</span>
     </div>
   );
 }

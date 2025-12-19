@@ -24,6 +24,7 @@ import {
   MoreHorizontal,
   Smile,
   Flag,
+  ScrollText,
 } from "lucide-react";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import {
@@ -75,6 +76,8 @@ import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { toast } from "sonner";
+import { useSummaries } from "@/hooks/useSummaries";
+import { SummariesBar } from "@/components/summaries/SummariesBar";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -411,6 +414,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Threads - fetch all threads for this channel to find message-linked threads
   const { data: threads = [] } = useThreads(channel.id);
+
+  // AI Summaries
+  const {
+    isSummariesEnabled,
+    activeTopic,
+    isDropdownOpen,
+    toggleSummaries,
+    toggleDropdown,
+    selectTopic,
+    markAsRead,
+    summaries,
+  } = useSummaries();
 
   // Scroll to message function for "Jump to Message"
   const scrollToMessage = useCallback((messageId: string) => {
@@ -799,6 +814,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverContent>
           </Popover>
 
+          {/* AI Summaries Trigger */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={toggleSummaries}
+                className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
+              >
+                <ScrollText className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}
+            </TooltipContent>
+          </Tooltip>
+
           {/* Inbox Popover */}
           <Popover>
             <PopoverTrigger asChild>
@@ -836,6 +868,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           </Tooltip>
         </div>
       </div>
+
+      {/* AI Summaries Bar */}
+      {isSummariesEnabled && (
+        <SummariesBar
+          activeTopic={activeTopic}
+          isDropdownOpen={isDropdownOpen}
+          summaries={summaries}
+          onToggleDropdown={toggleDropdown}
+          onSelectTopic={selectTopic}
+          onMarkAsRead={markAsRead}
+        />
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full">

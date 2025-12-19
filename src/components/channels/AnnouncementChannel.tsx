@@ -1,243 +1,913 @@
-import { useState, useMemo } from 'react';
-import { Plus, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
-import { AnnouncementStats } from './announcement/AnnouncementStats';
-import { AnnouncementFilters, DEFAULT_CATEGORIES } from './announcement/AnnouncementFilters';
-import { CategoryFilterModal } from './announcement/CategoryFilterModal';
-import { FeaturedAnnouncement } from './announcement/FeaturedAnnouncement';
-import { AnnouncementCard } from './announcement/AnnouncementCard';
-import { CreateAnnouncementModal } from './announcement/CreateAnnouncementModal';
-import { AnnouncementDetailModal } from './announcement/AnnouncementDetailModal';
+import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Message, Channel, User } from "@/types/app";
+import { cn } from "@/lib/utils";
 import {
-  useAnnouncements,
-  useAnnouncementCategories,
-  useCreateAnnouncementCategory,
-  useDeleteAnnouncementCategory,
-  type Announcement,
-  type AnnouncementCategory,
-} from '@/hooks/useAnnouncements';
+  Bell,
+  Pin,
+  Users,
+  Inbox,
+  Copy,
+  Reply,
+  Pencil,
+  Trash2,
+  MessageSquareText,
+  BellOff,
+  BellRing,
+  AtSign,
+  X,
+  Check,
+  Link,
+  SmilePlus,
+  BarChart2,
+  MoreHorizontal,
+  Megaphone,
+  Wifi,
+  Flag,
+} from "lucide-react";
+import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { copyToClipboard } from "@/lib/clipboard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { TypingIndicator } from "@/components/typing/TypingIndicator";
+import { MarkdownText, setMarkdownContext } from "@/lib/markdown";
+import { registerSnowflakeMappings } from "@/lib/snowflake";
+import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
+import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
+import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
+import { usePolls, useDeletePoll, Poll } from "@/hooks/usePolls";
+import { useServerRoles } from "@/hooks/useRoles";
+import { useChannels } from "@/hooks/useChannels";
+import { useServers } from "@/hooks/useServers";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
+import { MessageInput } from "@/components/chat/MessageInput";
+import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
+import { FollowChannelModal } from "./announcement/FollowChannelModal";
+import { FollowSuccessModal } from "./announcement/FollowSuccessModal";
+import { PublishPrompt } from "./announcement/PublishPrompt";
+import { PublishedMessageHeader } from "./announcement/PublishedMessageHeader";
+import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from "@/hooks/useChannelFollowers";
+import { toast } from "sonner";
 
-interface Channel {
+interface Role {
   id: string;
   name: string;
-  type: string;
-  description?: string;
-  server_id?: string;
+  color: string | null;
+  position: number | null;
+  icon_url?: string | null;
+  description?: string | null;
 }
 
-export interface AnnouncementChannelProps {
+interface AnnouncementChannelProps {
   channel: Channel;
+  messages: Message[];
+  onSendMessage: (content: string) => void;
+  memberRoles?: Map<string, Role[]>;
+  onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  members?: Array<{ id: string; displayName: string; username: string; avatar?: string }>;
+  serverName: string;
+  serverIcon?: string;
 }
 
-export function AnnouncementChannel({ channel, onToggleMembers, showMembers }: AnnouncementChannelProps) {
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+// Quick reactions
+const QUICK_REACTIONS_HOVER = ["👍", "❤️", "😂"];
 
-  const serverId = channel.server_id || '';
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
-  // Fetch data from Supabase
-  const { data: announcements = [] } = useAnnouncements(channel.id);
-  const { data: dbCategories = [] } = useAnnouncementCategories(serverId);
-  const createCategory = useCreateAnnouncementCategory();
-  const deleteCategory = useDeleteAnnouncementCategory();
+function formatDate(date: Date): string {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) {
+    return "Aujourd'hui";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return "Hier";
+  }
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
-  // Merge default categories with custom ones from database
-  const allCategories: AnnouncementCategory[] = useMemo(() => {
-    const defaultCats = DEFAULT_CATEGORIES.map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      color: cat.color,
-      icon: cat.icon,
-      server_id: serverId,
-    }));
-    return [...defaultCats, ...dbCategories];
-  }, [dbCategories, serverId]);
+export function AnnouncementChannel({
+  channel,
+  messages,
+  onSendMessage,
+  memberRoles,
+  onOpenDM,
+  onToggleMembers,
+  showMembers = true,
+  members = [],
+  serverName,
+  serverIcon,
+}: AnnouncementChannelProps) {
+  const navigate = useNavigate();
+  const [messageInput, setMessageInput] = useState("");
+  const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
+  const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [followSuccessOpen, setFollowSuccessOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Filter announcements
-  const filteredAnnouncements = useMemo(() => {
-    if (activeFilter === 'all') return announcements;
-    return announcements.filter((a) => a.category?.id === activeFilter);
-  }, [announcements, activeFilter]);
+  const { user } = useAuth();
+  const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
+  const editMessage = useEditMessage();
+  const deleteMessage = useDeleteMessage();
 
-  // Get featured announcement (first pinned/featured or most recent)
-  const featuredAnnouncement = useMemo(() => {
-    const pinned = filteredAnnouncements.find((a) => a.pinned || a.featured);
-    return pinned || filteredAnnouncements[0];
-  }, [filteredAnnouncements]);
+  // Fetch followers count
+  const { data: followers = [] } = useChannelFollowers(channel.id);
+  const publishMessage = usePublishMessage();
+  const dismissPrompt = useDismissPublishPrompt();
 
-  // Grid announcements (excluding featured)
-  const gridAnnouncements = useMemo(() => {
-    if (!featuredAnnouncement) return filteredAnnouncements;
-    return filteredAnnouncements.filter((a) => a.id !== featuredAnnouncement.id);
-  }, [filteredAnnouncements, featuredAnnouncement]);
+  // Fetch server roles and channels for markdown context
+  const { data: serverRoles = [] } = useServerRoles(channel.server_id);
+  const { data: channelsData } = useChannels(channel.server_id);
 
-  // Stats
-  const thisWeekCount = useMemo(() => {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return announcements.filter((a) => new Date(a.created_at) > weekAgo).length;
-  }, [announcements]);
+  // Pinned messages
+  const { data: pinnedMessages } = usePinnedMessages(channel.id);
+  const pinMessage = usePinMessage();
+  const unpinMessage = useUnpinMessage();
 
-  const handleAddCategory = (category: Omit<AnnouncementCategory, 'id' | 'server_id'>) => {
-    createCategory.mutate({
-      serverId,
-      name: category.name,
-      color: category.color,
-      icon: category.icon,
+  // Reactions
+  const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
+  const { data: reactionsData } = useMessageReactions(messageIds);
+  const addReaction = useAddReaction();
+  const removeReaction = useRemoveReaction();
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
+  // SHIFT key detection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setIsShiftPressed(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setIsShiftPressed(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  const pinnedMessageIds = useMemo(
+    () => new Set(pinnedMessages?.map((pm) => pm.message_id) || []),
+    [pinnedMessages]
+  );
+
+  const handleSubmit = () => {
+    if (messageInput.trim()) {
+      setIsSending(true);
+      setTimeout(() => setIsSending(false), 400);
+      const content = replyingTo
+        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}`
+        : messageInput;
+      onSendMessage(content);
+      setMessageInput("");
+      setReplyingTo(null);
+      stopTyping();
+    }
+  };
+
+  const handleReply = (message: Message) => {
+    setReplyingTo(message);
+  };
+
+  const handleUserClick = (author: User) => {
+    const roles = memberRoles?.get(author.id);
+    setSelectedUser({ user: author, roles });
+  };
+
+  const handleCopyMessage = (content: string) => {
+    copyToClipboard(content, "Message copié");
+  };
+
+  const handleCopyId = (id: string) => {
+    copyToClipboard(id, "ID copié");
+  };
+
+  const handleAddReaction = (messageId: string, emoji: string) => {
+    const currentReactions = reactionsData?.[messageId] || [];
+    const hasReacted = currentReactions.some((r) => r.user_id === user?.id && r.emoji === emoji);
+    if (hasReacted) {
+      removeReaction.mutate({ messageId, emoji });
+    } else {
+      addReaction.mutate({ messageId, emoji });
+    }
+  };
+
+  const handlePinMessage = (messageId: string) => {
+    if (pinnedMessageIds.has(messageId)) {
+      unpinMessage.mutate({ messageId, channelId: channel.id });
+    } else {
+      pinMessage.mutate({ messageId, channelId: channel.id });
+    }
+  };
+
+  const handleStartEdit = (message: Message) => {
+    setEditingMessageId(message.id);
+    setEditingContent(message.content);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingMessageId && editingContent.trim()) {
+      editMessage.mutate({
+        messageId: editingMessageId,
+        channelId: channel.id,
+        content: editingContent,
+      });
+      setEditingMessageId(null);
+      setEditingContent("");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingContent("");
+  };
+
+  const handleDelete = (messageId: string) => {
+    deleteMessage.mutate({ messageId, channelId: channel.id });
+  };
+
+  const handleCopyMessageLink = (messageId: string) => {
+    const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/${messageId}`;
+    copyToClipboard(link, "Lien du message copié");
+  };
+
+  const handlePublishMessage = (message: Message) => {
+    publishMessage.mutate({
+      messageId: message.id,
+      channelId: channel.id,
+      content: message.content,
+      sourceServerId: channel.server_id || "",
+      sourceServerName: serverName,
+      sourceServerIcon: serverIcon || null,
+      sourceChannelName: channel.name,
     });
   };
 
-  const handleDeleteCategory = (id: string) => {
-    deleteCategory.mutate({ id, serverId });
+  const handleDismissPublish = (messageId: string) => {
+    dismissPrompt.mutate({ messageId, channelId: channel.id });
   };
 
-  const handleAnnouncementClick = (announcement: Announcement) => {
-    setSelectedAnnouncement(announcement);
+  const handleFollowSuccess = () => {
+    setFollowModalOpen(false);
+    setFollowSuccessOpen(true);
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
-      {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
+      {/* Channel Header */}
+      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
         <div className="flex items-center gap-2">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground font-ginto">{channel.name}</h2>
+          <h2 className="font-semibold text-foreground">{channel.name}</h2>
         </div>
 
-        <AnnouncementStats
-          totalCount={announcements.length}
-          thisWeekCount={thisWeekCount}
-        />
+        {/* Follow Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2 text-muted-foreground hover:text-foreground"
+          onClick={() => setFollowModalOpen(true)}
+        >
+          <Wifi className="w-4 h-4" />
+          Suivre
+        </Button>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <Button size="sm" className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            Nouvelle annonce
-          </Button>
-          {onToggleMembers && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleMembers}
-              className={showMembers ? 'bg-muted' : ''}
-            >
-              <Users className="w-5 h-5" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Filters */}
-      <AnnouncementFilters
-        categories={allCategories}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        onManageCategories={() => setCategoryModalOpen(true)}
-        canManage={true}
-      />
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {announcements.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center mb-6">
-              <StreamlineMegaphone size={48} className="text-primary/60" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Aucune annonce</h3>
-            <p className="text-muted-foreground text-sm max-w-md mb-6">
-              Les annonces importantes du serveur apparaîtront ici dans un format magazine moderne.
-            </p>
-            <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
-              <Plus className="w-4 h-4" />
-              Créer la première annonce
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Featured Announcement */}
-            {featuredAnnouncement && (
-              <FeaturedAnnouncement
-                announcement={{
-                  id: featuredAnnouncement.id,
-                  title: featuredAnnouncement.title,
-                  content: featuredAnnouncement.content,
-                  category: featuredAnnouncement.category,
-                  bannerUrl: featuredAnnouncement.banner_url,
-                  author: {
-                    id: featuredAnnouncement.author.id,
-                    displayName: featuredAnnouncement.author.display_name,
-                    avatar: featuredAnnouncement.author.avatar_url,
-                  },
-                  createdAt: new Date(featuredAnnouncement.created_at),
-                  pinned: featuredAnnouncement.pinned,
-                  featured: featuredAnnouncement.featured,
-                  reactions: [],
-                }}
-                onClick={() => handleAnnouncementClick(featuredAnnouncement)}
-              />
-            )}
-
-            {/* Grid */}
-            {gridAnnouncements.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {gridAnnouncements.map((announcement) => (
-                  <AnnouncementCard
-                    key={announcement.id}
-                    announcement={{
-                      id: announcement.id,
-                      title: announcement.title,
-                      content: announcement.content,
-                      category: announcement.category,
-                      thumbnailUrl: announcement.banner_url,
-                      author: {
-                        id: announcement.author.id,
-                        displayName: announcement.author.display_name,
-                        avatar: announcement.author.avatar_url,
-                      },
-                      createdAt: new Date(announcement.created_at),
-                      reactions: [],
-                    }}
-                    onClick={() => handleAnnouncementClick(announcement)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        {channel.description && (
+          <>
+            <div className="w-px h-6 bg-border" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[300px]">
+                  <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="start" className="w-80 p-3">
+                <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
+                <p className="text-sm text-muted-foreground">{channel.description}</p>
+              </PopoverContent>
+            </Popover>
+          </>
         )}
+
+        <div className="flex items-center gap-1 ml-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <Bell className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-64 p-3">
+              <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
+              <div className="space-y-2">
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <BellRing className="w-4 h-4 text-muted-foreground" />
+                  <span>Tous les messages</span>
+                </button>
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <AtSign className="w-4 h-4 text-muted-foreground" />
+                  <span>Uniquement les mentions</span>
+                </button>
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <BellOff className="w-4 h-4 text-muted-foreground" />
+                  <span>Aucun message</span>
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm" className="relative">
+                <Pin className="w-5 h-5" />
+                {pinnedMessages && pinnedMessages.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {pinnedMessages.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-96 p-0">
+              <div className="p-3 border-b border-border">
+                <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
+              </div>
+              <ScrollArea className="max-h-80">
+                {pinnedMessages && pinnedMessages.length > 0 ? (
+                  <div className="p-2 space-y-2">
+                    {pinnedMessages.map((pm) => (
+                      <div key={pm.id} className="p-3 bg-muted/50 rounded-lg group relative">
+                        <div className="flex items-start gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={pm.message?.author?.avatar_url || undefined} />
+                            <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                              {pm.message?.author?.display_name?.charAt(0).toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">
+                                {pm.message?.author?.display_name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {pm.message?.created_at && formatDate(new Date(pm.message.created_at))}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {pm.message?.content}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() =>
+                            unpinMessage.mutate({
+                              messageId: pm.message_id,
+                              channelId: channel.id,
+                            })
+                          }
+                          className="absolute top-2 right-2 p-1 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3.5 h-3.5 text-destructive" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground/70 text-center py-8">
+                    Ce salon n'a pas encore de message épinglé... pour l'instant.
+                  </div>
+                )}
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <Inbox className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-80 p-3">
+              <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
+              <div className="text-sm text-muted-foreground/70 text-center py-6">
+                Aucune notification récente.
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={onToggleMembers}
+                className={cn(showMembers && "bg-surface-hover")}
+              >
+                <Users className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
-      {/* Create Announcement Modal */}
-      <CreateAnnouncementModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        channelId={channel.id}
-        categories={allCategories}
-      />
+      {/* Messages */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5">
+          {/* Welcome message */}
+          <div className="mb-8 animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
+              <StreamlineMegaphone size={32} className="text-primary-foreground" />
+            </div>
+            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
+            <p className="text-muted-foreground">
+              C'est le début du salon d'annonces #{channel.name}. Les messages postés ici peuvent être
+              publiés vers d'autres serveurs qui suivent ce salon.
+            </p>
+          </div>
 
-      {/* Announcement Detail Modal */}
-      {selectedAnnouncement && (
-        <AnnouncementDetailModal
-          open={!!selectedAnnouncement}
-          onOpenChange={(open) => !open && setSelectedAnnouncement(null)}
-          announcement={selectedAnnouncement}
-          canEdit={true}
-          categories={allCategories}
+          {/* Date Separator */}
+          {messages.length > 0 && (
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium">
+                {formatDate(messages[0]?.timestamp || new Date())}
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+
+          {/* Messages */}
+          {messages.map((message, index) => {
+            const prevMessage = index > 0 ? messages[index - 1] : null;
+            const showAuthor =
+              !prevMessage ||
+              prevMessage.author.id !== message.author.id ||
+              message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000;
+            const isOwnMessage = user?.id === message.author.id;
+            const isEditing = editingMessageId === message.id;
+            
+            // Check if this is a published message from another server
+            const isPublishedFromOther = (message as any).is_published_message && (message as any).source_server_id;
+            
+            // Show publish prompt for own messages that haven't been dismissed
+            const showPublishPrompt =
+              isOwnMessage &&
+              followers.length > 0 &&
+              !(message as any).publish_dismissed &&
+              !(message as any).is_published_message;
+
+            return (
+              <ContextMenu key={message.id}>
+                <ContextMenuTrigger asChild>
+                  <div
+                    ref={(el) => {
+                      if (el) messageRefs.current.set(message.id, el);
+                    }}
+                    className={cn(
+                      "group message-hover rounded-md px-2 -mx-2 relative",
+                      showAuthor ? "pt-1" : "py-0"
+                    )}
+                    onMouseEnter={() => setHoveredMessageId(message.id)}
+                    onMouseLeave={() => {
+                      if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+                    }}
+                  >
+                    {/* Message Actions - with Megaphone for announcement channels */}
+                    <div
+                      className={cn(
+                        "absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10",
+                        (hoveredMessageId === message.id || openDropdownMessageId === message.id) &&
+                          !isEditing
+                          ? "opacity-100"
+                          : "opacity-0 pointer-events-none"
+                      )}
+                    >
+                      {/* Quick Reactions */}
+                      {QUICK_REACTIONS_HOVER.map((emoji) => (
+                        <Tooltip key={emoji}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleAddReaction(message.id, emoji)}
+                              className="p-1 hover:bg-muted rounded transition-colors text-base"
+                            >
+                              {emoji}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">{emoji}</TooltipContent>
+                        </Tooltip>
+                      ))}
+
+                      {/* Megaphone - Publish button */}
+                      {isOwnMessage && followers.length > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handlePublishMessage(message)}
+                              disabled={publishMessage.isPending}
+                              className="p-1.5 hover:bg-muted rounded transition-colors text-primary"
+                            >
+                              <Megaphone className="w-4 h-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Publier aux abonnés</TooltipContent>
+                        </Tooltip>
+                      )}
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleReply(message)}
+                            className="p-1.5 hover:bg-muted rounded transition-colors"
+                          >
+                            <Reply className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Répondre</TooltipContent>
+                      </Tooltip>
+
+                      <DropdownMenu
+                        onOpenChange={(open) => {
+                          setOpenDropdownMessageId(open ? message.id : null);
+                          if (!open) setHoveredMessageId(null);
+                        }}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleCopyMessageLink(message.id)}>
+                            <Link className="w-4 h-4 mr-2" />
+                            Copier le lien
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePinMessage(message.id)}>
+                            <Pin className="w-4 h-4 mr-2" />
+                            {pinnedMessageIds.has(message.id) ? "Désépingler" : "Épingler"}
+                          </DropdownMenuItem>
+                          {isOwnMessage && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleStartEdit(message)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Modifier
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(message.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {showAuthor ? (
+                      <div className="flex gap-3 items-start">
+                        {isPublishedFromOther ? (
+                          // Published message from another server - show server icon
+                          <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
+                            {(message as any).source_server_icon ? (
+                              <AvatarImage
+                                src={(message as any).source_server_icon}
+                                alt={(message as any).source_server_name}
+                              />
+                            ) : null}
+                            <AvatarFallback className="bg-primary text-primary-foreground">
+                              {((message as any).source_server_name || "S").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                            <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                              <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                              <AvatarFallback className="bg-primary/20 text-primary">
+                                {message.author.displayName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </button>
+                        )}
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                            {isPublishedFromOther ? (
+                              <>
+                                <span className="font-semibold text-foreground">
+                                  {(message as any).source_server_name} #{(message as any).source_channel_name}
+                                </span>
+                                <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0">
+                                  SERVEUR
+                                </Badge>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => handleUserClick(message.author)}
+                                className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                              >
+                                {message.author.displayName}
+                              </button>
+                            )}
+                            {!isPublishedFromOther && memberRoles?.get(message.author.id)?.[0]?.icon_url && (
+                              <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
+                            )}
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              {formatTime(message.timestamp)}
+                            </span>
+                            {message.edited && (
+                              <span className="text-xs text-muted-foreground/50">(modifié)</span>
+                            )}
+                          </div>
+                          {isEditing ? (
+                            <div className="mt-1 space-y-2">
+                              <Textarea
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.height = "auto";
+                                    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                                  }
+                                }}
+                                value={editingContent}
+                                onChange={(e) => {
+                                  setEditingContent(e.target.value);
+                                  e.target.style.height = "auto";
+                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSaveEdit();
+                                  }
+                                  if (e.key === "Escape") {
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                autoFocus
+                                className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                rows={1}
+                              />
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>Échap pour annuler</span>
+                                <span>•</span>
+                                <span>Entrée pour sauvegarder</span>
+                                <div className="flex gap-1 ml-auto">
+                                  <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-foreground break-words font-ginto">
+                                <MarkdownText content={message.content} />
+                              </p>
+                              {/* Publish Prompt */}
+                              {showPublishPrompt && (
+                                <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
+                                  <Megaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-muted-foreground">
+                                    Partage ça avec tes abonnés !
+                                  </span>
+                                  <button
+                                    onClick={() => handlePublishMessage(message)}
+                                    disabled={publishMessage.isPending}
+                                    className="text-primary hover:underline font-medium"
+                                  >
+                                    {publishMessage.isPending ? "Publication..." : "Publier"}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDismissPublish(message.id)}
+                                    className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Ne plus afficher"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <span className="w-10 text-[11px] text-muted-foreground/0 group-hover:text-muted-foreground/70 transition-colors text-right flex-shrink-0 pt-0.5 select-none">
+                          {formatTime(message.timestamp)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={editingContent}
+                                onChange={(e) => setEditingContent(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSaveEdit();
+                                  }
+                                  if (e.key === "Escape") {
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                autoFocus
+                                className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                rows={1}
+                              />
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>Échap pour annuler</span>
+                                <span>•</span>
+                                <span>Entrée pour sauvegarder</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-foreground break-words font-ginto">
+                                <MarkdownText content={message.content} />
+                                {message.edited && (
+                                  <span className="text-xs text-muted-foreground/50 ml-1">(modifié)</span>
+                                )}
+                              </p>
+                              {showPublishPrompt && (
+                                <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
+                                  <Megaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-muted-foreground">
+                                    Partage ça avec tes abonnés !
+                                  </span>
+                                  <button
+                                    onClick={() => handlePublishMessage(message)}
+                                    disabled={publishMessage.isPending}
+                                    className="text-primary hover:underline font-medium"
+                                  >
+                                    {publishMessage.isPending ? "Publication..." : "Publier"}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDismissPublish(message.id)}
+                                    className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <ContextMenuItem onClick={() => handleAddReaction(message.id, "👍")}>
+                    <span className="mr-2">👍</span>
+                    Ajouter une réaction
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleReply(message)}>
+                    <Reply className="w-4 h-4 mr-2" />
+                    Répondre
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copier le texte
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
+                    <Link className="w-4 h-4 mr-2" />
+                    Copier le lien du message
+                  </ContextMenuItem>
+                  {isOwnMessage && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => handleStartEdit(message)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Modifier
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDelete(message.id)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+
+      {/* Typing Indicator */}
+      <TypingIndicator channelId={channel.id} />
+
+      {/* Reply Reference */}
+      {replyingTo && (
+        <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+          <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-primary font-medium">
+              Réponse à {replyingTo.author.displayName}
+            </span>
+            <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
+          </div>
+          <button
+            onClick={() => setReplyingTo(null)}
+            className="p-1 hover:bg-muted rounded transition-colors"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
+      {/* Message Input */}
+      <div className="px-4 pb-4">
+        <MessageInput
+          placeholder={`Envoyer un message dans #${channel.name}`}
+          value={messageInput}
+          onChange={(value) => {
+            setMessageInput(value);
+            startTyping();
+          }}
+          onSubmit={handleSubmit}
+          channelId={channel.id}
+          serverId={channel.server_id}
+          members={members}
+        />
+      </div>
+
+      {/* User Profile Popup */}
+      {selectedUser && (
+        <UserProfilePopup
+          user={selectedUser.user}
+          roles={selectedUser.roles}
+          open={!!selectedUser}
+          onOpenChange={(open) => !open && setSelectedUser(null)}
         />
       )}
 
-      {/* Category Modal */}
-      <CategoryFilterModal
-        open={categoryModalOpen}
-        onOpenChange={setCategoryModalOpen}
-        categories={dbCategories}
-        onAddCategory={handleAddCategory}
-        onDeleteCategory={handleDeleteCategory}
+      {/* Follow Modal */}
+      <FollowChannelModal
+        open={followModalOpen}
+        onClose={() => setFollowModalOpen(false)}
+        sourceChannelId={channel.id}
+        sourceChannelName={channel.name}
+        sourceServerName={serverName}
+        sourceServerIcon={serverIcon}
+        onSuccess={handleFollowSuccess}
       />
+
+      {/* Follow Success Modal */}
+      <FollowSuccessModal open={followSuccessOpen} onClose={() => setFollowSuccessOpen(false)} />
     </div>
   );
 }

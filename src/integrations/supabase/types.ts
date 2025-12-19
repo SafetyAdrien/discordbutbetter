@@ -323,6 +323,52 @@ export type Database = {
           },
         ]
       }
+      channel_followers: {
+        Row: {
+          created_at: string
+          follower_user_id: string
+          id: string
+          source_channel_id: string
+          target_channel_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_user_id: string
+          id?: string
+          source_channel_id: string
+          target_channel_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_user_id?: string
+          id?: string
+          source_channel_id?: string
+          target_channel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_followers_follower_user_id_fkey"
+            columns: ["follower_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_followers_source_channel_id_fkey"
+            columns: ["source_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_followers_target_channel_id_fkey"
+            columns: ["target_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_permission_overrides: {
         Row: {
           channel_id: string
@@ -737,6 +783,13 @@ export type Database = {
           created_at: string | null
           edited_at: string | null
           id: string
+          is_published_message: boolean | null
+          original_message_id: string | null
+          publish_dismissed: boolean | null
+          source_channel_name: string | null
+          source_server_icon: string | null
+          source_server_id: string | null
+          source_server_name: string | null
           target_user_id: string | null
         }
         Insert: {
@@ -747,6 +800,13 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
+          is_published_message?: boolean | null
+          original_message_id?: string | null
+          publish_dismissed?: boolean | null
+          source_channel_name?: string | null
+          source_server_icon?: string | null
+          source_server_id?: string | null
+          source_server_name?: string | null
           target_user_id?: string | null
         }
         Update: {
@@ -757,6 +817,13 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
+          is_published_message?: boolean | null
+          original_message_id?: string | null
+          publish_dismissed?: boolean | null
+          source_channel_name?: string | null
+          source_server_icon?: string | null
+          source_server_id?: string | null
+          source_server_name?: string | null
           target_user_id?: string | null
         }
         Relationships: [
@@ -772,6 +839,20 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_original_message_id_fkey"
+            columns: ["original_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_source_server_id_fkey"
+            columns: ["source_server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
             referencedColumns: ["id"]
           },
           {

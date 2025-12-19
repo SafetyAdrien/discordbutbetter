@@ -20,6 +20,12 @@ export interface MessageWithAuthor {
   edited_at: string | null;
   attachments: any;
   channel_id: string;
+  source_server_id?: string | null;
+  source_server_name?: string | null;
+  source_server_icon?: string | null;
+  source_channel_name?: string | null;
+  is_published_message?: boolean | null;
+  publish_dismissed?: boolean | null;
   author: {
     id: string;
     username: string;
@@ -49,6 +55,12 @@ export function useMessages(channelId: string | null) {
           edited_at,
           attachments,
           channel_id,
+          source_server_id,
+          source_server_name,
+          source_server_icon,
+          source_channel_name,
+          is_published_message,
+          publish_dismissed,
           author:profiles!messages_author_id_fkey (
             id,
             username,

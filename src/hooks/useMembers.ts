@@ -95,33 +95,38 @@ export function useMembers(serverId: string | null) {
 
     const channel = supabase
       .channel(`members-realtime:${serverId}`)
-      // Listen for member deletions (kick/leave)
+      // Listen for member deletions (kick/leave) - NO filter, use client-side filtering
       .on(
         'postgres_changes',
         {
           event: 'DELETE',
           schema: 'public',
           table: 'server_members',
-          filter: `server_id=eq.${serverId}`,
         },
         (payload) => {
           const deleted = payload.old as any;
+          // Client-side filtering for reliability
+          if (deleted.server_id !== serverId) return;
+          
           queryClient.setQueryData<MemberWithProfile[]>(
             ['members', serverId],
             (old) => old?.filter((member) => member.id !== deleted.id) || []
           );
         }
       )
-      // Listen for new members
+      // Listen for new members - NO filter, use client-side filtering
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'server_members',
-          filter: `server_id=eq.${serverId}`,
         },
-        () => {
+        (payload) => {
+          const inserted = payload.new as any;
+          // Client-side filtering for reliability
+          if (inserted.server_id !== serverId) return;
+          
           // Refetch to get full member data with profile
           queryClient.invalidateQueries({ queryKey: ['members', serverId] });
         }
@@ -193,7 +198,13 @@ export function useMembers(serverId: string | null) {
           );
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`[useMembers] Real-time subscription active for server ${serverId}`);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`[useMembers] Real-time subscription error for server ${serverId}`);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

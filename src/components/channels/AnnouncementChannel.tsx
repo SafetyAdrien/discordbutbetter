@@ -70,6 +70,8 @@ import { PublishPrompt } from "./announcement/PublishPrompt";
 import { PublishedMessageHeader } from "./announcement/PublishedMessageHeader";
 import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from "@/hooks/useChannelFollowers";
 import { toast } from "sonner";
+import StreamlineThreads from "@/components/icons/StreamlineThreads";
+import ThreadsPopover from "@/components/threads/ThreadsPopover";
 
 interface Role {
   id: string;
@@ -406,6 +408,18 @@ export function AnnouncementChannel({
                   <span>Aucun message</span>
                 </button>
               </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Threads Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <StreamlineThreads className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
+              <ThreadsPopover channelId={channel.id} onSelectThread={() => {}} />
             </PopoverContent>
           </Popover>
 

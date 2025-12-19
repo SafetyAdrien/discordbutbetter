@@ -186,7 +186,7 @@ function FriendCard({
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{friend.profile.display_name}</p>
         <p className="text-sm text-muted-foreground truncate">
-          {friend.profile.custom_status || `@${friend.profile.username}`}
+          {friend.profile.custom_status || `@${friend.profile.username.toLowerCase()}`}
         </p>
       </div>
       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -221,7 +221,7 @@ function PendingCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-medium text-sm truncate">{request.profile.display_name}</p>
-          <span className="text-xs text-muted-foreground">@{request.profile.username}</span>
+          <span className="text-xs text-muted-foreground">@{request.profile.username.toLowerCase()}</span>
         </div>
         <p className="text-xs text-muted-foreground">
           {request.isIncoming ? 'Demande d\'ami reçue' : 'Demande envoyée'}

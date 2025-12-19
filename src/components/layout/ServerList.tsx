@@ -47,7 +47,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 // Discord-style Drop Indicator for servers
 const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
@@ -303,12 +303,17 @@ export function ServerList({
   }, [servers, serverIdsInFolders, sortServers]);
 
   // Create a combined list of items for the sortable context
+  // IMPORTANT: Include nested server IDs so they can be dragged out of folders
   const sortableItems = useMemo(() => {
     const items: UniqueIdentifier[] = [];
     
-    // Add folders first (in order)
+    // Add folders and their nested servers
     folders.forEach(folder => {
       items.push(`folder-${folder.id}`);
+      // Add nested servers for this folder
+      folder.serverIds.forEach(serverId => {
+        items.push(`nested-${folder.id}-${serverId}`);
+      });
     });
     
     // Add standalone servers
@@ -538,7 +543,19 @@ export function ServerList({
     setOverId(null);
     clearMergeState();
 
-    if (!over || active.id === over.id) return;
+    if (!over) {
+      // Dropped outside - if it's a nested server, extract it
+      const activeIdStr = String(active.id);
+      if (activeIdStr.startsWith('nested-')) {
+        const parts = activeIdStr.split('-');
+        const folderId = parts[1];
+        const serverId = parts[parts.length - 1];
+        removeServerFromFolder(folderId, serverId);
+      }
+      return;
+    }
+
+    if (active.id === over.id) return;
 
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
@@ -546,25 +563,56 @@ export function ServerList({
     // Handle nested server being dragged out of folder
     if (activeIdStr.startsWith('nested-')) {
       const parts = activeIdStr.split('-');
-      const folderId = parts[1];
+      const sourceFolderId = parts[1];
       const serverId = parts[parts.length - 1];
       
-      // If dropped on main list area (server or folder), extract from folder
-      if (overIdStr.startsWith('server-') || overIdStr.startsWith('folder-')) {
-        removeServerFromFolder(folderId, serverId);
+      // If dropped on a standalone server, extract from folder
+      if (overIdStr.startsWith('server-')) {
+        removeServerFromFolder(sourceFolderId, serverId);
+        return;
+      }
+      
+      // If dropped on a different folder, move to that folder
+      if (overIdStr.startsWith('folder-')) {
+        const targetFolderId = overIdStr.replace('folder-', '');
+        if (targetFolderId !== sourceFolderId) {
+          removeServerFromFolder(sourceFolderId, serverId);
+          addServerToFolder(targetFolderId, serverId);
+        }
+        return;
+      }
+      
+      // If dropped on a nested server in a different folder, move to that folder
+      if (overIdStr.startsWith('nested-')) {
+        const overParts = overIdStr.split('-');
+        const targetFolderId = overParts[1];
+        if (targetFolderId !== sourceFolderId) {
+          removeServerFromFolder(sourceFolderId, serverId);
+          addServerToFolder(targetFolderId, serverId);
+        }
+        // Same folder - just reordering within folder (could implement later)
         return;
       }
     }
     
-    // Handle server being dragged onto a folder
+    // Handle standalone server being dragged onto a folder
     if (activeIdStr.startsWith('server-') && overIdStr.startsWith('folder-')) {
       const serverId = activeIdStr.replace('server-', '');
       const folderId = overIdStr.replace('folder-', '');
       addServerToFolder(folderId, serverId);
       return;
     }
+    
+    // Handle standalone server being dragged onto a nested server (add to that folder)
+    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('nested-')) {
+      const serverId = activeIdStr.replace('server-', '');
+      const overParts = overIdStr.split('-');
+      const folderId = overParts[1];
+      addServerToFolder(folderId, serverId);
+      return;
+    }
 
-    // Handle regular reordering (servers only for now)
+    // Handle regular reordering of standalone servers
     if (activeIdStr.startsWith('server-') && overIdStr.startsWith('server-')) {
       const oldIndex = standaloneServers.findIndex(s => `server-${s.id}` === activeIdStr);
       const overIndex = standaloneServers.findIndex(s => `server-${s.id}` === overIdStr);
@@ -642,7 +690,7 @@ export function ServerList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        modifiers={[restrictToVerticalAxis]}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}

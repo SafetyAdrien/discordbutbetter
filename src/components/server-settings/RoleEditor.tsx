@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ImagePlus, X, Shield, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -135,184 +134,177 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const isEmojiIcon = iconUrl && !iconUrl.startsWith('http');
 
   return (
-    <div className="space-y-4">
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="overview">Aperçu</TabsTrigger>
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6 mt-4">
-          {/* Basic Info */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="role-name">Nom du rôle</Label>
-              <Input
-                id="role-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={role.is_default}
-                maxLength={100}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Couleur</Label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer"
-                  disabled={role.is_default}
-                />
-                <Input
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  disabled={role.is_default}
-                  className="flex-1"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="role-description">Description</Label>
-            <Textarea
-              id="role-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+    <div className="space-y-6">
+      {/* Basic Info */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="role-name">Nom du rôle</Label>
+          <Input
+            id="role-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={role.is_default}
+            maxLength={100}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Couleur</Label>
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer"
               disabled={role.is_default}
-              placeholder="Décrivez le rôle et ses responsabilités..."
-              maxLength={200}
-              rows={2}
-              className="resize-none"
             />
-            <p className="text-xs text-muted-foreground">{description.length}/200 caractères</p>
+            <Input
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              disabled={role.is_default}
+              className="flex-1"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="space-y-2">
+        <Label htmlFor="role-description">Description</Label>
+        <Textarea
+          id="role-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={role.is_default}
+          placeholder="Décrivez le rôle et ses responsabilités..."
+          maxLength={200}
+          rows={2}
+          className="resize-none"
+        />
+        <p className="text-xs text-muted-foreground">{description.length}/200 caractères</p>
+      </div>
+
+      {/* Role Icon */}
+      <div className="space-y-2">
+        <Label>Icône du rôle</Label>
+        <div className="flex items-center gap-3">
+          {/* Preview */}
+          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border">
+            {iconUrl ? (
+              isEmojiIcon ? (
+                <span className="text-xl">{iconUrl}</span>
+              ) : (
+                <img src={iconUrl} alt="Role icon" className="w-6 h-6 object-contain" />
+              )
+            ) : (
+              <Shield className="w-5 h-5 text-muted-foreground" />
+            )}
           </div>
 
-          {/* Role Icon */}
-          <div className="space-y-2">
-            <Label>Icône du rôle</Label>
-            <div className="flex items-center gap-3">
-              {/* Preview */}
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border">
-                {iconUrl ? (
-                  isEmojiIcon ? (
-                    <span className="text-xl">{iconUrl}</span>
-                  ) : (
-                    <img src={iconUrl} alt="Role icon" className="w-6 h-6 object-contain" />
-                  )
-                ) : (
-                  <Shield className="w-5 h-5 text-muted-foreground" />
-                )}
-              </div>
+          {/* Upload button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || role.is_default}
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <ImagePlus className="w-4 h-4 mr-2" />
+            )}
+            Uploader
+          </Button>
 
-              {/* Upload button */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || role.is_default}
-              >
-                {isUploading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ImagePlus className="w-4 h-4 mr-2" />
-                )}
-                Uploader
-              </Button>
+          {/* Emoji input */}
+          <Input
+            placeholder="ou emoji 🎮"
+            value={emojiInput}
+            onChange={(e) => handleEmojiChange(e.target.value)}
+            className="w-28"
+            disabled={role.is_default}
+          />
 
-              {/* Emoji input */}
-              <Input
-                placeholder="ou emoji 🎮"
-                value={emojiInput}
-                onChange={(e) => handleEmojiChange(e.target.value)}
-                className="w-28"
-                disabled={role.is_default}
-              />
-
-              {/* Remove button */}
-              {iconUrl && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRemoveIcon}
-                  disabled={role.is_default}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Uploadez une image (max 256 Ko) ou entrez un emoji
-            </p>
-          </div>
-
-          {/* Hoist Option */}
-          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-primary" />
-                <div>
-                  <Label className="text-sm font-medium">Afficher séparément dans la liste des membres</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Les membres ayant ce rôle seront affichés dans un groupe séparé
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={hoist}
-                onCheckedChange={setHoist}
-                disabled={role.is_default}
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="permissions" className="mt-4">
-          {role.is_default && (
-            <p className="text-sm text-muted-foreground mb-4">
-              Le rôle @everyone est le rôle par défaut attribué à tous les membres.
-            </p>
+          {/* Remove button */}
+          {iconUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveIcon}
+              disabled={role.is_default}
+            >
+              <X className="w-4 h-4" />
+            </Button>
           )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Uploadez une image (max 256 Ko) ou entrez un emoji
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            {ALL_PERMISSIONS.map((perm) => {
-              const isEnabled = permissions.has(perm.key);
-              const isDisabled = perm.key !== 'administrator' && isAdmin;
-
-              return (
-                <div
-                  key={perm.key}
-                  className={cn(
-                    'flex items-center justify-between p-3 rounded-lg transition-colors',
-                    isEnabled ? 'bg-primary/5' : 'bg-muted/30',
-                    isDisabled && 'opacity-50'
-                  )}
-                >
-                  <div className="flex-1 mr-4">
-                    <p className="text-sm font-medium">{perm.label}</p>
-                    <p className="text-xs text-muted-foreground">{perm.description}</p>
-                  </div>
-                  <Switch
-                    checked={isEnabled || isDisabled}
-                    onCheckedChange={() => togglePermission(perm.key)}
-                    disabled={isDisabled}
-                  />
-                </div>
-              );
-            })}
+      {/* Hoist Option - Above permissions */}
+      <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 text-primary" />
+            <div>
+              <Label className="text-sm font-medium">Afficher séparément dans la liste des membres</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Les membres ayant ce rôle seront affichés dans un groupe séparé
+              </p>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+          <Switch
+            checked={hoist}
+            onCheckedChange={setHoist}
+            disabled={role.is_default}
+          />
+        </div>
+      </div>
+
+      {/* Permissions */}
+      <div>
+        <Label className="mb-4 block">Permissions</Label>
+        {role.is_default && (
+          <p className="text-sm text-muted-foreground mb-4">
+            Le rôle @everyone est le rôle par défaut attribué à tous les membres.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {ALL_PERMISSIONS.map((perm) => {
+            const isEnabled = permissions.has(perm.key);
+            const isDisabled = perm.key !== 'administrator' && isAdmin;
+
+            return (
+              <div
+                key={perm.key}
+                className={cn(
+                  'flex items-center justify-between p-3 rounded-lg transition-colors',
+                  isEnabled ? 'bg-primary/5' : 'bg-muted/30',
+                  isDisabled && 'opacity-50'
+                )}
+              >
+                <div className="flex-1 mr-4">
+                  <p className="text-sm font-medium">{perm.label}</p>
+                  <p className="text-xs text-muted-foreground">{perm.description}</p>
+                </div>
+                <Switch
+                  checked={isEnabled || isDisabled}
+                  onCheckedChange={() => togglePermission(perm.key)}
+                  disabled={isDisabled}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Save Button */}
       {hasChanges && (

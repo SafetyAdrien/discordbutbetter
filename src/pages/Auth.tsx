@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Gamepad2, Check, X } from 'lucide-react';
+import { Loader2, Gamepad2, Check, X, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { checkPasswordPwned } from '@/lib/password-security';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Email invalide').max(255, 'Email trop long'),
@@ -35,7 +37,12 @@ const signupSchema = z.object({
       (val) => !val || /^\+?[0-9]{10,15}$/.test(val),
       'Format de téléphone invalide'
     ),
-  password: z.string().min(6, 'Mot de passe trop court (min 6 caractères)'),
+  password: z
+    .string()
+    .min(8, 'Mot de passe trop court (min 8 caractères)')
+    .regex(/[A-Z]/, 'Doit contenir au moins une majuscule')
+    .regex(/[a-z]/, 'Doit contenir au moins une minuscule')
+    .regex(/[0-9]/, 'Doit contenir au moins un chiffre'),
 });
 
 export default function Auth() {
@@ -53,6 +60,10 @@ export default function Auth() {
   // Username availability state
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
+  
+  // Password security state
+  const [checkingPassword, setCheckingPassword] = useState(false);
+  const [passwordPwnedCount, setPasswordPwnedCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -172,7 +183,29 @@ export default function Auth() {
       return;
     }
 
+    // Check if password has been compromised
+    setCheckingPassword(true);
     setLoading(true);
+    
+    try {
+      const pwnedCount = await checkPasswordPwned(password);
+      setPasswordPwnedCount(pwnedCount);
+      
+      if (pwnedCount > 0) {
+        setErrors({ 
+          password: `Ce mot de passe a été trouvé dans ${pwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
+        });
+        setLoading(false);
+        setCheckingPassword(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking password:', error);
+      // Continue with registration if check fails
+    }
+    
+    setCheckingPassword(false);
+
     const { error } = await signUp(email, password, username, displayName, phone || undefined);
     setLoading(false);
 
@@ -357,23 +390,30 @@ export default function Auth() {
                     type="password"
                     placeholder="••••••••"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordPwnedCount(null); // Reset pwned check on change
+                    }}
                     className={errors.password ? 'border-destructive' : ''}
                   />
+                  <PasswordStrengthIndicator password={password} />
                   {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password}</p>
+                    <div className="flex items-start gap-2 text-sm text-destructive">
+                      <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                      <p>{errors.password}</p>
+                    </div>
                   )}
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || usernameAvailable === false}
+                  disabled={loading || usernameAvailable === false || checkingPassword}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Création...
+                      {checkingPassword ? 'Vérification de sécurité...' : 'Création...'}
                     </>
                   ) : (
                     "S'inscrire"

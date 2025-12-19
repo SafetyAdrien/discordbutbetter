@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { useDMConversations, DMConversation } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useState, useEffect } from 'react';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -16,6 +17,31 @@ function formatCompactTimestamp(date: Date): string {
     return format(date, 'EEE', { locale: fr });
   }
   return format(date, 'dd/MM', { locale: fr });
+}
+
+function useRealtimeTimestamp(date: Date): string {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const getInterval = () => {
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      
+      if (diff < 60 * 1000) return 10 * 1000; // < 1 min: every 10s
+      if (isToday(date)) return 60 * 1000;    // Today: every minute
+      return 60 * 60 * 1000;                   // Older: every hour
+    };
+
+    const interval = setInterval(() => setTick(t => t + 1), getInterval());
+    return () => clearInterval(interval);
+  }, [date]);
+
+  return formatCompactTimestamp(date);
+}
+
+function RealtimeTimestamp({ date }: { date: Date }) {
+  const timestamp = useRealtimeTimestamp(date);
+  return <span className="text-[11px] text-muted-foreground">{timestamp}</span>;
 }
 import { MessageCircle, User, Phone, X, Trash2 } from 'lucide-react';
 import {
@@ -164,9 +190,7 @@ function DMConversationItem({
               </span>
             )}
             {conversation.lastMessage && (
-              <span className="text-[11px] text-muted-foreground">
-                {formatCompactTimestamp(new Date(conversation.lastMessage.created_at))}
-              </span>
+              <RealtimeTimestamp date={new Date(conversation.lastMessage.created_at)} />
             )}
           </div>
         </button>

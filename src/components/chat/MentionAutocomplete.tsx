@@ -34,6 +34,7 @@ interface MentionAutocompleteProps {
   onClose: () => void;
   selectedIndex: number;
   onIndexChange: (index: number) => void;
+  canMentionEveryone?: boolean;
 }
 
 export function MentionAutocomplete({
@@ -46,6 +47,7 @@ export function MentionAutocomplete({
   onClose,
   selectedIndex,
   onIndexChange,
+  canMentionEveryone = true,
 }: MentionAutocompleteProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -60,11 +62,13 @@ export function MentionAutocomplete({
     }
 
     if (type === "role") {
-      // Include @everyone and @here as special options
-      const specialRoles = [
-        { id: "everyone", name: "everyone", color: "#5865f2" },
-        { id: "here", name: "here", color: "#5865f2" },
-      ].filter((r) => r.name.includes(q));
+      // Include @everyone and @here as special options only if user has permission
+      const specialRoles = canMentionEveryone
+        ? [
+            { id: "everyone", name: "everyone", color: "#5865f2" },
+            { id: "here", name: "here", color: "#5865f2" },
+          ].filter((r) => r.name.includes(q))
+        : [];
 
       const filteredRoles = roles.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
 

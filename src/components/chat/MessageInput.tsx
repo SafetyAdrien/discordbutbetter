@@ -39,6 +39,7 @@ interface MessageInputProps {
   // Additional permission flags
   canAttachFiles?: boolean;
   canCreatePolls?: boolean;
+  canMentionEveryone?: boolean;
 }
 
 interface MentionState {
@@ -74,6 +75,7 @@ export function MessageInput({
   permissionDeniedMessage,
   canAttachFiles = true,
   canCreatePolls = true,
+  canMentionEveryone = true,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -372,6 +374,7 @@ export function MessageInput({
             onClose={() => setMentionState(null)}
             selectedIndex={mentionSelectedIndex}
             onIndexChange={setMentionSelectedIndex}
+            canMentionEveryone={canMentionEveryone}
           />
         )}
         

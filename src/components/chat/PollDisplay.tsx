@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Poll, PollVote, useVotePoll, useRemoveVote } from '@/hooks/usePolls';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { isPast } from 'date-fns';
-import { Check } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
@@ -85,6 +86,9 @@ export function PollDisplay({
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
 
+  // Check vote permission
+  const { data: canVoteInPolls = true } = useHasChannelPermission(channelId, 'vote_in_polls');
+
   const userVotes = useMemo(() => 
     poll.votes.filter(v => v.user_id === user?.id).map(v => v.option_id), 
     [poll.votes, user?.id]
@@ -92,6 +96,7 @@ export function PollDisplay({
   const hasVoted = userVotes.length > 0;
   const totalVotes = poll.votes.length;
   const isExpired = poll.expires_at ? isPast(new Date(poll.expires_at)) : false;
+  const canVote = canVoteInPolls && !isExpired;
 
   // Real-time countdown state
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
@@ -181,7 +186,7 @@ export function PollDisplay({
   const shouldShowResults = showResults || hasVoted || isExpired;
 
   const handleOptionClick = (optionId: string) => {
-    if (isExpired) return;
+    if (!canVote) return;
     if (showResults && !hasVoted) return;
 
     if (hasVoted) {
@@ -235,7 +240,14 @@ export function PollDisplay({
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         
-        {!hasVoted && !isExpired && !showResults && (
+        {!hasVoted && !canVote && !isExpired && (
+          <p className="text-muted-foreground py-0 text-xs font-thin flex items-center gap-1">
+            <Lock className="w-3 h-3" />
+            Vous n'avez pas la permission de voter
+          </p>
+        )}
+        
+        {!hasVoted && canVote && !showResults && (
           <p className="text-muted-foreground py-0 text-xs font-thin">
             {poll.allow_multiple ? 'Sélectionnez une ou plusieurs réponses' : 'Sélectionnez une réponse'}
           </p>
@@ -253,7 +265,7 @@ export function PollDisplay({
               <button
                 key={option.id}
                 onClick={() => handleOptionClick(option.id)}
-                disabled={(isExpired && !hasVoted) || (showResults && !hasVoted)}
+                disabled={(!canVote && !hasVoted) || (showResults && !hasVoted)}
               className={cn(
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted
@@ -345,7 +357,7 @@ export function PollDisplay({
           </div>
 
           <div className="flex items-center gap-2">
-            {!shouldShowResults && !hasVoted && !isExpired && (
+            {!shouldShowResults && !hasVoted && canVote && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -356,7 +368,7 @@ export function PollDisplay({
               </Button>
             )}
             
-            {showResults && !hasVoted && !isExpired && (
+            {showResults && !hasVoted && canVote && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -367,7 +379,7 @@ export function PollDisplay({
               </Button>
             )}
             
-            {!hasVoted && !isExpired && selectedOptions.length > 0 && (
+            {!hasVoted && canVote && selectedOptions.length > 0 && (
               <Button
                 onClick={handleVote}
                 disabled={votePoll.isPending}

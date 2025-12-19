@@ -18,6 +18,7 @@ import {
   useUpdateSelfMute
 } from '@/hooks/useStageChannel';
 import { useStageWebRTC } from '@/hooks/useStageWebRTC';
+import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { soundEffects } from '@/utils/audio/SoundEffects';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -51,12 +52,37 @@ interface StageChannelProps {
     description?: string;
   };
   serverId: string;
-  canModerate: boolean;
 }
 
-export function StageChannel({ channel, serverId, canModerate }: StageChannelProps) {
+export function StageChannel({ channel, serverId }: StageChannelProps) {
   const { user } = useAuth();
   const [showAudience, setShowAudience] = useState(true);
+  
+  // Reactive permissions check
+  const { can: canPerm } = useMultipleChannelPermissions(channel.id, [
+    'start_stage_session',
+    'end_stage_session',
+    'become_speaker',
+    'request_to_speak',
+    'moderate_stage',
+    'invite_stage_speaker',
+    'connect_voice',
+    'mute_members',
+    'move_members',
+  ]);
+  
+  const canStartSession = canPerm('start_stage_session');
+  const canEndSession = canPerm('end_stage_session');
+  const canBecomeSpeaker = canPerm('become_speaker');
+  const canRequestToSpeak = canPerm('request_to_speak');
+  const canModerateStage = canPerm('moderate_stage');
+  const canInviteSpeaker = canPerm('invite_stage_speaker');
+  const canConnect = canPerm('connect_voice');
+  const canMuteMembers = canPerm('mute_members');
+  const canMoveMembers = canPerm('move_members');
+  
+  // Combined moderation capability
+  const canModerate = canModerateStage || canStartSession || canEndSession;
   
   // Data hooks
   const { data: session, isLoading: sessionLoading } = useStageSession(channel.id);

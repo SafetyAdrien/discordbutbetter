@@ -348,7 +348,7 @@ export function ServerList({
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over, delta } = event;
+    const { active, over } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
@@ -356,21 +356,13 @@ export function ServerList({
 
     setOverId(over.id as string);
 
-    // Calculate cursor position
-    const overRect = over.rect;
-    if (overRect) {
-      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
-      let clientY = 0;
-      if (activatorEvent) {
-        if ('clientY' in activatorEvent) {
-          clientY = activatorEvent.clientY + delta.y;
-        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
-          clientY = activatorEvent.touches[0].clientY + delta.y;
-        }
-      }
-      const middleY = overRect.top + overRect.height / 2;
-      setDropPosition(clientY < middleY ? 'before' : 'after');
-    }
+    // Determine position based on relative indices
+    const activeIndex = sortedServers.findIndex(s => s.id === active.id);
+    const overIndex = sortedServers.findIndex(s => s.id === over.id);
+    
+    // If dragging from below to above, show indicator before the target
+    // If dragging from above to below, show indicator after the target
+    setDropPosition(activeIndex > overIndex ? 'before' : 'after');
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

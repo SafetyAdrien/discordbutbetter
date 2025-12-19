@@ -116,6 +116,9 @@
     --popover: 231 24% 11%;
     --popover-foreground: 220 6% 86%;
 
+    /* Toolbar background: #2b3250 */
+    --toolbar: 229 30% 24%;
+
     --primary: 186 100% 50%;
     --primary-foreground: 233 30% 8%;
 

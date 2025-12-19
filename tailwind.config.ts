@@ -52,6 +52,7 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        toolbar: "hsl(var(--toolbar))",
         // Custom gaming colors
         glow: {
           primary: "hsl(var(--glow-primary))",

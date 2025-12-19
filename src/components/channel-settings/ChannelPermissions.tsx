@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PermissionState } from '@/components/ui/permission-toggle';
 import { PermissionCategoryAccordion } from '@/components/ui/permission-category-accordion';
-import { RefreshCw, Loader2, Plus, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Loader2, Plus, RotateCcw, CheckCircle2, ShieldAlert, Users } from 'lucide-react';
 import { useServerRoles } from '@/hooks/useRoles';
 import { 
   useChannelPermissionOverrides, 
@@ -41,16 +41,27 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
   // Get permission categories based on channel type
   const permissionCategories = getPermissionsForChannelType(channelType);
 
-  // Get roles that already have overrides for this channel
+  // Find @everyone role (is_default === true)
+  const everyoneRole = roles?.find(r => r.is_default);
+
+  // Get roles that have overrides (excluding @everyone which is always shown)
   const rolesWithOverrides = roles?.filter(role => 
-    overrides?.some(o => o.role_id === role.id)
+    !role.is_default && overrides?.some(o => o.role_id === role.id)
   ) || [];
+
+  // Select @everyone by default
+  useEffect(() => {
+    if (everyoneRole && !selectedRole) {
+      setSelectedRole(everyoneRole.id);
+    }
+  }, [everyoneRole, selectedRole]);
 
   const hasOverrides = overrides && overrides.length > 0;
   const selectedRoleHasOverrides = selectedRole && overrides?.some(o => o.role_id === selectedRole);
   const selectedRoleOverrideCount = selectedRole 
     ? overrides?.filter(o => o.role_id === selectedRole).length || 0 
     : 0;
+  const isEveryoneSelected = selectedRole === everyoneRole?.id;
 
   useEffect(() => {
     if (setOverride.isSuccess || removeOverride.isSuccess) {
@@ -63,7 +74,12 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
   const handleSync = async () => {
     try {
       await syncWithCategory.mutateAsync({ channelId });
-      setSelectedRole(null);
+      // Re-select @everyone after sync
+      if (everyoneRole) {
+        setSelectedRole(everyoneRole.id);
+      } else {
+        setSelectedRole(null);
+      }
       toast.success('Permissions synchronisées avec la catégorie');
     } catch {
       toast.error('Erreur lors de la synchronisation');
@@ -71,10 +87,14 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
   };
 
   const handleResetRole = async () => {
-    if (!selectedRole) return;
+    if (!selectedRole || isEveryoneSelected) return;
     
     try {
       await resetRoleOverrides.mutateAsync({ channelId, roleId: selectedRole });
+      // After reset, go back to @everyone
+      if (everyoneRole) {
+        setSelectedRole(everyoneRole.id);
+      }
       toast.success('Permissions du rôle réinitialisées');
     } catch {
       toast.error('Erreur lors de la réinitialisation');
@@ -153,6 +173,19 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
         )}
       </div>
 
+      {/* Permission scope warning */}
+      <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+        <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+            Permissions des membres uniquement
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Les restrictions définies ici n'affectent pas les administrateurs ni les propriétaires du serveur.
+          </p>
+        </div>
+      </div>
+
       {/* Sync with category */}
       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
         <div className="space-y-1">
@@ -183,6 +216,25 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
       <div className="space-y-2">
         <Label>Sélectionner un rôle</Label>
         <div className="flex flex-wrap gap-2">
+          {/* @everyone role - always first and always visible */}
+          {everyoneRole && (
+            <Button
+              variant={selectedRole === everyoneRole.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedRole(everyoneRole.id)}
+              className="border-muted-foreground/30"
+            >
+              <Users className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+              @everyone
+              {overrides?.filter(o => o.role_id === everyoneRole.id).length ? (
+                <Badge variant="secondary" className="ml-2 text-xs px-1.5">
+                  {overrides.filter(o => o.role_id === everyoneRole.id).length}
+                </Badge>
+              ) : null}
+            </Button>
+          )}
+
+          {/* Other roles with overrides */}
           {rolesWithOverrides.map((role) => (
             <Button
               key={role.id}
@@ -201,6 +253,8 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
               </Badge>
             </Button>
           ))}
+
+          {/* Add role popover */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="border-dashed">
@@ -210,7 +264,9 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
             <PopoverContent className="w-56 p-2" align="start">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground px-2 py-1">Ajouter un rôle</p>
-                {roles?.filter(role => !rolesWithOverrides.some(r => r.id === role.id)).map((role) => (
+                {roles?.filter(role => 
+                  !role.is_default && !rolesWithOverrides.some(r => r.id === role.id)
+                ).map((role) => (
                   <button
                     key={role.id}
                     onClick={() => setSelectedRole(role.id)}
@@ -223,7 +279,9 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
                     {role.name}
                   </button>
                 ))}
-                {roles?.filter(role => !rolesWithOverrides.some(r => r.id === role.id)).length === 0 && (
+                {roles?.filter(role => 
+                  !role.is_default && !rolesWithOverrides.some(r => r.id === role.id)
+                ).length === 0 && (
                   <p className="text-xs text-muted-foreground px-2 py-2">Tous les rôles ont déjà des permissions</p>
                 )}
               </div>
@@ -237,7 +295,8 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
         <div className="space-y-3 mt-4">
           <div className="flex items-center justify-between">
             <Label>Permissions du salon</Label>
-            {selectedRoleHasOverrides && (
+            {/* Only show reset for non-@everyone roles that have overrides */}
+            {selectedRoleHasOverrides && !isEveryoneSelected && (
               <Button
                 variant="ghost"
                 size="sm"

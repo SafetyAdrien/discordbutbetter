@@ -102,22 +102,21 @@ export function useSendFriendRequest() {
     mutationFn: async (username: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Nettoyer le username : retirer le @ au début et normaliser en minuscules
-      const cleanUsername = username.replace(/^@/, '').trim().toLowerCase();
+      // Nettoyer le username : retirer le @ au début et normaliser
+      const cleanUsername = username.replace(/^@/, '').trim();
 
-      // Find user by username (recherche insensible à la casse)
-      const { data: targetUser, error: findError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, status, custom_status')
-        .ilike('username', cleanUsername)
-        .maybeSingle();
+      // Utiliser la fonction RPC sécurisée pour trouver l'utilisateur
+      const { data: targetUsers, error: findError } = await supabase
+        .rpc('find_user_for_friend_request', { target_username: cleanUsername });
 
-      if (findError || !targetUser) {
-        throw new Error('Utilisateur non trouvé');
+      if (findError) {
+        throw new Error('Erreur lors de la recherche');
       }
 
-      if (targetUser.id === user.id) {
-        throw new Error('Vous ne pouvez pas vous ajouter vous-même');
+      const targetUser = targetUsers?.[0];
+
+      if (!targetUser) {
+        throw new Error('Utilisateur non trouvé');
       }
 
       // Check if friendship already exists

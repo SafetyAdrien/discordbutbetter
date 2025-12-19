@@ -5,6 +5,7 @@ export interface SummaryTopic {
   title: string;
   summary: string;
   unreadCount: number;
+  messageCount: number;
   timeAgo: string;
   participants: string[];
   extra: number;
@@ -16,36 +17,51 @@ export interface SummaryTopic {
 export const MOCK_SUMMARIES: SummaryTopic[] = [
   {
     id: 1,
-    title: "Cool PC Experiments",
-    summary: "Discussion about cool PC experiments and regions exclusive features.",
-    unreadCount: 10,
-    timeAgo: "26 Min",
-    participants: ["user1.png", "user2.png", "user3.png"],
-    extra: 3,
+    title: "Lc.E",
+    summary: "Discussion about lc.e and its use in the conversation.",
+    unreadCount: 0,
+    messageCount: 17,
+    timeAgo: "2d Ago",
+    participants: ["user1.png"],
+    extra: 0,
     newMessages: 55,
     newSummaries: 7,
   },
   {
     id: 2,
-    title: "Badge Goblins",
-    summary: "Excitement over adding a badge for renting and the need for decent cashflow.",
-    unreadCount: 8,
-    timeAgo: "1 H",
-    participants: ["user4.png", "user5.png"],
+    title: "Quests And New Quests",
+    summary: "Discussion about quests and the availability of new quests at Celestia's place.",
+    unreadCount: 0,
+    messageCount: 19,
+    timeAgo: "2d Ago",
+    participants: ["user2.png"],
     extra: 0,
     newMessages: 23,
     newSummaries: 3,
   },
   {
     id: 3,
-    title: "Server Updates",
-    summary: "New features coming to the server including voice chat improvements.",
-    unreadCount: 5,
-    timeAgo: "2 H",
-    participants: ["user1.png", "user3.png"],
-    extra: 1,
+    title: "Tortoise Creation",
+    summary: "Discussion about creating tortoises and tagging.",
+    unreadCount: 0,
+    messageCount: 7,
+    timeAgo: "2d Ago",
+    participants: ["user3.png"],
+    extra: 0,
     newMessages: 12,
     newSummaries: 2,
+  },
+  {
+    id: 4,
+    title: "Orbtousd Vs. Google",
+    summary: "Conversation about using different orbtousd addresses in the chat.",
+    unreadCount: 0,
+    messageCount: 19,
+    timeAgo: "4d Ago",
+    participants: ["user4.png"],
+    extra: 0,
+    newMessages: 8,
+    newSummaries: 1,
   },
 ];
 

@@ -33,6 +33,16 @@ import type { Server, Message, User } from '@/types/app';
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  // Track window resize for responsive behavior
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const isMobile = windowWidth < 768;
   
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -441,8 +451,8 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Panel - Member List (only when no thread is open for text channels) */}
-          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && (
+          {/* Right Panel - Member List (only when no thread is open for text channels, and not on mobile) */}
+          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && !isMobile && (
             <MemberList 
               members={memberListData} 
               ownerId={activeServer.owner_id || ''} 

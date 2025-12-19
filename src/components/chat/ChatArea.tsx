@@ -342,6 +342,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   },
   ref,
 ) {
+  const isMobile = window.innerWidth < 768;
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
   const [selectedUser, setSelectedUser] = useState<{
@@ -674,23 +675,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   return (
     <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
-        <div className="flex items-center gap-2">
-          <Hash className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <h2 className="font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{channel.name}</h2>
         </div>
 
         {channel.description && (
           <>
-            <div className="w-px h-6 bg-border" />
+            <div className="w-px h-6 bg-border hidden sm:block" />
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[300px]">
+                <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-80 p-3">
+              <PopoverContent side="bottom" align="start" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-3">
                 <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
                 <p className="text-sm text-muted-foreground">{channel.description}</p>
               </PopoverContent>
@@ -732,7 +733,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <StreamlineThreads className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-96 p-0">
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
               <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
             </PopoverContent>
           </Popover>
@@ -749,7 +750,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-96 p-0">
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
               <div className="p-3 border-b border-border">
                 <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
               </div>
@@ -805,7 +806,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <Inbox className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-80 p-3">
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-72 md:w-80 max-w-80 p-3">
               <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
               <div className="text-sm text-muted-foreground/70 text-center py-6">Aucune notification récente.</div>
             </PopoverContent>

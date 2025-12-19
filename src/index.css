@@ -645,4 +645,27 @@
   .animate-vote-pop {
     animation: vote-pop 0.3s ease-out forwards;
   }
+
+  /* Responsive utilities for chat interface */
+  .responsive-popover {
+    @apply w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-[400px];
+  }
+
+  .responsive-header-title {
+    @apply truncate max-w-[100px] sm:max-w-[150px] md:max-w-none;
+  }
+
+  .responsive-description {
+    @apply hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0;
+  }
+
+  /* Hide elements on mobile */
+  .hide-mobile {
+    @apply hidden sm:flex;
+  }
+
+  /* Compact buttons on mobile */
+  .responsive-btn-text {
+    @apply hidden sm:inline;
+  }
 }

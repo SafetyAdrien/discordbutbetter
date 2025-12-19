@@ -24,15 +24,15 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
   const mediaItems: { id: string; url: string; name: string; type: 'image' | 'video'; uploadedAt: Date }[] = [];
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <StreamlineMedia className="w-4 h-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <StreamlineMedia className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <h2 className="font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{channel.name}</h2>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
             <button
               onClick={() => setViewMode('grid')}
@@ -54,8 +54,8 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             </button>
           </div>
           <Button size="sm">
-            <Upload className="w-4 h-4 mr-2" />
-            Téléverser
+            <Upload className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Téléverser</span>
           </Button>
           {onToggleMembers && (
             <Button

@@ -47,24 +47,24 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
     events.filter((e) => isSameDay(e.startDate, date));
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <StreamlineCalendar className="w-4 h-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <StreamlineCalendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <h2 className="font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{channel.name}</h2>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           <Button size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Nouvel événement
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nouvel événement</span>
           </Button>
         </div>
       </div>
 
       {/* Calendar Navigation */}
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="px-2 sm:px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant="ghost"
             size="iconSm"
@@ -72,7 +72,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <h3 className="font-semibold min-w-[150px] text-center capitalize">
+          <h3 className="font-semibold min-w-[100px] sm:min-w-[150px] text-center capitalize text-sm sm:text-base">
             {format(currentMonth, 'MMMM yyyy', { locale: fr })}
           </h3>
           <Button
@@ -83,8 +83,9 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>
-          Aujourd'hui
+        <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())} className="text-xs sm:text-sm">
+          <span className="hidden sm:inline">Aujourd'hui</span>
+          <span className="sm:hidden">Auj.</span>
         </Button>
       </div>
 

@@ -197,28 +197,29 @@ export function StageChannel({ channel, serverId, canModerate }: StageChannelPro
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Header with status */}
       <div className={cn(
-        "h-12 border-b flex items-center px-4 justify-between transition-colors",
+        "h-12 border-b flex items-center px-2 sm:px-4 justify-between transition-colors gap-2",
         isLive ? "bg-[hsl(var(--online))]/10 border-[hsl(var(--online))]" : "border-border"
       )}>
-        <div className="flex items-center gap-2">
-          <Radio className={cn("w-5 h-5", isLive && "text-[hsl(var(--online))] animate-pulse")} />
-          <span className="font-semibold">{channel.name}</span>
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <Radio className={cn("w-5 h-5 flex-shrink-0", isLive && "text-[hsl(var(--online))] animate-pulse")} />
+          <span className="font-semibold truncate max-w-[80px] sm:max-w-[120px] md:max-w-none">{channel.name}</span>
           {isLive && (
-            <Badge variant="secondary" className="bg-[hsl(var(--online))] text-white text-xs">
-              EN DIRECT
+            <Badge variant="secondary" className="bg-[hsl(var(--online))] text-white text-xs flex-shrink-0">
+              <span className="hidden sm:inline">EN DIRECT</span>
+              <span className="sm:hidden">LIVE</span>
             </Badge>
           )}
           {isPreLive && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs flex-shrink-0">
               PRÉ-LIVE
             </Badge>
           )}
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <span className="text-sm text-muted-foreground">
             <Users className="w-4 h-4 inline mr-1" />
             {participants.length}
@@ -228,13 +229,13 @@ export function StageChannel({ channel, serverId, canModerate }: StageChannelPro
             <>
               {isPreLive && (
                 <Button size="sm" onClick={handleGoLive} className="bg-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/90">
-                  <Play className="w-4 h-4 mr-1" />
-                  Passer en direct
+                  <Play className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Passer en direct</span>
                 </Button>
               )}
               <Button size="sm" variant="destructive" onClick={handleEndSession}>
-                <Square className="w-4 h-4 mr-1" />
-                Terminer
+                <Square className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Terminer</span>
               </Button>
             </>
           )}

@@ -11,9 +11,9 @@ export function UploadDropOverlay({ channelName }: UploadDropOverlayProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="absolute inset-0 z-50 flex items-center justify-center bg-[#5865f2]/90 backdrop-blur-sm"
+      className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[6px] bg-black/35"
     >
-      <div className="relative flex flex-col items-center justify-center gap-4 p-8 rounded-xl border-2 border-dashed border-white/60">
+      <div className="relative flex flex-col items-center justify-center gap-4 p-8 rounded-xl border-2 border-dashed border-white/60 bg-[#5865f2]">
         {/* Animated file stack illustration */}
         <motion.div
           animate={{ y: [0, -8, 0] }}

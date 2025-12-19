@@ -19,6 +19,7 @@ import {
   Headphones,
   Eye,
   Trophy,
+  Inbox,
 } from "lucide-react";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -31,8 +32,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
 import { useMembers } from "@/hooks/useMembers";
@@ -562,8 +565,25 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   return (
     <>
       <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50">
-        {/* Search input */}
+        {/* Header with Inbox and Search */}
         <div className="px-3 pt-3 border-[#151723] bg-[#161927]">
+          {/* Inbox Button */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Membres</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Inbox className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-72 p-3">
+                <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
+                <div className="text-sm text-muted-foreground/70 text-center py-6">Aucune notification récente.</div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          {/* Search input */}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
             <Input

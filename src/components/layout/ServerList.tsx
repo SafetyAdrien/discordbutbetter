@@ -469,7 +469,7 @@ export function ServerList({
                 isActive={activeServerId === server.id}
                 unreadCount={unreadCounts[server.id] ?? 0}
                 isShaking={shakingServers.has(server.id)}
-                showDropIndicator={overId === server.id && activeId !== server.id && !(dropPosition === 'before' && server.id === serverIds[0])}
+                showDropIndicator={overId === server.id && activeId !== server.id}
                 dropPosition={dropPosition}
                 onClick={() => handleServerClick(server.id)}
                 onOpenSettings={() => onOpenServerSettings?.(server.id)}
@@ -488,15 +488,7 @@ export function ServerList({
             easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
           }}
         >
-          {activeServer && (
-            <div className="relative">
-              <ServerDragOverlay server={activeServer} />
-              {/* Indicator below dragging icon when dropping to first position */}
-              {overId && dropPosition === 'before' && overId === serverIds[0] && (
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-3 w-10 h-[2px] bg-[#5865f2] rounded-full" />
-              )}
-            </div>
-          )}
+          {activeServer && <ServerDragOverlay server={activeServer} />}
         </DragOverlay>
       </DndContext>
 

@@ -2,13 +2,14 @@ import { Button } from '@/components/ui/button';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { Loader2 } from 'lucide-react';
 
-interface VoiceEmptyStateProps {
+export interface VoiceEmptyStateProps {
   channelName: string;
-  onJoin: () => void;
+  onJoin?: () => void;
   isConnecting: boolean;
+  permissionDenied?: boolean;
 }
 
-export function VoiceEmptyState({ channelName, onJoin, isConnecting }: VoiceEmptyStateProps) {
+export function VoiceEmptyState({ channelName, onJoin, isConnecting, permissionDenied }: VoiceEmptyStateProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
       {/* Gradient Background */}
@@ -30,20 +31,24 @@ export function VoiceEmptyState({ channelName, onJoin, isConnecting }: VoiceEmpt
         <h2 className="text-2xl font-bold text-white mb-2">{channelName}</h2>
         <p className="text-white/60 mb-8">Personne n'est actuellement en vocal</p>
         
-        <Button
-          onClick={onJoin}
-          disabled={isConnecting}
-          className="bg-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/90 text-white px-8 py-6 text-lg rounded-full"
-        >
-          {isConnecting ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Connexion...
-            </>
-          ) : (
-            'Rejoindre le salon'
-          )}
-        </Button>
+        {permissionDenied ? (
+          <p className="text-white/60 text-sm">Vous n'avez pas la permission de rejoindre ce salon vocal.</p>
+        ) : (
+          <Button
+            onClick={onJoin}
+            disabled={isConnecting || !onJoin}
+            className="bg-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/90 text-white px-8 py-6 text-lg rounded-full"
+          >
+            {isConnecting ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Connexion...
+              </>
+            ) : (
+              'Rejoindre le salon'
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

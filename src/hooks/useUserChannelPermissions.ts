@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
@@ -48,6 +48,55 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
+}
+
+// Hook pour vérifier PLUSIEURS permissions en parallèle (optimisé)
+export function useMultipleChannelPermissions(channelId: string | null, permissions: ServerPermission[]) {
+  const { user } = useAuth();
+
+  const queries = useQueries({
+    queries: permissions.map((permission) => ({
+      queryKey: ['channel-permission', channelId, permission, user?.id],
+      queryFn: async (): Promise<{ permission: ServerPermission; granted: boolean }> => {
+        if (!channelId || !user?.id) return { permission, granted: false };
+
+        const { data, error } = await supabase.rpc('has_channel_permission', {
+          _user_id: user.id,
+          _channel_id: channelId,
+          _permission: permission,
+        });
+
+        if (error) {
+          console.error(`Error checking ${permission}:`, error);
+          return { permission, granted: false };
+        }
+
+        return { permission, granted: data ?? false };
+      },
+      enabled: !!channelId && !!user?.id,
+      staleTime: 0,
+      gcTime: 300000,
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    })),
+  });
+
+  // Build a map of permission -> granted
+  const permissionsMap = new Map<ServerPermission, boolean>();
+  queries.forEach((query, index) => {
+    permissionsMap.set(permissions[index], query.data?.granted ?? false);
+  });
+
+  const isLoading = queries.some(q => q.isLoading);
+  const isError = queries.some(q => q.isError);
+
+  return {
+    permissions: permissionsMap,
+    isLoading,
+    isError,
+    // Helper function to check a specific permission
+    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? false,
+  };
 }
 
 // Hook pour récupérer toutes les permissions d'un utilisateur sur un salon

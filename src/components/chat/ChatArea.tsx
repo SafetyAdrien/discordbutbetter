@@ -83,7 +83,7 @@ import { SummariesBar } from "@/components/summaries/SummariesBar";
 import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
 import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageAttachments";
-import { useHasChannelPermission } from "@/hooks/useUserChannelPermissions";
+import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -456,8 +456,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     likedCount,
   } = useSummaries(channel?.id);
 
-  // Check send_messages permission
-  const { data: canSendMessages = true } = useHasChannelPermission(channel.id, 'send_messages');
+  // Check multiple chat permissions reactively
+  const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
+    'send_messages',
+    'attach_files',
+    'add_reactions',
+    'create_polls',
+    'mention_everyone',
+    'create_public_threads',
+    'manage_messages',
+  ]);
+  
+  const canSendMessages = canPerm('send_messages');
+  const canAttachFiles = canPerm('attach_files');
+  const canAddReactions = canPerm('add_reactions');
+  const canCreatePolls = canPerm('create_polls');
+  const canMentionEveryone = canPerm('mention_everyone');
+  const canCreateThreads = canPerm('create_public_threads');
+  const canManageMessages = canPerm('manage_messages');
+  
   const permissionDeniedMessage = !canSendMessages 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
@@ -1079,18 +1096,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       isShiftPressed={isShiftPressed}
                       isOwnMessage={isOwnMessage}
                       onReply={() => handleReply(message)}
-                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                      onAddReaction={canAddReactions ? (emoji) => handleAddReaction(message.id, emoji) : undefined}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
                       onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                      onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
-                      onCreateThread={() => setCreateThreadForMessageId(message.id)}
-                      onPin={() => handlePinMessage(message.id)}
+                      onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
+                      onCreateThread={canCreateThreads ? () => setCreateThreadForMessageId(message.id) : undefined}
+                      onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}
                       isPinned={pinnedMessageIds.has(message.id)}
                       onDropdownOpenChange={(open) => {
                         setOpenDropdownMessageId(open ? message.id : null);
                         if (!open) setHoveredMessageId(null);
                       }}
+                      canAddReactions={canAddReactions}
                     />
                     {showAuthor ? (
                       <div className="relative">
@@ -1481,6 +1499,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onToggleSpoiler={toggleSpoiler}
           onClearAttachments={clearAttachments}
           permissionDeniedMessage={permissionDeniedMessage}
+          canAttachFiles={canAttachFiles}
+          canCreatePolls={canCreatePolls}
         />
       </div>
 

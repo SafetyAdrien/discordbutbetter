@@ -17,7 +17,7 @@ export interface UniversalMessageActionsProps {
   isPinned?: boolean;
   // Callbacks
   onReply: () => void;
-  onAddReaction: (emoji: string) => void;
+  onAddReaction?: (emoji: string) => void;
   onCopyLink: () => void;
   onCopyId: () => void;
   onEdit?: () => void;
@@ -28,6 +28,8 @@ export interface UniversalMessageActionsProps {
   onDropdownOpenChange?: (open: boolean) => void;
   // Optional custom action (e.g., Megaphone for announcements)
   customAction?: React.ReactNode;
+  // Permission flags
+  canAddReactions?: boolean;
 }
 export function UniversalMessageActions({
   isVisible,
@@ -43,7 +45,8 @@ export function UniversalMessageActions({
   onCreateThread,
   onPin,
   onDropdownOpenChange,
-  customAction
+  customAction,
+  canAddReactions = true
 }: UniversalMessageActionsProps) {
   if (!isVisible) return null;
 
@@ -100,10 +103,10 @@ export function UniversalMessageActions({
       </div>;
   }
 
-  // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
+  // Mode normal : 3 émojis (si permission), SmilePlus (si permission), Reply, MoreHorizontal
   return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-toolbar">
-      {/* 1. Exactement 3 réactions rapides */}
-      {QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
+      {/* 1. Exactement 3 réactions rapides (si permission) */}
+      {canAddReactions && onAddReaction && QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
           <TooltipTrigger asChild>
             <button onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded transition-colors text-base">
               {emoji}
@@ -112,21 +115,23 @@ export function UniversalMessageActions({
           <TooltipContent side="top">{emoji}</TooltipContent>
         </Tooltip>)}
       
-      {/* 2. Bouton ajouter réaction (visage +) */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="p-1.5 hover:bg-muted rounded transition-colors">
-            <SmilePlus className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent side="top" align="end" className="w-64 p-2">
-          <div className="grid grid-cols-8 gap-1">
-            {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded text-lg transition-colors">
-                {emoji}
-              </button>)}
-          </div>
-        </PopoverContent>
-      </Popover>
+      {/* 2. Bouton ajouter réaction (visage +) - si permission */}
+      {canAddReactions && onAddReaction && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="p-1.5 hover:bg-muted rounded transition-colors">
+              <SmilePlus className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="end" className="w-64 p-2">
+            <div className="grid grid-cols-8 gap-1">
+              {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded text-lg transition-colors">
+                  {emoji}
+                </button>)}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
       
       {/* Custom action slot (e.g., Megaphone for announcements) */}
       {customAction}

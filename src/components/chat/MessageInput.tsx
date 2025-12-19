@@ -36,6 +36,9 @@ interface MessageInputProps {
   onClearAttachments?: () => void;
   // Permission denied message - shows disabled state when set
   permissionDeniedMessage?: string;
+  // Additional permission flags
+  canAttachFiles?: boolean;
+  canCreatePolls?: boolean;
 }
 
 interface MentionState {
@@ -69,6 +72,8 @@ export function MessageInput({
   onToggleSpoiler,
   onClearAttachments,
   permissionDeniedMessage,
+  canAttachFiles = true,
+  canCreatePolls = true,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -381,18 +386,20 @@ export function MessageInput({
               </button>
             </PopoverTrigger>
             <PopoverContent side="top" align="start" className="w-48 p-1">
-              <button
-                type="button"
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                onClick={() => {
-                  setPlusMenuOpen(false);
-                  fileInputRef.current?.click();
-                }}
-              >
-                <Image className="w-4 h-4" />
-                <span>Ajouter une image</span>
-              </button>
-              {(channelId || threadId) && (
+              {canAttachFiles && (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <Image className="w-4 h-4" />
+                  <span>Ajouter une image</span>
+                </button>
+              )}
+              {(channelId || threadId) && canCreatePolls && (
                 <button
                   type="button"
                   className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
@@ -404,6 +411,9 @@ export function MessageInput({
                   <BarChart2 className="w-4 h-4" />
                   <span>Créer un sondage</span>
                 </button>
+              )}
+              {!canAttachFiles && !canCreatePolls && (
+                <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
               )}
             </PopoverContent>
           </Popover>

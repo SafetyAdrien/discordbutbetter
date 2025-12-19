@@ -27,7 +27,7 @@ import { useServerOrder } from '@/hooks/useServerOrder';
 import { useServerFolders } from '@/hooks/useServerFolders';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FOLDER_CREATION_THRESHOLD } from '@/types/serverFolder';
 import { SortableFolderItem } from '@/components/server-folders/SortableFolderItem';
@@ -234,9 +234,9 @@ function SortableServerIcon({
 }
 
 // Server Drag Overlay
-function ServerDragOverlay({ server }: { server: Server }) {
+const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ server }, ref) => {
   return (
-    <div className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
+    <div ref={ref} className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
       {server.icon ? (
         server.icon.startsWith('http') ? (
           <img 
@@ -254,7 +254,8 @@ function ServerDragOverlay({ server }: { server: Server }) {
       )}
     </div>
   );
-}
+});
+ServerDragOverlay.displayName = 'ServerDragOverlay';
 
 interface ServerListProps {
   servers: Server[];
@@ -275,7 +276,7 @@ export function ServerList({
 }: ServerListProps) {
   const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
-  const { sortServers, reorderServers } = useServerOrder();
+  const { serverOrder, sortServers, reorderServers } = useServerOrder();
   const { 
     folders, 
     createFolder, 
@@ -301,6 +302,15 @@ export function ServerList({
   const standaloneServers = useMemo(() => {
     return sortServers(servers.filter(s => !serverIdsInFolders.has(s.id)));
   }, [servers, serverIdsInFolders, sortServers]);
+
+  const getFullServerOrder = useCallback(() => {
+    const base = serverOrder.length ? [...serverOrder] : [];
+    const known = new Set(base);
+    servers.forEach((s) => {
+      if (!known.has(s.id)) base.push(s.id);
+    });
+    return base;
+  }, [serverOrder, servers]);
 
   // Create a combined list of items for the sortable context
   // IMPORTANT: Include nested server IDs so they can be dragged out of folders
@@ -362,6 +372,12 @@ export function ServerList({
     
     return null;
   }, [activeId, servers]);
+
+  const dndModifiers = useMemo(() => {
+    const idStr = activeId ? String(activeId) : '';
+    // Allow nested items to slightly move horizontally so they can collide with the main list (Discord-like extraction)
+    return idStr.startsWith('nested-') ? [] : [restrictToVerticalAxis];
+  }, [activeId]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -543,13 +559,20 @@ export function ServerList({
     setOverId(null);
     clearMergeState();
 
+    const activeIdStr = String(active.id);
+
     if (!over) {
-      // Dropped outside - if it's a nested server, extract it
-      const activeIdStr = String(active.id);
+      // Dropped outside - if it's a nested server, extract it to the end of the main list
       if (activeIdStr.startsWith('nested-')) {
         const parts = activeIdStr.split('-');
         const folderId = parts[1];
         const serverId = parts[parts.length - 1];
+
+        const full = getFullServerOrder();
+        const without = full.filter((id) => id !== serverId);
+        without.push(serverId);
+        reorderServers(without);
+
         removeServerFromFolder(folderId, serverId);
       }
       return;
@@ -557,21 +580,34 @@ export function ServerList({
 
     if (active.id === over.id) return;
 
-    const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
-    
+
     // Handle nested server being dragged out of folder
     if (activeIdStr.startsWith('nested-')) {
       const parts = activeIdStr.split('-');
       const sourceFolderId = parts[1];
       const serverId = parts[parts.length - 1];
-      
-      // If dropped on a standalone server, extract from folder
+
+      // Dropped onto a standalone server => extract and insert before/after that server
       if (overIdStr.startsWith('server-')) {
+        const targetServerId = overIdStr.replace('server-', '');
+
+        const full = getFullServerOrder();
+        const without = full.filter((id) => id !== serverId);
+        const targetIndex = without.indexOf(targetServerId);
+
+        if (targetIndex === -1) {
+          without.push(serverId);
+        } else {
+          const insertIndex = dropPosition === 'before' ? targetIndex : targetIndex + 1;
+          without.splice(insertIndex, 0, serverId);
+        }
+
+        reorderServers(without);
         removeServerFromFolder(sourceFolderId, serverId);
         return;
       }
-      
+
       // If dropped on a different folder, move to that folder
       if (overIdStr.startsWith('folder-')) {
         const targetFolderId = overIdStr.replace('folder-', '');
@@ -581,7 +617,7 @@ export function ServerList({
         }
         return;
       }
-      
+
       // If dropped on a nested server in a different folder, move to that folder
       if (overIdStr.startsWith('nested-')) {
         const overParts = overIdStr.split('-');
@@ -590,11 +626,11 @@ export function ServerList({
           removeServerFromFolder(sourceFolderId, serverId);
           addServerToFolder(targetFolderId, serverId);
         }
-        // Same folder - just reordering within folder (could implement later)
+        // Same folder - just reordering within folder (not in scope here)
         return;
       }
     }
-    
+
     // Handle standalone server being dragged onto a folder
     if (activeIdStr.startsWith('server-') && overIdStr.startsWith('folder-')) {
       const serverId = activeIdStr.replace('server-', '');
@@ -602,7 +638,7 @@ export function ServerList({
       addServerToFolder(folderId, serverId);
       return;
     }
-    
+
     // Handle standalone server being dragged onto a nested server (add to that folder)
     if (activeIdStr.startsWith('server-') && overIdStr.startsWith('nested-')) {
       const serverId = activeIdStr.replace('server-', '');
@@ -614,8 +650,8 @@ export function ServerList({
 
     // Handle regular reordering of standalone servers
     if (activeIdStr.startsWith('server-') && overIdStr.startsWith('server-')) {
-      const oldIndex = standaloneServers.findIndex(s => `server-${s.id}` === activeIdStr);
-      const overIndex = standaloneServers.findIndex(s => `server-${s.id}` === overIdStr);
+      const oldIndex = standaloneServers.findIndex((s) => `server-${s.id}` === activeIdStr);
+      const overIndex = standaloneServers.findIndex((s) => `server-${s.id}` === overIdStr);
 
       if (oldIndex === -1 || overIndex === -1) return;
 
@@ -625,9 +661,21 @@ export function ServerList({
       newIndex = Math.max(0, Math.min(newIndex, standaloneServers.length - 1));
 
       if (oldIndex !== newIndex) {
-        const serverIds = standaloneServers.map(s => s.id);
-        const newOrder = arrayMove(serverIds, oldIndex, newIndex);
-        reorderServers(newOrder);
+        const newStandaloneOrder = arrayMove(
+          standaloneServers.map((s) => s.id),
+          oldIndex,
+          newIndex
+        );
+
+        const full = getFullServerOrder();
+        const standaloneSet = new Set(newStandaloneOrder);
+        let i = 0;
+        const rebuilt = full.map((id) => (standaloneSet.has(id) ? newStandaloneOrder[i++] : id));
+
+        // Safety: append any standalone ids that weren't in the full order
+        for (; i < newStandaloneOrder.length; i++) rebuilt.push(newStandaloneOrder[i]);
+
+        reorderServers(rebuilt);
       }
     }
   };
@@ -690,7 +738,7 @@ export function ServerList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        modifiers={[restrictToVerticalAxis]}
+        modifiers={dndModifiers}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}

@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X, Users } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
@@ -28,6 +29,14 @@ import { MarkdownText } from '@/lib/markdown';
 import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageAttachments';
+import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
+
+const statusColors: Record<string, string> = {
+  online: 'bg-green-500',
+  idle: 'bg-yellow-500',
+  dnd: 'bg-red-500',
+  offline: 'bg-gray-500',
+};
 
 export interface DMConversationProps {
   conversationId: string;
@@ -41,9 +50,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [showMemberPanel, setShowMemberPanel] = useState(false);
+  const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const isShiftPressed = useShiftKey();
   const { startTyping, stopTyping } = useTypingIndicator(null, conversationId);
   const { markAsRead } = useUnreadCounts();
@@ -198,30 +209,59 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleVoiceCall}
-            disabled={startCall.isPending || !!activeCall}
-          >
-            <Phone className="w-4 h-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleVideoCall}
-            disabled={startCall.isPending || !!activeCall}
-          >
-            <Video className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Pin className="w-4 h-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleVoiceCall}
+                disabled={startCall.isPending || !!activeCall}
+              >
+                <Phone className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Appel vocal</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleVideoCall}
+                disabled={startCall.isPending || !!activeCall}
+              >
+                <Video className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Appel vidéo</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Pin className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Messages épinglés</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowMemberPanel(!showMemberPanel)}
+                className={showMemberPanel ? 'bg-muted' : ''}
+              >
+                <Users className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Liste des membres</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
+      <div className="flex-1 flex min-h-0">
+        {/* Messages */}
+        <ScrollArea className="flex-1 min-h-0">
         <div className="flex flex-col justify-end min-h-full p-4 space-y-0.5">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -394,6 +434,89 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         </div>
       </ScrollArea>
 
+        {/* Member Panel */}
+        {showMemberPanel && (
+          <div className="w-60 border-l border-border bg-card flex flex-col shrink-0">
+            <div className="p-3 border-b border-border">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Membres — 2
+              </h3>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-0.5">
+                {/* Current User */}
+                {profile && (
+                  <button
+                    onClick={() => setSelectedProfileUser({
+                      id: user?.id,
+                      displayName: profile.display_name,
+                      username: profile.username,
+                      avatar: profile.avatar_url,
+                      status: profile.status || 'offline',
+                      bio: profile.bio,
+                      banner_url: profile.banner_url,
+                    })}
+                    className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={profile.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                          {profile.display_name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
+                        statusColors[profile.status || 'offline']
+                      )} />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{profile.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{profile.username.toLowerCase()}
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* Other Participant */}
+                {participant && (
+                  <button
+                    onClick={() => setSelectedProfileUser({
+                      id: participant.id,
+                      displayName: participant.display_name,
+                      username: participant.username,
+                      avatar: participant.avatar_url,
+                      status: participant.status || 'offline',
+                    })}
+                    className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={participant.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                          {participant.display_name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
+                        statusColors[participant.status || 'offline']
+                      )} />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{participant.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{participant.username.toLowerCase()}
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+      </div>
+
       {/* Typing Indicator */}
       <TypingIndicator conversationId={conversationId} />
 
@@ -435,6 +558,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           toast.success('Signalement envoyé. Merci !');
           setReportingMessage(null);
         }}
+      />
+
+      {/* User Profile Popup */}
+      <UserProfilePopup
+        user={selectedProfileUser}
+        open={!!selectedProfileUser}
+        onOpenChange={(open) => !open && setSelectedProfileUser(null)}
       />
     </div>
   );

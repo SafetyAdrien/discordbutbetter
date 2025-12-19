@@ -32,7 +32,11 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
 
   const acceptedFriends = friends.filter(f => f.status === 'accepted');
   const pendingRequests = friends.filter(f => f.status === 'pending');
-  const onlineFriends = acceptedFriends.filter(f => f.profile.status === 'online');
+  const onlineFriends = acceptedFriends.filter(f => 
+    f.profile.status === 'online' || 
+    f.profile.status === 'idle' || 
+    f.profile.status === 'dnd'
+  );
 
   const filteredFriends = (list: typeof friends) => 
     list.filter(f => 
@@ -207,28 +211,48 @@ function PendingCard({
   onDecline: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-      <Avatar className="w-10 h-10">
+    <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors">
+      <Avatar className="w-8 h-8 shrink-0">
         <AvatarImage src={request.profile.avatar_url || undefined} />
-        <AvatarFallback className="bg-primary/20 text-primary">
+        <AvatarFallback className="bg-primary/20 text-primary text-sm">
           {request.profile.display_name.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{request.profile.display_name}</p>
-        <p className="text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-sm truncate">{request.profile.display_name}</p>
+          <span className="text-xs text-muted-foreground">@{request.profile.username}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
           {request.isIncoming ? 'Demande d\'ami reçue' : 'Demande envoyée'}
         </p>
       </div>
-      {request.isIncoming && (
-        <div className="flex gap-2">
-          <Button size="icon" variant="default" onClick={onAccept}>
+      {request.isIncoming ? (
+        <div className="flex gap-2 shrink-0">
+          <Button 
+            size="icon" 
+            className="h-8 w-8 bg-green-500 hover:bg-green-600 text-white"
+            onClick={onAccept}
+          >
             <Check className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="destructive" onClick={onDecline}>
+          <Button 
+            size="icon" 
+            className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white"
+            onClick={onDecline}
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>
+      ) : (
+        <Button 
+          size="sm" 
+          variant="ghost" 
+          className="text-xs text-muted-foreground hover:text-destructive"
+          onClick={onDecline}
+        >
+          Annuler
+        </Button>
       )}
     </div>
   );

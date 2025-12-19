@@ -1112,7 +1112,6 @@ export type Database = {
           custom_status: string | null
           display_name: string
           id: string
-          phone: string | null
           pronouns: string | null
           server_order: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
@@ -1131,7 +1130,6 @@ export type Database = {
           custom_status?: string | null
           display_name: string
           id: string
-          phone?: string | null
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -1150,7 +1148,6 @@ export type Database = {
           custom_status?: string | null
           display_name?: string
           id?: string
-          phone?: string | null
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -2153,6 +2150,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_private_data: {
+        Row: {
+          created_at: string | null
+          id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       user_summary_likes: {
         Row: {

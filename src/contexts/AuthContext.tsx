@@ -11,7 +11,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, username: string, displayName: string, phone?: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ data: any; error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
   updateStatus: (status: Database['public']['Enums']['user_status']) => Promise<void>;
@@ -116,10 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, username: string, displayName: string, phone?: string) => {
+  const signUp = async (email: string, password: string, username: string, displayName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -127,11 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           username: username.toLowerCase(),
           display_name: displayName,
-          phone: phone || null,
         },
       },
     });
-    return { error };
+    return { data, error };
   };
 
   const signOut = async () => {

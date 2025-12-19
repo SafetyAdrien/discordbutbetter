@@ -244,19 +244,32 @@ export default function Auth() {
     
     setCheckingPassword(false);
 
-    const { error } = await signUp(email, password, username, displayName, phone || undefined);
-    setLoading(false);
-
+    const { data, error } = await signUp(email, password, username, displayName);
+    
     if (error) {
+      setLoading(false);
       if (error.message.includes('already registered')) {
         toast.error('Cet email est déjà utilisé');
       } else {
         toast.error(error.message);
       }
-    } else {
-      toast.success('Compte créé avec succès !');
-      navigate('/');
+      return;
     }
+
+    // Save phone to private data table if provided
+    if (phone && data?.user?.id) {
+      const { error: phoneError } = await supabase
+        .from('user_private_data')
+        .upsert({ id: data.user.id, phone });
+      
+      if (phoneError) {
+        console.error('Error saving phone:', phoneError);
+      }
+    }
+
+    setLoading(false);
+    toast.success('Compte créé avec succès !');
+    navigate('/');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {

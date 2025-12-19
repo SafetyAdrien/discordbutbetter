@@ -41,8 +41,8 @@ const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; posi
   return (
     <div 
       className={cn(
-        "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2] rounded-full",
+        "absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none",
+        "w-10 h-[2px] bg-[#5865f2] rounded-full shadow-[0_0_4px_rgba(88,101,242,0.5)]",
         position === 'before' ? "-top-[5px]" : "-bottom-[5px]"
       )}
     />
@@ -98,7 +98,7 @@ function SortableServerIcon({
     <div 
       ref={setNodeRef} 
       style={style}
-      className={cn("relative", isDragging && "z-50")}
+      className={cn("relative overflow-visible", isDragging && "z-50 opacity-30")}
     >
       <ServerDropIndicator isVisible={showDropIndicator} position={dropPosition} />
       
@@ -114,8 +114,7 @@ function SortableServerIcon({
                   'server-icon relative group select-none',
                   isActive
                     ? 'bg-[#5865f2] text-white rounded-[16px]'
-                    : 'bg-card hover:bg-[#5865f2]/80 hover:text-white',
-                  isDragging && 'opacity-30 scale-95'
+                    : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
                 )}
               >
                 {/* Active indicator */}
@@ -454,7 +453,7 @@ export function ServerList({
         onDragCancel={handleDragCancel}
       >
         <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
-          <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
+          <div className="flex-1 overflow-y-auto overflow-x-visible scrollbar-thin flex flex-col items-center gap-2 w-full pt-1">
             {sortedServers.map((server) => (
               <SortableServerIcon
                 key={server.id}

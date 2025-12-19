@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
+import { UploadDropOverlay } from './upload/UploadDropOverlay';
+import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
+import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
 
 interface MessageInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (attachments?: { file: File; name: string; description: string; isSpoiler: boolean }[]) => void;
   placeholder: string;
   disabled?: boolean;
   isSending?: boolean;
@@ -19,6 +23,7 @@ interface MessageInputProps {
   compact?: boolean;
   serverId?: string | null;
   channelId?: string | null;
+  channelName?: string;
   threadId?: string | null;
   // Mention autocomplete data
   members?: MentionMember[];
@@ -45,18 +50,35 @@ export function MessageInput({
   compact = false,
   serverId = null,
   channelId = null,
+  channelName = 'général',
   threadId = null,
   members = [],
   roles = [],
   channels = [],
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+
+  const {
+    attachments,
+    isDragging,
+    addFiles,
+    removeAttachment,
+    updateAttachment,
+    toggleSpoiler,
+    clearAttachments,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
+  } = usePendingAttachments();
 
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
@@ -98,6 +120,14 @@ export function MessageInput({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Handle file input change
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addFiles(e.target.files);
+      e.target.value = ''; // Reset input
+    }
+  }, [addFiles]);
 
   // Detect mention triggers - require space or start of line before trigger
   // Using non-capturing groups for browser compatibility (Safari, Firefox)
@@ -261,21 +291,64 @@ export function MessageInput({
     // Send message on Enter (without shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim() && !disabled) {
-        onSend();
+      if (value.trim() || attachments.length > 0) {
+        handleSendMessage();
       }
     }
-  }, [value, disabled, onSend, mentionState, getSuggestionsCount, mentionSelectedIndex]);
+  }, [value, mentionState, getSuggestionsCount, mentionSelectedIndex, attachments.length]);
+
+  const handleSendMessage = useCallback(() => {
+    if ((value.trim() || attachments.length > 0) && !disabled) {
+      const attachmentData = attachments.map(a => ({
+        file: a.file,
+        name: a.name,
+        description: a.description,
+        isSpoiler: a.isSpoiler,
+      }));
+      onSend(attachmentData.length > 0 ? attachmentData : undefined);
+      clearAttachments();
+    }
+  }, [value, attachments, disabled, onSend, clearAttachments]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim() && !disabled) {
-      onSend();
-    }
+    handleSendMessage();
   };
 
   return (
-    <div className={compact ? "p-3 border-t border-white/10 w-full" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0"}>
+    <div 
+      ref={containerRef}
+      className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drop overlay */}
+      <AnimatePresence>
+        {isDragging && (
+          <UploadDropOverlay channelName={channelName} />
+        )}
+      </AnimatePresence>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+
+      {/* Attachment staging area */}
+      <AttachmentStagingArea
+        attachments={attachments}
+        onToggleSpoiler={toggleSpoiler}
+        onRemove={removeAttachment}
+        onUpdate={updateAttachment}
+      />
+
       {showPreview && value.trim() && (
         <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin w-full" />
       )}
@@ -313,7 +386,10 @@ export function MessageInput({
               <button
                 type="button"
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                onClick={() => setPlusMenuOpen(false)}
+                onClick={() => {
+                  setPlusMenuOpen(false);
+                  fileInputRef.current?.click();
+                }}
               >
                 <Image className="w-4 h-4" />
                 <span>Ajouter une image</span>
@@ -384,7 +460,7 @@ export function MessageInput({
             >
               {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
             </button>
-            {value.trim() && (
+            {(value.trim() || attachments.length > 0) && (
               <button 
                 type="submit" 
                 disabled={disabled}

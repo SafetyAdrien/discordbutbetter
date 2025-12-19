@@ -55,12 +55,6 @@ export function useSummaries(channelId?: string) {
   
   // Is the dropdown panel open
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
-  // Liked summaries (stored locally)
-  const [likedSummaryIds, setLikedSummaryIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('liked_summaries');
-    return saved ? JSON.parse(saved) : [];
-  });
 
   // Fetch summaries from database
   const { data: dbSummaries = [], isLoading } = useQuery({
@@ -213,17 +207,6 @@ export function useSummaries(channelId?: string) {
     setActiveTopic(null);
   }, []);
 
-  // Toggle like on a summary
-  const toggleLike = useCallback((summaryId: string) => {
-    setLikedSummaryIds(prev => {
-      const newLiked = prev.includes(summaryId)
-        ? prev.filter(id => id !== summaryId)
-        : [...prev, summaryId];
-      localStorage.setItem('liked_summaries', JSON.stringify(newLiked));
-      return newLiked;
-    });
-  }, []);
-
   return {
     isSummariesEnabled,
     activeTopic,
@@ -238,7 +221,5 @@ export function useSummaries(channelId?: string) {
     isLoading,
     generateSummaries: generateSummaries.mutate,
     isGenerating: generateSummaries.isPending,
-    likedSummaryIds,
-    toggleLike,
   };
 }

@@ -1357,6 +1357,42 @@ export type Database = {
           },
         ]
       }
+      server_folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_expanded: boolean | null
+          name: string | null
+          position: number
+          server_ids: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_expanded?: boolean | null
+          name?: string | null
+          position?: number
+          server_ids?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_expanded?: boolean | null
+          name?: string | null
+          position?: number
+          server_ids?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       server_members: {
         Row: {
           id: string

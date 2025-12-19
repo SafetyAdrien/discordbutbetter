@@ -1,5 +1,6 @@
 import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +26,8 @@ import {
   Smile,
   Flag,
 } from "lucide-react";
+import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
+import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import {
@@ -365,6 +368,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Drag & Drop attachments handling
+  const {
+    attachments: pendingAttachments,
+    isDragging,
+    addFiles,
+    removeAttachment,
+    updateAttachment,
+    toggleSpoiler,
+    clearAttachments,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
+  } = usePendingAttachments();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -688,7 +707,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     copyToClipboard(link, "Lien du message copié");
   };
   return (
-    <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
+    <div 
+      ref={ref} 
+      className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drag & Drop Overlay */}
+      <AnimatePresence>
+        {isDragging && <UploadDropOverlay channelName={channel.name} />}
+      </AnimatePresence>
+
       {/* Channel Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -1417,6 +1448,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           }))}
           roles={serverRoles.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
           channels={allChannels}
+          attachments={pendingAttachments}
+          onAddFiles={addFiles}
+          onRemoveAttachment={removeAttachment}
+          onUpdateAttachment={updateAttachment}
+          onToggleSpoiler={toggleSpoiler}
+          onClearAttachments={clearAttachments}
         />
       </div>
 

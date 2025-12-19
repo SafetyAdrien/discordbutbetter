@@ -73,20 +73,18 @@ export function InboxPanel() {
   }
 
   return (
-    <div className="flex flex-col bg-background border border-border/50 rounded-md">
+    <div className="flex-1 flex flex-col bg-background">
       {/* Header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border bg-card">
-        <div className="flex items-center gap-2">
-          <Inbox className="w-5 h-5" />
-          <h2 className="font-semibold">Boîte de réception</h2>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              {unreadCount}
-            </Badge>
-          )}
-        </div>
+      <div className="h-12 px-4 flex items-center gap-4 border-b border-border">
+        <Inbox className="w-5 h-5 text-muted-foreground" />
+        <h2 className="font-semibold">Boîte de réception</h2>
+        {unreadCount > 0 && (
+          <Badge variant="destructive" className="text-xs">
+            {unreadCount}
+          </Badge>
+        )}
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           {selectedIds.size > 0 && (
             <Button
               variant="ghost"

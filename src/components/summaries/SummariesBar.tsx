@@ -15,6 +15,8 @@ interface SummariesBarProps {
   onGenerateSummaries?: () => void;
   isGenerating?: boolean;
   isLoading?: boolean;
+  likedSummaryIds?: string[];
+  onToggleLike?: (summaryId: string) => void;
 }
 
 export function SummariesBar({
@@ -27,6 +29,8 @@ export function SummariesBar({
   onGenerateSummaries,
   isGenerating = false,
   isLoading = false,
+  likedSummaryIds = [],
+  onToggleLike,
 }: SummariesBarProps) {
   // Calculate total new messages from all summaries
   const totalNewMessages = summaries.reduce((acc, s) => acc + (s.newMessages || 0), 0);
@@ -116,6 +120,8 @@ export function SummariesBar({
           onGenerateSummaries={onGenerateSummaries}
           isGenerating={isGenerating}
           isLoading={isLoading}
+          likedSummaryIds={likedSummaryIds}
+          onToggleLike={onToggleLike}
         />
       )}
     </div>

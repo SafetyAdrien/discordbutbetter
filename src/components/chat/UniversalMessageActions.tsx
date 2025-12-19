@@ -26,6 +26,8 @@ export interface UniversalMessageActionsProps {
   onPin?: () => void;
   // Dropdown state control to prevent closing on hover out
   onDropdownOpenChange?: (open: boolean) => void;
+  // Optional custom action (e.g., Megaphone for announcements)
+  customAction?: React.ReactNode;
 }
 export function UniversalMessageActions({
   isVisible,
@@ -40,13 +42,14 @@ export function UniversalMessageActions({
   onDelete,
   onCreateThread,
   onPin,
-  onDropdownOpenChange
+  onDropdownOpenChange,
+  customAction
 }: UniversalMessageActionsProps) {
   if (!isVisible) return null;
 
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
   if (isShiftPressed) {
-    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[#2b3250] border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-popover border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
         {/* Copier l'ID */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -98,7 +101,7 @@ export function UniversalMessageActions({
   }
 
   // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
-  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-[#2b3250]">
+  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-popover">
       {/* 1. Exactement 3 réactions rapides */}
       {QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
           <TooltipTrigger asChild>
@@ -124,6 +127,9 @@ export function UniversalMessageActions({
           </div>
         </PopoverContent>
       </Popover>
+      
+      {/* Custom action slot (e.g., Megaphone for announcements) */}
+      {customAction}
       
       {/* 2.5 Modifier (uniquement pour ses propres messages) */}
       {isOwnMessage && onEdit && <Tooltip>

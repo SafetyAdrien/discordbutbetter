@@ -354,11 +354,7 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-center gap-2 rounded-lg border transition-colors w-full min-w-0 ${
-          compact 
-            ? "bg-[hsl(var(--input))] border-transparent" 
-            : "bg-[hsl(var(--input))] border-border/50 focus-within:border-primary/50"
-        }`}>
+        <div className={`flex items-center gap-2 rounded-lg transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button

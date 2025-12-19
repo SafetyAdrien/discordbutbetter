@@ -140,7 +140,7 @@ const Index = () => {
         const savedChannelId = getChannelForServer(activeServerId);
         const allChannels = [
           ...server.categories.flatMap(c => c.channels),
-          ...(channelsData?.orphanChannels || [])
+          ...(server.orphanChannels || channelsData?.orphanChannels || [])
         ];
         
         const savedChannel = savedChannelId 
@@ -165,6 +165,7 @@ const Index = () => {
   const activeChannel = activeServer?.categories
     .flatMap((c) => c.channels)
     .find((ch) => ch.id === activeChannelId) 
+    || activeServer?.orphanChannels?.find((ch) => ch.id === activeChannelId)
     || channelsData?.orphanChannels?.find((ch) => ch.id === activeChannelId);
 
   // Prepare channels and members for search modal
@@ -172,7 +173,7 @@ const Index = () => {
     if (!activeServer) return [];
     const allChannels = [
       ...activeServer.categories.flatMap(cat => cat.channels),
-      ...(channelsData?.orphanChannels || [])
+      ...(activeServer.orphanChannels || channelsData?.orphanChannels || [])
     ];
     return allChannels.map(ch => ({
       id: ch.id,
@@ -389,7 +390,7 @@ const Index = () => {
               setThreadChannelId(null);
             }}
             onOpenServerSettings={() => setShowServerSettings(true)}
-            orphanChannels={channelsData?.orphanChannels || []}
+            orphanChannels={activeServer?.orphanChannels || channelsData?.orphanChannels || []}
             activeThreadId={activeThreadId}
             onThreadSelect={(threadId) => {
               setActiveThreadId(threadId);

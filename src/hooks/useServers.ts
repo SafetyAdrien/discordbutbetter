@@ -25,6 +25,15 @@ export interface ServerWithDetails {
       position: number | null;
     }[];
   }[];
+  orphanChannels?: {
+    id: string;
+    name: string;
+    type: 'text' | 'voice' | 'announcement' | 'forum' | null;
+    description: string | null;
+    position: number | null;
+    category_id: null;
+    server_id: string;
+  }[];
 }
 
 export function useServers() {
@@ -59,6 +68,14 @@ export function useServers() {
                 description,
                 position
               )
+            ),
+            channels (
+              id,
+              name,
+              type,
+              description,
+              position,
+              category_id
             )
           )
         `)
@@ -69,18 +86,44 @@ export function useServers() {
       // Extract and sort servers
       const servers = data
         ?.map((m) => m.server)
-        .filter((s): s is ServerWithDetails => s !== null)
-        .map((server) => ({
-          ...server,
-          categories: server.categories
-            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-            .map((cat) => ({
-              ...cat,
-              channels: cat.channels.sort(
-                (a, b) => (a.position ?? 0) - (b.position ?? 0)
-              ),
-            })),
-        })) ?? [];
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .map((server) => {
+          // Get all channels and filter orphans (no category_id)
+          const allChannels = (server as any).channels || [];
+          const orphanChannels = allChannels
+            .filter((ch: any) => !ch.category_id)
+            .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+            .map((ch: any) => ({
+              id: ch.id,
+              name: ch.name,
+              type: ch.type,
+              description: ch.description,
+              position: ch.position,
+              category_id: null as null,
+              server_id: server.id,
+            }));
+
+          return {
+            id: server.id,
+            name: server.name,
+            icon_url: server.icon_url,
+            banner_url: server.banner_url,
+            description: server.description,
+            is_public: server.is_public,
+            owner_id: server.owner_id,
+            secondary_owner_id: server.secondary_owner_id,
+            created_at: server.created_at,
+            categories: (server.categories || [])
+              .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+              .map((cat: any) => ({
+                ...cat,
+                channels: (cat.channels || []).sort(
+                  (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+                ),
+              })),
+            orphanChannels,
+          };
+        }) ?? [];
 
       return servers;
     },

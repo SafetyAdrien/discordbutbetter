@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
 import {
-  Hash,
   Bell,
   Pin,
   Users,
@@ -22,10 +21,10 @@ import {
   SmilePlus,
   BarChart2,
   MoreHorizontal,
-  Megaphone,
-  Wifi,
   Flag,
+  Hash,
 } from "lucide-react";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import {
   DropdownMenu,
@@ -353,7 +352,7 @@ export function AnnouncementChannel({
       {/* Channel Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
-          <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
@@ -482,18 +481,14 @@ export function AnnouncementChannel({
           </Popover>
 
           {/* Follow Channel Button - Announcement specific */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={() => setFollowModalOpen(true)}
-              >
-                <Wifi className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Suivre ce salon</TooltipContent>
-          </Tooltip>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFollowModalOpen(true)}
+            className="text-sm font-medium"
+          >
+            Suivre
+          </Button>
 
           {/* Members Toggle */}
           <Tooltip>
@@ -607,7 +602,7 @@ export function AnnouncementChannel({
                               disabled={publishMessage.isPending}
                               className="p-1.5 hover:bg-muted rounded transition-colors text-primary"
                             >
-                              <Megaphone className="w-4 h-4" />
+                              <StreamlineMegaphone className="w-4 h-4" />
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="top">Publier aux abonnés</TooltipContent>
@@ -770,7 +765,7 @@ export function AnnouncementChannel({
                               {/* Publish Prompt */}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
-                                  <Megaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                  <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                   <span className="text-muted-foreground">
                                     Partage ça avec tes abonnés !
                                   </span>
@@ -834,7 +829,7 @@ export function AnnouncementChannel({
                               </p>
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
-                                  <Megaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                  <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                   <span className="text-muted-foreground">
                                     Partage ça avec tes abonnés !
                                   </span>

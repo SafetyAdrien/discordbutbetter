@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { AnimatePresence } from 'framer-motion';
 import { useDMMessages, useSendDMMessage, useEditDMMessage, useDeleteDMMessage, DMMessage } from '@/hooks/useDMMessages';
@@ -80,9 +82,35 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const deleteMessage = useDeleteDMMessage();
   const { activeCall, startCall, endCall } = useDMCalls(conversationId);
 
-  const conversation = conversations.find(c => c.id === conversationId);
-  const participant = conversation?.participants[0];
+  const conversation = conversations.find((c) => c.id === conversationId);
+  const participantFromList = conversation?.participants[0] ?? null;
 
+  const { data: directParticipant } = useQuery({
+    queryKey: ['dm-participant', conversationId, user?.id],
+    enabled: !!user && !participantFromList,
+    queryFn: async () => {
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('dm_participants')
+        .select(
+          `
+          user:profiles!dm_participants_user_id_fkey (
+            id, username, display_name, avatar_url, status, bio, banner_url
+          )
+        `
+        )
+        .eq('conversation_id', conversationId)
+        .neq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return (data?.user as any) ?? null;
+    },
+  });
+
+  const participant = participantFromList ?? directParticipant ?? null;
   // Mark conversation as read when opened
   useEffect(() => {
     if (conversationId) {

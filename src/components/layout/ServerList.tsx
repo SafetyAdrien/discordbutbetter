@@ -40,6 +40,7 @@ import {
   DragOverlay,
   UniqueIdentifier,
   closestCenter,
+  useDroppable,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -111,7 +112,7 @@ function SortableServerIcon({
     isDragging,
   } = useSortable({
     id: `server-${server.id}`,
-    data: { type: 'server', server },
+    data: { type: 'server', server, containerId: 'root' },
   });
 
   const style = {
@@ -307,6 +308,8 @@ export function ServerList({
     dropIndicator,
     mergeState,
     shouldRestrictVertical,
+    previewFolders,
+    previewStandaloneServers,
     handleDragStart,
     handleDragMove,
     handleDragOver,
@@ -323,25 +326,28 @@ export function ServerList({
     onRemoveFromFolder: removeServerFromFolder,
   });
 
+  const renderedFolders = previewFolders;
+  const renderedStandaloneServers = previewStandaloneServers;
+
   // Create sortable items for DnD context
   const sortableItems = useMemo(() => {
     const items: UniqueIdentifier[] = [];
-    
-    // Add folders and their nested servers
-    folders.forEach(folder => {
+
+    // Add folders and their nested servers (display order)
+    renderedFolders.forEach((folder) => {
       items.push(`folder-${folder.id}`);
-      folder.serverIds.forEach(serverId => {
-        items.push(`nested-${folder.id}-${serverId}`);
+      folder.serverIds.forEach((serverId) => {
+        items.push(`server-${serverId}`);
       });
     });
-    
+
     // Add standalone servers
-    standaloneServers.forEach(server => {
+    renderedStandaloneServers.forEach((server) => {
       items.push(`server-${server.id}`);
     });
-    
+
     return items;
-  }, [folders, standaloneServers]);
+  }, [renderedFolders, renderedStandaloneServers]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -354,6 +360,8 @@ export function ServerList({
   const dndModifiers = useMemo(() => {
     return shouldRestrictVertical ? [restrictToVerticalAxis] : [];
   }, [shouldRestrictVertical]);
+
+  const { setNodeRef: setRootDropRef } = useDroppable({ id: 'root-drop' });
 
   // Track previous counts for shake animation
   const prevUnreadCounts = useRef<Record<string, number>>({});
@@ -489,7 +497,7 @@ export function ServerList({
         <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
           <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
             {/* Render folders first */}
-            {folders.map((folder) => (
+            {renderedFolders.map((folder) => (
               <SortableFolderItem
                 key={folder.id}
                 folder={folder}
@@ -506,7 +514,7 @@ export function ServerList({
                 }}
                 onDeleteFolder={() => deleteFolder.mutate(folder.id)}
                 onMarkAllAsRead={() => {
-                  folder.serverIds.forEach(id => markServerAsRead(id));
+                  folder.serverIds.forEach((id) => markServerAsRead(id));
                   toast({ title: 'Dossier marqué comme lu' });
                 }}
                 showDropIndicator={dropIndicator.targetId === folder.id && dropIndicator.type === 'add-to-folder'}
@@ -515,7 +523,7 @@ export function ServerList({
             ))}
 
             {/* Render standalone servers */}
-            {standaloneServers.map((server) => (
+            {renderedStandaloneServers.map((server) => (
               <SortableServerIcon
                 key={server.id}
                 server={server}
@@ -534,6 +542,9 @@ export function ServerList({
                 onLeave={() => handleLeaveServer(server)}
               />
             ))}
+
+            {/* Root drop zone (end of list) */}
+            <div ref={setRootDropRef} className="w-full h-10" />
           </div>
         </SortableContext>
 

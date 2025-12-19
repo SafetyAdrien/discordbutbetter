@@ -24,15 +24,24 @@ export function SummariesBar({
 }: SummariesBarProps) {
   // Calculate total new messages from all summaries
   const totalNewMessages = summaries.reduce((acc, s) => acc + (s.newMessages || 0), 0);
+  const hasUnreadMessages = totalNewMessages > 0;
 
   return (
     <div className="relative w-full">
-      {/* The Bar - Always blue */}
-      <div className="h-10 px-3 flex items-center justify-between bg-[#5865F2]">
+      {/* The Bar - Blue when unread, themed when no unread */}
+      <div
+        className={cn(
+          "h-10 px-3 flex items-center justify-between transition-colors",
+          hasUnreadMessages ? "bg-[#5865F2]" : "bg-muted"
+        )}
+      >
         {/* Left Section */}
         <button
           onClick={onToggleDropdown}
-          className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity"
+          className={cn(
+            "flex items-center gap-2 hover:opacity-80 transition-opacity",
+            hasUnreadMessages ? "text-white" : "text-foreground"
+          )}
         >
           <StreamlineSummaries className="w-4 h-4" />
           <span className="text-sm font-medium">Voir Tous Les Résumés</span>
@@ -44,21 +53,27 @@ export function SummariesBar({
           />
         </button>
 
-        {/* Center Section - Message count */}
-        <div className="hidden sm:flex items-center text-white/90 text-sm">
-          <span>{totalNewMessages} nouveaux messages</span>
-        </div>
+        {/* Center Section - Message count (only when unread) */}
+        {hasUnreadMessages && (
+          <div className="hidden sm:flex items-center text-white/90 text-sm">
+            <span>{totalNewMessages} nouveaux messages</span>
+          </div>
+        )}
 
-        {/* Right Section */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onMarkAsRead}
-          className="text-white hover:text-white hover:bg-white/20 gap-1.5 h-7 px-2"
-        >
-          <CheckCheck className="w-4 h-4" />
-          <span className="hidden sm:inline text-sm">Marquer Comme Lu</span>
-        </Button>
+        {/* Right Section (only when unread) */}
+        {hasUnreadMessages ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onMarkAsRead}
+            className="text-white hover:text-white hover:bg-white/20 gap-1.5 h-7 px-2"
+          >
+            <CheckCheck className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm">Marquer Comme Lu</span>
+          </Button>
+        ) : (
+          <div className="w-8" />
+        )}
       </div>
 
       {/* Dropdown Panel */}

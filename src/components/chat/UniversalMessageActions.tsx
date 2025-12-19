@@ -49,7 +49,7 @@ export function UniversalMessageActions({
 
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
   if (isShiftPressed) {
-    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-popover border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+    return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
         {/* Copier l'ID */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -101,7 +101,7 @@ export function UniversalMessageActions({
   }
 
   // Mode normal : 3 émojis, SmilePlus, Reply, MoreHorizontal
-  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-popover">
+  return <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-toolbar">
       {/* 1. Exactement 3 réactions rapides */}
       {QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
           <TooltipTrigger asChild>

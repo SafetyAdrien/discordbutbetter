@@ -75,6 +75,9 @@ export function useSummaries() {
   // Is the dropdown panel open
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Summaries state (so we can mark as read)
+  const [summaries, setSummaries] = useState<SummaryTopic[]>(MOCK_SUMMARIES);
+
   // Toggle summaries on/off
   const toggleSummaries = useCallback(() => {
     setIsSummariesEnabled((prev) => {
@@ -103,9 +106,13 @@ export function useSummaries() {
     setIsDropdownOpen(false);
   }, []);
 
-  // Mark topic as read (closes blue bar)
+  // Mark all summaries as read (resets newMessages to 0)
   const markAsRead = useCallback(() => {
+    setSummaries((prev) =>
+      prev.map((s) => ({ ...s, newMessages: 0, newSummaries: 0 }))
+    );
     setActiveTopic(null);
+    setIsDropdownOpen(false);
   }, []);
 
   // Clear active topic to go back to selection mode
@@ -123,6 +130,6 @@ export function useSummaries() {
     selectTopic,
     markAsRead,
     clearActiveTopic,
-    summaries: MOCK_SUMMARIES,
+    summaries,
   };
 }

@@ -20,6 +20,8 @@ export interface DMConversation {
     display_name: string;
     avatar_url: string | null;
     status: 'online' | 'idle' | 'dnd' | 'offline' | null;
+    bio?: string | null;
+    banner_url?: string | null;
   }[];
   lastMessage?: {
     content: string;
@@ -61,7 +63,7 @@ export function useDMConversations() {
         .select(`
           conversation_id,
           user:profiles!dm_participants_user_id_fkey (
-            id, username, display_name, avatar_url, status
+            id, username, display_name, avatar_url, status, bio, banner_url
           )
         `)
         .in('conversation_id', conversationIds);

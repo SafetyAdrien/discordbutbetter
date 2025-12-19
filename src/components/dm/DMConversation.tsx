@@ -454,7 +454,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       avatar: profile.avatar_url,
                       status: profile.status || 'offline',
                       bio: profile.bio,
-                      banner_url: profile.banner_url,
+                      banner: profile.banner_url,
                     })}
                     className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
                   >
@@ -488,6 +488,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       username: participant.username,
                       avatar: participant.avatar_url,
                       status: participant.status || 'offline',
+                      bio: participant.bio,
+                      banner: participant.banner_url,
                     })}
                     className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
                   >

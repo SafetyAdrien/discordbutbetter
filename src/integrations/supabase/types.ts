@@ -2476,6 +2476,17 @@ export type Database = {
           token: string
         }[]
       }
+      get_friendship_profiles: {
+        Args: { friendship_user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          custom_status: string
+          display_name: string
+          id: string
+          status: string
+          username: string
+        }[]
+      }
       get_invite_details: {
         Args: { invite_code: string }
         Returns: {

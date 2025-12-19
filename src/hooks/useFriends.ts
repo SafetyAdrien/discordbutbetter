@@ -44,12 +44,13 @@ export function useFriends() {
 
       if (error) throw error;
 
-      // Fetch profiles for all friends
+      // Fetch profiles for all friends using RPC to bypass RLS for pending requests
       const friendIds = data.map(f => f.user_id === user.id ? f.friend_id : f.user_id);
+      
+      if (friendIds.length === 0) return [];
+      
       const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, status, custom_status')
-        .in('id', friendIds);
+        .rpc('get_friendship_profiles', { friendship_user_ids: friendIds });
 
       if (profileError) throw profileError;
 

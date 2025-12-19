@@ -814,23 +814,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverContent>
           </Popover>
 
-          {/* AI Summaries Trigger */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={toggleSummaries}
-                className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
-              >
-                <StreamlineSummaries className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}
-            </TooltipContent>
-          </Tooltip>
-
           {/* Inbox Popover */}
           <Popover>
             <PopoverTrigger asChild>
@@ -864,6 +847,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </TooltipTrigger>
             <TooltipContent>
               {activeThreadId ? "Fermer le thread" : showMembers ? "Masquer les membres" : "Afficher les membres"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* AI Summaries Trigger */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={toggleSummaries}
+                className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
+              >
+                <StreamlineSummaries className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}
             </TooltipContent>
           </Tooltip>
         </div>

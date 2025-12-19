@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Server } from '@/types/app';
-import { ServerFolder, FOLDER_CREATION_THRESHOLD } from '@/types/serverFolder';
+import { ServerFolder } from '@/types/serverFolder';
 import { cn } from '@/lib/utils';
 import { FolderIcon } from './FolderIcon';
 import { FolderSettingsModal } from './FolderSettingsModal';
@@ -12,7 +12,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Settings, CheckCircle, Trash2, FolderOpen } from 'lucide-react';
+import { Settings, CheckCircle, Trash2 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -82,123 +82,170 @@ export function SortableFolderItem({
       >
         {/* Insert Before Indicator */}
         {showInsertBefore && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none bg-[#5865f2] rounded-full top-0 -translate-y-1"
-          />
+          <div className="absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none bg-[#5865f2] rounded-full top-0 -translate-y-1" />
         )}
         
         {/* Insert After Indicator */}
         {showInsertAfter && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none bg-[#5865f2] rounded-full bottom-0 translate-y-1"
-          />
+          <div className="absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none bg-[#5865f2] rounded-full bottom-0 translate-y-1" />
         )}
 
-        {/* Add to Folder Indicator (glow effect) */}
-        {showAddToFolderIndicator && (
-          <div className="absolute inset-0 rounded-[24px] pointer-events-none border-2 border-[#5865f2] bg-[#5865f2]/20" />
-        )}
-
-        {/* Folder Icon */}
-        <ContextMenu>
-          <Tooltip>
-            <ContextMenuTrigger asChild>
-              <TooltipTrigger asChild>
-                <button
-                  {...attributes}
-                  {...listeners}
-                  onClick={onToggleExpanded}
-                  className={cn(
-                    'server-icon relative group select-none',
-                    isDragging && 'opacity-30 scale-95'
-                  )}
-                >
-                  {/* Active indicator */}
-                  <div
+        {/* CLOSED STATE */}
+        {!folder.isExpanded && (
+          <ContextMenu>
+            <Tooltip>
+              <ContextMenuTrigger asChild>
+                <TooltipTrigger asChild>
+                  <button
+                    {...attributes}
+                    {...listeners}
+                    onClick={onToggleExpanded}
                     className={cn(
-                      'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
-                      isActiveInFolder
-                        ? 'h-10'
-                        : hasUnread
-                          ? 'h-2'
-                          : 'h-0 group-hover:h-5'
+                      'relative group select-none',
+                      isDragging && 'opacity-30 scale-95',
+                      showAddToFolderIndicator && 'ring-2 ring-[#5865f2] rounded-[16px]'
                     )}
-                  />
+                  >
+                    {/* Active indicator pill */}
+                    <div
+                      className={cn(
+                        'absolute -left-3 w-1 rounded-r-full bg-white transition-all duration-200',
+                        isActiveInFolder
+                          ? 'h-10'
+                          : hasUnread
+                            ? 'h-2'
+                            : 'h-0 group-hover:h-5'
+                      )}
+                    />
 
-                  <FolderIcon
-                    servers={servers}
-                    color={folder.color}
-                    isExpanded={folder.isExpanded}
-                    isActive={isActiveInFolder}
-                    hasUnread={hasUnread}
-                  />
+                    <FolderIcon
+                      servers={servers}
+                      color={folder.color}
+                      isExpanded={false}
+                      isActive={isActiveInFolder}
+                      hasUnread={hasUnread}
+                    />
 
-                  {/* Unread badge */}
-                  {totalUnread > 0 && !folder.isExpanded && (
-                    <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop">
-                      {totalUnread > 99 ? '99+' : totalUnread}
-                    </div>
-                  )}
-                </button>
-              </TooltipTrigger>
-            </ContextMenuTrigger>
-            <TooltipContent side="right">
-              <p>{folder.name} ({servers.length} serveurs)</p>
-            </TooltipContent>
-          </Tooltip>
+                    {/* Unread badge */}
+                    {totalUnread > 0 && (
+                      <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-[#f23f43] rounded-full flex items-center justify-center text-white text-xs font-bold border-[3px] border-[#1e1f22]">
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                      </div>
+                    )}
+                  </button>
+                </TooltipTrigger>
+              </ContextMenuTrigger>
+              <TooltipContent side="right">
+                <p>{folder.name} • {servers.length} serveur{servers.length > 1 ? 's' : ''}</p>
+              </TooltipContent>
+            </Tooltip>
 
-          <ContextMenuContent className="w-48">
-            <ContextMenuItem onClick={onMarkAllAsRead}>
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Tout marquer comme lu
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => setShowSettings(true)}>
-              <Settings className="w-4 h-4 mr-2" />
-              Paramètres du dossier
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={onDeleteFolder}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Supprimer le dossier
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
+            <ContextMenuContent className="w-48">
+              <ContextMenuItem onClick={onMarkAllAsRead}>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Tout marquer comme lu
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setShowSettings(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Paramètres du dossier
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onClick={onDeleteFolder}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer le dossier
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+        )}
 
-        {/* Expanded servers */}
+        {/* OPEN STATE - The "Capsule" container */}
         <AnimatePresence>
           {folder.isExpanded && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
+              initial={{ height: 56, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="relative flex flex-col items-center gap-2 mt-2 overflow-hidden"
+              exit={{ height: 56, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className={cn(
+                'flex flex-col items-center rounded-[24px] overflow-hidden',
+                'bg-[#2b2d31]',
+                showAddToFolderIndicator && 'ring-2 ring-[#5865f2]'
+              )}
+              style={{ padding: '8px 4px' }}
             >
-              {/* Vertical connector line on the left side */}
-              <div 
-                className="absolute left-2 top-0 w-[2px] rounded-full bg-[#4e5058]"
-                style={{ 
-                  height: servers.length > 1 
-                    ? `calc(100% - 24px)` 
-                    : servers.length === 1 
-                      ? '0px' 
-                      : '0px'
-                }}
-              />
-              
-              {servers.map((server) => (
-                <NestedServerIcon
-                  key={server.id}
-                  server={server}
-                  isActive={activeServerId === server.id}
-                  unreadCount={unreadCounts[server.id] ?? 0}
-                  onClick={() => onServerSelect(server.id)}
-                  folderId={folder.id}
-                />
-              ))}
+              {/* Folder Handle (Header) - Click to close */}
+              <ContextMenu>
+                <Tooltip>
+                  <ContextMenuTrigger asChild>
+                    <TooltipTrigger asChild>
+                      <button
+                        {...attributes}
+                        {...listeners}
+                        onClick={onToggleExpanded}
+                        className="relative group select-none mb-1"
+                      >
+                        {/* Active indicator pill */}
+                        <div
+                          className={cn(
+                            'absolute -left-[7px] w-1 rounded-r-full bg-white transition-all duration-200',
+                            isActiveInFolder
+                              ? 'h-6'
+                              : hasUnread
+                                ? 'h-2'
+                                : 'h-0 group-hover:h-4'
+                          )}
+                        />
+                        <FolderIcon
+                          servers={servers}
+                          color={folder.color}
+                          isExpanded={true}
+                          isActive={isActiveInFolder}
+                          hasUnread={hasUnread}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                  </ContextMenuTrigger>
+                  <TooltipContent side="right">
+                    <p>{folder.name} • Cliquer pour fermer</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <ContextMenuContent className="w-48">
+                  <ContextMenuItem onClick={onMarkAllAsRead}>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Tout marquer comme lu
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => setShowSettings(true)}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Paramètres du dossier
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={onDeleteFolder}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Supprimer le dossier
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
+
+              {/* Server List */}
+              <div className="flex flex-col items-center gap-2">
+                {servers.map((server) => (
+                  <NestedServerIcon
+                    key={server.id}
+                    server={server}
+                    isActive={activeServerId === server.id}
+                    unreadCount={unreadCounts[server.id] ?? 0}
+                    onClick={() => onServerSelect(server.id)}
+                    folderId={folder.id}
+                  />
+                ))}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -214,7 +261,7 @@ export function SortableFolderItem({
   );
 }
 
-// Nested server inside folder
+// Full-size server icon inside an open folder
 function NestedServerIcon({
   server,
   isActive,
@@ -255,10 +302,10 @@ function NestedServerIcon({
           {...listeners}
           onClick={onClick}
           className={cn(
-            'w-12 h-12 rounded-[24px] flex items-center justify-center relative group select-none transition-all',
+            'w-12 h-12 rounded-[16px] flex items-center justify-center relative group select-none transition-all duration-200',
             isActive
               ? 'bg-[#5865f2] text-white rounded-[16px]'
-              : 'bg-[#313338] hover:bg-[#5865f2]/80 hover:text-white hover:rounded-[16px]',
+              : 'bg-[#313338] hover:bg-[#5865f2]/80 hover:text-white hover:rounded-[12px]',
             isDragging && 'opacity-30 scale-95'
           )}
         >
@@ -281,7 +328,7 @@ function NestedServerIcon({
 
           {/* Unread badge */}
           {unreadCount > 0 && (
-            <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar">
+            <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-[#f23f43] rounded-full flex items-center justify-center text-white text-xs font-bold border-[3px] border-[#2b2d31]">
               {unreadCount > 99 ? '99+' : unreadCount}
             </div>
           )}
@@ -293,3 +340,4 @@ function NestedServerIcon({
     </Tooltip>
   );
 }
+

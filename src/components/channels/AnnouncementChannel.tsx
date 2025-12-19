@@ -70,6 +70,7 @@ import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from 
 import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
+import { useHasChannelPermission } from "@/hooks/useUserChannelPermissions";
 
 interface Role {
   id: string;
@@ -204,6 +205,12 @@ export function AnnouncementChannel({
   const { data: followers = [] } = useChannelFollowers(channel.id);
   const publishMessage = usePublishMessage();
   const dismissPrompt = useDismissPublishPrompt();
+
+  // Check send_messages permission
+  const { data: canSendMessages = true } = useHasChannelPermission(channel.id, 'send_messages');
+  const permissionDeniedMessage = !canSendMessages 
+    ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
+    : undefined;
 
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
@@ -884,6 +891,7 @@ export function AnnouncementChannel({
           channelId={channel.id}
           serverId={channel.server_id}
           members={members}
+          permissionDeniedMessage={permissionDeniedMessage}
         />
       </div>
 

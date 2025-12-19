@@ -83,6 +83,7 @@ import { SummariesBar } from "@/components/summaries/SummariesBar";
 import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
 import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageAttachments";
+import { useHasChannelPermission } from "@/hooks/useUserChannelPermissions";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -454,6 +455,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     toggleLike,
     likedCount,
   } = useSummaries(channel?.id);
+
+  // Check send_messages permission
+  const { data: canSendMessages = true } = useHasChannelPermission(channel.id, 'send_messages');
+  const permissionDeniedMessage = !canSendMessages 
+    ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
+    : undefined;
 
   // Scroll to message function for "Jump to Message"
   const scrollToMessage = useCallback((messageId: string) => {
@@ -1473,6 +1480,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onUpdateAttachment={updateAttachment}
           onToggleSpoiler={toggleSpoiler}
           onClearAttachments={clearAttachments}
+          permissionDeniedMessage={permissionDeniedMessage}
         />
       </div>
 

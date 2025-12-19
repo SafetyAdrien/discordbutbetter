@@ -66,14 +66,14 @@ export function InboxPanel() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex items-center justify-center p-8">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex flex-col bg-background">
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-border bg-card">
         <div className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export function InboxPanel() {
 
       {/* Notifications List */}
       {notifications.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+        <div className="flex flex-col items-center justify-center text-center p-8">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <Bell className="w-8 h-8 text-muted-foreground" />
           </div>
@@ -123,7 +123,7 @@ export function InboxPanel() {
           </p>
         </div>
       ) : (
-        <ScrollArea className="flex-1">
+        <ScrollArea className="max-h-80">
           {/* Select all row */}
           <div className="px-4 py-2 border-b border-border bg-muted/30 sticky top-0">
             <label className="flex items-center gap-3 cursor-pointer">

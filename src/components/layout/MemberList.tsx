@@ -230,7 +230,7 @@ function InboxButton() {
       <PopoverContent 
         side="left" 
         align="start" 
-        className="w-96 h-[500px] p-0 overflow-hidden"
+        className="w-96 max-h-[500px] p-0 overflow-hidden"
         sideOffset={8}
       >
         <InboxPanel />

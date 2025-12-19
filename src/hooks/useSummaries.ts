@@ -66,6 +66,9 @@ export const MOCK_SUMMARIES: SummaryTopic[] = [
 ];
 
 export function useSummaries() {
+  // Summaries state (so we can mark as read)
+  const [summaries, setSummaries] = useState<SummaryTopic[]>(MOCK_SUMMARIES);
+  
   // Is the summaries feature enabled (bar visible)
   const [isSummariesEnabled, setIsSummariesEnabled] = useState(false);
   
@@ -75,19 +78,11 @@ export function useSummaries() {
   // Is the dropdown panel open
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Summaries state (so we can mark as read)
-  const [summaries, setSummaries] = useState<SummaryTopic[]>(MOCK_SUMMARIES);
-
   // Toggle summaries on/off
   const toggleSummaries = useCallback(() => {
-    setIsSummariesEnabled((prev) => {
-      if (prev) {
-        // Turning off - reset all state
-        setActiveTopic(null);
-        setIsDropdownOpen(false);
-      }
-      return !prev;
-    });
+    setIsSummariesEnabled((prev) => !prev);
+    setActiveTopic(null);
+    setIsDropdownOpen(false);
   }, []);
 
   // Toggle dropdown panel

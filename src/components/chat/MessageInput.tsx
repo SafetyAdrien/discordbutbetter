@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
-import { UploadDropOverlay } from './upload/UploadDropOverlay';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
-import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
 
@@ -29,6 +27,13 @@ interface MessageInputProps {
   members?: MentionMember[];
   roles?: MentionRole[];
   channels?: MentionChannel[];
+  // External attachment management (from ChatArea)
+  attachments?: PendingAttachment[];
+  onAddFiles?: (files: FileList | File[]) => void;
+  onRemoveAttachment?: (id: string) => void;
+  onUpdateAttachment?: (id: string, updates: Partial<Pick<PendingAttachment, 'name' | 'description' | 'isSpoiler'>>) => void;
+  onToggleSpoiler?: (id: string) => void;
+  onClearAttachments?: () => void;
 }
 
 interface MentionState {
@@ -55,6 +60,12 @@ export function MessageInput({
   members = [],
   roles = [],
   channels = [],
+  attachments = [],
+  onAddFiles,
+  onRemoveAttachment,
+  onUpdateAttachment,
+  onToggleSpoiler,
+  onClearAttachments,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,20 +76,6 @@ export function MessageInput({
   const [showPreview, setShowPreview] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
-
-  const {
-    attachments,
-    isDragging,
-    addFiles,
-    removeAttachment,
-    updateAttachment,
-    toggleSpoiler,
-    clearAttachments,
-    handleDragEnter,
-    handleDragLeave,
-    handleDragOver,
-    handleDrop,
-  } = usePendingAttachments();
 
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
@@ -124,10 +121,10 @@ export function MessageInput({
   // Handle file input change
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      addFiles(e.target.files);
+      onAddFiles?.(e.target.files);
       e.target.value = ''; // Reset input
     }
-  }, [addFiles]);
+  }, [onAddFiles]);
 
   // Detect mention triggers - require space or start of line before trigger
   // Using non-capturing groups for browser compatibility (Safari, Firefox)
@@ -306,9 +303,9 @@ export function MessageInput({
         isSpoiler: a.isSpoiler,
       }));
       onSend(attachmentData.length > 0 ? attachmentData : undefined);
-      clearAttachments();
+      onClearAttachments?.();
     }
-  }, [value, attachments, disabled, onSend, clearAttachments]);
+  }, [value, attachments, disabled, onSend, onClearAttachments]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -319,18 +316,7 @@ export function MessageInput({
     <div 
       ref={containerRef}
       className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
     >
-      {/* Drop overlay */}
-      <AnimatePresence>
-        {isDragging && (
-          <UploadDropOverlay channelName={channelName} />
-        )}
-      </AnimatePresence>
-
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -344,9 +330,9 @@ export function MessageInput({
       {/* Attachment staging area */}
       <AttachmentStagingArea
         attachments={attachments}
-        onToggleSpoiler={toggleSpoiler}
-        onRemove={removeAttachment}
-        onUpdate={updateAttachment}
+        onToggleSpoiler={(id) => onToggleSpoiler?.(id)}
+        onRemove={(id) => onRemoveAttachment?.(id)}
+        onUpdate={(id, updates) => onUpdateAttachment?.(id, updates)}
       />
 
       {showPreview && value.trim() && (

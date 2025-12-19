@@ -1408,6 +1408,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onTypingStop={stopTyping}
           serverId={channel.server_id}
           channelId={channel.id}
+          channelName={channel.name}
           members={members.map((m) => ({
             id: m.id,
             displayName: m.displayName,

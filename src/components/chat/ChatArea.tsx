@@ -930,7 +930,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           {/* Welcome message */}
           <div className="mb-8 animate-fade-in">
             <div className="mb-4">
-              <StreamlineHash size={64} className="text-[#5865f2]" />
+              <StreamlineHash size={64} className="text-muted-foreground" />
             </div>
             <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>

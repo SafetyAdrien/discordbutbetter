@@ -13,6 +13,16 @@ serve(async (req) => {
   }
 
   try {
+    // Extract and validate authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { channelId } = await req.json();
     
     if (!channelId) {
@@ -24,6 +34,7 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -34,11 +45,38 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with service role for database operations
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    // Create authenticated Supabase client using the user's JWT to respect RLS
+    const supabaseAuth = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      global: {
+        headers: { Authorization: authHeader }
+      }
+    });
+
+    // First, verify the user has access to this channel by checking RLS
+    // This query will fail if the user is not a member of the server
+    const { data: channelAccess, error: accessError } = await supabaseAuth
+      .from('channels')
+      .select('id, server_id')
+      .eq('id', channelId)
+      .single();
+
+    if (accessError || !channelAccess) {
+      console.error('Channel access denied or not found:', accessError);
+      return new Response(
+        JSON.stringify({ error: 'Channel not found or access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`User has access to channel ${channelId} in server ${channelAccess.server_id}`);
+
+    // Use service role client only for operations that need it (saving summaries)
+    // but we've already verified access above
+    const supabaseService = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Fetch recent messages from the channel (last 100 messages)
-    const { data: messages, error: messagesError } = await supabase
+    // Use the authenticated client to respect RLS
+    const { data: messages, error: messagesError } = await supabaseAuth
       .from('messages')
       .select(`
         id,
@@ -170,10 +208,10 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
       topics = [];
     }
 
-    // Save summaries to database
+    // Save summaries to database using service role (since we've already verified access)
     const savedSummaries = [];
     for (const topic of topics) {
-      const { data: saved, error: saveError } = await supabase
+      const { data: saved, error: saveError } = await supabaseService
         .from('channel_summaries')
         .insert({
           channel_id: channelId,

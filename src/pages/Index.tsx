@@ -287,9 +287,10 @@ const Index = () => {
     memberRolesMap.set(m.user.id, m.roles);
   });
 
-  const messagesData: Message[] = messages.map(m => ({
+  const messagesData: Message[] = messages.map((m) => ({
     id: m.id,
     content: m.content,
+    attachments: (m as any).attachments || [],
     author: {
       id: m.author?.id || '',
       username: m.author?.username || 'unknown',

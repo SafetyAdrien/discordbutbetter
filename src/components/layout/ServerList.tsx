@@ -321,25 +321,40 @@ export function ServerList({
   };
 
   const handleLeaveServer = (server: Server) => {
+    console.log('[DEBUG] handleLeaveServer called for server:', server.id, server.name);
+    console.log('[DEBUG] Current user:', user?.id);
+    console.log('[DEBUG] Server owner:', server.ownerId);
     // Check if user is the owner
     if (server.ownerId === user?.id) {
+      console.log('[DEBUG] User is owner, cannot leave');
       toast({ title: "Vous ne pouvez pas quitter un serveur dont vous êtes propriétaire", variant: "destructive" });
       return;
     }
+    console.log('[DEBUG] Opening leave dialog');
     setServerToLeave(server);
     setShowLeaveDialog(true);
   };
 
   const confirmLeaveServer = () => {
-    if (!serverToLeave) return;
+    console.log('[DEBUG] confirmLeaveServer called');
+    console.log('[DEBUG] serverToLeave:', serverToLeave?.id);
+    if (!serverToLeave) {
+      console.log('[DEBUG] No server to leave');
+      return;
+    }
+    console.log('[DEBUG] Calling leaveServer.mutate');
     leaveServer.mutate(serverToLeave.id, {
       onSuccess: () => {
+        console.log('[DEBUG] Leave server success');
         setShowLeaveDialog(false);
         setServerToLeave(null);
         // If the user was viewing the server they left, go to DMs
         if (activeServerId === serverToLeave.id) {
           onServerSelect(null);
         }
+      },
+      onError: (error) => {
+        console.log('[DEBUG] Leave server error:', error);
       }
     });
   };

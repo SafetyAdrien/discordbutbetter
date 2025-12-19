@@ -4,16 +4,19 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X, UserMinus, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
+import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
 import { membersMutationLockRef } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
+import { toast } from 'sonner';
 import * as Portal from '@radix-ui/react-portal';
 
 interface Role {
@@ -35,6 +38,8 @@ interface UserProfilePopupProps {
   secondaryOwnerId?: string;
   memberId?: string;
   canManageRoles?: boolean;
+  canKick?: boolean;
+  canBan?: boolean;
   mode?: 'dialog' | 'card';
   cardPosition?: { top: number; right: number };
 }
@@ -105,6 +110,8 @@ export function UserProfilePopup({
   secondaryOwnerId,
   memberId,
   canManageRoles = false,
+  canKick = false,
+  canBan = false,
   mode = 'dialog',
   cardPosition,
 }: UserProfilePopupProps) {
@@ -114,6 +121,8 @@ export function UserProfilePopup({
   const { mutate: sendFriendRequest, isPending: isSendingRequest } = useSendFriendRequest();
   const { data: friends } = useFriends();
   const { data: allRoles = [] } = useServerRoles(serverId || null);
+  const kickMember = useKickMember();
+  const banMember = useBanMember();
   const [dmCreated, setDmCreated] = useState(false);
   const [showRolePanel, setShowRolePanel] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
@@ -122,6 +131,10 @@ export function UserProfilePopup({
 
   const isOwnProfile = currentUser?.id === user.id;
   const isGodUser = currentUser?.id === ownerId || currentUser?.id === secondaryOwnerId;
+  const isTargetOwner = user.id === ownerId || user.id === secondaryOwnerId;
+  
+  // Can't kick/ban owners or yourself
+  const showKickBan = !isOwnProfile && !isTargetOwner && serverId;
   
   const friendship = friends?.find(
     f => (f.profile?.id === user.id)
@@ -146,6 +159,40 @@ export function UserProfilePopup({
 
   const handleAddFriend = () => {
     sendFriendRequest(user.username);
+  };
+
+  const handleKick = () => {
+    if (!serverId) return;
+    kickMember.mutate(
+      { serverId, userId: user.id },
+      {
+        onSuccess: () => {
+          toast.success(`${user.displayName} a été expulsé du serveur`);
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          toast.error('Erreur lors de l\'expulsion');
+          console.error(error);
+        },
+      }
+    );
+  };
+
+  const handleBan = () => {
+    if (!serverId) return;
+    banMember.mutate(
+      { serverId, userId: user.id },
+      {
+        onSuccess: () => {
+          toast.success(`${user.displayName} a été banni du serveur`);
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          toast.error('Erreur lors du bannissement');
+          console.error(error);
+        },
+      }
+    );
   };
 
   const displayRoles = roles
@@ -375,6 +422,39 @@ export function UserProfilePopup({
               </p>
             )}
           </div>
+
+          {/* Kick/Ban actions */}
+          {showKickBan && (canKick || canBan) && (
+            <>
+              <div className="border-t border-border" />
+              <div className="flex gap-2">
+                {canKick && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
+                    onClick={handleKick}
+                    disabled={kickMember.isPending}
+                  >
+                    <UserMinus className="w-4 h-4 mr-2" />
+                    Expulser
+                  </Button>
+                )}
+                {canBan && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={handleBan}
+                    disabled={banMember.isPending}
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    Bannir
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
 
         </div>
       </div>

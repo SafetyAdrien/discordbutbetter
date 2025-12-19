@@ -1501,6 +1501,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           permissionDeniedMessage={permissionDeniedMessage}
           canAttachFiles={canAttachFiles}
           canCreatePolls={canCreatePolls}
+          canMentionEveryone={canMentionEveryone}
         />
       </div>
 

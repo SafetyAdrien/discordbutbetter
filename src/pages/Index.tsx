@@ -449,7 +449,6 @@ const Index = () => {
                   <StageChannel 
                     channel={channelForChat}
                     serverId={activeServer.id}
-                    canModerate={activeServer.owner_id === user?.id}
                   />
                 ) : (
                   <ChatArea

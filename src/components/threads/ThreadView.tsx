@@ -142,13 +142,21 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
   // Check multiple permissions for parent channel
   const { can: canPerm } = useMultipleChannelPermissions(channelId || thread?.channel_id || null, [
+    'send_messages_in_threads',
     'send_messages',
+    'attach_files',
     'add_reactions',
+    'create_polls',
+    'mention_everyone',
     'manage_threads',
   ]);
   
-  const canSendMessages = canPerm('send_messages');
+  // Use send_messages_in_threads, fallback to send_messages
+  const canSendMessages = canPerm('send_messages_in_threads') || canPerm('send_messages');
+  const canAttachFiles = canPerm('attach_files');
   const canAddReactions = canPerm('add_reactions');
+  const canCreatePolls = canPerm('create_polls');
+  const canMentionEveryone = canPerm('mention_everyone');
   const canManageThreads = canPerm('manage_threads');
   
   const permissionDeniedMessage = !canSendMessages 
@@ -805,6 +813,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         roles={mentionRoles}
         channels={allChannels}
         permissionDeniedMessage={permissionDeniedMessage}
+        canAttachFiles={canAttachFiles}
+        canCreatePolls={canCreatePolls}
+        canMentionEveryone={canMentionEveryone}
       />
       {/* Edit Poll Modal */}
       <CreatePollModal

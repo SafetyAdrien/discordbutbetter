@@ -70,7 +70,7 @@ import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from 
 import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
-import { useHasChannelPermission } from "@/hooks/useUserChannelPermissions";
+import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 
 interface Role {
   id: string;
@@ -207,10 +207,22 @@ export function AnnouncementChannel({
   const dismissPrompt = useDismissPublishPrompt();
 
   // Check permissions
-  const { data: canSendMessages = true } = useHasChannelPermission(channel.id, 'send_messages');
-  const { data: canAddReactions = true } = useHasChannelPermission(channel.id, 'add_reactions');
-  const { data: canManageMessages = false } = useHasChannelPermission(channel.id, 'manage_messages');
-  const { data: canCreateAnnouncements = true } = useHasChannelPermission(channel.id, 'create_announcements');
+  const { can: canPerm } = useMultipleChannelPermissions(channel.id, [
+    'send_messages',
+    'attach_files',
+    'add_reactions',
+    'create_polls',
+    'mention_everyone',
+    'create_public_threads',
+    'manage_messages',
+  ]);
+
+  const canSendMessages = canPerm('send_messages');
+  const canAttachFiles = canPerm('attach_files');
+  const canAddReactions = canPerm('add_reactions');
+  const canCreatePolls = canPerm('create_polls');
+  const canManageMessages = canPerm('manage_messages');
+  
   const permissionDeniedMessage = !canSendMessages 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
@@ -895,6 +907,8 @@ export function AnnouncementChannel({
           serverId={channel.server_id}
           members={members}
           permissionDeniedMessage={permissionDeniedMessage}
+          canAttachFiles={canAttachFiles}
+          canCreatePolls={canCreatePolls}
         />
       </div>
 

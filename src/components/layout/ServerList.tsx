@@ -26,7 +26,7 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
@@ -196,9 +196,12 @@ function SortableServerIcon({
 }
 
 // Server Drag Overlay
-function ServerDragOverlay({ server }: { server: Server }) {
+const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ server }, ref) => {
   return (
-    <div className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
+    <div
+      ref={ref}
+      className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing"
+    >
       {server.icon ? (
         server.icon.startsWith('http') ? (
           <img 
@@ -216,7 +219,8 @@ function ServerDragOverlay({ server }: { server: Server }) {
       )}
     </div>
   );
-}
+});
+ServerDragOverlay.displayName = 'ServerDragOverlay';
 
 interface ServerListProps {
   servers: Server[];
@@ -258,6 +262,7 @@ export function ServerList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  const dropPositionRef = useRef<'before' | 'after'>('after');
   
   const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
 
@@ -345,6 +350,8 @@ export function ServerList({
   // DnD handlers
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    dropPositionRef.current = 'after';
+    setDropPosition('after');
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -356,13 +363,13 @@ export function ServerList({
 
     setOverId(over.id as string);
 
-    // Determine position based on relative indices
+    // Determine position based on relative indices (stable + immediate)
     const activeIndex = sortedServers.findIndex(s => s.id === active.id);
     const overIndex = sortedServers.findIndex(s => s.id === over.id);
-    
-    // If dragging from below to above, show indicator before the target
-    // If dragging from above to below, show indicator after the target
-    setDropPosition(activeIndex > overIndex ? 'before' : 'after');
+
+    const nextPosition: 'before' | 'after' = activeIndex > overIndex ? 'before' : 'after';
+    dropPositionRef.current = nextPosition;
+    setDropPosition(nextPosition);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -377,8 +384,10 @@ export function ServerList({
 
     if (oldIndex === -1 || overIndex === -1) return;
 
+    const finalDropPosition = dropPositionRef.current;
+
     // Calculate new index based on drop position
-    let newIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+    let newIndex = finalDropPosition === 'before' ? overIndex : overIndex + 1;
     if (oldIndex < overIndex) newIndex--;
     newIndex = Math.max(0, Math.min(newIndex, sortedServers.length - 1));
 

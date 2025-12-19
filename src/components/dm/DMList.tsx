@@ -2,8 +2,21 @@ import { cn } from '@/lib/utils';
 import { useDMConversations, DMConversation } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+function formatCompactTimestamp(date: Date): string {
+  if (isToday(date)) {
+    return format(date, 'HH:mm', { locale: fr });
+  }
+  if (isYesterday(date)) {
+    return 'Hier';
+  }
+  if (isThisWeek(date, { weekStartsOn: 1 })) {
+    return format(date, 'EEE', { locale: fr });
+  }
+  return format(date, 'dd/MM', { locale: fr });
+}
 import { MessageCircle, User, Phone, X, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
@@ -151,11 +164,8 @@ function DMConversationItem({
               </span>
             )}
             {conversation.lastMessage && (
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(conversation.lastMessage.created_at), {
-                  addSuffix: false,
-                  locale: fr,
-                })}
+              <span className="text-[11px] text-muted-foreground">
+                {formatCompactTimestamp(new Date(conversation.lastMessage.created_at))}
               </span>
             )}
           </div>

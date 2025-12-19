@@ -191,6 +191,38 @@ export function useServerFolders() {
     }
   };
 
+  // Reorder server within folder (or add at specific position)
+  const reorderServerInFolder = (
+    folderId: string,
+    serverId: string,
+    targetServerId: string,
+    position: 'before' | 'after'
+  ) => {
+    const folder = folders.find((f) => f.id === folderId);
+    if (!folder) return;
+
+    const currentServerIds = [...folder.serverIds];
+    
+    // Remove the server if it's already in this folder
+    const withoutActive = currentServerIds.filter((id) => id !== serverId);
+    
+    // Find target index
+    const targetIndex = withoutActive.indexOf(targetServerId);
+    const insertIndex = targetIndex === -1
+      ? withoutActive.length
+      : position === 'after'
+        ? targetIndex + 1
+        : targetIndex;
+    
+    // Insert at new position
+    withoutActive.splice(insertIndex, 0, serverId);
+
+    updateFolder.mutate({
+      folderId,
+      updates: { server_ids: withoutActive },
+    });
+  };
+
   // Toggle folder expanded/collapsed
   const toggleFolderExpanded = (folderId: string) => {
     const folder = folders.find((f) => f.id === folderId);
@@ -222,6 +254,7 @@ export function useServerFolders() {
     deleteFolder,
     addServerToFolder,
     removeServerFromFolder,
+    reorderServerInFolder,
     toggleFolderExpanded,
     getFolderForServer,
     getServerIdsInFolders,

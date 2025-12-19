@@ -27,8 +27,8 @@ function useRealtimeTimestamp(date: Date): string {
       const now = new Date();
       const diff = now.getTime() - date.getTime();
       
-      if (diff < 60 * 1000) return 10 * 1000; // < 1 min: every 10s
-      if (isToday(date)) return 60 * 1000;    // Today: every minute
+      if (diff < 60 * 1000) return 1000;       // < 1 min: every second
+      if (isToday(date)) return 30 * 1000;     // Today: every 30s
       return 60 * 60 * 1000;                   // Older: every hour
     };
 

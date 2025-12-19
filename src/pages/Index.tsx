@@ -26,6 +26,7 @@ import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
+import { useNavigationState } from '@/hooks/useNavigationState';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
@@ -34,6 +35,16 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  // Navigation state persistence
+  const {
+    activeServerId: persistedServerId,
+    activeDMId: persistedDMId,
+    setActiveServerId: setPersistedServerId,
+    setActiveDMId: setPersistedDMId,
+    setChannelForServer,
+    getChannelForServer,
+  } = useNavigationState();
   
   // Track window resize for responsive behavior
   useEffect(() => {
@@ -44,9 +55,9 @@ const Index = () => {
   
   const isMobile = windowWidth < 768;
   
-  const [activeServerId, setActiveServerId] = useState<string | null>(null);
+  const [activeServerId, setActiveServerIdLocal] = useState<string | null>(persistedServerId);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-  const [activeDMId, setActiveDMId] = useState<string | null>(null);
+  const [activeDMId, setActiveDMIdLocal] = useState<string | null>(persistedDMId);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [threadChannelId, setThreadChannelId] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
@@ -55,6 +66,17 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+
+  // Wrapper functions to persist navigation state
+  const setActiveServerId = (id: string | null) => {
+    setActiveServerIdLocal(id);
+    setPersistedServerId(id);
+  };
+  
+  const setActiveDMId = (id: string | null) => {
+    setActiveDMIdLocal(id);
+    setPersistedDMId(id);
+  };
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -109,30 +131,35 @@ const Index = () => {
     }
   }, [servers, activeServerId, activeDMId]);
 
-  // Update active channel when server changes
+  // Update active channel when server changes - restore last visited or first text channel
   useEffect(() => {
     if (activeServerId) {
       const server = servers.find(s => s.id === activeServerId);
       if (server) {
-        const firstChannel = server.categories
-          .flatMap(c => c.channels)
-          .find(ch => ch.type === 'text');
-        if (firstChannel) {
-          setActiveChannelId(firstChannel.id);
+        // Try to restore last visited channel for this server
+        const savedChannelId = getChannelForServer(activeServerId);
+        const allChannels = [
+          ...server.categories.flatMap(c => c.channels),
+          ...(channelsData?.orphanChannels || [])
+        ];
+        
+        const savedChannel = savedChannelId 
+          ? allChannels.find(ch => ch.id === savedChannelId)
+          : null;
+        
+        if (savedChannel) {
+          setActiveChannelId(savedChannel.id);
+        } else {
+          // Fallback to first text channel
+          const firstChannel = allChannels.find(ch => ch.type === 'text');
+          if (firstChannel) {
+            setActiveChannelId(firstChannel.id);
+            setChannelForServer(activeServerId, firstChannel.id);
+          }
         }
       }
     }
-  }, [activeServerId, servers]);
-
-  // Also check orphan channels when selecting first channel
-  useEffect(() => {
-    if (activeServerId && !activeChannelId && channelsData?.orphanChannels) {
-      const firstOrphan = channelsData.orphanChannels.find(ch => ch.type === 'text');
-      if (firstOrphan) {
-        setActiveChannelId(firstOrphan.id);
-      }
-    }
-  }, [activeServerId, activeChannelId, channelsData?.orphanChannels]);
+  }, [activeServerId, servers, channelsData?.orphanChannels, getChannelForServer, setChannelForServer]);
 
   const activeServer = servers.find((s) => s.id === activeServerId);
   const activeChannel = activeServer?.categories
@@ -353,6 +380,10 @@ const Index = () => {
             activeChannelId={activeChannelId}
             onChannelSelect={(channelId) => {
               setActiveChannelId(channelId);
+              // Persist channel selection for this server
+              if (activeServerId) {
+                setChannelForServer(activeServerId, channelId);
+              }
               // Fermer le thread quand on clique sur un salon
               setActiveThreadId(null);
               setThreadChannelId(null);

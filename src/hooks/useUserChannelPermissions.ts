@@ -44,8 +44,9 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
     },
     enabled: !!channelId && !!user?.id,
     staleTime: 0,
-    gcTime: 0, // Don't cache at all - always fresh
-    refetchOnMount: 'always',
+    gcTime: 300000, // Keep in cache 5 min to allow refetch
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 }
 

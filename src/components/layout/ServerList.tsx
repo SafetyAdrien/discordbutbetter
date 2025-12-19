@@ -14,20 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
-import { useLeaveServer } from '@/hooks/useLeaveServer';
-import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 // DnD Kit imports
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
@@ -235,15 +222,9 @@ export function ServerList({
   onCreateClick,
   onOpenServerSettings,
 }: ServerListProps) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const leaveServer = useLeaveServer();
   const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
-  
-  // Leave server dialog state
-  const [serverToLeave, setServerToLeave] = useState<{ id: string; name: string } | null>(null);
 
   // Sort servers by user's custom order
   const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);
@@ -313,29 +294,7 @@ export function ServerList({
   };
 
   const handleLeaveServer = (serverId: string) => {
-    const server = sortedServers.find(s => s.id === serverId);
-    if (server) {
-      // Check if user is the owner
-      if (server.ownerId === user?.id) {
-        toast({ title: 'Vous êtes le propriétaire de ce serveur', description: 'Vous devez transférer la propriété ou supprimer le serveur.' });
-        return;
-      }
-      setServerToLeave({ id: serverId, name: server.name });
-    }
-  };
-
-  const confirmLeaveServer = () => {
-    if (serverToLeave) {
-      leaveServer.mutate(serverToLeave.id, {
-        onSuccess: () => {
-          setServerToLeave(null);
-          if (activeServerId === serverToLeave.id) {
-            onServerSelect(null);
-            navigate('/');
-          }
-        }
-      });
-    }
+    console.log('Leave server', serverId);
   };
 
   const handleServerClick = (serverId: string) => {
@@ -510,24 +469,6 @@ export function ServerList({
           <p>Découvrir des serveurs</p>
         </TooltipContent>
       </Tooltip>
-
-      {/* Leave Server Confirmation Dialog */}
-      <AlertDialog open={!!serverToLeave} onOpenChange={(open) => !open && setServerToLeave(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Quitter le serveur</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir quitter <strong>{serverToLeave?.name}</strong> ? Vous pourrez rejoindre à nouveau avec une invitation.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmLeaveServer} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Quitter le serveur
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

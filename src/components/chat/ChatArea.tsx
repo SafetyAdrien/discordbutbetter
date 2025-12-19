@@ -26,6 +26,7 @@ import {
   Smile,
   Flag,
 } from "lucide-react";
+import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import {
@@ -929,7 +930,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           {/* Welcome message */}
           <div className="mb-8 animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
-              <Hash className="w-8 h-8 text-primary-foreground" />
+              <StreamlineHash className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>

@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Upload, Grid, List, Users } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
+import { AttachmentStagingArea } from '@/components/chat/upload/AttachmentStagingArea';
 
 interface Channel {
   id: string;
@@ -19,12 +23,48 @@ export interface MediaChannelProps {
 
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  const {
+    attachments,
+    isDragging,
+    addFiles,
+    removeAttachment,
+    updateAttachment,
+    toggleSpoiler,
+    clearAttachments,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
+  } = usePendingAttachments();
 
   // Placeholder data - will be connected to actual storage later
   const mediaItems: { id: string; url: string; name: string; type: 'image' | 'video'; uploadedAt: Date }[] = [];
+  
+  const handleUploadClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = 'image/*,video/*';
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) addFiles(Array.from(files));
+    };
+    input.click();
+  };
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
+    <div 
+      className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <AnimatePresence>
+        {isDragging && <UploadDropOverlay channelName={channel.name} />}
+      </AnimatePresence>
+      
       {/* Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0 w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -53,7 +93,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
               <List className="w-4 h-4" />
             </button>
           </div>
-          <Button size="sm">
+          <Button size="sm" onClick={handleUploadClick}>
             <Upload className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Téléverser</span>
           </Button>
@@ -70,9 +110,33 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
         </div>
       </div>
 
+      {/* Staging Area for pending uploads */}
+      {attachments.length > 0 && (
+        <div className="p-4 border-b border-border">
+          <AttachmentStagingArea
+            attachments={attachments}
+            onRemove={removeAttachment}
+            onUpdate={updateAttachment}
+            onToggleSpoiler={toggleSpoiler}
+          />
+          <div className="flex justify-end mt-3 gap-2">
+            <Button variant="ghost" size="sm" onClick={clearAttachments}>
+              Annuler
+            </Button>
+            <Button size="sm" onClick={() => {
+              // TODO: Implement actual upload to storage
+              console.log('Uploading files:', attachments);
+              clearAttachments();
+            }}>
+              Téléverser {attachments.length} fichier{attachments.length > 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      )}
+      
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {mediaItems.length === 0 ? (
+        {mediaItems.length === 0 && attachments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
               <StreamlineMedia className="w-10 h-10 text-muted-foreground/50" />
@@ -81,7 +145,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             <p className="text-muted-foreground text-sm max-w-md mb-4">
               Partagez des images et vidéos avec les membres de ce salon.
             </p>
-            <Button>
+            <Button onClick={handleUploadClick}>
               <Upload className="w-4 h-4 mr-2" />
               Téléverser un fichier
             </Button>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,6 +11,8 @@ import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageInput } from '@/components/chat/MessageInput';
+import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 
 interface VoiceChannelChatProps {
   channelId: string;
@@ -24,6 +27,20 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   
   const { data: messages = [] } = useMessages(channelId);
   const sendMessage = useSendMessage();
+  
+  const {
+    attachments,
+    isDragging,
+    addFiles,
+    removeAttachment,
+    updateAttachment,
+    toggleSpoiler,
+    clearAttachments,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
+  } = usePendingAttachments();
   
   // Fetch data for mention autocomplete
   const { data: channelsData } = useChannels(serverId);
@@ -68,13 +85,24 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   }, [messages]);
 
   const handleSend = () => {
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() && attachments.length === 0) return;
     sendMessage.mutate({ channelId, content: messageInput.trim() });
     setMessageInput('');
+    clearAttachments();
   };
 
   return (
-    <div className="w-80 border-l border-white/10 flex flex-col bg-[#2b2d31]">
+    <div 
+      className="w-80 border-l border-white/10 flex flex-col bg-[#2b2d31] relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <AnimatePresence>
+        {isDragging && <UploadDropOverlay channelName={channelName} />}
+      </AnimatePresence>
+      
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-white/10">
         <span className="text-sm font-semibold text-white">Chat textuel</span>
@@ -138,6 +166,12 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
         members={mentionMembers}
         roles={mentionRoles}
         channels={allChannels}
+        attachments={attachments}
+        onAddFiles={addFiles}
+        onRemoveAttachment={removeAttachment}
+        onUpdateAttachment={updateAttachment}
+        onToggleSpoiler={toggleSpoiler}
+        onClearAttachments={clearAttachments}
       />
     </div>
   );

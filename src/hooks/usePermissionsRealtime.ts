@@ -22,19 +22,13 @@ export function usePermissionsRealtime(serverId: string | null) {
       });
       
       try {
-        // Use invalidateQueries with exact: false to match partial keys, then refetch
+        // Invalidate then refetch all permission queries
         await queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
         await queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
         
-        // Force refetch all active queries
-        await queryClient.refetchQueries({ 
-          queryKey: ['channel-permission'],
-          type: 'active'
-        });
-        await queryClient.refetchQueries({ 
-          queryKey: ['user-channel-permissions'],
-          type: 'active'
-        });
+        // Force refetch all queries (not just active)
+        await queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'all' });
         await queryClient.refetchQueries({ queryKey: ['user-permissions'], type: 'all' });
         await queryClient.refetchQueries({ queryKey: ['roles', serverId], type: 'all' });
         await queryClient.refetchQueries({ queryKey: ['role-permissions'], type: 'all' });

@@ -4,21 +4,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { PendingAttachment } from '@/hooks/usePendingAttachments';
 
-// Message validation schema
+// Message validation schema - allows empty content if there are attachments
 const messageSchema = z.object({
   content: z.string()
     .trim()
-    .min(1, 'Message cannot be empty')
     .max(2000, 'Message too long (max 2000 characters)'),
 });
+
+export interface StoredAttachment {
+  id: string;
+  url: string;
+  name: string;
+  type: 'image' | 'video' | 'file';
+  size: number;
+  description?: string;
+  isSpoiler?: boolean;
+}
 
 export interface MessageWithAuthor {
   id: string;
   content: string;
   created_at: string | null;
   edited_at: string | null;
-  attachments: any;
+  attachments: StoredAttachment[];
   channel_id: string;
   source_server_id?: string | null;
   source_server_name?: string | null;
@@ -75,7 +85,12 @@ export function useMessages(channelId: string | null) {
         .limit(100);
 
       if (error) throw error;
-      return data as MessageWithAuthor[];
+      
+      // Parse attachments from JSON
+      return (data as any[]).map(msg => ({
+        ...msg,
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+      })) as MessageWithAuthor[];
     },
     enabled: !!channelId && !!user,
   });
@@ -122,13 +137,17 @@ export function useMessages(channelId: string | null) {
             .single();
 
           if (data) {
+            const parsedData = {
+              ...data,
+              attachments: Array.isArray(data.attachments) ? data.attachments : []
+            };
             queryClient.setQueryData(
               ['messages', channelId],
               (old: MessageWithAuthor[] | undefined) => {
-                if (!old) return [data];
+                if (!old) return [parsedData];
                 // Check if message already exists
-                if (old.some((m) => m.id === data.id)) return old;
-                return [...old, data];
+                if (old.some((m) => m.id === parsedData.id)) return old;
+                return [...old, parsedData];
               }
             );
           }
@@ -186,6 +205,52 @@ export function useMessages(channelId: string | null) {
   return query;
 }
 
+// Helper function to upload attachments
+async function uploadAttachments(
+  userId: string,
+  pendingAttachments: PendingAttachment[]
+): Promise<StoredAttachment[]> {
+  const uploadedAttachments: StoredAttachment[] = [];
+
+  for (const attachment of pendingAttachments) {
+    const fileExt = attachment.file.name.split('.').pop();
+    const fileName = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('message-attachments')
+      .upload(fileName, attachment.file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('Upload error:', error);
+      continue;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('message-attachments')
+      .getPublicUrl(data.path);
+
+    // Determine type based on MIME
+    let type: 'image' | 'video' | 'file' = 'file';
+    if (attachment.file.type.startsWith('image/')) type = 'image';
+    else if (attachment.file.type.startsWith('video/')) type = 'video';
+
+    uploadedAttachments.push({
+      id: attachment.id,
+      url: urlData.publicUrl,
+      name: attachment.name || attachment.file.name,
+      type,
+      size: attachment.file.size,
+      description: attachment.description || undefined,
+      isSpoiler: attachment.isSpoiler,
+    });
+  }
+
+  return uploadedAttachments;
+}
+
 export function useSendMessage() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -194,14 +259,25 @@ export function useSendMessage() {
     mutationFn: async ({
       channelId,
       content,
+      attachments = [],
     }: {
       channelId: string;
       content: string;
+      attachments?: PendingAttachment[];
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Validate message content
+      // Validate - must have content or attachments
       const validated = messageSchema.parse({ content });
+      if (!validated.content.trim() && attachments.length === 0) {
+        throw new Error('Message must have content or attachments');
+      }
+
+      // Upload attachments first
+      let uploadedAttachments: StoredAttachment[] = [];
+      if (attachments.length > 0) {
+        uploadedAttachments = await uploadAttachments(user.id, attachments);
+      }
 
       const { data, error } = await supabase
         .from('messages')
@@ -209,6 +285,7 @@ export function useSendMessage() {
           channel_id: channelId,
           content: validated.content,
           author_id: user.id,
+          attachments: uploadedAttachments.length > 0 ? (uploadedAttachments as unknown as any) : [],
         })
         .select(`
           id,
@@ -229,9 +306,12 @@ export function useSendMessage() {
         .single();
 
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        attachments: (Array.isArray(data.attachments) ? data.attachments : []) as unknown as StoredAttachment[]
+      } as MessageWithAuthor;
     },
-    onMutate: async ({ channelId, content }) => {
+    onMutate: async ({ channelId, content, attachments = [] }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
 
@@ -241,13 +321,25 @@ export function useSendMessage() {
         channelId,
       ]);
 
+      // Create optimistic attachments
+      const optimisticAttachments: StoredAttachment[] = attachments.map(a => ({
+        id: a.id,
+        url: a.previewUrl,
+        name: a.name,
+        type: a.file.type.startsWith('image/') ? 'image' : 
+              a.file.type.startsWith('video/') ? 'video' : 'file',
+        size: a.file.size,
+        description: a.description || undefined,
+        isSpoiler: a.isSpoiler,
+      }));
+
       // Optimistically add the message
       const optimisticMessage: MessageWithAuthor = {
         id: `temp-${Date.now()}`,
         content,
         created_at: new Date().toISOString(),
         edited_at: null,
-        attachments: [],
+        attachments: optimisticAttachments,
         channel_id: channelId,
         author: profile
           ? {
@@ -274,9 +366,9 @@ export function useSendMessage() {
       queryClient.setQueryData<MessageWithAuthor[]>(
         ['messages', channelId],
         (old) => {
-          if (!old) return [data];
+          if (!old) return [data as MessageWithAuthor];
           return old.map((m) =>
-            m.id === context?.optimisticMessage.id ? data : m
+            m.id === context?.optimisticMessage.id ? (data as MessageWithAuthor) : m
           );
         }
       );

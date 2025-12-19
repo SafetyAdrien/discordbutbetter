@@ -25,8 +25,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Message } from '@/types/app';
 import { MarkdownText } from '@/lib/markdown';
-import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
+import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageAttachments';
 
 export interface DMConversationProps {
   conversationId: string;
@@ -377,6 +378,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             <MarkdownText content={message.content} />
                           </div>
                         )}
+
+                        {/* Message Attachments */}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
+                        )}
                       </div>
                     </div>
                   </UniversalMessageContextMenu>
@@ -400,6 +406,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           sendMessage.mutate({
             conversationId,
             content: messageInput.trim(),
+            attachments,
           });
           setMessageInput('');
           clearAttachments();

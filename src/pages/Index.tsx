@@ -163,9 +163,9 @@ const Index = () => {
     }));
   }, [members]);
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (content: string, attachments?: any[]) => {
     if (!activeChannelId) return;
-    sendMessage.mutate({ channelId: activeChannelId, content });
+    sendMessage.mutate({ channelId: activeChannelId, content, attachments: attachments || [] });
   };
 
   const handleJoinServer = (serverId: string) => {

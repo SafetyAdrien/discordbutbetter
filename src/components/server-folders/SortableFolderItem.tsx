@@ -175,11 +175,18 @@ export function SortableFolderItem({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="flex flex-col items-center gap-2 mt-1 overflow-hidden relative"
+              className="relative flex flex-col items-center gap-2 mt-2 overflow-hidden"
             >
-              {/* Vertical connector line */}
+              {/* Vertical connector line on the left side */}
               <div 
-                className="absolute left-[10px] top-0 bottom-2 w-[2px] rounded-full bg-[#3f4147]"
+                className="absolute left-2 top-0 w-[2px] rounded-full bg-[#4e5058]"
+                style={{ 
+                  height: servers.length > 1 
+                    ? `calc(100% - 24px)` 
+                    : servers.length === 1 
+                      ? '0px' 
+                      : '0px'
+                }}
               />
               
               {servers.map((server) => (

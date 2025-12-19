@@ -26,25 +26,24 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
-import { DndContext, closestCenter, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
-import { useDndSensors } from '@/hooks/useDndSensors';
 
-// Discord-style Drop Indicator for servers - positioned in gap between items
+// Discord-style Drop Indicator for servers
 const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
   if (!isVisible) return null;
   return (
     <div 
       className={cn(
         "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2] rounded-full shadow-[0_0_8px_rgba(88,101,242,0.6)]",
-        position === 'before' ? "-top-3" : "-bottom-3"
+        "bg-[#5865f2] rounded-full",
+        position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
       )}
     />
   );
@@ -92,13 +91,7 @@ function SortableServerIcon({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging 
-      ? 'opacity 100ms ease-out' 
-      : 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease-out, margin 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-    willChange: isDragging ? 'transform' : 'auto',
-    // Add spacing when this item is the drop target to make room for the dragged item
-    marginTop: showDropIndicator && dropPosition === 'before' ? '52px' : undefined,
-    marginBottom: showDropIndicator && dropPosition === 'after' ? '52px' : undefined,
+    transition: isDragging ? 'opacity 150ms ease' : transition,
   };
 
   return (
@@ -202,36 +195,28 @@ function SortableServerIcon({
   );
 }
 
-// Server Drag Overlay with forwardRef for proper DnD handling
-const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(
-  ({ server }, ref) => {
-    return (
-      <div 
-        ref={ref}
-        className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing"
-        style={{ willChange: 'transform' }}
-      >
-        {server.icon ? (
-          server.icon.startsWith('http') ? (
-            <img 
-              src={server.icon} 
-              alt={server.name}
-              className="w-full h-full object-cover rounded-[inherit]"
-              draggable={false}
-            />
-          ) : (
-            <span className="text-xl">{server.icon}</span>
-          )
+// Server Drag Overlay
+function ServerDragOverlay({ server }: { server: Server }) {
+  return (
+    <div className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
+      {server.icon ? (
+        server.icon.startsWith('http') ? (
+          <img 
+            src={server.icon} 
+            alt={server.name}
+            className="w-full h-full object-cover rounded-[inherit]"
+          />
         ) : (
-          <span className="text-sm font-semibold">
-            {server.name.slice(0, 2).toUpperCase()}
-          </span>
-        )}
-      </div>
-    );
-  }
-);
-ServerDragOverlay.displayName = 'ServerDragOverlay';
+          <span className="text-xl">{server.icon}</span>
+        )
+      ) : (
+        <span className="text-sm font-semibold">
+          {server.name.slice(0, 2).toUpperCase()}
+        </span>
+      )}
+    </div>
+  );
+}
 
 interface ServerListProps {
   servers: Server[];
@@ -276,8 +261,12 @@ export function ServerList({
   
   const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
 
-  // DnD sensors - optimized with touch and keyboard support
-  const sensors = useDndSensors({ activationDistance: 3 });
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
 
   // Track previous counts for shake animation
   const prevUnreadCounts = useRef<Record<string, number>>({});
@@ -485,12 +474,7 @@ export function ServerList({
           </div>
         </SortableContext>
 
-        <DragOverlay 
-          dropAnimation={{
-            duration: 180,
-            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-          }}
-        >
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
           {activeServer && <ServerDragOverlay server={activeServer} />}
         </DragOverlay>
       </DndContext>

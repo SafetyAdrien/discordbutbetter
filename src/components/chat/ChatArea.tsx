@@ -75,7 +75,6 @@ import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { toast } from "sonner";
-import { AISummaries } from "@/components/chat/AISummaries";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -837,9 +836,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           </Tooltip>
         </div>
       </div>
-
-      {/* AI Summaries Bar */}
-      <AISummaries />
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full">

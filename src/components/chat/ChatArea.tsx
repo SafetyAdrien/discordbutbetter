@@ -67,6 +67,7 @@ import { Thread } from "@/types/thread";
 import { PollDisplay } from "./PollDisplay";
 import { CreatePollModal } from "./CreatePollModal";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
+import StreamlineScroll from "@/components/icons/StreamlineScroll";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import CreateThreadModal from "@/components/threads/CreateThreadModal";
 import { ThreadSpine } from "@/components/threads/ThreadSpine";
@@ -74,6 +75,9 @@ import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
+import { SummariesPanel } from "@/components/summaries/SummariesPanel";
+import { SummariesContextBar } from "@/components/summaries/SummariesContextBar";
+import { mockSummaries, type ConversationSummary } from "@/data/mockSummaries";
 import { toast } from "sonner";
 
 // Reply Reference Component
@@ -360,6 +364,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
+  const [showSummariesPanel, setShowSummariesPanel] = useState(false);
+  const [currentSummaryIndex, setCurrentSummaryIndex] = useState(0);
+  const [selectedSummary, setSelectedSummary] = useState<ConversationSummary | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -673,7 +680,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     copyToClipboard(link, "Lien du message copié");
   };
   return (
-    <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
+    <div ref={ref} className="flex-1 flex bg-background min-w-0 w-full overflow-x-hidden">
+      {/* Main Chat Column */}
+      <div className="flex-1 flex flex-col min-w-0">
       {/* Channel Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -812,6 +821,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverContent>
           </Popover>
 
+          {/* Summaries Trigger Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={() => setShowSummariesPanel(!showSummariesPanel)}
+                className={cn(showSummariesPanel && "bg-surface-hover")}
+              >
+                <StreamlineScroll className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Résumés de conversation</TooltipContent>
+          </Tooltip>
+
           {/* Members Toggle / Thread Close */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -836,6 +860,27 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           </Tooltip>
         </div>
       </div>
+
+      {/* Summaries Context Bar */}
+      <SummariesContextBar
+        isVisible={mockSummaries.length > 0}
+        currentSummary={selectedSummary}
+        totalSummaries={mockSummaries.length}
+        currentIndex={currentSummaryIndex}
+        onPrevious={() => {
+          if (currentSummaryIndex > 0) {
+            setCurrentSummaryIndex(currentSummaryIndex - 1);
+            setSelectedSummary(mockSummaries[currentSummaryIndex - 1]);
+          }
+        }}
+        onNext={() => {
+          if (currentSummaryIndex < mockSummaries.length - 1) {
+            setCurrentSummaryIndex(currentSummaryIndex + 1);
+            setSelectedSummary(mockSummaries[currentSummaryIndex + 1]);
+          }
+        }}
+        onViewAll={() => setShowSummariesPanel(true)}
+      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full">
@@ -1417,6 +1462,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           });
           toast.success("Signalement envoyé. Merci !");
           setReportingMessage(null);
+        }}
+      />
+
+      </div>
+
+      {/* Summaries Panel */}
+      <SummariesPanel
+        isOpen={showSummariesPanel}
+        onClose={() => setShowSummariesPanel(false)}
+        onSelectSummary={(summary) => {
+          setSelectedSummary(summary);
+          setCurrentSummaryIndex(mockSummaries.findIndex(s => s.id === summary.id));
         }}
       />
     </div>

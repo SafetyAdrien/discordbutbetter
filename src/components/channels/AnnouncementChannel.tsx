@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
 import {
+  Hash,
   Bell,
   Pin,
   Users,
@@ -62,7 +63,6 @@ import { useServerRoles } from "@/hooks/useRoles";
 import { useChannels } from "@/hooks/useChannels";
 import { useServers } from "@/hooks/useServers";
 import { useMembers } from "@/hooks/useMembers";
-import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { FollowChannelModal } from "./announcement/FollowChannelModal";
@@ -353,27 +353,16 @@ export function AnnouncementChannel({
       {/* Channel Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
-          <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
-        {/* Follow Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1 sm:gap-2 text-muted-foreground hover:text-foreground flex-shrink-0"
-          onClick={() => setFollowModalOpen(true)}
-        >
-          <Wifi className="w-4 h-4" />
-          <span className="hidden sm:inline">Suivre</span>
-        </Button>
-
         {channel.description && (
           <>
-            <div className="w-px h-6 bg-border hidden md:block" />
+            <div className="w-px h-6 bg-border hidden sm:block" />
             <Popover>
               <PopoverTrigger asChild>
-                <button className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] lg:max-w-[300px] min-w-0">
+                <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
                 </button>
@@ -387,6 +376,7 @@ export function AnnouncementChannel({
         )}
 
         <div className="flex items-center gap-1 ml-auto">
+          {/* Notifications Popover */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="iconSm">
@@ -476,13 +466,14 @@ export function AnnouncementChannel({
             </PopoverContent>
           </Popover>
 
+          {/* Inbox Popover */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="iconSm">
                 <Inbox className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-80 p-3">
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-72 md:w-80 max-w-80 p-3">
               <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
               <div className="text-sm text-muted-foreground/70 text-center py-6">
                 Aucune notification récente.
@@ -490,6 +481,21 @@ export function AnnouncementChannel({
             </PopoverContent>
           </Popover>
 
+          {/* Follow Channel Button - Announcement specific */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={() => setFollowModalOpen(true)}
+              >
+                <Wifi className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Suivre ce salon</TooltipContent>
+          </Tooltip>
+
+          {/* Members Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -507,17 +513,16 @@ export function AnnouncementChannel({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5">
+      <ScrollArea className="flex-1 min-h-0 w-full">
+        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
           {/* Welcome message */}
           <div className="mb-8 animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
-              <StreamlineMegaphone size={32} className="text-primary-foreground" />
+              <Hash className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">
-              C'est le début du salon d'annonces #{channel.name}. Les messages postés ici peuvent être
-              publiés vers d'autres serveurs qui suivent ce salon.
+              C'est le début du salon #{channel.name}.
             </p>
           </div>
 
@@ -897,30 +902,26 @@ export function AnnouncementChannel({
         </div>
       </ScrollArea>
 
-      {/* Typing Indicator */}
-      <TypingIndicator channelId={channel.id} />
-
-      {/* Reply Reference */}
-      {replyingTo && (
-        <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
-          <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-xs text-primary font-medium">
-              Réponse à {replyingTo.author.displayName}
-            </span>
-            <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
+      {/* Input Container */}
+      <div className="flex-shrink-0 border-t border-border bg-background w-full">
+        <TypingIndicator channelId={channel.id} />
+        {replyingTo && (
+          <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+            <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-primary font-medium">
+                Réponse à {replyingTo.author.displayName}
+              </span>
+              <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
+            </div>
+            <button
+              onClick={() => setReplyingTo(null)}
+              className="p-1 hover:bg-muted rounded transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
-          <button
-            onClick={() => setReplyingTo(null)}
-            className="p-1 hover:bg-muted rounded transition-colors"
-          >
-            <X className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-      )}
-
-      {/* Message Input */}
-      <div className="px-4 pb-4">
+        )}
         <MessageInput
           placeholder={`Envoyer un message dans #${channel.name}`}
           value={messageInput}

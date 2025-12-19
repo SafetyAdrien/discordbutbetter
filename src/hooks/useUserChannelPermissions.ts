@@ -26,6 +26,8 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
     queryFn: async (): Promise<boolean> => {
       if (!channelId || !user?.id) return false;
 
+      console.log(`[useHasChannelPermission] 🔍 Checking ${permission} for channel ${channelId}`);
+
       const { data, error } = await supabase.rpc('has_channel_permission', {
         _user_id: user.id,
         _channel_id: channelId,
@@ -37,10 +39,13 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
         return false;
       }
 
+      console.log(`[useHasChannelPermission] ✅ ${permission} = ${data} for channel ${channelId}`);
       return data ?? false;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 0, // Always refetch on invalidation for realtime updates
+    staleTime: 0,
+    gcTime: 0, // Don't cache at all - always fresh
+    refetchOnMount: 'always',
   });
 }
 

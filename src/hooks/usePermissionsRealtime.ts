@@ -14,19 +14,36 @@ export function usePermissionsRealtime(serverId: string | null) {
     const refetchAllPermissions = async (source: string) => {
       console.log(`[Permissions Realtime] 🔄 Refetching all permissions (${source})...`);
       
+      // Log current cache state before refetch
+      const cachedQueries = queryClient.getQueryCache().findAll({ queryKey: ['channel-permission'] });
+      console.log(`[Permissions Realtime] Found ${cachedQueries.length} cached channel-permission queries`);
+      cachedQueries.forEach(q => {
+        console.log(`[Permissions Realtime] - Query key: ${JSON.stringify(q.queryKey)}, state: ${q.state.status}`);
+      });
+      
       try {
-        await Promise.all([
-          queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['user-permissions'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['roles', serverId], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['role-permissions'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['channel-permissions'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['channel-permission-overrides'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['category-permission-overrides'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['category-permissions'], type: 'all' }),
-          queryClient.refetchQueries({ queryKey: ['member-roles'], type: 'all' }),
-        ]);
+        // Use invalidateQueries with exact: false to match partial keys, then refetch
+        await queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+        await queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
+        
+        // Force refetch all active queries
+        await queryClient.refetchQueries({ 
+          queryKey: ['channel-permission'],
+          type: 'active'
+        });
+        await queryClient.refetchQueries({ 
+          queryKey: ['user-channel-permissions'],
+          type: 'active'
+        });
+        await queryClient.refetchQueries({ queryKey: ['user-permissions'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['roles', serverId], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['role-permissions'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['channel-permissions'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['channel-permission-overrides'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['category-permission-overrides'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['category-permissions'], type: 'all' });
+        await queryClient.refetchQueries({ queryKey: ['member-roles'], type: 'all' });
+        
         console.log(`[Permissions Realtime] ✅ Refetch complete (${source})`);
       } catch (error) {
         console.error(`[Permissions Realtime] ❌ Refetch error (${source}):`, error);

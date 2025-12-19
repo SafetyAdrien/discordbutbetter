@@ -24,7 +24,7 @@ import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
-import { usePermissionsRealtime } from '@/hooks/usePermissionsRealtime';
+import { usePermissionsRealtime, useGlobalPermissionsRealtime } from '@/hooks/usePermissionsRealtime';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { useNavigationState } from '@/hooks/useNavigationState';
@@ -88,8 +88,9 @@ const Index = () => {
   // Realtime profiles updates (DB -> postgres_changes)
   useProfilesRealtime();
   
-  // Realtime permissions updates
+  // Realtime permissions updates (server-specific + global)
   usePermissionsRealtime(activeServerId);
+  useGlobalPermissionsRealtime();
 
   // Voice state
   const { voiceState, toggleMute } = useVoiceState();

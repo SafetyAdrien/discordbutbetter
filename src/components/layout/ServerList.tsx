@@ -163,26 +163,29 @@ function SortableServerIcon({
           </TooltipContent>
         </Tooltip>
         <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={onMarkAsRead}>
+          <ContextMenuItem onSelect={onMarkAsRead}>
             <CheckCircle className="w-4 h-4 mr-2" />
             Marquer comme lu
           </ContextMenuItem>
-          <ContextMenuItem onClick={onInvite}>
+          <ContextMenuItem onSelect={onInvite}>
             <UserPlus className="w-4 h-4 mr-2" />
             Inviter des personnes
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={onOpenSettings}>
+          <ContextMenuItem onSelect={onOpenSettings}>
             <Settings className="w-4 h-4 mr-2" />
             Paramètres du serveur
           </ContextMenuItem>
-          <ContextMenuItem onClick={onCopyId}>
+          <ContextMenuItem onSelect={onCopyId}>
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem 
-            onClick={onLeave}
+            onSelect={(e) => {
+              e.preventDefault();
+              onLeave();
+            }}
             className="text-destructive focus:text-destructive"
           >
             <LogOut className="w-4 h-4 mr-2" />

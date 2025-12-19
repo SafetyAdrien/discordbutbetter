@@ -8,12 +8,23 @@ import {
 import { Server } from '@/types/app';
 import { ServerFolder, FOLDER_CREATION_THRESHOLD } from '@/types/serverFolder';
 
-// Zone detection: center = merge, edge = insert
-export type DropZoneType = 'insert-before' | 'insert-after' | 'merge' | 'add-to-folder' | null;
+// Zone detection: center = merge/add, edge = insert
+export type DropZoneType = 
+  | 'insert-before' 
+  | 'insert-after' 
+  | 'merge' 
+  | 'add-to-folder' 
+  | 'insert-before-folder' 
+  | 'insert-after-folder'
+  | 'reorder-in-folder'
+  | null;
 
 export interface DropIndicatorState {
   targetId: string | null;
   type: DropZoneType;
+  // For reorder-in-folder: which server and position
+  reorderTargetServerId?: string;
+  reorderPosition?: 'before' | 'after';
 }
 
 export interface MergeState {
@@ -32,6 +43,7 @@ interface UseServerDndProps {
   onCreateFolder: (params: { serverIds: string[]; name: string; position: number }) => void;
   onAddToFolder: (folderId: string, serverId: string) => void;
   onRemoveFromFolder: (folderId: string, serverId: string) => void;
+  onReorderServerInFolder: (folderId: string, serverId: string, targetServerId: string, position: 'before' | 'after') => void;
 }
 
 // Threshold for determining center vs edge zone (as percentage from center)
@@ -46,6 +58,7 @@ export function useServerDnd({
   onCreateFolder,
   onAddToFolder,
   onRemoveFromFolder,
+  onReorderServerInFolder,
 }: UseServerDndProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
@@ -212,21 +225,49 @@ export function useServerDnd({
           ? overData.containerId
           : 'root';
 
-    // Dragging a server over a FOLDER icon -> add to folder mode
-    if (isDraggingServer && isOverFolderIcon) {
+    // Dragging a server over a FOLDER icon -> detect edge zones for insertion between folders
+    if (isDraggingServer && isOverFolderIcon && overRect) {
       clearMergeState();
       setPreviewState(null);
       const folderId = overIdStr.replace('folder-', '');
-      setDropIndicator({ targetId: folderId, type: 'add-to-folder' });
+      const zone = determineZone(cursorY, { top: overRect.top, height: overRect.height });
+      
+      if (zone === 'center') {
+        // Center zone: add to folder
+        setDropIndicator({ targetId: folderId, type: 'add-to-folder' });
+      } else {
+        // Edge zone: insert before/after folder (at root level)
+        setDropIndicator({ 
+          targetId: folderId, 
+          type: zone === 'before' ? 'insert-before-folder' : 'insert-after-folder' 
+        });
+      }
       return;
     }
 
-    // Dragging a server over a server INSIDE a folder -> add to that folder
-    if (isDraggingServer && isOverServer && overContainerId.startsWith('folder-')) {
+    // Dragging a server over a server INSIDE a folder -> reorder within folder or add to folder
+    if (isDraggingServer && isOverServer && overContainerId.startsWith('folder-') && overRect) {
       clearMergeState();
       setPreviewState(null);
       const folderId = overContainerId.replace('folder-', '');
-      setDropIndicator({ targetId: folderId, type: 'add-to-folder' });
+      const overServerId = overIdStr.replace('server-', '');
+      const zone = determineZone(cursorY, { top: overRect.top, height: overRect.height });
+      
+      // Check if the dragged server is from the same folder
+      const isSameFolder = origin?.sourceFolderId === folderId;
+      
+      if (zone === 'center' && !isSameFolder) {
+        // Center zone and from different container: add to folder
+        setDropIndicator({ targetId: folderId, type: 'add-to-folder' });
+      } else {
+        // Edge zone OR same folder: reorder within folder
+        setDropIndicator({ 
+          targetId: folderId, 
+          type: 'reorder-in-folder',
+          reorderTargetServerId: overServerId,
+          reorderPosition: zone === 'before' ? 'before' : 'after',
+        });
+      }
       return;
     }
 
@@ -369,6 +410,55 @@ export function useServerDnd({
       return;
     }
 
+    // 1b) Insert before/after a folder (at root level)
+    if ((currentIndicator.type === 'insert-before-folder' || currentIndicator.type === 'insert-after-folder') && currentIndicator.targetId) {
+      const targetFolderId = currentIndicator.targetId;
+      const full = getFullServerOrder();
+      const without = full.filter((id) => id !== serverId);
+      
+      // Find first server after this folder to determine insertion point
+      const targetFolder = folders.find(f => f.id === targetFolderId);
+      if (targetFolder) {
+        // Get first standalone server that comes after this folder in visual order
+        // For simplicity, we insert at beginning or end based on folder position
+        const folderIndex = folders.indexOf(targetFolder);
+        
+        if (currentIndicator.type === 'insert-before-folder') {
+          // Insert before this folder = at the start of standalone servers if first folder, 
+          // or we need a more complex ordering system
+          // For now, insert at beginning
+          without.unshift(serverId);
+        } else {
+          // Insert after folder = append to end for now
+          without.push(serverId);
+        }
+        
+        onReorderServers(without);
+        if (sourceFolderId) {
+          onRemoveFromFolder(sourceFolderId, serverId);
+        }
+      }
+      return;
+    }
+
+    // 1c) Reorder within a folder
+    if (currentIndicator.type === 'reorder-in-folder' && currentIndicator.targetId) {
+      const targetFolderId = currentIndicator.targetId;
+      const targetServerId = currentIndicator.reorderTargetServerId;
+      const position = currentIndicator.reorderPosition;
+      
+      if (targetServerId && position) {
+        // If coming from a different folder, remove from source first
+        if (sourceFolderId && sourceFolderId !== targetFolderId) {
+          onRemoveFromFolder(sourceFolderId, serverId);
+        }
+        
+        // Use the reorder function
+        onReorderServerInFolder(targetFolderId, serverId, targetServerId, position);
+      }
+      return;
+    }
+
     // 2) Folder -> Root extraction
     if (sourceFolderId && (isOverRootDrop || (isOverServer && overContainerId === 'root'))) {
       const full = getFullServerOrder();
@@ -442,7 +532,7 @@ export function useServerDnd({
       }
       return;
     }
-  }, [dropIndicator, mergeState.progress, clearMergeState, getFullServerOrder, onReorderServers, onRemoveFromFolder, onAddToFolder]);
+  }, [dropIndicator, mergeState.progress, clearMergeState, getFullServerOrder, onReorderServers, onRemoveFromFolder, onAddToFolder, onReorderServerInFolder, folders]);
 
   // Handle drag cancel
   const handleDragCancel = useCallback(() => {

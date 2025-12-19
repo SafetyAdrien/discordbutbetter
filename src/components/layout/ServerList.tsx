@@ -9,12 +9,25 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from '@/hooks/use-toast';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
+import { useLeaveServer } from '@/hooks/useLeaveServer';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
@@ -225,6 +238,13 @@ export function ServerList({
   const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
+  const leaveServer = useLeaveServer();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Leave server dialog state
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [serverToLeave, setServerToLeave] = useState<Server | null>(null);
 
   // Sort servers by user's custom order
   const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);
@@ -293,8 +313,28 @@ export function ServerList({
     copyToClipboard(inviteLink, 'Lien d\'invitation copié');
   };
 
-  const handleLeaveServer = (serverId: string) => {
-    console.log('Leave server', serverId);
+  const handleLeaveServer = (server: Server) => {
+    // Check if user is the owner
+    if (server.ownerId === user?.id) {
+      toast({ title: "Vous ne pouvez pas quitter un serveur dont vous êtes propriétaire", variant: "destructive" });
+      return;
+    }
+    setServerToLeave(server);
+    setShowLeaveDialog(true);
+  };
+
+  const confirmLeaveServer = () => {
+    if (!serverToLeave) return;
+    leaveServer.mutate(serverToLeave.id, {
+      onSuccess: () => {
+        setShowLeaveDialog(false);
+        setServerToLeave(null);
+        // If the user was viewing the server they left, go to DMs
+        if (activeServerId === serverToLeave.id) {
+          onServerSelect(null);
+        }
+      }
+    });
   };
 
   const handleServerClick = (serverId: string) => {
@@ -428,7 +468,7 @@ export function ServerList({
                 onMarkAsRead={() => handleMarkAsRead(server.id)}
                 onInvite={() => handleInvite(server.id)}
                 onCopyId={() => handleCopyId(server.id)}
-                onLeave={() => handleLeaveServer(server.id)}
+                onLeave={() => handleLeaveServer(server)}
               />
             ))}
           </div>
@@ -469,6 +509,28 @@ export function ServerList({
           <p>Découvrir des serveurs</p>
         </TooltipContent>
       </Tooltip>
+
+      {/* Leave Server Confirmation Dialog */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quitter le serveur</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir quitter <strong>{serverToLeave?.name}</strong> ? Vous pourrez rejoindre à nouveau avec
+              une invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setServerToLeave(null)}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmLeaveServer} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Quitter le serveur
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

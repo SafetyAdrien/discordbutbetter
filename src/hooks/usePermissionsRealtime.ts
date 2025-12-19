@@ -11,6 +11,28 @@ export function usePermissionsRealtime(serverId: string | null) {
 
     console.log('[Permissions Realtime] Setting up subscription for server:', serverId);
 
+    const refetchAllPermissions = async (source: string) => {
+      console.log(`[Permissions Realtime] 🔄 Refetching all permissions (${source})...`);
+      
+      try {
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['user-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['roles', serverId], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['role-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['channel-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['channel-permission-overrides'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['category-permission-overrides'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['category-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['member-roles'], type: 'all' }),
+        ]);
+        console.log(`[Permissions Realtime] ✅ Refetch complete (${source})`);
+      } catch (error) {
+        console.error(`[Permissions Realtime] ❌ Refetch error (${source}):`, error);
+      }
+    };
+
     const channel = supabase
       .channel(`permissions-realtime:${serverId}`)
       // Écouter les changements sur role_permissions
@@ -29,29 +51,7 @@ export function usePermissionsRealtime(serverId: string | null) {
             return;
           }
           
-          console.log('[Permissions Realtime] Invalidating all permission queries (role_permissions)');
-          
-          // Invalider de manière agressive TOUTES les permissions
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['roles', serverId],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['role-permissions'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('role_permissions');
         }
       )
       // Écouter les changements sur channel_permission_overrides
@@ -72,25 +72,8 @@ export function usePermissionsRealtime(serverId: string | null) {
           
           const channelId = (payload.new as any)?.channel_id || (payload.old as any)?.channel_id;
           console.log('[Permissions Realtime] Channel ID from payload:', channelId);
-          console.log('[Permissions Realtime] Invalidating all permission queries (channel_permission_overrides)');
           
-          // Invalider TOUTES les permissions de manière agressive
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission-overrides'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('channel_permission_overrides');
         }
       )
       // Écouter les changements sur category_permission_overrides
@@ -109,25 +92,7 @@ export function usePermissionsRealtime(serverId: string | null) {
             return;
           }
           
-          console.log('[Permissions Realtime] Invalidating all permission queries (category_permission_overrides)');
-          
-          // Invalider les permissions de catégorie et tous les canaux
-          queryClient.invalidateQueries({ 
-            queryKey: ['category-permission-overrides'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['category-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('category_permission_overrides');
         }
       )
       // Écouter les changements sur roles
@@ -147,24 +112,7 @@ export function usePermissionsRealtime(serverId: string | null) {
             return;
           }
           
-          console.log('[Permissions Realtime] Invalidating all permission queries (roles)');
-          
-          queryClient.invalidateQueries({ 
-            queryKey: ['roles', serverId],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-permissions'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('roles');
         }
       )
       // Écouter les changements sur member_roles (assignation de rôles)
@@ -183,24 +131,7 @@ export function usePermissionsRealtime(serverId: string | null) {
             return;
           }
           
-          console.log('[Permissions Realtime] Invalidating all permission queries (member_roles)');
-          
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['member-roles'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('member_roles');
         }
       )
       .subscribe((status, err) => {
@@ -234,6 +165,25 @@ export function useGlobalPermissionsRealtime() {
   useEffect(() => {
     console.log('[Global Permissions Realtime] Setting up global subscription');
 
+    const refetchAllPermissions = async (source: string) => {
+      console.log(`[Global Permissions Realtime] 🔄 Refetching all permissions (${source})...`);
+      
+      try {
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['user-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['channel-permissions'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['channel-permission-overrides'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['category-permission-overrides'], type: 'all' }),
+          queryClient.refetchQueries({ queryKey: ['category-permissions'], type: 'all' }),
+        ]);
+        console.log(`[Global Permissions Realtime] ✅ Refetch complete (${source})`);
+      } catch (error) {
+        console.error(`[Global Permissions Realtime] ❌ Refetch error (${source}):`, error);
+      }
+    };
+
     const channel = supabase
       .channel('global-permissions-realtime')
       .on(
@@ -248,17 +198,8 @@ export function useGlobalPermissionsRealtime() {
           
           const channelId = (payload.new as any)?.channel_id || (payload.old as any)?.channel_id;
           console.log('[Global Permissions Realtime] Channel ID:', channelId);
-          console.log('[Global Permissions Realtime] Invalidating permission queries');
           
-          // Invalider de manière agressive
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('channel_permission_overrides');
         }
       )
       .on(
@@ -270,16 +211,8 @@ export function useGlobalPermissionsRealtime() {
         },
         (payload) => {
           console.log('[Global Permissions Realtime] category_permission_overrides event:', payload.eventType, payload);
-          console.log('[Global Permissions Realtime] Invalidating permission queries');
           
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('category_permission_overrides');
         }
       )
       .on(
@@ -291,20 +224,8 @@ export function useGlobalPermissionsRealtime() {
         },
         (payload) => {
           console.log('[Global Permissions Realtime] role_permissions event:', payload.eventType, payload);
-          console.log('[Global Permissions Realtime] Invalidating permission queries');
           
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-permissions'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('role_permissions');
         }
       )
       .on(
@@ -316,20 +237,8 @@ export function useGlobalPermissionsRealtime() {
         },
         (payload) => {
           console.log('[Global Permissions Realtime] member_roles event:', payload.eventType, payload);
-          console.log('[Global Permissions Realtime] Invalidating permission queries');
           
-          queryClient.invalidateQueries({ 
-            queryKey: ['channel-permission'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-channel-permissions'],
-            refetchType: 'all'
-          });
-          queryClient.invalidateQueries({ 
-            queryKey: ['user-permissions'],
-            refetchType: 'all'
-          });
+          refetchAllPermissions('member_roles');
         }
       )
       .subscribe((status, err) => {

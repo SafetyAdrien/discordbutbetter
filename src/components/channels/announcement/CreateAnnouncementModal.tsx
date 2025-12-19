@@ -19,9 +19,10 @@ interface CreateAnnouncementModalProps {
   channelId: string;
   categories: AnnouncementCategory[];
   announcement?: Announcement; // For edit mode
+  canCreate?: boolean; // Permission check
 }
 
-export function CreateAnnouncementModal({ open, onOpenChange, channelId, categories, announcement }: CreateAnnouncementModalProps) {
+export function CreateAnnouncementModal({ open, onOpenChange, channelId, categories, announcement, canCreate = true }: CreateAnnouncementModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<string>('');
@@ -288,7 +289,7 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!title.trim() || !content.trim() || isSubmitting}
+            disabled={!title.trim() || !content.trim() || isSubmitting || (!isEditMode && !canCreate)}
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             {isEditMode ? 'Enregistrer' : "Publier l'annonce"}

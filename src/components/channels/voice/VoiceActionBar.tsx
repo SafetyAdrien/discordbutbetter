@@ -22,6 +22,10 @@ interface VoiceActionBarProps {
   onToggleMembers: () => void;
   onDisconnect: () => void;
   hasMicrophoneAccess: boolean;
+  // Permission props
+  canSpeak?: boolean;
+  canVideo?: boolean;
+  canStream?: boolean;
 }
 
 export function VoiceActionBar({
@@ -39,6 +43,9 @@ export function VoiceActionBar({
   onToggleMembers,
   onDisconnect,
   hasMicrophoneAccess,
+  canSpeak = true,
+  canVideo = true,
+  canStream = true,
 }: VoiceActionBarProps) {
   return (
     <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
@@ -54,17 +61,17 @@ export function VoiceActionBar({
                   className={cn(
                     'h-11 px-4 rounded-none hover:bg-white/10',
                     isMuted && 'bg-destructive/20 text-destructive hover:bg-destructive/30',
-                    !hasMicrophoneAccess && 'opacity-50'
+                    (!hasMicrophoneAccess || !canSpeak) && 'opacity-50'
                   )}
                   onClick={onToggleMute}
-                  disabled={!hasMicrophoneAccess}
+                  disabled={!hasMicrophoneAccess || !canSpeak}
                 >
                   {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                   <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {!hasMicrophoneAccess ? 'Microphone non disponible' : isMuted ? 'Activer le micro' : 'Couper le micro'}
+                {!canSpeak ? 'Permission non accordée' : !hasMicrophoneAccess ? 'Microphone non disponible' : isMuted ? 'Activer le micro' : 'Couper le micro'}
               </TooltipContent>
             </Tooltip>
 
@@ -78,16 +85,18 @@ export function VoiceActionBar({
                   variant="ghost"
                   className={cn(
                     'h-11 px-4 rounded-none hover:bg-white/10',
-                    isCameraOn && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]'
+                    isCameraOn && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]',
+                    !canVideo && 'opacity-50'
                   )}
                   onClick={onToggleCamera}
+                  disabled={!canVideo}
                 >
                   {isCameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
                   <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
+                {!canVideo ? 'Permission non accordée' : isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -135,15 +144,17 @@ export function VoiceActionBar({
                   variant="ghost"
                   className={cn(
                     'h-11 px-3 rounded-none hover:bg-white/10',
-                    isScreenSharing && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]'
+                    isScreenSharing && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]',
+                    !canStream && 'opacity-50'
                   )}
                   onClick={onToggleScreenShare}
+                  disabled={!canStream}
                 >
                   <MonitorUp className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {isScreenSharing ? 'Arrêter le partage' : 'Partager l\'écran'}
+                {!canStream ? 'Permission non accordée' : isScreenSharing ? 'Arrêter le partage' : 'Partager l\'écran'}
               </TooltipContent>
             </Tooltip>
 

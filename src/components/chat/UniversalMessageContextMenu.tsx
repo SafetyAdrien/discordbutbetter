@@ -26,6 +26,9 @@ export interface UniversalMessageContextMenuProps {
   isOwnMessage: boolean;
   isPinned?: boolean;
   messageId: string;
+  // Permission props
+  canAddReactions?: boolean;
+  canManageMessages?: boolean;
   // Callbacks
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
@@ -44,6 +47,8 @@ export function UniversalMessageContextMenu({
   isOwnMessage,
   isPinned = false,
   messageId,
+  canAddReactions = true,
+  canManageMessages = false,
   onReply,
   onAddReaction,
   onCopyText,
@@ -55,44 +60,48 @@ export function UniversalMessageContextMenu({
   onPin,
   onReport,
 }: UniversalMessageContextMenuProps) {
+  // Can delete if own message OR has manage_messages permission
+  const canDeleteMessage = isOwnMessage || canManageMessages;
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-[220px] p-1.5 rounded-lg shadow-xl" collisionPadding={8}>
-        {/* Haut : Rangée d'émojis favoris */}
-        <div className="flex items-center gap-1 p-1 pb-2 border-b border-border mb-1">
-          {CONTEXT_MENU_REACTIONS.map(emoji => (
-            <button 
-              key={emoji} 
-              onClick={() => onAddReaction(emoji)} 
-              className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
-            >
-              {emoji}
-            </button>
-          ))}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="p-1.5 hover:bg-muted rounded transition-colors">
-                <SmilePlus className="w-5 h-5 text-muted-foreground" />
+        {/* Haut : Rangée d'émojis favoris - only if can add reactions */}
+        {canAddReactions && (
+          <div className="flex items-center gap-1 p-1 pb-2 border-b border-border mb-1">
+            {CONTEXT_MENU_REACTIONS.map(emoji => (
+              <button 
+                key={emoji} 
+                onClick={() => onAddReaction(emoji)} 
+                className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
+              >
+                {emoji}
               </button>
-            </PopoverTrigger>
-            <PopoverContent side="right" align="start" className="w-64 p-2">
-              <div className="grid grid-cols-8 gap-1">
-                {EMOJI_PICKER_GRID.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => onAddReaction(emoji)}
-                    className="p-1 hover:bg-muted rounded text-lg transition-colors"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                  <SmilePlus className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="right" align="start" className="w-64 p-2">
+                <div className="grid grid-cols-8 gap-1">
+                  {EMOJI_PICKER_GRID.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => onAddReaction(emoji)}
+                      className="p-1 hover:bg-muted rounded text-lg transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
         
         {/* Milieu : Actions principales */}
         <ContextMenuItem onClick={onReply}>
@@ -144,14 +153,28 @@ export function UniversalMessageContextMenu({
               </ContextMenuItem>
             )}
           </>
-        ) : onReport && (
-          <ContextMenuItem 
-            className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-            onClick={onReport}
-          >
-            <Flag className="w-4 h-4 mr-2 text-destructive" />
-            Signaler
-          </ContextMenuItem>
+        ) : (
+          <>
+            {/* Moderators can delete other's messages */}
+            {canManageMessages && onDelete && (
+              <ContextMenuItem 
+                className="text-destructive focus:text-destructive focus:bg-destructive/10" 
+                onClick={onDelete}
+              >
+                <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                Supprimer
+              </ContextMenuItem>
+            )}
+            {onReport && (
+              <ContextMenuItem 
+                className="text-destructive focus:text-destructive focus:bg-destructive/10" 
+                onClick={onReport}
+              >
+                <Flag className="w-4 h-4 mr-2 text-destructive" />
+                Signaler
+              </ContextMenuItem>
+            )}
+          </>
         )}
       </ContextMenuContent>
     </ContextMenu>

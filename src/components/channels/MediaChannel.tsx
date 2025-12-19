@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { AttachmentStagingArea } from '@/components/chat/upload/AttachmentStagingArea';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface Channel {
   id: string;
@@ -22,6 +23,8 @@ export interface MediaChannelProps {
 }
 
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
+  // Permissions
+  const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const {
@@ -93,10 +96,12 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
               <List className="w-4 h-4" />
             </button>
           </div>
-          <Button size="sm" onClick={handleUploadClick}>
-            <Upload className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Téléverser</span>
-          </Button>
+          {canUploadMedia && (
+            <Button size="sm" onClick={handleUploadClick}>
+              <Upload className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Téléverser</span>
+            </Button>
+          )}
           {onToggleMembers && (
             <Button
               variant="ghost"
@@ -145,10 +150,12 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             <p className="text-muted-foreground text-sm max-w-md mb-4">
               Partagez des images et vidéos avec les membres de ce salon.
             </p>
-            <Button onClick={handleUploadClick}>
-              <Upload className="w-4 h-4 mr-2" />
-              Téléverser un fichier
-            </Button>
+            {canUploadMedia && (
+              <Button onClick={handleUploadClick}>
+                <Upload className="w-4 h-4 mr-2" />
+                Téléverser un fichier
+              </Button>
+            )}
           </div>
         ) : (
           <div className={cn(

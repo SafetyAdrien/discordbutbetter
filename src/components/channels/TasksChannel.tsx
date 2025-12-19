@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface Channel {
   id: string;
@@ -43,6 +44,8 @@ const priorityLabels = {
 };
 
 export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksChannelProps) {
+  // Permissions
+  const { data: canCreateTasks = true } = useHasChannelPermission(channel.id, 'create_tasks');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
@@ -82,26 +85,28 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
       </div>
 
       {/* Add Task */}
-      <div className="px-4 py-3 border-b border-border">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Ajouter une tâche..."
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newTaskTitle.trim()) {
-                // Create task
-                setNewTaskTitle('');
-              }
-            }}
-            className="flex-1"
-          />
-          <Button disabled={!newTaskTitle.trim()}>
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter
-          </Button>
+      {canCreateTasks && (
+        <div className="px-4 py-3 border-b border-border">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Ajouter une tâche..."
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newTaskTitle.trim()) {
+                  // Create task
+                  setNewTaskTitle('');
+                }
+              }}
+              className="flex-1"
+            />
+            <Button disabled={!newTaskTitle.trim()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">

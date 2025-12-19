@@ -6,6 +6,7 @@ import { MemberList } from '@/components/layout/MemberList';
 import { Button } from '@/components/ui/button';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { MessageSquare } from 'lucide-react';
+import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 
 // Sub-components
 import { VoiceActionBar } from './voice/VoiceActionBar';
@@ -58,6 +59,19 @@ export function VoiceChannelView({
   
   const { data: participants = [] } = useVoiceParticipants(channel.id);
   const isConnectedToThisChannel = voiceState.channelId === channel.id;
+  
+  // Check voice permissions
+  const { can: canPerm } = useMultipleChannelPermissions(channel.id, [
+    'connect_voice',
+    'speak_voice',
+    'video',
+    'stream',
+  ]);
+  
+  const canConnect = canPerm('connect_voice');
+  const canSpeak = canPerm('speak_voice');
+  const canVideo = canPerm('video');
+  const canStream = canPerm('stream');
 
   const handleJoinChannel = async () => {
     setIsConnecting(true);
@@ -101,8 +115,9 @@ export function VoiceChannelView({
         <div className="flex-1 flex">
           <VoiceEmptyState 
             channelName={channel.name}
-            onJoin={handleJoinChannel}
+            onJoin={canConnect ? handleJoinChannel : undefined}
             isConnecting={isConnecting}
+            permissionDenied={!canConnect}
           />
           
           {/* Chat panel */}
@@ -169,12 +184,12 @@ export function VoiceChannelView({
               showMembers={showMembers}
               onToggleMute={toggleMute}
               onToggleDeafen={toggleDeafen}
-              onToggleCamera={toggleCamera}
-              onToggleScreenShare={toggleScreenShare}
+              onToggleCamera={canVideo ? toggleCamera : undefined}
+              onToggleScreenShare={canStream ? toggleScreenShare : undefined}
               onToggleChat={handleToggleChat}
               onToggleMembers={handleToggleMembers}
               onDisconnect={leaveChannel}
-              hasMicrophoneAccess={hasMicrophoneAccess}
+              hasMicrophoneAccess={hasMicrophoneAccess && canSpeak}
             />
           )}
 
@@ -184,10 +199,10 @@ export function VoiceChannelView({
               <div className="flex justify-center">
                 <Button
                   onClick={handleJoinChannel}
-                  disabled={isConnecting}
+                  disabled={isConnecting || !canConnect}
                   className="bg-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/90 text-white px-6 py-5 text-base rounded-full"
                 >
-                  {isConnecting ? 'Connexion...' : 'Rejoindre le salon'}
+                  {!canConnect ? 'Accès refusé' : isConnecting ? 'Connexion...' : 'Rejoindre le salon'}
                 </Button>
               </div>
             </div>

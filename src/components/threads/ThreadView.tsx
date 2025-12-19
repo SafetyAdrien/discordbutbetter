@@ -55,7 +55,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
-import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
+import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 
 interface ThreadViewProps {
   threadId: string;
@@ -140,8 +140,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
 
-  // Check send_messages permission for parent channel
-  const { data: canSendMessages = true } = useHasChannelPermission(channelId || thread?.channel_id || null, 'send_messages');
+  // Check multiple permissions for parent channel
+  const { can: canPerm } = useMultipleChannelPermissions(channelId || thread?.channel_id || null, [
+    'send_messages',
+    'add_reactions',
+    'manage_threads',
+  ]);
+  
+  const canSendMessages = canPerm('send_messages');
+  const canAddReactions = canPerm('add_reactions');
+  const canManageThreads = canPerm('manage_threads');
+  
   const permissionDeniedMessage = !canSendMessages 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce fil." 
     : undefined;

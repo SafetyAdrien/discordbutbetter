@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
+import { X, MessageCircle, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface SummariesDropdownProps {
   summaries: SummaryTopic[];
@@ -17,69 +18,79 @@ export function SummariesDropdown({
 }: SummariesDropdownProps) {
   return (
     <div className="absolute left-0 right-0 top-full z-50 mt-0 animate-slide-down">
-      <div className="mx-2 sm:mx-4 bg-[#111318] border border-border/50 rounded-lg shadow-xl overflow-hidden">
+      <div className="mx-2 sm:mx-4 bg-[#111214] border border-border/30 rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50">
-          <StreamlineSummaries className="w-5 h-5 text-muted-foreground" />
-          <h3 className="font-semibold text-foreground">Résumés</h3>
-          <Badge 
-            variant="secondary" 
-            className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] px-1.5 py-0"
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+          <div className="flex items-center gap-2">
+            <StreamlineSummaries className="w-5 h-5 text-foreground" />
+            <h3 className="font-semibold text-foreground">Summaries</h3>
+            <Badge 
+              variant="secondary" 
+              className="bg-[#5865F2] text-white border-none text-[10px] px-1.5 py-0 rounded"
+            >
+              BETA
+            </Badge>
+          </div>
+          <button 
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1"
           >
-            BÊTA
-          </Badge>
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Summaries List */}
-        <ScrollArea className="max-h-80">
-          <div className="p-2 space-y-1">
+        <ScrollArea className="max-h-96">
+          <div className="py-2">
             {summaries.map((topic) => (
               <button
                 key={topic.id}
                 onClick={() => onSelectTopic(topic)}
-                className="w-full p-3 rounded-lg bg-[#1a1d24] hover:bg-[#22262f] transition-colors text-left group"
+                className="w-full px-4 py-3 hover:bg-[#1a1b1e] transition-colors text-left group"
               >
-                {/* Topic Title & Time */}
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <StreamlineSummaries className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium text-foreground truncate">
-                      {topic.title}
-                    </span>
-                    {topic.unreadCount > 0 && (
-                      <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
-                        {topic.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {topic.timeAgo}
-                  </span>
-                </div>
-
-                {/* Summary Text */}
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-2 ml-6">
-                  {topic.summary}
-                </p>
-
-                {/* Participants */}
-                <div className="flex items-center gap-2 ml-6">
-                  <div className="flex -space-x-2">
-                    {topic.participants.slice(0, 3).map((participant, index) => (
-                      <Avatar key={index} className="w-5 h-5 border-2 border-[#1a1d24]">
-                        <AvatarImage src={`/avatars/${participant}`} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                          {String.fromCharCode(65 + index)}
+                <div className="flex items-start justify-between">
+                  {/* Left content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Meta line: time, messages, avatar */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <span>{topic.timeAgo}</span>
+                      <div className="flex items-center gap-1">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>{topic.messageCount}</span>
+                      </div>
+                      <Avatar className="w-4 h-4">
+                        <AvatarImage src={`/avatars/${topic.participants[0]}`} />
+                        <AvatarFallback className="bg-[#36393f] text-[8px]">
+                          {topic.title.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                    ))}
-                    {topic.extra > 0 && (
-                      <div className="w-5 h-5 rounded-full bg-muted border-2 border-[#1a1d24] flex items-center justify-center">
-                        <span className="text-[9px] text-muted-foreground">
-                          +{topic.extra}
-                        </span>
-                      </div>
-                    )}
+                    </div>
+
+                    {/* Title */}
+                    <h4 className="font-semibold text-foreground text-sm mb-0.5">
+                      {topic.title}
+                    </h4>
+
+                    {/* Summary */}
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {topic.summary}
+                    </p>
+                  </div>
+
+                  {/* Right: Thumbs up/down */}
+                  <div className="flex flex-col gap-1 ml-3 flex-shrink-0">
+                    <button 
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded hover:bg-[#2f3136] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded hover:bg-[#2f3136] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ThumbsDown className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </button>

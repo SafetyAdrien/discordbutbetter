@@ -85,7 +85,7 @@ export function SummariesBar({
         <SummariesDropdown
           summaries={summaries}
           onSelectTopic={onSelectTopic}
-          onClose={() => {}}
+          onClose={onToggleDropdown}
         />
       )}
     </div>

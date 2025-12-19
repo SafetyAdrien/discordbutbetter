@@ -354,6 +354,14 @@ export function AnnouncementChannel({
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFollowModalOpen(true)}
+            className="text-sm font-medium flex-shrink-0"
+          >
+            Suivre
+          </Button>
         </div>
 
         {channel.description && (
@@ -480,15 +488,6 @@ export function AnnouncementChannel({
             </PopoverContent>
           </Popover>
 
-          {/* Follow Channel Button - Announcement specific */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFollowModalOpen(true)}
-            className="text-sm font-medium"
-          >
-            Suivre
-          </Button>
 
           {/* Members Toggle */}
           <Tooltip>

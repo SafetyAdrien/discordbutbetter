@@ -279,7 +279,6 @@ export function ServerList({
     deleteFolder, 
     addServerToFolder, 
     removeServerFromFolder,
-    reorderServerInFolder,
     toggleFolderExpanded,
     getServerIdsInFolders,
   } = useServerFolders();
@@ -325,7 +324,6 @@ export function ServerList({
     onCreateFolder: (params) => createFolder.mutate(params),
     onAddToFolder: addServerToFolder,
     onRemoveFromFolder: removeServerFromFolder,
-    onReorderServerInFolder: reorderServerInFolder,
   });
 
   const renderedFolders = previewFolders;
@@ -499,49 +497,30 @@ export function ServerList({
         <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
           <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
             {/* Render folders first */}
-            {renderedFolders.map((folder) => {
-              const isFolderTarget = dropIndicator.targetId === folder.id;
-              const showFolderDrop = isFolderTarget && (
-                dropIndicator.type === 'add-to-folder' ||
-                dropIndicator.type === 'insert-before-folder' ||
-                dropIndicator.type === 'insert-after-folder'
-              );
-              const folderDropPos = dropIndicator.type === 'insert-before-folder'
-                ? 'before'
-                : dropIndicator.type === 'insert-after-folder'
-                  ? 'after'
-                  : 'center';
-              
-              // Reorder within this folder
-              const isReorderInFolder = dropIndicator.type === 'reorder-in-folder' && dropIndicator.targetId === folder.id;
-              
-              return (
-                <SortableFolderItem
-                  key={folder.id}
-                  folder={folder}
-                  servers={getServersForFolder(folder)}
-                  activeServerId={activeServerId}
-                  unreadCounts={unreadCounts}
-                  onServerSelect={handleServerClick}
-                  onToggleExpanded={() => toggleFolderExpanded(folder.id)}
-                  onUpdateFolder={(name, color) => {
-                    updateFolder.mutate({
-                      folderId: folder.id,
-                      updates: { name, color },
-                    });
-                  }}
-                  onDeleteFolder={() => deleteFolder.mutate(folder.id)}
-                  onMarkAllAsRead={() => {
-                    folder.serverIds.forEach((id) => markServerAsRead(id));
-                    toast({ title: 'Dossier marqué comme lu' });
-                  }}
-                  showFolderDropIndicator={showFolderDrop}
-                  folderDropPosition={folderDropPos}
-                  reorderTargetServerId={isReorderInFolder ? (dropIndicator.reorderTargetServerId ?? null) : null}
-                  reorderPosition={isReorderInFolder ? (dropIndicator.reorderPosition ?? null) : null}
-                />
-              );
-            })}
+            {renderedFolders.map((folder) => (
+              <SortableFolderItem
+                key={folder.id}
+                folder={folder}
+                servers={getServersForFolder(folder)}
+                activeServerId={activeServerId}
+                unreadCounts={unreadCounts}
+                onServerSelect={handleServerClick}
+                onToggleExpanded={() => toggleFolderExpanded(folder.id)}
+                onUpdateFolder={(name, color) => {
+                  updateFolder.mutate({
+                    folderId: folder.id,
+                    updates: { name, color },
+                  });
+                }}
+                onDeleteFolder={() => deleteFolder.mutate(folder.id)}
+                onMarkAllAsRead={() => {
+                  folder.serverIds.forEach((id) => markServerAsRead(id));
+                  toast({ title: 'Dossier marqué comme lu' });
+                }}
+                showDropIndicator={dropIndicator.targetId === folder.id && dropIndicator.type === 'add-to-folder'}
+                dropPosition="after"
+              />
+            ))}
 
             {/* Render standalone servers */}
             {renderedStandaloneServers.map((server) => (

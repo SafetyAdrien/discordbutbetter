@@ -27,12 +27,10 @@ interface SortableFolderItemProps {
   onUpdateFolder: (name: string, color: string) => void;
   onDeleteFolder: () => void;
   onMarkAllAsRead: () => void;
-  // Drop indicator for folder icon
-  showFolderDropIndicator: boolean;
-  folderDropPosition: 'before' | 'after' | 'center';
-  // Drop indicator for nested servers (reordering)
-  reorderTargetServerId: string | null;
-  reorderPosition: 'before' | 'after' | null;
+  showDropIndicator: boolean;
+  dropPosition: 'before' | 'after';
+  // Nested server drag handlers
+  onServerDragOut?: (serverId: string) => void;
 }
 
 export function SortableFolderItem({
@@ -45,10 +43,8 @@ export function SortableFolderItem({
   onUpdateFolder,
   onDeleteFolder,
   onMarkAllAsRead,
-  showFolderDropIndicator,
-  folderDropPosition,
-  reorderTargetServerId,
-  reorderPosition,
+  showDropIndicator,
+  dropPosition,
 }: SortableFolderItemProps) {
   const [showSettings, setShowSettings] = useState(false);
 
@@ -84,31 +80,15 @@ export function SortableFolderItem({
         style={style}
         className={cn('relative flex flex-col items-center', isDragging && 'z-50')}
       >
-        {/* Drop Indicator - before folder */}
-        {showFolderDropIndicator && folderDropPosition === 'before' && (
+        {/* Drop Indicator */}
+        {showDropIndicator && (
           <div
             className={cn(
               'absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none',
               'bg-[#5865f2] rounded-full',
-              'top-0 -translate-y-1'
+              dropPosition === 'before' ? 'top-0 -translate-y-1' : 'bottom-0 translate-y-1'
             )}
           />
-        )}
-        
-        {/* Drop Indicator - after folder */}
-        {showFolderDropIndicator && folderDropPosition === 'after' && (
-          <div
-            className={cn(
-              'absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none',
-              'bg-[#5865f2] rounded-full',
-              'bottom-0 translate-y-1'
-            )}
-          />
-        )}
-        
-        {/* Drop Indicator - center (add to folder) */}
-        {showFolderDropIndicator && folderDropPosition === 'center' && (
-          <div className="absolute inset-0 rounded-[24px] border-2 border-[#5865f2] pointer-events-none z-50" />
         )}
 
         {/* Folder Icon */}
@@ -202,8 +182,6 @@ export function SortableFolderItem({
                   unreadCount={unreadCounts[server.id] ?? 0}
                   onClick={() => onServerSelect(server.id)}
                   folderId={folder.id}
-                  showDropIndicator={reorderTargetServerId === server.id}
-                  dropPosition={reorderTargetServerId === server.id ? reorderPosition : null}
                 />
               ))}
             </motion.div>
@@ -228,16 +206,12 @@ function NestedServerIcon({
   unreadCount,
   onClick,
   folderId,
-  showDropIndicator,
-  dropPosition,
 }: {
   server: Server;
   isActive: boolean;
   unreadCount: number;
   onClick: () => void;
   folderId: string;
-  showDropIndicator: boolean;
-  dropPosition: 'before' | 'after' | null;
 }) {
   const {
     attributes,
@@ -257,49 +231,22 @@ function NestedServerIcon({
   };
 
   return (
-    <div className="relative">
-      {/* Drop Indicator - before */}
-      {showDropIndicator && dropPosition === 'before' && (
-        <div className="absolute left-1/2 -translate-x-1/2 w-8 h-[2px] bg-[#5865f2] rounded-full -top-1 z-50 pointer-events-none" />
-      )}
-      
-      {/* Drop Indicator - after */}
-      {showDropIndicator && dropPosition === 'after' && (
-        <div className="absolute left-1/2 -translate-x-1/2 w-8 h-[2px] bg-[#5865f2] rounded-full -bottom-1 z-50 pointer-events-none" />
-      )}
-      
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            ref={setNodeRef}
-            style={style}
-            {...attributes}
-            {...listeners}
-            onClick={onClick}
-            className={cn(
-              'w-10 h-10 rounded-[12px] flex items-center justify-center relative group select-none transition-all',
-              isActive
-                ? 'bg-[#5865f2] text-white'
-                : 'bg-card hover:bg-[#5865f2]/80 hover:text-white',
-              isDragging && 'opacity-30 scale-95'
-            )}
-          >
-            {server.icon ? (
-              server.icon.startsWith('http') ? (
-                <img
-                  src={server.icon}
-                  alt={server.name}
-                  className="w-full h-full object-cover rounded-[inherit] pointer-events-none"
-                  draggable={false}
-                />
-              ) : (
-                <span className="text-lg pointer-events-none">{server.icon}</span>
-              )
-            ) : (
-              <span className="text-xs font-semibold pointer-events-none">
-                {server.name.slice(0, 2).toUpperCase()}
-              </span>
-            )}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          ref={setNodeRef}
+          style={style}
+          {...attributes}
+          {...listeners}
+          onClick={onClick}
+          className={cn(
+            'w-10 h-10 rounded-[12px] flex items-center justify-center relative group select-none transition-all',
+            isActive
+              ? 'bg-[#5865f2] text-white'
+              : 'bg-card hover:bg-[#5865f2]/80 hover:text-white',
+            isDragging && 'opacity-30 scale-95'
+          )}
+        >
           {server.icon ? (
             server.icon.startsWith('http') ? (
               <img
@@ -323,12 +270,11 @@ function NestedServerIcon({
               {unreadCount > 99 ? '99+' : unreadCount}
             </div>
           )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>{server.name}</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p>{server.name}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

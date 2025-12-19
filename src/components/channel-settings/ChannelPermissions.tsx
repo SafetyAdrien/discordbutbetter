@@ -3,7 +3,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RefreshCw, Check, X, Minus, Loader2, Plus, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { PermissionToggle, PermissionState } from '@/components/ui/permission-toggle';
+import { RefreshCw, Loader2, Plus, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { useServerRoles, ALL_PERMISSIONS } from '@/hooks/useRoles';
 import { 
   useChannelPermissionOverrides, 
@@ -83,24 +84,20 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
     }
   };
 
-  const getPermissionState = (roleId: string, permission: ServerPermission): 'allow' | 'deny' | 'inherit' => {
+  const getPermissionState = (roleId: string, permission: ServerPermission): PermissionState => {
     const override = overrides?.find(
       (o) => o.role_id === roleId && o.permission === permission
     );
     if (!override) return 'inherit';
-    return override.type;
+    return override.type as PermissionState;
   };
 
-  const cyclePermission = async (roleId: string, permission: ServerPermission) => {
-    const current = getPermissionState(roleId, permission);
-    
+  const handlePermissionChange = async (roleId: string, permission: ServerPermission, newState: PermissionState) => {
     try {
-      if (current === 'inherit') {
-        await setOverride.mutateAsync({ channelId, roleId, permission, type: 'allow' });
-      } else if (current === 'allow') {
-        await setOverride.mutateAsync({ channelId, roleId, permission, type: 'deny' });
-      } else {
+      if (newState === 'inherit') {
         await removeOverride.mutateAsync({ channelId, roleId, permission });
+      } else {
+        await setOverride.mutateAsync({ channelId, roleId, permission, type: newState });
       }
     } catch {
       toast.error('Erreur lors de la modification');
@@ -249,39 +246,26 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
               const state = getPermissionState(selectedRole, perm);
               
               return (
-                <button
+                <div
                   key={perm}
-                  onClick={() => cyclePermission(selectedRole, perm)}
                   className={cn(
-                    "w-full flex items-center justify-between p-2 rounded-md transition-colors",
-                    "hover:bg-muted/50",
+                    "flex items-center justify-between p-2 rounded-md transition-colors",
                     state !== 'inherit' && "bg-muted/30"
                   )}
-                  disabled={isMutating}
                 >
                   <div className="text-left">
                     <p className="text-sm font-medium">{permInfo?.label || perm}</p>
                     <p className="text-xs text-muted-foreground">{permInfo?.description}</p>
                   </div>
-                  <Badge 
-                    variant={state === 'allow' ? 'default' : state === 'deny' ? 'destructive' : 'secondary'}
-                    className={cn(
-                      "flex items-center gap-1 transition-all",
-                      state === 'allow' && "bg-green-600 hover:bg-green-600",
-                    )}
-                  >
-                    {state === 'allow' && <Check className="w-3 h-3" />}
-                    {state === 'deny' && <X className="w-3 h-3" />}
-                    {state === 'inherit' && <Minus className="w-3 h-3" />}
-                    {state === 'allow' ? 'Autoriser' : state === 'deny' ? 'Refuser' : 'Hériter'}
-                  </Badge>
-                </button>
+                  <PermissionToggle
+                    value={state}
+                    onChange={(newState) => handlePermissionChange(selectedRole, perm, newState)}
+                    disabled={isMutating}
+                  />
+                </div>
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Cliquez pour basculer entre Hériter → Autoriser → Refuser
-          </p>
         </div>
       )}
     </div>

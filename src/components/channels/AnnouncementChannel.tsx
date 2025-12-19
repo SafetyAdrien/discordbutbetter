@@ -351,34 +351,34 @@ export function AnnouncementChannel({
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
-        <div className="flex items-center gap-2">
-          <StreamlineMegaphone className="w-5 h-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <h2 className="font-semibold text-foreground truncate max-w-[80px] sm:max-w-[120px] md:max-w-none">{channel.name}</h2>
         </div>
 
         {/* Follow Button */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 text-muted-foreground hover:text-foreground"
+          className="gap-1 sm:gap-2 text-muted-foreground hover:text-foreground flex-shrink-0"
           onClick={() => setFollowModalOpen(true)}
         >
           <Wifi className="w-4 h-4" />
-          Suivre
+          <span className="hidden sm:inline">Suivre</span>
         </Button>
 
         {channel.description && (
           <>
-            <div className="w-px h-6 bg-border" />
+            <div className="w-px h-6 bg-border hidden md:block" />
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[300px]">
+                <button className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] lg:max-w-[300px] min-w-0">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-80 p-3">
+              <PopoverContent side="bottom" align="start" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-3">
                 <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
                 <p className="text-sm text-muted-foreground">{channel.description}</p>
               </PopoverContent>
@@ -423,7 +423,7 @@ export function AnnouncementChannel({
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-96 p-0">
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
               <div className="p-3 border-b border-border">
                 <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
               </div>

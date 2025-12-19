@@ -38,26 +38,26 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
   const threads: ForumThread[] = [];
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <StreamlineForum className="text-muted-foreground" size={16} />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <StreamlineForum className="text-muted-foreground flex-shrink-0" size={16} />
+          <h2 className="font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{channel.name}</h2>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="relative">
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+          <div className="relative hidden sm:block">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 pl-8 w-48"
+              className="h-8 pl-8 w-32 md:w-48"
             />
           </div>
           <Button size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau sujet
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nouveau sujet</span>
           </Button>
         </div>
       </div>

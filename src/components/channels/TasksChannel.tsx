@@ -55,25 +55,26 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
   });
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0">
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <StreamlineTasks className="w-4 h-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{channel.name}</h2>
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+          <StreamlineTasks className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <h2 className="font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{channel.name}</h2>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
             {(['all', 'pending', 'completed'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={cn(
-                  'px-3 py-1 text-sm transition-colors',
+                  'px-2 sm:px-3 py-1 text-xs sm:text-sm transition-colors',
                   filter === f ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
                 )}
               >
-                {f === 'all' ? 'Toutes' : f === 'pending' ? 'En cours' : 'Terminées'}
+                <span className="hidden sm:inline">{f === 'all' ? 'Toutes' : f === 'pending' ? 'En cours' : 'Terminées'}</span>
+                <span className="sm:hidden">{f === 'all' ? 'All' : f === 'pending' ? '⏳' : '✓'}</span>
               </button>
             ))}
           </div>

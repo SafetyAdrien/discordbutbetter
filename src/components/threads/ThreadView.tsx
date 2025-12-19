@@ -55,6 +55,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface ThreadViewProps {
   threadId: string;
@@ -138,6 +139,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
+
+  // Check send_messages permission for parent channel
+  const { data: canSendMessages = true } = useHasChannelPermission(channelId || thread?.channel_id || null, 'send_messages');
+  const permissionDeniedMessage = !canSendMessages 
+    ? "Vous n'avez pas la permission d'envoyer des messages dans ce fil." 
+    : undefined;
 
   const handleCopyPollLink = (pollId: string) => {
     const link = `${window.location.origin}/channels/${serverId}/${channelId}/thread/${threadId}/poll/${pollId}`;
@@ -788,6 +795,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         members={mentionMembers}
         roles={mentionRoles}
         channels={allChannels}
+        permissionDeniedMessage={permissionDeniedMessage}
       />
       {/* Edit Poll Modal */}
       <CreatePollModal

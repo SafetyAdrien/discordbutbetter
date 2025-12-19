@@ -34,6 +34,8 @@ interface MessageInputProps {
   onUpdateAttachment?: (id: string, updates: Partial<Pick<PendingAttachment, 'name' | 'description' | 'isSpoiler'>>) => void;
   onToggleSpoiler?: (id: string) => void;
   onClearAttachments?: () => void;
+  // Permission denied message - shows disabled state when set
+  permissionDeniedMessage?: string;
 }
 
 interface MentionState {
@@ -66,6 +68,7 @@ export function MessageInput({
   onUpdateAttachment,
   onToggleSpoiler,
   onClearAttachments,
+  permissionDeniedMessage,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -311,6 +314,19 @@ export function MessageInput({
     e.preventDefault();
     handleSendMessage();
   };
+
+  // Render disabled state when permission is denied
+  if (permissionDeniedMessage) {
+    return (
+      <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
+        <div className="flex items-center rounded-lg bg-[hsl(var(--input))] px-4 py-3">
+          <span className="text-muted-foreground/50 text-sm">
+            {permissionDeniedMessage}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 

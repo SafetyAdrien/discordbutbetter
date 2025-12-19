@@ -26,14 +26,15 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { useDndSensors } from '@/hooks/useDndSensors';
 
 // Discord-style Drop Indicator for servers
 const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
@@ -91,7 +92,10 @@ function SortableServerIcon({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : transition,
+    transition: isDragging 
+      ? 'opacity 100ms ease-out' 
+      : 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease-out',
+    willChange: isDragging ? 'transform' : 'auto',
   };
 
   return (
@@ -195,28 +199,36 @@ function SortableServerIcon({
   );
 }
 
-// Server Drag Overlay
-function ServerDragOverlay({ server }: { server: Server }) {
-  return (
-    <div className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
-      {server.icon ? (
-        server.icon.startsWith('http') ? (
-          <img 
-            src={server.icon} 
-            alt={server.name}
-            className="w-full h-full object-cover rounded-[inherit]"
-          />
+// Server Drag Overlay with forwardRef for proper DnD handling
+const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(
+  ({ server }, ref) => {
+    return (
+      <div 
+        ref={ref}
+        className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing"
+        style={{ willChange: 'transform' }}
+      >
+        {server.icon ? (
+          server.icon.startsWith('http') ? (
+            <img 
+              src={server.icon} 
+              alt={server.name}
+              className="w-full h-full object-cover rounded-[inherit]"
+              draggable={false}
+            />
+          ) : (
+            <span className="text-xl">{server.icon}</span>
+          )
         ) : (
-          <span className="text-xl">{server.icon}</span>
-        )
-      ) : (
-        <span className="text-sm font-semibold">
-          {server.name.slice(0, 2).toUpperCase()}
-        </span>
-      )}
-    </div>
-  );
-}
+          <span className="text-sm font-semibold">
+            {server.name.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+      </div>
+    );
+  }
+);
+ServerDragOverlay.displayName = 'ServerDragOverlay';
 
 interface ServerListProps {
   servers: Server[];
@@ -261,12 +273,8 @@ export function ServerList({
   
   const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    })
-  );
+  // DnD sensors - optimized with touch and keyboard support
+  const sensors = useDndSensors({ activationDistance: 3 });
 
   // Track previous counts for shake animation
   const prevUnreadCounts = useRef<Record<string, number>>({});
@@ -474,7 +482,12 @@ export function ServerList({
           </div>
         </SortableContext>
 
-        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+        <DragOverlay 
+          dropAnimation={{
+            duration: 180,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}
+        >
           {activeServer && <ServerDragOverlay server={activeServer} />}
         </DragOverlay>
       </DndContext>

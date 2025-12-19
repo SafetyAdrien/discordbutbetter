@@ -66,6 +66,8 @@ export function usePermissionsRealtime(serverId: string | null) {
             .single();
           
           if (channel?.server_id === serverId) {
+            // Invalidate channel permission overrides
+            queryClient.invalidateQueries({ queryKey: ['channel-permission-overrides', channelId] });
             queryClient.invalidateQueries({ queryKey: ['channel-permissions', channelId] });
             queryClient.invalidateQueries({ 
               predicate: (query) => 
@@ -100,6 +102,8 @@ export function usePermissionsRealtime(serverId: string | null) {
             .single();
           
           if (category?.server_id === serverId) {
+            // Invalidate category permission overrides
+            queryClient.invalidateQueries({ queryKey: ['category-permission-overrides', categoryId] });
             queryClient.invalidateQueries({ queryKey: ['category-permissions', categoryId] });
             // Invalider aussi les permissions des canaux de cette catégorie
             queryClient.invalidateQueries({ 

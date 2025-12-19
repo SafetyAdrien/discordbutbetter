@@ -54,13 +54,14 @@ import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { TypingIndicator } from "@/components/typing/TypingIndicator";
 import { MarkdownText, setMarkdownContext } from "@/lib/markdown";
 import { registerSnowflakeMappings } from "@/lib/snowflake";
-import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
+import { useMessages, useSendMessage, useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
 import { usePolls, useDeletePoll, Poll } from "@/hooks/usePolls";
 import { useServerRoles } from "@/hooks/useRoles";
 import { useChannels } from "@/hooks/useChannels";
 import { useServers } from "@/hooks/useServers";
+import { useMembers } from "@/hooks/useMembers";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
@@ -82,15 +83,8 @@ interface Role {
 
 interface AnnouncementChannelProps {
   channel: Channel;
-  messages: Message[];
-  onSendMessage: (content: string) => void;
-  memberRoles?: Map<string, Role[]>;
-  onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
   showMembers?: boolean;
-  members?: Array<{ id: string; displayName: string; username: string; avatar?: string }>;
-  serverName: string;
-  serverIcon?: string;
 }
 
 // Quick reactions
@@ -121,15 +115,8 @@ function formatDate(date: Date): string {
 
 export function AnnouncementChannel({
   channel,
-  messages,
-  onSendMessage,
-  memberRoles,
-  onOpenDM,
   onToggleMembers,
   showMembers = true,
-  members = [],
-  serverName,
-  serverIcon,
 }: AnnouncementChannelProps) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
@@ -148,8 +135,71 @@ export function AnnouncementChannel({
 
   const { user } = useAuth();
   const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
+  
+  // Internal hooks for messages
+  const { data: messagesData = [] } = useMessages(channel.id);
+  const sendMessageMutation = useSendMessage();
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
+  
+  // Get server info
+  const { data: servers = [] } = useServers();
+  const currentServer = servers.find(s => s.id === channel.server_id);
+  const serverName = currentServer?.name || "";
+  const serverIcon = currentServer?.icon_url || undefined;
+
+  // Fetch members for mentions
+  const { data: membersData = [] } = useMembers(channel.server_id);
+  const members = useMemo(() => 
+    membersData.map(m => ({
+      id: m.user.id,
+      displayName: m.user.display_name,
+      username: m.user.username,
+      avatar: m.user.avatar_url || undefined,
+    })), 
+    [membersData]
+  );
+  
+  // Build memberRoles map
+  const memberRoles = useMemo(() => {
+    const map = new Map<string, Role[]>();
+    membersData.forEach(m => {
+      map.set(m.user.id, m.roles as Role[]);
+    });
+    return map;
+  }, [membersData]);
+
+  // Transform messages to match Message type
+  const messages: Message[] = useMemo(() => 
+    messagesData.map(m => ({
+      id: m.id,
+      content: m.content,
+      timestamp: new Date(m.created_at || Date.now()),
+      edited: !!m.edited_at,
+      attachments: [],
+      author: m.author ? {
+        id: m.author.id,
+        username: m.author.username,
+        displayName: m.author.display_name,
+        avatar: m.author.avatar_url || undefined,
+        status: m.author.status || 'offline',
+        customStatus: m.author.custom_status || undefined,
+      } : {
+        id: 'unknown',
+        username: 'unknown',
+        displayName: 'Unknown',
+        status: 'offline' as const,
+      },
+      // Extra fields for published messages (not in Message type, but we use them)
+      isPublishedMessage: (m as any).is_published_message || false,
+      sourceServerId: (m as any).source_server_id || undefined,
+      sourceServerName: (m as any).source_server_name || undefined,
+      sourceServerIcon: (m as any).source_server_icon || undefined,
+      sourceChannelName: (m as any).source_channel_name || undefined,
+      publishDismissed: (m as any).publish_dismissed || false,
+    } as Message & { isPublishedMessage?: boolean; sourceServerId?: string; sourceServerName?: string; sourceServerIcon?: string; sourceChannelName?: string; publishDismissed?: boolean })),
+    [messagesData]
+  );
 
   // Fetch followers count
   const { data: followers = [] } = useChannelFollowers(channel.id);
@@ -204,7 +254,7 @@ export function AnnouncementChannel({
       const content = replyingTo
         ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}`
         : messageInput;
-      onSendMessage(content);
+      sendMessageMutation.mutate({ channelId: channel.id, content });
       setMessageInput("");
       setReplyingTo(null);
       stopTyping();
@@ -878,7 +928,7 @@ export function AnnouncementChannel({
             setMessageInput(value);
             startTyping();
           }}
-          onSubmit={handleSubmit}
+          onSend={handleSubmit}
           channelId={channel.id}
           serverId={channel.server_id}
           members={members}

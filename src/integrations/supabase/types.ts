@@ -2465,6 +2465,21 @@ export type Database = {
           uses: number
         }[]
       }
+      get_user_channel_permissions: {
+        Args: { _channel_id: string; _user_id: string }
+        Returns: {
+          granted: boolean
+          permission: Database["public"]["Enums"]["server_permission"]
+        }[]
+      }
+      has_channel_permission: {
+        Args: {
+          _channel_id: string
+          _permission: Database["public"]["Enums"]["server_permission"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_dm_interaction: {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean

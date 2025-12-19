@@ -673,12 +673,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     copyToClipboard(link, "Lien du message copié");
   };
   return (
-    <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
+    <div ref={ref} className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
-        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{channel.name}</h2>
+          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
         {channel.description && (
@@ -838,8 +838,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5">
+      <ScrollArea className="flex-1 min-h-0 w-full">
+        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
           {/* Welcome message */}
           <div className="mb-8 animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
@@ -1087,7 +1087,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-foreground break-words font-ginto">
+                              <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
                                 <MarkdownText content={message.content} />
                               </p>
                             )}
@@ -1188,7 +1188,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               </div>
                             ) : (
                               <>
-                                <p className="text-foreground break-words font-ginto">
+                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
                                   <MarkdownText content={message.content} />
                                 </p>
                                 {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
@@ -1351,7 +1351,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 border-t border-border bg-background px-0 py-0">
+      <div className="flex-shrink-0 border-t border-border bg-background w-full">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
         <MessageInput

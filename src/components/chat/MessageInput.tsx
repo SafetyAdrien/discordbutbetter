@@ -275,11 +275,11 @@ export function MessageInput({
   };
 
   return (
-    <div className={compact ? "p-3 border-t border-white/10" : "px-4 py-3 flex-shrink-0 flex flex-col w-full"}>
+    <div className={compact ? "p-3 border-t border-white/10 w-full" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0"}>
       {showPreview && value.trim() && (
-        <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin" />
+        <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin w-full" />
       )}
-      <form onSubmit={handleSubmit} className="relative w-full shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
+      <form onSubmit={handleSubmit} className="relative w-full min-w-0 shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         {/* Mention Autocomplete */}
         {mentionState && (
           <MentionAutocomplete
@@ -295,7 +295,7 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-center gap-2 rounded-lg border transition-colors ${
+        <div className={`flex items-center gap-2 rounded-lg border transition-colors w-full min-w-0 ${
           compact 
             ? "bg-[hsl(var(--input))] border-transparent" 
             : "bg-[hsl(var(--input))] border-border/50 focus-within:border-primary/50"
@@ -341,7 +341,7 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className={`flex-1 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto ${
+            className={`flex-1 min-w-0 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
               compact 
                 ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
                 : "py-3 min-h-[24px] max-h-[200px] pr-1"

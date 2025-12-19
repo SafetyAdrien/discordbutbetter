@@ -174,14 +174,14 @@ export function SortableFolderItem({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="flex flex-col items-center gap-2 mt-2 overflow-hidden"
-              style={{
-                borderLeft: `2px solid ${folder.color}40`,
-                paddingLeft: '4px',
-                marginLeft: '2px',
-              }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="flex flex-col items-center gap-2 mt-1 overflow-hidden relative"
             >
+              {/* Vertical connector line */}
+              <div 
+                className="absolute left-[10px] top-0 bottom-2 w-[2px] rounded-full bg-[#3f4147]"
+              />
+              
               {servers.map((server) => (
                 <NestedServerIcon
                   key={server.id}
@@ -248,10 +248,10 @@ function NestedServerIcon({
           {...listeners}
           onClick={onClick}
           className={cn(
-            'w-10 h-10 rounded-[12px] flex items-center justify-center relative group select-none transition-all',
+            'w-12 h-12 rounded-[24px] flex items-center justify-center relative group select-none transition-all',
             isActive
-              ? 'bg-[#5865f2] text-white'
-              : 'bg-card hover:bg-[#5865f2]/80 hover:text-white',
+              ? 'bg-[#5865f2] text-white rounded-[16px]'
+              : 'bg-[#313338] hover:bg-[#5865f2]/80 hover:text-white hover:rounded-[16px]',
             isDragging && 'opacity-30 scale-95'
           )}
         >
@@ -264,17 +264,17 @@ function NestedServerIcon({
                 draggable={false}
               />
             ) : (
-              <span className="text-lg pointer-events-none">{server.icon}</span>
+              <span className="text-xl pointer-events-none">{server.icon}</span>
             )
           ) : (
-            <span className="text-xs font-semibold pointer-events-none">
+            <span className="text-sm font-semibold pointer-events-none">
               {server.name.slice(0, 2).toUpperCase()}
             </span>
           )}
 
           {/* Unread badge */}
           {unreadCount > 0 && (
-            <div className="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-[10px] font-bold border-2 border-sidebar">
+            <div className="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar">
               {unreadCount > 99 ? '99+' : unreadCount}
             </div>
           )}

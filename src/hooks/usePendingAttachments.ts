@@ -11,7 +11,8 @@ export interface PendingAttachment {
 
 export function usePendingAttachments() {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+  const isDragging = dragCounter > 0;
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -60,24 +61,14 @@ export function usePendingAttachments() {
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.types.includes('Files')) {
-      setIsDragging(true);
+      setDragCounter(prev => prev + 1);
     }
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Only set to false if we're leaving the drop zone completely
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const { clientX, clientY } = e;
-    if (
-      clientX < rect.left ||
-      clientX > rect.right ||
-      clientY < rect.top ||
-      clientY > rect.bottom
-    ) {
-      setIsDragging(false);
-    }
+    setDragCounter(prev => prev - 1);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -88,7 +79,7 @@ export function usePendingAttachments() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    setDragCounter(0);
     
     if (e.dataTransfer.files.length > 0) {
       addFiles(e.dataTransfer.files);

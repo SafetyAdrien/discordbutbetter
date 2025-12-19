@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
-import { X, MessageCircle, ThumbsUp, ThumbsDown, Sparkles, Loader2 } from "lucide-react";
+import { X, MessageCircle, Heart, Sparkles, Loader2 } from "lucide-react";
 
 interface SummariesDropdownProps {
   summaries: SummaryTopic[];
@@ -13,6 +13,10 @@ interface SummariesDropdownProps {
   onGenerateSummaries?: () => void;
   isGenerating?: boolean;
   isLoading?: boolean;
+  showLikedOnly?: boolean;
+  onToggleLikedFilter?: () => void;
+  onToggleLike?: (summaryId: string) => void;
+  likedCount?: number;
 }
 
 export function SummariesDropdown({
@@ -22,6 +26,10 @@ export function SummariesDropdown({
   onGenerateSummaries,
   isGenerating = false,
   isLoading = false,
+  showLikedOnly = false,
+  onToggleLikedFilter,
+  onToggleLike,
+  likedCount = 0,
 }: SummariesDropdownProps) {
   const hasSummaries = summaries.length > 0;
 
@@ -40,12 +48,30 @@ export function SummariesDropdown({
               BETA
             </Badge>
           </div>
-          <button 
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onToggleLikedFilter && (
+              <button 
+                onClick={onToggleLikedFilter}
+                className={`p-1.5 rounded transition-colors ${
+                  showLikedOnly 
+                    ? 'text-red-500 bg-red-500/10' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+                title={showLikedOnly ? "Voir tous les résumés" : "Voir les favoris"}
+              >
+                <Heart className={`w-5 h-5 ${showLikedOnly ? 'fill-current' : ''}`} />
+                {likedCount > 0 && (
+                  <span className="sr-only">{likedCount} favoris</span>
+                )}
+              </button>
+            )}
+            <button 
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -98,19 +124,20 @@ export function SummariesDropdown({
                       </p>
                     </div>
 
-                    {/* Right: Thumbs up/down */}
+                    {/* Right: Like button */}
                     <div className="flex flex-col gap-1 ml-3 flex-shrink-0">
                       <button 
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleLike?.(topic.id);
+                        }}
+                        className={`p-1.5 rounded transition-colors ${
+                          topic.isLiked 
+                            ? 'text-red-500 bg-red-500/10' 
+                            : 'hover:bg-accent text-muted-foreground hover:text-foreground'
+                        }`}
                       >
-                        <ThumbsUp className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <ThumbsDown className="w-4 h-4" />
+                        <Heart className={`w-4 h-4 ${topic.isLiked ? 'fill-current' : ''}`} />
                       </button>
                     </div>
                   </div>

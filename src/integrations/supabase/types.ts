@@ -2118,6 +2118,35 @@ export type Database = {
           },
         ]
       }
+      user_summary_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          summary_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          summary_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          summary_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_summary_likes_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "channel_summaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_summary_reads: {
         Row: {
           id: string

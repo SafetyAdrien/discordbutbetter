@@ -81,6 +81,7 @@ import { useSummaries } from "@/hooks/useSummaries";
 import { SummariesBar } from "@/components/summaries/SummariesBar";
 import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
+import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageAttachments";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -301,7 +302,7 @@ interface Role {
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, attachments?: PendingAttachment[]) => void;
   memberRoles?: Map<string, Role[]>;
   onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
@@ -603,7 +604,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     });
   };
   const handleSubmit = () => {
-    if (messageInput.trim()) {
+    if (messageInput.trim() || attachments.length > 0) {
       // Trigger send animation
       setIsSending(true);
       setTimeout(() => setIsSending(false), 400);
@@ -612,9 +613,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       const content = replyingTo
         ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}`
         : messageInput;
-      onSendMessage(content);
+      onSendMessage(content, attachments);
       setMessageInput("");
       setReplyingTo(null);
+      clearAttachments();
       stopTyping();
     }
   };
@@ -1174,6 +1176,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
                                 <MarkdownText content={message.content} />
                               </p>
+                            )}
+
+                            {/* Message Attachments */}
+                            {(message as any).attachments && (message as any).attachments.length > 0 && (
+                              <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
                             )}
 
                             {message.reactions && message.reactions.length > 0 && (

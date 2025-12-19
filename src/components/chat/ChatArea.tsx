@@ -74,7 +74,6 @@ import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
-import { AISummariesTrigger, AISummariesSubHeader, AISummariesPanel } from "@/components/chat/AISummariesPanel";
 import { toast } from "sonner";
 
 // Reply Reference Component
@@ -361,8 +360,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
-  const [isSummariesActive, setIsSummariesActive] = useState(false);
-  const [isSummariesExpanded, setIsSummariesExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -703,24 +700,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         )}
 
         <div className="flex items-center gap-1 ml-auto">
-          {/* AI Summaries Trigger */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <AISummariesTrigger
-                  isActive={isSummariesActive}
-                  onClick={() => {
-                    setIsSummariesActive(!isSummariesActive);
-                    if (isSummariesActive) {
-                      setIsSummariesExpanded(false);
-                    }
-                  }}
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Résumés IA</TooltipContent>
-          </Tooltip>
-
           {/* Notifications Popover */}
           <Popover>
             <PopoverTrigger asChild>
@@ -856,19 +835,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </TooltipContent>
           </Tooltip>
         </div>
-      </div>
-
-      {/* AI Summaries Sub-Header + Panel Container */}
-      <div className="relative">
-        <AISummariesSubHeader
-          isVisible={isSummariesActive}
-          isExpanded={isSummariesExpanded}
-          onToggle={() => setIsSummariesExpanded(!isSummariesExpanded)}
-        />
-        <AISummariesPanel
-          isOpen={isSummariesExpanded}
-          onClose={() => setIsSummariesExpanded(false)}
-        />
       </div>
 
       {/* Messages */}

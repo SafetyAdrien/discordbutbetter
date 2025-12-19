@@ -814,19 +814,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverContent>
           </Popover>
 
-          {/* Inbox Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="iconSm">
-                <Inbox className="w-5 h-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-72 md:w-80 max-w-80 p-3">
-              <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
-              <div className="text-sm text-muted-foreground/70 text-center py-6">Aucune notification récente.</div>
-            </PopoverContent>
-          </Popover>
-
           {/* AI Summaries Trigger */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -843,6 +830,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               {isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}
             </TooltipContent>
           </Tooltip>
+
+          {/* Inbox Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="iconSm">
+                <Inbox className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-72 md:w-80 max-w-80 p-3">
+              <h4 className="font-semibold text-foreground mb-3">Boîte de Réception</h4>
+              <div className="text-sm text-muted-foreground/70 text-center py-6">Aucune notification récente.</div>
+            </PopoverContent>
+          </Popover>
 
           {/* Members Toggle / Thread Close */}
           <Tooltip>

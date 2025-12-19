@@ -2454,6 +2454,15 @@ export type Database = {
         Returns: string
       }
       delete_server_as_owner: { Args: { _server_id: string }; Returns: boolean }
+      find_user_for_friend_request: {
+        Args: { target_username: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          username: string
+        }[]
+      }
       generate_invite_code: { Args: never; Returns: string }
       get_channel_webhooks: {
         Args: { _channel_id: string }

@@ -746,12 +746,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               <PopoverTrigger asChild>
                 <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
+                  <span className="text-sm text-muted-foreground truncate">{channel.description}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="start" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-3">
                 <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
-                <p className="text-sm text-muted-foreground">{channel.description}</p>
+                <MarkdownText content={channel.description || ''} className="text-sm text-muted-foreground [&_.markdown-content]:text-muted-foreground" />
               </PopoverContent>
             </Popover>
           </>

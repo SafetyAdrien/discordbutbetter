@@ -24,52 +24,30 @@ import { toast } from '@/hooks/use-toast';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
-import { useServerFolders } from '@/hooks/useServerFolders';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
-import { SortableFolderItem } from '@/components/server-folders/SortableFolderItem';
-import { useServerDnd } from '@/hooks/useServerDnd';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
-import { 
-  DndContext, 
-  PointerSensor, 
-  useSensor, 
-  useSensors, 
-  DragOverlay,
-  UniqueIdentifier,
-  closestCenter,
-  useDroppable,
-} from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 
-// Drop Indicator line
-const DropIndicatorLine = ({ position }: { position: 'before' | 'after' }) => (
-  <div 
-    className={cn(
-      "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
-      "bg-[#5865f2] rounded-full",
-      position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
-    )}
-  />
-);
-
-// Merge Indicator (when hovering to create folder)
-const MergeIndicator = ({ progress }: { progress: number }) => (
-  <div className="absolute inset-0 rounded-[16px] pointer-events-none overflow-hidden">
+// Discord-style Drop Indicator for servers
+const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
+  if (!isVisible) return null;
+  return (
     <div 
-      className="absolute inset-0 bg-[#5865f2]/30 rounded-[inherit]"
-      style={{
-        clipPath: `inset(${100 - progress}% 0 0 0)`,
-        transition: 'clip-path 50ms linear',
-      }}
+      className={cn(
+        "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
+        "bg-[#5865f2] rounded-full",
+        position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
+      )}
     />
-    <div className="absolute inset-0 border-2 border-[#5865f2] rounded-[inherit] opacity-50" />
-  </div>
-);
+  );
+};
 
 // Sortable Server Icon Component
 function SortableServerIcon({
@@ -77,10 +55,8 @@ function SortableServerIcon({
   isActive,
   unreadCount,
   isShaking,
-  showInsertBefore,
-  showInsertAfter,
-  showMergeIndicator,
-  mergeProgress,
+  showDropIndicator,
+  dropPosition,
   onClick,
   onOpenSettings,
   onMarkAsRead,
@@ -92,10 +68,8 @@ function SortableServerIcon({
   isActive: boolean;
   unreadCount: number;
   isShaking: boolean;
-  showInsertBefore: boolean;
-  showInsertAfter: boolean;
-  showMergeIndicator: boolean;
-  mergeProgress: number;
+  showDropIndicator: boolean;
+  dropPosition: 'before' | 'after';
   onClick: () => void;
   onOpenSettings?: () => void;
   onMarkAsRead: () => void;
@@ -111,8 +85,8 @@ function SortableServerIcon({
     transition,
     isDragging,
   } = useSortable({
-    id: `server-${server.id}`,
-    data: { type: 'server', server, containerId: 'root' },
+    id: server.id,
+    data: { type: 'server', server },
   });
 
   const style = {
@@ -126,14 +100,7 @@ function SortableServerIcon({
       style={style}
       className={cn("relative", isDragging && "z-50")}
     >
-      {/* Insert indicator BEFORE */}
-      {showInsertBefore && <DropIndicatorLine position="before" />}
-      
-      {/* Insert indicator AFTER */}
-      {showInsertAfter && <DropIndicatorLine position="after" />}
-      
-      {/* Merge indicator (folder creation) */}
-      {showMergeIndicator && <MergeIndicator progress={mergeProgress} />}
+      <ServerDropIndicator isVisible={showDropIndicator} position={dropPosition} />
       
       <ContextMenu>
         <Tooltip>
@@ -229,9 +196,9 @@ function SortableServerIcon({
 }
 
 // Server Drag Overlay
-const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ server }, ref) => {
+function ServerDragOverlay({ server }: { server: Server }) {
   return (
-    <div ref={ref} className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
+    <div className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing">
       {server.icon ? (
         server.icon.startsWith('http') ? (
           <img 
@@ -249,8 +216,7 @@ const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ serv
       )}
     </div>
   );
-});
-ServerDragOverlay.displayName = 'ServerDragOverlay';
+}
 
 interface ServerListProps {
   servers: Server[];
@@ -271,97 +237,36 @@ export function ServerList({
 }: ServerListProps) {
   const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
-  const { serverOrder, sortServers, reorderServers } = useServerOrder();
-  const { 
-    folders, 
-    createFolder, 
-    updateFolder, 
-    deleteFolder, 
-    addServerToFolder, 
-    removeServerFromFolder,
-    toggleFolderExpanded,
-    getServerIdsInFolders,
-  } = useServerFolders();
+  const { sortServers, reorderServers } = useServerOrder();
   const leaveServer = useLeaveServer();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Leave server dialog state
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [serverToLeave, setServerToLeave] = useState<Server | null>(null);
 
-  // Get server IDs in folders
-  const serverIdsInFolders = useMemo(() => getServerIdsInFolders(), [folders]);
-  
-  // Filter and sort standalone servers (not in any folder)
-  const standaloneServers = useMemo(() => {
-    return sortServers(servers.filter(s => !serverIdsInFolders.has(s.id)));
-  }, [servers, serverIdsInFolders, sortServers]);
+  // Sort servers by user's custom order
+  const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);
+  const serverIds = useMemo(() => sortedServers.map(s => s.id), [sortedServers]);
 
   // Calculate total unread DMs
   const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((acc, count) => acc + count, 0);
   const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
 
-  // DnD Hook
-  const {
-    activeId,
-    activeServer,
-    dropIndicator,
-    mergeState,
-    shouldRestrictVertical,
-    previewFolders,
-    previewStandaloneServers,
-    handleDragStart,
-    handleDragMove,
-    handleDragOver,
-    handleDragEnd,
-    handleDragCancel,
-  } = useServerDnd({
-    servers,
-    folders,
-    standaloneServers,
-    serverOrder,
-    onReorderServers: reorderServers,
-    onCreateFolder: (params) => createFolder.mutate(params),
-    onAddToFolder: addServerToFolder,
-    onRemoveFromFolder: removeServerFromFolder,
-  });
-
-  const renderedFolders = previewFolders;
-  const renderedStandaloneServers = previewStandaloneServers;
-
-  // Create sortable items for DnD context
-  const sortableItems = useMemo(() => {
-    const items: UniqueIdentifier[] = [];
-
-    // Add folders and their nested servers (display order)
-    renderedFolders.forEach((folder) => {
-      items.push(`folder-${folder.id}`);
-      folder.serverIds.forEach((serverId) => {
-        items.push(`server-${serverId}`);
-      });
-    });
-
-    // Add standalone servers
-    renderedStandaloneServers.forEach((server) => {
-      items.push(`server-${server.id}`);
-    });
-
-    return items;
-  }, [renderedFolders, renderedStandaloneServers]);
+  // DnD state
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  
+  const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
 
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 5 },
     })
   );
-
-  // DnD modifiers
-  const dndModifiers = useMemo(() => {
-    return shouldRestrictVertical ? [restrictToVerticalAxis] : [];
-  }, [shouldRestrictVertical]);
-
-  const { setNodeRef: setRootDropRef } = useDroppable({ id: 'root-drop' });
 
   // Track previous counts for shake animation
   const prevUnreadCounts = useRef<Record<string, number>>({});
@@ -409,6 +314,7 @@ export function ServerList({
   };
 
   const handleLeaveServer = (server: Server) => {
+    // Check if user is the owner
     if (server.ownerId === user?.id) {
       toast({ title: "Vous ne pouvez pas quitter un serveur dont vous êtes propriétaire", variant: "destructive" });
       return;
@@ -423,6 +329,7 @@ export function ServerList({
       onSuccess: () => {
         setShowLeaveDialog(false);
         setServerToLeave(null);
+        // If the user was viewing the server they left, go to DMs
         if (activeServerId === serverToLeave.id) {
           onServerSelect(null);
         }
@@ -435,11 +342,63 @@ export function ServerList({
     markServerAsRead(serverId);
   };
 
-  // Get servers for a folder
-  const getServersForFolder = (folder: typeof folders[0]) => {
-    return folder.serverIds
-      .map(id => servers.find(s => s.id === id))
-      .filter((s): s is Server => s !== undefined);
+  // DnD handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over, delta } = event;
+    if (!over || over.id === active.id) {
+      setOverId(null);
+      return;
+    }
+
+    setOverId(over.id as string);
+
+    // Calculate cursor position
+    const overRect = over.rect;
+    if (overRect) {
+      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
+      let clientY = 0;
+      if (activatorEvent) {
+        if ('clientY' in activatorEvent) {
+          clientY = activatorEvent.clientY + delta.y;
+        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
+          clientY = activatorEvent.touches[0].clientY + delta.y;
+        }
+      }
+      const middleY = overRect.top + overRect.height / 2;
+      setDropPosition(clientY < middleY ? 'before' : 'after');
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedServers.findIndex(s => s.id === active.id);
+    const overIndex = sortedServers.findIndex(s => s.id === over.id);
+
+    if (oldIndex === -1 || overIndex === -1) return;
+
+    // Calculate new index based on drop position
+    let newIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
+    if (oldIndex < overIndex) newIndex--;
+    newIndex = Math.max(0, Math.min(newIndex, sortedServers.length - 1));
+
+    if (oldIndex !== newIndex) {
+      const newOrder = arrayMove(serverIds, oldIndex, newIndex);
+      reorderServers(newOrder);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setOverId(null);
   };
 
   return (
@@ -487,54 +446,23 @@ export function ServerList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        modifiers={dndModifiers}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+        <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
           <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col items-center gap-2 w-full">
-            {/* Render folders first */}
-            {renderedFolders.map((folder) => (
-              <SortableFolderItem
-                key={folder.id}
-                folder={folder}
-                servers={getServersForFolder(folder)}
-                activeServerId={activeServerId}
-                unreadCounts={unreadCounts}
-                onServerSelect={handleServerClick}
-                onToggleExpanded={() => toggleFolderExpanded(folder.id)}
-                onUpdateFolder={(name, color) => {
-                  updateFolder.mutate({
-                    folderId: folder.id,
-                    updates: { name, color },
-                  });
-                }}
-                onDeleteFolder={() => deleteFolder.mutate(folder.id)}
-                onMarkAllAsRead={() => {
-                  folder.serverIds.forEach((id) => markServerAsRead(id));
-                  toast({ title: 'Dossier marqué comme lu' });
-                }}
-                showAddToFolderIndicator={dropIndicator.targetId === folder.id && dropIndicator.type === 'add-to-folder'}
-                showInsertBefore={dropIndicator.targetId === folder.id && dropIndicator.type === 'insert-before'}
-                showInsertAfter={dropIndicator.targetId === folder.id && dropIndicator.type === 'insert-after'}
-              />
-            ))}
-
-            {/* Render standalone servers */}
-            {renderedStandaloneServers.map((server) => (
+            {sortedServers.map((server) => (
               <SortableServerIcon
                 key={server.id}
                 server={server}
                 isActive={activeServerId === server.id}
                 unreadCount={unreadCounts[server.id] ?? 0}
                 isShaking={shakingServers.has(server.id)}
-                showInsertBefore={dropIndicator.targetId === server.id && dropIndicator.type === 'insert-before'}
-                showInsertAfter={dropIndicator.targetId === server.id && dropIndicator.type === 'insert-after'}
-                showMergeIndicator={mergeState.targetId === server.id && dropIndicator.type === 'merge'}
-                mergeProgress={mergeState.targetId === server.id ? mergeState.progress : 0}
+                showDropIndicator={overId === server.id && activeId !== server.id}
+                dropPosition={dropPosition}
                 onClick={() => handleServerClick(server.id)}
                 onOpenSettings={() => onOpenServerSettings?.(server.id)}
                 onMarkAsRead={() => handleMarkAsRead(server.id)}
@@ -543,9 +471,6 @@ export function ServerList({
                 onLeave={() => handleLeaveServer(server)}
               />
             ))}
-
-            {/* Root drop zone (end of list) */}
-            <div ref={setRootDropRef} className="w-full h-10" />
           </div>
         </SortableContext>
 
@@ -585,19 +510,20 @@ export function ServerList({
         </TooltipContent>
       </Tooltip>
 
-      {/* Leave Server Alert Dialog */}
+      {/* Leave Server Confirmation Dialog */}
       <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Quitter « {serverToLeave?.name} »</AlertDialogTitle>
+            <AlertDialogTitle>Quitter le serveur</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir quitter ce serveur ? Vous pourrez le rejoindre à nouveau si vous avez une invitation.
+              Êtes-vous sûr de vouloir quitter <strong>{serverToLeave?.name}</strong> ? Vous pourrez rejoindre à nouveau avec
+              une invitation.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmLeaveServer}
+            <AlertDialogCancel onClick={() => setServerToLeave(null)}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmLeaveServer} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Quitter le serveur

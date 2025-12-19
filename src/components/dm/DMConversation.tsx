@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { AnimatePresence } from 'framer-motion';
 import { useDMMessages, useSendDMMessage, useEditDMMessage, useDeleteDMMessage, DMMessage } from '@/hooks/useDMMessages';
 import { useDMConversations } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
@@ -24,6 +25,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Message } from '@/types/app';
 import { MarkdownText } from '@/lib/markdown';
+import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 
 export interface DMConversationProps {
   conversationId: string;
@@ -43,6 +46,20 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const isShiftPressed = useShiftKey();
   const { startTyping, stopTyping } = useTypingIndicator(null, conversationId);
   const { markAsRead } = useUnreadCounts();
+  
+  const {
+    attachments,
+    isDragging,
+    addFiles,
+    removeAttachment,
+    updateAttachment,
+    toggleSpoiler,
+    clearAttachments,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
+  } = usePendingAttachments();
 
   const { data: conversations = [] } = useDMConversations();
   const { data: messages = [], isLoading } = useDMMessages(conversationId);
@@ -139,7 +156,16 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     : participant?.display_name || 'Utilisateur';
 
   return (
-    <div className="flex-1 flex flex-col bg-background relative">
+    <div 
+      className="flex-1 flex flex-col bg-background relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <AnimatePresence>
+        {isDragging && <UploadDropOverlay channelName={displayName} />}
+      </AnimatePresence>
       {/* Active Call View */}
       {activeCall && (activeCall.status === 'ringing' || activeCall.status === 'active') && (
         <DMCallView 
@@ -370,12 +396,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         value={messageInput}
         onChange={setMessageInput}
         onSend={() => {
-          if (!messageInput.trim()) return;
+          if (!messageInput.trim() && attachments.length === 0) return;
           sendMessage.mutate({
             conversationId,
             content: messageInput.trim(),
           });
           setMessageInput('');
+          clearAttachments();
           stopTyping();
         }}
         placeholder={`Envoyer un message à ${displayName}`}
@@ -383,6 +410,12 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         isSending={sendMessage.isPending}
         onTypingStart={startTyping}
         onTypingStop={stopTyping}
+        attachments={attachments}
+        onAddFiles={addFiles}
+        onRemoveAttachment={removeAttachment}
+        onUpdateAttachment={updateAttachment}
+        onToggleSpoiler={toggleSpoiler}
+        onClearAttachments={clearAttachments}
       />
 
       {/* Report Modal */}

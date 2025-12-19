@@ -27,60 +27,48 @@ import { useServerOrder } from '@/hooks/useServerOrder';
 import { useServerFolders } from '@/hooks/useServerFolders';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FOLDER_CREATION_THRESHOLD } from '@/types/serverFolder';
+import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
 import { SortableFolderItem } from '@/components/server-folders/SortableFolderItem';
+import { useServerDnd } from '@/hooks/useServerDnd';
 
 // DnD Kit imports
 import { 
   DndContext, 
-  closestCenter, 
   PointerSensor, 
   useSensor, 
   useSensors, 
-  DragEndEvent, 
-  DragStartEvent, 
-  DragOverEvent, 
   DragOverlay,
   UniqueIdentifier,
+  closestCenter,
 } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
-// Discord-style Drop Indicator for servers
-const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
-  if (!isVisible) return null;
-  return (
-    <div 
-      className={cn(
-        "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2] rounded-full",
-        position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
-      )}
-    />
-  );
-};
+// Drop Indicator line
+const DropIndicatorLine = ({ position }: { position: 'before' | 'after' }) => (
+  <div 
+    className={cn(
+      "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
+      "bg-[#5865f2] rounded-full",
+      position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
+    )}
+  />
+);
 
 // Merge Indicator (when hovering to create folder)
-const MergeIndicator = ({ isVisible, progress }: { isVisible: boolean; progress: number }) => {
-  if (!isVisible) return null;
-  return (
-    <div className="absolute inset-0 rounded-[16px] pointer-events-none overflow-hidden">
-      <div 
-        className="absolute inset-0 bg-[#5865f2]/30 rounded-[inherit]"
-        style={{
-          clipPath: `inset(${100 - progress}% 0 0 0)`,
-          transition: 'clip-path 50ms linear',
-        }}
-      />
-      <div 
-        className="absolute inset-0 border-2 border-[#5865f2] rounded-[inherit] opacity-50"
-      />
-    </div>
-  );
-};
+const MergeIndicator = ({ progress }: { progress: number }) => (
+  <div className="absolute inset-0 rounded-[16px] pointer-events-none overflow-hidden">
+    <div 
+      className="absolute inset-0 bg-[#5865f2]/30 rounded-[inherit]"
+      style={{
+        clipPath: `inset(${100 - progress}% 0 0 0)`,
+        transition: 'clip-path 50ms linear',
+      }}
+    />
+    <div className="absolute inset-0 border-2 border-[#5865f2] rounded-[inherit] opacity-50" />
+  </div>
+);
 
 // Sortable Server Icon Component
 function SortableServerIcon({
@@ -88,8 +76,8 @@ function SortableServerIcon({
   isActive,
   unreadCount,
   isShaking,
-  showDropIndicator,
-  dropPosition,
+  showInsertBefore,
+  showInsertAfter,
   showMergeIndicator,
   mergeProgress,
   onClick,
@@ -103,8 +91,8 @@ function SortableServerIcon({
   isActive: boolean;
   unreadCount: number;
   isShaking: boolean;
-  showDropIndicator: boolean;
-  dropPosition: 'before' | 'after';
+  showInsertBefore: boolean;
+  showInsertAfter: boolean;
   showMergeIndicator: boolean;
   mergeProgress: number;
   onClick: () => void;
@@ -137,8 +125,14 @@ function SortableServerIcon({
       style={style}
       className={cn("relative", isDragging && "z-50")}
     >
-      <ServerDropIndicator isVisible={showDropIndicator} position={dropPosition} />
-      <MergeIndicator isVisible={showMergeIndicator} progress={mergeProgress} />
+      {/* Insert indicator BEFORE */}
+      {showInsertBefore && <DropIndicatorLine position="before" />}
+      
+      {/* Insert indicator AFTER */}
+      {showInsertAfter && <DropIndicatorLine position="after" />}
+      
+      {/* Merge indicator (folder creation) */}
+      {showMergeIndicator && <MergeIndicator progress={mergeProgress} />}
       
       <ContextMenu>
         <Tooltip>
@@ -289,7 +283,6 @@ export function ServerList({
   } = useServerFolders();
   const leaveServer = useLeaveServer();
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // Leave server dialog state
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -303,24 +296,40 @@ export function ServerList({
     return sortServers(servers.filter(s => !serverIdsInFolders.has(s.id)));
   }, [servers, serverIdsInFolders, sortServers]);
 
-  const getFullServerOrder = useCallback(() => {
-    const base = serverOrder.length ? [...serverOrder] : [];
-    const known = new Set(base);
-    servers.forEach((s) => {
-      if (!known.has(s.id)) base.push(s.id);
-    });
-    return base;
-  }, [serverOrder, servers]);
+  // Calculate total unread DMs
+  const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((acc, count) => acc + count, 0);
+  const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
 
-  // Create a combined list of items for the sortable context
-  // IMPORTANT: Include nested server IDs so they can be dragged out of folders
+  // DnD Hook
+  const {
+    activeId,
+    activeServer,
+    dropIndicator,
+    mergeState,
+    shouldRestrictVertical,
+    handleDragStart,
+    handleDragMove,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+  } = useServerDnd({
+    servers,
+    folders,
+    standaloneServers,
+    serverOrder,
+    onReorderServers: reorderServers,
+    onCreateFolder: (params) => createFolder.mutate(params),
+    onAddToFolder: addServerToFolder,
+    onRemoveFromFolder: removeServerFromFolder,
+  });
+
+  // Create sortable items for DnD context
   const sortableItems = useMemo(() => {
     const items: UniqueIdentifier[] = [];
     
     // Add folders and their nested servers
     folders.forEach(folder => {
       items.push(`folder-${folder.id}`);
-      // Add nested servers for this folder
       folder.serverIds.forEach(serverId => {
         items.push(`nested-${folder.id}-${serverId}`);
       });
@@ -334,57 +343,17 @@ export function ServerList({
     return items;
   }, [folders, standaloneServers]);
 
-  // Calculate total unread DMs
-  const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((acc, count) => acc + count, 0);
-  const hasUnreadDMs = Object.values(dmUnreadCounts).some(count => count > 0);
-
-  // DnD state
-  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-  const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
-  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
-  
-  // Folder merge state
-  const [mergeState, setMergeState] = useState<{
-    sourceId: string | null;
-    targetId: string | null;
-    startTime: number | null;
-    progress: number;
-  }>({ sourceId: null, targetId: null, startTime: null, progress: 0 });
-  
-  const mergeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const mergeIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Get active item for overlay
-  const activeServer = useMemo(() => {
-    if (!activeId) return null;
-    const idStr = String(activeId);
-    
-    if (idStr.startsWith('server-')) {
-      const serverId = idStr.replace('server-', '');
-      return servers.find(s => s.id === serverId) || null;
-    }
-    
-    if (idStr.startsWith('nested-')) {
-      const parts = idStr.split('-');
-      const serverId = parts[parts.length - 1];
-      return servers.find(s => s.id === serverId) || null;
-    }
-    
-    return null;
-  }, [activeId, servers]);
-
-  const dndModifiers = useMemo(() => {
-    const idStr = activeId ? String(activeId) : '';
-    // Allow nested items to slightly move horizontally so they can collide with the main list (Discord-like extraction)
-    return idStr.startsWith('nested-') ? [] : [restrictToVerticalAxis];
-  }, [activeId]);
-
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
+      activationConstraint: { distance: 8 },
     })
   );
+
+  // DnD modifiers
+  const dndModifiers = useMemo(() => {
+    return shouldRestrictVertical ? [restrictToVerticalAxis] : [];
+  }, [shouldRestrictVertical]);
 
   // Track previous counts for shake animation
   const prevUnreadCounts = useRef<Record<string, number>>({});
@@ -417,45 +386,6 @@ export function ServerList({
     prevDMCount.current = totalUnreadDMs;
   }, [totalUnreadDMs]);
 
-  // Clear merge state
-  const clearMergeState = useCallback(() => {
-    if (mergeTimerRef.current) {
-      clearTimeout(mergeTimerRef.current);
-      mergeTimerRef.current = null;
-    }
-    if (mergeIntervalRef.current) {
-      clearInterval(mergeIntervalRef.current);
-      mergeIntervalRef.current = null;
-    }
-    setMergeState({ sourceId: null, targetId: null, startTime: null, progress: 0 });
-  }, []);
-
-  // Start merge timer
-  const startMergeTimer = useCallback((sourceId: string, targetId: string) => {
-    clearMergeState();
-    
-    const startTime = Date.now();
-    setMergeState({ sourceId, targetId, startTime, progress: 0 });
-    
-    // Update progress every 50ms
-    mergeIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min((elapsed / FOLDER_CREATION_THRESHOLD) * 100, 100);
-      setMergeState(prev => ({ ...prev, progress }));
-    }, 50);
-    
-    // Create folder after threshold
-    mergeTimerRef.current = setTimeout(() => {
-      // Create folder with both servers
-      createFolder.mutate({
-        serverIds: [targetId, sourceId],
-        name: 'Dossier',
-        position: 0,
-      });
-      clearMergeState();
-    }, FOLDER_CREATION_THRESHOLD);
-  }, [clearMergeState, createFolder]);
-
   const handleCopyId = (serverId: string) => {
     copyToClipboard(serverId, 'ID serveur copié');
   };
@@ -471,7 +401,6 @@ export function ServerList({
   };
 
   const handleLeaveServer = (server: Server) => {
-    // Check if user is the owner
     if (server.ownerId === user?.id) {
       toast({ title: "Vous ne pouvez pas quitter un serveur dont vous êtes propriétaire", variant: "destructive" });
       return;
@@ -486,7 +415,6 @@ export function ServerList({
       onSuccess: () => {
         setShowLeaveDialog(false);
         setServerToLeave(null);
-        // If the user was viewing the server they left, go to DMs
         if (activeServerId === serverToLeave.id) {
           onServerSelect(null);
         }
@@ -497,193 +425,6 @@ export function ServerList({
   const handleServerClick = (serverId: string) => {
     onServerSelect(serverId);
     markServerAsRead(serverId);
-  };
-
-  // DnD handlers
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id);
-    clearMergeState();
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over, delta } = event;
-    if (!over || over.id === active.id) {
-      setOverId(null);
-      clearMergeState();
-      return;
-    }
-
-    setOverId(over.id);
-
-    const activeIdStr = String(active.id);
-    const overIdStr = String(over.id);
-    
-    // Check if dragging a server over another server (potential folder creation)
-    const isDraggingServer = activeIdStr.startsWith('server-') || activeIdStr.startsWith('nested-');
-    const isOverServer = overIdStr.startsWith('server-');
-    
-    if (isDraggingServer && isOverServer) {
-      const activeServerId = activeIdStr.startsWith('nested-') 
-        ? activeIdStr.split('-').pop()! 
-        : activeIdStr.replace('server-', '');
-      const overServerId = overIdStr.replace('server-', '');
-      
-      // Start merge timer if not already started for this pair
-      if (mergeState.sourceId !== activeServerId || mergeState.targetId !== overServerId) {
-        startMergeTimer(activeServerId, overServerId);
-      }
-    } else {
-      clearMergeState();
-    }
-
-    // Calculate cursor position for drop indicator
-    const overRect = over.rect;
-    if (overRect) {
-      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
-      let clientY = 0;
-      if (activatorEvent) {
-        if ('clientY' in activatorEvent) {
-          clientY = activatorEvent.clientY + delta.y;
-        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
-          clientY = activatorEvent.touches[0].clientY + delta.y;
-        }
-      }
-      const middleY = overRect.top + overRect.height / 2;
-      setDropPosition(clientY < middleY ? 'before' : 'after');
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-    setOverId(null);
-    clearMergeState();
-
-    const activeIdStr = String(active.id);
-
-    if (!over) {
-      // Dropped outside - if it's a nested server, extract it to the end of the main list
-      if (activeIdStr.startsWith('nested-')) {
-        const parts = activeIdStr.split('-');
-        const folderId = parts[1];
-        const serverId = parts[parts.length - 1];
-
-        const full = getFullServerOrder();
-        const without = full.filter((id) => id !== serverId);
-        without.push(serverId);
-        reorderServers(without);
-
-        removeServerFromFolder(folderId, serverId);
-      }
-      return;
-    }
-
-    if (active.id === over.id) return;
-
-    const overIdStr = String(over.id);
-
-    // Handle nested server being dragged out of folder
-    if (activeIdStr.startsWith('nested-')) {
-      const parts = activeIdStr.split('-');
-      const sourceFolderId = parts[1];
-      const serverId = parts[parts.length - 1];
-
-      // Dropped onto a standalone server => extract and insert before/after that server
-      if (overIdStr.startsWith('server-')) {
-        const targetServerId = overIdStr.replace('server-', '');
-
-        const full = getFullServerOrder();
-        const without = full.filter((id) => id !== serverId);
-        const targetIndex = without.indexOf(targetServerId);
-
-        if (targetIndex === -1) {
-          without.push(serverId);
-        } else {
-          const insertIndex = dropPosition === 'before' ? targetIndex : targetIndex + 1;
-          without.splice(insertIndex, 0, serverId);
-        }
-
-        reorderServers(without);
-        removeServerFromFolder(sourceFolderId, serverId);
-        return;
-      }
-
-      // If dropped on a different folder, move to that folder
-      if (overIdStr.startsWith('folder-')) {
-        const targetFolderId = overIdStr.replace('folder-', '');
-        if (targetFolderId !== sourceFolderId) {
-          removeServerFromFolder(sourceFolderId, serverId);
-          addServerToFolder(targetFolderId, serverId);
-        }
-        return;
-      }
-
-      // If dropped on a nested server in a different folder, move to that folder
-      if (overIdStr.startsWith('nested-')) {
-        const overParts = overIdStr.split('-');
-        const targetFolderId = overParts[1];
-        if (targetFolderId !== sourceFolderId) {
-          removeServerFromFolder(sourceFolderId, serverId);
-          addServerToFolder(targetFolderId, serverId);
-        }
-        // Same folder - just reordering within folder (not in scope here)
-        return;
-      }
-    }
-
-    // Handle standalone server being dragged onto a folder
-    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('folder-')) {
-      const serverId = activeIdStr.replace('server-', '');
-      const folderId = overIdStr.replace('folder-', '');
-      addServerToFolder(folderId, serverId);
-      return;
-    }
-
-    // Handle standalone server being dragged onto a nested server (add to that folder)
-    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('nested-')) {
-      const serverId = activeIdStr.replace('server-', '');
-      const overParts = overIdStr.split('-');
-      const folderId = overParts[1];
-      addServerToFolder(folderId, serverId);
-      return;
-    }
-
-    // Handle regular reordering of standalone servers
-    if (activeIdStr.startsWith('server-') && overIdStr.startsWith('server-')) {
-      const oldIndex = standaloneServers.findIndex((s) => `server-${s.id}` === activeIdStr);
-      const overIndex = standaloneServers.findIndex((s) => `server-${s.id}` === overIdStr);
-
-      if (oldIndex === -1 || overIndex === -1) return;
-
-      // Calculate new index based on drop position
-      let newIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
-      if (oldIndex < overIndex) newIndex--;
-      newIndex = Math.max(0, Math.min(newIndex, standaloneServers.length - 1));
-
-      if (oldIndex !== newIndex) {
-        const newStandaloneOrder = arrayMove(
-          standaloneServers.map((s) => s.id),
-          oldIndex,
-          newIndex
-        );
-
-        const full = getFullServerOrder();
-        const standaloneSet = new Set(newStandaloneOrder);
-        let i = 0;
-        const rebuilt = full.map((id) => (standaloneSet.has(id) ? newStandaloneOrder[i++] : id));
-
-        // Safety: append any standalone ids that weren't in the full order
-        for (; i < newStandaloneOrder.length; i++) rebuilt.push(newStandaloneOrder[i]);
-
-        reorderServers(rebuilt);
-      }
-    }
-  };
-
-  const handleDragCancel = () => {
-    setActiveId(null);
-    setOverId(null);
-    clearMergeState();
   };
 
   // Get servers for a folder
@@ -740,6 +481,7 @@ export function ServerList({
         collisionDetection={closestCenter}
         modifiers={dndModifiers}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
@@ -767,8 +509,8 @@ export function ServerList({
                   folder.serverIds.forEach(id => markServerAsRead(id));
                   toast({ title: 'Dossier marqué comme lu' });
                 }}
-                showDropIndicator={overId === `folder-${folder.id}` && activeId !== `folder-${folder.id}`}
-                dropPosition={dropPosition}
+                showDropIndicator={dropIndicator.targetId === folder.id && dropIndicator.type === 'add-to-folder'}
+                dropPosition="after"
               />
             ))}
 
@@ -780,13 +522,9 @@ export function ServerList({
                 isActive={activeServerId === server.id}
                 unreadCount={unreadCounts[server.id] ?? 0}
                 isShaking={shakingServers.has(server.id)}
-                showDropIndicator={
-                  overId === `server-${server.id}` && 
-                  activeId !== `server-${server.id}` &&
-                  mergeState.progress < 100
-                }
-                dropPosition={dropPosition}
-                showMergeIndicator={mergeState.targetId === server.id}
+                showInsertBefore={dropIndicator.targetId === server.id && dropIndicator.type === 'insert-before'}
+                showInsertAfter={dropIndicator.targetId === server.id && dropIndicator.type === 'insert-after'}
+                showMergeIndicator={mergeState.targetId === server.id && dropIndicator.type === 'merge'}
                 mergeProgress={mergeState.targetId === server.id ? mergeState.progress : 0}
                 onClick={() => handleServerClick(server.id)}
                 onOpenSettings={() => onOpenServerSettings?.(server.id)}

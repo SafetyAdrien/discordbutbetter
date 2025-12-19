@@ -414,6 +414,64 @@ export type Database = {
           },
         ]
       }
+      channel_summaries: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          end_message_id: string | null
+          id: string
+          message_count: number | null
+          participants: string[] | null
+          start_message_id: string | null
+          summary: string
+          title: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          end_message_id?: string | null
+          id?: string
+          message_count?: number | null
+          participants?: string[] | null
+          start_message_id?: string | null
+          summary: string
+          title: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          end_message_id?: string | null
+          id?: string
+          message_count?: number | null
+          participants?: string[] | null
+          start_message_id?: string | null
+          summary?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_summaries_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_summaries_end_message_id_fkey"
+            columns: ["end_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_summaries_start_message_id_fkey"
+            columns: ["start_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           category_id: string | null
@@ -2056,6 +2114,35 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_summary_reads: {
+        Row: {
+          id: string
+          read_at: string | null
+          summary_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          read_at?: string | null
+          summary_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          read_at?: string | null
+          summary_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_summary_reads_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "channel_summaries"
             referencedColumns: ["id"]
           },
         ]

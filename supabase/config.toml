@@ -1,1 +1,4 @@
 project_id = "ixdznbvbjjnydqttmaam"
+
+[functions.summarize-channel]
+verify_jwt = true

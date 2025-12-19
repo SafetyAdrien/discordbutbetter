@@ -446,7 +446,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     selectTopic,
     markAsRead,
     summaries,
-  } = useSummaries();
+    isLoading: isSummariesLoading,
+    generateSummaries,
+    isGenerating,
+  } = useSummaries(channel?.id);
 
   // Scroll to message function for "Jump to Message"
   const scrollToMessage = useCallback((messageId: string) => {
@@ -921,6 +924,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onToggleDropdown={toggleDropdown}
           onSelectTopic={selectTopic}
           onMarkAsRead={markAsRead}
+          onGenerateSummaries={generateSummaries}
+          isGenerating={isGenerating}
+          isLoading={isSummariesLoading}
         />
       )}
 

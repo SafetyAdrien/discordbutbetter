@@ -349,12 +349,12 @@ export function AnnouncementChannel({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723]">
-        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate max-w-[80px] sm:max-w-[120px] md:max-w-none">{channel.name}</h2>
+          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
         {/* Follow Button */}

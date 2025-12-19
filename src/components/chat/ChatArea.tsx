@@ -449,6 +449,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     isLoading: isSummariesLoading,
     generateSummaries,
     isGenerating,
+    showLikedOnly,
+    toggleLikedFilter,
+    toggleLike,
+    likedCount,
   } = useSummaries(channel?.id);
 
   // Scroll to message function for "Jump to Message"
@@ -927,6 +931,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onGenerateSummaries={generateSummaries}
           isGenerating={isGenerating}
           isLoading={isSummariesLoading}
+          showLikedOnly={showLikedOnly}
+          onToggleLikedFilter={toggleLikedFilter}
+          onToggleLike={toggleLike}
+          likedCount={likedCount}
         />
       )}
 

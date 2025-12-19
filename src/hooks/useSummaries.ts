@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ export interface SummaryTopic {
   newMessages?: number;
   newSummaries?: number;
   isRead?: boolean;
+  isLiked?: boolean;
 }
 
 interface ChannelSummary {
@@ -55,6 +56,9 @@ export function useSummaries(channelId?: string) {
   
   // Is the dropdown panel open
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Show only liked summaries
+  const [showLikedOnly, setShowLikedOnly] = useState(false);
 
   // Fetch summaries from database
   const { data: dbSummaries = [], isLoading } = useQuery({
@@ -98,8 +102,28 @@ export function useSummaries(channelId?: string) {
     enabled: !!user?.id && isSummariesEnabled,
   });
 
+  // Fetch user's liked summaries
+  const { data: likedStates = [] } = useQuery({
+    queryKey: ['summary-likes', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('user_summary_likes')
+        .select('summary_id')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching likes:', error);
+        return [];
+      }
+      return data.map(r => r.summary_id);
+    },
+    enabled: !!user?.id && isSummariesEnabled,
+  });
+
   // Transform DB summaries to UI format
-  const summaries: SummaryTopic[] = dbSummaries.map((s) => ({
+  const allSummaries: SummaryTopic[] = dbSummaries.map((s) => ({
     id: s.id,
     title: s.title,
     summary: s.summary,
@@ -111,7 +135,45 @@ export function useSummaries(channelId?: string) {
     newMessages: readStates.includes(s.id) ? 0 : s.message_count,
     newSummaries: readStates.includes(s.id) ? 0 : 1,
     isRead: readStates.includes(s.id),
+    isLiked: likedStates.includes(s.id),
   }));
+
+  // Filter summaries based on liked filter
+  const summaries = showLikedOnly 
+    ? allSummaries.filter(s => s.isLiked) 
+    : allSummaries;
+
+  // Toggle like mutation
+  const toggleLike = useMutation({
+    mutationFn: async (summaryId: string) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const isLiked = likedStates.includes(summaryId);
+      
+      if (isLiked) {
+        const { error } = await supabase
+          .from('user_summary_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('summary_id', summaryId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_summary_likes')
+          .insert({ user_id: user.id, summary_id: summaryId });
+        if (error) throw error;
+      }
+      
+      return { summaryId, isLiked: !isLiked };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['summary-likes', user?.id] });
+    },
+    onError: (error) => {
+      console.error('Error toggling like:', error);
+      toast.error('Erreur lors de la mise à jour');
+    },
+  });
 
   // Generate new summaries mutation
   const generateSummaries = useMutation({
@@ -207,6 +269,11 @@ export function useSummaries(channelId?: string) {
     setActiveTopic(null);
   }, []);
 
+  // Toggle liked filter
+  const toggleLikedFilter = useCallback(() => {
+    setShowLikedOnly((prev) => !prev);
+  }, []);
+
   return {
     isSummariesEnabled,
     activeTopic,
@@ -221,5 +288,9 @@ export function useSummaries(channelId?: string) {
     isLoading,
     generateSummaries: generateSummaries.mutate,
     isGenerating: generateSummaries.isPending,
+    showLikedOnly,
+    toggleLikedFilter,
+    toggleLike: toggleLike.mutate,
+    likedCount: allSummaries.filter(s => s.isLiked).length,
   };
 }

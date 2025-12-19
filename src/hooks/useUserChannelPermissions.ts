@@ -99,6 +99,55 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   };
 }
 
+// Hook pour vérifier la visibilité de PLUSIEURS canaux (pour ChannelList)
+export function useChannelsVisibility(channelIds: string[]) {
+  const { user } = useAuth();
+
+  const queries = useQueries({
+    queries: channelIds.map((channelId) => ({
+      queryKey: ['channel-permission', channelId, 'view_channel', user?.id],
+      queryFn: async (): Promise<{ channelId: string; visible: boolean }> => {
+        if (!channelId || !user?.id) return { channelId, visible: true };
+
+        const { data, error } = await supabase.rpc('has_channel_permission', {
+          _user_id: user.id,
+          _channel_id: channelId,
+          _permission: 'view_channel' as ServerPermission,
+        });
+
+        if (error) {
+          console.error(`Error checking view_channel for ${channelId}:`, error);
+          // Default to visible on error to not lock users out
+          return { channelId, visible: true };
+        }
+
+        return { channelId, visible: data ?? true };
+      },
+      enabled: !!channelId && !!user?.id,
+      staleTime: 0,
+      gcTime: 300000,
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    })),
+  });
+
+  // Build a set of visible channel IDs
+  const visibleChannelIds = new Set<string>();
+  queries.forEach((query) => {
+    if (query.data?.visible) {
+      visibleChannelIds.add(query.data.channelId);
+    }
+  });
+
+  const isLoading = queries.some(q => q.isLoading);
+
+  return {
+    visibleChannelIds,
+    isLoading,
+    isVisible: (channelId: string) => visibleChannelIds.has(channelId),
+  };
+}
+
 // Hook pour récupérer toutes les permissions d'un utilisateur sur un salon
 export function useUserChannelPermissions(channelId: string | null) {
   const { user } = useAuth();

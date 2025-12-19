@@ -206,8 +206,11 @@ export function AnnouncementChannel({
   const publishMessage = usePublishMessage();
   const dismissPrompt = useDismissPublishPrompt();
 
-  // Check send_messages permission
+  // Check permissions
   const { data: canSendMessages = true } = useHasChannelPermission(channel.id, 'send_messages');
+  const { data: canAddReactions = true } = useHasChannelPermission(channel.id, 'add_reactions');
+  const { data: canManageMessages = false } = useHasChannelPermission(channel.id, 'manage_messages');
+  const { data: canCreateAnnouncements = true } = useHasChannelPermission(channel.id, 'create_announcements');
   const permissionDeniedMessage = !canSendMessages 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;

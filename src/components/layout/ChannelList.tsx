@@ -39,6 +39,7 @@ import { useThreadUnreadCounts } from "@/hooks/useThreadUnreadCounts";
 import { useFollowedThreads } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
 import { useLeaveServer } from "@/hooks/useLeaveServer";
+import { useChannelsVisibility } from "@/hooks/useUserChannelPermissions";
 import { useNavigate } from "react-router-dom";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
 
@@ -555,6 +556,19 @@ export function ChannelList({
 
   // Check if user is the owner (cannot leave, must delete)
   const isOwner = profile?.id === server.ownerId;
+
+  // Get all channel IDs for visibility check
+  const allChannelIdsForVisibility = useMemo(() => {
+    const ids: string[] = [];
+    server.categories.forEach(cat => {
+      cat.channels.forEach(ch => ids.push(ch.id));
+    });
+    orphanChannels.forEach(ch => ids.push(ch.id));
+    return ids;
+  }, [server.categories, orphanChannels]);
+
+  // Check visibility for all channels
+  const { isVisible } = useChannelsVisibility(allChannelIdsForVisibility);
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {

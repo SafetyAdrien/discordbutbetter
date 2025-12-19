@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface Channel {
   id: string;
@@ -32,6 +33,8 @@ interface ForumThread {
 }
 
 export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumChannelProps) {
+  // Permissions
+  const { data: canCreatePosts = true } = useHasChannelPermission(channel.id, 'create_forum_posts');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
 
@@ -55,10 +58,12 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
               className="h-8 pl-8 w-32 md:w-48"
             />
           </div>
-          <Button size="sm">
-            <Plus className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Nouveau sujet</span>
-          </Button>
+          {canCreatePosts && (
+            <Button size="sm">
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Nouveau sujet</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -95,10 +100,12 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
             <p className="text-muted-foreground text-sm max-w-md mb-4">
               Lancez la première discussion dans ce forum.
             </p>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Créer un sujet
-            </Button>
+            {canCreatePosts && (
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Créer un sujet
+              </Button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-border">

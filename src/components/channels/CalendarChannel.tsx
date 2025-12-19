@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface Channel {
   id: string;
@@ -31,6 +32,8 @@ interface CalendarEvent {
 }
 
 export function CalendarChannel({ channel, onToggleMembers, showMembers }: CalendarChannelProps) {
+  // Permissions
+  const { data: canCreateEvents = true } = useHasChannelPermission(channel.id, 'create_events');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -55,10 +58,12 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
         </div>
 
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-          <Button size="sm">
-            <Plus className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Nouvel événement</span>
-          </Button>
+          {canCreateEvents && (
+            <Button size="sm">
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Nouvel événement</span>
+            </Button>
+          )}
         </div>
       </div>
 

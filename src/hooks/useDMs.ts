@@ -80,27 +80,36 @@ export function useDMConversations() {
       if (msgError) throw msgError;
 
       // Combine data
-      return conversations?.map(conv => {
-        const participants = allParticipants
-          ?.filter(p => p.conversation_id === conv.id && p.user)
-          .map(p => p.user as DMConversation['participants'][0])
-          .filter(p => p.id !== user.id) || [];
+      return (
+        conversations?.map(conv => {
+          const participants = allParticipants
+            ?.filter(p => p.conversation_id === conv.id && p.user)
+            .map(p => p.user as DMConversation['participants'][0])
+            .filter(p => p.id !== user.id) || [];
 
-        const lastMsg = lastMessages?.find(m => m.conversation_id === conv.id);
+          const lastMsg = lastMessages?.find(m => m.conversation_id === conv.id);
 
-        return {
-          ...conv,
-          participants,
-          lastMessage: lastMsg ? { content: lastMsg.content, created_at: lastMsg.created_at } : undefined,
-        };
-      })
-      // Only show conversations that have at least one message
-      .filter(conv => conv.lastMessage !== undefined)
-      .sort((a, b) => {
-        const aTime = a.lastMessage?.created_at || a.created_at || '';
-        const bTime = b.lastMessage?.created_at || b.created_at || '';
-        return new Date(bTime).getTime() - new Date(aTime).getTime();
-      }) || [];
+          return {
+            ...conv,
+            participants,
+            lastMessage: lastMsg ? { content: lastMsg.content, created_at: lastMsg.created_at } : undefined,
+          };
+        })
+        .sort((a, b) => {
+          const aMs = a.lastMessage?.created_at
+            ? Date.parse(a.lastMessage.created_at)
+            : a.created_at
+              ? Date.parse(a.created_at)
+              : 0;
+          const bMs = b.lastMessage?.created_at
+            ? Date.parse(b.lastMessage.created_at)
+            : b.created_at
+              ? Date.parse(b.created_at)
+              : 0;
+
+          return bMs - aMs;
+        })
+      ) || [];
     },
     enabled: !!user,
   });

@@ -19,8 +19,17 @@ import {
   Headphones,
   Eye,
   Trophy,
+  Inbox,
 } from "lucide-react";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
+import { InboxPanel } from "@/components/inbox/InboxPanel";
+import { useNotifications } from "@/hooks/useNotifications";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
 import {
@@ -197,6 +206,39 @@ function RoleIcon({ role }: { role: Role | RoleWithPermissions }) {
     />
   );
 }
+
+// Inbox Button Component
+function InboxButton() {
+  const { data: notifications = [] } = useNotifications();
+  const unreadCount = notifications.filter(n => n.status === 'pending').length;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
+          <Inbox className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Badge>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent 
+        side="left" 
+        align="start" 
+        className="w-96 h-[500px] p-0 overflow-hidden"
+        sideOffset={8}
+      >
+        <InboxPanel />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
   { members, ownerId, serverId, onOpenDM, serverRoles = [] },
   ref,
@@ -562,40 +604,43 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   return (
     <>
       <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50">
-        {/* Search input */}
+        {/* Search input and Inbox */}
         <div className="px-3 pt-3 border-[#151723] bg-[#161927]">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
-            <Input
-              ref={searchRef}
-              placeholder="Rechercher"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              onFocus={() => {
-                setIsClosingFilters(false);
-                setShowFilters(true);
-              }}
-              onBlur={() => {
-                setIsClosingFilters(true);
-                setTimeout(() => {
-                  setShowFilters(false);
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+              <Input
+                ref={searchRef}
+                placeholder="Rechercher"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                onFocus={() => {
                   setIsClosingFilters(false);
-                }, 150);
-              }}
-              className="h-8 pl-8 text-sm bg-input"
-            />
-            {/* Filters suggestions - overlay dropdown */}
-            {showFilters && (
-              <SearchFilters
-                onSelectFilter={handleSelectFilter}
-                searchQuery={searchQuery}
-                isClosing={isClosingFilters}
-                selectedIndex={filterSelectedIndex}
-                onMouseEnterItem={setFilterSelectedIndex}
-                availableFilters={availableFilters}
+                  setShowFilters(true);
+                }}
+                onBlur={() => {
+                  setIsClosingFilters(true);
+                  setTimeout(() => {
+                    setShowFilters(false);
+                    setIsClosingFilters(false);
+                  }, 150);
+                }}
+                className="h-8 pl-8 text-sm bg-input"
               />
-            )}
+              {/* Filters suggestions - overlay dropdown */}
+              {showFilters && (
+                <SearchFilters
+                  onSelectFilter={handleSelectFilter}
+                  searchQuery={searchQuery}
+                  isClosing={isClosingFilters}
+                  selectedIndex={filterSelectedIndex}
+                  onMouseEnterItem={setFilterSelectedIndex}
+                  availableFilters={availableFilters}
+                />
+              )}
+            </div>
+            <InboxButton />
           </div>
         </div>
         <Separator className="mt-3" />

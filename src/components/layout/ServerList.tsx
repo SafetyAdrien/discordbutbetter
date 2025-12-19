@@ -43,7 +43,7 @@ const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; posi
       className={cn(
         "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
         "bg-[#5865f2] rounded-full",
-        position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
+        position === 'before' ? "-top-[5px]" : "-bottom-[5px]"
       )}
     />
   );

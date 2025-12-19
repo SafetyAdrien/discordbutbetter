@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useUpdateRole, RoleWithPermissions, ALL_PERMISSIONS, ServerPermission } from '@/hooks/useRoles';
+import { useUpdateRole, RoleWithPermissions } from '@/hooks/useRoles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PermissionCategoryAccordion } from '@/components/ui/permission-category-accordion';
 import { Loader2, ImagePlus, X, Shield, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getRolePermissions, ServerPermission } from '@/constants/permissions';
 
 interface RoleEditorProps {
   role: RoleWithPermissions;
@@ -28,8 +30,11 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   const [description, setDescription] = useState(role.description || '');
   const [isUploading, setIsUploading] = useState(false);
   const [permissions, setPermissions] = useState<Set<ServerPermission>>(
-    new Set(role.permissions)
+    new Set(role.permissions as ServerPermission[])
   );
+
+  // Get all role permission categories
+  const permissionCategories = getRolePermissions();
 
   // Reset form when role changes
   useEffect(() => {
@@ -39,15 +44,15 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
     setEmojiInput('');
     setHoist(role.hoist || false);
     setDescription(role.description || '');
-    setPermissions(new Set(role.permissions));
+    setPermissions(new Set(role.permissions as ServerPermission[]));
   }, [role.id]);
 
-  const togglePermission = (permission: ServerPermission) => {
+  const togglePermission = (permission: ServerPermission, enabled: boolean) => {
     const newPerms = new Set(permissions);
-    if (newPerms.has(permission)) {
-      newPerms.delete(permission);
-    } else {
+    if (enabled) {
       newPerms.add(permission);
+    } else {
+      newPerms.delete(permission);
     }
     setPermissions(newPerms);
   };
@@ -94,7 +99,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
   };
 
   const handleEmojiChange = (value: string) => {
-    // Only take the first character/emoji
     const emoji = [...value][0] || '';
     if (emoji) {
       setIconUrl(emoji);
@@ -116,7 +120,7 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
       iconUrl: iconUrl || null,
       hoist,
       description: description || null,
-      permissions: Array.from(permissions),
+      permissions: Array.from(permissions) as any[],
     });
   };
 
@@ -131,8 +135,21 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
 
   const isAdmin = permissions.has('administrator');
 
-  // Check if iconUrl is an emoji (single character or emoji) vs URL
   const isEmojiIcon = iconUrl && !iconUrl.startsWith('http');
+
+  const getPermissionState = (permission: ServerPermission): boolean => {
+    return permissions.has(permission);
+  };
+
+  const handlePermissionChange = (permission: ServerPermission, state: boolean | any) => {
+    togglePermission(permission, state as boolean);
+  };
+
+  const getEnabledCountForCategory = (categoryId: string): number => {
+    const category = permissionCategories.find(c => c.id === categoryId);
+    if (!category) return 0;
+    return category.permissions.filter(perm => permissions.has(perm.key)).length;
+  };
 
   return (
     <div className="space-y-4">
@@ -195,7 +212,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
           <div className="space-y-2">
             <Label>Icône du rôle</Label>
             <div className="flex items-center gap-3">
-              {/* Preview */}
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border">
                 {iconUrl ? (
                   isEmojiIcon ? (
@@ -208,7 +224,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
                 )}
               </div>
 
-              {/* Upload button */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -230,7 +245,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
                 Uploader
               </Button>
 
-              {/* Emoji input */}
               <Input
                 placeholder="ou emoji 🎮"
                 value={emojiInput}
@@ -239,7 +253,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
                 disabled={role.is_default}
               />
 
-              {/* Remove button */}
               {iconUrl && (
                 <Button
                   variant="ghost"
@@ -277,39 +290,34 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="permissions" className="mt-4">
+        <TabsContent value="permissions" className="mt-4 space-y-4">
           {role.is_default && (
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground">
               Le rôle @everyone est le rôle par défaut attribué à tous les membres.
             </p>
           )}
 
-          <div className="space-y-2">
-            {ALL_PERMISSIONS.map((perm) => {
-              const isEnabled = permissions.has(perm.key);
-              const isDisabled = perm.key !== 'administrator' && isAdmin;
+          {isAdmin && (
+            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                Ce rôle a la permission Administrateur. Toutes les autres permissions sont automatiquement activées.
+              </p>
+            </div>
+          )}
 
-              return (
-                <div
-                  key={perm.key}
-                  className={cn(
-                    'flex items-center justify-between p-3 rounded-lg transition-colors',
-                    isEnabled ? 'bg-primary/5' : 'bg-muted/30',
-                    isDisabled && 'opacity-50'
-                  )}
-                >
-                  <div className="flex-1 mr-4">
-                    <p className="text-sm font-medium">{perm.label}</p>
-                    <p className="text-xs text-muted-foreground">{perm.description}</p>
-                  </div>
-                  <Switch
-                    checked={isEnabled || isDisabled}
-                    onCheckedChange={() => togglePermission(perm.key)}
-                    disabled={isDisabled}
-                  />
-                </div>
-              );
-            })}
+          <div className="space-y-2">
+            {permissionCategories.map((category) => (
+              <PermissionCategoryAccordion
+                key={category.id}
+                category={category}
+                getPermissionState={getPermissionState}
+                onPermissionChange={handlePermissionChange}
+                mode="switch"
+                showInherit={false}
+                modifiedCount={getEnabledCountForCategory(category.id)}
+                isAdmin={isAdmin}
+              />
+            ))}
           </div>
         </TabsContent>
       </Tabs>

@@ -3,9 +3,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { PermissionToggle, PermissionState } from '@/components/ui/permission-toggle';
+import { PermissionState } from '@/components/ui/permission-toggle';
+import { PermissionCategoryAccordion } from '@/components/ui/permission-category-accordion';
 import { RefreshCw, Loader2, Plus, RotateCcw, CheckCircle2 } from 'lucide-react';
-import { useServerRoles, ALL_PERMISSIONS } from '@/hooks/useRoles';
+import { useServerRoles } from '@/hooks/useRoles';
 import { 
   useChannelPermissionOverrides, 
   useSetPermissionOverride, 
@@ -15,25 +16,19 @@ import {
 } from '@/hooks/useChannelPermissions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import type { Database } from '@/integrations/supabase/types';
-
-type ServerPermission = Database['public']['Enums']['server_permission'];
+import { 
+  getPermissionsForChannelType, 
+  ServerPermission,
+  ChannelType 
+} from '@/constants/permissions';
 
 interface ChannelPermissionsProps {
   channelId: string;
   serverId: string;
+  channelType?: ChannelType;
 }
 
-const CHANNEL_PERMISSIONS: ServerPermission[] = [
-  'read_messages',
-  'send_messages',
-  'manage_messages',
-  'connect_voice',
-  'speak_voice',
-  'mention_everyone',
-];
-
-export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsProps) {
+export function ChannelPermissions({ channelId, serverId, channelType = 'text' }: ChannelPermissionsProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
   const { data: roles, isLoading: rolesLoading } = useServerRoles(serverId);
@@ -42,6 +37,9 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
   const removeOverride = useRemovePermissionOverride();
   const syncWithCategory = useSyncWithCategory();
   const resetRoleOverrides = useResetRoleChannelOverrides();
+
+  // Get permission categories based on channel type
+  const permissionCategories = getPermissionsForChannelType(channelType);
 
   // Get roles that already have overrides for this channel
   const rolesWithOverrides = roles?.filter(role => 
@@ -54,7 +52,6 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
     ? overrides?.filter(o => o.role_id === selectedRole).length || 0 
     : 0;
 
-  // Afficher l'indicateur de sauvegarde après chaque mutation réussie
   useEffect(() => {
     if (setOverride.isSuccess || removeOverride.isSuccess) {
       setShowSavedIndicator(true);
@@ -84,24 +81,38 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
     }
   };
 
-  const getPermissionState = (roleId: string, permission: ServerPermission): PermissionState => {
+  const getPermissionState = (permission: ServerPermission): PermissionState => {
+    if (!selectedRole) return 'inherit';
     const override = overrides?.find(
-      (o) => o.role_id === roleId && o.permission === permission
+      (o) => o.role_id === selectedRole && o.permission === permission
     );
     if (!override) return 'inherit';
     return override.type as PermissionState;
   };
 
-  const handlePermissionChange = async (roleId: string, permission: ServerPermission, newState: PermissionState) => {
+  const handlePermissionChange = async (permission: ServerPermission, newState: PermissionState | boolean) => {
+    if (!selectedRole) return;
+    const state = newState as PermissionState;
+    
     try {
-      if (newState === 'inherit') {
-        await removeOverride.mutateAsync({ channelId, roleId, permission });
+      if (state === 'inherit') {
+        await removeOverride.mutateAsync({ channelId, roleId: selectedRole, permission: permission as any });
       } else {
-        await setOverride.mutateAsync({ channelId, roleId, permission, type: newState });
+        await setOverride.mutateAsync({ channelId, roleId: selectedRole, permission: permission as any, type: state });
       }
     } catch {
       toast.error('Erreur lors de la modification');
     }
+  };
+
+  const getModifiedCountForCategory = (categoryId: string): number => {
+    if (!selectedRole || !overrides) return 0;
+    const category = permissionCategories.find(c => c.id === categoryId);
+    if (!category) return 0;
+    
+    return category.permissions.filter(perm => 
+      overrides.some(o => o.role_id === selectedRole && o.permission === perm.key)
+    ).length;
   };
 
   const isLoading = rolesLoading || overridesLoading;
@@ -117,7 +128,7 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
 
   return (
     <div className="space-y-4">
-      {/* Indicateur de sauvegarde automatique */}
+      {/* Save indicator */}
       <div className={cn(
         "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300",
         showSavedIndicator 
@@ -142,6 +153,7 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
         )}
       </div>
 
+      {/* Sync with category */}
       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
         <div className="space-y-1">
           <Label>Synchroniser avec la catégorie</Label>
@@ -167,6 +179,7 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
         </Button>
       </div>
 
+      {/* Role selection */}
       <div className="space-y-2">
         <Label>Sélectionner un rôle</Label>
         <div className="flex flex-wrap gap-2">
@@ -219,6 +232,7 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
         </div>
       </div>
 
+      {/* Permission categories */}
       {selectedRole && (
         <div className="space-y-3 mt-4">
           <div className="flex items-center justify-between">
@@ -240,31 +254,20 @@ export function ChannelPermissions({ channelId, serverId }: ChannelPermissionsPr
               </Button>
             )}
           </div>
-          <div className="space-y-1">
-            {CHANNEL_PERMISSIONS.map((perm) => {
-              const permInfo = ALL_PERMISSIONS.find((p) => p.key === perm);
-              const state = getPermissionState(selectedRole, perm);
-              
-              return (
-                <div
-                  key={perm}
-                  className={cn(
-                    "flex items-center justify-between p-2 rounded-md transition-colors",
-                    state !== 'inherit' && "bg-muted/30"
-                  )}
-                >
-                  <div className="text-left">
-                    <p className="text-sm font-medium">{permInfo?.label || perm}</p>
-                    <p className="text-xs text-muted-foreground">{permInfo?.description}</p>
-                  </div>
-                  <PermissionToggle
-                    value={state}
-                    onChange={(newState) => handlePermissionChange(selectedRole, perm, newState)}
-                    disabled={isMutating}
-                  />
-                </div>
-              );
-            })}
+
+          <div className="space-y-2">
+            {permissionCategories.map((category) => (
+              <PermissionCategoryAccordion
+                key={category.id}
+                category={category}
+                getPermissionState={getPermissionState}
+                onPermissionChange={handlePermissionChange}
+                disabled={isMutating}
+                mode="toggle"
+                showInherit={true}
+                modifiedCount={getModifiedCountForCategory(category.id)}
+              />
+            ))}
           </div>
         </div>
       )}

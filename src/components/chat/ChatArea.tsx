@@ -24,8 +24,8 @@ import {
   MoreHorizontal,
   Smile,
   Flag,
-  ScrollText,
 } from "lucide-react";
+import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import {
   DropdownMenu,
@@ -823,7 +823,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 onClick={toggleSummaries}
                 className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
               >
-                <ScrollText className="w-5 h-5" />
+                <StreamlineSummaries className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

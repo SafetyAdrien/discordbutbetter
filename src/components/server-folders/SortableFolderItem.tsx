@@ -27,10 +27,9 @@ interface SortableFolderItemProps {
   onUpdateFolder: (name: string, color: string) => void;
   onDeleteFolder: () => void;
   onMarkAllAsRead: () => void;
-  showDropIndicator: boolean;
-  dropPosition: 'before' | 'after';
-  // Nested server drag handlers
-  onServerDragOut?: (serverId: string) => void;
+  showAddToFolderIndicator: boolean;
+  showInsertBefore: boolean;
+  showInsertAfter: boolean;
 }
 
 export function SortableFolderItem({
@@ -43,8 +42,9 @@ export function SortableFolderItem({
   onUpdateFolder,
   onDeleteFolder,
   onMarkAllAsRead,
-  showDropIndicator,
-  dropPosition,
+  showAddToFolderIndicator,
+  showInsertBefore,
+  showInsertAfter,
 }: SortableFolderItemProps) {
   const [showSettings, setShowSettings] = useState(false);
 
@@ -80,15 +80,23 @@ export function SortableFolderItem({
         style={style}
         className={cn('relative flex flex-col items-center', isDragging && 'z-50')}
       >
-        {/* Drop Indicator */}
-        {showDropIndicator && (
+        {/* Insert Before Indicator */}
+        {showInsertBefore && (
           <div
-            className={cn(
-              'absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none',
-              'bg-[#5865f2] rounded-full',
-              dropPosition === 'before' ? 'top-0 -translate-y-1' : 'bottom-0 translate-y-1'
-            )}
+            className="absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none bg-[#5865f2] rounded-full top-0 -translate-y-1"
           />
+        )}
+        
+        {/* Insert After Indicator */}
+        {showInsertAfter && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none bg-[#5865f2] rounded-full bottom-0 translate-y-1"
+          />
+        )}
+
+        {/* Add to Folder Indicator (glow effect) */}
+        {showAddToFolderIndicator && (
+          <div className="absolute inset-0 rounded-[24px] pointer-events-none border-2 border-[#5865f2] bg-[#5865f2]/20" />
         )}
 
         {/* Folder Icon */}

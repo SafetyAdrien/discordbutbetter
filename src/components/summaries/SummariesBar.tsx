@@ -1,5 +1,5 @@
 import { SummaryTopic } from "@/hooks/useSummaries";
-import { ChevronDown, CheckCheck } from "lucide-react";
+import { ChevronDown, CheckCheck, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SummariesDropdown } from "./SummariesDropdown";
@@ -12,6 +12,9 @@ interface SummariesBarProps {
   onToggleDropdown: () => void;
   onSelectTopic: (topic: SummaryTopic) => void;
   onMarkAsRead: () => void;
+  onGenerateSummaries?: () => void;
+  isGenerating?: boolean;
+  isLoading?: boolean;
 }
 
 export function SummariesBar({
@@ -21,10 +24,14 @@ export function SummariesBar({
   onToggleDropdown,
   onSelectTopic,
   onMarkAsRead,
+  onGenerateSummaries,
+  isGenerating = false,
+  isLoading = false,
 }: SummariesBarProps) {
   // Calculate total new messages from all summaries
   const totalNewMessages = summaries.reduce((acc, s) => acc + (s.newMessages || 0), 0);
   const hasUnreadMessages = totalNewMessages > 0;
+  const hasSummaries = summaries.length > 0;
 
   return (
     <div className="relative w-full">
@@ -44,7 +51,9 @@ export function SummariesBar({
           )}
         >
           <StreamlineSummaries className="w-4 h-4" />
-          <span className="text-sm font-medium">Voir Tous Les Résumés</span>
+          <span className="text-sm font-medium">
+            {hasSummaries ? "Voir Tous Les Résumés" : "Résumés IA"}
+          </span>
           <ChevronDown
             className={cn(
               "w-4 h-4 transition-transform duration-200",
@@ -60,7 +69,7 @@ export function SummariesBar({
           </div>
         )}
 
-        {/* Right Section (only when unread) */}
+        {/* Right Section */}
         {hasUnreadMessages ? (
           <Button
             variant="ghost"
@@ -70,6 +79,28 @@ export function SummariesBar({
           >
             <CheckCheck className="w-4 h-4" />
             <span className="hidden sm:inline text-sm">Marquer Comme Lu</span>
+          </Button>
+        ) : onGenerateSummaries ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onGenerateSummaries}
+            disabled={isGenerating || isLoading}
+            className={cn(
+              "gap-1.5 h-7 px-2",
+              hasUnreadMessages 
+                ? "text-white hover:text-white hover:bg-white/20" 
+                : "text-foreground hover:bg-muted-foreground/10"
+            )}
+          >
+            {isGenerating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline text-sm">
+              {isGenerating ? "Génération..." : "Générer"}
+            </span>
           </Button>
         ) : (
           <div className="w-8" />
@@ -82,6 +113,9 @@ export function SummariesBar({
           summaries={summaries}
           onSelectTopic={onSelectTopic}
           onClose={onToggleDropdown}
+          onGenerateSummaries={onGenerateSummaries}
+          isGenerating={isGenerating}
+          isLoading={isLoading}
         />
       )}
     </div>

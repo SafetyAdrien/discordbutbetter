@@ -20,7 +20,6 @@ import {
   Link,
   SmilePlus,
   BarChart2,
-  MoreHorizontal,
   Flag,
   Hash,
 } from "lucide-react";
@@ -30,7 +29,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -581,98 +579,43 @@ export function AnnouncementChannel({
                       if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
                     }}
                   >
-                    {/* Message Actions - with Megaphone for announcement channels */}
-                    <div
-                      className={cn(
-                        "absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10",
+                    {/* Message Actions - using UniversalMessageActions with Megaphone for announcement channels */}
+                    <UniversalMessageActions
+                      isVisible={
                         (hoveredMessageId === message.id || openDropdownMessageId === message.id) &&
-                          !isEditing
-                          ? "opacity-100"
-                          : "opacity-0 pointer-events-none"
-                      )}
-                    >
-                      {/* Quick Reactions */}
-                      {QUICK_REACTIONS_HOVER.map((emoji) => (
-                        <Tooltip key={emoji}>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => handleAddReaction(message.id, emoji)}
-                              className="p-1 hover:bg-muted rounded transition-colors text-base"
-                            >
-                              {emoji}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">{emoji}</TooltipContent>
-                        </Tooltip>
-                      ))}
-
-                      {/* Megaphone - Publish button */}
-                      {isOwnMessage && followers.length > 0 && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => handlePublishMessage(message)}
-                              disabled={publishMessage.isPending}
-                              className="p-1.5 hover:bg-muted rounded transition-colors text-primary"
-                            >
-                              <StreamlineMegaphone className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">Publier aux abonnés</TooltipContent>
-                        </Tooltip>
-                      )}
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => handleReply(message)}
-                            className="p-1.5 hover:bg-muted rounded transition-colors"
-                          >
-                            <Reply className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Répondre</TooltipContent>
-                      </Tooltip>
-
-                      <DropdownMenu
-                        onOpenChange={(open) => {
-                          setOpenDropdownMessageId(open ? message.id : null);
-                          if (!open) setHoveredMessageId(null);
-                        }}
-                      >
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 hover:bg-muted rounded transition-colors">
-                            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleCopyMessageLink(message.id)}>
-                            <Link className="w-4 h-4 mr-2" />
-                            Copier le lien
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handlePinMessage(message.id)}>
-                            <Pin className="w-4 h-4 mr-2" />
-                            {pinnedMessageIds.has(message.id) ? "Désépingler" : "Épingler"}
-                          </DropdownMenuItem>
-                          {isOwnMessage && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleStartEdit(message)}>
-                                <Pencil className="w-4 h-4 mr-2" />
-                                Modifier
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(message.id)}
-                                className="text-destructive focus:text-destructive"
+                        !isEditing
+                      }
+                      isShiftPressed={isShiftPressed}
+                      isOwnMessage={isOwnMessage}
+                      isPinned={pinnedMessageIds.has(message.id)}
+                      onReply={() => handleReply(message)}
+                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                      onCopyLink={() => handleCopyMessageLink(message.id)}
+                      onCopyId={() => handleCopyId(message.id)}
+                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                      onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
+                      onPin={() => handlePinMessage(message.id)}
+                      onDropdownOpenChange={(open) => {
+                        setOpenDropdownMessageId(open ? message.id : null);
+                        if (!open) setHoveredMessageId(null);
+                      }}
+                      customAction={
+                        isOwnMessage && followers.length > 0 ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => handlePublishMessage(message)}
+                                disabled={publishMessage.isPending}
+                                className="p-1.5 hover:bg-muted rounded transition-colors text-primary"
                               >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Supprimer
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                                <StreamlineMegaphone className="w-4 h-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">Publier aux abonnés</TooltipContent>
+                          </Tooltip>
+                        ) : undefined
+                      }
+                    />
 
                     {showAuthor ? (
                       <div className="flex gap-3 items-start">

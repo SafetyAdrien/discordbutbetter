@@ -517,8 +517,9 @@ export function ServerList({
                   folder.serverIds.forEach((id) => markServerAsRead(id));
                   toast({ title: 'Dossier marqué comme lu' });
                 }}
-                showDropIndicator={dropIndicator.targetId === folder.id && dropIndicator.type === 'add-to-folder'}
-                dropPosition="after"
+                showAddToFolderIndicator={dropIndicator.targetId === folder.id && dropIndicator.type === 'add-to-folder'}
+                showInsertBefore={dropIndicator.targetId === folder.id && dropIndicator.type === 'insert-before'}
+                showInsertAfter={dropIndicator.targetId === folder.id && dropIndicator.type === 'insert-after'}
               />
             ))}
 

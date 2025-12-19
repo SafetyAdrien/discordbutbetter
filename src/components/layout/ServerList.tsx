@@ -36,15 +36,15 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { useDndSensors } from '@/hooks/useDndSensors';
 
-// Discord-style Drop Indicator for servers
+// Discord-style Drop Indicator for servers - positioned in gap between items
 const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
   if (!isVisible) return null;
   return (
     <div 
       className={cn(
         "absolute left-1/2 -translate-x-1/2 w-10 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2] rounded-full",
-        position === 'before' ? "top-0 -translate-y-1" : "bottom-0 translate-y-1"
+        "bg-[#5865f2] rounded-full shadow-[0_0_8px_rgba(88,101,242,0.6)]",
+        position === 'before' ? "-top-3" : "-bottom-3"
       )}
     />
   );
@@ -94,8 +94,11 @@ function SortableServerIcon({
     transform: CSS.Transform.toString(transform),
     transition: isDragging 
       ? 'opacity 100ms ease-out' 
-      : 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease-out',
+      : 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease-out, margin 150ms cubic-bezier(0.25, 1, 0.5, 1)',
     willChange: isDragging ? 'transform' : 'auto',
+    // Add spacing when this item is the drop target to make room for the dragged item
+    marginTop: showDropIndicator && dropPosition === 'before' ? '52px' : undefined,
+    marginBottom: showDropIndicator && dropPosition === 'after' ? '52px' : undefined,
   };
 
   return (

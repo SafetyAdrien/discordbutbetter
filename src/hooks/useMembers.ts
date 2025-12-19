@@ -1,3 +1,4 @@
+/* @refresh reset */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +37,7 @@ export function useMembers(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [hasRealtimeError, setHasRealtimeError] = useState(false);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const query = useQuery({
     queryKey: ['members', serverId],

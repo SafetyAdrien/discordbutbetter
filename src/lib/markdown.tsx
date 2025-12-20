@@ -553,7 +553,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
 // ============================================
 // RENDER BLOCK TOKEN
 // ============================================
-function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
+function renderBlockToken(block: BlockToken, key: number, isLast: boolean = false): React.ReactNode {
   const renderInlineContent = (content: string): React.ReactNode => {
     const tokens = tokenizeInline(content);
     return tokens.map((token, i) => renderInlineToken(token, i));
@@ -619,9 +619,10 @@ function renderBlockToken(block: BlockToken, key: number): React.ReactNode {
     case 'paragraph':
     default:
       return (
-        <span key={key}>
-          {renderInlineContent(block.content)}
-        </span>
+        <React.Fragment key={key}>
+          <span>{renderInlineContent(block.content)}</span>
+          {!isLast && <br />}
+        </React.Fragment>
       );
   }
 }
@@ -688,7 +689,8 @@ export function parseMarkdown(content: string): React.ReactNode {
         );
         currentList = null;
       }
-      groupedBlocks.push(renderBlockToken(block, index));
+      const isLastBlock = index === blocks.length - 1;
+      groupedBlocks.push(renderBlockToken(block, index, isLastBlock));
     }
   });
   

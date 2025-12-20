@@ -7,15 +7,38 @@ import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 function formatCompactTimestamp(date: Date): string {
+  const now = new Date();
+  const diffSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  // Messages très récents
+  if (diffSeconds < 5) {
+    return "À l'instant";
+  }
+  
+  // Moins d'une minute
+  if (diffSeconds < 60) {
+    return `il y a ${diffSeconds}s`;
+  }
+  
+  // Moins d'une heure
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `il y a ${diffMinutes}min`;
+  }
+  
+  // Aujourd'hui
   if (isToday(date)) {
     return format(date, 'HH:mm', { locale: fr });
   }
+  
   if (isYesterday(date)) {
     return 'Hier';
   }
+  
   if (isThisWeek(date, { weekStartsOn: 1 })) {
     return format(date, 'EEE', { locale: fr });
   }
+  
   return format(date, 'dd/MM', { locale: fr });
 }
 
@@ -23,10 +46,9 @@ function useRealtimeTimestamp(date: Date): string {
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    // Fixed 1-second interval for immediate timestamp updates
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
-  }, [date]);
+  }, []); // Pas de dépendance pour éviter la recréation
 
   return formatCompactTimestamp(date);
 }

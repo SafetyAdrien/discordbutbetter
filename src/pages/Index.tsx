@@ -419,7 +419,6 @@ const Index = () => {
               <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-[6] min-w-0' : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}>
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     serverId={activeServer.id}
                     members={memberListData}
@@ -428,48 +427,41 @@ const Index = () => {
                   />
                 ) : channelForChat.type === 'media' ? (
                   <MediaChannel 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
                 ) : channelForChat.type === 'forum' ? (
                   <ForumChannel 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
                 ) : channelForChat.type === 'tasks' ? (
                   <TasksChannel 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
                 ) : channelForChat.type === 'calendar' ? (
                   <CalendarChannel 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
                 ) : channelForChat.type === 'announcement' ? (
                   <AnnouncementChannel 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
                 ) : channelForChat.type === 'stage' ? (
                   <StageChannel 
-                    key={channelForChat.id}
                     channel={channelForChat}
                     serverId={activeServer.id}
                   />
                 ) : (
                   <ChatArea
-                    key={channelForChat.id}
                     channel={channelForChat}
                     messages={messagesData}
                     onSendMessage={handleSendMessage}

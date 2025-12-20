@@ -748,24 +748,13 @@ export function ChannelList({
     const orphan = orphanChannels.find(c => c.id === channelId);
     return orphan?.name || "";
   };
-  const handleChannelClick = async (channel: Channel) => {
-    const isVoiceOrStage = channel.type === "voice" || channel.type === "stage";
-    
-    // Pour les salons vocaux verrouillés, bloquer le changement de canal
-    if (isVoiceOrStage && isVoiceChannelLocked(channel.id)) {
-      return; // Ne pas changer de canal, rester sur le dernier salon consulté
-    }
-    
-    // Changer de canal uniquement si autorisé
+  const handleChannelClick = (channel: Channel) => {
+    // Toujours sélectionner le canal pour afficher son interface
     onChannelSelect(channel.id);
-    
-    // Rejoindre automatiquement le salon vocal (si pas déjà connecté)
-    if (isVoiceOrStage && voiceState.channelId !== channel.id) {
-      try {
-        await joinChannel(channel.id, channel.name, server.name);
-      } catch (error) {
-        console.error('[ChannelList] Erreur lors de la connexion au salon vocal:', error);
-      }
+
+    // Pour les salons vocaux et stage, également rejoindre automatiquement
+    if (channel.type === "voice" || channel.type === "stage") {
+      joinChannel(channel.id, channel.name, server.name);
     }
   };
   const handleStartEditCategory = (category: Category) => {

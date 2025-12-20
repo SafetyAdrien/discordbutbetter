@@ -94,8 +94,6 @@ export function useMembers(serverId: string | null) {
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
-  const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
   // Real-time subscription for member changes (join/leave/kick/ban) and role changes
   useEffect(() => {
     if (!serverId || !user) return;
@@ -106,48 +104,54 @@ export function useMembers(serverId: string | null) {
       retryTimeoutRef.current = null;
     }
 
-    // Clean up existing subscription before creating a new one
-    if (subscriptionRef.current) {
-      supabase.removeChannel(subscriptionRef.current);
-      subscriptionRef.current = null;
-    }
+    // Use unique channel name with timestamp to avoid conflicts
+    const channelName = `members-realtime:${serverId}:${Date.now()}`;
 
-    // Use stable channel name (no timestamp) to avoid "mismatch" errors
-    const channelName = `members-realtime:${serverId}`;
-
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel(channelName)
-      // Listen for all server_members changes - consolidated to avoid mismatch errors
+      // Listen for member deletions (kick/leave) - NO filter, use client-side filtering
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'DELETE',
           schema: 'public',
           table: 'server_members',
         },
         (payload) => {
-          const record = (payload.new || payload.old) as { id: string; server_id: string } | null;
-          // Filter client-side
-          if (!record || record.server_id !== serverId) return;
+          const deleted = payload.old as any;
+          // Client-side filtering for reliability
+          if (deleted.server_id !== serverId) return;
           
-          if (payload.eventType === 'DELETE') {
-            console.log(`[useMembers] Member left server ${serverId}:`, record.id);
-            queryClient.setQueryData<MemberWithProfile[]>(
-              ['members', serverId],
-              (old) => old?.filter((member) => member.id !== record.id) || []
-            );
-          } else if (payload.eventType === 'INSERT') {
-            console.log(`[useMembers] New member joined server ${serverId}:`, record.id);
-            // Force immediate refetch to get full member data with profile
-            queryClient.refetchQueries({ queryKey: ['members', serverId] });
-          }
+          console.log(`[useMembers] Member left server ${serverId}:`, deleted.id);
+          queryClient.setQueryData<MemberWithProfile[]>(
+            ['members', serverId],
+            (old) => old?.filter((member) => member.id !== deleted.id) || []
+          );
         }
       )
-      // Listen for all member_roles changes - consolidated to avoid mismatch errors
+      // Listen for new members - NO filter, use client-side filtering
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'server_members',
+        },
+        (payload) => {
+          const inserted = payload.new as any;
+          // Client-side filtering for reliability
+          if (inserted.server_id !== serverId) return;
+          
+          console.log(`[useMembers] New member joined server ${serverId}:`, inserted.id);
+          // Force immediate refetch to get full member data with profile
+          queryClient.refetchQueries({ queryKey: ['members', serverId] });
+        }
+      )
+      // Listen for role assignments (INSERT on member_roles)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'member_roles',
         },
@@ -155,48 +159,59 @@ export function useMembers(serverId: string | null) {
           // Skip if a local mutation is in progress to avoid flickering
           if (membersMutationLockRef.current) return;
 
-          if (payload.eventType === 'INSERT') {
-            const inserted = payload.new as { member_id: string; role_id: string };
-            
-            // Fetch role details for the newly assigned role
-            const { data: roleData } = await supabase
-              .from('roles')
-              .select('id, name, color, icon_url, position, description')
-              .eq('id', inserted.role_id)
-              .single();
+          const inserted = payload.new as { member_id: string; role_id: string };
+          
+          // Fetch role details for the newly assigned role
+          const { data: roleData } = await supabase
+            .from('roles')
+            .select('id, name, color, icon_url, position, description')
+            .eq('id', inserted.role_id)
+            .single();
 
-            if (roleData) {
-              queryClient.setQueryData<MemberWithProfile[]>(
-                ['members', serverId],
-                (old) =>
-                  old?.map((m) => {
-                    if (m.id !== inserted.member_id) return m;
-                    const alreadyHas = m.roles.some((r) => r.id === roleData.id);
-                    if (alreadyHas) return m;
-                    return {
-                      ...m,
-                      roles: [...m.roles, roleData].sort(
-                        (a, b) => (b.position ?? 0) - (a.position ?? 0)
-                      ),
-                    };
-                  }) || []
-              );
-            }
-          } else if (payload.eventType === 'DELETE') {
-            const deleted = payload.old as { member_id: string; role_id: string };
-
+          if (roleData) {
             queryClient.setQueryData<MemberWithProfile[]>(
               ['members', serverId],
               (old) =>
                 old?.map((m) => {
-                  if (m.id !== deleted.member_id) return m;
+                  if (m.id !== inserted.member_id) return m;
+                  const alreadyHas = m.roles.some((r) => r.id === roleData.id);
+                  if (alreadyHas) return m;
                   return {
                     ...m,
-                    roles: m.roles.filter((r) => r.id !== deleted.role_id),
+                    roles: [...m.roles, roleData].sort(
+                      (a, b) => (b.position ?? 0) - (a.position ?? 0)
+                    ),
                   };
                 }) || []
             );
           }
+        }
+      )
+      // Listen for role removals (DELETE on member_roles)
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'member_roles',
+        },
+        (payload) => {
+          // Skip if a local mutation is in progress to avoid flickering
+          if (membersMutationLockRef.current) return;
+
+          const deleted = payload.old as { member_id: string; role_id: string };
+
+          queryClient.setQueryData<MemberWithProfile[]>(
+            ['members', serverId],
+            (old) =>
+              old?.map((m) => {
+                if (m.id !== deleted.member_id) return m;
+                return {
+                  ...m,
+                  roles: m.roles.filter((r) => r.id !== deleted.role_id),
+                };
+              }) || []
+          );
         }
       )
       .subscribe((status, err) => {
@@ -220,10 +235,7 @@ export function useMembers(serverId: string | null) {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
+      supabase.removeChannel(channel);
     };
   }, [serverId, user, queryClient]);
 

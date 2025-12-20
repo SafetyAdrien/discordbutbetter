@@ -8,12 +8,15 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Gamepad2, Check, X, ShieldAlert, ArrowLeft } from 'lucide-react';
+import { Loader2, Gamepad2, Check, X, ShieldAlert, ArrowLeft, Mail, Phone, Smartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { checkPasswordPwned } from '@/lib/password-security';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 type AuthView = 'login' | 'forgot-password' | 'reset-password';
+type AuthMethod = 'email' | 'phone';
+type PhoneAuthStep = 'phone-input' | 'otp-verify';
 
 const forgotPasswordSchema = z.object({
   email: z.string().trim().email('Email invalide').max(255, 'Email trop long'),
@@ -37,6 +40,15 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Mot de passe trop court (min 6 caractères)'),
 });
 
+const phoneSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .min(10, 'Numéro trop court')
+    .max(15, 'Numéro trop long')
+    .regex(/^\+?[0-9]+$/, 'Format invalide (chiffres uniquement, + optionnel)'),
+});
+
 const signupSchema = z.object({
   displayName: z
     .string()
@@ -50,13 +62,6 @@ const signupSchema = z.object({
     .max(32, 'Nom d\'utilisateur trop long (max 32 caractères)')
     .regex(/^[a-z0-9_]+$/, 'Minuscules, chiffres et _ uniquement'),
   email: z.string().trim().email('Email invalide').max(255, 'Email trop long'),
-  phone: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || /^\+?[0-9]{10,15}$/.test(val),
-      'Format de téléphone invalide'
-    ),
   password: z
     .string()
     .min(8, 'Mot de passe trop court (min 8 caractères)')
@@ -75,8 +80,13 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Auth method state (email or phone)
+  const [loginMethod, setLoginMethod] = useState<AuthMethod>('email');
+  const [phoneAuthStep, setPhoneAuthStep] = useState<PhoneAuthStep>('phone-input');
   
   // View state for password reset flow
   const [authView, setAuthView] = useState<AuthView>('login');
@@ -205,6 +215,20 @@ export default function Auth() {
     // Reset pwned count when password changes - will be rechecked by useEffect
   };
 
+  // Format phone number to E.164 format
+  const formatPhoneE164 = (phoneNumber: string): string => {
+    let formatted = phoneNumber.replace(/\s+/g, '').replace(/-/g, '');
+    if (!formatted.startsWith('+')) {
+      // Assume French number if no country code
+      if (formatted.startsWith('0')) {
+        formatted = '+33' + formatted.substring(1);
+      } else {
+        formatted = '+' + formatted;
+      }
+    }
+    return formatted;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -239,6 +263,93 @@ export default function Auth() {
     }
   };
 
+  const handlePhoneLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const result = phoneSchema.safeParse({ phone });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0].toString()] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setLoading(true);
+    const formattedPhone = formatPhoneE164(phone);
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: formattedPhone,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      if (error.message.includes('Phone not allowed')) {
+        toast.error('L\'authentification par téléphone n\'est pas configurée');
+      } else {
+        toast.error(error.message);
+      }
+    } else {
+      setPhoneAuthStep('otp-verify');
+      toast.success('Code de vérification envoyé par SMS !');
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    if (otpCode.length !== 6) {
+      setErrors({ otp: 'Le code doit contenir 6 chiffres' });
+      return;
+    }
+
+    setLoading(true);
+    const formattedPhone = formatPhoneE164(phone);
+
+    const { error } = await supabase.auth.verifyOtp({
+      phone: formattedPhone,
+      token: otpCode,
+      type: 'sms',
+    });
+
+    setLoading(false);
+
+    if (error) {
+      if (error.message.includes('Invalid') || error.message.includes('expired')) {
+        toast.error('Code invalide ou expiré');
+      } else {
+        toast.error(error.message);
+      }
+    } else {
+      toast.success('Connexion réussie !');
+      navigate('/');
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    const formattedPhone = formatPhoneE164(phone);
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: formattedPhone,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Nouveau code envoyé !');
+      setOtpCode('');
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -248,7 +359,6 @@ export default function Auth() {
       password, 
       username, 
       displayName,
-      phone: phone || undefined,
     });
     
     if (!result.success) {
@@ -278,7 +388,7 @@ export default function Auth() {
 
     setLoading(true);
 
-    const { data, error } = await signUp(email, password, username, displayName);
+    const { error } = await signUp(email, password, username, displayName);
     
     if (error) {
       setLoading(false);
@@ -288,17 +398,6 @@ export default function Auth() {
         toast.error(error.message);
       }
       return;
-    }
-
-    // Save phone to private data table if provided
-    if (phone && data?.user?.id) {
-      const { error: phoneError } = await supabase
-        .from('user_private_data')
-        .upsert({ id: data.user.id, phone });
-      
-      if (phoneError) {
-        console.error('Error saving phone:', phoneError);
-      }
     }
 
     setLoading(false);
@@ -383,6 +482,15 @@ export default function Auth() {
     setPassword('');
     setConfirmPassword('');
     setPasswordPwnedCount(null);
+    setPhoneAuthStep('phone-input');
+    setOtpCode('');
+  };
+
+  const handleSwitchLoginMethod = (method: AuthMethod) => {
+    setLoginMethod(method);
+    setErrors({});
+    setPhoneAuthStep('phone-input');
+    setOtpCode('');
   };
 
   if (authLoading) {
@@ -575,59 +683,197 @@ export default function Auth() {
             </TabsList>
 
             <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Ton Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="ton@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={errors.email ? 'border-destructive' : ''}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Mot de passe</Label>
-                  <PasswordInput
-                    id="login-password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={errors.password ? 'border-destructive' : ''}
-                  />
-                  {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password}</p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setAuthView('forgot-password')}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Mot de passe oublié ?
-                </button>
-
+              {/* Login Method Toggle */}
+              <div className="flex gap-2 mb-6">
                 <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading}
+                  type="button"
+                  variant={loginMethod === 'email' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleSwitchLoginMethod('email')}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Connexion...
-                    </>
-                  ) : (
-                    'Se connecter'
-                  )}
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
                 </Button>
-              </form>
+                <Button
+                  type="button"
+                  variant={loginMethod === 'phone' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleSwitchLoginMethod('phone')}
+                >
+                  <Smartphone className="w-4 h-4 mr-2" />
+                  Téléphone
+                </Button>
+              </div>
+
+              {loginMethod === 'email' ? (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Ton Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="ton@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={errors.email ? 'border-destructive' : ''}
+                    />
+                    {errors.email && (
+                      <p className="text-sm text-destructive">{errors.email}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Mot de passe</Label>
+                    <PasswordInput
+                      id="login-password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={errors.password ? 'border-destructive' : ''}
+                    />
+                    {errors.password && (
+                      <p className="text-sm text-destructive">{errors.password}</p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setAuthView('forgot-password')}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Connexion...
+                      </>
+                    ) : (
+                      'Se connecter'
+                    )}
+                  </Button>
+                </form>
+              ) : (
+                <>
+                  {phoneAuthStep === 'phone-input' ? (
+                    <form onSubmit={handlePhoneLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="login-phone">Ton numéro de téléphone</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="login-phone"
+                            type="tel"
+                            placeholder="+33 6 12 34 56 78"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className={`pl-10 ${errors.phone ? 'border-destructive' : ''}`}
+                          />
+                        </div>
+                        {errors.phone && (
+                          <p className="text-sm text-destructive">{errors.phone}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Un code de vérification sera envoyé par SMS
+                        </p>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Envoi du code...
+                          </>
+                        ) : (
+                          'Recevoir un code SMS'
+                        )}
+                      </Button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtp} className="space-y-4">
+                      <div className="text-center mb-4">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-3">
+                          <Smartphone className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Code envoyé au <strong>{phone}</strong>
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="otp-code" className="text-center block">
+                          Entre le code à 6 chiffres
+                        </Label>
+                        <div className="flex justify-center">
+                          <InputOTP
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(value) => setOtpCode(value)}
+                          >
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
+                        </div>
+                        {errors.otp && (
+                          <p className="text-sm text-destructive text-center">{errors.otp}</p>
+                        )}
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loading || otpCode.length !== 6}
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Vérification...
+                          </>
+                        ) : (
+                          'Vérifier le code'
+                        )}
+                      </Button>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <button
+                          type="button"
+                          onClick={() => setPhoneAuthStep('phone-input')}
+                          className="text-primary hover:underline"
+                        >
+                          <ArrowLeft className="w-3 h-3 inline mr-1" />
+                          Changer de numéro
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={loading}
+                          className="text-primary hover:underline disabled:opacity-50"
+                        >
+                          Renvoyer le code
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="signup">
@@ -693,23 +939,6 @@ export default function Auth() {
                   />
                   {errors.email && (
                     <p className="text-sm text-destructive">{errors.email}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-phone">
-                    Numéro de Téléphone <span className="text-muted-foreground">(facultatif)</span>
-                  </Label>
-                  <Input
-                    id="signup-phone"
-                    type="tel"
-                    placeholder="+33612345678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={errors.phone ? 'border-destructive' : ''}
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-destructive">{errors.phone}</p>
                   )}
                 </div>
 

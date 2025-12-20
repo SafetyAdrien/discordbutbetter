@@ -106,16 +106,18 @@ export function usePermissionsRealtime(serverId: string | null) {
           refetchAllPermissions('category_permission_overrides');
         }
       )
-      // Écouter les changements sur roles
+      // Écouter les changements sur roles - filtrage côté client (évite mismatch)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'roles',
-          filter: `server_id=eq.${serverId}`,
         },
         (payload) => {
+          const roleServerId = (payload.new as any)?.server_id || (payload.old as any)?.server_id;
+          if (roleServerId !== serverId) return;
+
           console.log('[Permissions Realtime] roles event:', payload.eventType, payload);
           
           if (mutationLockRef.current) {

@@ -94,6 +94,8 @@ export function useMembers(serverId: string | null) {
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
+  const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   // Real-time subscription for member changes (join/leave/kick/ban) and role changes
   useEffect(() => {
     if (!serverId || !user) return;
@@ -104,24 +106,28 @@ export function useMembers(serverId: string | null) {
       retryTimeoutRef.current = null;
     }
 
-    // Use unique channel name with timestamp to avoid conflicts
-    const channelName = `members-realtime:${serverId}:${Date.now()}`;
+    // Clean up existing subscription before creating a new one
+    if (subscriptionRef.current) {
+      supabase.removeChannel(subscriptionRef.current);
+      subscriptionRef.current = null;
+    }
 
-    const channel = supabase
+    // Use stable channel name (no timestamp) to avoid "mismatch" errors
+    const channelName = `members-realtime:${serverId}`;
+
+    subscriptionRef.current = supabase
       .channel(channelName)
-      // Listen for member deletions (kick/leave) - NO filter, use client-side filtering
+      // Listen for member deletions (kick/leave) with server_id filter
       .on(
         'postgres_changes',
         {
           event: 'DELETE',
           schema: 'public',
           table: 'server_members',
+          filter: `server_id=eq.${serverId}`,
         },
         (payload) => {
           const deleted = payload.old as any;
-          // Client-side filtering for reliability
-          if (deleted.server_id !== serverId) return;
-          
           console.log(`[useMembers] Member left server ${serverId}:`, deleted.id);
           queryClient.setQueryData<MemberWithProfile[]>(
             ['members', serverId],
@@ -129,19 +135,17 @@ export function useMembers(serverId: string | null) {
           );
         }
       )
-      // Listen for new members - NO filter, use client-side filtering
+      // Listen for new members with server_id filter
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'server_members',
+          filter: `server_id=eq.${serverId}`,
         },
         (payload) => {
           const inserted = payload.new as any;
-          // Client-side filtering for reliability
-          if (inserted.server_id !== serverId) return;
-          
           console.log(`[useMembers] New member joined server ${serverId}:`, inserted.id);
           // Force immediate refetch to get full member data with profile
           queryClient.refetchQueries({ queryKey: ['members', serverId] });
@@ -235,7 +239,10 @@ export function useMembers(serverId: string | null) {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      supabase.removeChannel(channel);
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
+      }
     };
   }, [serverId, user, queryClient]);
 

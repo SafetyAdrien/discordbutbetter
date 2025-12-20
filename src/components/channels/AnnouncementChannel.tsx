@@ -71,6 +71,7 @@ import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface Role {
   id: string;
@@ -206,8 +207,12 @@ export function AnnouncementChannel({
   const publishMessage = usePublishMessage();
   const dismissPrompt = useDismissPublishPrompt();
 
+  // Get owner/admin status (already loaded from server context - instant)
+  const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
+  const isAdminOrOwner = isGod || hasServerPermission('administrator');
+
   // Check permissions
-  const { can: canPerm } = useMultipleChannelPermissions(channel.id, [
+  const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
     'send_messages',
     'attach_files',
     'add_reactions',
@@ -217,13 +222,15 @@ export function AnnouncementChannel({
     'manage_messages',
   ]);
 
-  const canSendMessages = canPerm('send_messages');
-  const canAttachFiles = canPerm('attach_files');
-  const canAddReactions = canPerm('add_reactions');
-  const canCreatePolls = canPerm('create_polls');
-  const canManageMessages = canPerm('manage_messages');
+  // Short-circuit for owners/admins - they always have permissions
+  const canSendMessages = isAdminOrOwner || canPerm('send_messages');
+  const canAttachFiles = isAdminOrOwner || canPerm('attach_files');
+  const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
+  const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
+  const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
   
-  const permissionDeniedMessage = !canSendMessages 
+  // Only show permission denied if not admin/owner AND permissions loaded AND no send_messages
+  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
 

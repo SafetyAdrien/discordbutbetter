@@ -39,16 +39,25 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, serverId, name, description }: { channelId: string; serverId: string; name: string; description?: string }) => {
+    mutationFn: async ({ channelId, serverId, name, description, type }: { 
+      channelId: string; 
+      serverId: string; 
+      name: string; 
+      description?: string;
+      type?: 'text' | 'announcement';
+    }) => {
+      const updateData: { name: string; description?: string; type?: 'text' | 'announcement' } = { name, description };
+      if (type) updateData.type = type;
+
       const { error } = await supabase
         .from('channels')
-        .update({ name, description })
+        .update(updateData)
         .eq('id', channelId);
 
       if (error) throw error;
-      return { channelId, serverId, name, description };
+      return { channelId, serverId, name, description, type };
     },
-    onMutate: async ({ channelId, serverId, name, description }) => {
+    onMutate: async ({ channelId, serverId, name, description, type }) => {
       await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
@@ -62,7 +71,8 @@ export function useUpdateChannel() {
         queryClient.setQueryData(['channel-details', channelId], {
           ...previousDetails,
           name,
-          description: description ?? previousDetails.description
+          description: description ?? previousDetails.description,
+          type: type ?? previousDetails.type,
         });
       }
       
@@ -70,7 +80,7 @@ export function useUpdateChannel() {
       if (previousChannels) {
         const updateChannel = (ch: any) => 
           ch.id === channelId 
-            ? { ...ch, name, description: description ?? ch.description } 
+            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type } 
             : ch;
         
         queryClient.setQueryData(['channels', serverId], {
@@ -92,7 +102,7 @@ export function useUpdateChannel() {
                   categories: server.categories?.map((cat: any) => ({
                     ...cat,
                     channels: cat.channels?.map((ch: any) =>
-                      ch.id === channelId ? { ...ch, name } : ch
+                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type } : ch
                     ) || []
                   })) || []
                 }

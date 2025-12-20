@@ -23,16 +23,8 @@ function useRealtimeTimestamp(date: Date): string {
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    const getInterval = () => {
-      const now = new Date();
-      const diff = now.getTime() - date.getTime();
-      
-      if (diff < 60 * 1000) return 1000;       // < 1 min: every second
-      if (isToday(date)) return 30 * 1000;     // Today: every 30s
-      return 60 * 60 * 1000;                   // Older: every hour
-    };
-
-    const interval = setInterval(() => setTick(t => t + 1), getInterval());
+    // Fixed 1-second interval for immediate timestamp updates
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
   }, [date]);
 

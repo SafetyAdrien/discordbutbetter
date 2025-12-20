@@ -176,7 +176,7 @@ export function AnnouncementChannel({
       id: m.id,
       content: m.content,
       timestamp: new Date(m.created_at || Date.now()),
-      edited: !!m.edited_at,
+      edited_at: m.edited_at,
       attachments: [],
       author: m.author ? {
         id: m.author.id,

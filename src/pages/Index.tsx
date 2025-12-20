@@ -327,6 +327,7 @@ const Index = () => {
       content: m.content,
       attachments: (m as any).attachments || [],
       isSystemMessage,
+      edited_at: m.edited_at,
       author: isSystemMessage ? {
         id: 'system',
         username: 'system',

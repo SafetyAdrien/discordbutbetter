@@ -169,11 +169,14 @@ function DMConversationItem({
             )}>
               {displayName}
             </p>
-            {conversation.lastMessage && (
-              <p className="text-xs text-muted-foreground truncate">
-                {conversation.lastMessage.content}
-              </p>
-            )}
+                    {conversation.lastMessage && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {conversation.lastMessage.author_display_name && (
+                          <span className="font-medium">{conversation.lastMessage.author_display_name}: </span>
+                        )}
+                        {conversation.lastMessage.content}
+                      </p>
+                    )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {unreadCount > 0 && (

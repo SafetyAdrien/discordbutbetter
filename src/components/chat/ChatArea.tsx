@@ -1164,7 +1164,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <span className="text-xs text-muted-foreground flex-shrink-0">
                                 {formatTime(message.timestamp)}
                               </span>
-                              {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
                             </div>
                             {isEditing ? (
                               <div className="mt-1 space-y-2">
@@ -1327,7 +1326,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
                                   <MarkdownText content={message.content} />
                                 </p>
-                                {message.edited && <span className="text-xs text-muted-foreground/50">(modifié)</span>}
+                                {message.edited && (
+                                  <span className="text-xs text-muted-foreground/50 mt-0.5 block">(modifié)</span>
+                                )}
                               </>
                             )}
 

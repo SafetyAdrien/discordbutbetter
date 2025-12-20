@@ -211,8 +211,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         <DMCallView 
           call={activeCall} 
           participant={participant || null} 
-          onEndCall={handleEndCall}
-          isInitiator={activeCall.initiator_id === user?.id}
+          onEndCall={handleEndCall} 
         />
       )}
 

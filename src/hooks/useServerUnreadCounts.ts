@@ -4,11 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 import { soundEffects } from '@/utils/audio/SoundEffects';
 
-export interface ServerUnreadInfo {
-  hasUnread: boolean;
-  mentionCount: number;
-}
-
 export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -34,17 +29,6 @@ export function useServerUnreadCounts() {
           queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'channel_mentions',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-        }
-      )
       .subscribe();
 
     return () => {
@@ -54,7 +38,7 @@ export function useServerUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['server-unread-counts', user?.id],
-    queryFn: async (): Promise<Record<string, ServerUnreadInfo>> => {
+    queryFn: async (): Promise<Record<string, number>> => {
       if (!user) return {};
 
       // Get user's servers
@@ -78,50 +62,20 @@ export function useServerUnreadCounts() {
         readStateMap[rs.server_id] = rs.last_read_at || new Date(0).toISOString();
       });
 
-      // Get channels per server
-      const { data: allChannels } = await supabase
-        .from('channels')
-        .select('id, server_id')
-        .in('server_id', serverIds);
-
-      const serverChannelsMap: Record<string, string[]> = {};
-      allChannels?.forEach(c => {
-        if (!serverChannelsMap[c.server_id]) {
-          serverChannelsMap[c.server_id] = [];
-        }
-        serverChannelsMap[c.server_id].push(c.id);
-      });
-
-      // Get all mentions for user
-      const allChannelIds = allChannels?.map(c => c.id) || [];
-      const { data: mentions } = await supabase
-        .from('channel_mentions')
-        .select('channel_id')
-        .eq('user_id', user.id)
-        .in('channel_id', allChannelIds);
-
-      // Map channel_id to server_id for mentions
-      const channelToServer: Record<string, string> = {};
-      allChannels?.forEach(c => {
-        channelToServer[c.id] = c.server_id;
-      });
-
-      const serverMentionCounts: Record<string, number> = {};
-      mentions?.forEach(m => {
-        const serverId = channelToServer[m.channel_id];
-        if (serverId) {
-          serverMentionCounts[serverId] = (serverMentionCounts[serverId] || 0) + 1;
-        }
-      });
-
       // Count unread messages per server
-      const result: Record<string, ServerUnreadInfo> = {};
+      const unreadCounts: Record<string, number> = {};
 
       await Promise.all(
         serverIds.map(async (serverId) => {
           const lastReadAt = readStateMap[serverId] || new Date(0).toISOString();
-          const channelIds = serverChannelsMap[serverId] || [];
           
+          // Get channels for this server
+          const { data: channels } = await supabase
+            .from('channels')
+            .select('id')
+            .eq('server_id', serverId);
+
+          const channelIds = channels?.map(c => c.id) || [];
           if (channelIds.length === 0) return;
 
           // Count messages after last_read_at (excluding own messages)
@@ -132,16 +86,13 @@ export function useServerUnreadCounts() {
             .gt('created_at', lastReadAt)
             .neq('author_id', user.id);
 
-          const hasUnread = (count || 0) > 0;
-          const mentionCount = serverMentionCounts[serverId] || 0;
-
-          if (hasUnread || mentionCount > 0) {
-            result[serverId] = { hasUnread, mentionCount };
+          if (count && count > 0) {
+            unreadCounts[serverId] = count;
           }
         })
       );
 
-      return result;
+      return unreadCounts;
     },
     enabled: !!user,
     refetchInterval: 30000,
@@ -164,7 +115,7 @@ export function useServerUnreadCounts() {
   });
 
   return {
-    unreadInfo: query.data || {},
+    unreadCounts: query.data || {},
     isLoading: query.isLoading,
     markServerAsRead: markAsRead.mutate,
   };

@@ -369,6 +369,52 @@ export type Database = {
           },
         ]
       }
+      channel_mentions: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_mentions_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_mentions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_mentions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_permission_overrides: {
         Row: {
           channel_id: string
@@ -516,6 +562,58 @@ export type Database = {
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_call_signals: {
+        Row: {
+          call_id: string
+          created_at: string | null
+          from_user_id: string
+          id: string
+          signal_data: Json
+          signal_type: string
+          to_user_id: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string | null
+          from_user_id: string
+          id?: string
+          signal_data: Json
+          signal_type: string
+          to_user_id: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string | null
+          from_user_id?: string
+          id?: string
+          signal_data?: Json
+          signal_type?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_call_signals_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "dm_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_call_signals_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_call_signals_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

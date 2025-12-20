@@ -165,7 +165,7 @@ export function AnnouncementDetailModal({
                   <p className="font-medium">{announcement.author.display_name}</p>
                   <p className="text-sm text-muted-foreground">
                     Publié le {formatDate(announcement.created_at)}
-                    {announcement.edited_at && <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>}
+                    {announcement.edited_at && ' • Modifié'}
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-2 text-muted-foreground text-sm">

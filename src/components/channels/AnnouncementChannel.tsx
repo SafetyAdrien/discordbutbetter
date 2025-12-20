@@ -808,10 +808,10 @@ export function AnnouncementChannel({
                             <>
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
+                                {message.edited && (
+                                  <span className="text-xs text-muted-foreground/50 ml-1">(modifié)</span>
+                                )}
                               </p>
-                              {message.edited && (
-                                <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                              )}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />

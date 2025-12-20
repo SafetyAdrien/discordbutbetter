@@ -132,6 +132,48 @@ export function useDMMessages(conversationId: string | null) {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'dm_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          queryClient.setQueryData<DMMessage[]>(
+            ['dm-messages', conversationId],
+            (old) => {
+              if (!old) return old;
+              return old.map((m) =>
+                m.id === updated.id
+                  ? { ...m, content: updated.content, edited_at: updated.edited_at }
+                  : m
+              );
+            }
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'dm_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const deleted = payload.old as any;
+          queryClient.setQueryData<DMMessage[]>(
+            ['dm-messages', conversationId],
+            (old) => {
+              if (!old) return old;
+              return old.filter((m) => m.id !== deleted.id);
+            }
+          );
+        }
+      )
       .subscribe();
 
     return () => {

@@ -26,6 +26,8 @@ export interface DMConversation {
   lastMessage?: {
     content: string;
     created_at: string;
+    author_id: string | null;
+    author_display_name: string | null;
   };
 }
 
@@ -70,10 +72,16 @@ export function useDMConversations() {
 
       if (allPartError) throw allPartError;
 
-      // Get last message for each conversation
+      // Get last message for each conversation with author info
       const { data: lastMessages, error: msgError } = await supabase
         .from('dm_messages')
-        .select('conversation_id, content, created_at')
+        .select(`
+          conversation_id, 
+          content, 
+          created_at,
+          author_id,
+          author:profiles!dm_messages_author_id_fkey (display_name)
+        `)
         .in('conversation_id', conversationIds)
         .order('created_at', { ascending: false });
 
@@ -92,7 +100,12 @@ export function useDMConversations() {
           return {
             ...conv,
             participants,
-            lastMessage: lastMsg ? { content: lastMsg.content, created_at: lastMsg.created_at } : undefined,
+            lastMessage: lastMsg ? { 
+              content: lastMsg.content, 
+              created_at: lastMsg.created_at,
+              author_id: lastMsg.author_id,
+              author_display_name: (lastMsg.author as { display_name: string } | null)?.display_name || null
+            } : undefined,
           };
         })
         .sort((a, b) => {

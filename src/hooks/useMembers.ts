@@ -117,17 +117,19 @@ export function useMembers(serverId: string | null) {
 
     subscriptionRef.current = supabase
       .channel(channelName)
-      // Listen for member deletions (kick/leave) with server_id filter
+      // Listen for member deletions (kick/leave) - filter client-side to avoid mismatch errors
       .on(
         'postgres_changes',
         {
           event: 'DELETE',
           schema: 'public',
           table: 'server_members',
-          filter: `server_id=eq.${serverId}`,
         },
         (payload) => {
-          const deleted = payload.old as any;
+          const deleted = payload.old as { id: string; server_id: string };
+          // Filter client-side
+          if (deleted.server_id !== serverId) return;
+          
           console.log(`[useMembers] Member left server ${serverId}:`, deleted.id);
           queryClient.setQueryData<MemberWithProfile[]>(
             ['members', serverId],
@@ -135,17 +137,19 @@ export function useMembers(serverId: string | null) {
           );
         }
       )
-      // Listen for new members with server_id filter
+      // Listen for new members - filter client-side to avoid mismatch errors
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'server_members',
-          filter: `server_id=eq.${serverId}`,
         },
         (payload) => {
-          const inserted = payload.new as any;
+          const inserted = payload.new as { id: string; server_id: string };
+          // Filter client-side
+          if (inserted.server_id !== serverId) return;
+          
           console.log(`[useMembers] New member joined server ${serverId}:`, inserted.id);
           // Force immediate refetch to get full member data with profile
           queryClient.refetchQueries({ queryKey: ['members', serverId] });

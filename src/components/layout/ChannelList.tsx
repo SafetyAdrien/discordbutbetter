@@ -585,7 +585,27 @@ export function ChannelList({
   }, [server.categories, orphanChannels]);
 
   // Check visibility for all channels
-  const { isVisible } = useChannelsVisibility(allChannelIdsForVisibility);
+  const { isVisible, isLoading: isVisibilityLoading } = useChannelsVisibility(allChannelIdsForVisibility);
+
+  // Filter visible channels helper - during loading show all to avoid flash
+  const shouldShowChannel = useCallback((channelId: string) => {
+    return isVisibilityLoading || isVisible(channelId);
+  }, [isVisibilityLoading, isVisible]);
+
+  // Filter orphan channels by visibility
+  const visibleOrphanChannels = useMemo(() => {
+    return orphanChannels.filter(ch => shouldShowChannel(ch.id));
+  }, [orphanChannels, shouldShowChannel]);
+
+  // Filter categories and their channels by visibility
+  const visibleCategories = useMemo(() => {
+    return server.categories
+      .map(category => ({
+        ...category,
+        channels: category.channels.filter(ch => shouldShowChannel(ch.id))
+      }))
+      .filter(category => category.channels.length > 0); // Hide empty categories
+  }, [server.categories, shouldShowChannel]);
 
   // Fetch channel unread info (hasUnread + mentionCount)
   const { channelUnreadInfo } = useChannelUnreadCounts(server.id);
@@ -950,9 +970,9 @@ export function ChannelList({
     return undefined;
   };
 
-  // Get all sortable IDs
-  const categoryIds = server.categories.map(c => `category-${c.id}`);
-  const allChannelIds = [...server.categories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...orphanChannels.map(ch => `channel-${ch.id}`)];
+  // Get all sortable IDs (use visible categories for DnD)
+  const categoryIds = visibleCategories.map(c => `category-${c.id}`);
+  const allChannelIds = [...visibleCategories.flatMap(c => c.channels.map(ch => `channel-${ch.id}`)), ...visibleOrphanChannels.map(ch => `channel-${ch.id}`)];
   // Sidebar resizing
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const isResizing = useRef(false);
@@ -1071,14 +1091,14 @@ export function ChannelList({
           <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
             <DndContext sensors={sensors} collisionDetection={customCollisionDetection} modifiers={[restrictToVerticalAxis]} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
-              {orphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
-                  <SortableContext items={orphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                    {orphanChannels.map(channel => <SortableChannel key={channel.id} channel={{
+              {visibleOrphanChannels.length > 0 && <div className="px-2 space-y-0.5 mb-2">
+                  <SortableContext items={visibleOrphanChannels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
+                    {visibleOrphanChannels.map(channel => <SortableChannel key={channel.id} channel={{
                   id: channel.id,
                   name: channel.name,
                   type: (channel.type || "text") as ChannelType,
                   description: channel.description || undefined
-                }} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick({
+                }} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} hasUnread={channelUnreadInfo[channel.id]?.hasUnread} mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0} onChannelClick={() => handleChannelClick({
                   id: channel.id,
                   name: channel.name,
                   type: (channel.type || "text") as ChannelType,
@@ -1088,15 +1108,15 @@ export function ChannelList({
                 </div>}
 
               {/* Categories */}
-              <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-                {server.categories.map((category, index) => <div key={category.id} className={cn(index > 0 && "mt-4")}>
+              <SortableContext items={visibleCategories.map(c => `category-${c.id}`)} strategy={verticalListSortingStrategy}>
+                {visibleCategories.map((category, index) => <div key={category.id} className={cn(index > 0 && "mt-4")}>
                     <SortableCategory category={category} isCollapsed={collapsedCategories.includes(category.id)} onToggle={() => toggleCategory(category.id)} onEdit={() => handleStartEditCategory(category)} onCreateChannel={() => setCreateChannelForCategory({
                   id: category.id,
                   name: category.name
                 })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels} serverId={server.id}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} hasUnread={channelUnreadInfo[channel.id]?.hasUnread} mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
                           </SortableContext>
                         </div>
                       </SortableCategory>

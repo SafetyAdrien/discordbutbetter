@@ -710,7 +710,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                 {formatTime(message.created_at)}
                               </span>
                               {message.edited_at && (
-                                <span className="text-xs text-muted-foreground">(modifié)</span>
+                                <span className="text-[.625rem] text-muted-foreground/40">(modifié)</span>
                               )}
                             </div>
                           )}

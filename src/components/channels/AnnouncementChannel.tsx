@@ -696,9 +696,6 @@ export function AnnouncementChannel({
                             <span className="text-xs text-muted-foreground flex-shrink-0">
                               {formatTime(message.timestamp)}
                             </span>
-                            {message.edited && (
-                              <span className="text-xs text-muted-foreground/50">(modifié)</span>
-                            )}
                           </div>
                           {isEditing ? (
                             <div className="mt-1 space-y-2">
@@ -747,6 +744,9 @@ export function AnnouncementChannel({
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
                               </p>
+                              {message.edited && (
+                                <span className="text-xs text-muted-foreground/50 mt-0.5 block">(modifié)</span>
+                              )}
                               {/* Publish Prompt */}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">

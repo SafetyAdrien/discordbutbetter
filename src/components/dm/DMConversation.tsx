@@ -384,9 +384,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               {message.author?.display_name || 'Utilisateur'}
                             </span>
                             <span className="text-xs text-muted-foreground">{timestamp}</span>
-                            {message.edited_at && (
-                              <span className="text-xs text-muted-foreground/50">(modifié)</span>
-                            )}
                           </div>
                         )}
                         {editingMessageId === message.id ? (
@@ -439,12 +436,17 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             </div>
                           </div>
                         ) : (
-                          <div className={cn(
-                            'text-sm break-words font-ginto',
-                            message.isPending && 'opacity-50'
-                          )}>
-                            <MarkdownText content={message.content} />
-                          </div>
+                          <>
+                            <div className={cn(
+                              'text-sm break-words font-ginto',
+                              message.isPending && 'opacity-50'
+                            )}>
+                              <MarkdownText content={message.content} />
+                            </div>
+                            {message.edited_at && (
+                              <span className="text-xs text-muted-foreground/50 mt-0.5 block">(modifié)</span>
+                            )}
+                          </>
                         )}
 
                         {/* Message Attachments */}

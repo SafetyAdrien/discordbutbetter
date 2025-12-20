@@ -36,6 +36,7 @@ import { useMembers } from "@/hooks/useMembers";
 import { useChannels, useReorderCategories, useReorderChannels, useDeleteChannel, useDeleteCategory, useDuplicateChannel, ChannelType, OrphanChannel } from "@/hooks/useChannels";
 import { Thread } from "@/types/thread";
 import { useThreadUnreadCounts } from "@/hooks/useThreadUnreadCounts";
+import { useChannelUnreadCounts } from "@/hooks/useChannelUnreadCounts";
 import { useFollowedThreads } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
 import { useLeaveServer } from "@/hooks/useLeaveServer";
@@ -277,6 +278,8 @@ interface SortableChannelProps {
   isActive: boolean;
   isVoiceConnected: boolean;
   speakingUsers: Set<string>;
+  hasUnread?: boolean;
+  mentionCount?: number;
   onChannelClick: () => void;
   onCopyLink: () => void;
   onMarkAsRead: () => void;
@@ -298,6 +301,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
   isActive,
   isVoiceConnected,
   speakingUsers,
+  hasUnread = false,
+  mentionCount = 0,
   onChannelClick,
   onCopyLink,
   onMarkAsRead,
@@ -353,16 +358,28 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <button onClick={onChannelClick} className={cn("channel-item w-full group", isActive && !isVoice && !isStage && "active", isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
-          // Stage active/live highlight
-          isStage && isActive && "bg-muted/80", isStage && isLiveStage && "bg-[hsl(var(--online))]/10")}>
+            <button onClick={onChannelClick} className={cn(
+              "channel-item w-full group", 
+              isActive && !isVoice && !isStage && "active", 
+              isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
+              // Stage active/live highlight
+              isStage && isActive && "bg-muted/80", 
+              isStage && isLiveStage && "bg-[hsl(var(--online))]/10",
+              // Unread channel highlight (tinted background)
+              hasUnread && !isActive && "bg-muted/30"
+            )}>
               <Icon className={cn("w-4 h-4 flex-shrink-0", isVoice && "text-[hsl(var(--online))]", isStage && isLiveStage && "text-[hsl(var(--online))]")} />
-              <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9B9CA3] font-medium">
+              <span className={cn(
+                "truncate flex-1 text-left font-ginto text-[16px] font-medium",
+                // White text for unread channels, gray for read
+                hasUnread || isActive ? "text-foreground" : "text-[#9B9CA3]"
+              )}>
                 {channel.name}
               </span>
 
-              {channel.unreadCount && channel.unreadCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                  {channel.unreadCount}
+              {/* Mention badge - ONLY shows for mentions */}
+              {mentionCount > 0 && <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                  {mentionCount}
                 </span>}
 
               <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
@@ -569,6 +586,9 @@ export function ChannelList({
 
   // Check visibility for all channels
   const { isVisible } = useChannelsVisibility(allChannelIdsForVisibility);
+
+  // Fetch channel unread info (hasUnread + mentionCount)
+  const { channelUnreadInfo } = useChannelUnreadCounts(server.id);
 
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {

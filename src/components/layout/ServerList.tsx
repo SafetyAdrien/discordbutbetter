@@ -53,7 +53,8 @@ const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; posi
 function SortableServerIcon({
   server,
   isActive,
-  unreadCount,
+  hasUnread,
+  mentionCount,
   isShaking,
   showDropIndicator,
   dropPosition,
@@ -66,7 +67,8 @@ function SortableServerIcon({
 }: {
   server: Server;
   isActive: boolean;
-  unreadCount: number;
+  hasUnread: boolean;
+  mentionCount: number;
   isShaking: boolean;
   showDropIndicator: boolean;
   dropPosition: 'before' | 'after';
@@ -117,13 +119,13 @@ function SortableServerIcon({
                     : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
                 )}
               >
-                {/* Active indicator */}
+                {/* Active indicator - now shows for hasUnread without mentions too */}
                 <div
                   className={cn(
                     'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                     isActive
                       ? 'h-10'
-                      : unreadCount > 0
+                      : hasUnread || mentionCount > 0
                         ? 'h-2'
                         : 'h-0 group-hover:h-5'
                   )}
@@ -146,13 +148,13 @@ function SortableServerIcon({
                   </span>
                 )}
 
-                {/* Unread notification badge */}
-                {unreadCount > 0 && (
+                {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
+                {mentionCount > 0 && (
                   <div className={cn(
                     "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
                     isShaking && "animate-badge-shake"
                   )}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {mentionCount > 99 ? '99+' : mentionCount}
                   </div>
                 )}
               </button>
@@ -241,7 +243,7 @@ export function ServerList({
   onCreateClick,
   onOpenServerSettings,
 }: ServerListProps) {
-  const { unreadCounts, markServerAsRead } = useServerUnreadCounts();
+  const { unreadInfo, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
   const leaveServer = useLeaveServer();
@@ -276,16 +278,16 @@ export function ServerList({
   );
 
   // Track previous counts for shake animation
-  const prevUnreadCounts = useRef<Record<string, number>>({});
+  const prevMentionCounts = useRef<Record<string, number>>({});
   const prevDMCount = useRef<number>(0);
   const [shakingServers, setShakingServers] = useState<Set<string>>(new Set());
   const [shakingDMs, setShakingDMs] = useState(false);
 
   useEffect(() => {
     const newShaking = new Set<string>();
-    Object.entries(unreadCounts).forEach(([serverId, count]) => {
-      const prevCount = prevUnreadCounts.current[serverId] || 0;
-      if (count > prevCount) {
+    Object.entries(unreadInfo).forEach(([serverId, info]) => {
+      const prevCount = prevMentionCounts.current[serverId] || 0;
+      if (info.mentionCount > prevCount) {
         newShaking.add(serverId);
       }
     });
@@ -295,8 +297,12 @@ export function ServerList({
       setTimeout(() => setShakingServers(new Set()), 500);
     }
 
-    prevUnreadCounts.current = { ...unreadCounts };
-  }, [unreadCounts]);
+    const newPrevCounts: Record<string, number> = {};
+    Object.entries(unreadInfo).forEach(([serverId, info]) => {
+      newPrevCounts[serverId] = info.mentionCount;
+    });
+    prevMentionCounts.current = newPrevCounts;
+  }, [unreadInfo]);
 
   useEffect(() => {
     if (totalUnreadDMs > prevDMCount.current) {
@@ -472,23 +478,27 @@ export function ServerList({
       >
         <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
           <div className="flex-1 overflow-y-auto overflow-x-visible scrollbar-thin flex flex-col items-center gap-2 w-full pt-1">
-            {sortedServers.map((server) => (
-              <SortableServerIcon
-                key={server.id}
-                server={server}
-                isActive={activeServerId === server.id}
-                unreadCount={unreadCounts[server.id] ?? 0}
-                isShaking={shakingServers.has(server.id)}
-                showDropIndicator={overId === server.id && activeId !== server.id}
-                dropPosition={dropPosition}
-                onClick={() => handleServerClick(server.id)}
-                onOpenSettings={() => onOpenServerSettings?.(server.id)}
-                onMarkAsRead={() => handleMarkAsRead(server.id)}
-                onInvite={() => handleInvite(server.id)}
-                onCopyId={() => handleCopyId(server.id)}
-                onLeave={() => handleLeaveServer(server)}
-              />
-            ))}
+            {sortedServers.map((server) => {
+              const serverInfo = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
+              return (
+                <SortableServerIcon
+                  key={server.id}
+                  server={server}
+                  isActive={activeServerId === server.id}
+                  hasUnread={serverInfo.hasUnread}
+                  mentionCount={serverInfo.mentionCount}
+                  isShaking={shakingServers.has(server.id)}
+                  showDropIndicator={overId === server.id && activeId !== server.id}
+                  dropPosition={dropPosition}
+                  onClick={() => handleServerClick(server.id)}
+                  onOpenSettings={() => onOpenServerSettings?.(server.id)}
+                  onMarkAsRead={() => handleMarkAsRead(server.id)}
+                  onInvite={() => handleInvite(server.id)}
+                  onCopyId={() => handleCopyId(server.id)}
+                  onLeave={() => handleLeaveServer(server)}
+                />
+              );
+            })}
           </div>
         </SortableContext>
 

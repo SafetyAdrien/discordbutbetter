@@ -142,6 +142,9 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     </div>
                     <p className="text-sm text-foreground/90 break-words">
                       {message.content}
+                      {message.edited_at && (
+                        <span className="text-[10px] text-muted-foreground ml-1">(modifié)</span>
+                      )}
                     </p>
                   </div>
                 </div>

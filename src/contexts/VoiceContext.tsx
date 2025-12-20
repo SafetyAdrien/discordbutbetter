@@ -190,7 +190,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       });
 
     if (error) {
-      toast.error('Impossible de rejoindre le canal vocal');
+      // Check for RLS permission denied errors
+      if (error.code === '42501' || error.message?.includes('violates row-level security')) {
+        toast.error('Accès refusé', {
+          description: 'Vous n\'avez pas la permission de rejoindre ce salon vocal.',
+        });
+      } else {
+        toast.error('Impossible de rejoindre le canal vocal');
+      }
       throw error;
     }
 

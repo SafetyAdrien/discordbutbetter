@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
@@ -32,12 +33,25 @@ const channelTypeLabels = {
 export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const [name, setName] = useState(channel.name);
   const [description, setDescription] = useState(channel.description || '');
+  const [channelType, setChannelType] = useState<'text' | 'announcement'>(
+    channel.type === 'announcement' ? 'announcement' : 'text'
+  );
   const updateChannel = useUpdateChannel();
 
-  const typeInfo = channel.type ? channelTypeLabels[channel.type] : channelTypeLabels.text;
+  const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
 
-  const hasChanges = name !== channel.name || description !== (channel.description || '');
+  // Can toggle between text and announcement only
+  const canToggleType = channel.type === 'text' || channel.type === 'announcement';
+
+  const hasChanges = 
+    name !== channel.name || 
+    description !== (channel.description || '') ||
+    (canToggleType && channelType !== channel.type);
+
+  const handleTypeToggle = (isAnnouncement: boolean) => {
+    setChannelType(isAnnouncement ? 'announcement' : 'text');
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -51,6 +65,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         serverId: channel.server_id,
         name: name.trim(),
         description: description.trim() || undefined,
+        type: canToggleType && channelType !== channel.type ? channelType : undefined,
       });
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
@@ -83,16 +98,40 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         <p className="text-xs text-muted-foreground">{description.length}/1024</p>
       </div>
 
-      <div className="space-y-2">
-        <Label>Type de salon</Label>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="flex items-center gap-1">
-            <TypeIcon className="w-3 h-3" />
-            {typeInfo.label}
-          </Badge>
-          <span className="text-xs text-muted-foreground">(non modifiable)</span>
+      {/* Toggle for text <-> announcement */}
+      {canToggleType && (
+        <div className="rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 flex-1">
+              <div className="flex items-center gap-2">
+                <StreamlineMegaphone className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">Salon d'annonces</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Les utilisateurs peuvent suivre ce salon et recevoir les messages dans leurs propres serveurs.
+              </p>
+            </div>
+            <Switch
+              checked={channelType === 'announcement'}
+              onCheckedChange={handleTypeToggle}
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Show type badge for non-toggleable channels */}
+      {!canToggleType && (
+        <div className="space-y-2">
+          <Label>Type de salon</Label>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <TypeIcon className="w-3 h-3" />
+              {typeInfo.label}
+            </Badge>
+            <span className="text-xs text-muted-foreground">(non modifiable)</span>
+          </div>
+        </div>
+      )}
 
       {hasChanges && (
         <div className="flex justify-end">

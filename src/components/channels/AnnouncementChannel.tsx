@@ -745,7 +745,7 @@ export function AnnouncementChannel({
                                 <MarkdownText content={message.content} />
                               </p>
                               {message.edited && (
-                                <span className="text-[10px] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
+                                <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
                               {/* Publish Prompt */}
                               {showPublishPrompt && (

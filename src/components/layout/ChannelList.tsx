@@ -749,16 +749,26 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
-    // Toujours sélectionner le canal pour afficher son interface
+    const isVoiceOrStage = channel.type === "voice" || channel.type === "stage";
+    
+    // Pour les salons vocaux verrouillés, bloquer le changement de canal
+    if (isVoiceOrStage && isVoiceChannelLocked(channel.id)) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas la permission de rejoindre ce salon vocal.",
+        variant: "destructive"
+      });
+      return; // Ne pas changer de canal, rester sur le dernier salon consulté
+    }
+    
+    // Changer de canal uniquement si autorisé
     onChannelSelect(channel.id);
-
-    // Pour les salons vocaux et stage, tenter de rejoindre automatiquement
-    // Seulement si pas déjà connecté à ce canal
-    if ((channel.type === "voice" || channel.type === "stage") && voiceState.channelId !== channel.id) {
+    
+    // Rejoindre automatiquement le salon vocal (si pas déjà connecté)
+    if (isVoiceOrStage && voiceState.channelId !== channel.id) {
       try {
         await joinChannel(channel.id, channel.name, server.name);
       } catch (error) {
-        // L'erreur est déjà gérée par le toast dans VoiceContext
         console.error('[ChannelList] Erreur lors de la connexion au salon vocal:', error);
       }
     }

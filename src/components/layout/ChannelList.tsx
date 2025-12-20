@@ -748,13 +748,19 @@ export function ChannelList({
     const orphan = orphanChannels.find(c => c.id === channelId);
     return orphan?.name || "";
   };
-  const handleChannelClick = (channel: Channel) => {
+  const handleChannelClick = async (channel: Channel) => {
     // Toujours sélectionner le canal pour afficher son interface
     onChannelSelect(channel.id);
 
-    // Pour les salons vocaux et stage, également rejoindre automatiquement
-    if (channel.type === "voice" || channel.type === "stage") {
-      joinChannel(channel.id, channel.name, server.name);
+    // Pour les salons vocaux et stage, tenter de rejoindre automatiquement
+    // Seulement si pas déjà connecté à ce canal
+    if ((channel.type === "voice" || channel.type === "stage") && voiceState.channelId !== channel.id) {
+      try {
+        await joinChannel(channel.id, channel.name, server.name);
+      } catch (error) {
+        // L'erreur est déjà gérée par le toast dans VoiceContext
+        console.error('[ChannelList] Erreur lors de la connexion au salon vocal:', error);
+      }
     }
   };
   const handleStartEditCategory = (category: Category) => {

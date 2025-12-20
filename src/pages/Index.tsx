@@ -320,19 +320,28 @@ const Index = () => {
     memberRolesMap.set(m.user.id, m.roles);
   });
 
-  const messagesData: Message[] = messages.map((m) => ({
-    id: m.id,
-    content: m.content,
-    attachments: (m as any).attachments || [],
-    author: {
-      id: m.author?.id || '',
-      username: m.author?.username || 'unknown',
-      displayName: m.author?.display_name || 'Utilisateur inconnu',
-      avatar: m.author?.avatar_url || undefined,
-      status: m.author?.status || 'offline',
-    },
-    timestamp: new Date(m.created_at || Date.now()),
-  }));
+  const messagesData: Message[] = messages.map((m) => {
+    const isSystemMessage = m.author === null;
+    return {
+      id: m.id,
+      content: m.content,
+      attachments: (m as any).attachments || [],
+      isSystemMessage,
+      author: isSystemMessage ? {
+        id: 'system',
+        username: 'system',
+        displayName: 'Système',
+        status: 'online' as const,
+      } : {
+        id: m.author?.id || '',
+        username: m.author?.username || 'unknown',
+        displayName: m.author?.display_name || 'Utilisateur inconnu',
+        avatar: m.author?.avatar_url || undefined,
+        status: m.author?.status || 'offline',
+      },
+      timestamp: new Date(m.created_at || Date.now()),
+    };
+  });
 
   const channelForChat = activeChannel ? {
     id: activeChannel.id,

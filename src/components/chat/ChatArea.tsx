@@ -1109,6 +1109,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         if (!open) setHoveredMessageId(null);
                       }}
                       canAddReactions={canAddReactions}
+                      canManageMessages={canManageMessages}
                     />
                     {showAuthor ? (
                       <div className="relative">
@@ -1139,6 +1140,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               >
                                 {message.author.displayName}
                               </button>
+                              {/* SYSTEM tag for system messages */}
+                              {(message as any).isSystemMessage && (
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5865f2] bg-[#5865f2]/10 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
+                                  SYSTEM
+                                </span>
+                              )}
                               {/* Role badge icon - displayed to the right of username */}
                               {memberRoles?.get(message.author.id)?.[0] &&
                                 memberRoles.get(message.author.id)![0].icon_url && (
@@ -1453,13 +1460,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       </ContextMenuItem>
                     </>
                   ) : (
-                    <ContextMenuItem
-                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                      onClick={() => setReportingMessage(message)}
-                    >
-                      <Flag className="w-4 h-4 mr-2 text-destructive" />
-                      Signaler ce message
-                    </ContextMenuItem>
+                    <>
+                      {/* Moderators can delete other's messages */}
+                      {canManageMessages && (
+                        <ContextMenuItem
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          onClick={() => handleDelete(message.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                          Supprimer le message
+                        </ContextMenuItem>
+                      )}
+                      <ContextMenuItem
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                        onClick={() => setReportingMessage(message)}
+                      >
+                        <Flag className="w-4 h-4 mr-2 text-destructive" />
+                        Signaler ce message
+                      </ContextMenuItem>
+                    </>
                   )}
                 </ContextMenuContent>
               </ContextMenu>

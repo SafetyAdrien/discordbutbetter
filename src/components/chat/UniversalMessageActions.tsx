@@ -30,6 +30,7 @@ export interface UniversalMessageActionsProps {
   customAction?: React.ReactNode;
   // Permission flags
   canAddReactions?: boolean;
+  canManageMessages?: boolean;
 }
 export function UniversalMessageActions({
   isVisible,
@@ -46,7 +47,8 @@ export function UniversalMessageActions({
   onPin,
   onDropdownOpenChange,
   customAction,
-  canAddReactions = true
+  canAddReactions = true,
+  canManageMessages = false
 }: UniversalMessageActionsProps) {
   if (!isVisible) return null;
 
@@ -92,7 +94,7 @@ export function UniversalMessageActions({
             <TooltipContent side="top">Modifier</TooltipContent>
           </Tooltip>}
         
-        {isOwnMessage && onDelete && <Tooltip>
+        {(isOwnMessage || canManageMessages) && onDelete && <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={onDelete} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
                 <Trash2 className="w-4 h-4 text-destructive" />
@@ -176,7 +178,7 @@ export function UniversalMessageActions({
             <Link className="w-4 h-4 mr-2" />
             Copier le lien
           </DropdownMenuItem>
-          {isOwnMessage && onDelete && <>
+          {(isOwnMessage || canManageMessages) && onDelete && <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                 <Trash2 className="w-4 h-4 mr-2" />

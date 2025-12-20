@@ -84,6 +84,7 @@ import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
 import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageAttachments";
 import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -456,6 +457,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     likedCount,
   } = useSummaries(channel?.id);
 
+  // Get owner/admin status (already loaded from server context - instant)
+  const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
+  const isAdminOrOwner = isGod || hasServerPermission('administrator');
+
   // Check multiple chat permissions reactively
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
     'send_messages',
@@ -467,15 +472,20 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     'manage_messages',
   ]);
   
-  const canSendMessages = canPerm('send_messages');
-  const canAttachFiles = canPerm('attach_files');
-  const canAddReactions = canPerm('add_reactions');
-  const canCreatePolls = canPerm('create_polls');
-  const canMentionEveryone = canPerm('mention_everyone');
-  const canCreateThreads = canPerm('create_public_threads');
-  const canManageMessages = canPerm('manage_messages');
+  // Short-circuit for owners/admins - they always have permissions
+  const canSendMessages = isAdminOrOwner || canPerm('send_messages');
+  const canAttachFiles = isAdminOrOwner || canPerm('attach_files');
+  const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
+  const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
+  const canMentionEveryone = isAdminOrOwner || canPerm('mention_everyone');
+  const canCreateThreads = isAdminOrOwner || canPerm('create_public_threads');
+  const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
   
-  const permissionDeniedMessage = !canSendMessages 
+  // Only show permission denied if:
+  // 1. Not an admin/owner AND
+  // 2. Permissions have finished loading AND  
+  // 3. User doesn't have send_messages permission
+  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
 

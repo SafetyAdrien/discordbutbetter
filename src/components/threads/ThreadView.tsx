@@ -662,7 +662,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           status: 'offline',
                         },
                         timestamp: new Date(message.created_at),
-                        edited: !!message.edited_at,
+                        edited_at: message.edited_at || null,
                       }) : undefined}
                     >
                       <div 

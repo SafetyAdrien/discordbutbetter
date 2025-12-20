@@ -340,7 +340,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         status: 'offline',
                       },
                       timestamp: new Date(message.created_at || Date.now()),
-                      edited: false,
+                      edited_at: message.edited_at || null,
                     }) : undefined}
                   >
                     <div 

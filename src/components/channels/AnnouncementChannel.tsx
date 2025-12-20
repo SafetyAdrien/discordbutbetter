@@ -744,7 +744,7 @@ export function AnnouncementChannel({
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
                               </p>
-                              {message.edited && (
+                              {message.edited_at && (
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
                               {/* Publish Prompt */}
@@ -808,7 +808,7 @@ export function AnnouncementChannel({
                             <>
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
-                                {message.edited && (
+                                {message.edited_at && (
                                   <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                 )}
                               </p>

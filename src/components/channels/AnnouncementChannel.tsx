@@ -809,7 +809,7 @@ export function AnnouncementChannel({
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
                                 {message.edited && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
+                                  <span className="text-xs text-muted-foreground/50 ml-1">(modifié)</span>
                                 )}
                               </p>
                               {showPublishPrompt && (

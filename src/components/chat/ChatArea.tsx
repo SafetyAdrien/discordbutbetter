@@ -677,7 +677,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         avatar: poll.author?.avatar_url || undefined,
       },
       timestamp: new Date(poll.created_at),
-      edited: false,
+      edited_at: null,
     } as Message);
   };
   const handleUserClick = (author: User) => {
@@ -1228,7 +1228,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             )}
 
                             {/* Edited indicator - after attachments */}
-                            {message.edited && (
+                            {message.edited_at && (
                               <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                             )}
 
@@ -1338,7 +1338,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             )}
 
                             {/* Edited indicator - after attachments */}
-                            {message.edited && (
+                            {message.edited_at && (
                               <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                             )}
 

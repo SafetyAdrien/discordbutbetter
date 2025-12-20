@@ -42,7 +42,7 @@ export interface Message {
   content: string;
   author: User;
   timestamp: Date;
-  edited?: boolean;
+  edited_at?: string | null;
   attachments?: Attachment[];
   reactions?: Reaction[];
   isSystemMessage?: boolean;

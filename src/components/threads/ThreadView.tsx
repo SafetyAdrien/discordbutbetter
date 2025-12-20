@@ -70,6 +70,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
+  const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -520,10 +521,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               showAuthor ? 'pt-2' : 'py-0'
                             )}
                             onMouseEnter={() => setHoveredPollId(poll.id)}
-                            onMouseLeave={() => setHoveredPollId(null)}
+                            onMouseLeave={() => {
+                              if (openDropdownPollId !== poll.id) setHoveredPollId(null);
+                            }}
                           >
-                            {hoveredPollId === poll.id && (
-                              <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+                            {(hoveredPollId === poll.id || openDropdownPollId === poll.id) && (
+                              <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <button onClick={() => handleCopyPollLink(poll.id)} className="p-1.5 hover:bg-muted rounded transition-colors">
@@ -542,14 +545,22 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                       </TooltipTrigger>
                                       <TooltipContent side="top">Modifier</TooltipContent>
                                     </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button onClick={() => handleDeletePoll(poll)} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
-                                          <Trash2 className="w-4 h-4 text-destructive" />
+                                    <DropdownMenu onOpenChange={(open) => {
+                                      setOpenDropdownPollId(open ? poll.id : null);
+                                      if (!open) setHoveredPollId(null);
+                                    }}>
+                                      <DropdownMenuTrigger asChild>
+                                        <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                         </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">Supprimer</TooltipContent>
-                                    </Tooltip>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleDeletePoll(poll)} className="text-destructive focus:text-destructive">
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Supprimer
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </>
                                 )}
                               </div>

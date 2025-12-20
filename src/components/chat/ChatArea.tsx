@@ -172,6 +172,7 @@ function PollActions({
   onReply,
   onAddReaction,
   isOwnPoll,
+  onDropdownOpenChange,
 }: {
   isVisible: boolean;
   onCopyLink: () => void;
@@ -180,10 +181,11 @@ function PollActions({
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   isOwnPoll: boolean;
+  onDropdownOpenChange?: (open: boolean) => void;
 }) {
   if (!isVisible) return null;
   return (
-    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
       {/* 1. Réactions rapides - 3 émojis */}
       {QUICK_REACTIONS_HOVER.map((emoji) => (
         <Tooltip key={emoji}>
@@ -265,7 +267,7 @@ function PollActions({
       </Tooltip>
 
       {/* 4. Menu Plus d'options */}
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <button className="p-1.5 hover:bg-muted rounded transition-colors">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
@@ -369,6 +371,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
+  const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -999,16 +1002,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     <div
                       className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")}
                       onMouseEnter={() => setHoveredPollId(poll.id)}
-                      onMouseLeave={() => setHoveredPollId(null)}
+                      onMouseLeave={() => {
+                        if (openDropdownPollId !== poll.id) setHoveredPollId(null);
+                      }}
                     >
                       <PollActions
-                        isVisible={hoveredPollId === poll.id}
+                        isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
                         onCopyLink={() => handleCopyPollLink(poll.id)}
                         onEdit={() => setEditingPoll(poll)}
                         onDelete={() => handleDeletePoll(poll)}
                         onReply={() => handleReplyToPoll(poll)}
                         onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                         isOwnPoll={isOwnPoll}
+                        onDropdownOpenChange={(open) => {
+                          setOpenDropdownPollId(open ? poll.id : null);
+                          if (!open) setHoveredPollId(null);
+                        }}
                       />
                       {showAuthor ? (
                         <div className="flex gap-3 my-0 py-[5px]">

@@ -173,41 +173,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const joinChannel = useCallback(async (channelId: string, channelName: string, serverName: string) => {
     if (!user) throw new Error('Not authenticated');
 
-    // Optimistic update - Update local state IMMEDIATELY
-    setVoiceState(prev => ({
-      ...prev,
-      channelId,
-      channelName,
-      serverName,
-    }));
-
-    // Optimistic update - Add self to participants cache immediately
-    const optimisticParticipant = {
-      id: `temp-${user.id}`,
-      user_id: user.id,
-      channel_id: channelId,
-      muted: voiceState.isMuted,
-      deafened: voiceState.isDeafened,
-      camera: false,
-      streaming: false,
-      joined_at: new Date().toISOString(),
-      profile: {
-        id: user.id,
-        username: user.email?.split('@')[0] || 'user',
-        display_name: user.email?.split('@')[0] || 'User',
-        avatar_url: null,
-      },
-    };
-
-    queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
-      if (!old) return [optimisticParticipant];
-      // Remove any existing entry for this user and add new one
-      return [...old.filter(p => p.user_id !== user.id), optimisticParticipant];
-    });
-
-    // Start WebRTC connection in parallel with DB operations
-    const webrtcPromise = webrtc.connect(channelId);
-
     // Leave any existing channel first
     await supabase
       .from('voice_states')
@@ -215,60 +180,32 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       .eq('user_id', user.id);
 
     // Join new channel in DB
-    const { error, data } = await supabase
+    const { error } = await supabase
       .from('voice_states')
       .insert({
         user_id: user.id,
         channel_id: channelId,
         muted: voiceState.isMuted,
         deafened: voiceState.isDeafened,
-      })
-      .select(`
-        *,
-        profile:profiles!voice_states_user_id_fkey (
-          id,
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .single();
+      });
 
     if (error) {
-      // Rollback optimistic update on error
-      setVoiceState(prev => ({
-        ...prev,
-        channelId: null,
-        channelName: null,
-        serverName: null,
-      }));
-      queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
-        if (!old) return [];
-        return old.filter(p => p.user_id !== user.id);
-      });
       toast.error('Impossible de rejoindre le canal vocal');
       throw error;
     }
 
-    // Update cache with real data from DB
-    if (data) {
-      queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
-        if (!old) return [data];
-        return [...old.filter(p => p.user_id !== user.id), {
-          ...data,
-          muted: data.muted || false,
-          deafened: data.deafened || false,
-          camera: data.camera || false,
-          streaming: data.streaming || false,
-          joined_at: data.joined_at || new Date().toISOString(),
-        }];
-      });
-    }
+    // Connect WebRTC
+    await webrtc.connect(channelId);
 
-    // Wait for WebRTC to finish connecting
-    await webrtcPromise;
+    setVoiceState(prev => ({
+      ...prev,
+      channelId,
+      channelName,
+      serverName,
+    }));
 
     queryClient.invalidateQueries({ queryKey: ['voice-state'] });
+    queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
 
     soundEffects.playJoin();
     toast.success(`Connecté à ${channelName}`);
@@ -496,7 +433,7 @@ export function useVoiceParticipants(channelId: string | null) {
     enabled: !!channelId,
   });
 
-  // Real-time subscription with optimistic updates
+  // Real-time subscription
   useEffect(() => {
     if (!channelId) return;
 
@@ -505,90 +442,13 @@ export function useVoiceParticipants(channelId: string | null) {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'voice_states',
           filter: `channel_id=eq.${channelId}`,
         },
-        async (payload) => {
-          const newState = payload.new as any;
-          // Fetch profile data for the new participant
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url')
-            .eq('id', newState.user_id)
-            .single();
-
-          const newParticipant = {
-            ...newState,
-            muted: newState.muted || false,
-            deafened: newState.deafened || false,
-            camera: newState.camera || false,
-            streaming: newState.streaming || false,
-            joined_at: newState.joined_at || new Date().toISOString(),
-            profile: profile || {
-              id: newState.user_id,
-              username: 'user',
-              display_name: 'User',
-              avatar_url: null,
-            },
-          };
-
-          // Directly update cache instead of invalidating
-          queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
-            if (!old) return [newParticipant];
-            // Avoid duplicates
-            if (old.some(p => p.user_id === newState.user_id)) {
-              return old.map(p => p.user_id === newState.user_id ? newParticipant : p);
-            }
-            return [...old, newParticipant];
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'voice_states',
-          filter: `channel_id=eq.${channelId}`,
-        },
-        (payload) => {
-          const oldState = payload.old as any;
-          // Directly remove from cache
-          queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
-            if (!old) return [];
-            return old.filter(p => p.id !== oldState.id && p.user_id !== oldState.user_id);
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'voice_states',
-          filter: `channel_id=eq.${channelId}`,
-        },
-        (payload) => {
-          const updatedState = payload.new as any;
-          // Update in cache
-          queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
-            if (!old) return [];
-            return old.map(p => {
-              if (p.user_id === updatedState.user_id) {
-                return {
-                  ...p,
-                  ...updatedState,
-                  muted: updatedState.muted || false,
-                  deafened: updatedState.deafened || false,
-                  camera: updatedState.camera || false,
-                  streaming: updatedState.streaming || false,
-                };
-              }
-              return p;
-            });
-          });
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
         }
       )
       .subscribe();

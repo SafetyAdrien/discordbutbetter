@@ -9,6 +9,7 @@ import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
 import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
+import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import StreamlineThreadBranch from "@/components/icons/StreamlineThreadBranch";
 import { useState, useCallback, useMemo, useRef, forwardRef } from "react";
@@ -41,6 +42,7 @@ import { useFollowedThreads } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
 import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useChannelsVisibility } from "@/hooks/useUserChannelPermissions";
+import { useVoiceChannelLocks } from "@/hooks/useVoiceChannelLocks";
 import { useNavigate } from "react-router-dom";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
 
@@ -271,7 +273,6 @@ function SortableCategory({
     </>;
 }
 
-// Sortable Channel Component
 interface SortableChannelProps {
   channel: Channel;
   serverId: string;
@@ -294,7 +295,9 @@ interface SortableChannelProps {
   onThreadSelect?: (threadId: string) => void;
   showArchivedThreads?: boolean;
   canManageChannels?: boolean;
+  isVoiceLocked?: boolean;
 }
+// Sortable Channel Component
 const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
   channel,
   serverId,
@@ -316,7 +319,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
   activeThreadId,
   onThreadSelect,
   showArchivedThreads = false,
-  canManageChannels = false
+  canManageChannels = false,
+  isVoiceLocked = false
 }, ref) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -338,9 +342,12 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
     transition: isDragging ? "opacity 150ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease",
     opacity: isDragging ? 0.3 : 1
   };
-  const Icon = channelIcons[channel.type];
   const isVoice = channel.type === "voice";
   const isStage = channel.type === "stage";
+  // Show lock icon for voice/stage channels when locked (permission denied)
+  const Icon = (isVoice || isStage) && isVoiceLocked 
+    ? StreamlineVoiceLocked 
+    : channelIcons[channel.type];
   const {
     data: participants = []
   } = useVoiceParticipants(isVoice ? channel.id : null);
@@ -606,6 +613,23 @@ export function ChannelList({
       }))
       .filter(category => category.channels.length > 0); // Hide empty categories
   }, [server.categories, shouldShowChannel]);
+
+  // Get all voice/stage channel IDs for lock check
+  const voiceChannelIds = useMemo(() => {
+    const ids: string[] = [];
+    server.categories.forEach(cat => {
+      cat.channels.forEach(ch => {
+        if (ch.type === "voice" || ch.type === "stage") ids.push(ch.id);
+      });
+    });
+    orphanChannels.forEach(ch => {
+      if (ch.type === "voice" || ch.type === "stage") ids.push(ch.id);
+    });
+    return ids;
+  }, [server.categories, orphanChannels]);
+
+  // Check which voice channels are locked (connect_voice denied) - real-time updates
+  const { isLocked: isVoiceChannelLocked } = useVoiceChannelLocks(voiceChannelIds);
 
   // Fetch channel unread info (hasUnread + mentionCount)
   const { channelUnreadInfo } = useChannelUnreadCounts(server.id);
@@ -1103,7 +1127,7 @@ export function ChannelList({
                   name: channel.name,
                   type: (channel.type || "text") as ChannelType,
                   description: channel.description || undefined
-                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+                })} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} isVoiceLocked={(channel.type === 'voice' || channel.type === 'stage') && isVoiceChannelLocked(channel.id)} />)}
                   </SortableContext>
                 </div>}
 
@@ -1116,7 +1140,7 @@ export function ChannelList({
                 })} onDelete={() => handleDeleteCategory(category.id)} showDropIndicator={overId === `category-${category.id}`} dropPosition={dropPosition} canManageChannels={canManageChannels} serverId={server.id}>
                         <div className="mt-1 px-2 space-y-0.5">
                           <SortableContext items={category.channels.map(ch => `channel-${ch.id}`)} strategy={verticalListSortingStrategy}>
-                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} hasUnread={channelUnreadInfo[channel.id]?.hasUnread} mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} />)}
+                            {category.channels.map(channel => <SortableChannel key={channel.id} channel={channel} serverId={server.id} isActive={activeChannelId === channel.id} isVoiceConnected={voiceState.channelId === channel.id} speakingUsers={speakingUsers} hasUnread={channelUnreadInfo[channel.id]?.hasUnread} mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0} onChannelClick={() => handleChannelClick(channel)} onCopyLink={() => handleCopyLink(channel.id)} onMarkAsRead={() => handleMarkAsRead(channel.id)} onOpenSettings={() => setSelectedChannelId(channel.id)} onCreateInvite={() => handleCreateInvite(channel.id)} onDelete={() => handleDeleteChannel(channel.id, channel.name)} onDuplicate={() => handleDuplicateChannel(channel.id)} showDropIndicator={overId === `channel-${channel.id}`} dropPosition={dropPosition} threads={activeChannelId === channel.id ? threadsWithUnread : []} activeThreadId={activeThreadId} onThreadSelect={onThreadSelect} showArchivedThreads={showArchivedThreads} canManageChannels={canManageChannels} isVoiceLocked={(channel.type === 'voice' || channel.type === 'stage') && isVoiceChannelLocked(channel.id)} />)}
                           </SortableContext>
                         </div>
                       </SortableCategory>

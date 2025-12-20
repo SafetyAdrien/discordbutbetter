@@ -121,7 +121,7 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
                 <button
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground/70 hover:text-destructive transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive/70 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                   Supprimer mon compte

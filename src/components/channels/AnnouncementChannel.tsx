@@ -916,6 +916,8 @@ export function AnnouncementChannel({
           permissionDeniedMessage={permissionDeniedMessage}
           canAttachFiles={canAttachFiles}
           canCreatePolls={canCreatePolls}
+          showFollowBar={!canSendMessages}
+          onFollowClick={() => setFollowModalOpen(true)}
         />
       </div>
 

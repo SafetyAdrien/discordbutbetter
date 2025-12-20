@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -40,6 +41,9 @@ interface MessageInputProps {
   canAttachFiles?: boolean;
   canCreatePolls?: boolean;
   canMentionEveryone?: boolean;
+  // Announcement channel follow bar
+  showFollowBar?: boolean;
+  onFollowClick?: () => void;
 }
 
 interface MentionState {
@@ -76,6 +80,8 @@ export function MessageInput({
   canAttachFiles = true,
   canCreatePolls = true,
   canMentionEveryone = true,
+  showFollowBar = false,
+  onFollowClick,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -322,7 +328,49 @@ export function MessageInput({
     handleSendMessage();
   };
 
-  // Render disabled state when permission is denied
+  // Handle paste to preserve markdown syntax
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    
+    // Get plain text from clipboard (preserves markdown syntax)
+    const text = e.clipboardData.getData('text/plain');
+    
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newValue = value.slice(0, start) + text + value.slice(end);
+      onChange(newValue);
+      
+      // Reposition cursor after pasted text
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      }, 0);
+    }
+  }, [value, onChange]);
+
+  // Render follow bar for announcement channels when permission is denied
+  if (permissionDeniedMessage && showFollowBar) {
+    return (
+      <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
+        <div className="flex items-center justify-between rounded-lg bg-[hsl(var(--input))] px-4 py-3">
+          <span className="text-muted-foreground text-sm">
+            Suivez ce salon pour recevoir ses mises à jour sur votre propre serveur.
+          </span>
+          <Button 
+            variant="secondary"
+            size="sm"
+            onClick={onFollowClick}
+            className="ml-4 flex-shrink-0"
+          >
+            Suivre
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Render disabled state when permission is denied (without follow bar)
   if (permissionDeniedMessage) {
     return (
       <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
@@ -426,6 +474,7 @@ export function MessageInput({
             value={value}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={placeholder}
             disabled={disabled}
             className={`flex-1 min-w-0 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${

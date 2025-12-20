@@ -753,11 +753,6 @@ export function ChannelList({
     
     // Pour les salons vocaux verrouillés, bloquer le changement de canal
     if (isVoiceOrStage && isVoiceChannelLocked(channel.id)) {
-      toast({
-        title: "Accès refusé",
-        description: "Vous n'avez pas la permission de rejoindre ce salon vocal.",
-        variant: "destructive"
-      });
       return; // Ne pas changer de canal, rester sur le dernier salon consulté
     }
     

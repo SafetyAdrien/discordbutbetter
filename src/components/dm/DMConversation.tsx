@@ -443,15 +443,17 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             )}>
                               <MarkdownText content={message.content} />
                             </div>
-                            {message.edited_at && (
-                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                            )}
                           </>
                         )}
 
                         {/* Message Attachments */}
                         {message.attachments && message.attachments.length > 0 && (
                           <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
+                        )}
+
+                        {/* Edited indicator - after attachments */}
+                        {message.edited_at && (
+                          <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                         )}
                       </div>
                     </div>

@@ -1227,6 +1227,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
                             )}
 
+                            {/* Edited indicator - after attachments */}
+                            {message.edited && (
+                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
+                            )}
+
                             {message.reactions && message.reactions.length > 0 && (
                               <div className="flex gap-1 mt-1">
                                 {message.reactions.map((reaction, i) => (
@@ -1322,14 +1327,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </div>
                               </div>
                             ) : (
-                              <>
-                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
-                                  <MarkdownText content={message.content} />
-                                </p>
-                                {message.edited && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                                )}
-                              </>
+                              <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
+                                <MarkdownText content={message.content} />
+                              </p>
+                            )}
+
+                            {/* Message Attachments for grouped messages */}
+                            {(message as any).attachments && (message as any).attachments.length > 0 && (
+                              <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
+                            )}
+
+                            {/* Edited indicator - after attachments */}
+                            {message.edited && (
+                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                             )}
 
                             {message.reactions && message.reactions.length > 0 && (

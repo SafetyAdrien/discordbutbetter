@@ -997,14 +997,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             )}
           </div>
 
-          {/* Date Separator */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground font-medium">
-              {formatDate(timelineItems[0]?.timestamp || new Date())}
-            </span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
+          {/* Date Separator - only show when there are messages */}
+          {timelineItems.length > 0 && (
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium">
+                {formatDate(timelineItems[0]?.timestamp || new Date())}
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
 
           {/* Timeline Items (Messages + Polls) */}
           {timelineItems.map((item, index) => {

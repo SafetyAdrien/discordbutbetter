@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { ChevronRight } from 'lucide-react';
 import { useMutualServers } from '@/hooks/useMutualServers';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -30,6 +32,7 @@ interface DMUserInfoPanelProps {
 }
 
 export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPanelProps) {
+  const [serversOpen, setServersOpen] = useState(false);
   const { data: mutualServers = [] } = useMutualServers(participant.id);
 
   const memberSince = participant.created_at 
@@ -103,24 +106,36 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
           <>
             <div className="mx-4 h-px bg-border" />
             <div className="px-4 py-3">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-                Serveurs en commun — {mutualServers.length}
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {mutualServers.map(server => (
-                  <Tooltip key={server.id}>
-                    <TooltipTrigger asChild>
-                      <Avatar className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity">
-                        <AvatarImage src={server.icon_url || undefined} />
-                        <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                          {server.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </TooltipTrigger>
-                    <TooltipContent>{server.name}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
+              <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted/70 transition-colors">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Serveurs en commun — {mutualServers.length}
+                    </span>
+                    <ChevronRight 
+                      className={cn(
+                        "w-4 h-4 text-muted-foreground transition-transform duration-200",
+                        serversOpen && "rotate-90"
+                      )} 
+                    />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <div className="flex flex-col gap-1">
+                    {mutualServers.map(server => (
+                      <div key={server.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src={server.icon_url || undefined} />
+                          <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                            {server.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm text-foreground">{server.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </>
         )}

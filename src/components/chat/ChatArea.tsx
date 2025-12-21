@@ -1,4 +1,5 @@
-import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
@@ -881,24 +882,31 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </Button>}
           </div>
 
-          {/* Date Separator - only show when there are messages */}
-          {timelineItems.length > 0 && <div className="flex items-center gap-4 py-[10px]">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground font-medium">
-                {formatDate(timelineItems[0]?.timestamp || new Date())}
-              </span>
-              <div className="flex-1 h-px bg-border" />
-            </div>}
 
           {/* Timeline Items (Messages + Polls) */}
           {timelineItems.map((item, index) => {
+          // Check if we need to show a date separator
+          const prevItem = index > 0 ? timelineItems[index - 1] : null;
+          const currentDateStr = format(item.timestamp, 'yyyy-MM-dd');
+          const prevDateStr = prevItem ? format(prevItem.timestamp, 'yyyy-MM-dd') : null;
+          const showDateSeparator = !prevDateStr || currentDateStr !== prevDateStr;
+
           // Render Poll
           if (item.type === "poll") {
             const poll = item.data as Poll;
-            const prevItem = index > 0 ? timelineItems[index - 1] : null;
             const showAuthor = !prevItem || prevItem.type !== "poll" || (prevItem.data as Poll).author?.id !== poll.author?.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
             const isOwnPoll = user?.id === poll.author_id;
-            return <ContextMenu key={`poll-${poll.id}`}>
+            return <React.Fragment key={`poll-${poll.id}`}>
+                  {showDateSeparator && (
+                    <div className="flex items-center gap-4 py-[10px]">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {formatDate(item.timestamp)}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+                  <ContextMenu>
                   <ContextMenuTrigger asChild>
                     <div className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")} onMouseEnter={() => setHoveredPollId(poll.id)} onMouseLeave={() => {
                   if (openDropdownPollId !== poll.id) setHoveredPollId(null);
@@ -960,27 +968,37 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         </ContextMenuItem>
                       </>}
                   </ContextMenuContent>
-                </ContextMenu>;
+                </ContextMenu>
+                </React.Fragment>;
           }
 
           // Render Message
           const message = item.data as Message;
-          const prevItem = index > 0 ? timelineItems[index - 1] : null;
-          const showAuthor = !prevItem || prevItem.type !== "message" || (prevItem.data as Message).author.id !== message.author.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
+          const showAuthorForMessage = !prevItem || prevItem.type !== "message" || (prevItem.data as Message).author.id !== message.author.id || item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000 || showDateSeparator;
           const isOwnMessage = user?.id === message.author.id;
           const isEditing = editingMessageId === message.id;
-          return <ContextMenu key={message.id}>
+          return <React.Fragment key={message.id}>
+                {showDateSeparator && (
+                  <div className="flex items-center gap-4 py-[10px]">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {formatDate(item.timestamp)}
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                )}
+                <ContextMenu>
                 <ContextMenuTrigger asChild>
                   <div ref={el => {
                 if (el) messageRefs.current.set(message.id, el);
-              }} className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => {
+              }} className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthorForMessage ? "pt-1" : "py-0")} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => {
                 if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
               }}>
                     <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} onReply={() => handleReply(message)} onAddReaction={canAddReactions ? emoji => handleAddReaction(message.id, emoji) : undefined} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined} onCreateThread={canCreateThreads ? () => setCreateThreadForMessageId(message.id) : undefined} onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined} isPinned={pinnedMessageIds.has(message.id)} onDropdownOpenChange={open => {
                   setOpenDropdownMessageId(open ? message.id : null);
                   if (!open) setHoveredMessageId(null);
                 }} canAddReactions={canAddReactions} canManageMessages={canManageMessages} />
-                    {showAuthor ? <div className="relative">
+                    {showAuthorForMessage ? <div className="relative">
                         {/* Thread Spine - positioned from avatar center */}
                         {threadsByMessageId.has(message.id) && <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
                             {/* Vertical line descending from avatar */}
@@ -1217,8 +1235,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       </ContextMenuItem>
                     </>}
                 </ContextMenuContent>
-              </ContextMenu>;
-        })}
+              </ContextMenu>
+              </React.Fragment>;
+          })}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>

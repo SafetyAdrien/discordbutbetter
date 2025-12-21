@@ -1,4 +1,5 @@
-import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
@@ -535,19 +536,17 @@ export function AnnouncementChannel({
               </Button>}
           </div>
 
-          {/* Date Separator */}
-          {messages.length > 0 && <div className="flex items-center gap-4 py-[10px]">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground font-medium">
-                {formatDate(messages[0]?.timestamp || new Date())}
-              </span>
-              <div className="flex-1 h-px bg-border" />
-            </div>}
 
           {/* Messages */}
           {messages.map((message, index) => {
           const prevMessage = index > 0 ? messages[index - 1] : null;
-          const showAuthor = !prevMessage || prevMessage.author.id !== message.author.id || message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000;
+          
+          // Check if we need to show a date separator
+          const currentDateStr = format(message.timestamp, 'yyyy-MM-dd');
+          const prevDateStr = prevMessage ? format(prevMessage.timestamp, 'yyyy-MM-dd') : null;
+          const showDateSeparator = !prevDateStr || currentDateStr !== prevDateStr;
+          
+          const showAuthor = !prevMessage || prevMessage.author.id !== message.author.id || message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000 || showDateSeparator;
           const isOwnMessage = user?.id === message.author.id;
           const isEditing = editingMessageId === message.id;
 
@@ -556,7 +555,17 @@ export function AnnouncementChannel({
 
           // Show publish prompt for own messages that haven't been dismissed
           const showPublishPrompt = isOwnMessage && followers.length > 0 && !(message as any).publish_dismissed && !(message as any).is_published_message;
-          return <ContextMenu key={message.id}>
+          return <React.Fragment key={message.id}>
+                {showDateSeparator && (
+                  <div className="flex items-center gap-4 py-[10px]">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {formatDate(message.timestamp)}
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                )}
+                <ContextMenu>
                 <ContextMenuTrigger asChild>
                   <div ref={el => {
                 if (el) messageRefs.current.set(message.id, el);
@@ -733,7 +742,8 @@ export function AnnouncementChannel({
                       </ContextMenuItem>
                     </>}
                 </ContextMenuContent>
-              </ContextMenu>;
+              </ContextMenu>
+              </React.Fragment>;
         })}
           <div ref={messagesEndRef} />
         </div>

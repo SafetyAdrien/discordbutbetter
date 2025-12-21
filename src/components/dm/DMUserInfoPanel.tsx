@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { ChevronRight } from "lucide-react";
-import { useMutualServers } from "@/hooks/useMutualServers";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { ChevronRight } from 'lucide-react';
+import { useMutualServers } from '@/hooks/useMutualServers';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const statusColors: Record<string, string> = {
-  online: "bg-green-500",
-  idle: "bg-yellow-500",
-  dnd: "bg-red-500",
-  offline: "bg-gray-500",
+  online: 'bg-green-500',
+  idle: 'bg-yellow-500',
+  dnd: 'bg-red-500',
+  offline: 'bg-gray-500',
 };
 
 export interface DMParticipant {
@@ -35,21 +35,21 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
   const [serversOpen, setServersOpen] = useState(false);
   const { data: mutualServers = [] } = useMutualServers(participant.id);
 
-  const memberSince = participant.created_at
-    ? format(new Date(participant.created_at), "d MMM yyyy", { locale: fr })
+  const memberSince = participant.created_at 
+    ? format(new Date(participant.created_at), 'd MMM yyyy', { locale: fr })
     : null;
 
   return (
     <div className="w-72 border-l border-border bg-card flex flex-col shrink-0">
       <ScrollArea className="flex-1">
         {/* Banner */}
-        <div
+        <div 
           className="h-24 relative"
           style={{
-            backgroundColor: participant.banner_url ? undefined : "hsl(var(--primary))",
+            backgroundColor: participant.banner_url ? undefined : 'hsl(var(--primary))',
             backgroundImage: participant.banner_url ? `url(${participant.banner_url})` : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
           }}
         />
 
@@ -62,12 +62,10 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
                 {participant.display_name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div
-              className={cn(
-                "absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card",
-                statusColors[participant.status || "offline"],
-              )}
-            />
+            <div className={cn(
+              "absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card",
+              statusColors[participant.status || 'offline']
+            )} />
           </div>
         </div>
 
@@ -82,8 +80,12 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
 
         {/* Bio Section */}
         <div className="px-4 py-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">À Propos de Moi</h4>
-          <p className="text-sm text-foreground">{participant.bio || "Aucune biographie définie."}</p>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+            À Propos de Moi
+          </h4>
+          <p className="text-sm text-foreground">
+            {participant.bio || "Aucune biographie définie."}
+          </p>
         </div>
 
         {/* Member Since */}
@@ -91,7 +93,9 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
           <>
             <div className="mx-4 h-px bg-border" />
             <div className="px-4 py-3">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Membre Discord depuis</h4>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                Membre Discord depuis
+              </h4>
               <p className="text-sm text-foreground">{memberSince}</p>
             </div>
           </>
@@ -108,21 +112,18 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
                     <span className="text-xs font-semibold text-muted-foreground uppercase">
                       Serveurs en commun — {mutualServers.length}
                     </span>
-                    <ChevronRight
+                    <ChevronRight 
                       className={cn(
                         "w-4 h-4 text-muted-foreground transition-transform duration-200",
-                        serversOpen && "rotate-90",
-                      )}
+                        serversOpen && "rotate-90"
+                      )} 
                     />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
                   <div className="flex flex-col gap-1">
-                    {mutualServers.map((server) => (
-                      <div
-                        key={server.id}
-                        className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors"
-                      >
+                    {mutualServers.map(server => (
+                      <div key={server.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={server.icon_url || undefined} />
                           <AvatarFallback className="bg-muted text-muted-foreground text-xs">
@@ -138,11 +139,15 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
             </div>
           </>
         )}
+
       </ScrollArea>
 
       {/* View Full Profile Link - Fixed at bottom */}
       <div className="border-t border-border px-4 py-3 shrink-0">
-        <button onClick={onViewFullProfile} className="text-sm text-primary hover:underline cursor-pointer text-middle">
+        <button
+          onClick={onViewFullProfile}
+          className="text-sm text-primary hover:underline cursor-pointer"
+        >
           Voir le profil complet
         </button>
       </div>

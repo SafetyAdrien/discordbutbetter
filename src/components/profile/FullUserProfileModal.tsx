@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,7 @@ import { useMutualServers } from '@/hooks/useMutualServers';
 import { useMutualFriends } from '@/hooks/useMutualFriends';
 import { useCreateDMConversation, useDMConversations } from '@/hooks/useDMs';
 import { useFriends, useSendFriendRequest, useRemoveFriend } from '@/hooks/useFriends';
+import { useUserNote, useSaveUserNote } from '@/hooks/useUserNotes';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -39,16 +40,18 @@ interface FullUserProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNavigateToDM?: (conversationId: string) => void;
+  initialTab?: 'about' | 'servers' | 'friends';
 }
 
 export function FullUserProfileModal({ 
   user, 
   open, 
   onOpenChange,
-  onNavigateToDM 
+  onNavigateToDM,
+  initialTab = 'about'
 }: FullUserProfileModalProps) {
-  const [activeTab, setActiveTab] = useState<'about' | 'servers' | 'friends'>('about');
-  const [note, setNote] = useState('');
+  const [activeTab, setActiveTab] = useState<'about' | 'servers' | 'friends'>(initialTab);
+  const [noteInput, setNoteInput] = useState('');
   
   const { user: currentUser } = useAuth();
   const { data: mutualServers = [] } = useMutualServers(user?.id || null);
@@ -58,6 +61,31 @@ export function FullUserProfileModal({
   const { data: friends = [] } = useFriends();
   const sendRequest = useSendFriendRequest();
   const removeFriend = useRemoveFriend();
+  const { data: userNote } = useUserNote(user?.id || null);
+  const { saveWithDebounce } = useSaveUserNote();
+
+  // Sync note input with fetched note
+  useEffect(() => {
+    if (userNote?.content !== undefined) {
+      setNoteInput(userNote.content);
+    } else {
+      setNoteInput('');
+    }
+  }, [userNote?.content, user?.id]);
+
+  // Reset tab when modal opens with initialTab
+  useEffect(() => {
+    if (open) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
+
+  const handleNoteChange = (value: string) => {
+    setNoteInput(value);
+    if (user?.id) {
+      saveWithDebounce(user.id, value);
+    }
+  };
 
   const isOwnProfile = currentUser?.id === user?.id;
   
@@ -233,13 +261,13 @@ export function FullUserProfileModal({
                     Note
                   </h4>
                   <Textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
+                    value={noteInput}
+                    onChange={(e) => handleNoteChange(e.target.value)}
                     placeholder="Cliquez pour ajouter une note"
                     className="min-h-[60px] resize-none text-sm bg-muted/30"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Visible que par vous
+                    Visible que par vous • Sauvegarde automatique
                   </p>
                 </div>
               </TabsContent>

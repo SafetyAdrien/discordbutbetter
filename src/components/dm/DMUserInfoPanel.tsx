@@ -3,8 +3,10 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { ChevronRight } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ChevronRight, StickyNote } from 'lucide-react';
 import { useMutualServers } from '@/hooks/useMutualServers';
+import { useUserNote } from '@/hooks/useUserNotes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 const statusColors: Record<string, string> = {
@@ -26,18 +28,22 @@ export interface DMParticipant {
 interface DMUserInfoPanelProps {
   participant: DMParticipant;
   onViewFullProfile: () => void;
+  onOpenNotes?: () => void;
 }
 export function DMUserInfoPanel({
   participant,
-  onViewFullProfile
+  onViewFullProfile,
+  onOpenNotes
 }: DMUserInfoPanelProps) {
   const [serversOpen, setServersOpen] = useState(false);
   const {
     data: mutualServers = []
   } = useMutualServers(participant.id);
+  const { data: userNote } = useUserNote(participant.id);
   const memberSince = participant.created_at ? format(new Date(participant.created_at), 'd MMM yyyy', {
     locale: fr
   }) : null;
+  const hasNote = userNote?.content && userNote.content.trim().length > 0;
   return <div className="w-72 border-l border-border bg-card flex flex-col shrink-0">
       <ScrollArea className="flex-1">
         {/* Banner */}
@@ -63,7 +69,25 @@ export function DMUserInfoPanel({
 
         {/* User Info */}
         <div className="px-4 pt-3 pb-4">
-          <h3 className="text-lg font-semibold">{participant.display_name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">{participant.display_name}</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onOpenNotes}
+                  className={cn(
+                    "p-1 rounded hover:bg-muted/50 transition-colors",
+                    hasNote && "text-primary"
+                  )}
+                >
+                  <StickyNote className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {hasNote ? 'Voir la note' : 'Ajouter une note'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
           <p className="text-sm text-muted-foreground">@{participant.username.toLowerCase()}</p>
         </div>
 
@@ -125,7 +149,7 @@ export function DMUserInfoPanel({
 
       {/* View Full Profile Link - Fixed at bottom */}
       <div className="border-t border-border px-4 py-3 shrink-0 flex items-center justify-center">
-        <button onClick={onViewFullProfile} className="text-sm hover:underline cursor-pointer text-[#b0b1b5]">
+        <button onClick={onViewFullProfile} className="text-sm cursor-pointer text-[#b0b1b5] hover:text-foreground transition-colors">
           Voir le profil complet
         </button>
       </div>

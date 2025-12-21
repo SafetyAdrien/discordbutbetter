@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X, UserCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
@@ -34,6 +34,8 @@ import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageA
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { DMUserInfoPanel } from './DMUserInfoPanel';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
+import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
+import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -73,6 +75,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
+  const [profileInitialTab, setProfileInitialTab] = useState<'about' | 'servers' | 'friends'>('about');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { user, profile } = useAuth();
@@ -100,6 +103,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const editMessage = useEditDMMessage();
   const deleteMessage = useDeleteDMMessage();
   const { activeCall, startCall, endCall } = useDMCalls(conversationId);
+  const pinMessage = usePinDMMessage();
+  const unpinMessage = useUnpinDMMessage();
+  const { data: pinnedMessages = [] } = useDMPinnedMessages(conversationId);
 
   const conversation = conversations.find((c) => c.id === conversationId);
   const participantFromList = conversation?.participants[0] ?? null;
@@ -204,6 +210,23 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     deleteMessage.mutate({ messageId, conversationId });
   };
 
+  const handlePinMessage = (messageId: string) => {
+    pinMessage.mutate({ messageId, conversationId });
+  };
+
+  const handleUnpinMessage = (messageId: string) => {
+    unpinMessage.mutate({ messageId, conversationId });
+  };
+
+  const isMessagePinned = (messageId: string) => {
+    return pinnedMessages.some(p => p.message_id === messageId);
+  };
+
+  const handleOpenNotes = () => {
+    setProfileInitialTab('about');
+    setShowFullProfile(true);
+  };
+
   const getCharacterCountColor = () => {
     if (editingContent.length > 1980) return 'text-destructive';
     if (editingContent.length > 1900) return 'text-yellow-500';
@@ -285,9 +308,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Pin className="w-4 h-4" />
-              </Button>
+              <div>
+                <DMPinnedMessagesPopover conversationId={conversationId} />
+              </div>
             </TooltipTrigger>
             <TooltipContent>Messages épinglés</TooltipContent>
           </Tooltip>
@@ -357,6 +380,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                     <UniversalMessageContextMenu
                     key={message.id}
                     isOwnMessage={isOwnMessage}
+                    isPinned={isMessagePinned(message.id)}
                     messageId={message.id}
                     onReply={() => handleReply(message)}
                     onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
@@ -365,6 +389,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                     onCopyId={() => handleCopyId(message.id)}
                     onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                     onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
+                    onPin={() => isMessagePinned(message.id) 
+                      ? handleUnpinMessage(message.id) 
+                      : handlePinMessage(message.id)
+                    }
                     onReport={!isOwnMessage ? () => setReportingMessage({
                       id: message.id,
                       content: message.content,
@@ -516,7 +544,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               status: participant.status || 'offline',
               created_at: participant.created_at,
             }}
-            onViewFullProfile={() => setShowFullProfile(true)}
+            onViewFullProfile={() => {
+              setProfileInitialTab('about');
+              setShowFullProfile(true);
+            }}
+            onOpenNotes={handleOpenNotes}
           />
         )}
       </div>
@@ -586,6 +618,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           }}
           open={showFullProfile}
           onOpenChange={setShowFullProfile}
+          initialTab={profileInitialTab}
         />
       )}
     </div>

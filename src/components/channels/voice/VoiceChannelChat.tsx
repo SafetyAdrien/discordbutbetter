@@ -122,34 +122,74 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
               </p>
             </div>
           ) : (
-            messages.map((message) => (
-              <div key={message.id} className="group">
-                <div className="flex items-start gap-2">
-                  <Avatar className="w-7 h-7 flex-shrink-0">
-                    <AvatarImage src={message.author?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                      {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-sm font-medium text-white truncate">
-                        {message.author?.display_name || 'Utilisateur'}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: fr })}
-                      </span>
-                    </div>
-                    <p className="text-sm text-foreground/90 break-words">
-                      {message.content}
-                      {message.edited_at && (
-                        <span className="text-[10px] text-muted-foreground ml-1">(modifié)</span>
-                      )}
-                    </p>
+            (() => {
+              // Group messages by date
+              const groupedMessages = messages.reduce((groups, message) => {
+                const date = format(new Date(message.created_at || Date.now()), 'yyyy-MM-dd');
+                if (!groups[date]) {
+                  groups[date] = [];
+                }
+                groups[date].push(message);
+                return groups;
+              }, {} as Record<string, typeof messages>);
+
+              const formatDateSeparator = (dateString: string) => {
+                const date = new Date(dateString);
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                if (format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) {
+                  return "Aujourd'hui";
+                } else if (format(date, 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd')) {
+                  return 'Hier';
+                }
+                return format(date, 'd MMMM yyyy', { locale: fr });
+              };
+
+              return Object.entries(groupedMessages).map(([date, dateMessages]) => (
+                <div key={date}>
+                  {/* Date separator */}
+                  <div className="flex items-center gap-2 my-3">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {formatDateSeparator(date)}
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
                   </div>
+                  
+                  {/* Messages for this date */}
+                  {dateMessages.map((message) => (
+                    <div key={message.id} className="group">
+                      <div className="flex items-start gap-2">
+                        <Avatar className="w-7 h-7 flex-shrink-0">
+                          <AvatarImage src={message.author?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                            {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm font-medium text-white truncate">
+                              {message.author?.display_name || 'Utilisateur'}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: fr })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground/90 break-words">
+                            {message.content}
+                            {message.edited_at && (
+                              <span className="text-[10px] text-muted-foreground ml-1">(modifié)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))
+              ));
+            })()
           )}
           <div ref={messagesEndRef} />
         </div>

@@ -93,7 +93,7 @@ export function DMUserInfoPanel({
 
         {/* Mutual Servers */}
         {mutualServers.length > 0 && <>
-            
+            <div className="mx-4 h-px bg-border" />
             <div className="px-4 py-3">
               <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
                 <CollapsibleTrigger asChild>

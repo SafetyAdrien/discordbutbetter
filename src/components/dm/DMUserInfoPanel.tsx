@@ -140,17 +140,17 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
           </>
         )}
 
-        {/* View Full Profile Link */}
-        <div className="mx-4 h-px bg-border" />
-        <div className="px-4 py-3">
-          <button
-            onClick={onViewFullProfile}
-            className="text-sm text-primary hover:underline cursor-pointer"
-          >
-            Voir le profil complet
-          </button>
-        </div>
       </ScrollArea>
+
+      {/* View Full Profile Link - Fixed at bottom */}
+      <div className="border-t border-border px-4 py-3 shrink-0">
+        <button
+          onClick={onViewFullProfile}
+          className="text-sm text-primary hover:underline cursor-pointer"
+        >
+          Voir le profil complet
+        </button>
+      </div>
     </div>
   );
 }

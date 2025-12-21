@@ -879,9 +879,7 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
-    const isVoice = channel.type === "voice";
-    const isStage = channel.type === "stage";
-    const isVoiceOrStage = isVoice || isStage;
+    const isVoiceOrStage = channel.type === "voice" || channel.type === "stage";
 
     // Pour les salons vocaux verrouillés, bloquer le changement de canal
     if (isVoiceOrStage && isVoiceChannelLocked(channel.id)) {
@@ -891,8 +889,8 @@ export function ChannelList({
     // Changer de canal uniquement si autorisé
     onChannelSelect(channel.id);
 
-    // Rejoindre automatiquement UNIQUEMENT les salons Voice (pas Stage)
-    if (isVoice && voiceState.channelId !== channel.id) {
+    // Rejoindre automatiquement le salon vocal (si pas déjà connecté)
+    if (isVoiceOrStage && voiceState.channelId !== channel.id) {
       try {
         await joinChannel(channel.id, channel.name, server.name);
       } catch (error) {

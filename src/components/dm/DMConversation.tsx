@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -311,52 +311,15 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             </div>
           ) : (
             <>
-              {(() => {
-                // Group messages by date
-                const groupedMessages = messages.reduce((groups, message) => {
-                  const date = format(new Date(message.created_at || Date.now()), 'yyyy-MM-dd');
-                  if (!groups[date]) {
-                    groups[date] = [];
-                  }
-                  groups[date].push(message);
-                  return groups;
-                }, {} as Record<string, DMMessage[]>);
+              {messages.map((message, idx) => {
+                const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
+                const isOwnMessage = user?.id === message.author?.id;
+                const timestamp = message.created_at
+                  ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
+                  : '';
 
-                const formatDateSeparator = (dateString: string) => {
-                  const date = new Date(dateString);
-                  const today = new Date();
-                  const yesterday = new Date(today);
-                  yesterday.setDate(yesterday.getDate() - 1);
-
-                  if (format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) {
-                    return "Aujourd'hui";
-                  } else if (format(date, 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd')) {
-                    return 'Hier';
-                  }
-                  return format(date, 'd MMMM yyyy', { locale: fr });
-                };
-
-                return Object.entries(groupedMessages).map(([date, dateMessages]) => (
-                  <div key={date}>
-                    {/* Date separator */}
-                    <div className="flex items-center gap-4 my-4">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-muted-foreground font-medium">
-                        {formatDateSeparator(date)}
-                      </span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                    
-                    {/* Messages for this date */}
-                    {dateMessages.map((message, idx) => {
-                      const showAuthor = idx === 0 || dateMessages[idx - 1]?.author?.id !== message.author?.id;
-                      const isOwnMessage = user?.id === message.author?.id;
-                      const timestamp = message.created_at
-                        ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
-                        : '';
-
-                      return (
-                        <UniversalMessageContextMenu
+                return (
+                  <UniversalMessageContextMenu
                     key={message.id}
                     isOwnMessage={isOwnMessage}
                     messageId={message.id}
@@ -495,12 +458,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         )}
                       </div>
                     </div>
-                        </UniversalMessageContextMenu>
-                      );
-                    })}
-                  </div>
-                ));
-              })()}
+                  </UniversalMessageContextMenu>
+                );
+              })}
               <div ref={messagesEndRef} />
             </>
           )}

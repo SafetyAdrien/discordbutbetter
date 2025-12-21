@@ -356,7 +356,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(({
             <button onClick={onChannelClick} className={cn("channel-item w-full group", isActive && !isVoice && !isStage && "active", isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
           // Stage active/live highlight
           isStage && isActive && "bg-muted/80", isStage && isLiveStage && "bg-[hsl(var(--online))]/10")}>
-              <Icon className={cn("w-4 h-4 flex-shrink-0", isStage && isLiveStage && "text-[hsl(var(--online))]")} />
+              <Icon className={cn("w-4 h-4 flex-shrink-0", isVoice && "text-[hsl(var(--online))]", isStage && isLiveStage && "text-[hsl(var(--online))]")} />
               <span className="truncate flex-1 text-left font-ginto text-[16px] text-[#9B9CA3] font-medium">
                 {channel.name}
               </span>

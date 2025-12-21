@@ -5,7 +5,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ChannelType } from '@/constants/permissions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
@@ -71,7 +70,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
               </TabsContent>
 
               <TabsContent value="permissions" className="mt-0">
-                <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
+                <ChannelPermissions channelId={channelId} serverId={serverId} />
               </TabsContent>
 
               <TabsContent value="integrations" className="mt-0">

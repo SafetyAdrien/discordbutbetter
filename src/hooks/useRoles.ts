@@ -56,6 +56,7 @@ export function useServerRoles(serverId: string | null) {
       })) || [];
     },
     enabled: !!serverId && !!user,
+    staleTime: 0,
   });
 }
 

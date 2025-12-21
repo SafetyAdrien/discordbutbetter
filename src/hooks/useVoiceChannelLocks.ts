@@ -31,7 +31,7 @@ export function useVoiceChannelLocks(voiceChannelIds: string[]) {
         return { channelId, hasPermission: data as boolean };
       },
       enabled: !!user?.id && voiceChannelIds.length > 0,
-      staleTime: 1000 * 60 * 5, // 5 minutes - will be invalidated by realtime
+      staleTime: 0, // Instant updates for permission changes
     })),
   });
 

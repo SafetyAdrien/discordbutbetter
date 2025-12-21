@@ -2,35 +2,10 @@ import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "r
 import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
-import {
-  Bell,
-  Pin,
-  Users,
-  Inbox,
-  Copy,
-  Reply,
-  Pencil,
-  Trash2,
-  MessageSquareText,
-  BellOff,
-  BellRing,
-  AtSign,
-  X,
-  Check,
-  Link,
-  SmilePlus,
-  BarChart2,
-  Flag,
-  Hash,
-} from "lucide-react";
+import { Bell, Pin, Users, Inbox, Copy, Reply, Pencil, Trash2, MessageSquareText, BellOff, BellRing, AtSign, X, Check, Link, SmilePlus, BarChart2, Flag, Hash } from "lucide-react";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -39,13 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { copyToClipboard } from "@/lib/clipboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
@@ -73,7 +42,6 @@ import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
-
 interface Role {
   id: string;
   name: string;
@@ -82,7 +50,6 @@ interface Role {
   icon_url?: string | null;
   description?: string | null;
 }
-
 interface AnnouncementChannelProps {
   channel: Channel;
   onToggleMembers?: () => void;
@@ -91,14 +58,12 @@ interface AnnouncementChannelProps {
 
 // Quick reactions
 const QUICK_REACTIONS_HOVER = ["👍", "❤️", "😂"];
-
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("fr-FR", {
     hour: "2-digit",
-    minute: "2-digit",
+    minute: "2-digit"
   });
 }
-
 function formatDate(date: Date): string {
   const today = new Date();
   const yesterday = new Date(today);
@@ -111,18 +76,20 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "long",
-    year: "numeric",
+    year: "numeric"
   });
 }
-
 export function AnnouncementChannel({
   channel,
   onToggleMembers,
-  showMembers = true,
+  showMembers = true
 }: AnnouncementChannelProps) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
-  const [selectedUser, setSelectedUser] = useState<{ user: User; roles?: Role[] } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{
+    user: User;
+    roles?: Role[];
+  } | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -134,34 +101,41 @@ export function AnnouncementChannel({
   const [followSuccessOpen, setFollowSuccessOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const {
+    user
+  } = useAuth();
+  const {
+    startTyping,
+    stopTyping
+  } = useTypingIndicator(channel.id, null);
 
-  const { user } = useAuth();
-  const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
-  
   // Internal hooks for messages
-  const { data: messagesData = [] } = useMessages(channel.id);
+  const {
+    data: messagesData = []
+  } = useMessages(channel.id);
   const sendMessageMutation = useSendMessage();
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
-  
+
   // Get server info
-  const { data: servers = [] } = useServers();
+  const {
+    data: servers = []
+  } = useServers();
   const currentServer = servers.find(s => s.id === channel.server_id);
   const serverName = currentServer?.name || "";
   const serverIcon = currentServer?.icon_url || undefined;
 
   // Fetch members for mentions
-  const { data: membersData = [] } = useMembers(channel.server_id);
-  const members = useMemo(() => 
-    membersData.map(m => ({
-      id: m.user.id,
-      displayName: m.user.display_name,
-      username: m.user.username,
-      avatar: m.user.avatar_url || undefined,
-    })), 
-    [membersData]
-  );
-  
+  const {
+    data: membersData = []
+  } = useMembers(channel.server_id);
+  const members = useMemo(() => membersData.map(m => ({
+    id: m.user.id,
+    displayName: m.user.display_name,
+    username: m.user.username,
+    avatar: m.user.avatar_url || undefined
+  })), [membersData]);
+
   // Build memberRoles map
   const memberRoles = useMemo(() => {
     const map = new Map<string, Role[]>();
@@ -172,57 +146,60 @@ export function AnnouncementChannel({
   }, [membersData]);
 
   // Transform messages to match Message type
-  const messages: Message[] = useMemo(() => 
-    messagesData.map(m => ({
-      id: m.id,
-      content: m.content,
-      timestamp: new Date(m.created_at || Date.now()),
-      edited_at: m.edited_at,
-      attachments: [],
-      author: m.author ? {
-        id: m.author.id,
-        username: m.author.username,
-        displayName: m.author.display_name,
-        avatar: m.author.avatar_url || undefined,
-        status: m.author.status || 'offline',
-        customStatus: m.author.custom_status || undefined,
-      } : {
-        id: 'unknown',
-        username: 'unknown',
-        displayName: 'Unknown',
-        status: 'offline' as const,
-      },
-      // Extra fields for published messages (not in Message type, but we use them)
-      isPublishedMessage: (m as any).is_published_message || false,
-      sourceServerId: (m as any).source_server_id || undefined,
-      sourceServerName: (m as any).source_server_name || undefined,
-      sourceServerIcon: (m as any).source_server_icon || undefined,
-      sourceChannelName: (m as any).source_channel_name || undefined,
-      publishDismissed: (m as any).publish_dismissed || false,
-    } as Message & { isPublishedMessage?: boolean; sourceServerId?: string; sourceServerName?: string; sourceServerIcon?: string; sourceChannelName?: string; publishDismissed?: boolean })),
-    [messagesData]
-  );
+  const messages: Message[] = useMemo(() => messagesData.map(m => ({
+    id: m.id,
+    content: m.content,
+    timestamp: new Date(m.created_at || Date.now()),
+    edited_at: m.edited_at,
+    attachments: [],
+    author: m.author ? {
+      id: m.author.id,
+      username: m.author.username,
+      displayName: m.author.display_name,
+      avatar: m.author.avatar_url || undefined,
+      status: m.author.status || 'offline',
+      customStatus: m.author.custom_status || undefined
+    } : {
+      id: 'unknown',
+      username: 'unknown',
+      displayName: 'Unknown',
+      status: 'offline' as const
+    },
+    // Extra fields for published messages (not in Message type, but we use them)
+    isPublishedMessage: (m as any).is_published_message || false,
+    sourceServerId: (m as any).source_server_id || undefined,
+    sourceServerName: (m as any).source_server_name || undefined,
+    sourceServerIcon: (m as any).source_server_icon || undefined,
+    sourceChannelName: (m as any).source_channel_name || undefined,
+    publishDismissed: (m as any).publish_dismissed || false
+  }) as Message & {
+    isPublishedMessage?: boolean;
+    sourceServerId?: string;
+    sourceServerName?: string;
+    sourceServerIcon?: string;
+    sourceChannelName?: string;
+    publishDismissed?: boolean;
+  }), [messagesData]);
 
   // Fetch followers count
-  const { data: followers = [] } = useChannelFollowers(channel.id);
+  const {
+    data: followers = []
+  } = useChannelFollowers(channel.id);
   const publishMessage = usePublishMessage();
   const dismissPrompt = useDismissPublishPrompt();
 
   // Get owner/admin status (already loaded from server context - instant)
-  const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
+  const {
+    isGod,
+    hasPermission: hasServerPermission
+  } = usePermissions(channel.server_id || null);
   const isAdminOrOwner = isGod || hasServerPermission('administrator');
 
   // Check permissions
-  const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
-    'send_messages',
-    'attach_files',
-    'add_reactions',
-    'create_polls',
-    'mention_everyone',
-    'create_public_threads',
-    'manage_messages',
-    'manage_channels',
-  ]);
+  const {
+    can: canPerm,
+    isLoading: permissionsLoading
+  } = useMultipleChannelPermissions(channel.id, ['send_messages', 'attach_files', 'add_reactions', 'create_polls', 'mention_everyone', 'create_public_threads', 'manage_messages', 'manage_channels']);
 
   // Short-circuit for owners/admins - they always have permissions
   const canSendMessages = isAdminOrOwner || canPerm('send_messages');
@@ -231,33 +208,41 @@ export function AnnouncementChannel({
   const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
   const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
   const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
-  
+
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
-  
+
   // Only show permission denied if not admin/owner AND permissions loaded AND no send_messages
-  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
-    ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
-    : undefined;
+  const permissionDeniedMessage = !isAdminOrOwner && !permissionsLoading && !canSendMessages ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." : undefined;
 
   // Fetch server roles and channels for markdown context
-  const { data: serverRoles = [] } = useServerRoles(channel.server_id);
-  const { data: channelsData } = useChannels(channel.server_id);
+  const {
+    data: serverRoles = []
+  } = useServerRoles(channel.server_id);
+  const {
+    data: channelsData
+  } = useChannels(channel.server_id);
 
   // Pinned messages
-  const { data: pinnedMessages } = usePinnedMessages(channel.id);
+  const {
+    data: pinnedMessages
+  } = usePinnedMessages(channel.id);
   const pinMessage = usePinMessage();
   const unpinMessage = useUnpinMessage();
 
   // Reactions
-  const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
-  const { data: reactionsData } = useMessageReactions(messageIds);
+  const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
+  const {
+    data: reactionsData
+  } = useMessageReactions(messageIds);
   const addReaction = useAddReaction();
   const removeReaction = useRemoveReaction();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth"
+    });
   }, [messages.length]);
 
   // SHIFT key detection
@@ -275,92 +260,94 @@ export function AnnouncementChannel({
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
-
-  const pinnedMessageIds = useMemo(
-    () => new Set(pinnedMessages?.map((pm) => pm.message_id) || []),
-    [pinnedMessages]
-  );
-
+  const pinnedMessageIds = useMemo(() => new Set(pinnedMessages?.map(pm => pm.message_id) || []), [pinnedMessages]);
   const handleSubmit = () => {
     if (messageInput.trim()) {
       setIsSending(true);
       setTimeout(() => setIsSending(false), 400);
-      const content = replyingTo
-        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}`
-        : messageInput;
-      sendMessageMutation.mutate({ channelId: channel.id, content });
+      const content = replyingTo ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}` : messageInput;
+      sendMessageMutation.mutate({
+        channelId: channel.id,
+        content
+      });
       setMessageInput("");
       setReplyingTo(null);
       stopTyping();
     }
   };
-
   const handleReply = (message: Message) => {
     setReplyingTo(message);
   };
-
   const handleUserClick = (author: User) => {
     const roles = memberRoles?.get(author.id);
-    setSelectedUser({ user: author, roles });
+    setSelectedUser({
+      user: author,
+      roles
+    });
   };
-
   const handleCopyMessage = (content: string) => {
     copyToClipboard(content, "Message copié");
   };
-
   const handleCopyId = (id: string) => {
     copyToClipboard(id, "ID copié");
   };
-
   const handleAddReaction = (messageId: string, emoji: string) => {
     const currentReactions = reactionsData?.[messageId] || [];
-    const hasReacted = currentReactions.some((r) => r.user_id === user?.id && r.emoji === emoji);
+    const hasReacted = currentReactions.some(r => r.user_id === user?.id && r.emoji === emoji);
     if (hasReacted) {
-      removeReaction.mutate({ messageId, emoji });
+      removeReaction.mutate({
+        messageId,
+        emoji
+      });
     } else {
-      addReaction.mutate({ messageId, emoji });
+      addReaction.mutate({
+        messageId,
+        emoji
+      });
     }
   };
-
   const handlePinMessage = (messageId: string) => {
     if (pinnedMessageIds.has(messageId)) {
-      unpinMessage.mutate({ messageId, channelId: channel.id });
+      unpinMessage.mutate({
+        messageId,
+        channelId: channel.id
+      });
     } else {
-      pinMessage.mutate({ messageId, channelId: channel.id });
+      pinMessage.mutate({
+        messageId,
+        channelId: channel.id
+      });
     }
   };
-
   const handleStartEdit = (message: Message) => {
     setEditingMessageId(message.id);
     setEditingContent(message.content);
   };
-
   const handleSaveEdit = () => {
     if (editingMessageId && editingContent.trim()) {
       editMessage.mutate({
         messageId: editingMessageId,
         channelId: channel.id,
-        content: editingContent,
+        content: editingContent
       });
       setEditingMessageId(null);
       setEditingContent("");
     }
   };
-
   const handleCancelEdit = () => {
     setEditingMessageId(null);
     setEditingContent("");
   };
-
   const handleDelete = (messageId: string) => {
-    deleteMessage.mutate({ messageId, channelId: channel.id });
+    deleteMessage.mutate({
+      messageId,
+      channelId: channel.id
+    });
   };
-
   const handleCopyMessageLink = (messageId: string) => {
     const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/${messageId}`;
     copyToClipboard(link, "Lien du message copié");
   };
-
   const handlePublishMessage = (message: Message) => {
     publishMessage.mutate({
       messageId: message.id,
@@ -369,38 +356,31 @@ export function AnnouncementChannel({
       sourceServerId: channel.server_id || "",
       sourceServerName: serverName,
       sourceServerIcon: serverIcon || null,
-      sourceChannelName: channel.name,
+      sourceChannelName: channel.name
     });
   };
-
   const handleDismissPublish = (messageId: string) => {
-    dismissPrompt.mutate({ messageId, channelId: channel.id });
+    dismissPrompt.mutate({
+      messageId,
+      channelId: channel.id
+    });
   };
-
   const handleFollowSuccess = () => {
     setFollowModalOpen(false);
     setFollowSuccessOpen(true);
   };
-
-  return (
-    <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
+  return <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
       {/* Channel Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFollowModalOpen(true)}
-            className="text-sm font-medium flex-shrink-0"
-          >
+          <Button variant="ghost" size="sm" onClick={() => setFollowModalOpen(true)} className="text-sm font-medium flex-shrink-0">
             Suivre
           </Button>
         </div>
 
-        {channel.description && (
-          <>
+        {channel.description && <>
             <div className="w-px h-6 bg-border hidden sm:block" />
             <Popover>
               <PopoverTrigger asChild>
@@ -414,8 +394,7 @@ export function AnnouncementChannel({
                 <p className="text-sm text-muted-foreground">{channel.description}</p>
               </PopoverContent>
             </Popover>
-          </>
-        )}
+          </>}
 
         <div className="flex items-center gap-1 ml-auto">
           {/* Notifications Popover */}
@@ -460,11 +439,9 @@ export function AnnouncementChannel({
             <PopoverTrigger asChild>
               <Button variant="ghost" size="iconSm" className="relative">
                 <Pin className="w-5 h-5" />
-                {pinnedMessages && pinnedMessages.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                {pinnedMessages && pinnedMessages.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
                     {pinnedMessages.length}
-                  </span>
-                )}
+                  </span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
@@ -472,10 +449,8 @@ export function AnnouncementChannel({
                 <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
               </div>
               <ScrollArea className="max-h-80">
-                {pinnedMessages && pinnedMessages.length > 0 ? (
-                  <div className="p-2 space-y-2">
-                    {pinnedMessages.map((pm) => (
-                      <div key={pm.id} className="p-3 bg-muted/50 rounded-lg group relative">
+                {pinnedMessages && pinnedMessages.length > 0 ? <div className="p-2 space-y-2">
+                    {pinnedMessages.map(pm => <div key={pm.id} className="p-3 bg-muted/50 rounded-lg group relative">
                         <div className="flex items-start gap-2">
                           <Avatar className="w-8 h-8">
                             <AvatarImage src={pm.message?.author?.avatar_url || undefined} />
@@ -497,25 +472,16 @@ export function AnnouncementChannel({
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={() =>
-                            unpinMessage.mutate({
-                              messageId: pm.message_id,
-                              channelId: channel.id,
-                            })
-                          }
-                          className="absolute top-2 right-2 p-1 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
+                        <button onClick={() => unpinMessage.mutate({
+                    messageId: pm.message_id,
+                    channelId: channel.id
+                  })} className="absolute top-2 right-2 p-1 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           <X className="w-3.5 h-3.5 text-destructive" />
                         </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground/70 text-center py-8">
+                      </div>)}
+                  </div> : <div className="text-sm text-muted-foreground/70 text-center py-8">
                     Ce salon n'a pas encore de message épinglé... pour l'instant.
-                  </div>
-                )}
+                  </div>}
               </ScrollArea>
             </PopoverContent>
           </Popover>
@@ -539,12 +505,7 @@ export function AnnouncementChannel({
           {/* Members Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={onToggleMembers}
-                className={cn(showMembers && "bg-surface-hover")}
-              >
+              <Button variant="ghost" size="iconSm" onClick={onToggleMembers} className={cn(showMembers && "bg-surface-hover")}>
                 <Users className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
@@ -568,183 +529,105 @@ export function AnnouncementChannel({
             <p className="text-muted-foreground">
               C'est le début du salon #{channel.name}.
             </p>
-            {canManageChannels && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-4"
-                onClick={() => setChannelSettingsId(channel.id)}
-              >
+            {canManageChannels && <Button variant="outline" size="sm" className="mt-4" onClick={() => setChannelSettingsId(channel.id)}>
                 <Pencil className="w-3 h-3 mr-1.5" />
                 Edit Channel
-              </Button>
-            )}
+              </Button>}
           </div>
 
           {/* Date Separator */}
-          {messages.length > 0 && (
-            <div className="flex items-center gap-4">
+          {messages.length > 0 && <div className="flex items-center gap-4 py-[10px]">
               <div className="flex-1 h-px bg-border" />
               <span className="text-xs text-muted-foreground font-medium">
                 {formatDate(messages[0]?.timestamp || new Date())}
               </span>
               <div className="flex-1 h-px bg-border" />
-            </div>
-          )}
+            </div>}
 
           {/* Messages */}
           {messages.map((message, index) => {
-            const prevMessage = index > 0 ? messages[index - 1] : null;
-            const showAuthor =
-              !prevMessage ||
-              prevMessage.author.id !== message.author.id ||
-              message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000;
-            const isOwnMessage = user?.id === message.author.id;
-            const isEditing = editingMessageId === message.id;
-            
-            // Check if this is a published message from another server
-            const isPublishedFromOther = (message as any).is_published_message && (message as any).source_server_id;
-            
-            // Show publish prompt for own messages that haven't been dismissed
-            const showPublishPrompt =
-              isOwnMessage &&
-              followers.length > 0 &&
-              !(message as any).publish_dismissed &&
-              !(message as any).is_published_message;
+          const prevMessage = index > 0 ? messages[index - 1] : null;
+          const showAuthor = !prevMessage || prevMessage.author.id !== message.author.id || message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000;
+          const isOwnMessage = user?.id === message.author.id;
+          const isEditing = editingMessageId === message.id;
 
-            return (
-              <ContextMenu key={message.id}>
+          // Check if this is a published message from another server
+          const isPublishedFromOther = (message as any).is_published_message && (message as any).source_server_id;
+
+          // Show publish prompt for own messages that haven't been dismissed
+          const showPublishPrompt = isOwnMessage && followers.length > 0 && !(message as any).publish_dismissed && !(message as any).is_published_message;
+          return <ContextMenu key={message.id}>
                 <ContextMenuTrigger asChild>
-                  <div
-                    ref={(el) => {
-                      if (el) messageRefs.current.set(message.id, el);
-                    }}
-                    className={cn(
-                      "group message-hover rounded-md px-2 -mx-2 relative",
-                      showAuthor ? "pt-1" : "py-0"
-                    )}
-                    onMouseEnter={() => setHoveredMessageId(message.id)}
-                    onMouseLeave={() => {
-                      if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
-                    }}
-                  >
+                  <div ref={el => {
+                if (el) messageRefs.current.set(message.id, el);
+              }} className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")} onMouseEnter={() => setHoveredMessageId(message.id)} onMouseLeave={() => {
+                if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+              }}>
                     {/* Message Actions - using UniversalMessageActions with Megaphone for announcement channels */}
-                    <UniversalMessageActions
-                      isVisible={
-                        (hoveredMessageId === message.id || openDropdownMessageId === message.id) &&
-                        !isEditing
-                      }
-                      isShiftPressed={isShiftPressed}
-                      isOwnMessage={isOwnMessage}
-                      isPinned={pinnedMessageIds.has(message.id)}
-                      onReply={() => handleReply(message)}
-                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                      onCopyLink={() => handleCopyMessageLink(message.id)}
-                      onCopyId={() => handleCopyId(message.id)}
-                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                      onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
-                      onPin={() => handlePinMessage(message.id)}
-                      onDropdownOpenChange={(open) => {
-                        setOpenDropdownMessageId(open ? message.id : null);
-                        if (!open) setHoveredMessageId(null);
-                      }}
-                      customAction={
-                        isOwnMessage && followers.length > 0 ? (
-                          <Tooltip>
+                    <UniversalMessageActions isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing} isShiftPressed={isShiftPressed} isOwnMessage={isOwnMessage} isPinned={pinnedMessageIds.has(message.id)} onReply={() => handleReply(message)} onAddReaction={emoji => handleAddReaction(message.id, emoji)} onCopyLink={() => handleCopyMessageLink(message.id)} onCopyId={() => handleCopyId(message.id)} onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined} onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined} onPin={() => handlePinMessage(message.id)} onDropdownOpenChange={open => {
+                  setOpenDropdownMessageId(open ? message.id : null);
+                  if (!open) setHoveredMessageId(null);
+                }} customAction={isOwnMessage && followers.length > 0 ? <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
-                                onClick={() => handlePublishMessage(message)}
-                                disabled={publishMessage.isPending}
-                                className="p-1.5 hover:bg-muted rounded transition-colors text-primary"
-                              >
+                              <button onClick={() => handlePublishMessage(message)} disabled={publishMessage.isPending} className="p-1.5 hover:bg-muted rounded transition-colors text-primary">
                                 <StreamlineMegaphone className="w-4 h-4" />
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top">Publier aux abonnés</TooltipContent>
-                          </Tooltip>
-                        ) : undefined
-                      }
-                    />
+                          </Tooltip> : undefined} />
 
-                    {showAuthor ? (
-                      <div className="flex gap-3 items-start">
-                        {isPublishedFromOther ? (
-                          // Published message from another server - show server icon
-                          <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
-                            {(message as any).source_server_icon ? (
-                              <AvatarImage
-                                src={(message as any).source_server_icon}
-                                alt={(message as any).source_server_name}
-                              />
-                            ) : null}
+                    {showAuthor ? <div className="flex gap-3 items-start">
+                        {isPublishedFromOther ?
+                  // Published message from another server - show server icon
+                  <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
+                            {(message as any).source_server_icon ? <AvatarImage src={(message as any).source_server_icon} alt={(message as any).source_server_name} /> : null}
                             <AvatarFallback className="bg-primary text-primary-foreground">
                               {((message as any).source_server_name || "S").charAt(0).toUpperCase()}
                             </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                          </Avatar> : <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                             <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
                               <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
                               <AvatarFallback className="bg-primary/20 text-primary">
                                 {message.author.displayName.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                          </button>
-                        )}
+                          </button>}
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                            {isPublishedFromOther ? (
-                              <>
+                            {isPublishedFromOther ? <>
                                 <span className="font-semibold text-foreground">
                                   {(message as any).source_server_name} #{(message as any).source_channel_name}
                                 </span>
                                 <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0">
                                   SERVEUR
                                 </Badge>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => handleUserClick(message.author)}
-                                className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
-                              >
+                              </> : <button onClick={() => handleUserClick(message.author)} className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0">
                                 {message.author.displayName}
-                              </button>
-                            )}
-                            {!isPublishedFromOther && memberRoles?.get(message.author.id)?.[0]?.icon_url && (
-                              <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
-                            )}
+                              </button>}
+                            {!isPublishedFromOther && memberRoles?.get(message.author.id)?.[0]?.icon_url && <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />}
                             <span className="text-xs text-muted-foreground flex-shrink-0">
                               {formatTime(message.timestamp)}
                             </span>
                           </div>
-                          {isEditing ? (
-                            <div className="mt-1 space-y-2">
-                              <Textarea
-                                ref={(el) => {
-                                  if (el) {
-                                    el.style.height = "auto";
-                                    el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                  }
-                                }}
-                                value={editingContent}
-                                onChange={(e) => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = "auto";
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit();
-                                  }
-                                  if (e.key === "Escape") {
-                                    handleCancelEdit();
-                                  }
-                                }}
-                                autoFocus
-                                className="bg-input min-h-[40px] max-h-[200px] resize-none"
-                                rows={1}
-                              />
+                          {isEditing ? <div className="mt-1 space-y-2">
+                              <Textarea ref={el => {
+                        if (el) {
+                          el.style.height = "auto";
+                          el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                        }
+                      }} value={editingContent} onChange={e => {
+                        setEditingContent(e.target.value);
+                        e.target.style.height = "auto";
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                      }} onKeyDown={e => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSaveEdit();
+                        }
+                        if (e.key === "Escape") {
+                          handleCancelEdit();
+                        }
+                      }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
@@ -758,106 +641,66 @@ export function AnnouncementChannel({
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <>
+                            </div> : <>
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
                               </p>
-                              {message.edited_at && (
-                                <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                              )}
+                              {message.edited_at && <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>}
                               {/* Publish Prompt */}
-                              {showPublishPrompt && (
-                                <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
+                              {showPublishPrompt && <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                   <span className="text-muted-foreground">
                                     Partage ça avec tes abonnés !
                                   </span>
-                                  <button
-                                    onClick={() => handlePublishMessage(message)}
-                                    disabled={publishMessage.isPending}
-                                    className="text-primary hover:underline font-medium"
-                                  >
+                                  <button onClick={() => handlePublishMessage(message)} disabled={publishMessage.isPending} className="text-primary hover:underline font-medium">
                                     {publishMessage.isPending ? "Publication..." : "Publier"}
                                   </button>
-                                  <button
-                                    onClick={() => handleDismissPublish(message.id)}
-                                    className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                                    title="Ne plus afficher"
-                                  >
+                                  <button onClick={() => handleDismissPublish(message.id)} className="ml-auto text-muted-foreground hover:text-foreground transition-colors" title="Ne plus afficher">
                                     <X className="w-4 h-4" />
                                   </button>
-                                </div>
-                              )}
-                            </>
-                          )}
+                                </div>}
+                            </>}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex gap-3">
+                      </div> : <div className="flex gap-3">
                         <span className="w-10 text-[11px] text-muted-foreground/0 group-hover:text-muted-foreground/70 transition-colors text-right flex-shrink-0 pt-0.5 select-none">
                           {formatTime(message.timestamp)}
                         </span>
                         <div className="flex-1 min-w-0">
-                          {isEditing ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={editingContent}
-                                onChange={(e) => setEditingContent(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSaveEdit();
-                                  }
-                                  if (e.key === "Escape") {
-                                    handleCancelEdit();
-                                  }
-                                }}
-                                autoFocus
-                                className="bg-input min-h-[40px] max-h-[200px] resize-none"
-                                rows={1}
-                              />
+                          {isEditing ? <div className="space-y-2">
+                              <Textarea value={editingContent} onChange={e => setEditingContent(e.target.value)} onKeyDown={e => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSaveEdit();
+                        }
+                        if (e.key === "Escape") {
+                          handleCancelEdit();
+                        }
+                      }} autoFocus className="bg-input min-h-[40px] max-h-[200px] resize-none" rows={1} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
                                 <span>Entrée pour sauvegarder</span>
                               </div>
-                            </div>
-                          ) : (
-                            <>
+                            </div> : <>
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
-                                {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
-                                )}
+                                {message.edited_at && <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>}
                               </p>
-                              {showPublishPrompt && (
-                                <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
+                              {showPublishPrompt && <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                   <span className="text-muted-foreground">
                                     Partage ça avec tes abonnés !
                                   </span>
-                                  <button
-                                    onClick={() => handlePublishMessage(message)}
-                                    disabled={publishMessage.isPending}
-                                    className="text-primary hover:underline font-medium"
-                                  >
+                                  <button onClick={() => handlePublishMessage(message)} disabled={publishMessage.isPending} className="text-primary hover:underline font-medium">
                                     {publishMessage.isPending ? "Publication..." : "Publier"}
                                   </button>
-                                  <button
-                                    onClick={() => handleDismissPublish(message.id)}
-                                    className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                                  >
+                                  <button onClick={() => handleDismissPublish(message.id)} className="ml-auto text-muted-foreground hover:text-foreground transition-colors">
                                     <X className="w-4 h-4" />
                                   </button>
-                                </div>
-                              )}
-                            </>
-                          )}
+                                </div>}
+                            </>}
                         </div>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-48">
@@ -878,26 +721,20 @@ export function AnnouncementChannel({
                     <Link className="w-4 h-4 mr-2" />
                     Copier le lien du message
                   </ContextMenuItem>
-                  {isOwnMessage && (
-                    <>
+                  {isOwnMessage && <>
                       <ContextMenuSeparator />
                       <ContextMenuItem onClick={() => handleStartEdit(message)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Modifier
                       </ContextMenuItem>
-                      <ContextMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(message.id)}
-                      >
+                      <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(message.id)}>
                         <Trash2 className="w-4 h-4 mr-2" />
                         Supprimer
                       </ContextMenuItem>
-                    </>
-                  )}
+                    </>}
                 </ContextMenuContent>
-              </ContextMenu>
-            );
-          })}
+              </ContextMenu>;
+        })}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
@@ -905,8 +742,7 @@ export function AnnouncementChannel({
       {/* Input Container */}
       <div className="flex-shrink-0 border-t border-border bg-background w-full">
         <TypingIndicator channelId={channel.id} />
-        {replyingTo && (
-          <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+        {replyingTo && <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
             <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="text-xs text-primary font-medium">
@@ -914,65 +750,26 @@ export function AnnouncementChannel({
               </span>
               <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
             </div>
-            <button
-              onClick={() => setReplyingTo(null)}
-              className="p-1 hover:bg-muted rounded transition-colors"
-            >
+            <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-muted rounded transition-colors">
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
-          </div>
-        )}
-        <MessageInput
-          placeholder={`Envoyer un message dans #${channel.name}`}
-          value={messageInput}
-          onChange={(value) => {
-            setMessageInput(value);
-            startTyping();
-          }}
-          onSend={handleSubmit}
-          channelId={channel.id}
-          serverId={channel.server_id}
-          members={members}
-          permissionDeniedMessage={permissionDeniedMessage}
-          canAttachFiles={canAttachFiles}
-          canCreatePolls={canCreatePolls}
-          showFollowBar={!canSendMessages}
-          onFollowClick={() => setFollowModalOpen(true)}
-        />
+          </div>}
+        <MessageInput placeholder={`Envoyer un message dans #${channel.name}`} value={messageInput} onChange={value => {
+        setMessageInput(value);
+        startTyping();
+      }} onSend={handleSubmit} channelId={channel.id} serverId={channel.server_id} members={members} permissionDeniedMessage={permissionDeniedMessage} canAttachFiles={canAttachFiles} canCreatePolls={canCreatePolls} showFollowBar={!canSendMessages} onFollowClick={() => setFollowModalOpen(true)} />
       </div>
 
       {/* User Profile Popup */}
-      {selectedUser && (
-        <UserProfilePopup
-          user={selectedUser.user}
-          roles={selectedUser.roles}
-          open={!!selectedUser}
-          onOpenChange={(open) => !open && setSelectedUser(null)}
-        />
-      )}
+      {selectedUser && <UserProfilePopup user={selectedUser.user} roles={selectedUser.roles} open={!!selectedUser} onOpenChange={open => !open && setSelectedUser(null)} />}
 
       {/* Follow Modal */}
-      <FollowChannelModal
-        open={followModalOpen}
-        onClose={() => setFollowModalOpen(false)}
-        sourceChannelId={channel.id}
-        sourceChannelName={channel.name}
-        sourceServerName={serverName}
-        sourceServerIcon={serverIcon}
-        onSuccess={handleFollowSuccess}
-      />
+      <FollowChannelModal open={followModalOpen} onClose={() => setFollowModalOpen(false)} sourceChannelId={channel.id} sourceChannelName={channel.name} sourceServerName={serverName} sourceServerIcon={serverIcon} onSuccess={handleFollowSuccess} />
 
       {/* Follow Success Modal */}
       <FollowSuccessModal open={followSuccessOpen} onClose={() => setFollowSuccessOpen(false)} />
 
       {/* Channel Settings Modal */}
-      {channelSettingsId && (
-        <ChannelSettingsModal
-          channelId={channelSettingsId}
-          serverId={channel.server_id}
-          onClose={() => setChannelSettingsId(null)}
-        />
-      )}
-    </div>
-  );
+      {channelSettingsId && <ChannelSettingsModal channelId={channelSettingsId} serverId={channel.server_id} onClose={() => setChannelSettingsId(null)} />}
+    </div>;
 }

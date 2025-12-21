@@ -68,7 +68,7 @@ export function DMUserInfoPanel({
         </div>
 
         {/* Divider */}
-        <div className="mx-4 h-px bg-border" />
+        
 
         {/* Bio Section */}
         <div className="px-4 py-3">
@@ -93,7 +93,7 @@ export function DMUserInfoPanel({
 
         {/* Mutual Servers */}
         {mutualServers.length > 0 && <>
-            <div className="mx-4 h-px bg-border" />
+            
             <div className="px-4 py-3">
               <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
                 <CollapsibleTrigger asChild>

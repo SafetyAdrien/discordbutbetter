@@ -43,6 +43,7 @@ export function DMUserInfoPanel({
   onOpenNotes
 }: DMUserInfoPanelProps) {
   const [serversOpen, setServersOpen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const {
     data: mutualServers = []
   } = useMutualServers(participant.id);
@@ -51,7 +52,11 @@ export function DMUserInfoPanel({
     locale: fr
   }) : null;
   const hasNote = userNote?.content && userNote.content.trim().length > 0;
-  return <div className="w-72 border-l border-border bg-card flex flex-col shrink-0">
+  return <div 
+    className="w-72 border-l border-border bg-card flex flex-col shrink-0"
+    onMouseEnter={() => setIsHovering(true)}
+    onMouseLeave={() => setIsHovering(false)}
+  >
       <ScrollArea className="flex-1">
         {/* Banner */}
         <div className="h-24 relative" style={{
@@ -83,8 +88,9 @@ export function DMUserInfoPanel({
                 <button
                   onClick={onOpenNotes}
                   className={cn(
-                    "p-1 rounded hover:bg-muted/50 transition-colors",
-                    hasNote && "text-primary"
+                    "p-1 rounded hover:bg-muted/50",
+                    hasNote && "text-primary",
+                    !isHovering && "invisible"
                   )}
                 >
                   <NoteAddIcon className="w-4 h-4" />

@@ -1,26 +1,9 @@
 /* @refresh reset */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
-export interface VoiceParticipant {
-  id: string;
-  user_id: string;
-  channel_id: string;
-  muted: boolean;
-  deafened: boolean;
-  camera: boolean;
-  streaming: boolean;
-  joined_at: string;
-  profile: {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-  };
-}
 
 export interface VoiceState {
   channelId: string | null;
@@ -30,16 +13,18 @@ export interface VoiceState {
   isDeafened: boolean;
 }
 
+const initialVoiceState: VoiceState = {
+  channelId: null,
+  channelName: null,
+  serverName: null,
+  isMuted: false,
+  isDeafened: false,
+};
+
 export function useVoiceState() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [voiceState, setVoiceState] = useState<VoiceState>({
-    channelId: null,
-    channelName: null,
-    serverName: null,
-    isMuted: false,
-    isDeafened: false,
-  });
+  const [voiceState, setVoiceState] = useState<VoiceState>(initialVoiceState);
 
   // Fetch current user's voice state
   const { data: currentVoiceState } = useQuery({
@@ -66,6 +51,7 @@ export function useVoiceState() {
       return data;
     },
     enabled: !!user,
+    staleTime: 0,
   });
 
   // Update local state when DB state changes
@@ -79,13 +65,7 @@ export function useVoiceState() {
         isDeafened: currentVoiceState.deafened || false,
       });
     } else {
-      setVoiceState({
-        channelId: null,
-        channelName: null,
-        serverName: null,
-        isMuted: false,
-        isDeafened: false,
-      });
+      setVoiceState(initialVoiceState);
     }
   }, [currentVoiceState]);
 
@@ -143,13 +123,7 @@ export function useVoiceState() {
     },
     onSuccess: () => {
       const prevChannelName = voiceState.channelName;
-      setVoiceState({
-        channelId: null,
-        channelName: null,
-        serverName: null,
-        isMuted: false,
-        isDeafened: false,
-      });
+      setVoiceState(initialVoiceState);
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
       queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
       toast.success(`Déconnecté de ${prevChannelName}`);
@@ -211,67 +185,4 @@ export function useVoiceState() {
     toggleDeafen,
     isConnected: !!voiceState.channelId,
   };
-}
-
-export function useVoiceParticipants(channelId: string | null) {
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ['voice-participants', channelId],
-    queryFn: async (): Promise<VoiceParticipant[]> => {
-      if (!channelId) return [];
-
-      const { data, error } = await supabase
-        .from('voice_states')
-        .select(`
-          *,
-          profile:profiles!voice_states_user_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq('channel_id', channelId);
-
-      if (error) throw error;
-      return (data || []).map(vs => ({
-        ...vs,
-        muted: vs.muted || false,
-        deafened: vs.deafened || false,
-        camera: vs.camera || false,
-        streaming: vs.streaming || false,
-        joined_at: vs.joined_at || new Date().toISOString(),
-        profile: vs.profile as VoiceParticipant['profile'],
-      }));
-    },
-    enabled: !!channelId,
-  });
-
-  // Real-time subscription
-  useEffect(() => {
-    if (!channelId) return;
-
-    const channel = supabase
-      .channel(`voice-participants:${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'voice_states',
-          filter: `channel_id=eq.${channelId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [channelId, queryClient]);
-
-  return query;
 }

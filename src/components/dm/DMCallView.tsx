@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2, Signal, SignalLow, SignalMedium } from 'lucide-react';
 import { DMCall } from '@/hooks/useDMCalls';
+import { useDMCallWebRTC } from '@/hooks/useDMCallWebRTC';
 import { cn } from '@/lib/utils';
 
 interface DMCallViewProps {
@@ -14,12 +15,49 @@ interface DMCallViewProps {
     avatar_url: string | null;
   } | null;
   onEndCall: () => void;
+  isInitiator: boolean;
 }
 
-export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(call.call_type !== 'video');
+export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCallViewProps) {
   const [duration, setDuration] = useState(0);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+
+  const {
+    isConnected,
+    isConnecting,
+    isMuted,
+    isVideoOff,
+    audioLevel,
+    remoteVideoStream,
+    localVideoStream,
+    connectionStats,
+    connect,
+    disconnect,
+    toggleMute,
+    toggleVideo,
+  } = useDMCallWebRTC();
+
+  // Connect when call becomes active
+  useEffect(() => {
+    if (call.status === 'active' && participant && !isConnected && !isConnecting) {
+      connect(call.id, participant.id, isInitiator);
+    }
+  }, [call.status, call.id, participant, isConnected, isConnecting, isInitiator, connect]);
+
+  // Handle local video stream
+  useEffect(() => {
+    if (localVideoRef.current && localVideoStream) {
+      localVideoRef.current.srcObject = localVideoStream;
+    }
+  }, [localVideoStream]);
+
+  // Handle remote video stream
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteVideoStream) {
+      remoteVideoRef.current.srcObject = remoteVideoStream;
+    }
+  }, [remoteVideoStream]);
 
   // Track call duration
   useEffect(() => {
@@ -34,6 +72,18 @@ export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
     return () => clearInterval(interval);
   }, [call.status, call.started_at]);
 
+  // Cleanup on unmount or call end
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, [disconnect]);
+
+  const handleEndCall = () => {
+    disconnect();
+    onEndCall();
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -41,6 +91,17 @@ export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
   };
 
   const displayName = participant?.display_name || 'Utilisateur';
+
+  // Connection quality indicator
+  const getConnectionQuality = () => {
+    if (!connectionStats) return null;
+    const latency = connectionStats.latency || 0;
+    if (latency < 100) return { icon: Signal, color: 'text-[hsl(var(--online))]', label: 'Excellent' };
+    if (latency < 200) return { icon: SignalMedium, color: 'text-yellow-500', label: 'Bon' };
+    return { icon: SignalLow, color: 'text-destructive', label: 'Faible' };
+  };
+
+  const quality = getConnectionQuality();
 
   return (
     <div className="absolute inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col">
@@ -56,30 +117,73 @@ export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
           <div>
             <p className="font-medium text-sm">{displayName}</p>
             <p className="text-xs text-muted-foreground">
-              {call.status === 'active' ? formatDuration(duration) : 'Connexion...'}
+              {isConnecting && 'Connexion...'}
+              {isConnected && call.status === 'active' && formatDuration(duration)}
+              {!isConnected && !isConnecting && call.status === 'ringing' && 'Appel en cours...'}
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon">
-          <Maximize2 className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {quality && (
+            <div className={cn("flex items-center gap-1 text-xs", quality.color)}>
+              <quality.icon className="w-4 h-4" />
+              <span>{quality.label}</span>
+            </div>
+          )}
+          <Button variant="ghost" size="icon">
+            <Maximize2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <Avatar className="w-32 h-32 mx-auto mb-6 ring-4 ring-primary/20">
-            <AvatarImage src={participant?.avatar_url || undefined} />
-            <AvatarFallback className="text-4xl bg-primary/20 text-primary">
-              {displayName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <h2 className="text-xl font-semibold mb-2">{displayName}</h2>
-          <p className="text-muted-foreground">
-            {call.status === 'ringing' && 'Appel en cours...'}
-            {call.status === 'active' && formatDuration(duration)}
-          </p>
-        </div>
+      <div className="flex-1 flex items-center justify-center p-8 relative">
+        {/* Remote Video (if video call) */}
+        {remoteVideoStream && (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+
+        {/* Local Video (Picture in Picture) */}
+        {localVideoStream && (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute bottom-24 right-4 w-32 h-24 rounded-lg object-cover border-2 border-border shadow-lg z-10"
+          />
+        )}
+
+        {/* Avatar display when no video */}
+        {!remoteVideoStream && (
+          <div className="text-center">
+            <div className="relative">
+              <Avatar className={cn(
+                "w-32 h-32 mx-auto mb-6 ring-4 transition-all duration-200",
+                audioLevel > 0.05 ? "ring-[hsl(var(--online))]" : "ring-primary/20"
+              )}>
+                <AvatarImage src={participant?.avatar_url || undefined} />
+                <AvatarFallback className="text-4xl bg-primary/20 text-primary">
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {isConnected && (
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[hsl(var(--online))] border-2 border-background" />
+              )}
+            </div>
+            <h2 className="text-xl font-semibold mb-2">{displayName}</h2>
+            <p className="text-muted-foreground">
+              {isConnecting && 'Connexion en cours...'}
+              {isConnected && call.status === 'active' && formatDuration(duration)}
+              {!isConnected && !isConnecting && call.status === 'ringing' && 'Appel en cours...'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Controls */}
@@ -88,7 +192,7 @@ export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
           variant={isMuted ? 'destructive' : 'secondary'}
           size="lg"
           className="rounded-full w-14 h-14"
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={toggleMute}
         >
           {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
         </Button>
@@ -98,7 +202,7 @@ export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
             variant={isVideoOff ? 'destructive' : 'secondary'}
             size="lg"
             className="rounded-full w-14 h-14"
-            onClick={() => setIsVideoOff(!isVideoOff)}
+            onClick={toggleVideo}
           >
             {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
           </Button>
@@ -108,7 +212,7 @@ export function DMCallView({ call, participant, onEndCall }: DMCallViewProps) {
           variant="destructive"
           size="lg"
           className="rounded-full w-14 h-14"
-          onClick={onEndCall}
+          onClick={handleEndCall}
         >
           <PhoneOff className="w-6 h-6" />
         </Button>

@@ -18,6 +18,7 @@ import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
 import { ChannelDangerZone } from './ChannelDangerZone';
 import { useChannelDetails } from '@/hooks/useChannelSettings';
+import { ChannelType } from '@/constants/permissions';
 
 interface ChannelSettingsModalProps {
   channelId: string;
@@ -70,7 +71,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
               </TabsContent>
 
               <TabsContent value="permissions" className="mt-0">
-                <ChannelPermissions channelId={channelId} serverId={serverId} />
+                <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
               </TabsContent>
 
               <TabsContent value="integrations" className="mt-0">

@@ -967,12 +967,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full">
-        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
-          {/* Spacer to push content to bottom when few messages */}
-          <div className="flex-1" />
-
-          {/* Welcome message - positioned at bottom */}
-          <div className="mb-6 animate-fade-in">
+        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+          {/* Welcome message */}
+          <div className="mb-8 animate-fade-in">
             <div className="mb-4">
               <StreamlineHash size={64} className="text-muted-foreground" />
             </div>

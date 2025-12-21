@@ -7,7 +7,7 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useServerRoles } from '@/hooks/useRoles';
 import { useMembers } from '@/hooks/useMembers';
-import { X, Hash } from 'lucide-react';
+import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageInput } from '@/components/chat/MessageInput';
@@ -113,20 +113,16 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-3">
-        <div className="flex flex-col min-h-full space-y-0.5">
-          {/* Spacer to push content to bottom */}
-          <div className="flex-1" />
-
-          {/* Welcome message - positioned at bottom */}
-          <div className="mb-4 animate-fade-in">
-            <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center mb-3">
-              <Hash className="w-5 h-5 text-primary-foreground" />
+        <div className="space-y-0.5">
+          {messages.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">Aucun message</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Commencez la conversation !
+              </p>
             </div>
-            <h2 className="text-xl font-display font-bold mb-1">Bienvenue dans #{channelName} !</h2>
-            <p className="text-sm text-muted-foreground">C'est le début du salon #{channelName}.</p>
-          </div>
-
-          {messages.map((message) => (
+          ) : (
+            messages.map((message) => (
               <div key={message.id} className="group">
                 <div className="flex items-start gap-2">
                   <Avatar className="w-7 h-7 flex-shrink-0">
@@ -153,7 +149,8 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>

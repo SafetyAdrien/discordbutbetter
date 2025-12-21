@@ -143,7 +143,7 @@ export function DMUserInfoPanel({ participant, onViewFullProfile }: DMUserInfoPa
       </ScrollArea>
 
       {/* View Full Profile Link - Fixed at bottom */}
-      <div className="border-t border-border px-4 py-3 shrink-0">
+      <div className="border-t border-border px-4 py-3 shrink-0 flex items-center justify-center">
         <button
           onClick={onViewFullProfile}
           className="text-sm text-primary hover:underline cursor-pointer"

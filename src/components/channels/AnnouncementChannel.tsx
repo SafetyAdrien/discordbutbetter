@@ -72,6 +72,7 @@ import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
+import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 
 interface Role {
   id: string;
@@ -220,6 +221,7 @@ export function AnnouncementChannel({
     'mention_everyone',
     'create_public_threads',
     'manage_messages',
+    'manage_channels',
   ]);
 
   // Short-circuit for owners/admins - they always have permissions
@@ -228,6 +230,10 @@ export function AnnouncementChannel({
   const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
   const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
   const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
+  const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
+  
+  // State for channel settings modal
+  const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
   // Only show permission denied if not admin/owner AND permissions loaded AND no send_messages
   const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
@@ -549,8 +555,11 @@ export function AnnouncementChannel({
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full">
-        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
-          {/* Welcome message */}
+        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+          {/* Spacer to push content to bottom */}
+          <div className="flex-1" />
+          
+          {/* Welcome message - anchored at bottom like Discord */}
           <div className="mb-8 animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
               <Hash className="w-8 h-8 text-primary-foreground" />
@@ -559,6 +568,17 @@ export function AnnouncementChannel({
             <p className="text-muted-foreground">
               C'est le début du salon #{channel.name}.
             </p>
+            {canManageChannels && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4"
+                onClick={() => setChannelSettingsId(channel.id)}
+              >
+                <Pencil className="w-3 h-3 mr-1.5" />
+                Edit Channel
+              </Button>
+            )}
           </div>
 
           {/* Date Separator */}
@@ -944,6 +964,15 @@ export function AnnouncementChannel({
 
       {/* Follow Success Modal */}
       <FollowSuccessModal open={followSuccessOpen} onClose={() => setFollowSuccessOpen(false)} />
+
+      {/* Channel Settings Modal */}
+      {channelSettingsId && (
+        <ChannelSettingsModal
+          channelId={channelSettingsId}
+          serverId={channel.server_id}
+          onClose={() => setChannelSettingsId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -85,6 +85,7 @@ import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAtta
 import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageAttachments";
 import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
+import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -473,6 +474,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     'mention_everyone',
     'create_public_threads',
     'manage_messages',
+    'manage_channels',
   ]);
   
   // Short-circuit for owners/admins - they always have permissions
@@ -483,6 +485,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const canMentionEveryone = isAdminOrOwner || canPerm('mention_everyone');
   const canCreateThreads = isAdminOrOwner || canPerm('create_public_threads');
   const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
+  const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
+  
+  // State for channel settings modal
+  const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
   // Only show permission denied if:
   // 1. Not an admin/owner AND
@@ -967,14 +973,28 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full">
-        <div className="flex flex-col justify-end min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
-          {/* Welcome message */}
+        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+          {/* Spacer to push content to bottom */}
+          <div className="flex-1" />
+          
+          {/* Welcome message - anchored at bottom like Discord */}
           <div className="mb-8 animate-fade-in">
             <div className="mb-4">
               <StreamlineHash size={64} className="text-muted-foreground" />
             </div>
             <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
+            {canManageChannels && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4"
+                onClick={() => setChannelSettingsId(channel.id)}
+              >
+                <Pencil className="w-3 h-3 mr-1.5" />
+                Edit Channel
+              </Button>
+            )}
           </div>
 
           {/* Date Separator */}
@@ -1600,6 +1620,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           setReportingMessage(null);
         }}
       />
+
+      {/* Channel Settings Modal */}
+      {channelSettingsId && (
+        <ChannelSettingsModal
+          channelId={channelSettingsId}
+          serverId={channel.server_id}
+          onClose={() => setChannelSettingsId(null)}
+        />
+      )}
     </div>
   );
 });

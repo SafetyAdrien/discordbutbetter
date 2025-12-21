@@ -11,6 +11,22 @@ import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageInput } from '@/components/chat/MessageInput';
+
+function formatDate(date: Date): string {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) {
+    return "Aujourd'hui";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return "Hier";
+  }
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 
@@ -122,8 +138,25 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
               </p>
             </div>
           ) : (
-            messages.map((message) => (
-              <div key={message.id} className="group">
+            messages.map((message, idx) => {
+              const currentDate = message.created_at ? new Date(message.created_at) : new Date();
+              const prevMessage = idx > 0 ? messages[idx - 1] : null;
+              const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;
+              const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
+              
+              return (
+                <div key={message.id}>
+                  {/* Date Separator */}
+                  {showDateSeparator && (
+                    <div className="flex items-center gap-4 my-2">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {formatDate(currentDate)}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+                  <div className="group">
                 <div className="flex items-start gap-2">
                   <Avatar className="w-7 h-7 flex-shrink-0">
                     <AvatarImage src={message.author?.avatar_url || undefined} />
@@ -149,7 +182,9 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                   </div>
                 </div>
               </div>
-            ))
+              </div>
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>

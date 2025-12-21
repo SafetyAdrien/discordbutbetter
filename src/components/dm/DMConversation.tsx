@@ -40,6 +40,22 @@ const statusColors: Record<string, string> = {
   offline: 'bg-gray-500',
 };
 
+function formatDate(date: Date): string {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) {
+    return "Aujourd'hui";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return "Hier";
+  }
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export interface DMConversationProps {
   conversationId: string;
   onBack?: () => void;
@@ -312,6 +328,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           ) : (
             <>
               {messages.map((message, idx) => {
+                const currentDate = message.created_at ? new Date(message.created_at) : new Date();
+                const prevMessage = idx > 0 ? messages[idx - 1] : null;
+                const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;
+                const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
+                
                 const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
                 const isOwnMessage = user?.id === message.author?.id;
                 const timestamp = message.created_at
@@ -319,7 +340,18 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                   : '';
 
                 return (
-                  <UniversalMessageContextMenu
+                  <div key={message.id}>
+                    {/* Date Separator */}
+                    {showDateSeparator && (
+                      <div className="flex items-center gap-4 my-2">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {formatDate(currentDate)}
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+                    <UniversalMessageContextMenu
                     key={message.id}
                     isOwnMessage={isOwnMessage}
                     messageId={message.id}
@@ -459,6 +491,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       </div>
                     </div>
                   </UniversalMessageContextMenu>
+                  </div>
                 );
               })}
               <div ref={messagesEndRef} />

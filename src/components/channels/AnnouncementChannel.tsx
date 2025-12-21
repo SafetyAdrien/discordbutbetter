@@ -581,20 +581,12 @@ export function AnnouncementChannel({
             )}
           </div>
 
-          {/* Date Separator */}
-          {messages.length > 0 && (
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground font-medium">
-                {formatDate(messages[0]?.timestamp || new Date())}
-              </span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-          )}
-
-          {/* Messages */}
+          {/* Messages with dynamic date separators */}
           {messages.map((message, index) => {
+            const currentDate = message.timestamp;
             const prevMessage = index > 0 ? messages[index - 1] : null;
+            const showDateSeparator = !prevMessage || currentDate.toDateString() !== prevMessage.timestamp.toDateString();
+            
             const showAuthor =
               !prevMessage ||
               prevMessage.author.id !== message.author.id ||
@@ -613,8 +605,19 @@ export function AnnouncementChannel({
               !(message as any).is_published_message;
 
             return (
-              <ContextMenu key={message.id}>
-                <ContextMenuTrigger asChild>
+              <div key={message.id}>
+                {/* Date Separator */}
+                {showDateSeparator && (
+                  <div className="flex items-center gap-4 my-2">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {formatDate(currentDate)}
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                )}
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
                   <div
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
@@ -896,6 +899,7 @@ export function AnnouncementChannel({
                   )}
                 </ContextMenuContent>
               </ContextMenu>
+              </div>
             );
           })}
           <div ref={messagesEndRef} />

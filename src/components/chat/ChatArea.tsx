@@ -997,23 +997,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             )}
           </div>
 
-          {/* Date Separator - only show when there are messages */}
-          {timelineItems.length > 0 && (
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground font-medium">
-                {formatDate(timelineItems[0]?.timestamp || new Date())}
-              </span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-          )}
-
-          {/* Timeline Items (Messages + Polls) */}
+          {/* Timeline Items (Messages + Polls) with dynamic date separators */}
           {timelineItems.map((item, index) => {
+            const currentDate = item.timestamp;
+            const prevItem = index > 0 ? timelineItems[index - 1] : null;
+            const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
+            
+            const DateSeparator = showDateSeparator ? (
+              <div className="flex items-center gap-4 my-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">
+                  {formatDate(currentDate)}
+                </span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            ) : null;
+            
             // Render Poll
             if (item.type === "poll") {
               const poll = item.data as Poll;
-              const prevItem = index > 0 ? timelineItems[index - 1] : null;
               const showAuthor =
                 !prevItem ||
                 prevItem.type !== "poll" ||
@@ -1021,8 +1023,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
               const isOwnPoll = user?.id === poll.author_id;
               return (
-                <ContextMenu key={`poll-${poll.id}`}>
-                  <ContextMenuTrigger asChild>
+                <div key={`poll-${poll.id}`}>
+                  {DateSeparator}
+                  <ContextMenu>
+                    <ContextMenuTrigger asChild>
                     <div
                       className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")}
                       onMouseEnter={() => setHoveredPollId(poll.id)}
@@ -1106,12 +1110,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     )}
                   </ContextMenuContent>
                 </ContextMenu>
+                </div>
               );
             }
 
             // Render Message
             const message = item.data as Message;
-            const prevItem = index > 0 ? timelineItems[index - 1] : null;
             const showAuthor =
               !prevItem ||
               prevItem.type !== "message" ||
@@ -1120,8 +1124,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const isOwnMessage = user?.id === message.author.id;
             const isEditing = editingMessageId === message.id;
             return (
-              <ContextMenu key={message.id}>
-                <ContextMenuTrigger asChild>
+              <div key={`msg-${message.id}`}>
+                {DateSeparator}
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
                   <div
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
@@ -1536,6 +1542,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   )}
                 </ContextMenuContent>
               </ContextMenu>
+              </div>
             );
           })}
           <div ref={messagesEndRef} />

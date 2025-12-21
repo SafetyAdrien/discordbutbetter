@@ -94,30 +94,23 @@ export function useMembers(serverId: string | null) {
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
-  const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const membersChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const rolesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Real-time subscription for member changes (join/leave/kick/ban) and role changes
+  // Real-time subscription for server_members changes (join/leave/kick/ban)
   useEffect(() => {
     if (!serverId || !user) return;
 
-    // Clear any existing retry timeout
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
+    // Clean up existing subscription
+    if (membersChannelRef.current) {
+      supabase.removeChannel(membersChannelRef.current);
+      membersChannelRef.current = null;
     }
 
-    // Clean up existing subscription before creating a new one
-    if (subscriptionRef.current) {
-      supabase.removeChannel(subscriptionRef.current);
-      subscriptionRef.current = null;
-    }
+    const channelName = `server-members:${serverId}`;
 
-    // Use stable channel name (no timestamp) to avoid "mismatch" errors
-    const channelName = `members-realtime:${serverId}`;
-
-    subscriptionRef.current = supabase
+    membersChannelRef.current = supabase
       .channel(channelName)
-      // Listen for all server_members changes - consolidated to avoid mismatch errors
       .on(
         'postgres_changes',
         {
@@ -127,23 +120,52 @@ export function useMembers(serverId: string | null) {
         },
         (payload) => {
           const record = (payload.new || payload.old) as { id: string; server_id: string } | null;
-          // Filter client-side
           if (!record || record.server_id !== serverId) return;
           
           if (payload.eventType === 'DELETE') {
-            console.log(`[useMembers] Member left server ${serverId}:`, record.id);
             queryClient.setQueryData<MemberWithProfile[]>(
               ['members', serverId],
               (old) => old?.filter((member) => member.id !== record.id) || []
             );
           } else if (payload.eventType === 'INSERT') {
-            console.log(`[useMembers] New member joined server ${serverId}:`, record.id);
-            // Force immediate refetch to get full member data with profile
             queryClient.refetchQueries({ queryKey: ['members', serverId] });
           }
         }
       )
-      // Listen for all member_roles changes - consolidated to avoid mismatch errors
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          setHasRealtimeError(false);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setHasRealtimeError(true);
+        }
+      });
+
+    return () => {
+      if (membersChannelRef.current) {
+        supabase.removeChannel(membersChannelRef.current);
+        membersChannelRef.current = null;
+      }
+    };
+  }, [serverId, user, queryClient]);
+
+  // Separate real-time subscription for member_roles changes
+  useEffect(() => {
+    if (!serverId || !user) return;
+
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+
+    if (rolesChannelRef.current) {
+      supabase.removeChannel(rolesChannelRef.current);
+      rolesChannelRef.current = null;
+    }
+
+    const channelName = `member-roles-for-members:${serverId}`;
+
+    rolesChannelRef.current = supabase
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -152,13 +174,11 @@ export function useMembers(serverId: string | null) {
           table: 'member_roles',
         },
         async (payload) => {
-          // Skip if a local mutation is in progress to avoid flickering
           if (membersMutationLockRef.current) return;
 
           if (payload.eventType === 'INSERT') {
             const inserted = payload.new as { member_id: string; role_id: string };
             
-            // Fetch role details for the newly assigned role
             const { data: roleData } = await supabase
               .from('roles')
               .select('id, name, color, icon_url, position, description')
@@ -200,19 +220,10 @@ export function useMembers(serverId: string | null) {
         }
       )
       .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`[useMembers] ✅ Real-time subscription active for server ${serverId}`);
-          setHasRealtimeError(false);
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error(`[useMembers] ❌ Real-time subscription error for server ${serverId}:`, err);
-          setHasRealtimeError(true);
-          // Retry refetch after 2 seconds on error
+        if (status === 'CHANNEL_ERROR') {
           retryTimeoutRef.current = setTimeout(() => {
             queryClient.refetchQueries({ queryKey: ['members', serverId] });
           }, 2000);
-        } else if (status === 'TIMED_OUT') {
-          console.warn(`[useMembers] ⏱️ Subscription timed out for server ${serverId}`);
-          setHasRealtimeError(true);
         }
       });
 
@@ -220,9 +231,9 @@ export function useMembers(serverId: string | null) {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
+      if (rolesChannelRef.current) {
+        supabase.removeChannel(rolesChannelRef.current);
+        rolesChannelRef.current = null;
       }
     };
   }, [serverId, user, queryClient]);

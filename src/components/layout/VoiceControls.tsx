@@ -35,15 +35,15 @@ export function VoiceControls({
   } = useVoice();
 
   return (
-    <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
+    <div className="px-2 py-2 bg-[#232428] border-t border-[#1E1F22]">
       {/* Connection Info */}
       <div className="flex items-center gap-2 mb-2 px-1">
         <VoiceConnectionIndicator stats={connectionStats} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-[hsl(var(--online))]">
+          <p className="text-xs font-semibold text-[#23A559]">
             Connecté
           </p>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs text-[#949BA4] truncate">
             {channelName}{serverName && ` / ${serverName}`}
           </p>
         </div>
@@ -73,9 +73,9 @@ export function VoiceControls({
       {/* Audio Level Bar */}
       {hasMicrophoneAccess && !isMuted && (
         <div className="mb-2 px-1">
-          <div className="h-1 bg-muted rounded-full overflow-hidden">
+          <div className="h-1 bg-[#1E1F22] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[hsl(var(--online))] transition-all duration-75"
+              className="h-full bg-[#23A559] transition-all duration-75"
               style={{ width: `${Math.min(localAudioLevel * 100, 100)}%` }}
             />
           </div>

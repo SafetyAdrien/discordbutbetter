@@ -68,10 +68,10 @@ interface MemberListProps {
   serverRoles?: Role[];
 }
 const statusColors: Record<string, string> = {
-  online: "bg-[hsl(var(--online))]",
-  idle: "bg-[hsl(var(--idle))]",
-  dnd: "bg-[hsl(var(--dnd))]",
-  offline: "bg-[hsl(var(--offline))]",
+  online: "bg-[#23A559]",
+  idle: "bg-[#F0B232]",
+  dnd: "bg-[#DA373C]",
+  offline: "bg-[#80848E]",
 };
 const activityIcons: Record<string, React.ElementType> = {
   playing: Gamepad2,
@@ -491,32 +491,36 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 memberId,
               })
             }
-            className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
+            className="flex items-center gap-3 w-full px-2 py-1 rounded hover:bg-[#35373C] transition-colors group"
           >
             <div className="relative flex-shrink-0">
-              <Avatar className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}>
-                <AvatarImage src={member.avatar} alt={member.displayName} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {member.displayName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div
-                className={cn(
-                  "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
-                  statusColors[member.status],
-                )}
-              />
+              {/* Avatar with status cutout mask */}
+              <div className="relative">
+                <Avatar className={cn("w-8 h-8", member.status === "offline" && "opacity-40")}>
+                  <AvatarImage src={member.avatar} alt={member.displayName} />
+                  <AvatarFallback className="bg-[#5865F2] text-white text-sm">
+                    {member.displayName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {/* Status indicator with cutout effect */}
+                <div
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 w-[14px] h-[14px] rounded-full border-[3px] border-[#2B2D31]",
+                    statusColors[member.status],
+                  )}
+                />
+              </div>
             </div>
 
             <div className="flex-1 min-w-0 text-left overflow-hidden">
               <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                 <span
                   className={cn(
-                    "text-sm font-medium truncate block flex-1 min-w-0",
-                    member.status === "offline" && "opacity-60",
+                    "text-[15px] font-medium truncate block flex-1 min-w-0",
+                    member.status === "offline" && "opacity-50",
                   )}
                   style={{
-                    color: member.roles?.[0]?.color || undefined,
+                    color: member.roles?.[0]?.color || '#949BA4',
                   }}
                 >
                   {member.displayName}
@@ -647,7 +651,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
           {groupedMembers.map((group, index) => (
             <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-4">
-              <h3 className="px-2 py-1 text-xs font-semibold capitalize tracking-wide flex items-center gap-1.5 text-muted-foreground">
+              <h3 className="px-2 py-1.5 text-[12px] font-semibold uppercase tracking-wide flex items-center gap-1.5 text-[#949BA4]">
                 {group.role?.icon_url && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -664,10 +668,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                     </TooltipContent>
                   </Tooltip>
                 )}
-                <span className="text-xs font-semibold text-muted-foreground capitalize tracking-wide">
-                  {group.isOffline ? "Hors ligne" : group.role?.name || "En ligne"}
+                <span>
+                  {group.isOffline ? "HORS LIGNE" : group.role?.name?.toUpperCase() || "EN LIGNE"}
                 </span>
-                <span> — {group.members.length}</span>
+                <span className="text-[#949BA4]">— {group.members.length}</span>
               </h3>
               <div className="space-y-0.5">{group.members.map(renderMember)}</div>
             </div>

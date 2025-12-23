@@ -8,7 +8,7 @@ import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from 
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
 
 interface MessageInputProps {
   value: string;
@@ -89,7 +89,6 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
@@ -122,17 +121,23 @@ export function MessageInput({
     adjustTextareaHeight();
   }, [value, adjustTextareaHeight]);
 
-  // Ctrl+P keyboard shortcut for markdown preview toggle
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        setShowPreview(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Detect markdown syntax for dynamic preview
+  const hasMarkdownSyntax = (text: string): boolean => {
+    if (!text.trim()) return false;
+    const markdownPatterns = [
+      /\*\*[^*]+\*\*/,      // **bold**
+      /\*[^*]+\*/,          // *italic*
+      /~~[^~]+~~/,          // ~~strikethrough~~
+      /`[^`]+`/,            // `inline code`
+      /```[\s\S]*```/,      // code blocks
+      /\[.+\]\(.+\)/,       // [links](url)
+      /^>\s/m,              // > blockquotes
+      /^#{1,6}\s/m,         // # headings
+    ];
+    return markdownPatterns.some(pattern => pattern.test(text));
+  };
+
+  const showPreview = hasMarkdownSyntax(value);
 
   // Handle file input change
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -512,14 +517,6 @@ export function MessageInput({
                 </button>
               }
             />
-            <button
-              type="button"
-              onClick={() => setShowPreview(!showPreview)}
-              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
-              title={showPreview ? "Masquer l'aperçu (Ctrl+P)" : "Aperçu Markdown (Ctrl+P)"}
-            >
-              {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
-            </button>
             {(value.trim() || attachments.length > 0) && (
               <button 
                 type="submit" 

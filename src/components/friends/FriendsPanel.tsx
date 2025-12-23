@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useFriends, useAcceptFriendRequest, useDeclineFriendRequest, useRemoveFriend } from '@/hooks/useFriends';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddFriendModal } from './AddFriendModal';
 import { UserPlus, MessageCircle, Check, X, UserMinus, Search, Users } from 'lucide-react';
 
@@ -16,6 +15,8 @@ const statusColors = {
   offline: 'bg-[hsl(var(--offline))]',
 };
 
+type FriendsTab = 'online' | 'all' | 'pending';
+
 interface FriendsPanelProps {
   onOpenDM: (conversationId: string) => void;
 }
@@ -23,6 +24,10 @@ interface FriendsPanelProps {
 export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<FriendsTab>('online');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   
   const { data: friends = [], isLoading } = useFriends();
   const acceptRequest = useAcceptFriendRequest();
@@ -49,109 +54,186 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
     onOpenDM(result.conversation_id);
   };
 
+  // Handle click outside to close search
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        if (searchExpanded && !searchQuery) {
+          setSearchExpanded(false);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [searchExpanded, searchQuery]);
+
+  // Focus search input when expanded
+  useEffect(() => {
+    if (searchExpanded && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchExpanded]);
+
+  const toggleSearch = () => {
+    if (searchExpanded) {
+      setSearchQuery('');
+      setSearchExpanded(false);
+    } else {
+      setSearchExpanded(true);
+    }
+  };
+
+  // Get current list based on tab
+  const getCurrentList = () => {
+    switch (activeTab) {
+      case 'online':
+        return filteredFriends(onlineFriends);
+      case 'all':
+        return filteredFriends(acceptedFriends);
+      case 'pending':
+        return pendingRequests;
+      default:
+        return [];
+    }
+  };
+
+  const currentList = getCurrentList();
+
   return (
     <div className="flex-1 flex flex-col bg-background">
-      {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border">
-        <Users className="w-5 h-5 text-muted-foreground" />
-        <h2 className="font-semibold">Amis</h2>
-        <Button 
-          size="sm" 
-          onClick={() => setShowAddFriend(true)}
-          className="ml-auto"
+      {/* Header with inline tabs */}
+      <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
+        <Users className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        <h2 className="font-semibold mr-2">Amis</h2>
+        
+        {/* Separator */}
+        <div className="w-px h-5 bg-border mx-1" />
+        
+        {/* Inline tabs */}
+        <button
+          onClick={() => setActiveTab('online')}
+          className={cn(
+            'px-2 py-1 text-sm rounded transition-colors whitespace-nowrap',
+            activeTab === 'online' 
+              ? 'bg-muted text-foreground' 
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          )}
         >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Ajouter
-        </Button>
-      </div>
+          En ligne — {onlineFriends.length}
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('all')}
+          className={cn(
+            'px-2 py-1 text-sm rounded transition-colors whitespace-nowrap',
+            activeTab === 'all' 
+              ? 'bg-muted text-foreground' 
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          )}
+        >
+          Tous — {acceptedFriends.length}
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={cn(
+            'px-2 py-1 text-sm rounded transition-colors whitespace-nowrap relative',
+            activeTab === 'pending' 
+              ? 'bg-muted text-foreground' 
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          )}
+        >
+          En attente
+          {pendingRequests.length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
+              {pendingRequests.length}
+            </span>
+          )}
+        </button>
 
-      {/* Search */}
-      <div className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un ami..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        {/* Right side: Search icon + Add button */}
+        <div className="flex items-center gap-2 ml-auto" ref={searchContainerRef}>
+          {/* Expandable Search */}
+          <div className={cn(
+            'flex items-center transition-all duration-200 ease-out overflow-hidden',
+            searchExpanded ? 'w-48' : 'w-8'
+          )}>
+            {searchExpanded ? (
+              <div className="relative w-full animate-fade-in">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Rechercher..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
+                <button
+                  onClick={toggleSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={toggleSearch}
+              >
+                <Search className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          
+          <Button 
+            size="sm" 
+            onClick={() => setShowAddFriend(true)}
+            className="h-8"
+          >
+            <UserPlus className="w-4 h-4 mr-1.5" />
+            Ajouter
+          </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="online" className="flex-1 flex flex-col">
-        <div className="px-4">
-          <TabsList className="w-full">
-            <TabsTrigger value="online" className="flex-1">
-              En ligne — {onlineFriends.length}
-            </TabsTrigger>
-            <TabsTrigger value="all" className="flex-1">
-              Tous — {acceptedFriends.length}
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="flex-1 relative">
-              En attente
-              {pendingRequests.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                  {pendingRequests.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          <TabsContent value="online" className="m-0 space-y-2">
-            {filteredFriends(onlineFriends).length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun ami en ligne
-              </p>
-            ) : (
-              filteredFriends(onlineFriends).map(friend => (
-                <FriendCard
-                  key={friend.id}
-                  friend={friend}
-                  onMessage={() => handleOpenDM(friend.profile.id)}
-                  onRemove={() => removeFriend.mutate(friend.id)}
-                />
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="all" className="m-0 space-y-2">
-            {filteredFriends(acceptedFriends).length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun ami trouvé
-              </p>
-            ) : (
-              filteredFriends(acceptedFriends).map(friend => (
-                <FriendCard
-                  key={friend.id}
-                  friend={friend}
-                  onMessage={() => handleOpenDM(friend.profile.id)}
-                  onRemove={() => removeFriend.mutate(friend.id)}
-                />
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="pending" className="m-0 space-y-2">
-            {pendingRequests.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucune demande en attente
-              </p>
-            ) : (
-              pendingRequests.map(request => (
+      {/* Friends List */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeTab === 'pending' ? (
+          pendingRequests.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Aucune demande en attente
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {pendingRequests.map(request => (
                 <PendingCard
                   key={request.id}
                   request={request}
                   onAccept={() => acceptRequest.mutate(request.id)}
                   onDecline={() => declineRequest.mutate(request.id)}
                 />
-              ))
-            )}
-          </TabsContent>
-        </div>
-      </Tabs>
+              ))}
+            </div>
+          )
+        ) : currentList.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            {activeTab === 'online' ? 'Aucun ami en ligne' : 'Aucun ami trouvé'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {currentList.map(friend => (
+              <FriendCard
+                key={friend.id}
+                friend={friend}
+                onMessage={() => handleOpenDM(friend.profile.id)}
+                onRemove={() => removeFriend.mutate(friend.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {showAddFriend && (
         <AddFriendModal onClose={() => setShowAddFriend(false)} />

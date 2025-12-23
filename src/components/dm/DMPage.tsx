@@ -12,8 +12,8 @@ import { AccountSettingsModal } from '@/components/account-settings/AccountSetti
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
 import { NewMessageModal } from './NewMessageModal';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile, useBreakpoint } from '@/hooks/use-mobile';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 
 type DMView = 'friends' | 'inbox' | 'conversation';
@@ -34,6 +34,7 @@ export function DMPage({
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
+  const breakpoint = useBreakpoint();
   const unreadCount = useUnreadNotificationsCount();
   const {
     voiceState,
@@ -71,15 +72,22 @@ export function DMPage({
     handleOpenDM(conversationId);
   };
 
+  // Determine sidebar width based on breakpoint
+  const getSidebarWidth = () => {
+    if (breakpoint === 'lg') return 'w-52';
+    return 'w-60';
+  };
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Header - Search button triggers New Message Modal */}
-      <div className="h-12 px-4 flex items-center border-b border-border">
+      <div className="h-12 px-3 lg:px-4 flex items-center border-b border-border">
         <button 
           onClick={() => setShowNewMessageModal(true)}
-          className="w-full px-2 py-1.5 text-sm bg-background rounded text-muted-foreground text-left hover:bg-muted/50 transition-colors focus:outline-none focus:ring-1 focus:ring-primary/50"
+          className="w-full px-2 py-1.5 text-sm bg-background rounded text-muted-foreground text-left hover:bg-muted/50 transition-colors focus:outline-none focus:ring-1 focus:ring-primary/50 truncate"
         >
-          Trouver ou commencer une conversation
+          <span className="lg:hidden">Rechercher...</span>
+          <span className="hidden lg:inline">Trouver ou commencer une conversation</span>
         </button>
       </div>
 
@@ -95,8 +103,8 @@ export function DMPage({
               : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
           )}
         >
-          <Users className="w-5 h-5" />
-          <span className="font-normal">Amis</span>
+          <Users className="w-5 h-5 shrink-0" />
+          <span className="font-normal truncate">Amis</span>
         </button>
 
         {/* Inbox Button - Now second */}
@@ -109,7 +117,7 @@ export function DMPage({
               : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
           )}
         >
-          <div className="relative">
+          <div className="relative shrink-0">
             <Inbox className="w-5 h-5" />
             {unreadCount > 0 && (
               <Badge 
@@ -120,14 +128,14 @@ export function DMPage({
               </Badge>
             )}
           </div>
-          <span className="font-normal">Boîte de réception</span>
+          <span className="font-normal truncate">Boîte de réception</span>
         </button>
       </div>
 
       {/* Separator - Adjusted spacing */}
       <div className="px-2 pt-2 py-[5px]">
         <div className="h-px bg-border mb-2" />
-        <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2">
+        <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2 truncate">
           Messages privés
         </h3>
       </div>
@@ -168,26 +176,29 @@ export function DMPage({
           </SheetContent>
         </Sheet>
       ) : (
-        /* Desktop: Fixed sidebar */
-        <div className="w-60 bg-card flex flex-col border-r border-border">
+        /* Desktop: Fixed sidebar with adaptive width */
+        <div className={cn(
+          "bg-card flex flex-col border-r border-border transition-all duration-200 ease-in-out",
+          getSidebarWidth()
+        )}>
           <SidebarContent />
         </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header with menu button */}
         {isMobile && (
           <div className="h-12 px-3 flex items-center gap-2 border-b border-border bg-card">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 shrink-0"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <span className="font-semibold text-sm">
+            <span className="font-semibold text-sm truncate">
               {currentView === 'inbox' ? 'Boîte de réception' : currentView === 'friends' ? 'Amis' : 'Messages'}
             </span>
           </div>

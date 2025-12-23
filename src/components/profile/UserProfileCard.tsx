@@ -12,10 +12,10 @@ import { uuidToSnowflake } from "@/lib/snowflake";
 import { CustomStatusModal } from "./CustomStatusModal";
 
 const statusColors = {
-  online: "bg-[#23A559]",
-  idle: "bg-[#F0B232]",
-  dnd: "bg-[#DA373C]",
-  offline: "bg-[#80848E]",
+  online: "bg-[hsl(var(--online))]",
+  idle: "bg-[hsl(var(--idle))]",
+  dnd: "bg-[hsl(var(--dnd))]",
+  offline: "bg-[hsl(var(--offline))]",
 };
 
 const statusLabels = {
@@ -97,10 +97,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   return (
-    <div className="h-[52px] px-2 flex items-center gap-2 bg-[#232428] border-t border-[#1E1F22]">
+    <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--user-panel))] border-t border-border/50">
       <Popover>
         <PopoverTrigger asChild>
-          <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-[#35373C] rounded-[4px] p-1 transition-colors">
+          <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
             <div className="relative">
               <Avatar
                 className={cn(
@@ -117,14 +117,14 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
               </Avatar>
               <div
                 className={cn(
-                  "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-[3px] border-[#232428]",
+                  "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background",
                   statusColors[currentStatus],
                 )}
               />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-[14px] font-semibold text-[#F2F3F5] truncate">{profile?.display_name || "Chargement..."}</p>
-              <div className="text-[12px] text-[#949BA4] truncate">{getDisplayText()}</div>
+              <p className="text-sm font-medium truncate">{profile?.display_name || "Chargement..."}</p>
+              <div className="text-xs text-muted-foreground truncate">{getDisplayText()}</div>
             </div>
           </button>
         </PopoverTrigger>
@@ -237,8 +237,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </PopoverContent>
       </Popover>
 
-      <button onClick={onOpenSettings} className="p-1.5 hover:bg-[#35373C] rounded transition-colors text-[#B5BAC1] hover:text-[#DBDEE1]">
-        <Settings className="w-5 h-5" />
+      <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
+        <Settings className="w-4 h-4 text-muted-foreground" />
       </button>
 
       {/* Custom Status Modal */}

@@ -115,25 +115,20 @@ function SortableServerIcon({
                 className={cn(
                   'server-icon relative group select-none',
                   isActive
-                    ? 'rounded-[16px]'
-                    : ''
+                    ? 'bg-[#5865f2] text-white rounded-[16px]'
+                    : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
                 )}
-                style={{
-                  backgroundColor: isActive ? '#5865F2' : '#313338',
-                  color: isActive ? 'white' : undefined,
-                }}
               >
-                {/* Discord "Blob" - Active/Unread/Hover indicator */}
+                {/* Active indicator - now shows for hasUnread without mentions too */}
                 <div
                   className={cn(
-                    'absolute -left-3 w-1 rounded-r-full transition-all duration-200',
+                    'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                     isActive
                       ? 'h-10'
                       : hasUnread || mentionCount > 0
                         ? 'h-2'
                         : 'h-0 group-hover:h-5'
                   )}
-                  style={{ backgroundColor: 'white' }}
                 />
                 
                 {server.icon ? (
@@ -155,13 +150,10 @@ function SortableServerIcon({
 
                 {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
                 {mentionCount > 0 && (
-                  <div 
-                    className={cn(
-                      "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-xs font-bold animate-badge-pop",
-                      isShaking && "animate-badge-shake"
-                    )}
-                    style={{ backgroundColor: '#ED4245', color: 'white', borderWidth: 3, borderColor: '#1E1F22', borderStyle: 'solid' }}
-                  >
+                  <div className={cn(
+                    "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                    isShaking && "animate-badge-shake"
+                  )}>
                     {mentionCount > 99 ? '99+' : mentionCount}
                   </div>
                 )}
@@ -434,43 +426,34 @@ export function ServerList({
   };
 
   return (
-    <div className="w-[72px] flex-shrink-0 flex flex-col items-center py-3 gap-2" style={{ backgroundColor: '#1E1F22' }}>
+    <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2 border-r border-border/50">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={() => onServerSelect(null)}
             className={cn(
-              'server-icon relative group',
-              activeServerId === null && 'rounded-[16px]'
+              'server-icon bg-card hover:bg-primary hover:text-primary-foreground relative group',
+              activeServerId === null && 'bg-primary text-primary-foreground rounded-[16px]'
             )}
-            style={{
-              backgroundColor: activeServerId === null ? '#5865F2' : '#313338',
-              color: activeServerId === null ? 'white' : undefined,
-            }}
           >
-            {/* Discord Blob indicator */}
             <div
               className={cn(
-                'absolute -left-3 w-1 rounded-r-full transition-all duration-200',
+                'absolute -left-3 w-1 rounded-r-full bg-foreground transition-all duration-300',
                 activeServerId === null
                   ? 'h-10'
                   : hasUnreadDMs
                     ? 'h-2'
                     : 'h-0 group-hover:h-5'
               )}
-              style={{ backgroundColor: 'white' }}
             />
             <MessageCircle className="w-6 h-6" />
             
             {totalUnreadDMs > 0 && (
-              <div 
-                className={cn(
-                  "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-xs font-bold animate-badge-pop",
-                  shakingDMs && "animate-badge-shake"
-                )}
-                style={{ backgroundColor: '#ED4245', color: 'white', borderWidth: 3, borderColor: '#1E1F22', borderStyle: 'solid' }}
-              >
+              <div className={cn(
+                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                shakingDMs && "animate-badge-shake"
+              )}>
                 {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
               </div>
             )}
@@ -481,7 +464,7 @@ export function ServerList({
         </TooltipContent>
       </Tooltip>
 
-      <div className="w-8 h-[2px] rounded-full my-1" style={{ backgroundColor: '#35363C' }} />
+      <div className="w-8 h-[2px] bg-border rounded-full my-1" />
 
       {/* Server Icons with DnD */}
       <DndContext
@@ -494,7 +477,7 @@ export function ServerList({
         onDragCancel={handleDragCancel}
       >
         <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
-          <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col items-center gap-2 w-full pt-1">
+          <div className="flex-1 overflow-y-auto overflow-x-visible scrollbar-thin flex flex-col items-center gap-2 w-full pt-1">
             {sortedServers.map((server) => {
               const serverInfo = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
               return (
@@ -524,17 +507,14 @@ export function ServerList({
         </DragOverlay>
       </DndContext>
 
-      <div className="w-8 h-[2px] rounded-full my-1" style={{ backgroundColor: '#35363C' }} />
+      <div className="w-8 h-[2px] bg-border rounded-full my-1" />
 
       {/* Action Buttons */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={onCreateClick}
-            className="server-icon hover:rounded-[16px]"
-            style={{ backgroundColor: '#313338', color: '#23A559' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#23A559'; e.currentTarget.style.color = 'white'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#313338'; e.currentTarget.style.color = '#23A559'; }}
+            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -548,10 +528,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onDiscoverClick}
-            className="server-icon hover:rounded-[16px]"
-            style={{ backgroundColor: '#313338', color: '#23A559' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#23A559'; e.currentTarget.style.color = 'white'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#313338'; e.currentTarget.style.color = '#23A559'; }}
+            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
           >
             <Compass className="w-6 h-6" />
           </button>

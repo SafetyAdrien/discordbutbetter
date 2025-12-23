@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"gg sans"', 'Inter', 'Noto Sans', 'Helvetica', 'sans-serif'],
-        ginto: ['"gg sans"', 'Noto Sans', 'Helvetica', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Orbitron', 'system-ui', 'sans-serif'],
+        ginto: ['gg sans', 'Noto Sans', 'Helvetica', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -52,9 +53,11 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         toolbar: "hsl(var(--toolbar))",
-        // Discord colors
-        "server-rail": "hsl(var(--server-rail))",
-        "user-panel": "hsl(var(--user-panel))",
+        // Custom gaming colors
+        glow: {
+          primary: "hsl(var(--glow-primary))",
+          secondary: "hsl(var(--glow-secondary))",
+        },
         surface: {
           elevated: "hsl(var(--surface-elevated))",
           hover: "hsl(var(--surface-hover))",
@@ -80,11 +83,6 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
-        },
-        // Discord specific text colors
-        channel: {
-          DEFAULT: "hsl(var(--channel-default))",
-          unread: "hsl(var(--channel-unread))",
         },
       },
       borderRadius: {
@@ -128,6 +126,10 @@ export default {
         shimmer: "shimmer 2s linear infinite",
         "badge-pop": "badge-pop 0.3s ease-out forwards",
         "badge-shake": "badge-shake 0.5s ease-in-out",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-gaming": "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))",
       },
     },
   },

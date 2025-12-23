@@ -17,7 +17,6 @@ import {
   LogOut,
   Copy,
   Headphones,
-  Mic,
 } from "lucide-react";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
@@ -189,10 +188,10 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   stage: StreamlineStage,
 };
 const statusColors = {
-  online: "bg-[#23A559]",
-  idle: "bg-[#F0B232]",
-  dnd: "bg-[#DA373C]",
-  offline: "bg-[#80848E]",
+  online: "bg-[hsl(var(--online))]",
+  idle: "bg-[hsl(var(--idle))]",
+  dnd: "bg-[hsl(var(--dnd))]",
+  offline: "bg-[hsl(var(--offline))]",
 };
 const statusLabels = {
   online: "En ligne",
@@ -265,17 +264,17 @@ function SortableCategory({
             <div
               {...attributes}
               {...listeners}
-              className="flex items-center gap-0.5 px-1 pt-4 pb-1 w-full text-[12px] font-semibold text-[#949BA4] hover:text-[#DBDEE1] transition-colors group cursor-default uppercase tracking-wide"
+              className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default"
             >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggle();
                 }}
-                className="flex items-center gap-0.5 flex-1"
+                className="flex items-center gap-px flex-1"
               >
                 <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
-                <span className="font-semibold">
+                <span className="tracking-wide font-ginto text-[14px] font-normal my-0 py-0 px-[2px] mx-[2px] text-[#c6c7cd]">
                   {category.name}
                 </span>
               </button>
@@ -457,33 +456,27 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           {/* Drop Indicator - Absolute positioned */}
           {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
-            <ContextMenu>
+          <ContextMenu>
             <ContextMenuTrigger asChild>
               <button
                 onClick={onChannelClick}
                 className={cn(
-                  "flex items-center gap-1.5 w-full px-2 py-1.5 rounded text-[15px] transition-colors relative group",
-                  // Active state - Discord style
-                  isActive && !isVoice && !isStage && "bg-[#404249] text-[#F2F3F5]",
-                  // Hover state
-                  !isActive && "hover:bg-[#35373C]",
-                  // Voice connected
-                  isVoiceConnected && "bg-[#23A559]/10 border-l-2 border-[#23A559]",
+                  "channel-item w-full group",
+                  isActive && !isVoice && !isStage && "active",
+                  isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
                   // Stage active/live highlight
-                  isStage && isActive && "bg-[#404249]",
-                  isStage && isLiveStage && "bg-[#23A559]/10",
+                  isStage && isActive && "bg-muted/80",
+                  isStage && isLiveStage && "bg-[hsl(var(--online))]/10",
+                  // Unread channel highlight (tinted background)
+                  hasUnread && !isActive && "bg-muted/30",
                 )}
               >
-                {/* Unread indicator - white bar on left */}
-                {hasUnread && !isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2 bg-white rounded-r-full" />
-                )}
-                <Icon className={cn("w-5 h-5 flex-shrink-0 text-[#80848E]", isStage && isLiveStage && "text-[#23A559]", isActive && "text-[#DBDEE1]")} />
+                <Icon className={cn("w-4 h-4 flex-shrink-0", isStage && isLiveStage && "text-[hsl(var(--online))]")} />
                 <span
                   className={cn(
-                    "truncate flex-1 text-left font-medium",
+                    "truncate flex-1 text-left font-ginto text-[16px] font-medium",
                     // White text for unread channels, gray for read
-                    hasUnread ? "text-[#F2F3F5]" : isActive ? "text-[#F2F3F5]" : "text-[#949BA4]",
+                    hasUnread || isActive ? "text-foreground" : "text-[#9B9CA3]",
                   )}
                 >
                   {channel.name}
@@ -491,7 +484,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
                 {/* Mention badge - ONLY shows for mentions */}
                 {mentionCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-xs font-bold bg-[#DA373C] text-white rounded-full min-w-[18px] text-center">
+                  <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                     {mentionCount}
                   </span>
                 )}
@@ -1175,12 +1168,11 @@ export function ChannelList({
   );
   return (
     <div
-      className="flex flex-col relative flex-shrink-0"
+      className="bg-card flex flex-col border-r border-border relative"
       style={{
         width: `${sidebarWidth}px`,
         minWidth: "240px",
         maxWidth: "340px",
-        backgroundColor: '#2B2D31',
       }}
     >
       {/* Resize handle */}
@@ -1188,8 +1180,8 @@ export function ChannelList({
         className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10"
         onMouseDown={handleResizeMouseDown}
       />
-      {/* Server Header */}
-      <div className="h-12 px-4 flex items-center shadow-sm" style={{ backgroundColor: '#2B2D31', borderBottom: '1px solid #1E1F22' }}>
+      {/* Server Header - styled like User Panel */}
+      <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]">
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">

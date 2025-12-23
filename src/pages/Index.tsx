@@ -370,7 +370,7 @@ const Index = () => {
   const isHomeView = activeServerId === null;
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ backgroundColor: '#313338' }}>
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Server List */}
       <ServerList
         servers={serverListData}

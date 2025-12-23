@@ -57,7 +57,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&display=swap");
 
 /* gg sans Font */
 @font-face {
@@ -102,87 +102,90 @@
 
 @layer base {
   :root {
-    /* Dark Space Theme */
-    /* Main Chat + Member List: #191C2B */
-    --background: 231 24% 13%;
-    /* Primary text: #DCDDDE */
-    --foreground: 220 6% 86%;
-
-    /* Sidebar Channels: #151724 */
-    --card: 233 27% 11%;
-    --card-foreground: 220 6% 86%;
-
+    /* ===== DISCORD EXACT COLORS ===== */
+    
+    /* Backgrounds - Discord Dark Theme */
+    --background: 223 7% 20%;              /* #313338 - Chat Area */
+    --foreground: 210 9% 95%;              /* #F2F3F5 - Header/Active text */
+    
+    /* Server Rail */
+    --server-rail: 225 6% 13%;             /* #1E1F22 */
+    
+    /* Sidebar Channels */
+    --card: 225 6% 18%;                    /* #2B2D31 */
+    --card-foreground: 210 9% 95%;
+    
     /* Popovers/Menus */
-    --popover: 231 24% 11%;
-    --popover-foreground: 220 6% 86%;
-
-    /* Toolbar background: #2b3250 */
-    --toolbar: 229 30% 24%;
-
-    --primary: 186 100% 50%;
-    --primary-foreground: 233 30% 8%;
-
-    --secondary: 270 60% 60%;
-    --secondary-foreground: 220 6% 86%;
-
-    /* Muted surfaces and secondary text: #B9BBBE */
-    --muted: 231 20% 18%;
-    --muted-foreground: 216 7% 73%;
-
-    --accent: 186 80% 40%;
-    --accent-foreground: 220 6% 86%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 220 6% 86%;
-
+    --popover: 220 6% 7%;                  /* #111214 */
+    --popover-foreground: 210 9% 95%;
+    
+    /* Toolbar background */
+    --toolbar: 223 7% 20%;                 /* Same as chat */
+    
+    /* Discord Blurple */
+    --primary: 235 86% 65%;                /* #5865F2 */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary */
+    --secondary: 225 6% 18%;               /* Same as sidebar */
+    --secondary-foreground: 216 4% 74%;
+    
+    /* Muted surfaces and secondary text */
+    --muted: 225 6% 18%;                   /* #2B2D31 */
+    --muted-foreground: 215 9% 58%;        /* #949BA4 */
+    
+    /* Accent */
+    --accent: 235 86% 65%;                 /* Blurple */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Destructive - Discord Red */
+    --destructive: 359 83% 53%;            /* #DA373C */
+    --destructive-foreground: 0 0% 100%;
+    
     /* Borders */
-    --border: 231 20% 18%;
-    /* Inputs: #232635 */
-    --input: 231 23% 17%;
-    --ring: 186 100% 50%;
-
-    --radius: 0.75rem;
-
-    /* Custom gaming colors */
-    --glow-primary: 186 100% 50%;
-    --glow-secondary: 270 60% 60%;
-    --surface-elevated: 231 24% 15%;
-    --surface-hover: 231 24% 20%;
-    --online: 142 76% 46%;
-    --idle: 38 92% 50%;
-    --dnd: 0 72% 51%;
-    --offline: 215 20% 45%;
-    --voice-active: 142 76% 46%;
-    --poll-background: 231 24% 11%;
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
-    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(231 24% 15%), hsl(231 24% 11%));
-
-    /* Shadows */
-    --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
-    --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
-    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
-
-    /* Server List Sidebar: #10121B */
-    --sidebar-background: 233 30% 8%;
-    --sidebar-foreground: 220 6% 86%;
-    --sidebar-primary: 186 100% 50%;
-    --sidebar-primary-foreground: 233 30% 8%;
-    --sidebar-accent: 231 24% 18%;
-    --sidebar-accent-foreground: 220 6% 86%;
-    --sidebar-border: 231 20% 18%;
-    --sidebar-ring: 186 100% 50%;
-
-    /* User Profile Panel: #12151F */
-    --user-panel: 230 28% 10%;
-  }
-
-  .dark {
-    /* Same as root - always dark */
-    --background: 231 24% 13%;
-    --foreground: 220 6% 86%;
+    --border: 225 6% 13%;                  /* #1E1F22 - Divider */
+    --input: 223 7% 23%;                   /* Slightly lighter for inputs */
+    --ring: 235 86% 65%;                   /* Blurple */
+    
+    --radius: 0.5rem;
+    
+    /* ===== DISCORD STATUS COLORS ===== */
+    --online: 145 66% 40%;                 /* #23A559 */
+    --idle: 38 95% 54%;                    /* #FAA61A */
+    --dnd: 359 83% 53%;                    /* #DA373C */
+    --offline: 214 10% 53%;                /* #80848E */
+    
+    /* ===== SURFACE COLORS ===== */
+    --surface-elevated: 225 6% 18%;        /* Same as sidebar */
+    --surface-hover: 223 6% 19%;           /* #2E3035 - Message hover */
+    
+    /* Voice */
+    --voice-active: 145 66% 40%;           /* Same as online */
+    
+    /* Poll background */
+    --poll-background: 220 6% 7%;
+    
+    /* User Panel (bottom of sidebar) */
+    --user-panel: 220 7% 14%;              /* #232428 */
+    
+    /* ===== SIDEBAR COLORS ===== */
+    --sidebar-background: 225 6% 13%;      /* #1E1F22 - Server Rail */
+    --sidebar-foreground: 216 4% 87%;      /* #DBDEE1 */
+    --sidebar-primary: 235 86% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 6% 18%;
+    --sidebar-accent-foreground: 216 4% 87%;
+    --sidebar-border: 225 6% 13%;
+    --sidebar-ring: 235 86% 65%;
+    
+    /* ===== DISCORD TEXT COLORS ===== */
+    --text-normal: 216 4% 87%;             /* #DBDEE1 */
+    --text-muted: 215 9% 58%;              /* #949BA4 */
+    --text-link: 200 100% 50%;             /* Link blue */
+    
+    /* ===== CHANNEL COLORS ===== */
+    --channel-default: 215 9% 58%;         /* #949BA4 - Read */
+    --channel-unread: 0 0% 100%;           /* #FFFFFF - Unread */
   }
 }
 
@@ -192,77 +195,78 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: "gg-sans", sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: "gg sans", "Inter", "Noto Sans", "Helvetica Neue", sans-serif;
+    font-weight: 400;
   }
 
-  h1,
-  h2,
-  h3 {
-    font-family: "Orbitron", sans-serif;
+  /* Discord uses gg sans for everything, no special heading font */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "gg sans", "Inter", "Noto Sans", sans-serif;
+    font-weight: 600;
   }
 }
 
 @layer components {
-  .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
-  }
-
-  .glass-hover {
-    @apply hover:bg-surface-hover/80 transition-all duration-300;
-  }
-
-  .glow-text {
-    text-shadow:
-      0 0 10px hsl(var(--primary) / 0.5),
-      0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  .glow-border {
-    box-shadow:
-      0 0 10px hsl(var(--primary) / 0.3),
-      inset 0 0 10px hsl(var(--primary) / 0.1);
-  }
-
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-primary);
-  }
-
+  /* Discord Server Icon - Squircle animation */
   .server-icon {
     @apply w-12 h-12 rounded-[24px] flex items-center justify-center cursor-pointer
-           transition-all duration-300 ease-out;
+           transition-all duration-200 ease-out overflow-hidden;
+    background: hsl(var(--card));
   }
 
   .server-icon:hover {
     @apply rounded-[16px];
+    background: hsl(var(--primary));
+    color: white;
   }
 
   .server-icon.active {
     @apply rounded-[16px];
+    background: hsl(var(--primary));
+    color: white;
   }
 
+  /* Discord Channel Item */
   .channel-item {
-    @apply flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
-           text-muted-foreground hover:text-foreground hover:bg-surface-hover
-           transition-all duration-200;
+    @apply flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer
+           transition-all duration-150;
+    color: hsl(var(--channel-default));
+    margin: 0 8px;
+    border-radius: 4px;
+  }
+
+  .channel-item:hover {
+    background: rgba(79, 84, 92, 0.32);
+    color: hsl(var(--foreground));
   }
 
   .channel-item.active {
-    @apply bg-muted text-foreground;
+    background: rgba(79, 84, 92, 0.6);
+    color: hsl(var(--foreground));
   }
 
+  .channel-item.unread {
+    color: hsl(var(--channel-unread));
+  }
+
+  /* Message hover effect */
   .message-hover {
-    @apply hover:bg-surface-hover/50 transition-colors duration-150;
+    @apply transition-colors duration-100;
   }
 
+  .message-hover:hover {
+    background: hsl(var(--surface-hover));
+  }
+
+  /* Discord thin scrollbar */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: hsl(225 6% 13%) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -270,44 +274,36 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 3px;
+    background: hsl(225 6% 13%);
+    border-radius: 4px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(225 6% 20%);
+  }
+
+  /* Discord scrollbar hidden */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }
 
 @layer utilities {
-  .animation-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+  /* Fade in animation */
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
-  .animation-float {
-    animation: float 3s ease-in-out infinite;
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
   }
 
-  @keyframes pulse-glow {
-    0%,
-    100% {
-      box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
-    }
-    50% {
-      box-shadow: 0 0 25px hsl(var(--primary) / 0.5);
-    }
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-5px);
-    }
-  }
-
+  /* Slide animations */
   @keyframes slide-in-left {
     from {
       transform: translateX(10%);
@@ -321,20 +317,11 @@
 
   @keyframes slide-in-right {
     from {
-      transform: translateX(10%);
+      transform: translateX(-10%);
       opacity: 0;
     }
     to {
       transform: translateX(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
       opacity: 1;
     }
   }
@@ -345,10 +332,6 @@
 
   .animate-slide-in-right {
     animation: slide-in-right 0.3s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.2s ease-out;
   }
 
   @keyframes slide-down {
@@ -381,29 +364,9 @@
     animation: slide-up 150ms ease-in forwards;
   }
 
-  @keyframes voice-glow {
-    0%,
-    100% {
-      box-shadow: 0 0 0 2px hsl(var(--voice-active) / 0.5);
-    }
-    50% {
-      box-shadow: 0 0 8px 3px hsl(var(--voice-active) / 0.7);
-    }
-  }
-
-  .voice-active-ring {
-    animation: voice-glow 1.5s ease-in-out infinite;
-  }
-
-  /* Voice channel gradient background */
-  .voice-gradient-bg {
-    background: radial-gradient(ellipse at 50% 30%, #1e3a8a 0%, #312e81 40%, #1e1b4b 70%, #0f0f23 100%);
-  }
-
   /* Voice speaking glow effect - green pulsing ring */
   @keyframes voice-speaking-pulse {
-    0%,
-    100% {
+    0%, 100% {
       box-shadow:
         0 0 0 2px hsl(var(--online)),
         0 0 12px 4px hsl(var(--online) / 0.6);
@@ -419,23 +382,9 @@
     animation: voice-speaking-pulse 0.8s ease-in-out infinite;
   }
 
-  /* Legacy glow effect */
-  @keyframes electric-pulse {
-    0%,
-    100% {
-      box-shadow:
-        0 0 0 0 hsl(var(--online) / 0.7),
-        0 0 20px 5px hsl(var(--online) / 0.3);
-    }
-    50% {
-      box-shadow:
-        0 0 0 4px hsl(var(--online) / 0.4),
-        0 0 40px 10px hsl(var(--online) / 0.2);
-    }
-  }
-
-  .voice-speaking-glow {
-    animation: electric-pulse 1.5s ease-in-out infinite;
+  /* Voice channel gradient background */
+  .voice-gradient-bg {
+    background: radial-gradient(ellipse at 50% 30%, #1e3a8a 0%, #312e81 40%, #1e1b4b 70%, #0f0f23 100%);
   }
 
   /* Spoiler style Discord */
@@ -466,209 +415,72 @@
     background: transparent !important;
     color: #dcddde;
   }
-  .hljs-keyword {
-    color: #c678dd;
-  }
-  .hljs-string {
-    color: #98c379;
-  }
-  .hljs-number {
-    color: #d19a66;
-  }
-  .hljs-comment {
-    color: #5c6370;
-    font-style: italic;
-  }
-  .hljs-function {
-    color: #61afef;
-  }
-  .hljs-variable {
-    color: #e06c75;
-  }
-  .hljs-class {
-    color: #e5c07b;
-  }
-  .hljs-tag {
-    color: #e06c75;
-  }
-  .hljs-attr {
-    color: #d19a66;
-  }
-  .hljs-built_in {
-    color: #e5c07b;
-  }
-  .hljs-literal {
-    color: #56b6c2;
-  }
-  .hljs-params {
-    color: #dcddde;
-  }
-  .hljs-meta {
-    color: #5c6370;
-  }
-  .hljs-type {
-    color: #e5c07b;
-  }
-  .hljs-title {
-    color: #61afef;
-  }
-  .hljs-name {
-    color: #e06c75;
-  }
-  .hljs-selector-class {
-    color: #d19a66;
-  }
-  .hljs-selector-id {
-    color: #61afef;
-  }
-  .hljs-property {
-    color: #e06c75;
+  .hljs-keyword { color: #c678dd; }
+  .hljs-string { color: #98c379; }
+  .hljs-number { color: #d19a66; }
+  .hljs-comment { color: #5c6370; font-style: italic; }
+  .hljs-function { color: #61afef; }
+  .hljs-variable { color: #e06c75; }
+  .hljs-class { color: #e5c07b; }
+  .hljs-tag { color: #e06c75; }
+  .hljs-attr { color: #d19a66; }
+  .hljs-built_in { color: #e5c07b; }
+  .hljs-literal { color: #56b6c2; }
+  .hljs-params { color: #abb2bf; }
+  .hljs-symbol { color: #61afef; }
+  .hljs-meta { color: #56b6c2; }
+  .hljs-title { color: #61afef; }
+
+  /* Badge animations */
+  @keyframes badge-pop {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
   }
 
-  /* Monospace font for code elements - Consolas stack */
-  .font-mono,
-  code,
-  pre,
-  .markdown-content code {
-    font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace !important;
+  @keyframes badge-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
   }
 
-  /* Drag and drop animations */
-  .dragging-item {
-    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
-    transform: scale(1.02);
-    z-index: 1000;
+  .animate-badge-pop {
+    animation: badge-pop 0.3s ease-out forwards;
   }
 
-  .sortable-ghost {
-    opacity: 0.4;
+  .animate-badge-shake {
+    animation: badge-shake 0.5s ease-in-out;
   }
 
-  /* Drop indicator line - Discord style */
-  .drop-indicator {
-    height: 3.5px;
-    background-color: #5865f2;
-    border-radius: 1px;
-  }
-
-  /* Smooth channel transition animation */
-  .channel-transition {
-    transition:
-      transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      opacity 200ms ease,
-      background-color 200ms ease;
-  }
-
-  /* Animation when channel enters a new category */
-  @keyframes slide-into-place {
-    from {
-      opacity: 0.5;
-      transform: translateX(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .animate-slide-into-place {
-    animation: slide-into-place 200ms ease-out;
-  }
-
-  .drag-overlay-item {
-    box-shadow: 0 12px 28px hsl(0 0% 0% / 0.5);
-    backdrop-filter: blur(4px);
-  }
-
-  /* Remove focus outline on drag-and-drop elements */
-  [data-dnd-kit-draggable]:focus,
-  [data-dnd-kit-draggable]:focus-visible {
-    outline: none;
-  }
-
-  /* Send button animations */
-  @keyframes send-fly {
-    0% {
-      transform: scale(1) rotate(0deg);
-    }
-    50% {
-      transform: scale(0.8) rotate(-45deg) translateX(5px);
-      opacity: 0.5;
-    }
-    100% {
-      transform: scale(1) rotate(0deg);
-    }
-  }
-
-  /* Message highlight animation for Jump to Message */
-  @keyframes message-highlight {
-    0%,
-    30% {
-      background-color: rgba(88, 101, 242, 0.3);
-    }
-    100% {
-      background-color: transparent;
-    }
-  }
-
-  .highlight-flash {
-    animation: message-highlight 2s ease-out;
-  }
-
-  .animate-send-fly {
-    animation: send-fly 0.4s ease-out;
-  }
-
-  .send-button-hover {
-    transition: transform 0.15s ease-out;
-  }
-
-  .send-button-hover:hover {
-    transform: scale(1.15);
-  }
-
-  .send-button-hover:active {
-    transform: scale(0.9);
-  }
-
+  /* Vote pop animation */
   @keyframes vote-pop {
-    0% {
-      transform: scale(0);
-      opacity: 0;
-    }
-    50% {
-      transform: scale(1.2);
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
   }
 
   .animate-vote-pop {
-    animation: vote-pop 0.3s ease-out forwards;
+    animation: vote-pop 0.15s ease-out;
   }
 
-  /* Responsive utilities for chat interface */
-  .responsive-popover {
-    @apply w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-[400px];
+  /* Message highlight */
+  @keyframes message-highlight {
+    0% { background-color: hsl(var(--primary) / 0.15); }
+    100% { background-color: transparent; }
   }
 
-  .responsive-header-title {
-    @apply truncate max-w-[100px] sm:max-w-[150px] md:max-w-none;
+  .message-highlight-anim {
+    animation: message-highlight 2s ease-out;
   }
+}
 
-  .responsive-description {
-    @apply hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0;
-  }
-
-  /* Hide elements on mobile */
+/* Discord Responsive Utilities */
+@media (max-width: 768px) {
   .hide-mobile {
-    @apply hidden sm:flex;
+    display: none !important;
   }
-
-  /* Compact buttons on mobile */
+  
   .responsive-btn-text {
-    @apply hidden sm:inline;
+    display: none;
   }
 }

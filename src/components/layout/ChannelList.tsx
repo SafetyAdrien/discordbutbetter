@@ -1168,11 +1168,12 @@ export function ChannelList({
   );
   return (
     <div
-      className="bg-card flex flex-col border-r border-border relative"
+      className="flex flex-col relative flex-shrink-0"
       style={{
         width: `${sidebarWidth}px`,
         minWidth: "240px",
         maxWidth: "340px",
+        backgroundColor: '#2B2D31',
       }}
     >
       {/* Resize handle */}
@@ -1180,8 +1181,8 @@ export function ChannelList({
         className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10"
         onMouseDown={handleResizeMouseDown}
       />
-      {/* Server Header - styled like User Panel */}
-      <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]">
+      {/* Server Header */}
+      <div className="h-12 px-4 flex items-center shadow-sm" style={{ backgroundColor: '#2B2D31', borderBottom: '1px solid #1E1F22' }}>
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">

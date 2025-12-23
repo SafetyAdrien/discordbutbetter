@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Users, Inbox } from 'lucide-react';
+import { Users, Inbox, Search } from 'lucide-react';
 import { DMList } from './DMList';
 import { DMConversation } from './DMConversation';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
@@ -11,6 +11,7 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
+import { NewMessageModal } from '@/components/modals/NewMessageModal';
 
 type DMView = 'friends' | 'inbox' | 'conversation';
 
@@ -27,6 +28,7 @@ export function DMPage({
 }: DMPageProps) {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
+  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const unreadCount = useUnreadNotificationsCount();
   const {
     voiceState,
@@ -62,20 +64,34 @@ export function DMPage({
     <div className="flex-1 flex">
       {/* Left Sidebar - DM List */}
       <div className="w-60 bg-card flex flex-col border-r border-border">
-        {/* Header */}
+        {/* Header - Search triggers New Message Modal */}
         <div className="h-12 px-4 flex items-center border-b border-border">
-          <div className="relative w-full">
-            <input 
-              type="text" 
-              placeholder="Trouver ou commencer une conversation" 
-              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50" 
-            />
-          </div>
+          <button 
+            onClick={() => setShowNewMessageModal(true)}
+            className="relative w-full flex items-center gap-2 px-2 py-1.5 text-sm bg-background rounded hover:bg-muted/50 transition-colors text-left"
+          >
+            <Search className="w-4 h-4 text-muted-foreground" />
+            <span className="text-muted-foreground/50">Trouver ou commencer une conversation</span>
+          </button>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Friends above Inbox */}
         <div className="p-2 space-y-1">
-          {/* Inbox Button */}
+          {/* Friends Button - Now first */}
+          <button 
+            onClick={handleShowFriends} 
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
+              currentView === 'friends' 
+                ? 'bg-muted text-foreground' 
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            )}
+          >
+            <Users className="w-5 h-5" />
+            <span className="font-normal">Amis</span>
+          </button>
+
+          {/* Inbox Button - Now second */}
           <button 
             onClick={handleShowInbox} 
             className={cn(
@@ -98,26 +114,12 @@ export function DMPage({
             </div>
             <span className="font-normal">Boîte de réception</span>
           </button>
-
-          {/* Friends Button */}
-          <button 
-            onClick={handleShowFriends} 
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
-              currentView === 'friends' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            )}
-          >
-            <Users className="w-5 h-5" />
-            <span className="font-normal">Amis</span>
-          </button>
         </div>
 
-        {/* Separator */}
-        <div className="px-2 pt-4 py-[5px]">
-          <div className="h-px bg-border mb-3" />
-          <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2">
+        {/* Separator - Adjusted spacing */}
+        <div className="px-2 pt-2 pb-1">
+          <div className="h-px bg-border mb-2" />
+          <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-1">
             Messages privés
           </h3>
         </div>
@@ -160,6 +162,12 @@ export function DMPage({
       {showAccountSettings && (
         <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
       )}
+      
+      <NewMessageModal
+        open={showNewMessageModal}
+        onOpenChange={setShowNewMessageModal}
+        onSelectConversation={handleOpenDM}
+      />
     </div>
   );
 }

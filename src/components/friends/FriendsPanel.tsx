@@ -4,10 +4,9 @@ import { useFriends, useAcceptFriendRequest, useDeclineFriendRequest, useRemoveF
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddFriendModal } from './AddFriendModal';
-import { UserPlus, MessageCircle, Check, X, UserMinus, Search, Users } from 'lucide-react';
+import { SearchExpandable } from './SearchExpandable';
+import { UserPlus, MessageCircle, Check, X, UserMinus, Users } from 'lucide-react';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -16,6 +15,8 @@ const statusColors = {
   offline: 'bg-[hsl(var(--offline))]',
 };
 
+type FilterType = 'online' | 'all' | 'pending';
+
 interface FriendsPanelProps {
   onOpenDM: (conversationId: string) => void;
 }
@@ -23,6 +24,7 @@ interface FriendsPanelProps {
 export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('online');
   
   const { data: friends = [], isLoading } = useFriends();
   const acceptRequest = useAcceptFriendRequest();
@@ -49,109 +51,125 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
     onOpenDM(result.conversation_id);
   };
 
+  const getCurrentList = () => {
+    switch (activeFilter) {
+      case 'online':
+        return filteredFriends(onlineFriends);
+      case 'all':
+        return filteredFriends(acceptedFriends);
+      case 'pending':
+        return pendingRequests;
+      default:
+        return [];
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-background">
-      {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border">
+      {/* Header with inline filters */}
+      <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
         <Users className="w-5 h-5 text-muted-foreground" />
         <h2 className="font-semibold">Amis</h2>
+        
+        {/* Divider */}
+        <div className="h-5 w-px bg-border mx-2" />
+        
+        {/* Filter buttons inline */}
+        <button
+          onClick={() => setActiveFilter('online')}
+          className={cn(
+            "px-2 py-1 text-sm rounded transition-colors",
+            activeFilter === 'online' 
+              ? "bg-muted text-foreground font-medium" 
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          )}
+        >
+          En ligne — {onlineFriends.length}
+        </button>
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={cn(
+            "px-2 py-1 text-sm rounded transition-colors",
+            activeFilter === 'all' 
+              ? "bg-muted text-foreground font-medium" 
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          )}
+        >
+          Tous — {acceptedFriends.length}
+        </button>
+        <button
+          onClick={() => setActiveFilter('pending')}
+          className={cn(
+            "px-2 py-1 text-sm rounded transition-colors relative",
+            activeFilter === 'pending' 
+              ? "bg-muted text-foreground font-medium" 
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          )}
+        >
+          En attente
+          {pendingRequests.length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+              {pendingRequests.length}
+            </span>
+          )}
+        </button>
+        
+        <div className="flex-1" />
+        
+        {/* Expandable Search */}
+        <SearchExpandable
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher un ami..."
+        />
+        
         <Button 
           size="sm" 
           onClick={() => setShowAddFriend(true)}
-          className="ml-auto"
         >
           <UserPlus className="w-4 h-4 mr-2" />
           Ajouter
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un ami..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="online" className="flex-1 flex flex-col">
-        <div className="px-4">
-          <TabsList className="w-full">
-            <TabsTrigger value="online" className="flex-1">
-              En ligne — {onlineFriends.length}
-            </TabsTrigger>
-            <TabsTrigger value="all" className="flex-1">
-              Tous — {acceptedFriends.length}
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="flex-1 relative">
-              En attente
-              {pendingRequests.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                  {pendingRequests.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          <TabsContent value="online" className="m-0 space-y-2">
-            {filteredFriends(onlineFriends).length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun ami en ligne
-              </p>
-            ) : (
-              filteredFriends(onlineFriends).map(friend => (
-                <FriendCard
-                  key={friend.id}
-                  friend={friend}
-                  onMessage={() => handleOpenDM(friend.profile.id)}
-                  onRemove={() => removeFriend.mutate(friend.id)}
-                />
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="all" className="m-0 space-y-2">
-            {filteredFriends(acceptedFriends).length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun ami trouvé
-              </p>
-            ) : (
-              filteredFriends(acceptedFriends).map(friend => (
-                <FriendCard
-                  key={friend.id}
-                  friend={friend}
-                  onMessage={() => handleOpenDM(friend.profile.id)}
-                  onRemove={() => removeFriend.mutate(friend.id)}
-                />
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="pending" className="m-0 space-y-2">
-            {pendingRequests.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucune demande en attente
-              </p>
-            ) : (
-              pendingRequests.map(request => (
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeFilter === 'pending' ? (
+          pendingRequests.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Aucune demande en attente
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {pendingRequests.map(request => (
                 <PendingCard
                   key={request.id}
                   request={request}
                   onAccept={() => acceptRequest.mutate(request.id)}
                   onDecline={() => declineRequest.mutate(request.id)}
                 />
-              ))
-            )}
-          </TabsContent>
-        </div>
-      </Tabs>
+              ))}
+            </div>
+          )
+        ) : (
+          getCurrentList().length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {activeFilter === 'online' ? 'Aucun ami en ligne' : 'Aucun ami trouvé'}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {getCurrentList().map(friend => (
+                <FriendCard
+                  key={friend.id}
+                  friend={friend}
+                  onMessage={() => handleOpenDM(friend.profile.id)}
+                  onRemove={() => removeFriend.mutate(friend.id)}
+                />
+              ))}
+            </div>
+          )
+        )}
+      </div>
 
       {showAddFriend && (
         <AddFriendModal onClose={() => setShowAddFriend(false)} />

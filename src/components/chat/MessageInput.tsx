@@ -93,26 +93,6 @@ export function MessageInput({
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
-  // Helper function to detect if text contains markdown syntax
-  const hasMarkdownSyntax = (text: string): boolean => {
-    if (!text.trim()) return false;
-    const markdownPatterns = [
-      /\*\*[^*]+\*\*/,      // **bold**
-      /\*[^*]+\*/,          // *italic*
-      /~~[^~]+~~/,          // ~~strikethrough~~
-      /`[^`]+`/,            // `inline code`
-      /```[\s\S]*```/,      // code blocks
-      /\[.+\]\(.+\)/,       // [links](url)
-      /^>\s/m,              // > blockquotes
-      /^#{1,6}\s/m,         // # headings
-      /__[^_]+__/,          // __underline/bold__
-      /\|\|[^|]+\|\|/,      // ||spoiler||
-    ];
-    return markdownPatterns.some(pattern => pattern.test(text));
-  };
-
-  const showMarkdownPreviewButton = hasMarkdownSyntax(value);
-
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -142,24 +122,17 @@ export function MessageInput({
     adjustTextareaHeight();
   }, [value, adjustTextareaHeight]);
 
-  // Ctrl+P keyboard shortcut for markdown preview toggle (only when markdown is present)
+  // Ctrl+P keyboard shortcut for markdown preview toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p' && showMarkdownPreviewButton) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         setShowPreview(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showMarkdownPreviewButton]);
-
-  // Auto-hide preview when markdown is removed
-  useEffect(() => {
-    if (!showMarkdownPreviewButton && showPreview) {
-      setShowPreview(false);
-    }
-  }, [showMarkdownPreviewButton, showPreview]);
+  }, []);
 
   // Handle file input change
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -539,16 +512,14 @@ export function MessageInput({
                 </button>
               }
             />
-            {showMarkdownPreviewButton && (
-              <button
-                type="button"
-                onClick={() => setShowPreview(!showPreview)}
-                className={`text-muted-foreground hover:text-foreground transition-colors animate-fade-in ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
-                title={showPreview ? "Masquer l'aperçu (Ctrl+P)" : "Aperçu Markdown (Ctrl+P)"}
-              >
-                {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
+              title={showPreview ? "Masquer l'aperçu (Ctrl+P)" : "Aperçu Markdown (Ctrl+P)"}
+            >
+              {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
+            </button>
             {(value.trim() || attachments.length > 0) && (
               <button 
                 type="submit" 

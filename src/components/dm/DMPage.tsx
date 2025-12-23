@@ -11,7 +11,6 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
-import { NewMessageModal } from '@/components/modals/NewMessageModal';
 
 type DMView = 'friends' | 'inbox' | 'conversation';
 
@@ -28,7 +27,6 @@ export function DMPage({
 }: DMPageProps) {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
-  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const unreadCount = useUnreadNotificationsCount();
   const {
     voiceState,
@@ -64,36 +62,20 @@ export function DMPage({
     <div className="flex-1 flex">
       {/* Left Sidebar - DM List */}
       <div className="w-60 bg-card flex flex-col border-r border-border">
-        {/* Header - Search triggers New Message modal */}
+        {/* Header */}
         <div className="h-12 px-4 flex items-center border-b border-border">
           <div className="relative w-full">
             <input 
               type="text" 
               placeholder="Trouver ou commencer une conversation" 
-              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer" 
-              onClick={() => setShowNewMessageModal(true)}
-              readOnly
+              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none focus:outline-none focus:ring-1 focus:ring-primary/50" 
             />
           </div>
         </div>
 
-        {/* Navigation - Friends above Inbox */}
+        {/* Navigation */}
         <div className="p-2 space-y-1">
-          {/* Friends Button - Now first */}
-          <button 
-            onClick={handleShowFriends} 
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
-              currentView === 'friends' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            )}
-          >
-            <Users className="w-5 h-5" />
-            <span className="font-normal">Amis</span>
-          </button>
-
-          {/* Inbox Button - Now second */}
+          {/* Inbox Button */}
           <button 
             onClick={handleShowInbox} 
             className={cn(
@@ -116,11 +98,25 @@ export function DMPage({
             </div>
             <span className="font-normal">Boîte de réception</span>
           </button>
+
+          {/* Friends Button */}
+          <button 
+            onClick={handleShowFriends} 
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
+              currentView === 'friends' 
+                ? 'bg-muted text-foreground' 
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            )}
+          >
+            <Users className="w-5 h-5" />
+            <span className="font-normal">Amis</span>
+          </button>
         </div>
 
-        {/* Separator - Adjusted spacing */}
-        <div className="px-2 pt-2 pb-1">
-          <div className="h-px bg-border mb-2" />
+        {/* Separator */}
+        <div className="px-2 pt-4 py-[5px]">
+          <div className="h-px bg-border mb-3" />
           <h3 className="px-2 text-xs font-light text-muted-foreground capitalize tracking-wide mb-2">
             Messages privés
           </h3>
@@ -163,13 +159,6 @@ export function DMPage({
       {/* Modals */}
       {showAccountSettings && (
         <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
-      )}
-      
-      {showNewMessageModal && (
-        <NewMessageModal 
-          onClose={() => setShowNewMessageModal(false)} 
-          onSelectConversation={handleOpenDM}
-        />
       )}
     </div>
   );

@@ -91,19 +91,107 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Header with filters */}
-      <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
-        <Users className="w-5 h-5 text-muted-foreground" />
-        <h2 className="font-semibold">Amis</h2>
-        
-        {/* Separator */}
-        <div className="w-px h-5 bg-border mx-1" />
-        
-        {/* Filter tabs in header */}
-        <div className="flex items-center gap-1">
+      <div className="border-b border-border">
+        {/* Main header row */}
+        <div className="h-12 px-3 md:px-4 flex items-center gap-2">
+          <Users className="w-5 h-5 text-muted-foreground shrink-0" />
+          <h2 className="font-semibold shrink-0">Amis</h2>
+          
+          {/* Separator - desktop only */}
+          <div className="hidden md:block w-px h-5 bg-border mx-1" />
+          
+          {/* Filter tabs in header - desktop only */}
+          <div className="hidden md:flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab('online')}
+              className={cn(
+                'px-2.5 py-1 text-sm rounded transition-colors',
+                activeTab === 'online' 
+                  ? 'bg-muted text-foreground' 
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              )}
+            >
+              En ligne — {onlineFriends.length}
+            </button>
+            <button
+              onClick={() => setActiveTab('all')}
+              className={cn(
+                'px-2.5 py-1 text-sm rounded transition-colors',
+                activeTab === 'all' 
+                  ? 'bg-muted text-foreground' 
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              )}
+            >
+              Tous — {acceptedFriends.length}
+            </button>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={cn(
+                'px-2.5 py-1 text-sm rounded transition-colors relative',
+                activeTab === 'pending' 
+                  ? 'bg-muted text-foreground' 
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              )}
+            >
+              En attente
+              {pendingRequests.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                  {pendingRequests.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-1 md:gap-2">
+            {/* Extensible Search */}
+            <div ref={searchRef} className="relative flex items-center">
+              {isSearchOpen ? (
+                <div className="animate-fade-in flex items-center">
+                  <Input
+                    ref={inputRef}
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-32 sm:w-48 h-8 text-sm transition-all duration-200"
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-8 w-8 ml-1"
+                    onClick={() => setIsSearchOpen(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIsSearchOpen(true)}
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            
+            <Button 
+              size="sm" 
+              onClick={() => setShowAddFriend(true)}
+              className="h-8"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Ajouter</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Filter tabs - mobile only (second row) */}
+        <div className="md:hidden px-3 pb-2 flex items-center gap-1 overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('online')}
             className={cn(
-              'px-2.5 py-1 text-sm rounded transition-colors',
+              'px-2 py-1 text-xs rounded transition-colors whitespace-nowrap shrink-0',
               activeTab === 'online' 
                 ? 'bg-muted text-foreground' 
                 : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
@@ -114,7 +202,7 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
           <button
             onClick={() => setActiveTab('all')}
             className={cn(
-              'px-2.5 py-1 text-sm rounded transition-colors',
+              'px-2 py-1 text-xs rounded transition-colors whitespace-nowrap shrink-0',
               activeTab === 'all' 
                 ? 'bg-muted text-foreground' 
                 : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
@@ -125,7 +213,7 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
           <button
             onClick={() => setActiveTab('pending')}
             className={cn(
-              'px-2.5 py-1 text-sm rounded transition-colors relative',
+              'px-2 py-1 text-xs rounded transition-colors relative whitespace-nowrap shrink-0',
               activeTab === 'pending' 
                 ? 'bg-muted text-foreground' 
                 : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
@@ -133,53 +221,11 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
           >
             En attente
             {pendingRequests.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+              <span className="ml-1 px-1 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">
                 {pendingRequests.length}
               </span>
             )}
           </button>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          {/* Extensible Search */}
-          <div ref={searchRef} className="relative flex items-center">
-            {isSearchOpen ? (
-              <div className="animate-fade-in flex items-center">
-                <Input
-                  ref={inputRef}
-                  placeholder="Rechercher..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 h-8 text-sm transition-all duration-200"
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 ml-1"
-                  onClick={() => setIsSearchOpen(false)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setIsSearchOpen(true)}
-              >
-                <Search className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-          
-          <Button 
-            size="sm" 
-            onClick={() => setShowAddFriend(true)}
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Ajouter
-          </Button>
         </div>
       </div>
 

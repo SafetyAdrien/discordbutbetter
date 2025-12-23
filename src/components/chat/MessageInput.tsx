@@ -3,12 +3,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { RichMarkdownInput, RichMarkdownInputRef } from './RichMarkdownInput';
+import { MarkdownPreview } from './MarkdownPreview';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
 
 interface MessageInputProps {
   value: string;
@@ -83,7 +83,7 @@ export function MessageInput({
   showFollowBar = false,
   onFollowClick,
 }: MessageInputProps) {
-  const richInputRef = useRef<RichMarkdownInputRef>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -91,9 +91,10 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
 
   const insertEmoji = useCallback((emoji: string) => {
-    const textarea = richInputRef.current?.textarea;
+    const textarea = textareaRef.current;
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -101,7 +102,7 @@ export function MessageInput({
       onChange(newValue);
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-        richInputRef.current?.focus();
+        textarea.focus();
       }, 0);
     } else {
       onChange(value + emoji);
@@ -200,10 +201,10 @@ export function MessageInput({
   }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
 
   const handleMentionSelect = useCallback((mention: string, displayText: string) => {
-    if (!mentionState || !richInputRef.current?.textarea) return;
+    if (!mentionState || !textareaRef.current) return;
     
     const before = value.slice(0, mentionState.startIndex);
-    const after = value.slice(richInputRef.current.selectionStart);
+    const after = value.slice(textareaRef.current.selectionStart);
     const newValue = before + mention + ' ' + after;
     
     onChange(newValue);
@@ -211,10 +212,10 @@ export function MessageInput({
     
     // Set cursor position after the mention
     setTimeout(() => {
-      if (richInputRef.current?.textarea) {
+      if (textareaRef.current) {
         const newPos = mentionState.startIndex + mention.length + 1;
-        richInputRef.current.textarea.selectionStart = richInputRef.current.textarea.selectionEnd = newPos;
-        richInputRef.current.focus();
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
+        textareaRef.current.focus();
       }
     }, 0);
   }, [mentionState, value, onChange]);
@@ -309,7 +310,7 @@ export function MessageInput({
     // Get plain text from clipboard (preserves markdown syntax)
     const text = e.clipboardData.getData('text/plain');
     
-    const textarea = richInputRef.current?.textarea;
+    const textarea = textareaRef.current;
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -322,6 +323,19 @@ export function MessageInput({
       }, 0);
     }
   }, [value, onChange]);
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  }, []);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [value, adjustTextareaHeight]);
 
   // Render follow bar for announcement channels when permission is denied
   if (permissionDeniedMessage && showFollowBar) {
@@ -440,16 +454,22 @@ export function MessageInput({
             </PopoverContent>
           </Popover>
           
-          <RichMarkdownInput
-            ref={richInputRef}
-            value={value}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={placeholder}
-            disabled={disabled}
-            compact={compact}
-          />
+          <div className="flex-1 flex flex-col min-w-0">
+            {showPreview && value.trim() && (
+              <MarkdownPreview content={value} className="mb-2 mx-2 mt-2" />
+            )}
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={placeholder}
+              disabled={disabled}
+              rows={1}
+              className={`flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none resize-none w-full leading-[1.375rem] ${compact ? 'text-sm py-2' : 'text-[15px] py-2.5'}`}
+            />
+          </div>
           
           <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
             <EmojiStickerPicker
@@ -478,6 +498,14 @@ export function MessageInput({
                 </button>
               }
             />
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
+              title={showPreview ? "Masquer l'aperçu" : "Afficher l'aperçu Markdown"}
+            >
+              {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
+            </button>
             {(value.trim() || attachments.length > 0) && (
               <button 
                 type="submit" 

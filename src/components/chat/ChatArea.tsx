@@ -770,7 +770,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           ref.current = node;
         }
       }}
-      className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
+      className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden relative"
+      style={{ backgroundColor: '#313338' }}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -783,21 +784,20 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         )}
       </AnimatePresence>
       {/* Channel Header */}
-      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
+      <div className="h-12 px-4 flex items-center gap-2 border-b border-[#1E1F22] flex-shrink-0 w-full shadow-sm" style={{ backgroundColor: '#313338' }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
-          <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          <Hash className="w-6 h-6 text-[#80848E]" />
+          <h2 className="font-semibold text-[17px] text-[#F2F3F5]">{channel.name}</h2>
         </div>
 
         {channel.description && (
           <>
-            <div className="w-px h-6 bg-border hidden sm:block" />
+            <div className="w-px h-6 bg-[#3F4147] hidden sm:block mx-2" />
             <Popover>
               <PopoverTrigger asChild>
-                <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
-                  <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground truncate [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-sm [&_p]:inline [&_*]:!m-0">
-                    <MarkdownText content={channel.description || ''} className="[&_.markdown-content]:text-muted-foreground" />
+                <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-[#35373C] transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
+                  <span className="text-sm text-[#949BA4] truncate">
+                    <MarkdownText content={channel.description || ''} className="[&_.markdown-content]:text-[#949BA4]" />
                   </span>
                 </button>
               </PopoverTrigger>
@@ -980,10 +980,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           {/* Welcome message - anchored at bottom like Discord */}
           <div className="mb-8 animate-fade-in">
             <div className="mb-4">
-              <StreamlineHash size={64} className="text-muted-foreground" />
+              <StreamlineHash size={68} className="text-[#80848E]" />
             </div>
-            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
-            <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
+            <h1 className="text-[32px] font-bold mb-2 text-[#F2F3F5]">Bienvenue dans #{channel.name} !</h1>
+            <p className="text-[#949BA4]">C'est le début du salon #{channel.name}.</p>
             {canManageChannels && (
               <Button 
                 variant="outline" 
@@ -1004,12 +1004,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
             
             const DateSeparator = showDateSeparator ? (
-              <div className="flex items-center gap-4 my-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">
+              <div className="flex items-center gap-4 my-4">
+                <div className="flex-1 h-px bg-[#3F4147]" />
+                <span className="text-[12px] text-[#949BA4] font-medium">
                   {formatDate(currentDate)}
                 </span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px bg-[#3F4147]" />
               </div>
             ) : null;
             
@@ -1132,7 +1132,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
                     }}
-                    className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")}
+                    className={cn(
+                      "group rounded px-4 -mx-4 relative transition-colors",
+                      showAuthor ? "pt-[17px] mt-[17px]" : "py-0.5",
+                      "hover:bg-[#2E3035]"
+                    )}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {
                       if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
@@ -1172,11 +1176,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         )}
 
-                        <div className="flex gap-3 items-start">
+                        <div className="flex gap-4 items-start">
                           <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
-                            <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                            <Avatar className="w-10 h-10 hover:opacity-80 transition-opacity">
                               <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
-                              <AvatarFallback className="bg-primary/20 text-primary">
+                              <AvatarFallback className="bg-[#5865F2] text-white">
                                 {message.author.displayName.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
@@ -1185,7 +1189,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                               <button
                                 onClick={() => handleUserClick(message.author)}
-                                className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                                className="font-medium text-[#F2F3F5] hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
                               >
                                 {message.author.displayName}
                               </button>
@@ -1200,7 +1204,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 memberRoles.get(message.author.id)![0].icon_url && (
                                   <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
                                 )}
-                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                              <span className="text-[12px] text-[#949BA4] flex-shrink-0">
                                 {formatTime(message.timestamp)}
                               </span>
                             </div>
@@ -1256,7 +1260,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
+                              <p className="text-[#DBDEE1] break-words max-w-full overflow-hidden leading-[1.375rem]">
                                 <MarkdownText content={message.content} />
                               </p>
                             )}

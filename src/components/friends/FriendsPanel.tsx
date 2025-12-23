@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useFriends, useAcceptFriendRequest, useDeclineFriendRequest, useRemoveFriend } from '@/hooks/useFriends';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddFriendModal } from './AddFriendModal';
 import { UserPlus, MessageCircle, Check, X, UserMinus, Search, Users } from 'lucide-react';
 
@@ -16,6 +15,8 @@ const statusColors = {
   offline: 'bg-[hsl(var(--offline))]',
 };
 
+type FriendTab = 'online' | 'all' | 'pending';
+
 interface FriendsPanelProps {
   onOpenDM: (conversationId: string) => void;
 }
@@ -23,6 +24,9 @@ interface FriendsPanelProps {
 export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<FriendTab>('online');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   const { data: friends = [], isLoading } = useFriends();
   const acceptRequest = useAcceptFriendRequest();
@@ -49,64 +53,147 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
     onOpenDM(result.conversation_id);
   };
 
+  const toggleSearch = () => {
+    if (searchExpanded) {
+      setSearchExpanded(false);
+      setSearchQuery('');
+    } else {
+      setSearchExpanded(true);
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && searchExpanded) {
+        setSearchExpanded(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchExpanded]);
+
+  const getCurrentList = () => {
+    switch (activeTab) {
+      case 'online':
+        return filteredFriends(onlineFriends);
+      case 'all':
+        return filteredFriends(acceptedFriends);
+      case 'pending':
+        return pendingRequests;
+      default:
+        return [];
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-background">
-      {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-border">
-        <Users className="w-5 h-5 text-muted-foreground" />
-        <h2 className="font-semibold">Amis</h2>
-        <Button 
-          size="sm" 
-          onClick={() => setShowAddFriend(true)}
-          className="ml-auto"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Ajouter
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un ami..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      {/* Header with tabs integrated */}
+      <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
+        <Users className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        <h2 className="font-semibold flex-shrink-0">Amis</h2>
+        
+        {/* Separator */}
+        <div className="h-6 w-px bg-border mx-2 flex-shrink-0" />
+        
+        {/* Tab buttons in header */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setActiveTab('online')}
+            className={cn(
+              'px-3 py-1.5 text-sm rounded-md transition-colors',
+              activeTab === 'online' 
+                ? 'bg-muted text-foreground font-medium' 
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            )}
+          >
+            En ligne — {onlineFriends.length}
+          </button>
+          <button
+            onClick={() => setActiveTab('all')}
+            className={cn(
+              'px-3 py-1.5 text-sm rounded-md transition-colors',
+              activeTab === 'all' 
+                ? 'bg-muted text-foreground font-medium' 
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            )}
+          >
+            Tous — {acceptedFriends.length}
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={cn(
+              'px-3 py-1.5 text-sm rounded-md transition-colors relative',
+              activeTab === 'pending' 
+                ? 'bg-muted text-foreground font-medium' 
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            )}
+          >
+            En attente
+            {pendingRequests.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+        </div>
+        
+        {/* Right side: Search icon + Add button */}
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Expandable search */}
+          <div className="relative flex items-center">
+            {searchExpanded && (
+              <div className="absolute right-0 animate-fade-in">
+                <div className="relative">
+                  <Input
+                    ref={searchInputRef}
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-48 pr-8 h-8 text-sm"
+                  />
+                  <button
+                    onClick={toggleSearch}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+            {!searchExpanded && (
+              <Button 
+                size="icon" 
+                variant="ghost"
+                onClick={toggleSearch}
+                className="h-8 w-8"
+              >
+                <Search className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          
+          <Button 
+            size="sm" 
+            onClick={() => setShowAddFriend(true)}
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Ajouter
+          </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="online" className="flex-1 flex flex-col">
-        <div className="px-4">
-          <TabsList className="w-full">
-            <TabsTrigger value="online" className="flex-1">
-              En ligne — {onlineFriends.length}
-            </TabsTrigger>
-            <TabsTrigger value="all" className="flex-1">
-              Tous — {acceptedFriends.length}
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="flex-1 relative">
-              En attente
-              {pendingRequests.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                  {pendingRequests.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          <TabsContent value="online" className="m-0 space-y-2">
-            {filteredFriends(onlineFriends).length === 0 ? (
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeTab === 'online' && (
+          <div className="space-y-2">
+            {getCurrentList().length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 Aucun ami en ligne
               </p>
             ) : (
-              filteredFriends(onlineFriends).map(friend => (
+              getCurrentList().map(friend => (
                 <FriendCard
                   key={friend.id}
                   friend={friend}
@@ -115,15 +202,17 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
                 />
               ))
             )}
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="all" className="m-0 space-y-2">
-            {filteredFriends(acceptedFriends).length === 0 ? (
+        {activeTab === 'all' && (
+          <div className="space-y-2">
+            {getCurrentList().length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 Aucun ami trouvé
               </p>
             ) : (
-              filteredFriends(acceptedFriends).map(friend => (
+              getCurrentList().map(friend => (
                 <FriendCard
                   key={friend.id}
                   friend={friend}
@@ -132,9 +221,11 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
                 />
               ))
             )}
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="pending" className="m-0 space-y-2">
+        {activeTab === 'pending' && (
+          <div className="space-y-2">
             {pendingRequests.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 Aucune demande en attente
@@ -149,9 +240,9 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
                 />
               ))
             )}
-          </TabsContent>
-        </div>
-      </Tabs>
+          </div>
+        )}
+      </div>
 
       {showAddFriend && (
         <AddFriendModal onClose={() => setShowAddFriend(false)} />

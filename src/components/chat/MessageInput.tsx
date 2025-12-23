@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { MarkdownPreview } from './MarkdownPreview';
+import { RichMarkdownInput, RichMarkdownInputRef } from './RichMarkdownInput';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
@@ -83,7 +83,7 @@ export function MessageInput({
   showFollowBar = false,
   onFollowClick,
 }: MessageInputProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const richInputRef = useRef<RichMarkdownInputRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -93,7 +93,7 @@ export function MessageInput({
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
   const insertEmoji = useCallback((emoji: string) => {
-    const textarea = textareaRef.current;
+    const textarea = richInputRef.current?.textarea;
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -101,43 +101,12 @@ export function MessageInput({
       onChange(newValue);
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-        textarea.focus();
+        richInputRef.current?.focus();
       }, 0);
     } else {
       onChange(value + emoji);
     }
   }, [value, onChange]);
-
-  const adjustTextareaHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      const maxHeight = compact ? 120 : 200;
-      textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
-    }
-  }, [compact]);
-
-  useEffect(() => {
-    adjustTextareaHeight();
-  }, [value, adjustTextareaHeight]);
-
-  // Detect markdown syntax for dynamic preview
-  const hasMarkdownSyntax = (text: string): boolean => {
-    if (!text.trim()) return false;
-    const markdownPatterns = [
-      /\*\*[^*]+\*\*/,      // **bold**
-      /\*[^*]+\*/,          // *italic*
-      /~~[^~]+~~/,          // ~~strikethrough~~
-      /`[^`]+`/,            // `inline code`
-      /```[\s\S]*```/,      // code blocks
-      /\[.+\]\(.+\)/,       // [links](url)
-      /^>\s/m,              // > blockquotes
-      /^#{1,6}\s/m,         // # headings
-    ];
-    return markdownPatterns.some(pattern => pattern.test(text));
-  };
-
-  const showPreview = hasMarkdownSyntax(value);
 
   // Handle file input change
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,10 +200,10 @@ export function MessageInput({
   }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
 
   const handleMentionSelect = useCallback((mention: string, displayText: string) => {
-    if (!mentionState || !textareaRef.current) return;
+    if (!mentionState || !richInputRef.current?.textarea) return;
     
     const before = value.slice(0, mentionState.startIndex);
-    const after = value.slice(textareaRef.current.selectionStart);
+    const after = value.slice(richInputRef.current.selectionStart);
     const newValue = before + mention + ' ' + after;
     
     onChange(newValue);
@@ -242,10 +211,10 @@ export function MessageInput({
     
     // Set cursor position after the mention
     setTimeout(() => {
-      if (textareaRef.current) {
+      if (richInputRef.current?.textarea) {
         const newPos = mentionState.startIndex + mention.length + 1;
-        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
-        textareaRef.current.focus();
+        richInputRef.current.textarea.selectionStart = richInputRef.current.textarea.selectionEnd = newPos;
+        richInputRef.current.focus();
       }
     }, 0);
   }, [mentionState, value, onChange]);
@@ -340,7 +309,7 @@ export function MessageInput({
     // Get plain text from clipboard (preserves markdown syntax)
     const text = e.clipboardData.getData('text/plain');
     
-    const textarea = textareaRef.current;
+    const textarea = richInputRef.current?.textarea;
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -411,9 +380,6 @@ export function MessageInput({
         onUpdate={(id, updates) => onUpdateAttachment?.(id, updates)}
       />
 
-      {showPreview && value.trim() && (
-        <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin w-full" />
-      )}
       <form onSubmit={handleSubmit} className="relative w-full min-w-0 shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         {/* Mention Autocomplete */}
         {mentionState && (
@@ -474,20 +440,15 @@ export function MessageInput({
             </PopoverContent>
           </Popover>
           
-          <textarea
-            ref={textareaRef}
+          <RichMarkdownInput
+            ref={richInputRef}
             value={value}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={placeholder}
             disabled={disabled}
-            className={`flex-1 min-w-0 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
-              compact 
-                ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
-                : "py-3 min-h-[24px] max-h-[200px] pr-1"
-            }`}
-            rows={1}
+            compact={compact}
           />
           
           <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>

@@ -603,9 +603,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50">
+      <div ref={ref} className="w-60 flex-shrink-0 flex flex-col" style={{ backgroundColor: '#2B2D31' }}>
         {/* Search input and Inbox */}
-        <div className="px-3 pt-3 border-[#151723] bg-[#161927]">
+        <div className="px-3 pt-3" style={{ backgroundColor: '#2B2D31' }}>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />

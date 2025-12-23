@@ -156,13 +156,10 @@ export const RichMarkdownInput = forwardRef<RichMarkdownInputRef, RichMarkdownIn
   // Adjust textarea height based on content
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
-    const container = textarea?.parentElement;
-    if (textarea && container) {
+    if (textarea) {
       textarea.style.height = 'auto';
       const maxHeight = compact ? 120 : 200;
-      const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-      textarea.style.height = newHeight + 'px';
-      container.style.height = newHeight + 'px';
+      textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
     }
   }, [compact]);
 
@@ -178,16 +175,16 @@ export const RichMarkdownInput = forwardRef<RichMarkdownInputRef, RichMarkdownIn
     }
   }, []);
 
-  const baseTextSize = compact ? 'text-sm' : 'text-[15px]';
-  const basePadding = compact ? 'py-2 px-0' : 'py-2.5 px-0';
-
   return (
-    <div className={`relative flex-1 ${className}`} style={{ minHeight: compact ? 36 : 44 }}>
+    <div className={`relative flex-1 min-h-[24px] ${className}`}>
       {/* Overlay layer - displays formatted markdown */}
       <div
         ref={overlayRef}
-        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-hidden text-foreground ${baseTextSize} ${basePadding} leading-[1.375rem]`}
-        style={{ wordBreak: 'break-word' }}
+        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-hidden text-foreground ${compact ? 'text-sm' : 'text-[15px]'} leading-[1.375rem]`}
+        style={{ 
+          wordBreak: 'break-word',
+          padding: '0',
+        }}
         aria-hidden="true"
       >
         {value ? parseInlineMarkdown(value) : (
@@ -205,8 +202,10 @@ export const RichMarkdownInput = forwardRef<RichMarkdownInputRef, RichMarkdownIn
         onScroll={handleScroll}
         disabled={disabled}
         rows={1}
-        className={`absolute inset-0 w-full h-full resize-none bg-transparent text-transparent selection:bg-primary/30 selection:text-transparent caret-foreground outline-none placeholder-transparent ${baseTextSize} ${basePadding} leading-[1.375rem]`}
-        style={{ caretColor: 'hsl(var(--foreground))' }}
+        className={`w-full resize-none bg-transparent text-transparent selection:bg-primary/30 selection:text-transparent caret-foreground outline-none placeholder-transparent ${compact ? 'text-sm py-2' : 'text-[15px] py-2.5'} leading-[1.375rem]`}
+        style={{
+          caretColor: 'hsl(var(--foreground))',
+        }}
         placeholder=""
       />
     </div>

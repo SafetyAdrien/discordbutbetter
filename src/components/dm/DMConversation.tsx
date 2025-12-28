@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X, UserCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X, Users } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
@@ -32,8 +32,6 @@ import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAtta
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageAttachments';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
-import { DMUserInfoPanel } from './DMUserInfoPanel';
-import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -70,8 +68,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
-  const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
-  const [showFullProfile, setShowFullProfile] = useState(false);
+  const [showMemberPanel, setShowMemberPanel] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -296,13 +293,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               <Button 
                 variant="ghost" 
                 size="icon"
-                onClick={() => setShowUserInfoPanel(!showUserInfoPanel)}
-                className={showUserInfoPanel ? 'bg-muted' : ''}
+                onClick={() => setShowMemberPanel(!showMemberPanel)}
+                className={showMemberPanel ? 'bg-muted' : ''}
               >
-                <UserCircle className="w-4 h-4" />
+                <Users className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Profil de l'utilisateur</TooltipContent>
+            <TooltipContent>Liste des membres</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -503,21 +500,88 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         </div>
       </ScrollArea>
 
-        {/* User Info Panel */}
-        {showUserInfoPanel && participant && (
-          <DMUserInfoPanel 
-            participant={{
-              id: participant.id,
-              display_name: participant.display_name,
-              username: participant.username,
-              avatar_url: participant.avatar_url,
-              banner_url: participant.banner_url,
-              bio: participant.bio,
-              status: participant.status || 'offline',
-              created_at: participant.created_at,
-            }}
-            onViewFullProfile={() => setShowFullProfile(true)}
-          />
+        {/* Member Panel */}
+        {showMemberPanel && (
+          <div className="w-60 border-l border-border bg-card flex flex-col shrink-0">
+            <div className="p-3 border-b border-border">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Membres — 2
+              </h3>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-0.5">
+                {/* Current User */}
+                {profile && (
+                  <button
+                    onClick={() => setSelectedProfileUser({
+                      id: user?.id,
+                      displayName: profile.display_name,
+                      username: profile.username,
+                      avatar: profile.avatar_url,
+                      status: profile.status || 'offline',
+                      bio: profile.bio,
+                      banner: profile.banner_url,
+                    })}
+                    className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={profile.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                          {profile.display_name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
+                        statusColors[profile.status || 'offline']
+                      )} />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{profile.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{profile.username.toLowerCase()}
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* Other Participant */}
+                {participant && (
+                  <button
+                    onClick={() => setSelectedProfileUser({
+                      id: participant.id,
+                      displayName: participant.display_name,
+                      username: participant.username,
+                      avatar: participant.avatar_url,
+                      status: participant.status || 'offline',
+                      bio: participant.bio,
+                      banner: participant.banner_url,
+                    })}
+                    className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={participant.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                          {participant.display_name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
+                        statusColors[participant.status || 'offline']
+                      )} />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{participant.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{participant.username.toLowerCase()}
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         )}
       </div>
 
@@ -570,24 +634,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         open={!!selectedProfileUser}
         onOpenChange={(open) => !open && setSelectedProfileUser(null)}
       />
-
-      {/* Full User Profile Modal */}
-      {participant && (
-        <FullUserProfileModal
-          user={{
-            id: participant.id,
-            display_name: participant.display_name,
-            username: participant.username,
-            avatar_url: participant.avatar_url,
-            banner_url: participant.banner_url,
-            bio: participant.bio,
-            status: participant.status || 'offline',
-            created_at: participant.created_at,
-          }}
-          open={showFullProfile}
-          onOpenChange={setShowFullProfile}
-        />
-      )}
     </div>
   );
 }

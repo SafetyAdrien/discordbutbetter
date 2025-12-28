@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Pin, Check, X, UserCircle } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
@@ -34,8 +34,6 @@ import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageA
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { DMUserInfoPanel } from './DMUserInfoPanel';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
-import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
-import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -75,7 +73,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
-  const [profileInitialTab, setProfileInitialTab] = useState<'about' | 'servers' | 'friends'>('about');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { user, profile } = useAuth();
@@ -103,9 +100,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const editMessage = useEditDMMessage();
   const deleteMessage = useDeleteDMMessage();
   const { activeCall, startCall, endCall } = useDMCalls(conversationId);
-  const pinMessage = usePinDMMessage();
-  const unpinMessage = useUnpinDMMessage();
-  const { data: pinnedMessages = [] } = useDMPinnedMessages(conversationId);
 
   const conversation = conversations.find((c) => c.id === conversationId);
   const participantFromList = conversation?.participants[0] ?? null;
@@ -210,23 +204,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     deleteMessage.mutate({ messageId, conversationId });
   };
 
-  const handlePinMessage = (messageId: string) => {
-    pinMessage.mutate({ messageId, conversationId });
-  };
-
-  const handleUnpinMessage = (messageId: string) => {
-    unpinMessage.mutate({ messageId, conversationId });
-  };
-
-  const isMessagePinned = (messageId: string) => {
-    return pinnedMessages.some(p => p.message_id === messageId);
-  };
-
-  const handleOpenNotes = () => {
-    setProfileInitialTab('about');
-    setShowFullProfile(true);
-  };
-
   const getCharacterCountColor = () => {
     if (editingContent.length > 1980) return 'text-destructive';
     if (editingContent.length > 1900) return 'text-yellow-500';
@@ -308,9 +285,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div>
-                <DMPinnedMessagesPopover conversationId={conversationId} />
-              </div>
+              <Button variant="ghost" size="icon">
+                <Pin className="w-4 h-4" />
+              </Button>
             </TooltipTrigger>
             <TooltipContent>Messages épinglés</TooltipContent>
           </Tooltip>
@@ -331,245 +308,202 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       </div>
 
       <div className="flex-1 flex min-h-0">
-        {/* Left column: Messages + Input */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* Messages */}
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="flex flex-col justify-end min-h-full p-4 space-y-0.5">
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <Avatar className="w-16 h-16 mb-4">
-                    <AvatarImage src={participant?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                      {displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h3 className="text-lg font-semibold">{displayName}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    C'est le début de votre conversation avec {displayName}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {messages.map((message, idx) => {
-                    const currentDate = message.created_at ? new Date(message.created_at) : new Date();
-                    const prevMessage = idx > 0 ? messages[idx - 1] : null;
-                    const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;
-                    const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
-                    
-                    const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
-                    const isOwnMessage = user?.id === message.author?.id;
-                    const timestamp = message.created_at
-                      ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
-                      : '';
+        {/* Messages */}
+        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col justify-end min-h-full p-4 space-y-0.5">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <Avatar className="w-16 h-16 mb-4">
+                <AvatarImage src={participant?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <h3 className="text-lg font-semibold">{displayName}</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                C'est le début de votre conversation avec {displayName}
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((message, idx) => {
+                const currentDate = message.created_at ? new Date(message.created_at) : new Date();
+                const prevMessage = idx > 0 ? messages[idx - 1] : null;
+                const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;
+                const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
+                
+                const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
+                const isOwnMessage = user?.id === message.author?.id;
+                const timestamp = message.created_at
+                  ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
+                  : '';
 
-                    return (
-                      <div key={message.id}>
-                        {/* Date Separator */}
-                        {showDateSeparator && (
-                          <div className="flex items-center gap-4 my-2">
-                            <div className="flex-1 h-px bg-border" />
-                            <span className="text-xs text-muted-foreground font-medium">
-                              {formatDate(currentDate)}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
-                          </div>
-                        )}
-                        <UniversalMessageContextMenu
-                        key={message.id}
+                return (
+                  <div key={message.id}>
+                    {/* Date Separator */}
+                    {showDateSeparator && (
+                      <div className="flex items-center gap-4 my-2">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {formatDate(currentDate)}
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+                    <UniversalMessageContextMenu
+                    key={message.id}
+                    isOwnMessage={isOwnMessage}
+                    messageId={message.id}
+                    onReply={() => handleReply(message)}
+                    onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                    onCopyText={() => handleCopyMessage(message.content)}
+                    onCopyLink={() => handleCopyLink(message.id)}
+                    onCopyId={() => handleCopyId(message.id)}
+                    onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                    onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
+                    onReport={!isOwnMessage ? () => setReportingMessage({
+                      id: message.id,
+                      content: message.content,
+                      author: {
+                        id: message.author?.id || '',
+                        displayName: message.author?.display_name || 'Utilisateur',
+                        username: message.author?.username || 'unknown',
+                        avatar: message.author?.avatar_url || undefined,
+                        status: 'offline',
+                      },
+                      timestamp: new Date(message.created_at || Date.now()),
+                      edited_at: message.edited_at || null,
+                    }) : undefined}
+                  >
+                    <div 
+                      className={cn(
+                        'flex gap-3 group message-hover rounded-md px-2 -mx-2 relative',
+                        showAuthor ? 'pt-1' : 'py-0',
+                        !showAuthor && 'pl-12'
+                      )}
+                      onMouseEnter={() => setHoveredMessageId(message.id)}
+                      onMouseLeave={() => { 
+                        if (openDropdownMessageId !== message.id) setHoveredMessageId(null); 
+                      }}
+                    >
+                      <UniversalMessageActions
+                        isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && editingMessageId !== message.id}
+                        isShiftPressed={isShiftPressed}
                         isOwnMessage={isOwnMessage}
-                        isPinned={isMessagePinned(message.id)}
-                        messageId={message.id}
                         onReply={() => handleReply(message)}
                         onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                        onCopyText={() => handleCopyMessage(message.content)}
                         onCopyLink={() => handleCopyLink(message.id)}
                         onCopyId={() => handleCopyId(message.id)}
                         onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                         onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
-                        onPin={() => isMessagePinned(message.id) 
-                          ? handleUnpinMessage(message.id) 
-                          : handlePinMessage(message.id)
-                        }
-                        onReport={!isOwnMessage ? () => setReportingMessage({
-                          id: message.id,
-                          content: message.content,
-                          author: {
-                            id: message.author?.id || '',
-                            displayName: message.author?.display_name || 'Utilisateur',
-                            username: message.author?.username || 'unknown',
-                            avatar: message.author?.avatar_url || undefined,
-                            status: 'offline',
-                          },
-                          timestamp: new Date(message.created_at || Date.now()),
-                          edited_at: message.edited_at || null,
-                        }) : undefined}
-                      >
-                        <div 
-                          className={cn(
-                            'flex gap-3 group message-hover rounded-md px-2 -mx-2 relative',
-                            showAuthor ? 'pt-1' : 'py-0',
-                            !showAuthor && 'pl-12'
-                          )}
-                          onMouseEnter={() => setHoveredMessageId(message.id)}
-                          onMouseLeave={() => { 
-                            if (openDropdownMessageId !== message.id) setHoveredMessageId(null); 
-                          }}
-                        >
-                          <UniversalMessageActions
-                            isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && editingMessageId !== message.id}
-                            isShiftPressed={isShiftPressed}
-                            isOwnMessage={isOwnMessage}
-                            onReply={() => handleReply(message)}
-                            onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                            onCopyLink={() => handleCopyLink(message.id)}
-                            onCopyId={() => handleCopyId(message.id)}
-                            onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                            onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
-                            onDropdownOpenChange={(open) => {
-                              setOpenDropdownMessageId(open ? message.id : null);
-                              if (!open) setHoveredMessageId(null);
-                            }}
-                          />
-                          {showAuthor && (
-                            <Avatar className="w-9 h-9 flex-shrink-0">
-                              <AvatarImage src={message.author?.avatar_url || undefined} />
-                              <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                                {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-
-                          <div className="flex-1 min-w-0">
-                            {showAuthor && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  className="font-semibold text-sm hover:underline text-left"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedProfileUser({
-                                      id: message.author?.id,
-                                      displayName: message.author?.display_name,
-                                      username: message.author?.username,
-                                      avatar: message.author?.avatar_url,
-                                      status: 'offline',
-                                    });
-                                  }}
-                                >
-                                  {message.author?.display_name || 'Utilisateur'}
-                                </button>
-                                <span className="text-[.625rem] text-muted-foreground/60">
-                                  {timestamp}
-                                </span>
-                              </div>
-                            )}
-
-                            {editingMessageId === message.id ? (
-                              <div className="mt-1 space-y-2">
-                                <Textarea
-                                  value={editingContent}
-                                  onChange={(e) => setEditingContent(e.target.value)}
-                                  className="min-h-[60px] resize-none"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleSaveEdit();
-                                    }
-                                    if (e.key === 'Escape') {
-                                      handleCancelEdit();
-                                    }
-                                  }}
-                                />
-                                <div className="flex items-center justify-between">
-                                  <span className={cn('text-xs', getCharacterCountColor())}>
-                                    {editingContent.length}/2000
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                                      <X className="w-4 h-4 mr-1" />
-                                      Annuler
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      onClick={handleSaveEdit}
-                                      disabled={!editingContent.trim() || editingContent.length > 2000}
-                                    >
-                                      <Check className="w-4 h-4 mr-1" />
-                                      Sauvegarder
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className={cn(
-                                  'text-sm break-words font-ginto',
-                                  message.isPending && 'opacity-50'
-                                )}>
-                                  <MarkdownText content={message.content} />
-                                </div>
-                              </>
-                            )}
-
-                            {/* Message Attachments */}
-                            {message.attachments && message.attachments.length > 0 && (
-                              <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
-                            )}
-
-                            {/* Edited indicator - after attachments */}
-                            {message.edited_at && (
-                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                            )}
+                        onDropdownOpenChange={(open) => {
+                          setOpenDropdownMessageId(open ? message.id : null);
+                          if (!open) setHoveredMessageId(null);
+                        }}
+                      />
+                      {showAuthor && (
+                        <Avatar className="w-9 h-9 flex-shrink-0">
+                          <AvatarImage src={message.author?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                            {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {showAuthor && (
+                          <div className="flex items-baseline gap-2 mb-0.5">
+                            <span className="font-medium text-sm">
+                              {message.author?.display_name || 'Utilisateur'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{timestamp}</span>
                           </div>
-                        </div>
-                      </UniversalMessageContextMenu>
+                        )}
+                        {editingMessageId === message.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              ref={(el) => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+                                }
+                              }}
+                              value={editingContent}
+                              onChange={(e) => {
+                                setEditingContent(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              className="min-h-[40px] max-h-[200px] resize-none text-sm"
+                              autoFocus
+                            />
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">
+                                Entrée pour sauvegarder • Maj+Entrée nouvelle ligne
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={cn('text-xs font-mono', getCharacterCountColor())}>
+                                  {editingContent.length}/2000
+                                </span>
+                                <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="iconSm" 
+                                  variant="ghost" 
+                                  onClick={handleSaveEdit}
+                                  disabled={!editingContent.trim() || editingContent.length > 2000}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={cn(
+                              'text-sm break-words font-ginto',
+                              message.isPending && 'opacity-50'
+                            )}>
+                              <MarkdownText content={message.content} />
+                            </div>
+                          </>
+                        )}
+
+                        {/* Message Attachments */}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
+                        )}
+
+                        {/* Edited indicator - after attachments */}
+                        {message.edited_at && (
+                          <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
+                        )}
                       </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                </>
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Typing Indicator */}
-          <TypingIndicator conversationId={conversationId} />
-
-          {/* Input */}
-          <MessageInput
-            value={messageInput}
-            onChange={setMessageInput}
-            onSend={() => {
-              if (!messageInput.trim() && attachments.length === 0) return;
-              sendMessage.mutate({
-                conversationId,
-                content: messageInput.trim(),
-                attachments,
-              });
-              setMessageInput('');
-              clearAttachments();
-              stopTyping();
-            }}
-            placeholder={`Envoyer un message à ${displayName}`}
-            disabled={sendMessage.isPending}
-            isSending={sendMessage.isPending}
-            onTypingStart={startTyping}
-            onTypingStop={stopTyping}
-            attachments={attachments}
-            onAddFiles={addFiles}
-            onRemoveAttachment={removeAttachment}
-            onUpdateAttachment={updateAttachment}
-            onToggleSpoiler={toggleSpoiler}
-            onClearAttachments={clearAttachments}
-          />
+                    </div>
+                  </UniversalMessageContextMenu>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </>
+          )}
         </div>
+      </ScrollArea>
 
-        {/* User Info Panel - Full height */}
+        {/* User Info Panel */}
         {showUserInfoPanel && participant && (
           <DMUserInfoPanel 
             participant={{
@@ -582,15 +516,41 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               status: participant.status || 'offline',
               created_at: participant.created_at,
             }}
-            onViewFullProfile={() => {
-              setProfileInitialTab('about');
-              setShowFullProfile(true);
-            }}
-            onOpenNotes={handleOpenNotes}
+            onViewFullProfile={() => setShowFullProfile(true)}
           />
         )}
       </div>
 
+      {/* Typing Indicator */}
+      <TypingIndicator conversationId={conversationId} />
+
+      {/* Input */}
+      <MessageInput
+        value={messageInput}
+        onChange={setMessageInput}
+        onSend={() => {
+          if (!messageInput.trim() && attachments.length === 0) return;
+          sendMessage.mutate({
+            conversationId,
+            content: messageInput.trim(),
+            attachments,
+          });
+          setMessageInput('');
+          clearAttachments();
+          stopTyping();
+        }}
+        placeholder={`Envoyer un message à ${displayName}`}
+        disabled={sendMessage.isPending}
+        isSending={sendMessage.isPending}
+        onTypingStart={startTyping}
+        onTypingStop={stopTyping}
+        attachments={attachments}
+        onAddFiles={addFiles}
+        onRemoveAttachment={removeAttachment}
+        onUpdateAttachment={updateAttachment}
+        onToggleSpoiler={toggleSpoiler}
+        onClearAttachments={clearAttachments}
+      />
 
       {/* Report Modal */}
       <ReportModal
@@ -626,7 +586,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           }}
           open={showFullProfile}
           onOpenChange={setShowFullProfile}
-          initialTab={profileInitialTab}
         />
       )}
     </div>

@@ -186,14 +186,16 @@ export function useCreateCategory() {
       
       return { previousChannels, previousServers, serverId };
     },
-    onError: (_, __, context) => {
+    onError: (error: any, __, context) => {
       if (context?.previousChannels) {
         queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
       }
       if (context?.previousServers) {
         queryClient.setQueryData(['servers'], context.previousServers);
       }
-      toast.error('Erreur lors de la création de la catégorie');
+      const errorMessage = error?.message || error?.code || 'Erreur inconnue';
+      console.error('[useCreateCategory] Error:', error);
+      toast.error(`Erreur lors de la création: ${errorMessage}`);
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
@@ -313,14 +315,16 @@ export function useCreateChannel() {
       
       return { previousChannels, previousServers, serverId };
     },
-    onError: (_, __, context) => {
+    onError: (error: any, __, context) => {
       if (context?.previousChannels) {
         queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
       }
       if (context?.previousServers) {
         queryClient.setQueryData(['servers'], context.previousServers);
       }
-      toast.error('Erreur lors de la création du salon');
+      const errorMessage = error?.message || error?.code || 'Erreur inconnue';
+      console.error('[useCreateChannel] Error:', error);
+      toast.error(`Erreur lors de la création: ${errorMessage}`);
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });

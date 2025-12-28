@@ -740,7 +740,7 @@ export function ChannelList({
         ...category,
         channels: category.channels.filter((ch) => shouldShowChannel(ch.id)),
       }))
-      .filter((category) => category.channels.length > 0); // Hide empty categories
+      .filter((category) => canManageChannels || category.channels.length > 0); // Show empty categories to admins only
   }, [server.categories, shouldShowChannel]);
 
   // Get all voice/stage channel IDs for lock check

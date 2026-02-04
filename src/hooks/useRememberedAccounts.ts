@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 export interface RememberedAccount {
   id: string;
@@ -12,24 +12,23 @@ export interface RememberedAccount {
 const STORAGE_KEY = 'remembered_accounts';
 const MAX_ACCOUNTS = 5;
 
-export function useRememberedAccounts() {
-  const [accounts, setAccounts] = useState<RememberedAccount[]>([]);
-
-  // Load accounts from localStorage on mount
-  useEffect(() => {
+// Initialize from localStorage synchronously
+function getInitialAccounts(): RememberedAccount[] {
+  try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as RememberedAccount[];
-        // Sort by last login (most recent first)
-        const sorted = parsed.sort((a, b) => b.lastLoginAt - a.lastLoginAt);
-        setAccounts(sorted);
-      } catch (e) {
-        console.error('Error parsing remembered accounts:', e);
-        localStorage.removeItem(STORAGE_KEY);
-      }
+      const parsed = JSON.parse(stored) as RememberedAccount[];
+      return parsed.sort((a, b) => b.lastLoginAt - a.lastLoginAt);
     }
-  }, []);
+  } catch (e) {
+    console.error('Error parsing remembered accounts:', e);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  return [];
+}
+
+export function useRememberedAccounts() {
+  const [accounts, setAccounts] = useState<RememberedAccount[]>(getInitialAccounts);
 
   const addRememberedAccount = useCallback((account: RememberedAccount) => {
     setAccounts(prev => {

@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { checkPasswordPwned } from '@/lib/password-security';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { useRememberedAccounts, type RememberedAccount } from '@/hooks/useRememberedAccounts';
+import { RememberedAccountsCard } from '@/components/auth/RememberedAccountsCard';
 
 type AuthView = 'login' | 'forgot-password' | 'reset-password';
 type AuthMethod = 'email' | 'phone';
@@ -73,6 +75,7 @@ const signupSchema = z.object({
 export default function Auth() {
   const navigate = useNavigate();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const { accounts: rememberedAccounts, addRememberedAccount, removeRememberedAccount, updateAccountLastLogin } = useRememberedAccounts();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -258,6 +261,26 @@ export default function Auth() {
         toast.error(error.message);
       }
     } else {
+      // Fetch profile to save in remembered accounts
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, username, avatar_url')
+          .eq('id', authUser.id)
+          .single();
+        
+        if (profile) {
+          addRememberedAccount({
+            id: authUser.id,
+            email: email,
+            displayName: profile.display_name,
+            username: profile.username,
+            avatarUrl: profile.avatar_url,
+            lastLoginAt: Date.now(),
+          });
+        }
+      }
       toast.success('Connexion réussie !');
       navigate('/');
     }
@@ -400,6 +423,27 @@ export default function Auth() {
       return;
     }
 
+    // Fetch profile to save in remembered accounts
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, username, avatar_url')
+        .eq('id', authUser.id)
+        .single();
+      
+      if (profile) {
+        addRememberedAccount({
+          id: authUser.id,
+          email: email,
+          displayName: profile.display_name,
+          username: profile.username,
+          avatarUrl: profile.avatar_url,
+          lastLoginAt: Date.now(),
+        });
+      }
+    }
+
     setLoading(false);
     toast.success('Compte créé avec succès !');
     navigate('/');
@@ -491,6 +535,24 @@ export default function Auth() {
     setErrors({});
     setPhoneAuthStep('phone-input');
     setOtpCode('');
+  };
+
+  const handleQuickLogin = async (account: RememberedAccount) => {
+    // Try to restore session via refresh token
+    const { data, error } = await supabase.auth.refreshSession();
+    
+    if (error || !data.session) {
+      // Session expired - pre-fill email and ask for password
+      setEmail(account.email);
+      setLoginMethod('email');
+      toast.info('Session expirée, veuillez ressaisir votre mot de passe');
+      return;
+    }
+    
+    // Session valid - direct login
+    updateAccountLastLogin(account.id);
+    toast.success('Connexion réussie !');
+    navigate('/');
   };
 
   if (authLoading) {
@@ -662,20 +724,21 @@ export default function Auth() {
   // Login/Signup View (default)
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-4 glow-border">
-            <Gamepad2 className="w-8 h-8 text-primary" />
+      <div className={`flex items-start gap-6 w-full ${rememberedAccounts.length > 0 ? 'max-w-4xl justify-center' : 'max-w-md'}`}>
+        <div className="w-full max-w-md flex-shrink-0">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-4 glow-border">
+              <Gamepad2 className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold gradient-text">GameVault</h1>
+            <p className="text-muted-foreground mt-2">
+              Rejoins la communauté gaming
+            </p>
           </div>
-          <h1 className="text-3xl font-bold gradient-text">GameVault</h1>
-          <p className="text-muted-foreground mt-2">
-            Rejoins la communauté gaming
-          </p>
-        </div>
 
-        {/* Auth Card */}
-        <div className="glass rounded-xl p-6">
+          {/* Auth Card */}
+          <div className="glass rounded-xl p-6">
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Connexion</TabsTrigger>
@@ -982,6 +1045,16 @@ export default function Auth() {
             </TabsContent>
           </Tabs>
         </div>
+        </div>
+        
+        {/* Remembered Accounts Card */}
+        {rememberedAccounts.length > 0 && (
+          <RememberedAccountsCard 
+            accounts={rememberedAccounts}
+            onSelectAccount={handleQuickLogin}
+            onRemoveAccount={removeRememberedAccount}
+          />
+        )}
       </div>
     </div>
   );

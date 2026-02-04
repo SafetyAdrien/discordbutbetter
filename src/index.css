@@ -119,7 +119,7 @@
     /* Toolbar background: #2b3250 */
     --toolbar: 229 30% 24%;
 
-    --primary: 225 85% 53%;
+    --primary: 186 100% 50%;
     --primary-foreground: 233 30% 8%;
 
     --secondary: 270 60% 60%;
@@ -139,12 +139,12 @@
     --border: 231 20% 18%;
     /* Inputs: #232635 */
     --input: 231 23% 17%;
-    --ring: 225 85% 53%;
+    --ring: 186 100% 50%;
 
     --radius: 0.75rem;
 
     /* Custom gaming colors */
-    --glow-primary: 225 85% 53%;
+    --glow-primary: 186 100% 50%;
     --glow-secondary: 270 60% 60%;
     --surface-elevated: 231 24% 15%;
     --surface-hover: 231 24% 20%;
@@ -168,12 +168,12 @@
     /* Server List Sidebar: #10121B */
     --sidebar-background: 233 30% 8%;
     --sidebar-foreground: 220 6% 86%;
-    --sidebar-primary: 225 85% 53%;
+    --sidebar-primary: 186 100% 50%;
     --sidebar-primary-foreground: 233 30% 8%;
     --sidebar-accent: 231 24% 18%;
     --sidebar-accent-foreground: 220 6% 86%;
     --sidebar-border: 231 20% 18%;
-    --sidebar-ring: 225 85% 53%;
+    --sidebar-ring: 186 100% 50%;
 
     /* User Profile Panel: #12151F */
     --user-panel: 230 28% 10%;

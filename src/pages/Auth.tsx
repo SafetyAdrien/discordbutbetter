@@ -537,22 +537,11 @@ export default function Auth() {
     setOtpCode('');
   };
 
-  const handleQuickLogin = async (account: RememberedAccount) => {
-    // Try to restore session via refresh token
-    const { data, error } = await supabase.auth.refreshSession();
-    
-    if (error || !data.session) {
-      // Session expired - pre-fill email and ask for password
-      setEmail(account.email);
-      setLoginMethod('email');
-      toast.info('Session expirée, veuillez ressaisir votre mot de passe');
-      return;
-    }
-    
-    // Session valid - direct login
-    updateAccountLastLogin(account.id);
-    toast.success('Connexion réussie !');
-    navigate('/');
+  const handleQuickLogin = (account: RememberedAccount) => {
+    // Pre-fill email to help with login
+    setEmail(account.email);
+    setLoginMethod('email');
+    toast.info(`Entrez le mot de passe pour ${account.displayName}`);
   };
 
   if (authLoading) {

@@ -280,6 +280,51 @@
 }
 
 @layer utilities {
+  /* === STANDARD INTERACTION STATES === */
+  
+  /* Hover: subtle brightness change */
+  .interactive-hover {
+    @apply transition-colors duration-200;
+  }
+  .interactive-hover:hover {
+    opacity: 0.85;
+  }
+  
+  /* Scale hover for icons and small elements */
+  .hover-lift {
+    @apply transition-transform duration-100 ease-out;
+  }
+  .hover-lift:hover {
+    @apply scale-105;
+  }
+  
+  /* Active press feedback */
+  .press-feedback {
+    @apply transition-transform duration-100;
+  }
+  .press-feedback:active {
+    @apply scale-95;
+  }
+  
+  /* Combined hover + active for interactive buttons */
+  .btn-interactive {
+    @apply transition-all duration-200;
+  }
+  .btn-interactive:hover {
+    filter: brightness(1.1);
+  }
+  .btn-interactive:active {
+    @apply scale-[0.98];
+    filter: brightness(0.95);
+  }
+  
+  /* Improved focus ring */
+  .focus-ring {
+    @apply focus-visible:ring-2 focus-visible:ring-primary/50 
+           focus-visible:ring-offset-2 focus-visible:ring-offset-background
+           focus-visible:outline-none;
+  }
+
   .animation-pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
   }

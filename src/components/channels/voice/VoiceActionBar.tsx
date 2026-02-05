@@ -59,8 +59,8 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-4 rounded-none hover:bg-white/10',
-                    isMuted && 'bg-destructive/20 text-destructive hover:bg-destructive/30',
+                    'h-11 px-4 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150',
+                    isMuted && 'bg-destructive/20 text-destructive hover:bg-destructive/30 active:bg-destructive/40',
                     (!hasMicrophoneAccess || !canSpeak) && 'opacity-50'
                   )}
                   onClick={onToggleMute}
@@ -84,8 +84,8 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-4 rounded-none hover:bg-white/10',
-                    isCameraOn && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]',
+                    'h-11 px-4 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150',
+                    isCameraOn && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/30',
                     !canVideo && 'opacity-50'
                   )}
                   onClick={onToggleCamera}
@@ -109,7 +109,7 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-3 rounded-none hover:bg-white/10',
+                    'h-11 px-3 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150',
                     showChat && 'bg-white/10'
                   )}
                   onClick={onToggleChat}
@@ -126,7 +126,7 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-3 rounded-none hover:bg-white/10',
+                    'h-11 px-3 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150',
                     showMembers && 'bg-white/10'
                   )}
                   onClick={onToggleMembers}
@@ -143,8 +143,8 @@ export function VoiceActionBar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'h-11 px-3 rounded-none hover:bg-white/10',
-                    isScreenSharing && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))]',
+                    'h-11 px-3 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150',
+                    isScreenSharing && 'bg-[hsl(var(--online))]/20 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/30',
                     !canStream && 'opacity-50'
                   )}
                   onClick={onToggleScreenShare}
@@ -163,7 +163,7 @@ export function VoiceActionBar({
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-11 px-3 rounded-none hover:bg-white/10"
+                  className="h-11 px-3 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150"
                 >
                   <MoreHorizontal className="w-5 h-5" />
                 </Button>

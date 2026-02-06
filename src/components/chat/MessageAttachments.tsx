@@ -35,10 +35,12 @@ function formatFileSize(bytes: number): string {
 
 function ImageAttachment({ 
   attachment, 
-  onOpenLightbox 
+  onOpenLightbox,
+  isActive = true
 }: { 
   attachment: StoredAttachment;
   onOpenLightbox: () => void;
+  isActive?: boolean;
 }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [loaded, setLoaded] = useState(false);
@@ -51,7 +53,8 @@ function ImageAttachment({
         className={cn(
           'rounded-lg cursor-pointer transition-[filter,opacity] duration-200 max-h-80 w-full object-cover',
           !revealed && 'blur-2xl brightness-50',
-          !loaded && 'opacity-0'
+          !loaded && 'opacity-0',
+          !isActive && revealed && 'blur-[2px] brightness-90'
         )}
         onClick={() => revealed ? onOpenLightbox() : setRevealed(true)}
         onLoad={() => setLoaded(true)}
@@ -114,6 +117,7 @@ function ImageCarousel({
               <ImageAttachment
                 attachment={img}
                 onOpenLightbox={() => onOpenLightbox(index)}
+                isActive={index === currentIndex}
               />
             </CarouselItem>
           ))}

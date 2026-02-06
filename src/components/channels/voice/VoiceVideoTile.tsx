@@ -42,7 +42,7 @@ export function VoiceVideoTile({
   return (
     <div
       className={cn(
-        'relative rounded-xl overflow-hidden bg-[#1e1f22] transition-all duration-150',
+        'relative rounded-xl overflow-hidden bg-background transition-all duration-150',
         type === 'screen' && 'col-span-2 row-span-2',
         isSpeaking && 'ring-4 ring-[hsl(var(--online))] voice-speaking-ring',
         className
@@ -84,7 +84,7 @@ export function VoiceVideoTile({
 
       {/* Screen share indicator */}
       {type === 'screen' && (
-        <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-[#5865f2]/80 text-white text-xs font-medium">
+        <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-primary/80 text-white text-xs font-medium">
           Partage d'écran
         </div>
       )}

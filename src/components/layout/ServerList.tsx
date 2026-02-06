@@ -42,7 +42,7 @@ const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; posi
     <div 
       className={cn(
         "absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none",
-        "w-10 h-[2px] bg-[#5865f2] rounded-full shadow-[0_0_4px_rgba(88,101,242,0.5)]",
+        "w-10 h-[2px] bg-primary rounded-full shadow-[0_0_4px_hsl(var(--primary)/0.5)]",
         position === 'before' ? "-top-[5px]" : "-bottom-[5px]"
       )}
     />
@@ -115,8 +115,8 @@ function SortableServerIcon({
                 className={cn(
                   'server-icon relative group select-none',
                   isActive
-                    ? 'bg-[#5865f2] text-white rounded-[16px]'
-                    : 'bg-card hover:bg-[#5865f2]/80 hover:text-white'
+                    ? 'bg-primary text-white rounded-[16px]'
+                    : 'bg-card hover:bg-primary/80 hover:text-white'
                 )}
               >
                 {/* Active indicator - now shows for hasUnread without mentions too */}
@@ -204,7 +204,7 @@ const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ serv
   return (
     <div
       ref={ref}
-      className="server-icon bg-[#5865f2] text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing"
+      className="server-icon bg-primary text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing"
     >
       {server.icon ? (
         server.icon.startsWith('http') ? (
@@ -514,7 +514,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onCreateClick}
-            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
+            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -528,7 +528,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onDiscoverClick}
-            className="server-icon bg-card hover:bg-[#5865f2] hover:text-white text-[#5865f2]"
+            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
           >
             <Compass className="w-6 h-6" />
           </button>

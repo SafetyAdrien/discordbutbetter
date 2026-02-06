@@ -424,7 +424,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
     
     case 'code':
       return (
-        <code key={key} className="px-1.5 py-0.5 bg-[#2b2d31] rounded text-sm font-mono text-[#d4d7dc]">
+        <code key={key} className="px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground">
           {token.content as string}
         </code>
       );
@@ -447,7 +447,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
           href={token.url} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-[#00a8fc] hover:underline"
+          className="text-primary hover:underline"
         >
           {token.content as string}
         </a>
@@ -580,19 +580,19 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
       );
     case 'subtext':
       return (
-        <p key={key} className="text-[12px] text-[#949BA4] leading-4">
+        <p key={key} className="text-[12px] text-muted-foreground leading-4">
           {renderInlineContent(block.content)}
         </p>
       );
     case 'blockquote':
       return (
-        <blockquote key={key} className="border-l-[4px] border-[#4e5058] pl-3 my-1 text-muted-foreground">
+        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-1 text-muted-foreground">
           {renderInlineContent(block.content)}
         </blockquote>
       );
     case 'multiBlockquote':
       return (
-        <blockquote key={key} className="border-l-[4px] border-[#4e5058] pl-3 my-1 text-muted-foreground whitespace-pre-wrap">
+        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-1 text-muted-foreground whitespace-pre-wrap">
           {renderInlineContent(block.content)}
         </blockquote>
       );
@@ -704,7 +704,7 @@ export function parseMarkdown(content: string): React.ReactNode {
     );
   }
   
-  return <div className="markdown-content text-[#dbdee1]">{groupedBlocks}</div>;
+  return <div className="markdown-content text-foreground">{groupedBlocks}</div>;
 }
 
 // ============================================

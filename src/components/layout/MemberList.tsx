@@ -603,9 +603,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-60 bg-[#161928] flex flex-col border-l border-border/50">
+      <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border/50">
         {/* Search input and Inbox */}
-        <div className="px-3 pt-3 border-[#151723] bg-[#161927]">
+        <div className="px-3 pt-3 border-border bg-card">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
@@ -659,7 +659,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                         )}
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="bg-[#111214] border-none px-2 py-1">
+                    <TooltipContent side="top" className="bg-popover border-none px-2 py-1">
                       <p className="text-white text-xs font-medium">{group.role.name}</p>
                     </TooltipContent>
                   </Tooltip>

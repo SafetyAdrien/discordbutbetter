@@ -62,7 +62,7 @@ export function EmojiStickerPicker({
       <PopoverContent 
         side="top" 
         align="end" 
-        className="w-[352px] p-0 bg-[#2b2d31] border-none shadow-xl"
+        className="w-[352px] p-0 bg-popover border-none shadow-xl"
       >
         <Tabs defaultValue={defaultTab} className="w-full">
           <div className="flex items-center border-b border-white/10 px-2">
@@ -91,7 +91,7 @@ export function EmojiStickerPicker({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher..."
-                className="pl-8 bg-[#1e1f22] border-none h-8 text-sm"
+                className="pl-8 bg-input border-none h-8 text-sm"
               />
             </div>
           </div>

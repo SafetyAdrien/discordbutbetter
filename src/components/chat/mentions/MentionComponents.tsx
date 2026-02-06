@@ -27,14 +27,14 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick }:
               transition-colors duration-100
               ${isSelf 
                 ? 'bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a] hover:bg-[rgba(250,166,26,0.5)]' 
-                : 'bg-[rgba(88,101,242,0.3)] text-[#dee0fc] hover:bg-[#5865F2] hover:text-white'
+                : 'bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white'
               }
             `}
           >
             @{displayName}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="bg-[#111214] border-[#1e1f22] p-2">
+        <TooltipContent side="top" className="bg-popover border-border p-2">
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8">
               <AvatarImage src={avatarUrl} />
@@ -83,7 +83,7 @@ export function RoleMention({ roleId, roleName, roleColor }: RoleMentionProps) {
             @{roleName}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="bg-[#111214] border-[#1e1f22] p-2">
+        <TooltipContent side="top" className="bg-popover border-border p-2">
           <div className="flex items-center gap-2">
             <div 
               className="w-4 h-4 rounded-full" 
@@ -180,7 +180,7 @@ export function MessageLinkEmbed({
   return (
     <div 
       onClick={onJump}
-      className="mt-2 p-3 bg-[#2b2d31] border border-[#1e1f22] rounded-lg cursor-pointer hover:bg-[#32353b] transition-colors max-w-md"
+      className="mt-2 p-3 bg-card border border-border rounded-lg cursor-pointer hover:bg-surface-hover transition-colors max-w-md"
     >
       <div className="flex items-start gap-3">
         <Avatar className="h-8 w-8 flex-shrink-0">
@@ -196,10 +196,10 @@ export function MessageLinkEmbed({
             <Hash className="w-3 h-3" />
             <span>{channelName}</span>
           </div>
-          <p className="text-sm text-[#dcddde] line-clamp-2">{contentPreview}</p>
+          <p className="text-sm text-foreground line-clamp-2">{contentPreview}</p>
         </div>
       </div>
-      <div className="mt-2 flex items-center gap-1 text-xs text-[#00a8fc]">
+      <div className="mt-2 flex items-center gap-1 text-xs text-primary">
         <MessageSquare className="w-3 h-3" />
         <span>Aller au message</span>
       </div>

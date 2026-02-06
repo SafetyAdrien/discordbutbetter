@@ -1,224 +1,247 @@
 
+# Amélioration WebRTC vers Qualité Discord
 
-# Transition de Flou Progressive dans le Carrousel
+## Analyse de l'implémentation actuelle
 
-## Objectif
-Faire en sorte que l'effet de flou sur les images adjacentes se dissipe progressivement pendant le défilement, créant une transition fluide et naturelle plutôt qu'un changement binaire.
+### Ce qui est deja en place (solide)
+- Architecture WebRTC P2P avec signaling via Supabase Realtime
+- Serveurs STUN/TURN (Google STUN + OpenRelay TURN)
+- Voice Activity Detection (VAD) basique avec seuil 0.05
+- Push-to-Talk fonctionnel
+- Gestion camera/screen share
+- Statistiques de connexion (latence, jitter, packet loss)
+- Sons de notification (join/leave/mute)
+
+### Lacunes identifiees vs Discord
+| Fonctionnalite | Discord | Projet actuel |
+|----------------|---------|---------------|
+| Suppression de bruit (Krisp) | Oui (IA) | Non |
+| VAD adaptatif | Seuil dynamique | Seuil fixe (0.05) |
+| Indicateur audio temps reel par participant | Barre animee | Seulement speaking ring |
+| Reconnexion automatique | Oui | Non |
+| Codec Opus optimise | Parametres avances | Parametres navigateur par defaut |
+| Qualite adaptative | Bitrate dynamique | Fixe |
 
 ---
 
-## Analyse de l'existant
+## Plan d'ameliorations
 
-### Comportement actuel
-```tsx
-// L'effet de flou est binaire (on/off)
-!isActive && revealed && 'blur-[2px] brightness-90'
+### Phase 1 : Traitement audio avance
+
+#### 1.1 Classe AudioProcessor avec suppression de bruit
+
+Creer `src/utils/webrtc/AudioProcessor.ts` :
+
+```
+AudioProcessor
+├── Noise Gate (seuil configurable)
+├── Compresseur dynamique
+├── Filtres passe-haut (couper < 80Hz)
+├── Analyser pour VAD ameliore
+└── Option "suppression de bruit" (experimental)
 ```
 
-L'état `isActive` est basé sur `selectedScrollSnap()` qui ne se met à jour qu'une fois le snap terminé. Résultat : le flou change brusquement à la fin du scroll.
+**Implementation** :
+- Utiliser Web Audio API avec chaine : Source → HighPass → Compressor → GainNode → Destination
+- Noise gate : couper quand niveau < seuil pendant X ms
+- Compresseur : limiter peaks, normaliser volume
 
-### API Embla disponible
-Embla expose un événement `scroll` et des méthodes utiles :
-- `scrollProgress()` : progression globale du carrousel (0 à 1)
-- `scrollSnapList()` : positions des snaps (ex: [0, 0.5, 1])
-- Événement `scroll` : déclenché pendant le défilement
+#### 1.2 VAD adaptatif
 
----
+Remplacer le seuil fixe par un algorithme adaptatif :
+- Calculer le niveau de bruit ambiant sur 2-3 secondes
+- Ajuster le seuil automatiquement (ambient + 0.1)
+- Hysteresis : seuil d'activation > seuil de desactivation
 
-## Approche technique
+```tsx
+// Ancien
+const isSpeaking = remoteLevel > 0.05;
 
-Utiliser `scrollProgress()` pour calculer un **facteur de flou progressif** pour chaque image basé sur la distance entre la position actuelle et la position de l'image.
-
-```text
-Position scroll: 0.25 (entre image 0 et 1)
-
-Image 0: distance = 0.25 → blurFactor = 0.25 → blur léger
-Image 1: distance = 0.25 → blurFactor = 0.25 → blur léger  
-Image 2: distance = 0.75 → blurFactor = 0.75 → blur maximum
+// Nouveau
+const isSpeaking = remoteLevel > adaptiveThreshold * 1.2;
+const stillSpeaking = remoteLevel > adaptiveThreshold * 0.8;
 ```
 
 ---
 
-## Plan d'implémentation
+### Phase 2 : Indicateurs audio en temps reel
 
-### 1. Modifier `ImageCarousel` pour tracker la progression
+#### 2.1 Composant AudioLevelIndicator
+
+Creer un indicateur visuel style Discord pour chaque participant :
 
 ```tsx
-function ImageCarousel({ images, onOpenLightbox }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [api, setApi] = useState<CarouselApi>();
-
-  useEffect(() => {
-    if (!api) return;
-    
-    const snapList = api.scrollSnapList(); // ex: [0, 0.5, 1]
-    
-    const onScroll = () => {
-      setScrollProgress(api.scrollProgress());
-    };
-    
-    const onSelect = () => {
-      setCurrentIndex(api.selectedScrollSnap());
-    };
-    
-    api.on('scroll', onScroll);
-    api.on('select', onSelect);
-    
-    return () => {
-      api.off('scroll', onScroll);
-      api.off('select', onSelect);
-    };
-  }, [api]);
-
-  // Calculer le facteur de flou pour chaque image
-  const getBlurFactor = (index: number) => {
-    if (!api) return index === 0 ? 0 : 1;
-    
-    const snapList = api.scrollSnapList();
-    const snapPosition = snapList[index];
-    
-    // Distance entre la position actuelle et la position de l'image
-    const distance = Math.abs(scrollProgress - snapPosition);
-    
-    // Normaliser : 0 = image active (pas de flou), 1 = loin (flou max)
-    // Utiliser la distance entre deux snaps comme référence
-    const snapGap = snapList[1] - snapList[0];
-    const normalizedDistance = Math.min(distance / snapGap, 1);
-    
-    return normalizedDistance;
-  };
-
-  return (
-    <Carousel ...>
-      <CarouselContent>
-        {images.map((img, index) => (
-          <CarouselItem key={img.id} className="pl-2 basis-[85%]">
-            <ImageAttachment
-              attachment={img}
-              onOpenLightbox={() => onOpenLightbox(index)}
-              blurFactor={getBlurFactor(index)}
-            />
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-    </Carousel>
-  );
+function AudioLevelIndicator({ level, isSpeaking }) {
+  // Barre verticale animee qui pulse avec le niveau audio
+  // Couleur : vert quand speaking, gris sinon
 }
 ```
 
----
+#### 2.2 Integration dans VoiceParticipantGrid
 
-### 2. Modifier `ImageAttachment` pour accepter `blurFactor`
-
-```tsx
-function ImageAttachment({ 
-  attachment, 
-  onOpenLightbox,
-  blurFactor = 0  // 0 = net, 1 = flou max
-}: { 
-  attachment: StoredAttachment;
-  onOpenLightbox: () => void;
-  blurFactor?: number;
-}) {
-  const [revealed, setRevealed] = useState(!attachment.isSpoiler);
-  const [loaded, setLoaded] = useState(false);
-
-  // Calculer les valeurs de style dynamiques
-  const blurValue = revealed ? blurFactor * 2 : 0; // 0-2px
-  const brightnessValue = revealed ? 1 - (blurFactor * 0.1) : 1; // 100%-90%
-
-  return (
-    <div className="relative group">
-      <img
-        src={attachment.url}
-        className={cn(
-          'rounded-lg cursor-pointer max-h-80 w-full object-cover',
-          // Transition fluide pour filter
-          'transition-[filter,opacity] duration-150 ease-out',
-          !revealed && 'blur-2xl brightness-50',
-          !loaded && 'opacity-0'
-        )}
-        style={{
-          // Appliquer le flou progressif uniquement si révélé
-          filter: revealed 
-            ? `blur(${blurValue}px) brightness(${brightnessValue})`
-            : undefined
-        }}
-        onClick={() => revealed ? onOpenLightbox() : setRevealed(true)}
-        onLoad={() => setLoaded(true)}
-      />
-      {/* ... reste du composant */}
-    </div>
-  );
-}
-```
+- Afficher une barre de niveau sous/sur l'avatar
+- Animation fluide avec `transition-all duration-75`
+- Couleur verte pulsante quand speaking
 
 ---
 
-### 3. Optimisation de performance
+### Phase 3 : Robustesse de connexion
 
-Pour éviter trop de re-renders pendant le scroll :
+#### 3.1 Reconnexion automatique
+
+Modifier `useWebRTC.ts` pour :
+- Detecter deconnexion ICE (`failed` state)
+- Tenter reconnexion avec backoff exponentiel
+- Maximum 3 tentatives avant abandon
+- Notification utilisateur du statut
 
 ```tsx
-// Utiliser requestAnimationFrame pour throttle le scroll
 useEffect(() => {
-  if (!api) return;
-  
-  let rafId: number;
-  
-  const onScroll = () => {
-    // Annuler le frame précédent
-    if (rafId) cancelAnimationFrame(rafId);
+  if (iceState === 'failed' && reconnectAttempts < 3) {
+    setTimeout(() => {
+      reconnect();
+      setReconnectAttempts(prev => prev + 1);
+    }, Math.pow(2, reconnectAttempts) * 1000);
+  }
+}, [iceState]);
+```
+
+#### 3.2 ICE Restart
+
+Implementer ICE restart pour recuperer sans nouvelle connexion complete :
+
+```tsx
+async restartIce(): Promise<void> {
+  const offer = await this.pc.createOffer({ iceRestart: true });
+  await this.pc.setLocalDescription(offer);
+  this.onSignal({ type: 'offer', data: offer });
+}
+```
+
+---
+
+### Phase 4 : Optimisation codec Opus
+
+#### 4.1 Contraintes audio ameliorees
+
+Modifier `MediaManager.tryStartMicrophone()` :
+
+```tsx
+audio: {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  sampleRate: 48000,
+  channelCount: 1,
+  // Nouveaux parametres
+  latency: 0.01, // Basse latence
+  sampleSize: 16,
+}
+```
+
+#### 4.2 Parametres SDP pour Opus
+
+Modifier le SDP avant `setLocalDescription` pour forcer Opus stereo et bitrate :
+
+```tsx
+function optimizeSdpForOpus(sdp: string): string {
+  // Forcer Opus mono, 48kHz, bitrate 64kbps
+  return sdp.replace(
+    /a=fmtp:111 /g,
+    'a=fmtp:111 stereo=0;maxaveragebitrate=64000;'
+  );
+}
+```
+
+---
+
+### Phase 5 : Qualite adaptative
+
+#### 5.1 Bitrate dynamique base sur qualite reseau
+
+```tsx
+// Dans useWebRTC, ajuster le bitrate selon les stats
+useEffect(() => {
+  if (connectionStats) {
+    let targetBitrate = 64000; // 64kbps default
     
-    rafId = requestAnimationFrame(() => {
-      setScrollProgress(api.scrollProgress());
-    });
-  };
-  
-  api.on('scroll', onScroll);
-  
-  return () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    api.off('scroll', onScroll);
-  };
-}, [api]);
+    if (connectionStats.packetLoss > 5) {
+      targetBitrate = 32000; // Reduire si perte paquets
+    } else if (connectionStats.latency < 50 && connectionStats.packetLoss < 1) {
+      targetBitrate = 96000; // Augmenter si excellente connexion
+    }
+    
+    adjustBitrate(targetBitrate);
+  }
+}, [connectionStats]);
 ```
 
 ---
 
-## Résultat visuel attendu
+## Fichiers a creer/modifier
 
-```text
-Défilement de Image 1 vers Image 2 :
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| `src/utils/webrtc/AudioProcessor.ts` | Creer | Classe de traitement audio avance |
+| `src/components/channels/voice/AudioLevelIndicator.tsx` | Creer | Indicateur de niveau audio visuel |
+| `src/utils/webrtc/MediaManager.ts` | Modifier | Integrer AudioProcessor, contraintes ameliorees |
+| `src/utils/webrtc/PeerConnection.ts` | Modifier | ICE restart, optimisation SDP Opus, reconnexion |
+| `src/hooks/useWebRTC.ts` | Modifier | Reconnexion auto, qualite adaptative |
+| `src/components/channels/voice/VoiceParticipantGrid.tsx` | Modifier | Integrer AudioLevelIndicator |
 
-Position 0%    : [Image 1: net] [Image 2: flou 2px]
-Position 25%   : [Image 1: flou 0.5px] [Image 2: flou 1.5px]
-Position 50%   : [Image 1: flou 1px] [Image 2: flou 1px]
-Position 75%   : [Image 1: flou 1.5px] [Image 2: flou 0.5px]
-Position 100%  : [Image 1: flou 2px] [Image 2: net]
+---
+
+## Architecture finale
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   VoiceContext                       │
+│  ┌─────────────────────────────────────────────────┐│
+│  │                 useWebRTC                       ││
+│  │  ┌─────────────┐  ┌─────────────┐              ││
+│  │  │MediaManager │  │ Reconnexion │              ││
+│  │  │             │  │   Manager   │              ││
+│  │  │ ┌─────────┐ │  └─────────────┘              ││
+│  │  │ │ Audio   │ │                               ││
+│  │  │ │Processor│ │  ┌─────────────┐              ││
+│  │  │ │- Noise  │ │  │PeerConnection             ││
+│  │  │ │  Gate   │ │  │- ICE Restart│              ││
+│  │  │ │- Filter │ │  │- Opus SDP   │              ││
+│  │  │ │- VAD+   │ │  │- Stats      │              ││
+│  │  │ └─────────┘ │  └─────────────┘              ││
+│  │  └─────────────┘                               ││
+│  └─────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────┘
 ```
 
-L'effet de transition est synchronisé avec le mouvement du doigt/souris, créant une expérience fluide et naturelle.
+---
+
+## Priorites d'implementation
+
+1. **Haute** : AudioLevelIndicator (impact visuel immediat)
+2. **Haute** : Reconnexion automatique (robustesse critique)
+3. **Moyenne** : VAD adaptatif (meilleure detection voix)
+4. **Moyenne** : AudioProcessor avec noise gate
+5. **Basse** : Optimisation Opus/SDP (amelioration marginale)
+6. **Basse** : Bitrate adaptatif (optimisation avancee)
 
 ---
 
-## Fichier à modifier
+## Notes techniques
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/components/chat/MessageAttachments.tsx` | Remplacer `isActive` par `blurFactor`, ajouter tracking de `scrollProgress`, appliquer styles dynamiques |
+### Web Audio API pour traitement
+```tsx
+// Chaine de traitement type
+source → highPassFilter (80Hz) → compressor → gainNode → analyser → destination
+```
 
----
+### Suppression de bruit experimentale
+La vraie suppression de bruit (style Krisp) necessite du ML. Options :
+- RNNoise (WebAssembly) - open source
+- Web Neural Network API (experimental)
+- Pour l'instant : noise gate + compression suffit
 
-## Considérations techniques
-
-### Pourquoi `duration-150` au lieu de `duration-200` ?
-La transition CSS ne doit pas "lagger" derrière le scroll. Une durée plus courte (150ms) permet au style de suivre le mouvement de manière plus réactive.
-
-### Compatibilité avec l'image unique
-Quand une seule image est affichée (pas de carrousel), `blurFactor` reste à 0 par défaut, préservant le comportement actuel.
-
-### GPU Acceleration
-Le filtre `blur()` et `brightness()` sont déjà optimisés par le GPU. La transition `filter` est performante sur les navigateurs modernes.
-
+### Performance
+- `requestAnimationFrame` pour updates visuels audio
+- `setInterval` 50ms pour VAD (existant, bon)
+- Eviter recreation AudioContext (singleton)

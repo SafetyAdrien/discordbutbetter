@@ -36,14 +36,18 @@ function formatFileSize(bytes: number): string {
 function ImageAttachment({ 
   attachment, 
   onOpenLightbox,
-  isActive = true
+  blurFactor = 0 // 0 = net, 1 = flou max
 }: { 
   attachment: StoredAttachment;
   onOpenLightbox: () => void;
-  isActive?: boolean;
+  blurFactor?: number;
 }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [loaded, setLoaded] = useState(false);
+
+  // Calculer les valeurs de style dynamiques basées sur blurFactor
+  const blurValue = revealed ? blurFactor * 2 : 0; // 0-2px
+  const brightnessValue = revealed ? 1 - (blurFactor * 0.1) : 1; // 100%-90%
 
   return (
     <div className="relative group">
@@ -51,11 +55,17 @@ function ImageAttachment({
         src={attachment.url}
         alt={attachment.description || attachment.name}
         className={cn(
-          'rounded-lg cursor-pointer transition-[filter,opacity] duration-200 max-h-80 w-full object-cover',
+          'rounded-lg cursor-pointer max-h-80 w-full object-cover',
+          'transition-[filter,opacity] duration-150 ease-out',
           !revealed && 'blur-2xl brightness-50',
-          !loaded && 'opacity-0',
-          !isActive && revealed && 'blur-[2px] brightness-90'
+          !loaded && 'opacity-0'
         )}
+        style={{
+          // Appliquer le flou progressif uniquement si révélé
+          filter: revealed && blurFactor > 0
+            ? `blur(${blurValue}px) brightness(${brightnessValue})`
+            : undefined
+        }}
         onClick={() => revealed ? onOpenLightbox() : setRevealed(true)}
         onLoad={() => setLoaded(true)}
       />
@@ -89,20 +99,58 @@ function ImageCarousel({
   onOpenLightbox: (index: number) => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
 
   useEffect(() => {
     if (!api) return;
     
+    let rafId: number;
+    
+    // Throttle scroll updates avec requestAnimationFrame
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setScrollProgress(api.scrollProgress());
+      });
+    };
+    
     const onSelect = () => {
       setCurrentIndex(api.selectedScrollSnap());
     };
     
+    // Initial values
+    setScrollProgress(api.scrollProgress());
+    setCurrentIndex(api.selectedScrollSnap());
+    
+    api.on('scroll', onScroll);
     api.on('select', onSelect);
+    
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      api.off('scroll', onScroll);
       api.off('select', onSelect);
     };
   }, [api]);
+
+  // Calculer le facteur de flou progressif pour chaque image
+  const getBlurFactor = (index: number): number => {
+    if (!api) return index === 0 ? 0 : 1;
+    
+    const snapList = api.scrollSnapList();
+    if (snapList.length < 2) return 0;
+    
+    const snapPosition = snapList[index];
+    
+    // Distance entre la position actuelle et la position de l'image
+    const distance = Math.abs(scrollProgress - snapPosition);
+    
+    // Normaliser : 0 = image active (pas de flou), 1 = loin (flou max)
+    const snapGap = snapList[1] - snapList[0];
+    const normalizedDistance = Math.min(distance / snapGap, 1);
+    
+    return normalizedDistance;
+  };
 
   return (
     <div className="relative max-w-md group">
@@ -117,7 +165,7 @@ function ImageCarousel({
               <ImageAttachment
                 attachment={img}
                 onOpenLightbox={() => onOpenLightbox(index)}
-                isActive={index === currentIndex}
+                blurFactor={getBlurFactor(index)}
               />
             </CarouselItem>
           ))}

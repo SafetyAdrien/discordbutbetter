@@ -17,10 +17,10 @@ const NoteAddIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 const statusColors: Record<string, string> = {
-  online: 'bg-green-500',
-  idle: 'bg-yellow-500',
-  dnd: 'bg-red-500',
-  offline: 'bg-gray-500'
+  online: 'bg-[hsl(var(--online))]',
+  idle: 'bg-[hsl(var(--idle))]',
+  dnd: 'bg-[hsl(var(--dnd))]',
+  offline: 'bg-[hsl(var(--offline))]'
 };
 export interface DMParticipant {
   id: string;
@@ -162,7 +162,7 @@ export function DMUserInfoPanel({
 
       {/* View Full Profile Link - Fixed at bottom */}
       <div className="border-t border-border px-4 py-3 shrink-0 flex items-center justify-center">
-        <button onClick={onViewFullProfile} className="text-sm cursor-pointer text-[#b0b1b5] hover:text-foreground transition-colors">
+        <button onClick={onViewFullProfile} className="text-sm cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
           Voir le profil complet
         </button>
       </div>

@@ -260,7 +260,7 @@ function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradien
           {/* Mute/Deafen badge */}
           {(participant.muted || participant.deafened) && (
             <div className={cn(
-              'absolute -bottom-1 -right-1 bg-[#232428] rounded-full border-2 border-black/20',
+              'absolute -bottom-1 -right-1 bg-[hsl(var(--surface-elevated))] rounded-full border-2 border-black/20',
               compact ? 'p-1' : 'p-1.5'
             )}>
               {participant.deafened ? (

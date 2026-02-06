@@ -96,9 +96,9 @@ export function VoiceChannelView({
   // If not connected and no participants, show empty state
   if (!isConnectedToThisChannel && participants.length === 0) {
     return (
-      <div className="flex-1 flex flex-col bg-[#1e1f22]">
+      <div className="flex-1 flex flex-col bg-background">
         {/* Header */}
-        <header className="h-12 border-b border-white/10 flex items-center justify-between px-4 bg-[#1e1f22]">
+        <header className="h-12 border-b border-white/10 flex items-center justify-between px-4 bg-background">
           <div className="flex items-center gap-2">
             <StreamlineVoice className="w-5 h-5 text-muted-foreground" />
             <h2 className="font-semibold text-white">{channel.name}</h2>
@@ -137,9 +137,9 @@ export function VoiceChannelView({
 
   // Connected or has participants - show full interface
   return (
-    <div className="flex-1 flex flex-col bg-[#1e1f22]">
+    <div className="flex-1 flex flex-col bg-background">
       {/* Header */}
-      <header className="h-12 border-b border-white/10 flex items-center justify-between px-4 bg-[#1e1f22]">
+      <header className="h-12 border-b border-white/10 flex items-center justify-between px-4 bg-background">
         <div className="flex items-center gap-2">
           <StreamlineVoice className="w-5 h-5 text-muted-foreground" />
           <h2 className="font-semibold text-white">{channel.name}</h2>
@@ -223,7 +223,7 @@ export function VoiceChannelView({
 
         {/* Right Sidebar - Members */}
         {showMembers && (
-          <div className="w-60 border-l border-white/10 bg-[#2b2d31]">
+          <div className="w-60 border-l border-white/10 bg-card">
             <MemberList 
               members={members} 
               ownerId={ownerId} 

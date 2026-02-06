@@ -135,7 +135,7 @@ export function SummariesDropdown({
             <h3 className="font-semibold text-foreground">Résumés IA</h3>
             <Badge 
               variant="secondary" 
-              className="bg-[#5865F2] text-white border-none text-[10px] px-1.5 py-0 rounded"
+              className="bg-primary text-white border-none text-[10px] px-1.5 py-0 rounded"
             >
               BETA
             </Badge>
@@ -199,7 +199,7 @@ export function SummariesDropdown({
                           </Avatar>
                         )}
                         {!topic.isRead && (
-                          <Badge variant="secondary" className="bg-[#5865F2] text-white text-[10px] px-1.5 py-0">
+                          <Badge variant="secondary" className="bg-primary text-white text-[10px] px-1.5 py-0">
                             Nouveau
                           </Badge>
                         )}

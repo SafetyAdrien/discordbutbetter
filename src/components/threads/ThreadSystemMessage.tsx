@@ -26,7 +26,7 @@ export function ThreadSystemMessage({
     addSuffix: false,
     locale: fr
   }) : null;
-  return <button onClick={onClick} className="group/thread flex items-start gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded transition-colors bg-[#2d3148]">
+  return <button onClick={onClick} className="group/thread flex items-start gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded transition-colors bg-surface-elevated">
       {/* Thread icon */}
       <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
       
@@ -36,14 +36,14 @@ export function ThreadSystemMessage({
           <span className="text-sm font-semibold text-primary hover:underline">
             {thread.name}
           </span>
-          <span className="text-xs flex items-center gap-1 text-[#ecedee]">
+          <span className="text-xs flex items-center gap-1 text-foreground">
             {messageCount} {messageCount === 1 ? 'Message' : 'Messages'}
             <ChevronRight className="w-3 h-3" />
           </span>
         </div>
         
         {/* Last message preview or empty state */}
-        <div className="flex items-center gap-2 text-xs text-[#c8cad0]">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {lastMessage ? <>
               <span className="truncate max-w-[200px]">
                 {lastMessage.author?.display_name}: {lastMessage.content}

@@ -52,7 +52,7 @@ export function VoiceActionBar({
       <div className="flex items-center justify-center gap-2">
         <TooltipProvider>
           {/* Group 1: Mic & Camera with dropdowns */}
-          <div className="flex items-center bg-[#232428] rounded-lg overflow-hidden">
+          <div className="flex items-center bg-[hsl(var(--surface-elevated))] rounded-lg overflow-hidden">
             {/* Mute Button */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -102,7 +102,7 @@ export function VoiceActionBar({
           </div>
 
           {/* Group 2: Chat, Members, Screen Share, More */}
-          <div className="flex items-center bg-[#232428] rounded-lg overflow-hidden">
+          <div className="flex items-center bg-[hsl(var(--surface-elevated))] rounded-lg overflow-hidden">
             {/* Chat Toggle */}
             <Tooltip>
               <TooltipTrigger asChild>

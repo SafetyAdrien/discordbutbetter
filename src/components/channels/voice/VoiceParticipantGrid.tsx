@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MicOff, HeadphoneOff } from 'lucide-react';
 import { VoiceVideoTile } from './VoiceVideoTile';
 import { VoiceParticipantPopover } from './VoiceParticipantPopover';
+import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useVoice } from '@/contexts/VoiceContext';
@@ -38,6 +39,7 @@ interface Participant {
 interface VoiceParticipantGridProps {
   participants: Participant[];
   speakingUsers: Set<string>;
+  audioLevels?: Map<string, number>;
   localCameraStream: MediaStream | null;
   localScreenStream: MediaStream | null;
   remoteVideoStreams: Map<string, MediaStream>;
@@ -49,6 +51,7 @@ interface VoiceParticipantGridProps {
 export function VoiceParticipantGrid({ 
   participants, 
   speakingUsers,
+  audioLevels = new Map(),
   localCameraStream,
   localScreenStream,
   remoteVideoStreams,
@@ -138,6 +141,7 @@ export function VoiceParticipantGrid({
                       <VoiceParticipantCard
                         participant={participant}
                         isSpeaking={speakingUsers.has(participant.user_id)}
+                        audioLevel={audioLevels.get(participant.user_id) || 0}
                         gradientIndex={index % PARTICIPANT_GRADIENTS.length}
                         compact
                       />
@@ -195,6 +199,7 @@ export function VoiceParticipantGrid({
                 <VoiceParticipantCard
                   participant={participant}
                   isSpeaking={speakingUsers.has(participant.user_id)}
+                  audioLevel={audioLevels.get(participant.user_id) || 0}
                   gradientIndex={index % PARTICIPANT_GRADIENTS.length}
                 />
               </div>
@@ -209,11 +214,12 @@ export function VoiceParticipantGrid({
 interface VoiceParticipantCardProps {
   participant: Participant;
   isSpeaking: boolean;
+  audioLevel?: number;
   gradientIndex: number;
   compact?: boolean;
 }
 
-function VoiceParticipantCard({ participant, isSpeaking, gradientIndex, compact }: VoiceParticipantCardProps) {
+function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradientIndex, compact }: VoiceParticipantCardProps) {
   const gradient = PARTICIPANT_GRADIENTS[gradientIndex];
 
   return (
@@ -267,12 +273,21 @@ function VoiceParticipantCard({ participant, isSpeaking, gradientIndex, compact 
         </div>
       </div>
 
-      {/* Name badge at bottom */}
+      {/* Name badge with audio level indicator */}
       <div className={cn('absolute left-2 right-2', compact ? 'bottom-1.5' : 'bottom-3')}>
         <div className={cn(
           'inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-md',
           compact ? 'px-1.5 py-0.5' : 'px-2.5 py-1.5'
         )}>
+          {/* Audio level indicator */}
+          {!participant.muted && (
+            <AudioLevelIndicator 
+              level={audioLevel}
+              isSpeaking={isSpeaking}
+              variant="bar"
+              showWhenSilent={false}
+            />
+          )}
           <span className={cn(
             'font-medium text-white truncate',
             compact ? 'text-xs' : 'text-sm'

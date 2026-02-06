@@ -26,6 +26,7 @@ interface VoiceContextType {
   toggleDeafen: () => Promise<void>;
   isConnected: boolean;
   speakingUsers: Set<string>;
+  audioLevels: Map<string, number>;
   localAudioLevel: number;
   microphoneError: boolean;
   hasMicrophoneAccess: boolean;
@@ -55,6 +56,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const webrtc = useWebRTC();
   const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+  const [audioLevels, setAudioLevels] = useState<Map<string, number>>(new Map());
   const [localAudioLevel, setLocalAudioLevel] = useState(0);
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
@@ -110,23 +112,29 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dbVoiceState]);
 
-  // Update speaking users from WebRTC (VAD - Voice Activity Detection)
+  // Update speaking users and audio levels from WebRTC (VAD - Voice Activity Detection)
   useEffect(() => {
     const newSpeaking = new Set<string>();
+    const newAudioLevels = new Map<string, number>();
     
     // Check if local user is speaking (audio level > threshold and not muted)
     if (webrtc.audioLevel > 0.05 && !voiceState.isMuted && user?.id) {
       newSpeaking.add(user.id);
     }
+    if (user?.id) {
+      newAudioLevels.set(user.id, webrtc.audioLevel);
+    }
     
-    // Check remote peers speaking status
+    // Check remote peers speaking status and audio levels
     webrtc.peers.forEach((peer, peerId) => {
       if (peer.isSpeaking) {
         newSpeaking.add(peerId);
       }
+      newAudioLevels.set(peerId, peer.audioLevel);
     });
     
     setSpeakingUsers(newSpeaking);
+    setAudioLevels(newAudioLevels);
     setLocalAudioLevel(webrtc.audioLevel);
   }, [webrtc.peers, webrtc.audioLevel, voiceState.isMuted, user?.id]);
 
@@ -368,6 +376,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         toggleDeafen,
         isConnected: !!voiceState.channelId,
         speakingUsers,
+        audioLevels,
         localAudioLevel,
         microphoneError: webrtc.microphoneError,
         hasMicrophoneAccess: webrtc.hasMicrophoneAccess,

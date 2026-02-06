@@ -9,7 +9,12 @@ interface PeerInfo {
   peerId: string;
   connection: PeerConnection;
   isSpeaking: boolean;
+  audioLevel: number;
 }
+
+// Reconnection configuration
+const RECONNECT_MAX_ATTEMPTS = 3;
+const RECONNECT_BASE_DELAY_MS = 1000;
 
 export interface UseWebRTCReturn {
   isConnected: boolean;
@@ -42,6 +47,16 @@ export interface UseWebRTCReturn {
   remoteScreenStreams: Map<string, MediaStream>;
   // Connection stats
   connectionStats: ConnectionStats | null;
+  // Reconnection state
+  isReconnecting: boolean;
+  reconnectAttempts: number;
+}
+
+// Adaptive VAD state tracking
+interface AdaptiveVADState {
+  ambientLevel: number;
+  samples: number[];
+  threshold: number;
 }
 
 export function useWebRTC(): UseWebRTCReturn {
@@ -64,6 +79,10 @@ export function useWebRTC(): UseWebRTCReturn {
   const [remoteVideoStreams, setRemoteVideoStreams] = useState<Map<string, MediaStream>>(new Map());
   const [remoteScreenStreams, setRemoteScreenStreams] = useState<Map<string, MediaStream>>(new Map());
   const [connectionStats, setConnectionStats] = useState<ConnectionStats | null>(null);
+  
+  // Reconnection state
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const signalingServiceRef = useRef<SignalingService | null>(null);
   const peersRef = useRef<Map<string, PeerConnection>>(new Map());
@@ -71,6 +90,11 @@ export function useWebRTC(): UseWebRTCReturn {
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const participantsSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Adaptive VAD state (persists across renders)
+  const vadStateRef = useRef<Map<string, AdaptiveVADState>>(new Map());
+  const AMBIENT_SAMPLE_SIZE = 60; // ~3 seconds of samples at 50ms
 
   // Set up remote stream callbacks
   useEffect(() => {
@@ -118,9 +142,9 @@ export function useWebRTC(): UseWebRTCReturn {
           const newPeers = new Map(prev);
           const existing = newPeers.get(peerId);
           if (existing) {
-            newPeers.set(peerId, { ...existing, isSpeaking: false });
+            newPeers.set(peerId, { ...existing, isSpeaking: false, audioLevel: 0 });
           } else {
-            newPeers.set(peerId, { peerId, connection: pc, isSpeaking: false });
+            newPeers.set(peerId, { peerId, connection: pc, isSpeaking: false, audioLevel: 0 });
           }
           return newPeers;
         });
@@ -225,23 +249,53 @@ export function useWebRTC(): UseWebRTCReturn {
         console.warn('[useWebRTC] Joining in listen-only mode');
       }
 
-      // Start audio level monitoring with VAD for all peers
+      // Start audio level monitoring with adaptive VAD for all peers
       audioLevelIntervalRef.current = setInterval(() => {
         // Local audio level
         const level = mediaManager.getAudioLevel();
         setAudioLevel(level);
 
-        // Update speaking status for remote peers based on their audio levels
+        // Update speaking status for remote peers with adaptive VAD
         setPeers(prev => {
           const newPeers = new Map(prev);
           let hasChanges = false;
 
           for (const [peerId, peerInfo] of newPeers.entries()) {
             const remoteLevel = mediaManager.getRemoteAudioLevel(peerId);
-            const isSpeaking = remoteLevel > 0.05; // VAD threshold
+            
+            // Get or create VAD state for this peer
+            let vadState = vadStateRef.current.get(peerId);
+            if (!vadState) {
+              vadState = { ambientLevel: 0.05, samples: [], threshold: 0.08 };
+              vadStateRef.current.set(peerId, vadState);
+            }
+            
+            // Update ambient noise tracking (lower 20th percentile)
+            vadState.samples.push(remoteLevel);
+            if (vadState.samples.length > AMBIENT_SAMPLE_SIZE) {
+              vadState.samples.shift();
+            }
+            const sorted = [...vadState.samples].sort((a, b) => a - b);
+            const percentileIndex = Math.floor(sorted.length * 0.2);
+            vadState.ambientLevel = sorted[percentileIndex] || 0.05;
+            
+            // Calculate adaptive threshold with hysteresis
+            const adaptiveThreshold = Math.max(0.05, Math.min(0.15, vadState.ambientLevel + 0.08));
+            vadState.threshold = adaptiveThreshold;
+            
+            // Hysteresis: different thresholds for start/stop speaking
+            const speakStartThreshold = adaptiveThreshold * 1.3;
+            const speakStopThreshold = adaptiveThreshold * 0.8;
+            
+            let isSpeaking = peerInfo.isSpeaking;
+            if (!peerInfo.isSpeaking && remoteLevel > speakStartThreshold) {
+              isSpeaking = true;
+            } else if (peerInfo.isSpeaking && remoteLevel < speakStopThreshold) {
+              isSpeaking = false;
+            }
 
-            if (peerInfo.isSpeaking !== isSpeaking) {
-              newPeers.set(peerId, { ...peerInfo, isSpeaking });
+            if (peerInfo.isSpeaking !== isSpeaking || peerInfo.audioLevel !== remoteLevel) {
+              newPeers.set(peerId, { ...peerInfo, isSpeaking, audioLevel: remoteLevel });
               hasChanges = true;
             }
           }
@@ -250,7 +304,7 @@ export function useWebRTC(): UseWebRTCReturn {
         });
       }, 50); // 50ms for responsive VAD
 
-      // Start connection stats monitoring
+      // Start connection stats monitoring with reconnection logic
       statsIntervalRef.current = setInterval(async () => {
         // Get stats from first connected peer
         const firstPeer = peersRef.current.values().next().value;
@@ -258,6 +312,21 @@ export function useWebRTC(): UseWebRTCReturn {
           try {
             const stats = await firstPeer.getStats();
             setConnectionStats(stats);
+            
+            // Check for failed/disconnected state and attempt ICE restart
+            if (stats.iceState === 'failed' || stats.iceState === 'disconnected') {
+              console.log('[useWebRTC] Detected connection issue, attempting ICE restart');
+              
+              // Try ICE restart for all peers
+              for (const [peerId, pc] of peersRef.current.entries()) {
+                try {
+                  await pc.restartIce();
+                  console.log('[useWebRTC] ICE restart initiated for peer:', peerId);
+                } catch (e) {
+                  console.error('[useWebRTC] ICE restart failed for peer:', peerId, e);
+                }
+              }
+            }
           } catch (e) {
             // Ignore stats errors
           }
@@ -577,5 +646,8 @@ export function useWebRTC(): UseWebRTCReturn {
     remoteScreenStreams,
     // Connection stats
     connectionStats,
+    // Reconnection state
+    isReconnecting,
+    reconnectAttempts,
   };
 }

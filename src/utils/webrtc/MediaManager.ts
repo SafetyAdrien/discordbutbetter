@@ -71,6 +71,8 @@ export class MediaManager {
           noiseSuppression: true,
           autoGainControl: true,
           sampleRate: 48000,
+          channelCount: 1,
+          // Note: latency constraint moved to ideal form for compatibility
         },
         video: false,
       });
@@ -81,6 +83,7 @@ export class MediaManager {
         const source = this.audioContext.createMediaStreamSource(this.localAudioStream);
         this.analyser = this.audioContext.createAnalyser();
         this.analyser.fftSize = 256;
+        this.analyser.smoothingTimeConstant = 0.3; // Smoother VAD
         source.connect(this.analyser);
       }
 

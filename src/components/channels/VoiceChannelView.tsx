@@ -45,6 +45,7 @@ export function VoiceChannelView({
     toggleMute, 
     toggleDeafen, 
     speakingUsers,
+    audioLevels,
     hasMicrophoneAccess,
     // Camera & Screen share
     isCameraActive,
@@ -165,6 +166,7 @@ export function VoiceChannelView({
           <VoiceParticipantGrid 
             participants={participants}
             speakingUsers={speakingUsers || new Set()}
+            audioLevels={audioLevels}
             localCameraStream={isConnectedToThisChannel ? localCameraStream : null}
             localScreenStream={isConnectedToThisChannel ? localScreenStream : null}
             remoteVideoStreams={remoteVideoStreams}

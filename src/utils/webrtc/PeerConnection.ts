@@ -45,6 +45,7 @@ export class PeerConnection {
   private hasRemoteDescription = false;
   private audioSenders: Map<string, RTCRtpSender> = new Map();
   private videoSenders: Map<string, RTCRtpSender> = new Map();
+  private isRestarting = false;
 
   constructor(
     peerId: string,
@@ -159,18 +160,85 @@ export class PeerConnection {
     this.addAudioStream(stream);
   }
 
-  async createOffer(): Promise<void> {
+  async createOffer(options?: RTCOfferOptions): Promise<void> {
     try {
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
+      const offer = await this.pc.createOffer(options);
+      // Optimize SDP for Opus codec
+      const optimizedSdp = this.optimizeSdpForOpus(offer.sdp || '');
+      const optimizedOffer = { ...offer, sdp: optimizedSdp };
+      await this.pc.setLocalDescription(optimizedOffer);
       console.log('[PeerConnection] Offer created for:', this.peerId);
       this.onSignal({
         type: 'offer',
-        data: offer,
+        data: optimizedOffer,
       });
     } catch (error) {
       console.error('[PeerConnection] Failed to create offer:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Optimize SDP for Opus codec with Discord-like parameters
+   * - Force mono (voice doesn't need stereo)
+   * - Set optimal bitrate for voice
+   * - Enable in-band FEC for packet loss recovery
+   * - Enable DTX for bandwidth saving during silence
+   */
+  private optimizeSdpForOpus(sdp: string): string {
+    // Find Opus codec line and add optimized parameters
+    return sdp.replace(
+      /a=fmtp:111 (.+)/g,
+      (match, params) => {
+        // Parse existing params
+        const existingParams = params.split(';').map((p: string) => p.trim());
+        
+        // Add our optimizations if not present
+        const optimizations = [
+          'stereo=0',              // Mono for voice
+          'maxaveragebitrate=64000', // 64kbps - good quality for voice
+          'useinbandfec=1',        // Enable FEC for packet loss recovery
+          'usedtx=1',              // Enable DTX for silence detection
+        ];
+        
+        const newParams = [...existingParams];
+        for (const opt of optimizations) {
+          const key = opt.split('=')[0];
+          if (!newParams.some(p => p.startsWith(key))) {
+            newParams.push(opt);
+          }
+        }
+        
+        return `a=fmtp:111 ${newParams.join(';')}`;
+      }
+    );
+  }
+
+  /**
+   * Restart ICE connection without full reconnection
+   * Useful for recovering from failed/disconnected states
+   */
+  async restartIce(): Promise<void> {
+    if (this.isRestarting) {
+      console.log('[PeerConnection] ICE restart already in progress for:', this.peerId);
+      return;
+    }
+
+    try {
+      this.isRestarting = true;
+      console.log('[PeerConnection] Initiating ICE restart for:', this.peerId);
+      
+      // Reset state for new ICE gathering
+      this.hasRemoteDescription = false;
+      this.pendingCandidates = [];
+      
+      // Create offer with ICE restart flag
+      await this.createOffer({ iceRestart: true });
+    } catch (error) {
+      console.error('[PeerConnection] ICE restart failed:', error);
+      throw error;
+    } finally {
+      this.isRestarting = false;
     }
   }
 
@@ -183,10 +251,15 @@ export class PeerConnection {
           this.hasRemoteDescription = true;
           await this.processPendingCandidates();
           const answer = await this.pc.createAnswer();
-          await this.pc.setLocalDescription(answer);
+          // Optimize answer SDP too
+          const optimizedAnswer = { 
+            ...answer, 
+            sdp: this.optimizeSdpForOpus(answer.sdp || '') 
+          };
+          await this.pc.setLocalDescription(optimizedAnswer);
           this.onSignal({
             type: 'answer',
-            data: answer,
+            data: optimizedAnswer,
           });
           break;
 

@@ -102,43 +102,46 @@
 
 @layer base {
   :root {
-    /* Dark Space Theme */
-    /* Main Chat + Member List: #191C2B */
-    --background: 231 24% 13%;
-    /* Primary text: #DCDDDE */
-    --foreground: 220 6% 86%;
+    /* Dark Space Theme - Gris Bleuté Moderne */
+    /* Main Chat + Member List */
+    --background: 218 18% 12%;
+    /* Primary text - légèrement plus lumineux */
+    --foreground: 218 10% 90%;
 
-    /* Sidebar Channels: #151724 */
-    --card: 233 27% 11%;
-    --card-foreground: 220 6% 86%;
+    /* Sidebar Channels */
+    --card: 218 20% 10%;
+    --card-foreground: 218 10% 90%;
 
-    /* Popovers/Menus */
-    --popover: 231 24% 11%;
-    --popover-foreground: 220 6% 86%;
+    /* Popovers/Menus - plus sombre */
+    --popover: 218 22% 9%;
+    --popover-foreground: 218 10% 90%;
 
-    /* Toolbar background: #2b3250 */
-    --toolbar: 229 30% 24%;
+    /* Toolbar background */
+    --toolbar: 218 20% 18%;
 
+    /* Primary reste inchangé (bleu d'accent) */
     --primary: 225 85% 53%;
-    --primary-foreground: 233 30% 8%;
+    --primary-foreground: 218 25% 8%;
 
+    /* Secondary reste inchangé */
     --secondary: 270 60% 60%;
-    --secondary-foreground: 220 6% 86%;
+    --secondary-foreground: 218 10% 90%;
 
-    /* Muted surfaces and secondary text: #B9BBBE */
-    --muted: 231 20% 18%;
-    --muted-foreground: 216 7% 73%;
+    /* Muted surfaces */
+    --muted: 218 15% 20%;
+    --muted-foreground: 218 12% 70%;
 
+    /* Accent reste inchangé */
     --accent: 186 80% 40%;
-    --accent-foreground: 220 6% 86%;
+    --accent-foreground: 218 10% 90%;
 
+    /* Destructive reste inchangé */
     --destructive: 0 72% 51%;
-    --destructive-foreground: 220 6% 86%;
+    --destructive-foreground: 218 10% 90%;
 
-    /* Borders */
-    --border: 231 20% 18%;
-    /* Inputs: #232635 */
-    --input: 231 23% 17%;
+    /* Borders & Inputs */
+    --border: 218 15% 18%;
+    --input: 218 18% 15%;
     --ring: 225 85% 53%;
 
     --radius: 0.75rem;
@@ -146,43 +149,43 @@
     /* Custom gaming colors */
     --glow-primary: 225 85% 53%;
     --glow-secondary: 270 60% 60%;
-    --surface-elevated: 231 24% 15%;
-    --surface-hover: 231 24% 20%;
+    --surface-elevated: 218 18% 14%;
+    --surface-hover: 218 18% 22%;
     --online: 142 76% 46%;
     --idle: 38 92% 50%;
     --dnd: 0 72% 51%;
-    --offline: 215 20% 45%;
+    --offline: 218 15% 45%;
     --voice-active: 142 76% 46%;
-    --poll-background: 231 24% 11%;
+    --poll-background: 218 20% 10%;
 
-    /* Gradients */
+    /* Gradients - ajustés */
     --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
     --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(231 24% 15%), hsl(231 24% 11%));
+    --gradient-surface: linear-gradient(180deg, hsl(218 18% 14%), hsl(218 20% 10%));
 
     /* Shadows */
     --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
     --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
 
-    /* Server List Sidebar: #10121B */
-    --sidebar-background: 233 30% 8%;
-    --sidebar-foreground: 220 6% 86%;
+    /* Server List Sidebar */
+    --sidebar-background: 218 25% 7%;
+    --sidebar-foreground: 218 10% 90%;
     --sidebar-primary: 225 85% 53%;
-    --sidebar-primary-foreground: 233 30% 8%;
-    --sidebar-accent: 231 24% 18%;
-    --sidebar-accent-foreground: 220 6% 86%;
-    --sidebar-border: 231 20% 18%;
+    --sidebar-primary-foreground: 218 25% 8%;
+    --sidebar-accent: 218 18% 20%;
+    --sidebar-accent-foreground: 218 10% 90%;
+    --sidebar-border: 218 15% 16%;
     --sidebar-ring: 225 85% 53%;
 
-    /* User Profile Panel: #12151F */
-    --user-panel: 230 28% 10%;
+    /* User Profile Panel */
+    --user-panel: 218 22% 9%;
   }
 
   .dark {
-    /* Same as root - always dark */
-    --background: 231 24% 13%;
-    --foreground: 220 6% 86%;
+    /* Identique à root - toujours sombre */
+    --background: 218 18% 12%;
+    --foreground: 218 10% 90%;
   }
 }
 

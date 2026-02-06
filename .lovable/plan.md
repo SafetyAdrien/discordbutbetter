@@ -1,203 +1,181 @@
 
+# Uniformisation du Thème Gris Bleuté
 
-# Thème Gris Bleuté - Amélioration de l'Interface
-
-## Objectif
-Transformer la palette de couleurs de l'application vers une teinte gris bleuté plus moderne et cohérente, similaire aux dernières versions de Discord mais avec une identité visuelle distincte.
-
----
-
-## Analyse du thème actuel
-
-### Valeurs HSL actuelles (Hue autour de 220-233°)
-| Variable | Valeur actuelle | Commentaire |
-|----------|-----------------|-------------|
-| `--background` | `231 24% 13%` | Légèrement violet-bleu |
-| `--card` | `233 27% 11%` | Violet-bleu foncé |
-| `--popover` | `231 24% 11%` | Similaire au background |
-| `--muted` | `231 20% 18%` | Gris-violet |
-| `--sidebar-background` | `233 30% 8%` | Très foncé |
-| `--input` | `231 23% 17%` | Gris-violet |
-
-Le thème actuel utilise une teinte autour de **231-233°** (violet-bleu). Pour un gris bleuté plus "Discord moderne", nous devons :
-1. Ramener la teinte vers **220-225°** (bleu pur)
-2. Réduire légèrement la saturation pour un rendu plus neutre
-3. Ajuster les luminosités pour un meilleur contraste
+## Problème identifié
+Le nouveau thème gris bleuté (teinte 218°) a été appliqué aux variables CSS globales, mais de nombreux composants utilisent des couleurs hexadécimales codées en dur qui ne respectent pas ces variables.
 
 ---
 
-## Nouvelle palette proposée
+## Fichiers à corriger
 
-### Comparaison visuelle
-
-```text
-Actuel (Violet-bleu ~231°)     →    Nouveau (Gris-bleuté ~218°)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#191C2B (Background)           →    #1A1D24 (Plus gris, moins violet)
-#151724 (Card/Sidebar)         →    #14171C (Gris ardoise profond)
-#10121B (Server Rail)          →    #111316 (Presque noir bleuté)
-#2B3250 (Toolbar)              →    #252A35 (Gris-bleu moyen)
+### 1. MemberList.tsx (Liste des membres)
+**Lignes 606-608** - Couleurs en dur pour le background :
+```tsx
+// Avant
+bg-[#161928] → bg-card
+bg-[#151723] → transparent
+bg-[#161927] → transparent
 ```
 
-### Nouvelles valeurs HSL
-
-| Variable | Ancienne valeur | Nouvelle valeur | Description |
-|----------|-----------------|-----------------|-------------|
-| `--background` | `231 24% 13%` | `218 18% 12%` | Chat principal - gris bleuté |
-| `--foreground` | `220 6% 86%` | `218 10% 90%` | Texte plus lumineux |
-| `--card` | `233 27% 11%` | `218 20% 10%` | Sidebar canaux |
-| `--popover` | `231 24% 11%` | `218 22% 9%` | Menus contextuels |
-| `--toolbar` | `229 30% 24%` | `218 20% 18%` | Barre d'outils |
-| `--muted` | `231 20% 18%` | `218 15% 20%` | Surfaces secondaires |
-| `--muted-foreground` | `216 7% 73%` | `218 12% 70%` | Texte secondaire |
-| `--border` | `231 20% 18%` | `218 15% 18%` | Bordures subtiles |
-| `--input` | `231 23% 17%` | `218 18% 15%` | Champs de saisie |
-| `--surface-elevated` | `231 24% 15%` | `218 18% 14%` | Surfaces élevées |
-| `--surface-hover` | `231 24% 20%` | `218 18% 22%` | État hover |
-| `--sidebar-background` | `233 30% 8%` | `218 25% 7%` | Rail des serveurs |
-| `--sidebar-accent` | `231 24% 18%` | `218 18% 20%` | Accent sidebar |
-| `--sidebar-border` | `231 20% 18%` | `218 15% 16%` | Bordure sidebar |
-| `--user-panel` | `230 28% 10%` | `218 22% 9%` | Panneau utilisateur |
-| `--poll-background` | `231 24% 11%` | `218 20% 10%` | Fond des sondages |
-
----
-
-## Résultat visuel attendu
-
-### Avant (Violet-bleu)
-```text
-┌─────────────────────────────────────────┐
-│ #10121B │ #151724 │ #191C2B │ #2B3250  │
-│ (Rail)  │ (Sidebar)│ (Chat)  │ (Toolbar)│
-└─────────────────────────────────────────┘
-Teinte dominante : Violet-bleu profond
+**Ligne 662** - Tooltip couleur en dur :
+```tsx
+// Avant
+bg-[#111214] → bg-popover
 ```
 
-### Après (Gris-bleuté)
-```text
-┌─────────────────────────────────────────┐
-│ #111316 │ #14171C │ #1A1D24 │ #252A35  │
-│ (Rail)  │ (Sidebar)│ (Chat)  │ (Toolbar)│
-└─────────────────────────────────────────┘
-Teinte dominante : Gris ardoise bleuté (moderne)
+### 2. VoiceChannelView.tsx (Vue du salon vocal)
+**Lignes 99-101, 140-142, 226** - Couleurs en dur :
+```tsx
+// Avant
+bg-[#1e1f22] → bg-background
+bg-[#2b2d31] → bg-card
 ```
 
----
-
-## Fichier à modifier
-
-| Fichier | Modifications |
-|---------|---------------|
-| `src/index.css` | Mettre à jour toutes les variables CSS `:root` avec les nouvelles valeurs HSL |
-
----
-
-## Détail des modifications dans index.css
-
-### Section `:root` (lignes 104-180)
-
-```css
-:root {
-  /* Dark Space Theme - Gris Bleuté Moderne */
-  
-  /* Main Chat + Member List */
-  --background: 218 18% 12%;
-  /* Primary text - légèrement plus lumineux */
-  --foreground: 218 10% 90%;
-
-  /* Sidebar Channels */
-  --card: 218 20% 10%;
-  --card-foreground: 218 10% 90%;
-
-  /* Popovers/Menus - plus sombre */
-  --popover: 218 22% 9%;
-  --popover-foreground: 218 10% 90%;
-
-  /* Toolbar background */
-  --toolbar: 218 20% 18%;
-
-  /* Primary reste inchangé (bleu d'accent) */
-  --primary: 225 85% 53%;
-  --primary-foreground: 218 25% 8%;
-
-  /* Secondary reste inchangé */
-  --secondary: 270 60% 60%;
-  --secondary-foreground: 218 10% 90%;
-
-  /* Muted surfaces */
-  --muted: 218 15% 20%;
-  --muted-foreground: 218 12% 70%;
-
-  /* Accent reste inchangé */
-  --accent: 186 80% 40%;
-  --accent-foreground: 218 10% 90%;
-
-  /* Destructive reste inchangé */
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 218 10% 90%;
-
-  /* Borders & Inputs */
-  --border: 218 15% 18%;
-  --input: 218 18% 15%;
-  --ring: 225 85% 53%;
-
-  /* Custom gaming colors */
-  --glow-primary: 225 85% 53%;
-  --glow-secondary: 270 60% 60%;
-  --surface-elevated: 218 18% 14%;
-  --surface-hover: 218 18% 22%;
-  
-  /* Status colors restent inchangés */
-  --online: 142 76% 46%;
-  --idle: 38 92% 50%;
-  --dnd: 0 72% 51%;
-  --offline: 218 15% 45%;
-  --voice-active: 142 76% 46%;
-  --poll-background: 218 20% 10%;
-
-  /* Gradients - ajustés */
-  --gradient-surface: linear-gradient(180deg, hsl(218 18% 14%), hsl(218 20% 10%));
-
-  /* Server List Sidebar */
-  --sidebar-background: 218 25% 7%;
-  --sidebar-foreground: 218 10% 90%;
-  --sidebar-primary: 225 85% 53%;
-  --sidebar-primary-foreground: 218 25% 8%;
-  --sidebar-accent: 218 18% 20%;
-  --sidebar-accent-foreground: 218 10% 90%;
-  --sidebar-border: 218 15% 16%;
-  --sidebar-ring: 225 85% 53%;
-
-  /* User Profile Panel */
-  --user-panel: 218 22% 9%;
-}
+### 3. VoiceActionBar.tsx (Barre d'actions vocale)
+**Lignes 55, 105** - Background des boutons :
+```tsx
+// Avant
+bg-[#232428] → bg-surface-elevated
 ```
 
-### Section `.dark` (lignes 182-186)
+### 4. VoiceParticipantGrid.tsx
+**Ligne 263** - Badge mute/deafen :
+```tsx
+// Avant
+bg-[#232428] → bg-surface-elevated
+```
 
-```css
-.dark {
-  /* Identique à root - toujours sombre */
-  --background: 218 18% 12%;
-  --foreground: 218 10% 90%;
-}
+### 5. EmojiStickerPicker.tsx
+**Lignes 65, 94** - Background du picker :
+```tsx
+// Avant
+bg-[#2b2d31] → bg-popover
+bg-[#1e1f22] → bg-input
+```
+
+### 6. DMUserInfoPanel.tsx
+**Ligne 165** - Couleur du texte :
+```tsx
+// Avant
+text-[#b0b1b5] → text-muted-foreground
+```
+
+**Lignes 20-24** - Couleurs de statut :
+```tsx
+// Avant (couleurs Tailwind génériques)
+bg-green-500 → bg-[hsl(var(--online))]
+bg-yellow-500 → bg-[hsl(var(--idle))]
+bg-red-500 → bg-[hsl(var(--dnd))]
+bg-gray-500 → bg-[hsl(var(--offline))]
+```
+
+### 7. ChatArea.tsx
+**Lignes 1066, 1194** - Badges de poll et system :
+```tsx
+// Avant
+text-[#5865f2] → text-primary
+bg-[#5865f2]/10 → bg-primary/10
+```
+
+### 8. markdown.tsx (Rendu Markdown)
+**Lignes 427, 450, 583, 589, 595, 707** - Couleurs de code et citations :
+```tsx
+// Avant
+bg-[#2b2d31] → bg-surface-elevated
+text-[#d4d7dc] → text-foreground
+text-[#00a8fc] → text-primary
+text-[#949BA4] → text-muted-foreground
+border-[#4e5058] → border-border
+text-[#dbdee1] → text-foreground
+```
+
+### 9. UploadDropOverlay.tsx
+**Lignes 16, 28, 36, 45** - Couleurs de l'overlay de téléchargement :
+```tsx
+// Avant
+bg-[#5865f2] → bg-primary
+bg-[#1e2124] → bg-background
+bg-[#2f3136] → bg-card
+bg-[#36393f] → bg-muted
+```
+
+### 10. RoleBadgePopover.tsx
+**Ligne 37** - Tooltip background :
+```tsx
+// Avant
+bg-[#111214] → bg-popover
+```
+
+### 11. MentionComponents.tsx
+**Lignes 29-30** - Couleurs des mentions :
+```tsx
+// Utiliser les variables CSS pour primary au lieu de #5865f2
+```
+
+### 12. ServerList.tsx
+**Lignes 45, 116-119, 205, 517, 531** - Couleurs du blurple Discord :
+```tsx
+// Avant
+bg-[#5865f2] → bg-primary
+text-[#5865f2] → text-primary
+```
+
+### 13. ThreadSystemMessage.tsx
+**Lignes 39, 46** - Couleurs du texte :
+```tsx
+// Avant
+text-[#ecedee] → text-foreground
+text-[#c8cad0] → text-muted-foreground
+```
+
+### 14. SummariesDropdown.tsx
+**Lignes 138, 202** - Badge BETA :
+```tsx
+// Avant
+bg-[#5865F2] → bg-primary
+```
+
+### 15. VoiceVideoTile.tsx
+**Lignes 45, 87** - Background et badge :
+```tsx
+// Avant
+bg-[#1e1f22] → bg-background
+bg-[#5865f2]/80 → bg-primary/80
 ```
 
 ---
 
-## Avantages de cette approche
+## Tableau récapitulatif des correspondances
 
-1. **Cohérence** : Toutes les teintes utilisent maintenant ~218° au lieu de 220-233°
-2. **Modernité** : Le gris bleuté est plus neutre et contemporain
-3. **Lisibilité** : Textes légèrement plus lumineux (90% vs 86%)
-4. **Contraste** : Meilleure hiérarchie entre les différentes zones
-5. **Compatibilité** : Aucun changement sur les couleurs d'accent (primary, secondary, status)
+| Couleur hexadécimale | Variable CSS correspondante |
+|----------------------|----------------------------|
+| `#1e1f22` | `bg-background` (fond principal) |
+| `#2b2d31` | `bg-card` (sidebar/panneau) |
+| `#161928`, `#161927`, `#151723` | `bg-card` (sidebar) |
+| `#232428` | `bg-surface-elevated` (surfaces élevées) |
+| `#36393f` | `bg-muted` (surfaces secondaires) |
+| `#5865f2` | `bg-primary` / `text-primary` (accent bleu) |
+| `#111214` | `bg-popover` (menus/tooltips) |
+| `#00a8fc` | `text-primary` (liens) |
+| `#dbdee1`, `#ecedee` | `text-foreground` (texte principal) |
+| `#d4d7dc` | `text-foreground` (texte code) |
+| `#949BA4`, `#c8cad0`, `#b0b1b5` | `text-muted-foreground` (texte secondaire) |
+| `#4e5058` | `border-border` (bordures) |
 
 ---
 
-## Notes techniques
+## Résultat attendu
 
-- La teinte **218°** correspond à un bleu-gris standard (entre le bleu pur 210° et le bleu-violet 225°)
-- La saturation réduite (15-22%) donne un aspect plus "gris" tout en conservant la teinte bleutée
-- Les couleurs d'accent (primary bleu, secondary violet, status verts/oranges/rouges) restent inchangées pour maintenir les interactions visuelles
+Après ces modifications :
+- Tous les composants utiliseront les variables CSS du thème
+- La modification des variables dans `index.css` affectera automatiquement tous les composants
+- Le thème gris bleuté sera cohérent dans toute l'application
+- Les futurs changements de thème seront simplifiés
 
+---
+
+## Priorité des corrections
+
+1. **Haute** : MemberList, VoiceChannelView, VoiceActionBar (visibilité immédiate)
+2. **Moyenne** : EmojiStickerPicker, DMUserInfoPanel, ChatArea (fréquemment utilisés)
+3. **Basse** : markdown.tsx, UploadDropOverlay, ThreadSystemMessage (moins visibles)

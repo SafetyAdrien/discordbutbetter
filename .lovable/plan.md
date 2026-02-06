@@ -1,255 +1,226 @@
 
 
-# Optimisation des Performances des Animations
+# Carrousel d'Images pour les Messages
 
-## Analyse des problemes identifies
-
-### 1. Utilisation de `transition-all` (260 occurrences)
-`transition-all` est couteux car il surveille TOUTES les proprietes CSS, meme celles qui ne changent jamais. Cela force le navigateur a verifier chaque propriete a chaque frame.
-
-### 2. Animations non-optimisees pour le GPU
-Aucune utilisation de `will-change`, `transform-gpu` ou `contain` pour indiquer au navigateur quelles proprietes vont changer.
-
-### 3. Durees longues inutiles
-Plusieurs animations utilisent `duration-300`, `duration-500`, voire `duration-1000` pour des micro-interactions qui devraient etre plus rapides.
-
-### 4. Effets `backdrop-blur` intensifs (85 occurrences)
-`backdrop-blur` est extremement couteux car il force le rendu de plusieurs couches. Utilise dans des modals, popovers, et overlays.
-
-### 5. Animations Framer Motion sous-optimisees
-Les composants utilisant `AnimatePresence` et `motion.*` ne specifiednt pas toujours `layoutId` ou `layout` correctement.
+## Objectif
+Remplacer la grille d'images actuelle par un carrousel interactif pour une meilleure experience visuelle, specialement quand plusieurs images sont uploadees.
 
 ---
 
-## Plan d'optimisation
+## Analyse de l'existant
 
-### 1. Remplacer `transition-all` par des transitions specifiques
+### Affichage actuel (`MessageAttachments.tsx`)
+- **1 image** : Affichage simple en colonne
+- **2+ images** : Grille `grid-cols-2` avec `max-w-lg`
+- Lightbox pour agrandir les images au clic
 
-**Fichiers concernes : ~32 fichiers**
+### Composant Carousel disponible
+Le projet dispose deja d'un composant `Carousel` base sur Embla avec :
+- Navigation fleches (prev/next)
+- Support clavier (ArrowLeft/ArrowRight)
+- API pour tracker la slide courante
 
-| Avant | Apres | Gain |
-|-------|-------|------|
-| `transition-all duration-300` | `transition-colors duration-200` | -50% frames surveillees |
-| `transition-all duration-200` | `transition-[transform,opacity] duration-150` | Cible uniquement ce qui change |
+---
 
-**Exemples de modifications :**
+## Plan d'implementation
+
+### 1. Logique conditionnelle pour le carrousel
+
+| Nombre d'images | Affichage |
+|-----------------|-----------|
+| 1 image | Image simple (pas de carrousel) |
+| 2-3 images | Carrousel avec apercu visible des images adjacentes |
+| 4+ images | Carrousel avec indicateurs de pagination |
+
+---
+
+### 2. Modifier `MessageAttachments.tsx`
+
+**Nouvelles fonctionnalites :**
 
 ```tsx
-// ChannelList.tsx - Ligne 257
-// AVANT
-className="relative transition-all duration-150"
-// APRES
-className="relative transition-transform duration-150"
+// Imports
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 
-// CreateServerModal.tsx - Ligne 190
-// AVANT
-className="... hover:bg-surface-hover transition-all group text-left"
-// APRES
-className="... hover:bg-surface-hover transition-colors duration-fast group text-left"
-```
+// Nouveau composant pour le carrousel d'images
+function ImageCarousel({ 
+  images, 
+  onOpenLightbox 
+}: { 
+  images: StoredAttachment[];
+  onOpenLightbox: (index: number) => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [api, setApi] = useState<CarouselApi>();
 
----
+  useEffect(() => {
+    if (!api) return;
+    api.on('select', () => {
+      setCurrentIndex(api.selectedScrollSnap());
+    });
+  }, [api]);
 
-### 2. Ajouter des hints GPU pour les animations frequentes
-
-**Fichier : `src/index.css`**
-
-Ajouter des classes utilitaires pour forcer l'acceleration GPU :
-
-```css
-@layer utilities {
-  /* GPU acceleration hints */
-  .gpu-accelerated {
-    transform: translateZ(0);
-    backface-visibility: hidden;
-  }
-  
-  /* Containment pour isoler les repaints */
-  .contain-paint {
-    contain: paint;
-  }
-  
-  .contain-layout {
-    contain: layout;
-  }
-  
-  /* Will-change pour animations previsibles */
-  .will-change-transform {
-    will-change: transform;
-  }
-  
-  .will-change-opacity {
-    will-change: opacity;
-  }
+  return (
+    <div className="relative max-w-md group">
+      <Carousel 
+        setApi={setApi}
+        opts={{ loop: false, align: 'start' }}
+        className="w-full"
+      >
+        <CarouselContent className="-ml-2">
+          {images.map((img, index) => (
+            <CarouselItem key={img.id} className="pl-2 basis-[85%]">
+              <ImageAttachment
+                attachment={img}
+                onOpenLightbox={() => onOpenLightbox(index)}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        
+        {/* Fleches de navigation - visibles au hover */}
+        {images.length > 1 && (
+          <>
+            <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </>
+        )}
+      </Carousel>
+      
+      {/* Indicateurs de pagination (dots) */}
+      {images.length > 1 && (
+        <div className="flex justify-center gap-1.5 mt-2">
+          {images.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => api?.scrollTo(index)}
+              className={cn(
+                "w-1.5 h-1.5 rounded-full transition-colors",
+                index === currentIndex 
+                  ? "bg-primary" 
+                  : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+              )}
+              aria-label={`Aller a l'image ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 ```
 
-**Application aux composants :**
-- `ServerList.tsx` : Server icons avec drag-and-drop → `.will-change-transform`
-- `ChannelList.tsx` : Channels sortables → `.contain-paint`
-- Modals/Sheets : Overlays → `.gpu-accelerated`
-
 ---
 
-### 3. Optimiser `backdrop-blur` avec des fallbacks
-
-**Fichier : `src/index.css`**
-
-```css
-@layer components {
-  /* Optimized backdrop blur with reduced intensity */
-  .backdrop-optimized {
-    @apply bg-background/90;
-    /* Only apply blur on high-performance devices */
-    @supports (backdrop-filter: blur(4px)) {
-      @media (prefers-reduced-motion: no-preference) {
-        backdrop-filter: blur(4px);
-        @apply bg-background/80;
-      }
-    }
-  }
-}
-```
-
-**Modifications :**
-- Reduire `backdrop-blur-sm` (4px) au lieu de `backdrop-blur` (8px) ou `backdrop-blur-md` (12px)
-- Utiliser des fallbacks opaques pour les appareils moins performants
-
----
-
-### 4. Standardiser les durees vers le systeme de design
-
-**Fichier : Composants individuels**
-
-Remplacer les durees hardcodees par les tokens du design system :
-
-| Actuel | Token | Cas d'usage |
-|--------|-------|-------------|
-| `duration-150` | `duration-fast` (100ms) | Hovers, micro-interactions |
-| `duration-200` | `duration-normal` (200ms) | Transitions standard |
-| `duration-300` | `duration-slow` (300ms) | Animations complexes |
-| `duration-500` | `duration-slower` (500ms) | Modals, panels (rare) |
-
----
-
-### 5. Optimiser les animations de liste (virtualization ready)
-
-**Fichier : `src/components/layout/ChannelList.tsx`**
+### 3. Mise a jour du composant principal
 
 ```tsx
-// Ajouter contain pour limiter les repaints
-<div className="contain-paint will-change-transform">
-  <SortableContext items={categoryIds}>
-    {/* ... */}
-  </SortableContext>
-</div>
-```
+export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-**Fichier : `src/components/layout/ServerList.tsx`**
+  // ... filtrage existant
 
-```tsx
-// Server icons - ajouter GPU hints pour le drag
-<div className="will-change-transform gpu-accelerated">
-  {/* server icon content */}
-</div>
+  const images = attachments.filter(a => a.type === 'image');
+
+  return (
+    <div className="mt-2 space-y-2">
+      {/* Images - Logique conditionnelle */}
+      {images.length === 1 && (
+        <ImageAttachment
+          attachment={images[0]}
+          onOpenLightbox={() => setLightboxIndex(0)}
+        />
+      )}
+      
+      {images.length > 1 && (
+        <ImageCarousel 
+          images={images}
+          onOpenLightbox={setLightboxIndex}
+        />
+      )}
+
+      {/* Videos et Files - inchanges */}
+      
+      {/* Lightbox amelioree avec navigation */}
+      <Dialog open={lightboxIndex !== null} onOpenChange={() => setLightboxIndex(null)}>
+        <DialogContent className="...">
+          {/* Navigation dans le lightbox */}
+          {images.length > 1 && lightboxIndex !== null && (
+            <>
+              <button onClick={() => setLightboxIndex(Math.max(0, lightboxIndex - 1))}>
+                <ArrowLeft />
+              </button>
+              <button onClick={() => setLightboxIndex(Math.min(images.length - 1, lightboxIndex + 1))}>
+                <ArrowRight />
+              </button>
+            </>
+          )}
+          {lightboxIndex !== null && (
+            <img src={images[lightboxIndex].url} ... />
+          )}
+          {/* Compteur */}
+          <span>{lightboxIndex + 1} / {images.length}</span>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 ```
 
 ---
 
-### 6. Reduire les animations en mode reduced-motion
-
-**Fichier : `src/index.css`**
+### 4. Styles specifiques au carrousel
 
 ```css
-@layer base {
-  /* Respect user preference for reduced motion */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-    
-    .voice-speaking-ring,
-    .voice-active-ring,
-    .animate-badge-shake,
-    .animation-pulse-glow,
-    .animation-float {
-      animation: none !important;
-    }
-  }
+/* Dans index.css - optionnel */
+.carousel-slide-visible {
+  @apply opacity-100 scale-100;
+}
+
+.carousel-slide-adjacent {
+  @apply opacity-60 scale-95;
 }
 ```
 
 ---
 
-### 7. Optimiser les keyframes existants
+## Design du carrousel
 
-**Fichier : `tailwind.config.ts`**
-
-Utiliser `transform` et `opacity` au lieu de `box-shadow` dans les animations :
-
-```typescript
-keyframes: {
-  // AVANT - voice-speaking-pulse utilise box-shadow (couteux)
-  // APRES - Utiliser scale + opacity (GPU accelere)
-  "voice-speaking-pulse-optimized": {
-    "0%, 100%": { 
-      transform: "scale(1)",
-      opacity: "1"
-    },
-    "50%": { 
-      transform: "scale(1.05)",
-      opacity: "0.8"
-    },
-  },
-}
+```text
++------------------------------------------+
+|  [<]  +-------------+  +--------+  [>]   |
+|       |             |  |        |        |
+|       |   Image 1   |  | Img 2  |        |
+|       |  (85% width)|  |(apercu)|        |
+|       |             |  |        |        |
+|       +-------------+  +--------+        |
+|              o  o  o  o                  |
+|           (dots pagination)              |
++------------------------------------------+
 ```
+
+**Caracteristiques :**
+- Image principale visible a 85% de largeur
+- Apercu de l'image suivante visible (effet "peek")
+- Fleches au hover seulement
+- Dots cliquables pour navigation directe
+- Lightbox avec navigation fleches pour images agrandies
 
 ---
 
-## Resume des fichiers a modifier
+## Fichiers a modifier
 
 | Fichier | Modifications |
 |---------|---------------|
-| `src/index.css` | Nouvelles classes GPU, reduced-motion, backdrop optimise |
-| `tailwind.config.ts` | Keyframes optimises |
-| `src/components/layout/ServerList.tsx` | `transition-all` → specifique, GPU hints |
-| `src/components/layout/ChannelList.tsx` | `transition-all` → specifique, contain |
-| `src/components/ui/button.tsx` | Deja optimise (transition-colors) |
-| `src/components/modals/*.tsx` | backdrop-blur → backdrop-optimized |
-| `src/components/channels/voice/*.tsx` | Animations GPU accelerees |
+| `src/components/chat/MessageAttachments.tsx` | Nouveau composant `ImageCarousel`, lightbox avec navigation |
 
 ---
 
 ## Resultats attendus
 
-- **60% moins de proprietes surveillees** en remplacant `transition-all`
-- **Animations GPU-accelerees** pour drag-and-drop et voice
-- **Respect de `prefers-reduced-motion`** pour l'accessibilite
-- **Moins de repaints** grace a `contain` et `will-change`
-- **Fallbacks gracieux** pour `backdrop-blur` sur appareils moins performants
-
----
-
-## Notes techniques
-
-### Proprietes animees par le GPU (performantes)
-- `transform` (translate, scale, rotate)
-- `opacity`
-
-### Proprietes animees par le CPU (couteuses)
-- `width`, `height`
-- `margin`, `padding`
-- `box-shadow`
-- `background-color` (modere)
-- `backdrop-filter` (tres couteux)
-
-### Quand utiliser `will-change`
-- Seulement sur les elements qui vont reellement changer
-- Retirer apres l'animation si possible
-- Ne pas appliquer a trop d'elements (memoire GPU limitee)
+- **1 image** : Comportement inchange
+- **2+ images** : Carrousel fluide avec navigation intuitive
+- **Lightbox** : Navigation entre images sans fermer le modal
+- **Performance** : Utilisation d'Embla (deja installe, performant)
+- **Accessibilite** : Navigation clavier + ARIA labels
 

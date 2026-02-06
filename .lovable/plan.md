@@ -1,203 +1,200 @@
 
 
-# Thème Gris Bleuté - Amélioration de l'Interface
+# Harmonisation des Couleurs Hardcodées vers le Thème Gris-Bleuté
 
-## Objectif
-Transformer la palette de couleurs de l'application vers une teinte gris bleuté plus moderne et cohérente, similaire aux dernières versions de Discord mais avec une identité visuelle distincte.
+## Problème identifié
 
----
+De nombreux composants utilisent des couleurs hexadécimales hardcodées (anciennes valeurs Discord violet-bleu) au lieu des variables CSS du nouveau thème gris-bleuté (218°).
 
-## Analyse du thème actuel
+### Couleurs hardcodées à remplacer
 
-### Valeurs HSL actuelles (Hue autour de 220-233°)
-| Variable | Valeur actuelle | Commentaire |
-|----------|-----------------|-------------|
-| `--background` | `231 24% 13%` | Légèrement violet-bleu |
-| `--card` | `233 27% 11%` | Violet-bleu foncé |
-| `--popover` | `231 24% 11%` | Similaire au background |
-| `--muted` | `231 20% 18%` | Gris-violet |
-| `--sidebar-background` | `233 30% 8%` | Très foncé |
-| `--input` | `231 23% 17%` | Gris-violet |
+| Couleur hardcodée | Utilisation | Remplacer par |
+|-------------------|-------------|---------------|
+| `#1e1f22` | Background sombre | `hsl(var(--popover))` ou `bg-popover` |
+| `#2b2d31` | Surface élevée | `hsl(var(--surface-elevated))` ou `bg-card` |
+| `#232428` | Éléments UI | `hsl(var(--muted))` ou `bg-muted` |
+| `#151723` / `#121421` | Header/Toolbar | `hsl(var(--toolbar))` |
+| `#1e2124` | Background alternatif | `bg-popover` |
+| `#2d2f34` | Gradient surface | `hsl(var(--muted))` |
+| `#949BA4` | Texte secondaire | `text-muted-foreground` |
+| `#5865f2` | Blurple Discord | `hsl(var(--primary))` ← **Conservé** |
 
-Le thème actuel utilise une teinte autour de **231-233°** (violet-bleu). Pour un gris bleuté plus "Discord moderne", nous devons :
-1. Ramener la teinte vers **220-225°** (bleu pur)
-2. Réduire légèrement la saturation pour un rendu plus neutre
-3. Ajuster les luminosités pour un meilleur contraste
+**Note importante** : `#5865f2` (Blurple) est proche de notre `--primary` (225 85% 53%) et sera remplacé par `hsl(var(--primary))` pour cohérence.
 
 ---
 
-## Nouvelle palette proposée
+## Fichiers à modifier (28 fichiers identifiés)
 
-### Comparaison visuelle
-
-```text
-Actuel (Violet-bleu ~231°)     →    Nouveau (Gris-bleuté ~218°)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#191C2B (Background)           →    #1A1D24 (Plus gris, moins violet)
-#151724 (Card/Sidebar)         →    #14171C (Gris ardoise profond)
-#10121B (Server Rail)          →    #111316 (Presque noir bleuté)
-#2B3250 (Toolbar)              →    #252A35 (Gris-bleu moyen)
-```
-
-### Nouvelles valeurs HSL
-
-| Variable | Ancienne valeur | Nouvelle valeur | Description |
-|----------|-----------------|-----------------|-------------|
-| `--background` | `231 24% 13%` | `218 18% 12%` | Chat principal - gris bleuté |
-| `--foreground` | `220 6% 86%` | `218 10% 90%` | Texte plus lumineux |
-| `--card` | `233 27% 11%` | `218 20% 10%` | Sidebar canaux |
-| `--popover` | `231 24% 11%` | `218 22% 9%` | Menus contextuels |
-| `--toolbar` | `229 30% 24%` | `218 20% 18%` | Barre d'outils |
-| `--muted` | `231 20% 18%` | `218 15% 20%` | Surfaces secondaires |
-| `--muted-foreground` | `216 7% 73%` | `218 12% 70%` | Texte secondaire |
-| `--border` | `231 20% 18%` | `218 15% 18%` | Bordures subtiles |
-| `--input` | `231 23% 17%` | `218 18% 15%` | Champs de saisie |
-| `--surface-elevated` | `231 24% 15%` | `218 18% 14%` | Surfaces élevées |
-| `--surface-hover` | `231 24% 20%` | `218 18% 22%` | État hover |
-| `--sidebar-background` | `233 30% 8%` | `218 25% 7%` | Rail des serveurs |
-| `--sidebar-accent` | `231 24% 18%` | `218 18% 20%` | Accent sidebar |
-| `--sidebar-border` | `231 20% 18%` | `218 15% 16%` | Bordure sidebar |
-| `--user-panel` | `230 28% 10%` | `218 22% 9%` | Panneau utilisateur |
-| `--poll-background` | `231 24% 11%` | `218 20% 10%` | Fond des sondages |
-
----
-
-## Résultat visuel attendu
-
-### Avant (Violet-bleu)
-```text
-┌─────────────────────────────────────────┐
-│ #10121B │ #151724 │ #191C2B │ #2B3250  │
-│ (Rail)  │ (Sidebar)│ (Chat)  │ (Toolbar)│
-└─────────────────────────────────────────┘
-Teinte dominante : Violet-bleu profond
-```
-
-### Après (Gris-bleuté)
-```text
-┌─────────────────────────────────────────┐
-│ #111316 │ #14171C │ #1A1D24 │ #252A35  │
-│ (Rail)  │ (Sidebar)│ (Chat)  │ (Toolbar)│
-└─────────────────────────────────────────┘
-Teinte dominante : Gris ardoise bleuté (moderne)
-```
-
----
-
-## Fichier à modifier
-
+### Composants Voice/Audio
 | Fichier | Modifications |
 |---------|---------------|
-| `src/index.css` | Mettre à jour toutes les variables CSS `:root` avec les nouvelles valeurs HSL |
+| `VoiceChannelView.tsx` | `bg-[#1e1f22]` → `bg-popover` |
+| `VoiceChannelChat.tsx` | `bg-[#2b2d31]` → `bg-card` |
+| `VoiceVideoTile.tsx` | `bg-[#1e1f22]`, gradients → variables CSS |
+| `VoiceActionBar.tsx` | `bg-[#232428]` → `bg-muted` |
+| `VoiceParticipantGrid.tsx` | `bg-[#232428]` → `bg-muted` |
+
+### Composants Chat
+| Fichier | Modifications |
+|---------|---------------|
+| `ChatArea.tsx` | `bg-[#151723]` → `bg-[hsl(var(--toolbar))]` |
+| `CreatePollModal.tsx` | `bg-[#1e1f22]`, `bg-[#5865f2]` → variables |
+| `EmojiStickerPicker.tsx` | `bg-[#2b2d31]`, `bg-[#1e1f22]` → variables |
+| `MarkdownPreview.tsx` | `bg-[#1e1f22]`, `text-[#949BA4]` → variables |
+| `MentionComponents.tsx` | `bg-[#111214]`, `bg-[#2b2d31]` → variables |
+| `RoleBadgePopover.tsx` | `bg-[#111214]` → `bg-popover` |
+
+### Composants UI
+| Fichier | Modifications |
+|---------|---------------|
+| `code-block.tsx` | `bg-[#2b2d31]`, `bg-[#232428]`, `text-[#949BA4]` |
+| `upload/UploadDropOverlay.tsx` | `bg-[#1e2124]` → `bg-popover` |
+
+### Composants Layout
+| Fichier | Modifications |
+|---------|---------------|
+| `ChannelList.tsx` | `bg-[#121421]`, `text-[#c6c7cd]`, `text-[#9B9CA3]` |
+| `ServerList.tsx` | `bg-[#5865f2]` → `bg-primary` |
+
+### Composants Announcement
+| Fichier | Modifications |
+|---------|---------------|
+| `AnnouncementChannel.tsx` | `bg-[#151723]` → `bg-[hsl(var(--toolbar))]` |
+
+### Autres composants
+| Fichier | Modifications |
+|---------|---------------|
+| `DMUserInfoPanel.tsx` | `text-[#b0b1b5]` → `text-muted-foreground` |
+| `SummariesBar.tsx` | `bg-[#5865F2]` → `bg-primary` |
+| `SummariesDropdown.tsx` | `bg-[#5865F2]` → `bg-primary` |
+| `RoleManager.tsx` | `bg-[#5865f2]` → `bg-primary` |
+| `DndComponents.tsx` | `bg-[#5865f2]` → `bg-primary` |
+| `ThreadView.tsx` | `text-[#5865f2]` → `text-primary` |
+| `BoostBenefitsPage.tsx` | Couleurs boost (conservées - spécifique) |
 
 ---
 
-## Détail des modifications dans index.css
+## Détail des remplacements par fichier
 
-### Section `:root` (lignes 104-180)
+### 1. VoiceChannelView.tsx (lignes 99-142)
+```tsx
+// Avant
+<div className="flex-1 flex flex-col bg-[#1e1f22]">
+<header className="... bg-[#1e1f22]">
+
+// Après
+<div className="flex-1 flex flex-col bg-popover">
+<header className="... bg-popover">
+```
+
+### 2. ChatArea.tsx (ligne 786)
+```tsx
+// Avant
+<div className="h-12 ... bg-[#151723] ...">
+
+// Après
+<div className="h-12 ... bg-[hsl(var(--toolbar))] ...">
+```
+
+### 3. ChannelList.tsx (ligne 1191)
+```tsx
+// Avant
+<div className="h-14 ... bg-[hsl(var(--card))] ... bg-[#121421]">
+
+// Après (supprimer la double déclaration)
+<div className="h-14 ... bg-[hsl(var(--toolbar))] ...">
+```
+
+### 4. code-block.tsx (lignes 72-74)
+```tsx
+// Avant
+<pre className="... bg-[#2b2d31] border border-[#1e1f22] ...">
+  <div className="... border-b border-[#1e1f22] bg-[#232428]">
+    <span className="text-xs text-[#949BA4]">
+
+// Après
+<pre className="... bg-card border border-border ...">
+  <div className="... border-b border-border bg-muted">
+    <span className="text-xs text-muted-foreground">
+```
+
+### 5. EmojiStickerPicker.tsx
+```tsx
+// Avant
+className="... bg-[#2b2d31] ..."
+className="... bg-[#1e1f22] ..."
+
+// Après
+className="... bg-popover ..."
+className="... bg-card ..."
+```
+
+### 6. VoiceActionBar.tsx
+```tsx
+// Avant
+<div className="flex items-center bg-[#232428] rounded-lg overflow-hidden">
+
+// Après
+<div className="flex items-center bg-muted rounded-lg overflow-hidden">
+```
+
+### 7. ServerList.tsx
+```tsx
+// Avant
+'bg-[#5865f2] text-white rounded-[16px]'
+'hover:bg-[#5865f2]/80'
+
+// Après
+'bg-primary text-white rounded-[16px]'
+'hover:bg-primary/80'
+```
+
+---
+
+## Nouvelles variables CSS recommandées
+
+Pour faciliter la maintenance, ajouter ces variables dans `index.css` si nécessaire :
 
 ```css
 :root {
-  /* Dark Space Theme - Gris Bleuté Moderne */
-  
-  /* Main Chat + Member List */
-  --background: 218 18% 12%;
-  /* Primary text - légèrement plus lumineux */
-  --foreground: 218 10% 90%;
-
-  /* Sidebar Channels */
-  --card: 218 20% 10%;
-  --card-foreground: 218 10% 90%;
-
-  /* Popovers/Menus - plus sombre */
-  --popover: 218 22% 9%;
-  --popover-foreground: 218 10% 90%;
-
-  /* Toolbar background */
-  --toolbar: 218 20% 18%;
-
-  /* Primary reste inchangé (bleu d'accent) */
-  --primary: 225 85% 53%;
-  --primary-foreground: 218 25% 8%;
-
-  /* Secondary reste inchangé */
-  --secondary: 270 60% 60%;
-  --secondary-foreground: 218 10% 90%;
-
-  /* Muted surfaces */
-  --muted: 218 15% 20%;
-  --muted-foreground: 218 12% 70%;
-
-  /* Accent reste inchangé */
-  --accent: 186 80% 40%;
-  --accent-foreground: 218 10% 90%;
-
-  /* Destructive reste inchangé */
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 218 10% 90%;
-
-  /* Borders & Inputs */
-  --border: 218 15% 18%;
-  --input: 218 18% 15%;
-  --ring: 225 85% 53%;
-
-  /* Custom gaming colors */
-  --glow-primary: 225 85% 53%;
-  --glow-secondary: 270 60% 60%;
-  --surface-elevated: 218 18% 14%;
-  --surface-hover: 218 18% 22%;
-  
-  /* Status colors restent inchangés */
-  --online: 142 76% 46%;
-  --idle: 38 92% 50%;
-  --dnd: 0 72% 51%;
-  --offline: 218 15% 45%;
-  --voice-active: 142 76% 46%;
-  --poll-background: 218 20% 10%;
-
-  /* Gradients - ajustés */
-  --gradient-surface: linear-gradient(180deg, hsl(218 18% 14%), hsl(218 20% 10%));
-
-  /* Server List Sidebar */
-  --sidebar-background: 218 25% 7%;
-  --sidebar-foreground: 218 10% 90%;
-  --sidebar-primary: 225 85% 53%;
-  --sidebar-primary-foreground: 218 25% 8%;
-  --sidebar-accent: 218 18% 20%;
-  --sidebar-accent-foreground: 218 10% 90%;
-  --sidebar-border: 218 15% 16%;
-  --sidebar-ring: 225 85% 53%;
-
-  /* User Profile Panel */
-  --user-panel: 218 22% 9%;
-}
-```
-
-### Section `.dark` (lignes 182-186)
-
-```css
-.dark {
-  /* Identique à root - toujours sombre */
-  --background: 218 18% 12%;
-  --foreground: 218 10% 90%;
+  /* Déjà présentes - mapping */
+  --popover: 218 22% 9%;      /* Surfaces très sombres (#171a20) */
+  --card: 218 20% 10%;        /* Sidebar/surfaces (#191d23) */
+  --muted: 218 15% 20%;       /* Éléments UI (#2a3039) */
+  --toolbar: 218 20% 18%;     /* Headers (#262c36) */
+  --surface-elevated: 218 18% 14%;  /* Surfaces élevées */
 }
 ```
 
 ---
 
-## Avantages de cette approche
+## Mapping des couleurs (référence)
 
-1. **Cohérence** : Toutes les teintes utilisent maintenant ~218° au lieu de 220-233°
-2. **Modernité** : Le gris bleuté est plus neutre et contemporain
-3. **Lisibilité** : Textes légèrement plus lumineux (90% vs 86%)
-4. **Contraste** : Meilleure hiérarchie entre les différentes zones
-5. **Compatibilité** : Aucun changement sur les couleurs d'accent (primary, secondary, status)
+| Ancienne couleur | Hex | Nouvelle variable | Hex approximatif |
+|------------------|-----|-------------------|------------------|
+| `#1e1f22` | Noir Discord | `--popover` | `#171a20` |
+| `#2b2d31` | Gris Discord | `--card` | `#191d23` |
+| `#232428` | Gris moyen | `--muted` | `#2a3039` |
+| `#151723` | Toolbar | `--toolbar` | `#262c36` |
+| `#5865f2` | Blurple | `--primary` | `#2153ed` |
+| `#949BA4` | Texte muted | `--muted-foreground` | `#a1a7b5` |
 
 ---
 
-## Notes techniques
+## Ordre d'implémentation
 
-- La teinte **218°** correspond à un bleu-gris standard (entre le bleu pur 210° et le bleu-violet 225°)
-- La saturation réduite (15-22%) donne un aspect plus "gris" tout en conservant la teinte bleutée
-- Les couleurs d'accent (primary bleu, secondary violet, status verts/oranges/rouges) restent inchangées pour maintenir les interactions visuelles
+1. **Composants de base** : `code-block.tsx`, `MarkdownPreview.tsx`
+2. **Layout** : `ChannelList.tsx`, `ServerList.tsx`
+3. **Chat** : `ChatArea.tsx`, `CreatePollModal.tsx`, `EmojiStickerPicker.tsx`
+4. **Voice** : `VoiceChannelView.tsx`, `VoiceActionBar.tsx`, `VoiceChannelChat.tsx`
+5. **Autres** : Remaining files
+
+---
+
+## Avantages
+
+1. **Cohérence** : Toute l'app utilise les mêmes variables CSS
+2. **Maintenabilité** : Un seul endroit pour modifier le thème
+3. **Thème futur** : Facilite l'ajout d'un mode clair si nécessaire
+4. **Performance** : Les variables CSS sont gérées par le navigateur
 

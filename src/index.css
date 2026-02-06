@@ -201,15 +201,46 @@
   h3 {
     font-family: "Orbitron", sans-serif;
   }
+
+  /* Respect user preference for reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    
+    .voice-speaking-ring,
+    .voice-active-ring,
+    .animate-badge-shake,
+    .animation-pulse-glow,
+    .animation-float {
+      animation: none !important;
+    }
+  }
 }
 
 @layer components {
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card/80 backdrop-blur-sm border border-border/50;
   }
 
   .glass-hover {
-    @apply hover:bg-surface-hover/80 transition-all duration-300;
+    @apply hover:bg-surface-hover/80 transition-colors duration-200;
+  }
+
+  /* Optimized backdrop blur with performance fallback */
+  .backdrop-optimized {
+    @apply bg-background/90;
+  }
+  @supports (backdrop-filter: blur(4px)) {
+    .backdrop-optimized {
+      backdrop-filter: blur(4px);
+      @apply bg-background/80;
+    }
   }
 
   .glow-text {
@@ -280,6 +311,36 @@
 }
 
 @layer utilities {
+  /* === GPU ACCELERATION HINTS === */
+  
+  /* Force GPU layer for smooth animations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Containment to isolate repaints */
+  .contain-paint {
+    contain: paint;
+  }
+  
+  .contain-layout {
+    contain: layout;
+  }
+  
+  .contain-strict {
+    contain: strict;
+  }
+  
+  /* Will-change for predictable animations - use sparingly */
+  .will-change-transform {
+    will-change: transform;
+  }
+  
+  .will-change-opacity {
+    will-change: opacity;
+  }
+  
   /* === STANDARD INTERACTION STATES === */
   
   /* Hover: subtle brightness change */
@@ -308,7 +369,7 @@
   
   /* Combined hover + active for interactive buttons */
   .btn-interactive {
-    @apply transition-all duration-200;
+    @apply transition-[transform,filter] duration-200;
   }
   .btn-interactive:hover {
     filter: brightness(1.1);

@@ -141,9 +141,9 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 backdrop-optimized" onClick={onClose} />
         
-        <div className="relative w-full max-w-md bg-card rounded-xl border border-border shadow-2xl overflow-hidden animate-slide-in-right">
+        <div className="relative w-full max-w-md bg-card rounded-xl border border-border shadow-2xl overflow-hidden animate-slide-in-right gpu-accelerated">
           {/* Header */}
           <div className="p-6 text-center relative">
             <Button 
@@ -187,18 +187,18 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
             <div className="px-6 pb-6 space-y-3">
               <button
                 onClick={() => setStep('type')}
-                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
+                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform duration-150">
                       <span className="text-2xl">🎮</span>
                     </div>
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-150">
                       Créer le mien
                     </h3>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
                 </div>
               </button>
 
@@ -215,18 +215,18 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
             <div className="px-6 pb-6 space-y-4">
               <button
                 onClick={() => handleSelectTemplate(null)}
-                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
+                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform duration-150">
                       <span className="text-2xl">🎮</span>
                     </div>
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-150">
                       Créer le mien
                     </h3>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
                 </div>
               </button>
 
@@ -238,16 +238,16 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                   <button
                     key={template.id}
                     onClick={() => handleSelectTemplate(template.id)}
-                    className="w-full p-3 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-all group text-left"
+                    className="w-full p-3 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="text-xl">{template.icon}</span>
-                        <span className="font-medium text-foreground group-hover:text-primary transition-colors">
+                        <span className="font-medium text-foreground group-hover:text-primary transition-colors duration-150">
                           {template.name}
                         </span>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
                     </div>
                   </button>
                 ))}

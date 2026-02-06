@@ -254,7 +254,7 @@ function SortableCategory({
       <div
         ref={setNodeRef}
         style={style}
-        className={cn("relative transition-all duration-150", isDragging && "bg-muted/20 rounded-md scale-[0.98]")}
+        className={cn("relative transition-transform duration-150 will-change-transform", isDragging && "bg-muted/20 rounded-md scale-[0.98]")}
       >
         {/* Drop Indicator - Absolute positioned */}
         {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
@@ -449,7 +449,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           {...attributes}
           {...listeners}
           className={cn(
-            "relative hover:cursor-grab channel-transition rounded-md transition-all duration-150",
+            "relative hover:cursor-grab channel-transition rounded-md transition-transform duration-150 will-change-transform",
             isDragging && "bg-muted/20 scale-[0.98]",
           )}
         >

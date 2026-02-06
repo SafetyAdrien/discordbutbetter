@@ -777,4 +777,21 @@
   .responsive-btn-text {
     @apply hidden sm:inline;
   }
+
+  /* === DND OPTIMIZED UTILITIES === */
+  
+  /* DnD optimized item - GPU-accelerated transitions */
+  .dnd-item {
+    @apply transition-[transform,opacity] duration-200 ease-out will-change-transform;
+  }
+  
+  /* Dragging state - reduced opacity and slight scale */
+  .dnd-item-dragging {
+    @apply opacity-30 scale-[0.98] bg-muted/20 rounded-md;
+  }
+  
+  /* Resize handle utility */
+  .resize-handle {
+    @apply transition-[width,background-color] duration-100 cursor-col-resize;
+  }
 }

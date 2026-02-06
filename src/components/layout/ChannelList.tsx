@@ -92,27 +92,20 @@ import { useStageAudienceCount } from "@/hooks/useStageAudience";
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
   DragEndEvent,
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
   CollisionDetection,
-  pointerWithin,
-  rectIntersection,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { useDndSensors } from "@/hooks/useDndSensors";
 import React from "react";
 
 // Discord-style Drop Indicator - Blue horizontal line with absolute positioning
@@ -138,6 +131,8 @@ const DropIndicator = React.forwardRef<
         "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
         // Position based on 'before' or 'after'
         position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
+        // Smooth appearance animation
+        "animate-fade-in",
       )}
     />
   );
@@ -245,8 +240,7 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? "opacity 150ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease",
-    opacity: isDragging ? 0.3 : 1,
+    transition: undefined, // Let Tailwind handle transitions
   };
   return (
     <>
@@ -254,7 +248,10 @@ function SortableCategory({
       <div
         ref={setNodeRef}
         style={style}
-        className={cn("relative transition-transform duration-150 will-change-transform", isDragging && "bg-muted/20 rounded-md scale-[0.98]")}
+        className={cn(
+          "relative dnd-item",
+          isDragging && "dnd-item-dragging"
+        )}
       >
         {/* Drop Indicator - Absolute positioned */}
         {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
@@ -426,10 +423,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     });
     const style = {
       transform: CSS.Transform.toString(transform),
-      transition: isDragging
-        ? "opacity 150ms ease"
-        : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease",
-      opacity: isDragging ? 0.3 : 1,
+      transition: undefined, // Let Tailwind handle transitions
     };
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
@@ -449,8 +443,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           {...attributes}
           {...listeners}
           className={cn(
-            "relative hover:cursor-grab channel-transition rounded-md transition-transform duration-150 will-change-transform",
-            isDragging && "bg-muted/20 scale-[0.98]",
+            "relative hover:cursor-grab rounded-md dnd-item",
+            isDragging && "dnd-item-dragging",
           )}
         >
           {/* Drop Indicator - Absolute positioned */}
@@ -831,17 +825,8 @@ export function ChannelList({
     }
   };
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  // DnD sensors - optimized with touch support
+  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories((prev) =>
       prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
@@ -1143,6 +1128,7 @@ export function ChannelList({
   ];
   // Sidebar resizing
   const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [isHoveringResize, setIsHoveringResize] = useState(false);
   const isResizing = useRef(false);
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -1158,6 +1144,7 @@ export function ChannelList({
       };
       const handleMouseUp = () => {
         isResizing.current = false;
+        setIsHoveringResize(false);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
@@ -1168,18 +1155,38 @@ export function ChannelList({
   );
   return (
     <div
-      className="bg-card flex flex-col border-r border-border relative"
+      className={cn(
+        "bg-card flex flex-col border-r border-border relative",
+        // Smooth width transition only when not actively resizing
+        !isResizing.current && "transition-[width] duration-300 ease-out"
+      )}
       style={{
         width: `${sidebarWidth}px`,
         minWidth: "240px",
         maxWidth: "340px",
       }}
     >
-      {/* Resize handle */}
+      {/* Enhanced resize handle with visual feedback */}
       <div
-        className="absolute right-0 top-0 bottom-0 w-1 hover:bg-primary/50 cursor-col-resize transition-colors z-10"
+        className={cn(
+          "absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10",
+          "transition-[width,background-color] duration-100",
+          isHoveringResize || isResizing.current
+            ? "w-1.5 bg-primary/70"
+            : "bg-transparent hover:bg-primary/30",
+        )}
+        onMouseEnter={() => setIsHoveringResize(true)}
+        onMouseLeave={() => !isResizing.current && setIsHoveringResize(false)}
         onMouseDown={handleResizeMouseDown}
-      />
+      >
+        {/* Grip indicator */}
+        <div className={cn(
+          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+          "w-1 h-8 rounded-full bg-primary/50",
+          "transition-opacity duration-100",
+          isHoveringResize || isResizing.current ? "opacity-100" : "opacity-0"
+        )} />
+      </div>
       {/* Server Header - styled like User Panel */}
       <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]">
         <Popover>
@@ -1426,8 +1433,10 @@ export function ChannelList({
                 {activeId && (
                   <div
                     className={cn(
-                      "bg-card/95 backdrop-blur-sm border border-[#5865f2]/50 rounded-md px-3 py-2",
-                      "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
+                      // Optimized backdrop with GPU acceleration
+                      "bg-card/95 backdrop-optimized border border-[#5865f2]/50 rounded-md px-3 py-2",
+                      "gpu-accelerated will-change-transform",
+                      "shadow-lg shadow-black/30",
                       "scale-105 cursor-grabbing",
                     )}
                   >

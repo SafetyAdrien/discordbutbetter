@@ -82,7 +82,41 @@ const Index = () => {
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
   const { data: publicServers = [] } = usePublicServers();
-  const { data: channelsData } = useChannels(activeServerId);
+  
+  // Prepare initial channels data from servers cache for instant display
+  const initialChannelsData = useMemo(() => {
+    if (!activeServerId) return undefined;
+    const server = servers.find(s => s.id === activeServerId);
+    if (!server) return undefined;
+    
+    return {
+      categories: server.categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        position: cat.position ?? 0,
+        channels: cat.channels.map(ch => ({
+          id: ch.id,
+          name: ch.name,
+          type: ch.type as import('@/hooks/useChannels').ChannelType,
+          description: ch.description ?? null,
+          position: ch.position ?? 0,
+          category_id: cat.id,
+          server_id: activeServerId,
+        })),
+      })),
+      orphanChannels: (server.orphanChannels || []).map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        type: ch.type as import('@/hooks/useChannels').ChannelType,
+        description: ch.description ?? null,
+        position: ch.position ?? 0,
+        category_id: null,
+        server_id: activeServerId,
+      })),
+    };
+  }, [activeServerId, servers]);
+  
+  const { data: channelsData } = useChannels(activeServerId, initialChannelsData);
   const { data: messages = [] } = useMessages(activeChannelId);
   const { data: members = [] } = useMembers(activeServerId);
   // Realtime profiles updates (DB -> postgres_changes)

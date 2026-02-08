@@ -28,7 +28,10 @@ export interface OrphanChannel extends ChannelWithCategory {}
 // Shared ref to prevent Realtime conflicts during mutations
 const mutationLockRef = { current: false };
 
-export function useChannels(serverId: string | null) {
+export function useChannels(
+  serverId: string | null,
+  initialData?: { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }
+) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -125,6 +128,10 @@ export function useChannels(serverId: string | null) {
       return { categories: categorizedChannels, orphanChannels };
     },
     enabled: !!serverId && !!user,
+    // Use initial data from servers cache for instant display
+    initialData: initialData,
+    // Prevent refetch if we have initial data (refetch happens via Realtime)
+    staleTime: initialData ? 30000 : 0,
   });
 }
 

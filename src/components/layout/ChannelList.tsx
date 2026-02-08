@@ -83,8 +83,7 @@ import { useChannelUnreadCounts } from "@/hooks/useChannelUnreadCounts";
 import { useFollowedThreads } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
 import { useLeaveServer } from "@/hooks/useLeaveServer";
-import { useChannelsVisibility } from "@/hooks/useUserChannelPermissions";
-import { useVoiceChannelLocks } from "@/hooks/useVoiceChannelLocks";
+import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
 import { useNavigate } from "react-router-dom";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
 
@@ -701,25 +700,20 @@ export function ChannelList({
   // Check if user is the owner (cannot leave, must delete)
   const isOwner = profile?.id === server.ownerId;
 
-  // Get all channel IDs for visibility check
-  const allChannelIdsForVisibility = useMemo(() => {
-    const ids: string[] = [];
-    server.categories.forEach((cat) => {
-      cat.channels.forEach((ch) => ids.push(ch.id));
-    });
-    orphanChannels.forEach((ch) => ids.push(ch.id));
-    return ids;
-  }, [server.categories, orphanChannels]);
-
-  // Check visibility for all channels
-  const { isVisible, isLoading: isVisibilityLoading } = useChannelsVisibility(allChannelIdsForVisibility);
+  // BATCH: Get all channel permissions (view + connect) with a SINGLE RPC call
+  // Replaces useChannelsVisibility + useVoiceChannelLocks (N+M calls → 1 call)
+  const { 
+    isVisible, 
+    isLocked: isVoiceChannelLocked, 
+    isLoading: isPermsLoading 
+  } = useServerChannelPermissions(server.id);
 
   // Filter visible channels helper - during loading show all to avoid flash
   const shouldShowChannel = useCallback(
     (channelId: string) => {
-      return isVisibilityLoading || isVisible(channelId);
+      return isPermsLoading || isVisible(channelId);
     },
-    [isVisibilityLoading, isVisible],
+    [isPermsLoading, isVisible],
   );
 
   // Filter orphan channels by visibility
@@ -735,24 +729,7 @@ export function ChannelList({
         channels: category.channels.filter((ch) => shouldShowChannel(ch.id)),
       }))
       .filter((category) => canManageChannels || category.channels.length > 0); // Show empty categories to admins only
-  }, [server.categories, shouldShowChannel]);
-
-  // Get all voice/stage channel IDs for lock check
-  const voiceChannelIds = useMemo(() => {
-    const ids: string[] = [];
-    server.categories.forEach((cat) => {
-      cat.channels.forEach((ch) => {
-        if (ch.type === "voice" || ch.type === "stage") ids.push(ch.id);
-      });
-    });
-    orphanChannels.forEach((ch) => {
-      if (ch.type === "voice" || ch.type === "stage") ids.push(ch.id);
-    });
-    return ids;
-  }, [server.categories, orphanChannels]);
-
-  // Check which voice channels are locked (connect_voice denied) - real-time updates
-  const { isLocked: isVoiceChannelLocked } = useVoiceChannelLocks(voiceChannelIds);
+  }, [server.categories, shouldShowChannel, canManageChannels]);
 
   // Fetch channel unread info (hasUnread + mentionCount)
   const { channelUnreadInfo } = useChannelUnreadCounts(server.id);

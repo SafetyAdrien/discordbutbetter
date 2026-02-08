@@ -2653,6 +2653,14 @@ export type Database = {
           uses: number
         }[]
       }
+      get_server_channel_permissions: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: {
+          can_connect: boolean
+          can_view: boolean
+          channel_id: string
+        }[]
+      }
       get_user_channel_permissions: {
         Args: { _channel_id: string; _user_id: string }
         Returns: {

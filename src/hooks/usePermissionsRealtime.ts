@@ -29,6 +29,8 @@ export function usePermissionsRealtime(serverId: string | null) {
         queryClient.invalidateQueries({ queryKey: ['roles'] }),
         queryClient.invalidateQueries({ queryKey: ['role-permissions'] }),
         queryClient.invalidateQueries({ queryKey: ['member-roles'] }),
+        // NEW: Invalidate batch server channel permissions
+        queryClient.invalidateQueries({ queryKey: ['server-channel-permissions'] }),
       ]);
       
       await Promise.all([
@@ -40,6 +42,8 @@ export function usePermissionsRealtime(serverId: string | null) {
         queryClient.refetchQueries({ queryKey: ['roles'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['role-permissions'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['member-roles'], type: 'active' }),
+        // NEW: Refetch batch server channel permissions
+        queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' }),
       ]);
       
       console.log(`[Permissions Realtime] ✅ Refetch complete (${source})`);

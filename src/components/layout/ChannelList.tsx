@@ -759,7 +759,7 @@ export function ChannelList({
       unreadCount: unreadCounts[thread.id] || 0,
     }));
   }, [followedThreads, unreadCounts]);
-  const ownerProfile = membersData?.find((m) => m.id === server.ownerId);
+  const ownerProfile = membersData?.find((m) => m.user.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
       await deleteChannel.mutateAsync({

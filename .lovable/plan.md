@@ -1,171 +1,62 @@
 
-# Optimisation de l'Instantanéité des Permissions de Salons
+# Correction du Problème d'Upload lors de la Création de Serveurs
 
 ## Problème identifié
 
-Lors du changement de serveur ou du chargement initial, l'affichage des salons est retardé par de **multiples requêtes RPC séquentielles** pour vérifier les permissions :
+Les politiques RLS actuelles pour les buckets `server-icons` et `server-banners` exigent que le serveur existe déjà dans la base de données avant de pouvoir uploader des fichiers :
 
-1. **`useChannelsVisibility`** : N requêtes `has_channel_permission` (une par salon) pour `view_channel`
-2. **`useVoiceChannelLocks`** : M requêtes `has_channel_permission` (une par salon vocal/stage) pour `connect_voice`
-3. **`staleTime: 0`** : Force des refetch constants au lieu de réutiliser le cache
+```sql
+-- Politique actuelle - PROBLÉMATIQUE
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM servers 
+    WHERE servers.id::text = storage.foldername(name)[1]
+    AND (servers.owner_id = auth.uid() OR servers.secondary_owner_id = auth.uid())
+  )
+)
+```
 
-### Impact
-- **10+ salons** = **10+ requêtes réseau** parallèles au minimum
-- Délai visible avant que les salons s'affichent correctement
-- Flash de contenu (tous les salons visibles puis certains disparaissent)
+Or, dans `CreateServerModal.tsx`, l'upload se fait **AVANT** la création du serveur (lignes 104-109), donc :
+1. L'utilisateur sélectionne une icône/bannière
+2. Le modal tente d'uploader → **ÉCHEC RLS** (serveur inexistant)
+3. La création du serveur ne se fait jamais
 
 ---
 
 ## Solution proposée
 
-### Stratégie : Requête RPC groupée + Cache intelligent
+### Stratégie : Autoriser l'upload pour tout utilisateur authentifié
 
-Créer une **fonction RPC unique** qui vérifie les permissions de **tous les canaux d'un serveur** en une seule requête, puis utiliser un **staleTime approprié** pour éviter les refetch inutiles.
+Pour les buckets `server-icons` et `server-banners`, on doit permettre l'upload à tout utilisateur authentifié car l'icône/bannière est uploadée **avant** que le serveur n'existe.
+
+C'est sécurisé car :
+- Les fichiers sont stockés dans des sous-dossiers UUID aléatoires
+- Seul le créateur du serveur aura l'URL finale
+- Les politiques UPDATE/DELETE restent restrictives (propriétaire seulement)
 
 ---
 
 ## Modifications
 
-### 1. Nouvelle fonction RPC PostgreSQL
+### Migration SQL
 
-Créer `get_server_channel_permissions` qui retourne les permissions `view_channel` et `connect_voice` pour tous les canaux d'un serveur en une seule requête :
+Supprimer les anciennes politiques INSERT et créer de nouvelles qui autorisent l'upload pour les utilisateurs authentifiés :
 
 ```sql
-CREATE OR REPLACE FUNCTION public.get_server_channel_permissions(
-  _user_id uuid,
-  _server_id uuid
-)
-RETURNS TABLE(
-  channel_id uuid,
-  can_view boolean,
-  can_connect boolean
-)
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    c.id as channel_id,
-    has_channel_permission(_user_id, c.id, 'view_channel'::server_permission) as can_view,
-    CASE 
-      WHEN c.type IN ('voice', 'stage') 
-      THEN has_channel_permission(_user_id, c.id, 'connect_voice'::server_permission)
-      ELSE true
-    END as can_connect
-  FROM channels c
-  WHERE c.server_id = _server_id;
-END;
-$$;
-```
+-- Supprimer les anciennes politiques restrictives
+DROP POLICY IF EXISTS "Server owners can upload server icon" ON storage.objects;
+DROP POLICY IF EXISTS "Server owners can upload server banner" ON storage.objects;
 
-### 2. Nouveau hook `useServerChannelPermissions`
+-- Créer de nouvelles politiques permissives pour INSERT
+CREATE POLICY "Authenticated users can upload server icons"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'server-icons' AND auth.uid() IS NOT NULL);
 
-Remplacer `useChannelsVisibility` et `useVoiceChannelLocks` par un hook unique :
-
-```typescript
-// src/hooks/useServerChannelPermissions.ts
-
-export function useServerChannelPermissions(serverId: string | null) {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: ['server-channel-permissions', serverId, user?.id],
-    queryFn: async () => {
-      if (!serverId || !user?.id) return { viewable: new Set(), connectable: new Set() };
-
-      const { data, error } = await supabase.rpc('get_server_channel_permissions', {
-        _user_id: user.id,
-        _server_id: serverId,
-      });
-
-      if (error) {
-        console.error('Error fetching channel permissions:', error);
-        return { viewable: new Set<string>(), connectable: new Set<string>() };
-      }
-
-      const viewable = new Set<string>();
-      const connectable = new Set<string>();
-
-      (data || []).forEach((row: { channel_id: string; can_view: boolean; can_connect: boolean }) => {
-        if (row.can_view) viewable.add(row.channel_id);
-        if (row.can_connect) connectable.add(row.channel_id);
-      });
-
-      return { viewable, connectable };
-    },
-    enabled: !!serverId && !!user?.id,
-    staleTime: 30000, // Cache 30 secondes (Realtime gère les updates)
-    gcTime: 300000,
-  });
-}
-```
-
-### 3. Mise à jour de `usePermissionsRealtime`
-
-Ajouter l'invalidation du nouveau query key :
-
-```typescript
-// Dans refetchAllPermissions()
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions'] });
-```
-
-### 4. Mise à jour de `ChannelList.tsx`
-
-Remplacer les deux hooks par le nouveau hook unique :
-
-```typescript
-// Avant (2 hooks = N+M requêtes)
-const { isVisible, isLoading: isVisibilityLoading } = useChannelsVisibility(allChannelIdsForVisibility);
-const { isLocked: isVoiceChannelLocked } = useVoiceChannelLocks(voiceChannelIds);
-
-// Après (1 hook = 1 requête)
-const { data: channelPerms, isLoading: isPermsLoading } = useServerChannelPermissions(server.id);
-
-const shouldShowChannel = useCallback(
-  (channelId: string) => {
-    // Pendant le chargement, afficher tous les salons pour éviter le flash
-    if (isPermsLoading) return true;
-    return channelPerms?.viewable.has(channelId) ?? true;
-  },
-  [isPermsLoading, channelPerms]
-);
-
-const isVoiceChannelLocked = useCallback(
-  (channelId: string) => {
-    if (isPermsLoading) return false; // Default: pas verrouillé pendant chargement
-    return !(channelPerms?.connectable.has(channelId) ?? true);
-  },
-  [isPermsLoading, channelPerms]
-);
-```
-
----
-
-## Flux optimisé
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                   AVANT : N+M requêtes réseau                   │
-├─────────────────────────────────────────────────────────────────┤
-│  useChannelsVisibility → has_channel_permission × N salons      │
-│  useVoiceChannelLocks  → has_channel_permission × M vocaux      │
-│  Total : 10-50+ requêtes parallèles                             │
-└─────────────────────────────────────────────────────────────────┘
-
-                              ↓
-
-┌─────────────────────────────────────────────────────────────────┐
-│                   APRÈS : 1 requête réseau                      │
-├─────────────────────────────────────────────────────────────────┤
-│  useServerChannelPermissions                                    │
-│  → get_server_channel_permissions (1 appel RPC)                 │
-│  → Retourne toutes les permissions view+connect en batch        │
-│  → staleTime: 30s évite les refetch inutiles                    │
-│  → Realtime invalide le cache si les permissions changent       │
-└─────────────────────────────────────────────────────────────────┘
+CREATE POLICY "Authenticated users can upload server banners"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'server-banners' AND auth.uid() IS NOT NULL);
 ```
 
 ---
@@ -174,27 +65,29 @@ const isVoiceChannelLocked = useCallback(
 
 | Fichier | Modifications |
 |---------|---------------|
-| **Migration SQL** | Créer la fonction `get_server_channel_permissions` |
-| `src/hooks/useServerChannelPermissions.ts` | Nouveau hook unique remplaçant visibility + locks |
-| `src/hooks/usePermissionsRealtime.ts` | Ajouter invalidation du nouveau query key |
-| `src/components/layout/ChannelList.tsx` | Utiliser le nouveau hook au lieu des deux anciens |
+| **Migration SQL** | Remplacer les politiques INSERT pour `server-icons` et `server-banners` |
+
+---
+
+## Sécurité
+
+| Opération | Avant | Après |
+|-----------|-------|-------|
+| INSERT | Propriétaire serveur seulement | Tout utilisateur authentifié |
+| SELECT | Public | Public (inchangé) |
+| UPDATE | Propriétaire serveur | Propriétaire serveur (inchangé) |
+| DELETE | Propriétaire serveur | Propriétaire serveur (inchangé) |
+
+L'approche est sécurisée car :
+1. Les fichiers uploadés utilisent des UUID aléatoires (`crypto.randomUUID()/timestamp.ext`)
+2. Seul le créateur connait l'URL finale
+3. Les opérations UPDATE/DELETE restent restreintes aux propriétaires
+4. Les buckets sont publics en lecture de toute façon (les URLs sont partagées)
 
 ---
 
 ## Résultat attendu
 
-| Métrique | Avant | Après |
-|----------|-------|-------|
-| Requêtes réseau | 10-50+ par serveur | **1 par serveur** |
-| Temps de réponse | 200-800ms (latence × N) | **~50ms** |
-| Flash de contenu | Oui (salons apparaissent/disparaissent) | **Non** |
-| Cache | staleTime: 0 (refetch constant) | **30s** (+ Realtime) |
+- **Avant** : Erreur `new row violates row-level security policy` lors de l'upload
+- **Après** : Upload réussi → Serveur créé avec icône/bannière
 
----
-
-## Notes techniques
-
-- La fonction RPC utilise `STABLE` et `SECURITY DEFINER` pour les performances et la sécurité
-- Le `staleTime: 30000` est suffisant car les mises à jour de permissions sont gérées par Realtime
-- Les permissions `view_channel` et `connect_voice` sont les seules vérifiées au niveau liste (les autres sont vérifiées lors de l'interaction)
-- On peut conserver les anciens hooks pour compatibilité avec d'autres composants qui en ont besoin

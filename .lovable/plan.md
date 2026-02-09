@@ -1,93 +1,89 @@
 
-# Correction du Problème d'Upload lors de la Création de Serveurs
+# Correction du "Fondateur: Inconnu" dans la Carte Serveur
 
 ## Problème identifié
 
-Les politiques RLS actuelles pour les buckets `server-icons` et `server-banners` exigent que le serveur existe déjà dans la base de données avant de pouvoir uploader des fichiers :
+Dans `ChannelList.tsx`, la recherche du propriétaire du serveur compare un **mauvais champ** :
 
-```sql
--- Politique actuelle - PROBLÉMATIQUE
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM servers 
-    WHERE servers.id::text = storage.foldername(name)[1]
-    AND (servers.owner_id = auth.uid() OR servers.secondary_owner_id = auth.uid())
-  )
-)
+```typescript
+// Ligne 762 - ACTUEL (BUGUÉ)
+const ownerProfile = membersData?.find((m) => m.id === server.ownerId);
 ```
 
-Or, dans `CreateServerModal.tsx`, l'upload se fait **AVANT** la création du serveur (lignes 104-109), donc :
-1. L'utilisateur sélectionne une icône/bannière
-2. Le modal tente d'uploader → **ÉCHEC RLS** (serveur inexistant)
-3. La création du serveur ne se fait jamais
+- `m.id` = ID de la ligne dans `server_members` (clé primaire de la table de liaison)
+- `server.ownerId` = UUID de l'utilisateur (provient de `servers.owner_id`)
+
+Ces deux valeurs ne correspondent **jamais** car elles représentent des entités différentes.
 
 ---
 
-## Solution proposée
+## Solution
 
-### Stratégie : Autoriser l'upload pour tout utilisateur authentifié
-
-Pour les buckets `server-icons` et `server-banners`, on doit permettre l'upload à tout utilisateur authentifié car l'icône/bannière est uploadée **avant** que le serveur n'existe.
-
-C'est sécurisé car :
-- Les fichiers sont stockés dans des sous-dossiers UUID aléatoires
-- Seul le créateur du serveur aura l'URL finale
-- Les politiques UPDATE/DELETE restent restrictives (propriétaire seulement)
+Comparer le bon champ : `m.user.id` (l'UUID de l'utilisateur) au lieu de `m.id` (l'ID de membership).
 
 ---
 
-## Modifications
+## Modification
 
-### Migration SQL
+### Fichier : `src/components/layout/ChannelList.tsx`
 
-Supprimer les anciennes politiques INSERT et créer de nouvelles qui autorisent l'upload pour les utilisateurs authentifiés :
+**Ligne 762** - Corriger la recherche du propriétaire :
 
-```sql
--- Supprimer les anciennes politiques restrictives
-DROP POLICY IF EXISTS "Server owners can upload server icon" ON storage.objects;
-DROP POLICY IF EXISTS "Server owners can upload server banner" ON storage.objects;
+```typescript
+// AVANT (bugué)
+const ownerProfile = membersData?.find((m) => m.id === server.ownerId);
 
--- Créer de nouvelles politiques permissives pour INSERT
-CREATE POLICY "Authenticated users can upload server icons"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'server-icons' AND auth.uid() IS NOT NULL);
-
-CREATE POLICY "Authenticated users can upload server banners"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'server-banners' AND auth.uid() IS NOT NULL);
+// APRÈS (corrigé)
+const ownerProfile = membersData?.find((m) => m.user.id === server.ownerId);
 ```
 
 ---
 
-## Fichiers à modifier
+## Analyse technique
 
-| Fichier | Modifications |
-|---------|---------------|
-| **Migration SQL** | Remplacer les politiques INSERT pour `server-icons` et `server-banners` |
+| Élément | Valeur actuelle | Type |
+|---------|-----------------|------|
+| `m.id` | ID de `server_members` | UUID de la ligne membership |
+| `m.user.id` | ID de `profiles` | UUID de l'utilisateur |
+| `server.ownerId` | `servers.owner_id` | UUID de l'utilisateur |
+
+La comparaison doit être : `m.user.id === server.ownerId` pour trouver le membre dont le profil utilisateur correspond au propriétaire du serveur.
 
 ---
 
-## Sécurité
+## Structure des données
 
-| Opération | Avant | Après |
-|-----------|-------|-------|
-| INSERT | Propriétaire serveur seulement | Tout utilisateur authentifié |
-| SELECT | Public | Public (inchangé) |
-| UPDATE | Propriétaire serveur | Propriétaire serveur (inchangé) |
-| DELETE | Propriétaire serveur | Propriétaire serveur (inchangé) |
+```text
+server_members           profiles                 servers
+┌──────────────┐        ┌──────────────┐         ┌──────────────┐
+│ id (PK)      │        │ id (PK)      │◄────────│ owner_id     │
+│ user_id (FK) │───────►│ display_name │         │ name         │
+│ server_id    │        │ username     │         └──────────────┘
+└──────────────┘        └──────────────┘
 
-L'approche est sécurisée car :
-1. Les fichiers uploadés utilisent des UUID aléatoires (`crypto.randomUUID()/timestamp.ext`)
-2. Seul le créateur connait l'URL finale
-3. Les opérations UPDATE/DELETE restent restreintes aux propriétaires
-4. Les buckets sont publics en lecture de toute façon (les URLs sont partagées)
+useMembers retourne:
+{
+  id: server_members.id,        ← NE PAS utiliser pour comparer avec owner_id
+  user: {
+    id: profiles.id,            ← UTILISER pour comparer avec owner_id
+    display_name: "...",
+    ...
+  }
+}
+```
 
 ---
 
 ## Résultat attendu
 
-- **Avant** : Erreur `new row violates row-level security policy` lors de l'upload
-- **Après** : Upload réussi → Serveur créé avec icône/bannière
+| Avant | Après |
+|-------|-------|
+| Fondateur: Inconnu | Fondateur: NomDuPropriétaire |
 
+---
+
+## Fichier à modifier
+
+| Fichier | Ligne | Modification |
+|---------|-------|--------------|
+| `src/components/layout/ChannelList.tsx` | 762 | `m.id` → `m.user.id` |

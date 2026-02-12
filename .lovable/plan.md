@@ -1,38 +1,30 @@
 
-# Utiliser le Username du Fondateur au lieu du Nom d'Affichage
 
-## Problème
-
-La carte serveur affiche actuellement le **nom d'affichage** (`display_name`) du fondateur, mais l'utilisateur souhaite voir le **username** à la place.
-
----
+# Afficher le username du fondateur en minuscules
 
 ## Modification
 
 ### Fichier : `src/components/layout/ChannelList.tsx`
 
-**Ligne 1238** - Remplacer `display_name` par `username` :
+**Ligne 1238** - Ajouter `.toLowerCase()` sur le username :
 
 ```typescript
 // AVANT
-<span>Fondateur: {ownerProfile?.user?.display_name || "Inconnu"}</span>
+<span>Fondateur: {ownerProfile?.user?.username || "Inconnu"}</span>
 
 // APRÈS
-<span>Fondateur: {ownerProfile?.user?.username || "Inconnu"}</span>
+<span>Fondateur: {ownerProfile?.user?.username?.toLowerCase() || "Inconnu"}</span>
 ```
-
----
 
 ## Résultat attendu
 
 | Avant | Après |
 |-------|-------|
-| Fondateur: MonNomAffiché | Fondateur: monusername |
+| Fondateur: Adrien_Sama | Fondateur: adrien_sama |
 
----
-
-## Fichier à modifier
+## Fichier a modifier
 
 | Fichier | Ligne | Modification |
 |---------|-------|--------------|
-| `src/components/layout/ChannelList.tsx` | 1238 | `display_name` → `username` |
+| `src/components/layout/ChannelList.tsx` | 1238 | Ajout de `.toLowerCase()` |
+

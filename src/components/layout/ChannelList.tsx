@@ -1235,7 +1235,7 @@ export function ChannelList({
                       <p>Propriétaire du serveur</p>
                     </TooltipContent>
                   </Tooltip>
-                  <span>Fondateur: {ownerProfile?.user?.username || "Inconnu"}</span>
+                  <span>Fondateur: {ownerProfile?.user?.username?.toLowerCase() || "Inconnu"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="w-4 h-4" />

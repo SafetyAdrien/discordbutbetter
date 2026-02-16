@@ -693,13 +693,6 @@ export function useDuplicateChannel() {
 
       // Shift all channels with position >= newPosition in the same category/orphan group
       if (original.category_id) {
-        await supabase
-          .from('channels')
-          .update({ position: newPosition })
-          .eq('category_id', original.category_id)
-          .gte('position', newPosition)
-          .neq('id', channelId);
-        // Use raw SQL via rpc isn't available, so we fetch and update individually
         const { data: toShift } = await supabase
           .from('channels')
           .select('id, position')
@@ -734,7 +727,7 @@ export function useDuplicateChannel() {
         }
       }
 
-      // Create duplicate (keep exact same name)
+      // Create duplicate with icon_url
       const { data, error } = await supabase
         .from('channels')
         .insert({
@@ -743,6 +736,7 @@ export function useDuplicateChannel() {
           name: original.name,
           type: original.type,
           description: original.description,
+          icon_url: original.icon_url,
           position: newPosition,
         })
         .select()
@@ -770,12 +764,61 @@ export function useDuplicateChannel() {
 
       return { ...data, serverId };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['channels', data.serverId] });
+    onMutate: async ({ channelId, serverId }) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+
+      // Snapshot previous cache
+      const previousChannels = queryClient.getQueryData(['channels', serverId]);
+      const previousServers = queryClient.getQueryData(['servers']);
+
+      // Find original in cache
+      const cachedChannels = previousChannels as any[] | undefined;
+      const original = cachedChannels?.find((c: any) => c.id === channelId);
+
+      if (original && cachedChannels) {
+        const newPosition = (original.position ?? 0) + 1;
+        const tempId = `temp-dup-${Date.now()}`;
+
+        const updatedChannels = cachedChannels.map((ch: any) => {
+          if (ch.id === channelId) return ch;
+          // Same category/orphan group, shift if position >= newPosition
+          const sameGroup = original.category_id
+            ? ch.category_id === original.category_id
+            : ch.category_id === null;
+          if (sameGroup && (ch.position ?? 0) >= newPosition) {
+            return { ...ch, position: (ch.position ?? 0) + 1 };
+          }
+          return ch;
+        });
+
+        // Insert temp duplicate
+        updatedChannels.push({
+          ...original,
+          id: tempId,
+          position: newPosition,
+          created_at: new Date().toISOString(),
+        });
+
+        queryClient.setQueryData(['channels', serverId], updatedChannels);
+      }
+
+      return { previousChannels, previousServers, serverId };
+    },
+    onSuccess: (data, _vars, context) => {
+      const sid = context?.serverId || data.serverId;
+      queryClient.invalidateQueries({ queryKey: ['channels', sid] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
       toast.success('Salon dupliqué avec succès');
     },
-    onError: () => {
+    onError: (_err, _vars, context) => {
+      if (context?.previousChannels) {
+        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+      }
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
       toast.error('Erreur lors de la duplication du salon');
     },
   });

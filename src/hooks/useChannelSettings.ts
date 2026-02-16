@@ -82,9 +82,9 @@ export function useUpdateChannel() {
       
       // Update channels cache
       if (previousChannels) {
-        const updateChannel = (ch: any) => 
+      const updateChannel = (ch: any) => 
           ch.id === channelId 
-            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type } 
+            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type, icon_url: icon_url !== undefined ? icon_url : ch.icon_url } 
             : ch;
         
         queryClient.setQueryData(['channels', serverId], {
@@ -106,7 +106,7 @@ export function useUpdateChannel() {
                   categories: server.categories?.map((cat: any) => ({
                     ...cat,
                     channels: cat.channels?.map((ch: any) =>
-                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type } : ch
+                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type, icon_url: icon_url !== undefined ? icon_url : ch.icon_url } : ch
                     ) || []
                   })) || []
                 }

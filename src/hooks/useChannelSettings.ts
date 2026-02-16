@@ -12,6 +12,7 @@ export interface ChannelDetails {
   server_id: string;
   category_id: string | null;
   position: number | null;
+  icon_url: string | null;
 }
 
 export function useChannelDetails(channelId: string | null) {
@@ -24,7 +25,7 @@ export function useChannelDetails(channelId: string | null) {
 
       const { data, error } = await supabase
         .from('channels')
-        .select('id, name, description, type, server_id, category_id, position')
+        .select('id, name, description, type, server_id, category_id, position, icon_url')
         .eq('id', channelId)
         .single();
 
@@ -39,15 +40,17 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, serverId, name, description, type }: { 
+    mutationFn: async ({ channelId, serverId, name, description, type, icon_url }: { 
       channelId: string; 
       serverId: string; 
       name: string; 
       description?: string;
       type?: 'text' | 'announcement';
+      icon_url?: string | null;
     }) => {
-      const updateData: { name: string; description?: string; type?: 'text' | 'announcement' } = { name, description };
+      const updateData: { name: string; description?: string; type?: 'text' | 'announcement'; icon_url?: string | null } = { name, description };
       if (type) updateData.type = type;
+      if (icon_url !== undefined) updateData.icon_url = icon_url;
 
       const { error } = await supabase
         .from('channels')
@@ -55,9 +58,9 @@ export function useUpdateChannel() {
         .eq('id', channelId);
 
       if (error) throw error;
-      return { channelId, serverId, name, description, type };
+      return { channelId, serverId, name, description, type, icon_url };
     },
-    onMutate: async ({ channelId, serverId, name, description, type }) => {
+    onMutate: async ({ channelId, serverId, name, description, type, icon_url }) => {
       await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
@@ -73,6 +76,7 @@ export function useUpdateChannel() {
           name,
           description: description ?? previousDetails.description,
           type: type ?? previousDetails.type,
+          icon_url: icon_url !== undefined ? icon_url : previousDetails.icon_url,
         });
       }
       

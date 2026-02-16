@@ -125,66 +125,56 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
 
   return (
     <div className="space-y-4">
-      {/* Channel Icon */}
       <div className="space-y-2">
-        <Label>Icône du salon</Label>
-        <div className="flex items-center gap-4">
-          <div className="relative group">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border">
+        <Label htmlFor="channel-name">Nom du salon</Label>
+        <div className="flex items-center gap-3">
+          {/* Clickable icon */}
+          <div className="relative group shrink-0">
+            <div
+              className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border cursor-pointer transition-opacity"
+              onClick={() => fileInputRef.current?.click()}
+            >
               {iconUrl ? (
                 <img src={iconUrl} alt="Icône du salon" className="w-full h-full object-cover" />
               ) : (
-                <TypeIcon className="w-6 h-6 text-muted-foreground" />
+                <TypeIcon className="w-4 h-4 text-muted-foreground" />
               )}
+              {/* Hover overlay */}
+              <div className="absolute inset-0 rounded-full bg-background/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Upload className="w-4 h-4 text-foreground" />
+              </div>
             </div>
             {isUploading && (
               <div className="absolute inset-0 rounded-full bg-background/70 flex items-center justify-center">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
               </div>
             )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {iconUrl ? 'Modifier' : 'Importer'}
-            </Button>
-            {iconUrl && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveIcon}
-                className="text-destructive hover:text-destructive"
+            {iconUrl && !isUploading && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleRemoveIcon(); }}
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <X className="w-4 h-4 mr-2" />
-                Supprimer
-              </Button>
+                <X className="w-3 h-3" />
+              </button>
             )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={handleIconUpload}
+            />
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            className="hidden"
-            onChange={handleIconUpload}
+          <Input
+            id="channel-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="nom-du-salon"
+            maxLength={100}
+            className="flex-1"
           />
         </div>
-        <p className="text-xs text-muted-foreground">PNG, JPG, WEBP ou GIF • Max 1 Mo</p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="channel-name">Nom du salon</Label>
-        <Input
-          id="channel-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="nom-du-salon"
-          maxLength={100}
-        />
       </div>
 
       <div className="space-y-2">

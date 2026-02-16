@@ -143,6 +143,7 @@ interface Channel {
   type: ChannelType;
   description?: string;
   unreadCount?: number;
+  icon_url?: string | null;
 }
 interface Category {
   id: string;
@@ -427,7 +428,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
     // Show lock icon for voice/stage channels when locked (permission denied)
-    const Icon = (isVoice || isStage) && isVoiceLocked ? StreamlineVoiceLocked : channelIcons[channel.type];
+    const DefaultIcon = (isVoice || isStage) && isVoiceLocked ? StreamlineVoiceLocked : channelIcons[channel.type];
+    const hasCustomIcon = !!channel.icon_url;
     const { data: participants = [] } = useVoiceParticipants(isVoice ? channel.id : null);
 
     // Stage audience count with realtime
@@ -464,7 +466,11 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   hasUnread && !isActive && "bg-muted/30",
                 )}
               >
-                <Icon className={cn("w-4 h-4 flex-shrink-0", ((isStage && isLiveStage) || (isVoice && participants.length > 0)) && "text-[hsl(var(--online))]")} />
+                {hasCustomIcon ? (
+                  <img src={channel.icon_url!} alt="" className="w-4 h-4 flex-shrink-0 rounded-full object-cover" />
+                ) : (
+                  <DefaultIcon className={cn("w-4 h-4 flex-shrink-0", ((isStage && isLiveStage) || (isVoice && participants.length > 0)) && "text-[hsl(var(--online))]")} />
+                )}
                 <span
                   className={cn(
                     "truncate flex-1 text-left font-ginto text-[16px] font-medium",
@@ -1428,10 +1434,14 @@ export function ChannelList({
                     {activeId.startsWith("channel-") &&
                       (() => {
                         const channel = findChannelById(activeId.replace("channel-", ""));
-                        const Icon = channel ? channelIcons[channel.type] : StreamlineHash;
+                        const FallbackIcon = channel ? channelIcons[channel.type] : StreamlineHash;
                         return (
                           <div className="flex items-center gap-2 text-sm text-foreground">
-                            <Icon className="w-4 h-4 text-[#5865f2]" />
+                            {channel?.icon_url ? (
+                              <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                            ) : (
+                              <FallbackIcon className="w-4 h-4 text-[#5865f2]" />
+                            )}
                             <span className="font-medium">{channel?.name || "Channel"}</span>
                           </div>
                         );

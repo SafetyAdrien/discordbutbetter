@@ -1,30 +1,61 @@
 
 
-# Correctifs duplication de salon
+# Correctifs : Icone personnalisee et duplication
 
-## Problemes identifies
+## Probleme 1 : L'icone ne se met pas a jour dans la sidebar apres sauvegarde
 
-1. **Pas de mise a jour instantanee (optimistic update)** : la duplication attend la reponse serveur avant d'afficher le nouveau salon dans la liste
-2. **`icon_url` non copie** : l'icone personnalisee du salon original n'est pas transferee au doublon
-3. **Bug de decalage** : lignes 696-701, un premier `update` ecrase toutes les positions a `newPosition` au lieu de les decaler -- ce `update` superflu doit etre supprime (le decalage individuel qui suit fait deja le travail)
+Dans `src/hooks/useChannelSettings.ts`, la mise a jour optimiste du cache `channels` et `servers` omet `icon_url`. Seuls `name`, `description` et `type` sont propages.
 
-## Modifications
+**Ligne 87** : `{ ...ch, name, description: ..., type: ... }` -- manque `icon_url`
+**Ligne 109** : `{ ...ch, name, type: ... }` -- manque `icon_url`
 
-### Fichier : `src/hooks/useChannels.ts` (useDuplicateChannel)
+### Correction (useChannelSettings.ts)
 
-**A. Ajouter `icon_url` a l'insertion (ligne 746)**
-- Ajouter `icon_url: original.icon_url` dans l'objet d'insertion du doublon
+- Ligne 87 : ajouter `icon_url: icon_url !== undefined ? icon_url : ch.icon_url` dans le spread du `updateChannel`
+- Ligne 109 : ajouter `icon_url: icon_url !== undefined ? icon_url : ch.icon_url` dans le spread du cache `servers`
 
-**B. Supprimer le premier update bugge (lignes 695-701)**
-- Retirer le bloc `await supabase.from('channels').update({ position: newPosition })...` qui ecrase les positions au lieu de les incrementer
+## Probleme 2 : La condition d'envoi de icon_url est trop stricte
 
-**C. Ajouter un `onMutate` pour la mise a jour optimiste**
-- Annuler les queries en cours (`channels`, `servers`)
-- Sauvegarder le cache actuel
-- Inserer un salon temporaire (avec un ID genere) dans le cache a la bonne position
-- Decaler les positions des salons suivants dans le cache
-- Retourner le contexte pour rollback en cas d'erreur
+Dans `src/components/channel-settings/ChannelOverview.tsx`, ligne 119 :
+```
+icon_url: iconUrl !== (channel.icon_url || null) ? iconUrl : undefined
+```
 
-**D. Ajouter un `onError` avec rollback**
-- Restaurer les caches precedents si la mutation echoue
+Quand `icon_url` vaut `undefined`, le hook `useUpdateChannel` ignore la mise a jour (`if (icon_url !== undefined)`). C'est correct en theorie, mais si l'icone n'a pas change, on ne veut pas l'envoyer. Le probleme est que cette logique fonctionne -- le vrai bug est dans le cache optimiste (probleme 1).
+
+## Fichier a modifier
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/hooks/useChannelSettings.ts` | Ajouter `icon_url` dans les mises a jour optimistes du cache `channels` (ligne 87) et `servers` (ligne 109) |
+
+## Detail technique
+
+### Cache `channels` (ligne 85-88)
+Avant :
+```typescript
+const updateChannel = (ch: any) =>
+  ch.id === channelId
+    ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type }
+    : ch;
+```
+
+Apres :
+```typescript
+const updateChannel = (ch: any) =>
+  ch.id === channelId
+    ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type, icon_url: icon_url !== undefined ? icon_url : ch.icon_url }
+    : ch;
+```
+
+### Cache `servers` (ligne 109)
+Avant :
+```typescript
+ch.id === channelId ? { ...ch, name, type: type ?? ch.type } : ch
+```
+
+Apres :
+```typescript
+ch.id === channelId ? { ...ch, name, type: type ?? ch.type, icon_url: icon_url !== undefined ? icon_url : ch.icon_url } : ch
+```
 

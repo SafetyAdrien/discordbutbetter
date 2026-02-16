@@ -688,28 +688,51 @@ export function useDuplicateChannel() {
 
       if (fetchError || !original) throw fetchError || new Error('Channel not found');
 
-      // Get max position
-      let existing;
+      // Position the duplicate right after the original
+      const newPosition = (original.position ?? 0) + 1;
+
+      // Shift all channels with position >= newPosition in the same category/orphan group
       if (original.category_id) {
-        const result = await supabase
+        await supabase
           .from('channels')
-          .select('position')
+          .update({ position: newPosition })
           .eq('category_id', original.category_id)
-          .order('position', { ascending: false })
-          .limit(1);
-        existing = result.data;
-      } else {
-        const result = await supabase
+          .gte('position', newPosition)
+          .neq('id', channelId);
+        // Use raw SQL via rpc isn't available, so we fetch and update individually
+        const { data: toShift } = await supabase
           .from('channels')
-          .select('position')
+          .select('id, position')
+          .eq('category_id', original.category_id)
+          .gte('position', newPosition)
+          .neq('id', channelId)
+          .order('position', { ascending: false });
+        if (toShift) {
+          for (const ch of toShift) {
+            await supabase
+              .from('channels')
+              .update({ position: (ch.position ?? 0) + 1 })
+              .eq('id', ch.id);
+          }
+        }
+      } else {
+        const { data: toShift } = await supabase
+          .from('channels')
+          .select('id, position')
           .eq('server_id', serverId)
           .is('category_id', null)
-          .order('position', { ascending: false })
-          .limit(1);
-        existing = result.data;
+          .gte('position', newPosition)
+          .neq('id', channelId)
+          .order('position', { ascending: false });
+        if (toShift) {
+          for (const ch of toShift) {
+            await supabase
+              .from('channels')
+              .update({ position: (ch.position ?? 0) + 1 })
+              .eq('id', ch.id);
+          }
+        }
       }
-
-      const nextPosition = (existing?.[0]?.position ?? -1) + 1;
 
       // Create duplicate (keep exact same name)
       const { data, error } = await supabase
@@ -720,7 +743,7 @@ export function useDuplicateChannel() {
           name: original.name,
           type: original.type,
           description: original.description,
-          position: nextPosition,
+          position: newPosition,
         })
         .select()
         .single();

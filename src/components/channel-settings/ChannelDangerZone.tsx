@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { useDeleteChannel } from '@/hooks/useChannels';
 import { toast } from 'sonner';
 
@@ -51,26 +50,13 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
 
   return (
     <>
-      <Separator className="my-6" />
-      
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-destructive">
-          <AlertTriangle className="w-5 h-5" />
-          <h3 className="font-semibold">Zone de danger</h3>
-        </div>
-        
-        <p className="text-sm text-muted-foreground">
-          La suppression d'un salon est définitive. Tous les messages et fichiers partagés seront perdus.
-        </p>
-
-        <Button 
-          variant="destructive" 
-          onClick={() => setShowConfirm(true)}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Supprimer le salon
-        </Button>
-      </div>
+      <Button 
+        variant="destructive" 
+        onClick={() => setShowConfirm(true)}
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Supprimer le salon
+      </Button>
 
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="sm:max-w-md">

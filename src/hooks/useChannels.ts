@@ -670,6 +670,7 @@ export function useReorderChannels() {
 
 export function useDuplicateChannel() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({
@@ -870,12 +871,26 @@ export function useDuplicateChannel() {
         }
       }
 
+      // 3) Add temp channel to permissions cache so visibility filter passes
+      if (tempChannel) {
+        const permKey = ['server-channel-permissions', serverId, user?.id];
+        const prevPerms = queryClient.getQueryData<{ viewable: Set<string>; connectable: Set<string> }>(permKey);
+        if (prevPerms) {
+          const newViewable = new Set(prevPerms.viewable);
+          const newConnectable = new Set(prevPerms.connectable);
+          newViewable.add(tempId);
+          newConnectable.add(tempId);
+          queryClient.setQueryData(permKey, { viewable: newViewable, connectable: newConnectable });
+        }
+      }
+
       return { previousChannels, previousServersQueries, serverId };
     },
     onSuccess: (data, _vars, context) => {
       const sid = context?.serverId || data.serverId;
       queryClient.invalidateQueries({ queryKey: ['channels', sid] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
+      queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
       toast.success('Salon dupliqué avec succès');
     },
     onError: (_err, _vars, context) => {

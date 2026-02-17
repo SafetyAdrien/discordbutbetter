@@ -765,17 +765,20 @@ export function useDuplicateChannel() {
       return { ...data, serverId };
     },
     onMutate: async ({ channelId, serverId }) => {
-      // Cancel outgoing queries
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
 
-      // Snapshot previous cache
+      // Snapshot channels cache
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
-      const previousServers = queryClient.getQueryData(['servers']);
+      
+      // Snapshot ALL servers queries (key includes userId suffix)
+      const previousServersQueries = queryClient.getQueriesData<any[]>({ queryKey: ['servers'] });
 
+      // Find original channel info for building temp channel
+      let original: any | undefined;
       if (previousChannels) {
-        // Find original in categories or orphanChannels
-        let original: any | undefined;
         for (const cat of previousChannels.categories) {
           original = cat.channels.find((ch: any) => ch.id === channelId);
           if (original) break;
@@ -783,44 +786,91 @@ export function useDuplicateChannel() {
         if (!original) {
           original = previousChannels.orphanChannels.find((ch: any) => ch.id === channelId);
         }
+      }
 
-        if (original) {
-          const newPosition = (original.position ?? 0) + 1;
-          const tempId = `temp-dup-${Date.now()}`;
-          const tempChannel = { ...original, id: tempId, position: newPosition, created_at: new Date().toISOString() };
+      const newPosition = (original?.position ?? 0) + 1;
+      const tempId = `temp-dup-${Date.now()}`;
+      const tempChannel = original ? { ...original, id: tempId, position: newPosition, created_at: new Date().toISOString() } : null;
 
-          if (original.category_id) {
-            queryClient.setQueryData(['channels', serverId], {
-              categories: previousChannels.categories.map(cat => ({
-                ...cat,
-                channels: cat.id === original.category_id
-                  ? [...cat.channels.map((ch: any) =>
-                      ch.id !== channelId && (ch.position ?? 0) >= newPosition
-                        ? { ...ch, position: (ch.position ?? 0) + 1 }
-                        : ch
-                    ), tempChannel].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
-                  : cat.channels
-              })),
-              orphanChannels: previousChannels.orphanChannels
-            });
-          } else {
-            const shifted = [
-              ...previousChannels.orphanChannels.map((ch: any) =>
-                ch.id !== channelId && (ch.position ?? 0) >= newPosition
-                  ? { ...ch, position: (ch.position ?? 0) + 1 }
-                  : ch
-              ),
-              tempChannel
-            ].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
-            queryClient.setQueryData(['channels', serverId], {
-              categories: previousChannels.categories,
-              orphanChannels: shifted
-            });
-          }
+      // 1) Update ['channels', serverId] cache
+      if (previousChannels && original && tempChannel) {
+        if (original.category_id) {
+          queryClient.setQueryData(['channels', serverId], {
+            categories: previousChannels.categories.map(cat => ({
+              ...cat,
+              channels: cat.id === original.category_id
+                ? [...cat.channels.map((ch: any) =>
+                    ch.id !== channelId && (ch.position ?? 0) >= newPosition
+                      ? { ...ch, position: (ch.position ?? 0) + 1 }
+                      : ch
+                  ), tempChannel].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+                : cat.channels
+            })),
+            orphanChannels: previousChannels.orphanChannels
+          });
+        } else {
+          const shifted = [
+            ...previousChannels.orphanChannels.map((ch: any) =>
+              ch.id !== channelId && (ch.position ?? 0) >= newPosition
+                ? { ...ch, position: (ch.position ?? 0) + 1 }
+                : ch
+            ),
+            tempChannel
+          ].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+          queryClient.setQueryData(['channels', serverId], {
+            categories: previousChannels.categories,
+            orphanChannels: shifted
+          });
         }
       }
 
-      return { previousChannels, previousServers, serverId };
+      // 2) Update ['servers', ...] cache (what ChannelList actually renders)
+      if (original && tempChannel) {
+        const simpleTempChannel = {
+          id: tempId,
+          name: original.name,
+          type: original.type,
+          description: original.description,
+          position: newPosition,
+        };
+
+        for (const [queryKey, serversData] of previousServersQueries) {
+          if (!Array.isArray(serversData)) continue;
+          queryClient.setQueryData(queryKey, serversData.map((server: any) => {
+            if (server.id !== serverId) return server;
+            
+            if (original.category_id) {
+              return {
+                ...server,
+                categories: server.categories.map((cat: any) => {
+                  if (cat.id !== original.category_id) return cat;
+                  const updatedChannels = [
+                    ...cat.channels.map((ch: any) =>
+                      ch.id !== channelId && (ch.position ?? 0) >= newPosition
+                        ? { ...ch, position: (ch.position ?? 0) + 1 }
+                        : ch
+                    ),
+                    simpleTempChannel
+                  ].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+                  return { ...cat, channels: updatedChannels };
+                }),
+              };
+            } else {
+              const updatedOrphans = [
+                ...(server.orphanChannels || []).map((ch: any) =>
+                  ch.id !== channelId && (ch.position ?? 0) >= newPosition
+                    ? { ...ch, position: (ch.position ?? 0) + 1 }
+                    : ch
+                ),
+                { ...simpleTempChannel, category_id: null, server_id: serverId }
+              ].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+              return { ...server, orphanChannels: updatedOrphans };
+            }
+          }));
+        }
+      }
+
+      return { previousChannels, previousServersQueries, serverId };
     },
     onSuccess: (data, _vars, context) => {
       const sid = context?.serverId || data.serverId;
@@ -832,10 +882,17 @@ export function useDuplicateChannel() {
       if (context?.previousChannels) {
         queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
       }
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
+      if (context?.previousServersQueries) {
+        for (const [queryKey, data] of context.previousServersQueries) {
+          queryClient.setQueryData(queryKey, data);
+        }
       }
       toast.error('Erreur lors de la duplication du salon');
+    },
+    onSettled: () => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
     },
   });
 }

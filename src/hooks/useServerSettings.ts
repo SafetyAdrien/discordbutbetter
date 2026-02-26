@@ -19,6 +19,7 @@ export interface ServerSettings {
   boost_message_enabled: boolean;
   setup_tips_enabled: boolean;
   activity_feed_enabled: boolean;
+  flexible_channel_names: boolean;
 }
 
 export function useServerSettings(serverId: string) {
@@ -48,6 +49,7 @@ export function useServerSettings(serverId: string) {
           boost_message_enabled: data.boost_message_enabled ?? true,
           setup_tips_enabled: data.setup_tips_enabled ?? true,
           activity_feed_enabled: data.activity_feed_enabled ?? true,
+          flexible_channel_names: data.flexible_channel_names ?? true,
         };
       }
       return data;
@@ -112,6 +114,7 @@ export function useUpdateServerSettings() {
             boost_message_enabled: settings.boost_message_enabled ?? true,
             setup_tips_enabled: settings.setup_tips_enabled ?? true,
             activity_feed_enabled: settings.activity_feed_enabled ?? true,
+            flexible_channel_names: settings.flexible_channel_names ?? true,
           };
         }
         return { ...old, ...settings };

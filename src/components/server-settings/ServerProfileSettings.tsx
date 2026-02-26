@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, ImageIcon } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useServerSettings, useUpdateServerSettings } from '@/hooks/useServerSettings';
 
 interface ServerProfileSettingsProps {
   serverId: string;
@@ -215,7 +217,7 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
           />
         </div>
 
-        {/* Save button */}
+      {/* Save button */}
         <Button 
           onClick={handleSave} 
           disabled={updateServer.isPending || !formData.name.trim()}
@@ -229,8 +231,12 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
             'Enregistrer les modifications'
           )}
         </Button>
+
+        {/* Flexible channel names section */}
+        <FlexibleChannelNamesSection serverId={serverId} />
       </div>
 
+      {/* Image Cropper */}
       {/* Image Cropper */}
       <ImageCropper
         open={cropperOpen}
@@ -241,5 +247,44 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
         onCropComplete={handleCropComplete}
       />
     </>
+  );
+}
+
+function FlexibleChannelNamesSection({ serverId }: { serverId: string }) {
+  const { data: settings } = useServerSettings(serverId);
+  const updateSettings = useUpdateServerSettings();
+
+  const isFlexible = settings?.flexible_channel_names ?? true;
+
+  const handleToggle = (checked: boolean) => {
+    updateSettings.mutate({
+      serverId,
+      settings: { flexible_channel_names: checked },
+    });
+  };
+
+  return (
+    <div className="mt-8 pt-6 border-t border-border space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">
+          Noms des salons textuels
+        </h3>
+      </div>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1 flex-1">
+            <span className="font-medium text-sm">Autoriser des noms de canal de texte flexibles</span>
+            <p className="text-xs text-muted-foreground">
+              Quand activé, les noms de salons textuels peuvent contenir des majuscules, des espaces et des caractères spéciaux. Quand désactivé, les noms seront automatiquement formatés en minuscules avec des tirets.
+            </p>
+          </div>
+          <Switch
+            checked={isFlexible}
+            onCheckedChange={handleToggle}
+            disabled={updateSettings.isPending}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

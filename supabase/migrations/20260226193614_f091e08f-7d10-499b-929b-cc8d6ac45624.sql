@@ -1,0 +1,1 @@
+ALTER TABLE public.server_settings ADD COLUMN flexible_channel_names boolean DEFAULT true;

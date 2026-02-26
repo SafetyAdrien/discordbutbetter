@@ -188,17 +188,15 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
           <Input
             id="channel-name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setName(shouldFormatStrict ? formatStrictChannelName(val) : val);
+            }}
             placeholder={shouldFormatStrict ? "nom-du-salon" : "Nom du salon"}
             maxLength={100}
             className="flex-1"
           />
         </div>
-        {shouldFormatStrict && name && name !== channel.name && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Aperçu : <span className="font-mono">{formatStrictChannelName(name)}</span>
-          </p>
-        )}
       </div>
 
       <div className="space-y-2">

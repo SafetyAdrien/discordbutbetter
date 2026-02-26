@@ -1,34 +1,61 @@
 
 
-# Suppression de l'apercu et formatage en temps reel
+# Fix: Duplicated channel hidden by visibility filter
 
-## Changements
+## Root cause
 
-### 1. CreateChannelModal.tsx
-- **Supprimer** les lignes 165-169 (bloc "Apercu")
-- **Modifier** le `onChange` de l'input (ligne 160) pour appliquer `formatStrictChannelName` en temps reel quand le mode strict est actif (type text et flexible desactive) : le texte saisi sera immediatement converti en minuscules sans espaces
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 2. ChannelOverview.tsx
-- **Supprimer** les lignes 197-201 (bloc "Apercu")
-- **Modifier** le `onChange` de l'input (ligne 191) pour appliquer `formatStrictChannelName` en temps reel quand le mode strict est actif
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Details techniques
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**CreateChannelModal** - onChange modifie :
-```typescript
-onChange={(e) => {
-  const val = e.target.value;
-  setName((!isFlexible && type === 'text') ? formatStrictChannelName(val) : val);
-}}
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-**ChannelOverview** - onChange modifie :
-```typescript
-onChange={(e) => {
-  const val = e.target.value;
-  setName(shouldFormatStrict ? formatStrictChannelName(val) : val);
-}}
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-Ainsi, l'utilisateur voit directement le nom formate dans le champ de saisie, sans avoir besoin d'un apercu separe.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

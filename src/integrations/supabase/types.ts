@@ -1681,6 +1681,7 @@ export type Database = {
           boost_channel_id: string | null
           boost_message_enabled: boolean | null
           created_at: string | null
+          flexible_channel_names: boolean | null
           id: string
           server_id: string
           setup_tips_enabled: boolean | null
@@ -1700,6 +1701,7 @@ export type Database = {
           boost_channel_id?: string | null
           boost_message_enabled?: boolean | null
           created_at?: string | null
+          flexible_channel_names?: boolean | null
           id?: string
           server_id: string
           setup_tips_enabled?: boolean | null
@@ -1719,6 +1721,7 @@ export type Database = {
           boost_channel_id?: string | null
           boost_message_enabled?: boolean | null
           created_at?: string | null
+          flexible_channel_names?: boolean | null
           id?: string
           server_id?: string
           setup_tips_enabled?: boolean | null

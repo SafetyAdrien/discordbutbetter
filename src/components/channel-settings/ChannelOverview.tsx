@@ -14,8 +14,16 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSettings';
+import { useServerSettings } from '@/hooks/useServerSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+function formatStrictChannelName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\u00C0-\u024F-_]/g, '');
+}
 
 interface ChannelOverviewProps {
   channel: ChannelDetails;
@@ -41,6 +49,10 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const updateChannel = useUpdateChannel();
+  const { data: serverSettings } = useServerSettings(channel.server_id);
+
+  const isFlexible = serverSettings?.flexible_channel_names ?? true;
+  const shouldFormatStrict = !isFlexible && (channel.type === 'text' || channelType === 'text');
 
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
@@ -110,10 +122,16 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     }
 
     try {
+      const finalName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
+      if (!finalName) {
+        toast.error('Le nom du salon ne peut pas être vide');
+        return;
+      }
+
       await updateChannel.mutateAsync({
         channelId: channel.id,
         serverId: channel.server_id,
-        name: name.trim(),
+        name: finalName,
         description: description.trim() || undefined,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
         icon_url: iconUrl !== (channel.icon_url || null) ? iconUrl : undefined,
@@ -170,11 +188,16 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
             id="channel-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="nom-du-salon"
+            placeholder={shouldFormatStrict ? "nom-du-salon" : "Nom du salon"}
             maxLength={100}
             className="flex-1"
           />
         </div>
+        {shouldFormatStrict && name && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Aperçu : <span className="font-mono">{formatStrictChannelName(name)}</span>
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

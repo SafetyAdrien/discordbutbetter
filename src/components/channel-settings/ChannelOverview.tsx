@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -53,6 +53,13 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
 
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
   const shouldFormatStrict = !isFlexible && (channel.type === 'text' || channelType === 'text');
+
+  // Reformat name when shouldFormatStrict becomes true (e.g. after settings load)
+  useEffect(() => {
+    if (shouldFormatStrict) {
+      setName(prev => formatStrictChannelName(prev));
+    }
+  }, [shouldFormatStrict]);
 
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;

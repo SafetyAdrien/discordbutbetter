@@ -23,6 +23,7 @@ export interface ServerWithDetails {
       type: 'text' | 'voice' | 'announcement' | 'forum' | null;
       description: string | null;
       position: number | null;
+      icon_url: string | null;
     }[];
   }[];
   orphanChannels?: {
@@ -40,7 +41,7 @@ export function useServers() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['servers', user?.id],
+    queryKey: ['servers'],
     queryFn: async (): Promise<ServerWithDetails[]> => {
       if (!user) return [];
 
@@ -66,7 +67,8 @@ export function useServers() {
                 name,
                 type,
                 description,
-                position
+                position,
+                icon_url
               )
             ),
             channels (
@@ -75,7 +77,8 @@ export function useServers() {
               type,
               description,
               position,
-              category_id
+              category_id,
+              icon_url
             )
           )
         `)
@@ -99,6 +102,7 @@ export function useServers() {
               type: ch.type,
               description: ch.description,
               position: ch.position,
+              icon_url: ch.icon_url || null,
               category_id: null as null,
               server_id: server.id,
             }));
@@ -305,8 +309,8 @@ export function useCreateServer() {
     onMutate: async ({ name, icon_url, description, is_public }) => {
       if (!user) return;
       
-      await queryClient.cancelQueries({ queryKey: ['servers', user.id] });
-      const previousServers = queryClient.getQueryData(['servers', user.id]);
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData(['servers']);
       
       const tempServer: ServerWithDetails = {
         id: `temp-${Date.now()}`,
@@ -321,7 +325,7 @@ export function useCreateServer() {
         categories: [],
       };
       
-      queryClient.setQueryData(['servers', user.id], (old: ServerWithDetails[] | undefined) =>
+      queryClient.setQueryData(['servers'], (old: ServerWithDetails[] | undefined) =>
         old ? [...old, tempServer] : [tempServer]
       );
       
@@ -329,7 +333,7 @@ export function useCreateServer() {
     },
     onError: (error, _, context) => {
       if (context?.previousServers) {
-        queryClient.setQueryData(['servers', user?.id], context.previousServers);
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       toast.error('Erreur lors de la création du serveur');
       console.error('Create server error:', error);
@@ -366,14 +370,14 @@ export function useJoinServer() {
     onMutate: async () => {
       if (!user) return;
       
-      await queryClient.cancelQueries({ queryKey: ['servers', user.id] });
-      const previousServers = queryClient.getQueryData(['servers', user.id]);
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData(['servers']);
       
       return { previousServers };
     },
     onError: (error: any, _, context) => {
       if (context?.previousServers) {
-        queryClient.setQueryData(['servers', user?.id], context.previousServers);
+        queryClient.setQueryData(['servers'], context.previousServers);
       }
       if (error.message?.includes('duplicate')) {
         toast.error('Vous êtes déjà membre de ce serveur');

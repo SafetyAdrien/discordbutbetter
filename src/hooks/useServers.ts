@@ -102,6 +102,7 @@ export function useServers() {
               type: ch.type,
               description: ch.description,
               position: ch.position,
+              icon_url: ch.icon_url || null,
               category_id: null as null,
               server_id: server.id,
             }));

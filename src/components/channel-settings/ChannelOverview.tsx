@@ -122,7 +122,8 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     }
 
     try {
-      const finalName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
+      const nameChanged = name !== channel.name;
+      const finalName = (shouldFormatStrict && nameChanged) ? formatStrictChannelName(name.trim()) : name.trim();
       if (!finalName) {
         toast.error('Le nom du salon ne peut pas être vide');
         return;
@@ -193,7 +194,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
             className="flex-1"
           />
         </div>
-        {shouldFormatStrict && name && (
+        {shouldFormatStrict && name && name !== channel.name && (
           <p className="text-xs text-muted-foreground mt-1">
             Aperçu : <span className="font-mono">{formatStrictChannelName(name)}</span>
           </p>

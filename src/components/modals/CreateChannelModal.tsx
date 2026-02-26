@@ -157,16 +157,14 @@ export function CreateChannelModal({
             <Input
               id="name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setName((!isFlexible && type === 'text') ? formatStrictChannelName(val) : val);
+              }}
               placeholder={(!isFlexible && type === 'text') ? "nouveau-salon" : "Nouveau salon"}
               autoFocus
               className="w-full"
             />
-            {!isFlexible && type === 'text' && name && (
-              <p className="text-xs text-muted-foreground">
-                Aperçu : <span className="font-mono">{formatStrictChannelName(name)}</span>
-              </p>
-            )}
           </div>
 
           <DialogFooter>

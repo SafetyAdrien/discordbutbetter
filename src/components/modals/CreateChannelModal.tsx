@@ -13,6 +13,14 @@ import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { useCreateChannel, ChannelType } from "@/hooks/useChannels";
+import { useServerSettings } from "@/hooks/useServerSettings";
+
+function formatStrictChannelName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\u00C0-\u024F-_]/g, '');
+}
 
 interface CreateChannelModalProps {
   serverId: string;
@@ -83,12 +91,18 @@ export function CreateChannelModal({
   const [name, setName] = useState("");
   const [type, setType] = useState<ChannelType>("text");
   const createChannel = useCreateChannel();
+  const { data: serverSettings } = useServerSettings(serverId);
+  
+  const isFlexible = serverSettings?.flexible_channel_names ?? true;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    createChannel.mutate({ serverId, categoryId, name: name.trim(), type }, { onSuccess: onClose });
+    const finalName = (!isFlexible && type === 'text') ? formatStrictChannelName(name.trim()) : name.trim();
+    if (!finalName) return;
+
+    createChannel.mutate({ serverId, categoryId, name: finalName, type }, { onSuccess: onClose });
   };
 
   return (
@@ -144,10 +158,15 @@ export function CreateChannelModal({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="nouveau-salon"
+              placeholder={(!isFlexible && type === 'text') ? "nouveau-salon" : "Nouveau salon"}
               autoFocus
               className="w-full"
             />
+            {!isFlexible && type === 'text' && name && (
+              <p className="text-xs text-muted-foreground">
+                Aperçu : <span className="font-mono">{formatStrictChannelName(name)}</span>
+              </p>
+            )}
           </div>
 
           <DialogFooter>

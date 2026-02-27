@@ -94,12 +94,14 @@ export function CreateChannelModal({
   const { data: serverSettings } = useServerSettings(serverId);
   
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
+  const isExemptFromStrict = type === 'voice' || type === 'stage';
+  const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const finalName = !isFlexible ? formatStrictChannelName(name.trim()) : name.trim();
+    const finalName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
     if (!finalName) return;
 
     createChannel.mutate({ serverId, categoryId, name: finalName, type }, { onSuccess: onClose });
@@ -159,9 +161,9 @@ export function CreateChannelModal({
               value={name}
               onChange={(e) => {
                 const val = e.target.value;
-                setName(!isFlexible ? formatStrictChannelName(val) : val);
+                setName(shouldFormatStrict ? formatStrictChannelName(val) : val);
               }}
-              placeholder={!isFlexible ? "nouveau-salon" : "Nouveau salon"}
+              placeholder={shouldFormatStrict ? "nouveau-salon" : "Nouveau salon"}
               autoFocus
               className="w-full"
             />

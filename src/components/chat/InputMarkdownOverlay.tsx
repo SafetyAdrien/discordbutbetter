@@ -23,11 +23,11 @@ function parseLines(content: string): OverlayLine[] {
 }
 
 const lineStyles: Record<OverlayLine['type'], string> = {
-  header1: 'text-2xl font-bold text-foreground leading-[1.375]',
-  header2: 'text-xl font-bold text-foreground leading-[1.375]',
-  header3: 'text-lg font-semibold text-foreground leading-[1.375]',
-  subtext: 'text-[12px] text-muted-foreground leading-4',
-  normal: '',
+  header1: 'font-bold text-foreground',
+  header2: 'font-bold text-foreground',
+  header3: 'font-semibold text-foreground',
+  subtext: 'text-muted-foreground',
+  normal: 'text-foreground',
 };
 
 export function InputMarkdownOverlay({ content, compact = false }: InputMarkdownOverlayProps) {

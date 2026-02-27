@@ -465,7 +465,9 @@ export function MessageInput({
               onPaste={handlePaste}
               placeholder={placeholder}
               disabled={disabled}
-              className={`relative z-10 w-full bg-transparent text-transparent caret-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
+              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
+                value.match(/^(#{1,3} |-# )/m) ? 'text-transparent caret-foreground' : 'text-foreground'
+              } ${
                 compact 
                   ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
                   : "py-3 text-sm min-h-[24px] max-h-[200px] pr-1"

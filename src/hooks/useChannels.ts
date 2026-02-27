@@ -387,6 +387,8 @@ export function useDeleteCategory() {
       return { serverId, categoryId };
     },
     onMutate: async ({ categoryId, serverId }) => {
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
@@ -433,6 +435,9 @@ export function useDeleteCategory() {
       toast.error('Erreur lors de la suppression');
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
@@ -452,6 +457,8 @@ export function useDeleteChannel() {
       return { serverId, channelId };
     },
     onMutate: async ({ channelId, serverId }) => {
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
@@ -497,6 +504,9 @@ export function useDeleteChannel() {
       toast.error('Erreur lors de la suppression');
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },

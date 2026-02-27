@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -23,6 +24,32 @@ interface DMPinnedMessage {
 }
 
 export function useDMPinnedMessages(conversationId: string | null) {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`dm-pinned-rt-${conversationId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dm_pinned_messages', filter: `conversation_id=eq.${conversationId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', conversationId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, queryClient]);
+
   return useQuery({
     queryKey: ['dm-pinned-messages', conversationId],
     enabled: !!conversationId,
@@ -82,16 +109,42 @@ export function usePinDMMessage() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', variables.conversationId] });
-      toast.success('Message épinglé');
+    onMutate: async ({ messageId, conversationId }) => {
+      if (!user) return;
+
+      await queryClient.cancelQueries({ queryKey: ['dm-pinned-messages', conversationId] });
+      const previous = queryClient.getQueryData<DMPinnedMessage[]>(['dm-pinned-messages', conversationId]);
+
+      const tempPin: DMPinnedMessage = {
+        id: `temp-${Date.now()}`,
+        message_id: messageId,
+        conversation_id: conversationId,
+        pinned_by: user.id,
+        pinned_at: new Date().toISOString(),
+        message: { id: messageId, content: '', created_at: new Date().toISOString(), author: null },
+      };
+
+      queryClient.setQueryData(['dm-pinned-messages', conversationId], (old: DMPinnedMessage[] | undefined) =>
+        old ? [tempPin, ...old] : [tempPin]
+      );
+
+      return { previous, conversationId };
     },
-    onError: (error: any) => {
+    onError: (error: any, { conversationId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['dm-pinned-messages', conversationId], context.previous);
+      }
       if (error.code === '23505') {
         toast.error('Ce message est déjà épinglé');
       } else {
         toast.error("Impossible d'épingler le message");
       }
+    },
+    onSuccess: () => {
+      toast.success('Message épinglé');
+    },
+    onSettled: (_, __, { conversationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', conversationId] });
     },
   });
 }
@@ -108,12 +161,27 @@ export function useUnpinDMMessage() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', variables.conversationId] });
+    onMutate: async ({ messageId, conversationId }) => {
+      await queryClient.cancelQueries({ queryKey: ['dm-pinned-messages', conversationId] });
+      const previous = queryClient.getQueryData<DMPinnedMessage[]>(['dm-pinned-messages', conversationId]);
+
+      queryClient.setQueryData(['dm-pinned-messages', conversationId], (old: DMPinnedMessage[] | undefined) =>
+        old?.filter(p => p.message_id !== messageId)
+      );
+
+      return { previous, conversationId };
+    },
+    onError: (_, { conversationId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['dm-pinned-messages', conversationId], context.previous);
+      }
+      toast.error('Impossible de désépingler le message');
+    },
+    onSuccess: () => {
       toast.success('Message désépinglé');
     },
-    onError: () => {
-      toast.error('Impossible de désépingler le message');
+    onSettled: (_, __, { conversationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', conversationId] });
     },
   });
 }

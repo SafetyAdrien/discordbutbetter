@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -22,6 +23,31 @@ export interface ServerSticker {
 
 export function useServerEmojis(serverId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`server-emojis-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
 
   return useQuery({
     queryKey: ['server-emojis', serverId],
@@ -60,19 +86,16 @@ export function useUploadEmoji() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${serverId}/${name}.${fileExt}`;
 
-      // Upload file
       const { error: uploadError } = await supabase.storage
         .from('server-emojis')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('server-emojis')
         .getPublicUrl(fileName);
 
-      // Create emoji record
       const { data, error } = await supabase
         .from('server_emojis' as any)
         .insert({
@@ -87,16 +110,44 @@ export function useUploadEmoji() {
       if (error) throw error;
       return data as unknown as ServerEmoji;
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
-      toast.success('Emoji ajouté !');
+    onMutate: async ({ serverId, name, file }) => {
+      if (!user) return;
+
+      await queryClient.cancelQueries({ queryKey: ['server-emojis', serverId] });
+      const previous = queryClient.getQueryData(['server-emojis', serverId]);
+
+      const blobUrl = URL.createObjectURL(file);
+      const tempEmoji: ServerEmoji = {
+        id: `temp-${Date.now()}`,
+        name,
+        image_url: blobUrl,
+        server_id: serverId,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(['server-emojis', serverId], (old: ServerEmoji[] | undefined) =>
+        old ? [tempEmoji, ...old] : [tempEmoji]
+      );
+
+      return { previous, serverId, blobUrl };
     },
-    onError: (error: any) => {
+    onError: (error: any, { serverId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['server-emojis', serverId], context.previous);
+      }
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
       if (error.message?.includes('duplicate')) {
         toast.error('Un emoji avec ce nom existe déjà');
       } else {
         toast.error('Erreur lors de l\'ajout de l\'emoji');
       }
+    },
+    onSuccess: (_, __, context) => {
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
+      toast.success('Emoji ajouté !');
+    },
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
     },
   });
 }
@@ -141,6 +192,31 @@ export function useDeleteEmoji() {
 
 export function useServerStickers(serverId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`server-stickers-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_stickers', filter: `server_id=eq.${serverId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
 
   return useQuery({
     queryKey: ['server-stickers', serverId],
@@ -181,19 +257,16 @@ export function useUploadSticker() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${serverId}/${Date.now()}-${name}.${fileExt}`;
 
-      // Upload file
       const { error: uploadError } = await supabase.storage
         .from('server-stickers')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('server-stickers')
         .getPublicUrl(fileName);
 
-      // Create sticker record
       const { data, error } = await supabase
         .from('server_stickers' as any)
         .insert({
@@ -209,12 +282,41 @@ export function useUploadSticker() {
       if (error) throw error;
       return data as unknown as ServerSticker;
     },
-    onSuccess: (_, { serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
+    onMutate: async ({ serverId, name, description, file }) => {
+      if (!user) return;
+
+      await queryClient.cancelQueries({ queryKey: ['server-stickers', serverId] });
+      const previous = queryClient.getQueryData(['server-stickers', serverId]);
+
+      const blobUrl = URL.createObjectURL(file);
+      const tempSticker: ServerSticker = {
+        id: `temp-${Date.now()}`,
+        name,
+        description: description || null,
+        image_url: blobUrl,
+        server_id: serverId,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(['server-stickers', serverId], (old: ServerSticker[] | undefined) =>
+        old ? [tempSticker, ...old] : [tempSticker]
+      );
+
+      return { previous, serverId, blobUrl };
+    },
+    onError: (_, { serverId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['server-stickers', serverId], context.previous);
+      }
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
+      toast.error('Erreur lors de l\'ajout du sticker');
+    },
+    onSuccess: (_, __, context) => {
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
       toast.success('Sticker ajouté !');
     },
-    onError: () => {
-      toast.error('Erreur lors de l\'ajout du sticker');
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
     },
   });
 }
@@ -344,12 +446,33 @@ export function useUploadServerIcon() {
       if (updateError) throw updateError;
       return publicUrl;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
+    onMutate: async ({ serverId, file }) => {
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData(['servers']);
+
+      const blobUrl = URL.createObjectURL(file);
+      queryClient.setQueriesData({ queryKey: ['servers'] }, (old: any) => {
+        if (Array.isArray(old)) {
+          return old.map((s: any) => s.id === serverId ? { ...s, icon_url: blobUrl } : s);
+        }
+        return old;
+      });
+
+      return { previousServers, blobUrl };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
+      toast.error('Erreur lors du téléchargement de l\'icône');
+    },
+    onSuccess: (_, __, context) => {
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
       toast.success('Icône du serveur mise à jour !');
     },
-    onError: () => {
-      toast.error('Erreur lors du téléchargement de l\'icône');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }
@@ -380,12 +503,33 @@ export function useUploadServerBanner() {
       if (updateError) throw updateError;
       return publicUrl;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
+    onMutate: async ({ serverId, file }) => {
+      await queryClient.cancelQueries({ queryKey: ['servers'] });
+      const previousServers = queryClient.getQueryData(['servers']);
+
+      const blobUrl = URL.createObjectURL(file);
+      queryClient.setQueriesData({ queryKey: ['servers'] }, (old: any) => {
+        if (Array.isArray(old)) {
+          return old.map((s: any) => s.id === serverId ? { ...s, banner_url: blobUrl } : s);
+        }
+        return old;
+      });
+
+      return { previousServers, blobUrl };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousServers) {
+        queryClient.setQueryData(['servers'], context.previousServers);
+      }
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
+      toast.error('Erreur lors du téléchargement de la bannière');
+    },
+    onSuccess: (_, __, context) => {
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
       toast.success('Bannière du serveur mise à jour !');
     },
-    onError: () => {
-      toast.error('Erreur lors du téléchargement de la bannière');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
 }

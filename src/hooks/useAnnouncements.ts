@@ -323,8 +323,34 @@ export function useUploadAnnouncementBanner() {
   });
 }
 
-// Categories
+// Categories with realtime
 export function useAnnouncementCategories(serverId: string) {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`ann-categories-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'announcement_categories', filter: `server_id=eq.${serverId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['announcement-categories', serverId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
+
   return useQuery({
     queryKey: ['announcement-categories', serverId],
     queryFn: async () => {
@@ -430,8 +456,34 @@ export function useDeleteAnnouncementCategory() {
   });
 }
 
-// Comments
+// Comments with realtime
 export function useAnnouncementComments(announcementId: string) {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!announcementId) return;
+
+    const channel = supabase
+      .channel(`ann-comments-rt-${announcementId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'announcement_comments', filter: `announcement_id=eq.${announcementId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['announcement-comments', announcementId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [announcementId, queryClient]);
+
   return useQuery({
     queryKey: ['announcement-comments', announcementId],
     queryFn: async () => {
@@ -540,8 +592,34 @@ export function useDeleteAnnouncementComment() {
   });
 }
 
-// Reactions
+// Reactions with realtime
 export function useAnnouncementReactions(announcementId: string) {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!announcementId) return;
+
+    const channel = supabase
+      .channel(`ann-reactions-rt-${announcementId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'announcement_reactions', filter: `announcement_id=eq.${announcementId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['announcement-reactions', announcementId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [announcementId, queryClient]);
+
   return useQuery({
     queryKey: ['announcement-reactions', announcementId],
     queryFn: async () => {

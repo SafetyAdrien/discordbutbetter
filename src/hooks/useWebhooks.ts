@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -15,13 +16,37 @@ export interface Webhook {
 
 export function useChannelWebhooks(channelId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!channelId) return;
+
+    const channel = supabase
+      .channel(`webhooks-rt-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'webhooks', filter: `channel_id=eq.${channelId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, queryClient]);
 
   return useQuery({
     queryKey: ['webhooks', channelId],
     queryFn: async (): Promise<Webhook[]> => {
       if (!channelId) return [];
 
-      // Use secure function that masks tokens for unauthorized users
       const { data, error } = await supabase
         .rpc('get_channel_webhooks', { _channel_id: channelId });
 

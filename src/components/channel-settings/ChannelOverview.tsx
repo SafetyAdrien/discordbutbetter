@@ -17,6 +17,7 @@ import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSetting
 import { useServerSettings } from '@/hooks/useServerSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ImageCropper } from '@/components/ui/image-cropper';
 
 function formatStrictChannelName(name: string): string {
   return name
@@ -51,11 +52,26 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const updateChannel = useUpdateChannel();
   const { data: serverSettings } = useServerSettings(channel.server_id);
 
+  // New states for deferred upload + cropper
+  const [pendingFile, setPendingFile] = useState<File | Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState('');
+  const [pendingFileType, setPendingFileType] = useState<string>('image/png');
+
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
   const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
-  // Reformat name when shouldFormatStrict becomes true (e.g. after settings load)
+  // Cleanup object URLs
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   useEffect(() => {
     if (shouldFormatStrict) {
       setName(prev => formatStrictChannelName(prev));
@@ -65,61 +81,68 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
 
-  // Can toggle between text and announcement only
   const canToggleType = channel.type === 'text' || channel.type === 'announcement';
+
+  const displayIcon = previewUrl || iconUrl;
 
   const hasChanges = 
     name !== channel.name || 
     description !== (channel.description || '') ||
     (canToggleType && channelType !== channel.type) ||
-    iconUrl !== (channel.icon_url || null);
+    iconUrl !== (channel.icon_url || null) ||
+    pendingFile !== null;
 
   const handleTypeToggle = (isAnnouncement: boolean) => {
     setChannelType(isAnnouncement ? 'announcement' : 'text');
   };
 
-  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
     const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
     if (!validTypes.includes(file.type)) {
       toast.error('Format non supporté. Utilisez PNG, JPG, WEBP, GIF ou SVG.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 10 Mo.');
+      toast.error("L'image ne doit pas dépasser 10 Mo.");
       return;
     }
 
-    setIsUploading(true);
-    try {
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `${channel.id}/${crypto.randomUUID()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('channel-icons')
-        .upload(path, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('channel-icons')
-        .getPublicUrl(path);
-
-      setIconUrl(publicUrl);
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Erreur lors de l\'upload de l\'icône');
-    } finally {
-      setIsUploading(false);
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    if (file.type === 'image/svg+xml') {
+      // SVG: skip cropper, just preview
+      if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setPendingFile(file);
+      setIconUrl(null); // mark as changed
+    } else {
+      // Raster: open cropper
+      setPendingFileType(file.type);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropperSrc(reader.result as string);
+        setCropperOpen(true);
+      };
+      reader.readAsDataURL(file);
     }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCropComplete = (blob: Blob) => {
+    if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl(url);
+    setPendingFile(blob);
+    setIconUrl(null); // mark as changed
   };
 
   const handleRemoveIcon = () => {
+    if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPendingFile(null);
     setIconUrl(null);
   };
 
@@ -129,12 +152,39 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
       return;
     }
 
+    setIsUploading(true);
     try {
       const nameChanged = name !== channel.name;
       const finalName = (shouldFormatStrict && nameChanged) ? formatStrictChannelName(name.trim()) : name.trim();
       if (!finalName) {
         toast.error('Le nom du salon ne peut pas être vide');
+        setIsUploading(false);
         return;
+      }
+
+      let finalIconUrl: string | null | undefined = undefined;
+
+      // Upload pending file if any
+      if (pendingFile) {
+        const ext = pendingFile instanceof File
+          ? (pendingFile.name.split('.').pop() || 'png')
+          : (pendingFileType === 'image/png' ? 'png' : 'jpg');
+        const path = `${channel.id}/${crypto.randomUUID()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('channel-icons')
+          .upload(path, pendingFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('channel-icons')
+          .getPublicUrl(path);
+
+        finalIconUrl = publicUrl;
+      } else if (iconUrl !== (channel.icon_url || null)) {
+        // Icon was removed
+        finalIconUrl = iconUrl;
       }
 
       await updateChannel.mutateAsync({
@@ -143,12 +193,23 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         name: finalName,
         description: description.trim() || undefined,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
-        icon_url: iconUrl !== (channel.icon_url || null) ? iconUrl : undefined,
+        icon_url: finalIconUrl,
       });
+
+      // Reset pending state on success
+      setPendingFile(null);
+      if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      if (finalIconUrl !== undefined) setIconUrl(finalIconUrl);
     } catch (error) {
+      console.error('Save error:', error);
       toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setIsUploading(false);
     }
   };
+
+  const outputFormat = pendingFileType === 'image/png' ? 'image/png' as const : 'image/jpeg' as const;
 
   return (
     <div className="space-y-4">
@@ -161,8 +222,8 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
               className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border cursor-pointer transition-opacity"
               onClick={() => fileInputRef.current?.click()}
             >
-              {iconUrl ? (
-                <img src={iconUrl} alt="Icône du salon" className="w-full h-full object-cover" />
+              {displayIcon ? (
+                <img src={displayIcon} alt="Icône du salon" className="w-full h-full object-cover" />
               ) : (
                 <TypeIcon className="w-4 h-4 text-muted-foreground" />
               )}
@@ -176,7 +237,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
               </div>
             )}
-            {iconUrl && !isUploading && (
+            {(displayIcon) && !isUploading && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleRemoveIcon(); }}
@@ -257,12 +318,24 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
 
       {hasChanges && (
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={updateChannel.isPending}>
-            {updateChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          <Button onClick={handleSave} disabled={updateChannel.isPending || isUploading}>
+            {(updateChannel.isPending || isUploading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Enregistrer
           </Button>
         </div>
       )}
+
+      {/* Image Cropper Dialog */}
+      <ImageCropper
+        open={cropperOpen}
+        onClose={() => setCropperOpen(false)}
+        imageSrc={cropperSrc}
+        aspectRatio={1}
+        circularCrop
+        onCropComplete={handleCropComplete}
+        outputFormat={outputFormat}
+        maxDimension={1000}
+      />
     </div>
   );
 }

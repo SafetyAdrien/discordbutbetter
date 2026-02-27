@@ -13,6 +13,8 @@ interface ImageCropperProps {
   aspectRatio?: number;
   circularCrop?: boolean;
   onCropComplete: (croppedImageBlob: Blob) => void;
+  outputFormat?: 'image/jpeg' | 'image/png';
+  maxDimension?: number;
 }
 
 function centerAspectCrop(
@@ -42,6 +44,8 @@ export function ImageCropper({
   aspectRatio = 1,
   circularCrop = false,
   onCropComplete,
+  outputFormat = 'image/jpeg',
+  maxDimension,
 }: ImageCropperProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -67,8 +71,18 @@ export function ImageCropper({
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
-    canvas.width = completedCrop.width * scaleX;
-    canvas.height = completedCrop.height * scaleY;
+    let cropWidth = completedCrop.width * scaleX;
+    let cropHeight = completedCrop.height * scaleY;
+
+    // Enforce max dimension
+    if (maxDimension && (cropWidth > maxDimension || cropHeight > maxDimension)) {
+      const ratio = Math.min(maxDimension / cropWidth, maxDimension / cropHeight);
+      cropWidth = Math.round(cropWidth * ratio);
+      cropHeight = Math.round(cropHeight * ratio);
+    }
+
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
 
     ctx.drawImage(
       image,
@@ -78,14 +92,15 @@ export function ImageCropper({
       completedCrop.height * scaleY,
       0,
       0,
-      canvas.width,
-      canvas.height
+      cropWidth,
+      cropHeight
     );
 
+    const quality = outputFormat === 'image/png' ? undefined : 0.95;
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
         resolve(blob);
-      }, 'image/jpeg', 0.95);
+      }, outputFormat, quality);
     });
   };
 

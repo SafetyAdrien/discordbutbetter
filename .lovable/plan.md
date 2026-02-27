@@ -1,62 +1,61 @@
 
 
-# Apercu en temps reel et recadrage des icones de salon
+# Fix: Duplicated channel hidden by visibility filter
 
-## Objectif
-Ajouter un flux complet : selection de fichier -> recadrage (pour PNG/JPG/WEBP/GIF) ou apercu (pour SVG) -> apercu en temps reel dans le formulaire -> upload uniquement a la sauvegarde. Les PNG seront limites a 1000px max.
+## Root cause
 
-## Changements
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 1. `src/components/ui/image-cropper.tsx` - Support PNG et limite 1000px
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-- Modifier `getCroppedImg` pour accepter un parametre de format (`image/png` ou `image/jpeg`) et une taille max (1000px).
-- Si la taille du canvas depasse 1000px, redimensionner proportionnellement avant export.
-- Exporter en PNG quand le fichier source est un PNG, sinon en JPEG.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 2. `src/components/channel-settings/ChannelOverview.tsx` - Refonte du flux d'upload
+## Fix
 
-**Nouveau flux :**
-1. L'utilisateur selectionne un fichier.
-2. Si c'est un SVG : generer un `URL.createObjectURL` comme apercu local, stocker le fichier pour upload ulterieur.
-3. Si c'est une image raster (PNG, JPG, etc.) : ouvrir le composant `ImageCropper` avec l'image. Au retour du crop, stocker le blob recadre et un apercu local via `URL.createObjectURL`.
-4. L'apercu s'affiche immediatement dans le cercle d'icone (avant sauvegarde).
-5. L'upload vers le bucket `channel-icons` n'a lieu qu'au moment du clic sur "Enregistrer".
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-**Nouveaux etats :**
-- `pendingFile: File | Blob | null` - fichier en attente d'upload
-- `previewUrl: string | null` - URL locale pour l'apercu
-- `cropperOpen: boolean` - controle du dialog de recadrage
-- `cropperSrc: string` - source image pour le cropper
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**Modifications cles :**
-- `handleIconUpload` ne fait plus d'upload direct. Il valide le fichier, puis ouvre le cropper ou genere l'apercu SVG.
-- `handleSave` gere l'upload du `pendingFile` vers le storage avant de mettre a jour le channel.
-- Nettoyage des `URL.createObjectURL` via `URL.revokeObjectURL` dans un `useEffect` cleanup.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 3. Apercu dans le cercle d'icone
+### 2. In `onSuccess`: invalidate the permissions cache
 
-L'image affichee dans le cercle utilise `previewUrl` (local, avant save) en priorite, puis `iconUrl` (depuis la base). Cela donne un retour visuel instantane.
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-## Detail technique
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
 
 ```text
-Flux utilisateur :
-  [Selection fichier]
-        |
-   SVG? ----Oui----> Apercu direct (objectURL)
-        |
-       Non
-        |
-   [ImageCropper dialog]
-        |
-   [Blob recadre, max 1000px]
-        |
-   Apercu local (objectURL)
-        |
-   [Enregistrer] -> Upload storage -> Update DB
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-## Fichiers modifies
-- `src/components/ui/image-cropper.tsx` (ajout format PNG + limite 1000px)
-- `src/components/channel-settings/ChannelOverview.tsx` (refonte flux avec cropper + apercu)
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

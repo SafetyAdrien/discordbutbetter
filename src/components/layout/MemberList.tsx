@@ -32,15 +32,19 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
-import { RoleManagementPanel } from "@/components/members/RoleManagementPanel";
+import { RoleCheckboxItem } from "@/components/profile/RoleCheckboxItem";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -248,7 +252,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-  const [roleTarget, setRoleTarget] = useState<{ memberId: string; userId: string } | null>(null);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);
@@ -588,13 +592,33 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           {canManageRoles && memberId && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuItem onSelect={(e) => {
-                e.preventDefault();
-                setRoleTarget({ memberId, userId: member.id });
-              }}>
-                <Shield className="w-4 h-4 mr-2" />
-                Gérer les rôles
-              </ContextMenuItem>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Gérer les rôles
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-56 p-0">
+                  <div className="p-2 border-b border-border">
+                    <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">Rôles</h4>
+                  </div>
+                  <ScrollArea className="max-h-[300px]">
+                    <div className="p-2 space-y-1">
+                      {allRoles
+                        .filter((role) => !role.is_default)
+                        .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
+                        .map((role) => (
+                          <RoleCheckboxItem
+                            key={role.id}
+                            role={role}
+                            serverId={serverId!}
+                            memberId={memberId}
+                            userId={member.id}
+                          />
+                        ))}
+                    </div>
+                  </ScrollArea>
+                </ContextMenuSubContent>
+              </ContextMenuSub>
             </>
           )}
           <ContextMenuSeparator />
@@ -713,15 +737,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         }}
       />
 
-      {roleTarget && serverId && (
-        <RoleManagementPanel
-          serverId={serverId}
-          memberId={roleTarget.memberId}
-          userId={roleTarget.userId}
-          onClose={() => setRoleTarget(null)}
-          position={{ top: 60, right: 280 }}
-        />
-      )}
     </>
   );
 });

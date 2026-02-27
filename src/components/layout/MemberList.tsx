@@ -727,7 +727,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           serverId={serverId}
           open={!!roleAssignmentTarget}
           onOpenChange={(open) => { if (!open) setRoleAssignmentTarget(null); }}
-          trigger={<span />}
+          asDialog
         />
       )}
     </>

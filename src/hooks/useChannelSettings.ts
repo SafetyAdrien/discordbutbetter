@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChannelType, CategoryWithChannels, OrphanChannel } from './useChannels';
@@ -17,6 +18,31 @@ export interface ChannelDetails {
 
 export function useChannelDetails(channelId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!channelId) return;
+
+    const channel = supabase
+      .channel(`channel-details-rt-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'channels', filter: `id=eq.${channelId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['channel-details', channelId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, queryClient]);
 
   return useQuery({
     queryKey: ['channel-details', channelId],
@@ -69,7 +95,6 @@ export function useUpdateChannel() {
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
       const previousServers = queryClient.getQueryData(['servers']);
       
-      // Update channel details cache
       if (previousDetails) {
         queryClient.setQueryData(['channel-details', channelId], {
           ...previousDetails,
@@ -80,7 +105,6 @@ export function useUpdateChannel() {
         });
       }
       
-      // Update channels cache
       if (previousChannels) {
       const updateChannel = (ch: any) => 
           ch.id === channelId 
@@ -96,7 +120,6 @@ export function useUpdateChannel() {
         });
       }
       
-      // Also update servers cache
       if (previousServers) {
         queryClient.setQueryData(['servers'], (old: any) =>
           old?.map((server: any) =>

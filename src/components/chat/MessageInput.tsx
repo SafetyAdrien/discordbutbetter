@@ -94,6 +94,7 @@ export function MessageInput({
   const [caretFontSize, setCaretFontSize] = useState('0.875rem');
   const [caretLineHeight, setCaretLineHeight] = useState('1.25rem');
   const overlayRef = useRef<HTMLDivElement>(null);
+  const hasMarkdown = useMemo(() => /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m.test(value), [value]);
 
   // Update caret size based on cursor position
   const updateCaretSize = useCallback((cursorPos: number) => {

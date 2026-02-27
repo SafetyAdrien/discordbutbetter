@@ -394,10 +394,6 @@ export function MessageInput({
         onUpdate={(id, updates) => onUpdateAttachment?.(id, updates)}
       />
 
-      {showPreview && value.trim() && (
-        <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin w-full" />
-      )}
-      <form onSubmit={handleSubmit} className="relative w-full min-w-0 shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         {/* Mention Autocomplete */}
         {mentionState && (
           <MentionAutocomplete
@@ -500,14 +496,6 @@ export function MessageInput({
                 </button>
               }
             />
-            <button
-              type="button"
-              onClick={() => setShowPreview(!showPreview)}
-              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
-              title={showPreview ? "Masquer l'aperçu (Ctrl+P)" : "Aperçu Markdown (Ctrl+P)"}
-            >
-              {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
-            </button>
             {(value.trim() || attachments.length > 0) && (
               <button 
                 type="submit" 

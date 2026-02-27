@@ -467,14 +467,7 @@ export function MessageInput({
           </Popover>
           
           {/* Textarea container with markdown overlay */}
-          <div className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}
-            onScroll={(e) => {
-              // Sync overlay scroll with container scroll
-              if (overlayRef.current) {
-                overlayRef.current.style.transform = `translateY(-${(e.target as HTMLElement).scrollTop}px)`;
-              }
-            }}
-          >
+          <div className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}>
             <InputMarkdownOverlay ref={overlayRef} content={value} compact={compact} />
             <textarea
               ref={textareaRef}
@@ -486,11 +479,7 @@ export function MessageInput({
               onClick={(e) => updateCaretSize((e.target as HTMLTextAreaElement).selectionStart)}
               placeholder={placeholder}
               disabled={disabled}
-              style={{
-                fontSize: hasMarkdown ? caretFontSize : undefined,
-                lineHeight: hasMarkdown ? caretLineHeight : undefined,
-              }}
-              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words ${
+              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words box-border ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 

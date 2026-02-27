@@ -23,10 +23,12 @@ function parseLines(content: string): OverlayLine[] {
       result.push({ type: 'codeBlockDelimiter', text: line });
       continue;
     }
+
     if (inCodeBlock) {
       result.push({ type: 'codeBlockLine', text: line });
       continue;
     }
+
     if (line.startsWith('### ')) { result.push({ type: 'header3', text: line }); continue; }
     if (line.startsWith('## ')) { result.push({ type: 'header2', text: line }); continue; }
     if (line.startsWith('# ')) { result.push({ type: 'header1', text: line }); continue; }
@@ -40,13 +42,13 @@ function parseLines(content: string): OverlayLine[] {
   return result;
 }
 
-// These styles use NO horizontal padding/margin that would shift text.
-// Visual decorations are done via pseudo-elements or box-shadow to avoid misalignment.
+// IMPORTANT: All line types share the same font-size and line-height in input overlay
+// to keep native textarea caret geometry aligned across browsers (especially Firefox).
 const lineStyles: Record<OverlayLine['type'], string> = {
-  header1: 'text-2xl font-bold text-foreground',
-  header2: 'text-xl font-bold text-foreground',
-  header3: 'text-lg font-semibold text-foreground',
-  subtext: 'text-[12px] text-muted-foreground',
+  header1: 'font-bold text-foreground',
+  header2: 'font-bold text-foreground',
+  header3: 'font-semibold text-foreground',
+  subtext: 'text-muted-foreground',
   blockquote: 'text-muted-foreground discord-overlay-blockquote',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
@@ -55,26 +57,25 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   normal: 'text-foreground',
 };
 
-// Line heights must match exactly between overlay and textarea for each type
 const lineHeightStyles: Record<OverlayLine['type'], string> = {
-  header1: 'leading-[2.25rem]',
-  header2: 'leading-[1.875rem]',
-  header3: 'leading-[1.6875rem]',
-  subtext: 'leading-[1.125rem]',
-  blockquote: 'leading-[1.25rem]',
-  listItem: 'leading-[1.25rem]',
-  orderedListItem: 'leading-[1.25rem]',
-  codeBlockDelimiter: 'leading-[1.25rem]',
-  codeBlockLine: 'leading-[1.25rem]',
-  normal: 'leading-[1.25rem]',
+  header1: 'leading-5',
+  header2: 'leading-5',
+  header3: 'leading-5',
+  subtext: 'leading-5',
+  blockquote: 'leading-5',
+  listItem: 'leading-5',
+  orderedListItem: 'leading-5',
+  codeBlockDelimiter: 'leading-5',
+  codeBlockLine: 'leading-5',
+  normal: 'leading-5',
 };
 
-// Map line type to fontSize values (used by MessageInput for caret sizing)
+// Keep exported maps for compatibility with MessageInput caret logic.
 export const lineFontSizes: Record<OverlayLine['type'], string> = {
-  header1: '1.5rem',
-  header2: '1.25rem',
-  header3: '1.125rem',
-  subtext: '12px',
+  header1: '0.875rem',
+  header2: '0.875rem',
+  header3: '0.875rem',
+  subtext: '0.875rem',
   blockquote: '0.875rem',
   listItem: '0.875rem',
   orderedListItem: '0.875rem',
@@ -84,10 +85,10 @@ export const lineFontSizes: Record<OverlayLine['type'], string> = {
 };
 
 export const lineLineHeights: Record<OverlayLine['type'], string> = {
-  header1: '2.25rem',
-  header2: '1.875rem',
-  header3: '1.6875rem',
-  subtext: '1.125rem',
+  header1: '1.25rem',
+  header2: '1.25rem',
+  header3: '1.25rem',
+  subtext: '1.25rem',
   blockquote: '1.25rem',
   listItem: '1.25rem',
   orderedListItem: '1.25rem',
@@ -108,9 +109,9 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   for (const l of linesBefore) {
     if (l.startsWith('```')) inCodeBlock = !inCodeBlock;
   }
+
   if (inCodeBlock && !currentLine.startsWith('```')) return 'codeBlockLine';
   if (currentLine.startsWith('```')) return 'codeBlockDelimiter';
-
   if (currentLine.startsWith('### ')) return 'header3';
   if (currentLine.startsWith('## ')) return 'header2';
   if (currentLine.startsWith('# ')) return 'header1';
@@ -124,27 +125,23 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
   ({ content, compact = false }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
-    const hasMarkdown = useMemo(() => lines.some(l => l.type !== 'normal'), [lines]);
+    const hasMarkdown = useMemo(() => lines.some((line) => line.type !== 'normal'), [lines]);
 
     if (!hasMarkdown) return null;
 
-    // When markdown is active, render ALL lines (including normal) so
-    // the textarea can be fully transparent and only show its caret.
-    // Each line is a block-level div to guarantee identical line-box heights.
     return (
       <div
         ref={ref}
         aria-hidden
-        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words text-sm ${
-          compact ? 'py-1 min-h-[24px]' : 'py-3 min-h-[24px]'
+        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm ${
+          compact ? 'py-1 pr-2 min-h-[24px]' : 'py-3 pr-1 min-h-[24px]'
         }`}
       >
         {lines.map((line, i) => (
           <div
             key={i}
-            className={`${lineStyles[line.type]} ${lineHeightStyles[line.type]}`}
+            className={`${lineStyles[line.type]} ${lineHeightStyles[line.type]} relative`}
           >
-            {/* Use a zero-width space for empty lines to preserve height */}
             {line.text || '\u200B'}
           </div>
         ))}

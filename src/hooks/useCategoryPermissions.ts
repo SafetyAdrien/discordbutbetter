@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
+import { lockPermissionsMutation } from './usePermissionsRealtime';
 
 type ServerPermission = Database['public']['Enums']['server_permission'];
 
@@ -12,6 +13,13 @@ export interface CategoryPermissionOverride {
   permission: ServerPermission;
   type: 'allow' | 'deny';
   created_at: string | null;
+}
+
+/** Refetch all active permission queries for instant UI sync after category overrides change. */
+function refetchPermissionCaches(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'active' });
+  queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'active' });
+  queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' });
 }
 
 export function useCategoryPermissionOverrides(categoryId: string | null) {
@@ -68,6 +76,7 @@ export function useSetCategoryPermissionOverride() {
       return { categoryId, roleId, permission, type };
     },
     onMutate: async ({ categoryId, roleId, permission, type }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['category-permissions', categoryId] });
       const previousOverrides = queryClient.getQueryData<CategoryPermissionOverride[]>(['category-permissions', categoryId]);
       
@@ -101,8 +110,7 @@ export function useSetCategoryPermissionOverride() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['category-permissions', variables.categoryId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      refetchPermissionCaches(queryClient);
     },
   });
 }
@@ -131,6 +139,7 @@ export function useRemoveCategoryPermissionOverride() {
       return { categoryId, roleId, permission };
     },
     onMutate: async ({ categoryId, roleId, permission }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['category-permissions', categoryId] });
       const previousOverrides = queryClient.getQueryData<CategoryPermissionOverride[]>(['category-permissions', categoryId]);
       
@@ -147,8 +156,7 @@ export function useRemoveCategoryPermissionOverride() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['category-permissions', variables.categoryId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      refetchPermissionCaches(queryClient);
     },
   });
 }
@@ -158,7 +166,6 @@ export function useSyncCategoryWithServer() {
 
   return useMutation({
     mutationFn: async ({ categoryId }: { categoryId: string }) => {
-      // Remove all overrides for this category (sync with server)
       const { error } = await supabase
         .from('category_permission_overrides')
         .delete()
@@ -168,6 +175,7 @@ export function useSyncCategoryWithServer() {
       return { categoryId };
     },
     onMutate: async ({ categoryId }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['category-permissions', categoryId] });
       const previousOverrides = queryClient.getQueryData<CategoryPermissionOverride[]>(['category-permissions', categoryId]);
       
@@ -182,13 +190,11 @@ export function useSyncCategoryWithServer() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['category-permissions', variables.categoryId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      refetchPermissionCaches(queryClient);
     },
   });
 }
 
-// Réinitialiser les permissions d'un rôle spécifique sur une catégorie
 export function useResetRoleCategoryOverrides() {
   const queryClient = useQueryClient();
 
@@ -204,6 +210,7 @@ export function useResetRoleCategoryOverrides() {
       return { categoryId, roleId };
     },
     onMutate: async ({ categoryId, roleId }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['category-permissions', categoryId] });
       const previousOverrides = queryClient.getQueryData<CategoryPermissionOverride[]>(['category-permissions', categoryId]);
       
@@ -220,8 +227,7 @@ export function useResetRoleCategoryOverrides() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['category-permissions', variables.categoryId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      refetchPermissionCaches(queryClient);
     },
   });
 }

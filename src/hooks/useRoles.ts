@@ -4,6 +4,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { membersMutationLockRef } from './useMembers';
+import { lockPermissionsMutation } from './usePermissionsRealtime';
+
+/** Refetch all active permission-related queries for immediate UI sync. */
+function refetchPermissionCaches(queryClient: ReturnType<typeof useQueryClient>) {
+  const keys = [
+    'channel-permission',
+    'user-channel-permissions',
+    'server-channel-permissions',
+    'category-permissions',
+  ];
+  keys.forEach(k => queryClient.refetchQueries({ queryKey: [k], type: 'active' }));
+}
 
 // Re-export from centralized permissions
 import { ServerPermission, ALL_PERMISSIONS as PERMISSIONS_LIST } from '@/constants/permissions';
@@ -226,6 +238,8 @@ export function useUpdateRole() {
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
+      // When role permissions change, channel permissions must update too
+      refetchPermissionCaches(queryClient);
     },
   });
 }
@@ -452,6 +466,7 @@ export function useAssignRoleToMember() {
     onMutate: async ({ memberId, roleId, serverId, role }) => {
       // Lock to prevent Realtime invalidations during mutation
       membersMutationLockRef.current = true;
+      lockPermissionsMutation(600);
       
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
       const previousMembers = queryClient.getQueryData(['members', serverId]);
@@ -498,8 +513,9 @@ export function useAssignRoleToMember() {
       setTimeout(() => {
         membersMutationLockRef.current = false;
       }, 500);
-      // Only invalidate role-member-counts, let Realtime handle members for other users
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+      // Role assignment changes effective permissions — refresh channel visibility
+      refetchPermissionCaches(queryClient);
     },
   });
 }
@@ -524,6 +540,7 @@ export function useRemoveRoleFromMember() {
     onMutate: async ({ memberId, roleId, serverId }) => {
       // Lock to prevent Realtime invalidations during mutation
       membersMutationLockRef.current = true;
+      lockPermissionsMutation(600);
       
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
       const previousMembers = queryClient.getQueryData(['members', serverId]);
@@ -547,12 +564,12 @@ export function useRemoveRoleFromMember() {
       toast.success('Rôle retiré !');
     },
     onSettled: (_, __, { serverId }) => {
-      // Release lock after a delay to let optimistic update settle
       setTimeout(() => {
         membersMutationLockRef.current = false;
       }, 500);
-      // Only invalidate role-member-counts, let Realtime handle members for other users
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+      // Role removal changes effective permissions — refresh channel visibility
+      refetchPermissionCaches(queryClient);
     },
   });
 }

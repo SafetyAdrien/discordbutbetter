@@ -114,20 +114,22 @@ export function useCreateMediaPost(channelId: string) {
         .getPublicUrl(filePath);
 
       // 2. Insert row
-      const { data, error } = await supabase
-        .from('media_posts')
-        .insert({
-          channel_id: channelId,
-          author_id: userId,
-          title: input.title,
-          description: input.description,
-          file_url: urlData.publicUrl,
-          file_type: input.file.type.startsWith('video/') ? 'video' : 'image',
-          file_name: input.file.name,
-          file_size: input.file.size,
-          alt_text: input.altText,
-          is_spoiler: input.isSpoiler,
-        } as Record<string, unknown>)
+      const row = {
+        channel_id: channelId,
+        author_id: userId,
+        title: input.title,
+        description: input.description,
+        file_url: urlData.publicUrl,
+        file_type: input.file.type.startsWith('video/') ? 'video' : 'image',
+        file_name: input.file.name,
+        file_size: input.file.size,
+        alt_text: input.altText,
+        is_spoiler: input.isSpoiler,
+      };
+
+      const { data, error } = await (supabase
+        .from('media_posts') as any)
+        .insert(row)
         .select()
         .single();
 

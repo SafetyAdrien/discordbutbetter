@@ -1,18 +1,61 @@
 
 
-# Propagation des icones personnalisees des salons
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme
-Quand un utilisateur change l'icone d'un salon dans les parametres, le changement est bien sauvegarde en base et le cache optimiste met a jour les donnees, mais l'icone n'apparait pas dans la liste des salons. La raison : dans `Index.tsx`, lors de la transformation des donnees serveur pour le composant `ChannelList`, la propriete `icon_url` n'est pas incluse dans le mapping des channels.
+## Root cause
 
-## Changement
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### `src/pages/Index.tsx` - Ajouter `icon_url` au mapping des channels
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Deux endroits a corriger :
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-1. **`serverForChannelList`** (ligne ~330) : ajouter `icon_url: ch.icon_url || undefined` dans le mapping des channels pour que `ChannelList` recoive l'icone personnalisee.
+## Fix
 
-2. **`serverListData`** (ligne ~310) : meme ajout pour que `ServerList` dispose aussi de l'information si necessaire.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-C'est un changement de 2 lignes au total. Le reste de la chaine (stockage, cache optimiste, affichage dans `ChannelList`) fonctionne deja correctement.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

@@ -1,61 +1,90 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Ajout Realtime + Optimistic Updates manquants sur tous les hooks
 
-## Root cause
+## Etat des lieux
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Apres audit complet, les salons (channels) et categories de serveur sont **deja bien couverts** : creation, modification, suppression, duplication et reordering ont tous des optimistic updates + realtime. Les lacunes se trouvent dans les hooks peripheriques.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Ce qui manque
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Hooks sans subscription Realtime (les donnees ne se mettent pas a jour en temps reel)
 
-## Fix
+| Hook | Fichier | Table a ecouter |
+|------|---------|-----------------|
+| `useDMPinnedMessages` | `useDMPinnedMessages.ts` | `dm_pinned_messages` (filtre `conversation_id`) |
+| `useAnnouncementComments` | `useAnnouncements.ts` | `announcement_comments` (filtre `announcement_id`) |
+| `useAnnouncementCategories` | `useAnnouncements.ts` | `announcement_categories` (filtre `server_id`) |
+| `useAnnouncementReactions` | `useAnnouncements.ts` | `announcement_reactions` (filtre `announcement_id`) |
+| `useServerEmojis` | `useServerAssets.ts` | `server_emojis` (filtre `server_id`) |
+| `useServerStickers` | `useServerAssets.ts` | `server_stickers` (filtre `server_id`) |
+| `useChannelWebhooks` | `useWebhooks.ts` | `webhooks` (filtre `channel_id`) |
+| `useServerInvites` | `useInvites.ts` | `invites` (filtre `server_id`) |
+| `useChannelDetails` | `useChannelSettings.ts` | `channels` (filtre `id`) |
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### Mutations sans optimistic updates (attendent la reponse serveur avant de mettre a jour l'UI)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+| Hook | Fichier | Changement |
+|------|---------|------------|
+| `usePinDMMessage` | `useDMPinnedMessages.ts` | Ajouter onMutate/onError rollback |
+| `useUnpinDMMessage` | `useDMPinnedMessages.ts` | Ajouter onMutate/onError rollback |
+| `useUploadEmoji` | `useServerAssets.ts` | Ajouter temp item avec blob URL |
+| `useUploadSticker` | `useServerAssets.ts` | Ajouter temp item avec blob URL |
+| `useUploadServerIcon` | `useServerAssets.ts` | Optimistic sur cache `servers` avec blob URL |
+| `useUploadServerBanner` | `useServerAssets.ts` | Optimistic sur cache `servers` avec blob URL |
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+## Plan d'implementation
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### 1. `useDMPinnedMessages.ts`
+- Ajouter `useEffect` avec subscription Realtime sur `dm_pinned_messages` filtree par `conversation_id`, debounce 300ms
+- `usePinDMMessage` : ajouter `onMutate` (insert temp pinned item dans le cache), `onError` (rollback), garder `onSettled` pour invalidation
+- `useUnpinDMMessage` : ajouter `onMutate` (retirer du cache), `onError` (rollback)
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 2. `useAnnouncements.ts`
+- `useAnnouncementComments` : ajouter `useEffect` Realtime sur `announcement_comments` filtre par `announcement_id`, debounce 300ms
+- `useAnnouncementCategories` : ajouter `useEffect` Realtime sur `announcement_categories` filtre par `server_id`, debounce 300ms
+- `useAnnouncementReactions` : ajouter `useEffect` Realtime sur `announcement_reactions` filtre par `announcement_id`, debounce 300ms
 
-### 3. Hook needs `useAuth` for the user ID
+### 3. `useServerAssets.ts`
+- `useServerEmojis` : ajouter `useEffect` Realtime sur `server_emojis` filtre par `server_id`, debounce 300ms
+- `useServerStickers` : ajouter `useEffect` Realtime sur `server_stickers` filtre par `server_id`, debounce 300ms
+- `useUploadEmoji` : ajouter `onMutate` avec temp emoji (blob URL via `URL.createObjectURL(file)`), `onError` rollback
+- `useUploadSticker` : ajouter `onMutate` avec temp sticker (blob URL), `onError` rollback
+- `useUploadServerIcon` : ajouter `onMutate` mettant a jour `icon_url` dans cache `servers` avec blob URL, `onError` rollback
+- `useUploadServerBanner` : idem pour `banner_url`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+### 4. `useWebhooks.ts`
+- `useChannelWebhooks` : ajouter `useEffect` Realtime sur `webhooks` filtre par `channel_id`, debounce 300ms
 
-## Detailed changes
+### 5. `useInvites.ts`
+- `useServerInvites` : ajouter `useEffect` Realtime sur `invites` filtre par `server_id`, debounce 300ms
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+### 6. `useChannelSettings.ts`
+- `useChannelDetails` : ajouter `useEffect` Realtime sur `channels` filtre par `id` du channel, debounce 300ms
 
-### Code sketch for onMutate addition (after servers cache update)
+## Pattern commun applique
+
+Chaque ajout suit le pattern deja etabli dans le codebase :
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+Realtime:
+  useEffect -> supabase.channel('table-rt-${id}')
+    -> .on('postgres_changes', { event: '*', schema: 'public', table, filter })
+    -> debounce 300ms -> invalidateQueries
+  cleanup: removeChannel
+
+Optimistic updates:
+  onMutate -> cancelQueries -> snapshot previous -> setQueryData optimistic
+  onError -> rollback from context
+  onSettled -> invalidateQueries
 ```
 
-### Code for onSuccess addition
+## Fichiers modifies
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+1. `src/hooks/useDMPinnedMessages.ts`
+2. `src/hooks/useAnnouncements.ts`
+3. `src/hooks/useServerAssets.ts`
+4. `src/hooks/useWebhooks.ts`
+5. `src/hooks/useInvites.ts`
+6. `src/hooks/useChannelSettings.ts`
 

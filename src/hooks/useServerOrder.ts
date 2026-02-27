@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 /**
  * Hook for managing user-specific server ordering
@@ -57,11 +57,7 @@ export function useServerOrder() {
       if (context?.previousOrder) {
         queryClient.setQueryData(['server-order', user?.id], context.previousOrder);
       }
-      toast({
-        title: 'Erreur lors de la sauvegarde',
-        description: 'L\'ordre des serveurs n\'a pas pu être sauvegardé',
-        variant: 'destructive',
-      });
+      toast.error('Erreur lors de la sauvegarde', { description: 'L\'ordre des serveurs n\'a pas pu être sauvegardé' });
     },
   });
 

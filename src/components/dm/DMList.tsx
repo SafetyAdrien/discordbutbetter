@@ -65,7 +65,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -147,17 +147,17 @@ function DMConversationItem({
   };
 
   const handleCall = () => {
-    toast({ title: 'Appels vocaux', description: 'Bientôt disponible !' });
+    toast.success('Appels vocaux', { description: 'Bientôt disponible !' });
   };
 
   const handleClose = () => {
     // TODO: Implement close conversation
-    toast({ title: 'Conversation fermée' });
+    toast.success('Conversation fermée');
   };
 
   const handleDelete = () => {
     // TODO: Implement delete conversation
-    toast({ title: 'Conversation supprimée', variant: 'destructive' });
+    toast.error('Conversation supprimée');
   };
 
   return (

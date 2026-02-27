@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { soundEffects } from '@/utils/audio/SoundEffects';
 
 export interface ServerUnreadInfo {
@@ -12,43 +12,48 @@ export interface ServerUnreadInfo {
 export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Subscribe to realtime message inserts
+  // Subscribe to realtime message inserts — separate channels per table
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('server-messages-realtime')
+    const messagesChannel = supabase
+      .channel('server-unread-messages')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          // Play notification sound if not our own message
           if (payload.new && (payload.new as { author_id: string }).author_id !== user.id) {
             soundEffects.playMessageNotification();
           }
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          // Debounce to coalesce rapid messages
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          }, 500);
         }
       )
+      .subscribe();
+
+    const mentionsChannel = supabase
+      .channel('server-unread-mentions')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'channel_mentions',
-        },
+        { event: '*', schema: 'public', table: 'channel_mentions' },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          }, 500);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(mentionsChannel);
     };
   }, [user, queryClient]);
 
@@ -124,7 +129,6 @@ export function useServerUnreadCounts() {
           
           if (channelIds.length === 0) return;
 
-          // Count messages after last_read_at (excluding own messages)
           const { count } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
@@ -144,7 +148,7 @@ export function useServerUnreadCounts() {
       return result;
     },
     enabled: !!user,
-    refetchInterval: 30000,
+    refetchInterval: 60000, // Reduced from 30s to 60s — Realtime handles updates
   });
 
   const markAsRead = useMutation({

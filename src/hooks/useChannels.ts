@@ -131,8 +131,8 @@ export function useChannels(
     enabled: !!serverId && !!user,
     // Use initial data from servers cache for instant display
     initialData: initialData,
-    // Prevent refetch if we have initial data (refetch happens via Realtime)
-    staleTime: initialData ? 30000 : 0,
+    // Keep staleTime short so Realtime invalidations trigger immediate refetch
+    staleTime: 0,
   });
 }
 

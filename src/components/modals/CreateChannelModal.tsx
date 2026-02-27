@@ -99,7 +99,7 @@ export function CreateChannelModal({
     e.preventDefault();
     if (!name.trim()) return;
 
-    const finalName = (!isFlexible && type === 'text') ? formatStrictChannelName(name.trim()) : name.trim();
+    const finalName = !isFlexible ? formatStrictChannelName(name.trim()) : name.trim();
     if (!finalName) return;
 
     createChannel.mutate({ serverId, categoryId, name: finalName, type }, { onSuccess: onClose });
@@ -159,9 +159,9 @@ export function CreateChannelModal({
               value={name}
               onChange={(e) => {
                 const val = e.target.value;
-                setName((!isFlexible && type === 'text') ? formatStrictChannelName(val) : val);
+                setName(!isFlexible ? formatStrictChannelName(val) : val);
               }}
-              placeholder={(!isFlexible && type === 'text') ? "nouveau-salon" : "Nouveau salon"}
+              placeholder={!isFlexible ? "nouveau-salon" : "Nouveau salon"}
               autoFocus
               className="w-full"
             />

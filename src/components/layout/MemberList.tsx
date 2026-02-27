@@ -44,6 +44,7 @@ import {
   ContextMenuSubContent,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -251,7 +252,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-  const [roleTarget, setRoleTarget] = useState<{ memberId: string; userId: string } | null>(null);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);

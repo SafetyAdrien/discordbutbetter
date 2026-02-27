@@ -44,6 +44,8 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
+import { Shield } from "lucide-react";
+import { RoleAssignmentPopover } from "@/components/members/RoleAssignmentPopover";
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";

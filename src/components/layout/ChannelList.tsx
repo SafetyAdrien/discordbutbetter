@@ -854,11 +854,7 @@ export function ChannelList({
 
     // Rejoindre automatiquement UNIQUEMENT les salons Voice (pas Stage)
     if (isVoice && voiceState.channelId !== channel.id) {
-      try {
-        await joinChannel(channel.id, channel.name, server.name);
-      } catch (error) {
-        console.error("[ChannelList] Erreur lors de la connexion au salon vocal:", error);
-      }
+      joinChannel(channel.id, channel.name, server.name);
     }
   };
   const handleStartEditCategory = (category: Category) => {

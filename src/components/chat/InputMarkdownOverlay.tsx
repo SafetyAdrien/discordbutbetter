@@ -42,60 +42,25 @@ function parseLines(content: string): OverlayLine[] {
   return result;
 }
 
-// IMPORTANT: All line types share the same font-size and line-height in input overlay
-// to keep native textarea caret geometry aligned across browsers (especially Firefox).
+// CRITICAL: No font-weight, font-family, or font-size variation allowed.
+// Only color and visual-only decorations (pseudo-elements) are used.
+// This prevents glyph width mismatch between overlay and textarea.
 const lineStyles: Record<OverlayLine['type'], string> = {
-  header1: 'font-bold text-foreground',
-  header2: 'font-bold text-foreground',
-  header3: 'font-semibold text-foreground',
+  header1: 'text-foreground',
+  header2: 'text-foreground',
+  header3: 'text-foreground',
   subtext: 'text-muted-foreground',
   blockquote: 'text-muted-foreground discord-overlay-blockquote',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
-  codeBlockDelimiter: 'font-mono text-muted-foreground discord-overlay-code',
-  codeBlockLine: 'font-mono text-foreground discord-overlay-code',
+  codeBlockDelimiter: 'text-muted-foreground discord-overlay-code',
+  codeBlockLine: 'text-foreground discord-overlay-code',
   normal: 'text-foreground',
 };
 
-const lineHeightStyles: Record<OverlayLine['type'], string> = {
-  header1: 'leading-5',
-  header2: 'leading-5',
-  header3: 'leading-5',
-  subtext: 'leading-5',
-  blockquote: 'leading-5',
-  listItem: 'leading-5',
-  orderedListItem: 'leading-5',
-  codeBlockDelimiter: 'leading-5',
-  codeBlockLine: 'leading-5',
-  normal: 'leading-5',
-};
-
-// Keep exported maps for compatibility with MessageInput caret logic.
-export const lineFontSizes: Record<OverlayLine['type'], string> = {
-  header1: '0.875rem',
-  header2: '0.875rem',
-  header3: '0.875rem',
-  subtext: '0.875rem',
-  blockquote: '0.875rem',
-  listItem: '0.875rem',
-  orderedListItem: '0.875rem',
-  codeBlockDelimiter: '0.875rem',
-  codeBlockLine: '0.875rem',
-  normal: '0.875rem',
-};
-
-export const lineLineHeights: Record<OverlayLine['type'], string> = {
-  header1: '1.25rem',
-  header2: '1.25rem',
-  header3: '1.25rem',
-  subtext: '1.25rem',
-  blockquote: '1.25rem',
-  listItem: '1.25rem',
-  orderedListItem: '1.25rem',
-  codeBlockDelimiter: '1.25rem',
-  codeBlockLine: '1.25rem',
-  normal: '1.25rem',
-};
+// All types use identical metrics - no exceptions
+export const OVERLAY_FONT_SIZE = '0.875rem';
+export const OVERLAY_LINE_HEIGHT = '1.25rem';
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
   if (!content) return 'normal';
@@ -103,7 +68,6 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   const lastNewline = textBefore.lastIndexOf('\n');
   const currentLine = content.slice(lastNewline + 1).split('\n')[0];
 
-  // Check if cursor is inside a code block
   const linesBefore = textBefore.split('\n');
   let inCodeBlock = false;
   for (const l of linesBefore) {
@@ -133,14 +97,16 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
       <div
         ref={ref}
         aria-hidden
-        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm ${
+        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm leading-5 font-normal tracking-normal ${
           compact ? 'py-1 pr-2 min-h-[24px]' : 'py-3 pr-1 min-h-[24px]'
         }`}
+        style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT }}
       >
         {lines.map((line, i) => (
           <div
             key={i}
-            className={`${lineStyles[line.type]} ${lineHeightStyles[line.type]} relative`}
+            className={`${lineStyles[line.type]} relative`}
+            style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT }}
           >
             {line.text || '\u200B'}
           </div>

@@ -704,6 +704,32 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           right: 280,
         }}
       />
+
+      {/* Role assignment popover triggered from context menu */}
+      {roleAssignmentTarget && roleAssignmentTarget.memberId && serverId && (
+        <RoleAssignmentPopover
+          member={{
+            id: roleAssignmentTarget.memberId,
+            user: {
+              id: roleAssignmentTarget.id,
+              display_name: roleAssignmentTarget.displayName,
+              username: roleAssignmentTarget.username,
+              avatar_url: roleAssignmentTarget.avatar || null,
+            },
+            roles: roleAssignmentTarget.roles?.map(r => ({
+              id: r.id,
+              name: r.name,
+              color: r.color,
+              icon_url: r.icon_url || null,
+              position: r.position,
+            })) || [],
+          } as any}
+          serverId={serverId}
+          open={!!roleAssignmentTarget}
+          onOpenChange={(open) => { if (!open) setRoleAssignmentTarget(null); }}
+          trigger={<span />}
+        />
+      )}
     </>
   );
 });

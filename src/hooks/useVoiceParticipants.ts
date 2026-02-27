@@ -56,7 +56,7 @@ export function useVoiceParticipants(channelId: string | null) {
     staleTime: 0,
   });
 
-  // Real-time subscription
+  // Real-time subscription with direct cache manipulation
   useEffect(() => {
     if (!channelId) return;
 
@@ -70,8 +70,24 @@ export function useVoiceParticipants(channelId: string | null) {
           table: 'voice_states',
           filter: `channel_id=eq.${channelId}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            // Direct cache patch — no refetch needed
+            queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
+              old?.map(p => p.user_id === payload.new.user_id
+                ? { ...p, muted: payload.new.muted ?? p.muted, deafened: payload.new.deafened ?? p.deafened, camera: payload.new.camera ?? p.camera, streaming: payload.new.streaming ?? p.streaming }
+                : p
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            // Remove participant instantly
+            queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
+              old?.filter(p => p.user_id !== payload.old.user_id)
+            );
+          } else if (payload.eventType === 'INSERT') {
+            // Need profile data via JOIN — refetch
+            queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
+          }
         }
       )
       .subscribe();

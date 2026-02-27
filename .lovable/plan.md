@@ -1,88 +1,61 @@
 
 
-# Ameliorer la reactivite vocale dans la liste des salons
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme
-Les boutons Mute/Deafen et la liste des participants en vocal souffrent de latence car :
-1. `toggleMute` et `toggleDeafen` attendent la reponse DB avant de mettre a jour l'UI locale
-2. `useVoiceParticipants` fait un refetch complet de la base de donnees a chaque evenement Realtime (INSERT/UPDATE/DELETE) au lieu de mettre a jour le cache directement
-3. La souscription Realtime dans `VoiceContext` declenche aussi des `invalidateQueries` redondantes
+## Root cause
 
-## Solution
-Appliquer le pattern optimistic update partout et utiliser `setQueryData` pour les mises a jour Realtime au lieu de `invalidateQueries`.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. `src/contexts/VoiceContext.tsx` - toggleMute et toggleDeafen optimistes
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**toggleMute** : Mettre a jour `voiceState`, jouer le son et appeler `webrtc.setMuted()` immediatement, puis faire le `supabase.update()` en arriere-plan avec rollback en cas d'erreur.
+## Fix
 
-**toggleDeafen** : Meme pattern - mise a jour locale instantanee, DB en arriere-plan.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Pour les deux : aussi mettre a jour le cache `voice-participants` de facon optimiste via `setQueryData` pour que la liste des participants (icones mute/deafen) se mette a jour instantanement.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### 2. `src/hooks/useVoiceParticipants.ts` - Realtime avec setQueryData
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-Remplacer le simple `invalidateQueries` par un traitement intelligent des evenements Realtime :
-- **INSERT** : Ajouter le nouveau participant au cache, puis refetch en arriere-plan pour obtenir le profil complet
-- **UPDATE** : Mettre a jour les champs (muted, deafened, camera, streaming) directement dans le cache sans refetch
-- **DELETE** : Retirer le participant du cache instantanement
+### 2. In `onSuccess`: invalidate the permissions cache
 
-Cela elimine le round-trip DB pour chaque changement d'etat (mute/unmute d'un autre participant).
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-### 3. `src/contexts/VoiceContext.tsx` - Souscription Realtime allegee
+### 3. Hook needs `useAuth` for the user ID
 
-La souscription Realtime existante dans VoiceContext (lignes 156-183) appelle deja `invalidateQueries` pour les participants. Avec le changement du point 2, cette invalidation devient redondante. La retirer et ne garder que les effets sonores (join/leave).
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### Detail technique
+## Detailed changes
 
-**Pattern toggleMute optimiste :**
-```typescript
-const toggleMute = useCallback(async () => {
-  const newMuted = !voiceState.isMuted;
-  
-  // 1. UI instantanee
-  setVoiceState(prev => ({ ...prev, isMuted: newMuted }));
-  webrtc.setMuted(newMuted);
-  newMuted ? soundEffects.playMute() : soundEffects.playUnmute();
-  
-  // 2. Cache participants optimiste
-  queryClient.setQueryData(['voice-participants', voiceState.channelId], (old) =>
-    old?.map(p => p.user_id === user.id ? { ...p, muted: newMuted } : p)
-  );
-  
-  // 3. DB en arriere-plan
-  const { error } = await supabase.from('voice_states')
-    .update({ muted: newMuted }).eq('user_id', user.id);
-  if (error) {
-    // Rollback
-    setVoiceState(prev => ({ ...prev, isMuted: !newMuted }));
-    webrtc.setMuted(!newMuted);
-  }
-}, [...]);
-```
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-**Pattern setQueryData Realtime pour useVoiceParticipants :**
-```typescript
-// Dans le callback Realtime
-if (payload.eventType === 'UPDATE') {
-  queryClient.setQueryData(['voice-participants', channelId], (old) =>
-    old?.map(p => p.user_id === payload.new.user_id
-      ? { ...p, muted: payload.new.muted, deafened: payload.new.deafened, ... }
-      : p
-    )
-  );
-} else if (payload.eventType === 'DELETE') {
-  queryClient.setQueryData(['voice-participants', channelId], (old) =>
-    old?.filter(p => p.user_id !== payload.old.user_id)
-  );
-} else if (payload.eventType === 'INSERT') {
-  // Refetch pour avoir le profil complet (JOIN necessaire)
-  queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
 ```
 
-### Fichiers modifies
-- `src/contexts/VoiceContext.tsx` (toggleMute, toggleDeafen optimistes + retrait invalidation redondante)
-- `src/hooks/useVoiceParticipants.ts` (Realtime avec setQueryData)
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

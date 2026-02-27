@@ -94,12 +94,16 @@ export function MessageInput({
   const overlayRef = useRef<HTMLDivElement>(null);
   const hasMarkdown = useMemo(() => /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m.test(value), [value]);
 
-  // Adjust textarea height to match overlay
+  // Adjust textarea height and reset overlay scroll position
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
     textarea.style.height = textarea.scrollHeight + 'px';
+    // Reset overlay scroll sync when content changes
+    if (overlayRef.current) {
+      overlayRef.current.style.transform = `translateY(-${textarea.scrollTop}px)`;
+    }
   }, []);
 
   useEffect(() => {

@@ -1,61 +1,49 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger l'alignement de l'overlay markdown dans l'input
 
-## Root cause
+## Probleme
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Actuellement, le `textarea` controle la hauteur du conteneur (flow normal) et l'overlay est en `absolute inset-0`. Le probleme : le textarea calcule sa hauteur avec `text-sm` uniforme, mais l'overlay affiche des titres en `text-2xl`. Le curseur et le texte ne sont donc pas alignes avec le rendu visuel.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Inverser les roles : l'overlay doit controler la hauteur (flow normal), et le textarea doit etre en position absolue pour s'etirer sur toute la surface.
 
-## Fix
+### Fichier : `src/components/chat/InputMarkdownOverlay.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- Retirer `absolute inset-0 pointer-events-none` et le remplacer par un div en flow normal qui definit la hauteur du conteneur
+- Garder `pointer-events-none` et `aria-hidden`
+- Ajouter `min-h-[24px]` pour correspondre au min-height du textarea
+- Ajouter `overflow-y: auto` en masquant le scrollbar pour que le conteneur grandisse avec le contenu
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### Fichier : `src/components/chat/MessageInput.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+- Modifier le textarea pour etre en `absolute inset-0 w-full h-full` au lieu du flow normal
+- Retirer `adjustTextareaHeight` car la hauteur est maintenant geree par l'overlay
+- Ajouter un listener `onScroll` sur le conteneur pour synchroniser le scroll entre textarea et overlay
+- Limiter le conteneur avec `max-h-[200px]` (ou 120px en compact) et `overflow-y: auto`
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+### Schema du nouveau layout
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
++-- Container (relative, max-h-200px, overflow-y-auto) --+
+|                                                          |
+|  [Overlay div - flow normal, controle la hauteur]       |
+|    # Titre  -> text-2xl -> hauteur plus grande          |
+|    texte    -> text-sm   -> hauteur normale             |
+|                                                          |
+|  [Textarea - absolute inset-0, s'etire sur tout]        |
+|    text-transparent, caret visible                       |
+|                                                          |
++----------------------------------------------------------+
 ```
 
-### Code for onSuccess addition
+### Details techniques
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+1. L'overlay passe de `absolute inset-0` a `relative` (flow normal)
+2. Le textarea passe de flow normal a `absolute inset-0`
+3. Le conteneur `.relative` recoit `max-h-[200px] overflow-y-auto`
+4. Suppression de `adjustTextareaHeight` (plus besoin, le conteneur suit l'overlay)
+5. Les `min-h`, `max-h`, `py`, et `text-sm` de base restent identiques sur les deux couches pour l'alignement du texte normal
 

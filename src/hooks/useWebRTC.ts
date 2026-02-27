@@ -249,53 +249,40 @@ export function useWebRTC(): UseWebRTCReturn {
         console.warn('[useWebRTC] Joining in listen-only mode');
       }
 
-      // Start audio level monitoring with adaptive VAD for all peers
+      // Start audio level monitoring with spectral VAD for all peers
       audioLevelIntervalRef.current = setInterval(() => {
-        // Local audio level
-        const level = mediaManager.getAudioLevel();
-        setAudioLevel(level);
+        // Local audio level — use AudioProcessor's spectral VAD
+        const localVAD = mediaManager.getLocalVADState();
+        setAudioLevel(localVAD.level);
 
-        // Update speaking status for remote peers with adaptive VAD
+        // Update speaking status for remote peers with spectral VAD
         setPeers(prev => {
           const newPeers = new Map(prev);
           let hasChanges = false;
 
           for (const [peerId, peerInfo] of newPeers.entries()) {
-            const remoteLevel = mediaManager.getRemoteAudioLevel(peerId);
-            
-            // Get or create VAD state for this peer
+            // Get or create VAD state for ambient tracking
             let vadState = vadStateRef.current.get(peerId);
             if (!vadState) {
               vadState = { ambientLevel: 0.05, samples: [], threshold: 0.08 };
               vadStateRef.current.set(peerId, vadState);
             }
-            
-            // Update ambient noise tracking (lower 20th percentile)
-            vadState.samples.push(remoteLevel);
+
+            // Update ambient noise tracking
+            const rawLevel = mediaManager.getRemoteAudioLevel(peerId);
+            vadState.samples.push(rawLevel);
             if (vadState.samples.length > AMBIENT_SAMPLE_SIZE) {
               vadState.samples.shift();
             }
             const sorted = [...vadState.samples].sort((a, b) => a - b);
             const percentileIndex = Math.floor(sorted.length * 0.2);
             vadState.ambientLevel = sorted[percentileIndex] || 0.05;
-            
-            // Calculate adaptive threshold with hysteresis
-            const adaptiveThreshold = Math.max(0.05, Math.min(0.15, vadState.ambientLevel + 0.08));
-            vadState.threshold = adaptiveThreshold;
-            
-            // Hysteresis: different thresholds for start/stop speaking
-            const speakStartThreshold = adaptiveThreshold * 1.3;
-            const speakStopThreshold = adaptiveThreshold * 0.8;
-            
-            let isSpeaking = peerInfo.isSpeaking;
-            if (!peerInfo.isSpeaking && remoteLevel > speakStartThreshold) {
-              isSpeaking = true;
-            } else if (peerInfo.isSpeaking && remoteLevel < speakStopThreshold) {
-              isSpeaking = false;
-            }
 
-            if (peerInfo.isSpeaking !== isSpeaking || peerInfo.audioLevel !== remoteLevel) {
-              newPeers.set(peerId, { ...peerInfo, isSpeaking, audioLevel: remoteLevel });
+            // Use combined spectral + level VAD
+            const remoteVAD = mediaManager.getRemoteVADState(peerId, peerInfo.isSpeaking, vadState.ambientLevel);
+
+            if (peerInfo.isSpeaking !== remoteVAD.isSpeaking || peerInfo.audioLevel !== remoteVAD.level) {
+              newPeers.set(peerId, { ...peerInfo, isSpeaking: remoteVAD.isSpeaking, audioLevel: remoteVAD.level });
               hasChanges = true;
             }
           }

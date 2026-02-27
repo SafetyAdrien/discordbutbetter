@@ -161,6 +161,8 @@ export function useCreateCategory() {
       return data;
     },
     onMutate: async ({ serverId, name }) => {
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
@@ -206,6 +208,9 @@ export function useCreateCategory() {
       toast.error(`Erreur lors de la création: ${errorMessage}`);
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
@@ -217,6 +222,7 @@ export function useCreateCategory() {
 
 export function useCreateChannel() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({
@@ -259,7 +265,7 @@ export function useCreateChannel() {
           server_id: serverId,
           category_id: categoryId || null,
           name,
-          type: type as any, // 'stage' type added via migration, cast to bypass generated types
+          type: type as any,
           position: nextPosition,
         })
         .select()
@@ -269,14 +275,17 @@ export function useCreateChannel() {
       return data;
     },
     onMutate: async ({ serverId, categoryId, name, type }) => {
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
       const previousServers = queryClient.getQueryData(['servers']);
       
+      const tempId = `temp-${Date.now()}`;
       const tempChannel: ChannelWithCategory = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         name,
         type,
         description: null,
@@ -312,13 +321,26 @@ export function useCreateChannel() {
                   ...server,
                   categories: server.categories?.map((cat: any) =>
                     cat.id === categoryId
-                      ? { ...cat, channels: [...(cat.channels || []), { id: tempChannel.id, name, type }] }
+                      ? { ...cat, channels: [...(cat.channels || []), { id: tempId, name, type }] }
                       : cat
                   ) || []
                 }
               : server
           )
         );
+      }
+
+      // Inject temp channel into permissions cache so visibility filter passes
+      if (user) {
+        const permKey = ['server-channel-permissions', serverId, user.id];
+        const prevPerms = queryClient.getQueryData<{ viewable: Set<string>; connectable: Set<string> }>(permKey);
+        if (prevPerms) {
+          const newViewable = new Set(prevPerms.viewable);
+          const newConnectable = new Set(prevPerms.connectable);
+          newViewable.add(tempId);
+          newConnectable.add(tempId);
+          queryClient.setQueryData(permKey, { viewable: newViewable, connectable: newConnectable });
+        }
       }
       
       return { previousChannels, previousServers, serverId };
@@ -335,8 +357,12 @@ export function useCreateChannel() {
       toast.error(`Erreur lors de la création: ${errorMessage}`);
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
+      queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', serverId] });
     },
     onSuccess: () => {
       toast.success('Salon créé');
@@ -361,6 +387,8 @@ export function useDeleteCategory() {
       return { serverId, categoryId };
     },
     onMutate: async ({ categoryId, serverId }) => {
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
@@ -407,6 +435,9 @@ export function useDeleteCategory() {
       toast.error('Erreur lors de la suppression');
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
@@ -426,6 +457,8 @@ export function useDeleteChannel() {
       return { serverId, channelId };
     },
     onMutate: async ({ channelId, serverId }) => {
+      mutationLockRef.current = true;
+
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       
@@ -471,6 +504,9 @@ export function useDeleteChannel() {
       toast.error('Erreur lors de la suppression');
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => {
+        mutationLockRef.current = false;
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },

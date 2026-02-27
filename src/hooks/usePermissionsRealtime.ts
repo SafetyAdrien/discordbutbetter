@@ -33,20 +33,45 @@ export function usePermissionsRealtime(serverId: string | null) {
   const queryClient = useQueryClient();
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  const pendingPostLockRef = useRef(false);
+  const pendingSourceRef = useRef('');
+
+  const doRefetch = useCallback((source: string) => {
+    console.log(`[Permissions Realtime] 🔄 Refetching permissions (${source})`);
+
+    // Double strategy: invalidate ALL (marks stale for inactive views) + refetch active (immediate UI)
+    PERMISSION_KEYS.forEach(k => {
+      queryClient.invalidateQueries({ queryKey: [k] });
+      queryClient.refetchQueries({ queryKey: [k], type: 'active' });
+    });
+
+    // Also ensure members cache is coherent (role changes affect computed permissions + badges)
+    queryClient.invalidateQueries({ queryKey: ['members'] });
+    queryClient.refetchQueries({ queryKey: ['members'], type: 'active' });
+  }, [queryClient]);
+
   const debouncedRefetch = useCallback((source: string) => {
-    if (permissionsMutationLockRef.current) return;
+    // If mutation lock active, schedule for post-lock instead of dropping
+    if (permissionsMutationLockRef.current) {
+      pendingPostLockRef.current = true;
+      pendingSourceRef.current = source;
+      return;
+    }
 
     clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      console.log(`[Permissions Realtime] 🔄 Refetching permissions (${source})`);
+    debounceTimerRef.current = setTimeout(() => doRefetch(source), 150);
+  }, [doRefetch]);
 
-      // refetchQueries with type: 'active' immediately refetches all active queries
-      // matching these keys — much faster feedback than invalidateQueries.
-      PERMISSION_KEYS.forEach(k =>
-        queryClient.refetchQueries({ queryKey: [k], type: 'active' })
-      );
-    }, 150);
-  }, [queryClient]);
+  // Check for pending post-lock refetch
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingPostLockRef.current && !permissionsMutationLockRef.current) {
+        pendingPostLockRef.current = false;
+        doRefetch(pendingSourceRef.current || 'post-lock');
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [doRefetch]);
 
   useEffect(() => {
     return () => clearTimeout(debounceTimerRef.current);

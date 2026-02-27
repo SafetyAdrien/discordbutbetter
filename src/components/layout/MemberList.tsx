@@ -587,7 +587,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           {canManageRoles && !isOwner && !isSecondaryOwner && memberId && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => setRoleAssignmentTarget(member)}>
+              <ContextMenuItem onClick={() => setRoleAssignmentTarget({ ...member, memberId })}>
                 <Shield className="w-4 h-4 mr-2" />
                 Gérer les rôles
               </ContextMenuItem>

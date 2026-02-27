@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Upload, Grid, List, Users } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
-import { AttachmentStagingArea } from '@/components/chat/upload/AttachmentStagingArea';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
+import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
 
 interface Channel {
   id: string;
@@ -23,41 +22,78 @@ export interface MediaChannelProps {
 }
 
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
-  // Permissions
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  
-  const {
-    attachments,
-    isDragging,
-    addFiles,
-    removeAttachment,
-    updateAttachment,
-    toggleSpoiler,
-    clearAttachments,
-    handleDragEnter,
-    handleDragLeave,
-    handleDragOver,
-    handleDrop,
-  } = usePendingAttachments();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-  // Placeholder data - will be connected to actual storage later
+  // Drag state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragCounter((c) => {
+      if (c === 0) setIsDragging(true);
+      return c + 1;
+    });
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragCounter((c) => {
+      const next = c - 1;
+      if (next <= 0) { setIsDragging(false); return 0; }
+      return next;
+    });
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    setDragCounter(0);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        setSelectedFile(file);
+      }
+    }
+  }, []);
+
   const mediaItems: { id: string; url: string; name: string; type: 'image' | 'video'; uploadedAt: Date }[] = [];
-  
+
   const handleUploadClick = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.multiple = true;
     input.accept = 'image/*,video/*';
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
-      if (files) addFiles(Array.from(files));
+      if (files && files[0]) setSelectedFile(files[0]);
     };
     input.click();
   };
 
+  const handlePublish = async (data: {
+    file: File;
+    title: string;
+    description: string;
+    altText: string;
+    isSpoiler: boolean;
+  }) => {
+    setIsPublishing(true);
+    // TODO: Implement actual upload to storage + save metadata
+    console.log('Publishing media post:', data);
+    setIsPublishing(false);
+    setSelectedFile(null);
+  };
+
   return (
-    <div 
+    <div
       className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -67,7 +103,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       <AnimatePresence>
         {isDragging && <UploadDropOverlay channelName={channel.name} />}
       </AnimatePresence>
-      
+
       {/* Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0 w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -115,33 +151,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
         </div>
       </div>
 
-      {/* Staging Area for pending uploads */}
-      {attachments.length > 0 && (
-        <div className="p-4 border-b border-border">
-          <AttachmentStagingArea
-            attachments={attachments}
-            onRemove={removeAttachment}
-            onUpdate={updateAttachment}
-            onToggleSpoiler={toggleSpoiler}
-          />
-          <div className="flex justify-end mt-3 gap-2">
-            <Button variant="ghost" size="sm" onClick={clearAttachments}>
-              Annuler
-            </Button>
-            <Button size="sm" onClick={() => {
-              // TODO: Implement actual upload to storage
-              console.log('Uploading files:', attachments);
-              clearAttachments();
-            }}>
-              Téléverser {attachments.length} fichier{attachments.length > 1 ? 's' : ''}
-            </Button>
-          </div>
-        </div>
-      )}
-      
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {mediaItems.length === 0 && attachments.length === 0 ? (
+        {mediaItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
               <StreamlineMedia className="w-10 h-10 text-muted-foreground/50" />
@@ -158,11 +170,13 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             )}
           </div>
         ) : (
-          <div className={cn(
-            viewMode === 'grid' 
-              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'
-              : 'space-y-2'
-          )}>
+          <div
+            className={cn(
+              viewMode === 'grid'
+                ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'
+                : 'space-y-2'
+            )}
+          >
             {mediaItems.map((item) => (
               <div
                 key={item.id}
@@ -192,6 +206,16 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
           </div>
         )}
       </div>
+
+      {/* Media Post Modal */}
+      {selectedFile && (
+        <CreateMediaPostModal
+          file={selectedFile}
+          onClose={() => setSelectedFile(null)}
+          onPublish={handlePublish}
+          isPending={isPublishing}
+        />
+      )}
     </div>
   );
 }

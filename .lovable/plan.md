@@ -1,53 +1,61 @@
 
-Objectif: corriger definitivement le decalage overlay/textarea (caret + texte) sans changer le comportement fonctionnel du chat.
 
-Constat apres lecture du code actuel
-1) La couche overlay et la couche textarea n’utilisent pas exactement la meme geometrie de ligne.
-- Dans `InputMarkdownOverlay.tsx`, certaines lignes ajoutent du decalage horizontal (`pl-3`, `px-2`) pour blockquote/code.
-- Dans `MessageInput.tsx`, le textarea garde une geometrie differente et son style global est applique a toutes les lignes.
-Resultat: le rendu visible et la position reelle du caret divergent.
+# Fix: Duplicated channel hidden by visibility filter
 
-2) Le modele d’affichage “texte transparent” est incoherent.
-- Le textarea devient transparent si “au moins un markdown existe”.
-- Mais dans l’overlay, les lignes `normal` sont rendues en `text-transparent`.
-Resultat: lignes normales invisibles/mal perçues et impression de decalage.
+## Root cause
 
-3) Le montage overlay actuel (inline `span` + `\n`) est fragile pour les hauteurs variables.
-- Les decorations de bloc (code/quote/list) sur des `span` inline provoquent des line-box differents du textarea.
-Resultat: decalage vertical progressif.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Plan de correction (implementation)
-A. Refaire la structure de rendu de l’overlay en lignes bloc
-Fichier: `src/components/chat/InputMarkdownOverlay.tsx`
-- Remplacer le rendu par ligne en `span + '\n'` par une liste de blocs (`div` ligne par ligne).
-- Conserver la meme base typographique que le textarea (`text-sm`, line-height de base), puis surcharger uniquement les types qui changent la taille (h1/h2/h3/subtext).
-- Pour blockquote/lists/code: garder l’effet visuel sans deplacer le point de depart du texte (decorations en pseudo-element/overlay visuel, pas de padding qui decale le texte saisissable).
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-B. Unifier la regle de visibilite texte
-Fichier: `src/components/chat/MessageInput.tsx` + `InputMarkdownOverlay.tsx`
-- Si markdown actif: textarea toujours `text-transparent caret-foreground`; overlay affiche TOUTES les lignes (y compris `normal`) en visible.
-- Si pas de markdown: overlay null, textarea normal `text-foreground`.
-- Supprimer la logique mixte actuelle qui masque certaines lignes des deux cotes.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-C. Synchroniser strictement la geometrie overlay/textarea
-Fichier: `src/components/chat/MessageInput.tsx`
-- Appliquer les memes paddings/line-height de base sur les deux couches (compact et non-compact).
-- Conserver le caret dynamique par ligne (`getLineTypeAtCursor`) mais limiter l’impact aux proprietes necessaires (fontSize + lineHeight du caret), sans introduire de decalage horizontal.
-- Ajouter synchro de scroll explicite textarea -> overlay (sur `onScroll`) pour garder les deux couches superposees quand la zone atteint son max-height.
+## Fix
 
-D. Finaliser les details visuels des separateurs titres/sous-titres
-Fichier: `src/lib/markdown.tsx` (deja ajuste)
-- Garder les separateurs renforces existants.
-- Verifier coherence couleur/espacement avec le rendu overlay pour eviter sensation de “saut” entre saisie et message envoye.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Verification (checklist)
-1) Cas simples: ligne normale seule, puis `#`, `##`, `###`, `-#`.
-2) Cas mixtes multiline: titre + texte normal + liste + blockquote + code block.
-3) Test compact et non-compact.
-4) Test scroll sur long message (max-height atteint): caret et texte visibles restent colles.
-5) Verification manuelle Firefox + Chromium (le decalage signale venait de Firefox).
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Resultat attendu
-- Plus aucun decalage visuel entre texte affiche, position du caret et zone de saisie.
-- Markdown et non-markdown restent lisibles en permanence.
-- Overlay enrichi (list/quote/code) sans casser l’alignement.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

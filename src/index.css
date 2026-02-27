@@ -798,3 +798,30 @@
     @apply transition-[width,background-color] duration-100 cursor-col-resize;
   }
 }
+
+/* Markdown overlay decorations - no padding shift, visual only */
+.discord-overlay-blockquote {
+  position: relative;
+}
+.discord-overlay-blockquote::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 2px;
+  background: hsl(228 6% 32%);
+}
+
+.discord-overlay-code {
+  position: relative;
+}
+.discord-overlay-code::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--surface-elevated));
+  border-radius: 3px;
+  z-index: -1;
+}

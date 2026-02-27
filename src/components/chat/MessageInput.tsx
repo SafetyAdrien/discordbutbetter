@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
@@ -94,6 +94,7 @@ export function MessageInput({
   const [caretFontSize, setCaretFontSize] = useState('0.875rem');
   const [caretLineHeight, setCaretLineHeight] = useState('1.25rem');
   const overlayRef = useRef<HTMLDivElement>(null);
+  const hasMarkdown = useMemo(() => /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m.test(value), [value]);
 
   // Update caret size based on cursor position
   const updateCaretSize = useCallback((cursorPos: number) => {
@@ -466,8 +467,15 @@ export function MessageInput({
           </Popover>
           
           {/* Textarea container with markdown overlay */}
-          <div ref={overlayRef} className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}>
-            <InputMarkdownOverlay content={value} compact={compact} />
+          <div className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}
+            onScroll={(e) => {
+              // Sync overlay scroll with container scroll
+              if (overlayRef.current) {
+                overlayRef.current.style.transform = `translateY(-${(e.target as HTMLElement).scrollTop}px)`;
+              }
+            }}
+          >
+            <InputMarkdownOverlay ref={overlayRef} content={value} compact={compact} />
             <textarea
               ref={textareaRef}
               value={value}
@@ -479,11 +487,11 @@ export function MessageInput({
               placeholder={placeholder}
               disabled={disabled}
               style={{
-                fontSize: value.match(/^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m) ? caretFontSize : undefined,
-                lineHeight: value.match(/^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m) ? caretLineHeight : undefined,
+                fontSize: hasMarkdown ? caretFontSize : undefined,
+                lineHeight: hasMarkdown ? caretLineHeight : undefined,
               }}
               className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words ${
-                value.match(/^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m) ? 'text-transparent caret-foreground' : 'text-foreground'
+                hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
                   ? "py-1 text-sm pr-2" 

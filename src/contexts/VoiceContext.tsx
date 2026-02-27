@@ -185,67 +185,63 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const joinChannel = useCallback(async (channelId: string, channelName: string, serverName: string) => {
     if (!user) throw new Error('Not authenticated');
 
-    // Leave any existing channel first
-    await supabase
-      .from('voice_states')
-      .delete()
-      .eq('user_id', user.id);
+    const prevState = { ...voiceState };
 
-    // Join new channel in DB
-    const { error } = await supabase
-      .from('voice_states')
-      .insert({
-        user_id: user.id,
-        channel_id: channelId,
-        muted: voiceState.isMuted,
-        deafened: voiceState.isDeafened,
-      });
-
-    if (error) {
-      // Check for RLS permission denied errors
-      if (error.code === '42501' || error.message?.includes('violates row-level security')) {
-        toast.error('Accès refusé', {
-          description: 'Vous n\'avez pas la permission de rejoindre ce salon vocal.',
-        });
-      } else {
-        toast.error('Impossible de rejoindre le canal vocal');
-      }
-      throw error;
-    }
-
-    // Connect WebRTC
-    await webrtc.connect(channelId);
-
+    // 1. Instant UI update + sound
     setVoiceState(prev => ({
       ...prev,
       channelId,
       channelName,
       serverName,
     }));
-
-    queryClient.invalidateQueries({ queryKey: ['voice-state'] });
-    queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
-
     soundEffects.playJoin();
     toast.success(`Connecté à ${channelName}`);
-  }, [user, voiceState.isMuted, voiceState.isDeafened, webrtc, queryClient]);
+
+    // 2. Background: DB + WebRTC in parallel
+    try {
+      await supabase
+        .from('voice_states')
+        .delete()
+        .eq('user_id', user.id);
+
+      const [dbResult] = await Promise.all([
+        supabase
+          .from('voice_states')
+          .insert({
+            user_id: user.id,
+            channel_id: channelId,
+            muted: prevState.isMuted,
+            deafened: prevState.isDeafened,
+          }),
+        webrtc.connect(channelId),
+      ]);
+
+      if (dbResult.error) {
+        if (dbResult.error.code === '42501' || dbResult.error.message?.includes('violates row-level security')) {
+          toast.error('Accès refusé', {
+            description: 'Vous n\'avez pas la permission de rejoindre ce salon vocal.',
+          });
+        }
+        throw dbResult.error;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['voice-state'] });
+      queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
+    } catch (error) {
+      // 3. Rollback on failure
+      console.error('[VoiceContext] Join failed, rolling back:', error);
+      setVoiceState(prevState);
+      webrtc.disconnect();
+      toast.error('Impossible de rejoindre le canal vocal');
+    }
+  }, [user, voiceState, webrtc, queryClient]);
 
   const leaveChannel = useCallback(async () => {
     if (!user) throw new Error('Not authenticated');
 
     const prevChannelName = voiceState.channelName;
 
-    // Disconnect WebRTC
-    webrtc.disconnect();
-
-    // Leave in DB
-    const { error } = await supabase
-      .from('voice_states')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (error) throw error;
-
+    // 1. Instant UI update + sound
     setVoiceState({
       channelId: null,
       channelName: null,
@@ -253,12 +249,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       isMuted: false,
       isDeafened: false,
     });
+    soundEffects.playLeave();
+    toast.success(`Déconnecté de ${prevChannelName}`);
+
+    // 2. Background cleanup
+    webrtc.disconnect();
+    await supabase
+      .from('voice_states')
+      .delete()
+      .eq('user_id', user.id);
 
     queryClient.invalidateQueries({ queryKey: ['voice-state'] });
     queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
-
-    soundEffects.playLeave();
-    toast.success(`Déconnecté de ${prevChannelName}`);
   }, [user, voiceState.channelName, webrtc, queryClient]);
 
   const toggleMute = useCallback(async () => {

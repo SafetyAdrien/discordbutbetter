@@ -1,61 +1,54 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger la reactivite des roles (Realtime + Optimistic Updates)
 
-## Root cause
+## Probleme identifie
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le systeme d'optimistic updates et de realtime pour le toggle des roles fonctionne correctement au niveau du **cache `["members", serverId]`**. Cependant, les **badges de roles affiches dans le profil** ne se mettent pas a jour instantanement car ils proviennent d'une **prop `roles` statique** (snapshot capture au moment du clic sur le membre).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Quand on ajoute/supprime un role via `RoleCheckboxItem`, le cache members est mis a jour instantanement, mais le composant `UserProfilePopup` continue d'afficher les anciennes valeurs de la prop `roles`.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Changements
 
-## Fix
+### 1. `UserProfilePopup.tsx` - Lire les roles depuis le cache reactif
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Au lieu d'utiliser la prop `roles` (snapshot statique), le composant doit s'abonner au cache `["members", serverId]` via `useQuery` + `select` pour obtenir les roles du membre de maniere reactive.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+- Ajouter un `useQuery` avec `select` qui extrait les roles du membre depuis le cache `["members", serverId]` (meme pattern que `RoleCheckboxItem`)
+- Utiliser ces roles reactifs pour `displayRoles` au lieu de la prop `roles`
+- Conserver la prop `roles` en fallback si le cache n'est pas disponible (ex: mode dialog sans serverId)
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+```typescript
+// Reactive roles from members cache
+const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
+  queryKey: ["members", serverId],
+  queryFn: () => Promise.resolve(
+    queryClient.getQueryData<MemberWithProfile[]>(["members", serverId]) ?? []
+  ),
+  select: (members) => {
+    const member = members?.find((m) => m.id === memberId);
+    return member?.roles ?? [];
+  },
+  enabled: !!serverId && !!memberId,
+  staleTime: Infinity,
+  gcTime: Infinity,
+});
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+const displayRoles = (reactiveRoles ?? roles ?? [])
+  .filter(role => role.name !== '@everyone')
+  .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 ```
 
-### Code for onSuccess addition
+### 2. `UserProfilePopup.tsx` - Autoriser la gestion des roles sur soi-meme
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+Retirer la condition `(!isOwnProfile || isGodUser)` aux lignes 357, 365 et 519. Un utilisateur avec `canManageRoles` devrait pouvoir gerer ses propres roles (coherent avec le changement deja fait dans le menu contextuel du MemberList).
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Remplacer par simplement `canManageRoles && serverId && memberId`.
 
+## Detail technique
+
+| Fichier | Modification |
+|---|---|
+| `src/components/profile/UserProfilePopup.tsx` | Ajouter useQuery reactif pour les roles + retirer restriction isOwnProfile |
+
+Aucun changement de base de donnees requis. Le realtime et les optimistic updates sont deja en place dans `useMembers.ts` et `RoleCheckboxItem.tsx`.

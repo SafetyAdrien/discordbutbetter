@@ -1,61 +1,68 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correction du Coller (Ctrl+V) et Modale de creation de poste Media
 
-## Root cause
+## 1. Correction du raccourci Coller (Ctrl+V) dans les modales
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Probleme** : Les modales de creation/modification de salons et categories ont un `onKeyDown` sur le `DialogContent` qui intercepte les evenements clavier. Bien que seul Escape soit explicitement gere, la propagation des evenements peut interferer avec les raccourcis natifs du navigateur (Ctrl+V, Ctrl+C, Ctrl+A, etc.) en combinaison avec le hook global `useKeyboardShortcuts`.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+**Solution** : Ajouter un garde dans les `onKeyDown` des `DialogContent` pour stopper la propagation des combinaisons clavier natives (Ctrl/Cmd + touche) sauf Escape. Cela garantit que Ctrl+V, Ctrl+C, Ctrl+A, etc. fonctionnent normalement dans les inputs des modales.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Fichiers concernes** :
+- `src/components/modals/CreateChannelModal.tsx` - Ajouter `e.stopPropagation()` pour les events non-Escape quand le focus est dans un input
+- `src/components/modals/CreateCategoryModal.tsx` - Meme correction
+- `src/components/category-settings/EditCategoryModal.tsx` - Meme correction
+- `src/hooks/useKeyboardShortcuts.ts` - Ajouter une verification supplementaire pour ne pas intercepter les combinaisons natives quand un Dialog est ouvert (verifier `[role="dialog"]` dans le DOM path)
 
-## Fix
+## 2. Modale de creation de poste pour le Media Channel
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Objectif** : Remplacer le flux actuel (selection fichier -> staging area directe) par un flux avec une modale dediee qui permet de renseigner un titre, une description et le texte alternatif (ALT) de l'image avant publication.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### Nouveau composant : `CreateMediaPostModal`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**Emplacement** : `src/components/channels/media/CreateMediaPostModal.tsx`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Contenu de la modale** :
+- Apercu de l'image/video selectionnee (en haut)
+- Champ **Titre** : obligatoire, texte libre
+- Champ **Description** : minimum 10 caracteres, maximum 500 caracteres, avec compteur de caracteres visible
+- Champ **Texte alternatif (ALT)** : optionnel, deplace depuis la staging area vers cette modale
+- Option Spoiler (checkbox)
+- Boutons Annuler / Publier (Publier desactive si titre vide ou description < 10 caracteres)
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### Modifications dans `MediaChannel.tsx`
 
-### 3. Hook needs `useAuth` for the user ID
+- Le bouton "Televerser" et le drop zone ouvrent d'abord un file picker
+- Une fois le fichier selectionne, la modale `CreateMediaPostModal` s'ouvre avec l'apercu du fichier
+- L'utilisateur remplit titre, description et ALT dans la modale
+- Le bouton "Publier" declenche l'upload
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
+### Flux utilisateur
 
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+[Clic Televerser / Drop fichier]
+         |
+   [Selection fichier]
+         |
+   [CreateMediaPostModal s'ouvre]
+   - Apercu du media
+   - Titre (obligatoire)
+   - Description (10-500 caracteres)
+   - Texte ALT (optionnel)
+   - Spoiler (checkbox)
+         |
+   [Publier] -> Upload + Fermeture
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Detail technique
+
+### Fichiers a creer
+- `src/components/channels/media/CreateMediaPostModal.tsx`
+
+### Fichiers a modifier
+- `src/components/channels/MediaChannel.tsx` : integrer la nouvelle modale, ouvrir apres selection de fichier
+- `src/components/modals/CreateChannelModal.tsx` : fix paste
+- `src/components/modals/CreateCategoryModal.tsx` : fix paste
+- `src/components/category-settings/EditCategoryModal.tsx` : fix paste
+- `src/hooks/useKeyboardShortcuts.ts` : ne pas interferer avec les modales
 

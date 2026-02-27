@@ -1,7 +1,9 @@
 /**
- * Advanced Audio Processor with noise gate, compression, filtering and adaptive VAD
- * Inspired by Discord's audio processing pipeline
+ * Advanced Audio Processor with RNNoise noise suppression, spectral VAD, and adaptive threshold
+ * Krisp-like noise suppression via RNNoise WASM + FFT-based voice activity detection
  */
+
+import { NoiseSuppressorWorklet_Name } from '@timephy/rnnoise-wasm';
 
 export interface AudioProcessorConfig {
   noiseGateThreshold: number;      // -100 to 0 dB
@@ -13,12 +15,14 @@ export interface AudioProcessorConfig {
   enableNoiseGate: boolean;
   enableCompression: boolean;
   enableHighPass: boolean;
+  enableRNNoise: boolean;          // Krisp-like ML noise suppression
 }
 
 export interface VADState {
   isSpeaking: boolean;
   level: number;
   adaptiveThreshold: number;
+  spectralVoiceScore: number;      // 0-1 how "voice-like" the signal is
 }
 
 const DEFAULT_CONFIG: AudioProcessorConfig = {
@@ -31,7 +35,15 @@ const DEFAULT_CONFIG: AudioProcessorConfig = {
   enableNoiseGate: true,
   enableCompression: true,
   enableHighPass: true,
+  enableRNNoise: true,
 };
+
+// Vocal fundamental frequency range (Hz)
+const VOICE_FREQ_LOW = 85;
+const VOICE_FREQ_HIGH = 300;
+// Vocal formant range (broader harmonics)
+const FORMANT_FREQ_LOW = 300;
+const FORMANT_FREQ_HIGH = 3400;
 
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
@@ -41,6 +53,8 @@ export class AudioProcessor {
   private compressorNode: DynamicsCompressorNode | null = null;
   private gainNode: GainNode | null = null;
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
+  private rnnoiseNode: AudioWorkletNode | null = null;
+  private rnnoiseLoaded = false;
   
   private config: AudioProcessorConfig;
   private processedStream: MediaStream | null = null;
@@ -48,8 +62,12 @@ export class AudioProcessor {
   // Adaptive VAD state
   private ambientNoiseLevel = 0.05;
   private ambientSamples: number[] = [];
-  private readonly AMBIENT_SAMPLE_SIZE = 60; // ~3 seconds at 50ms intervals
+  private readonly AMBIENT_SAMPLE_SIZE = 60;
   private readonly AMBIENT_UPDATE_INTERVAL = 50;
+  
+  // Spectral VAD history for smoothing
+  private spectralHistory: number[] = [];
+  private readonly SPECTRAL_HISTORY_SIZE = 5;
   
   // Noise gate state
   private isGateOpen = false;
@@ -58,32 +76,60 @@ export class AudioProcessor {
   // Speaking state with hysteresis
   private speakingState = false;
   private speakingHoldTimer: NodeJS.Timeout | null = null;
-  private readonly SPEAKING_HOLD_MS = 200;
+  private readonly SPEAKING_HOLD_MS = 250; // Slightly longer hold for smoother transitions
 
   constructor(config: Partial<AudioProcessorConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
   /**
+   * Load the RNNoise AudioWorklet module
+   */
+  private async loadRNNoise(ctx: AudioContext): Promise<boolean> {
+    if (this.rnnoiseLoaded) return true;
+    
+    try {
+      // Use Vite's ?worker&url import to get the worklet script URL
+      const workletUrl = new URL(
+        '@timephy/rnnoise-wasm/NoiseSuppressorWorklet',
+        import.meta.url
+      ).href;
+      
+      await ctx.audioWorklet.addModule(workletUrl);
+      this.rnnoiseLoaded = true;
+      console.log('[AudioProcessor] RNNoise WASM worklet loaded successfully');
+      return true;
+    } catch (error) {
+      console.warn('[AudioProcessor] Failed to load RNNoise worklet, falling back to native suppression:', error);
+      // Try alternate loading method
+      try {
+        const module = await import('@timephy/rnnoise-wasm/NoiseSuppressorWorklet?worker&url');
+        await ctx.audioWorklet.addModule(module.default);
+        this.rnnoiseLoaded = true;
+        console.log('[AudioProcessor] RNNoise WASM worklet loaded (alternate method)');
+        return true;
+      } catch (err2) {
+        console.warn('[AudioProcessor] RNNoise alternate load also failed:', err2);
+        return false;
+      }
+    }
+  }
+
+  /**
    * Process an audio stream through the audio processing chain
+   * Chain: Source -> HighPass -> [RNNoise] -> Compressor -> Gain -> Analyser -> Destination
    */
   async processStream(inputStream: MediaStream): Promise<MediaStream> {
-    // Create audio context if needed
     if (!this.audioContext) {
       this.audioContext = new AudioContext({ sampleRate: 48000 });
     }
 
-    // Resume if suspended
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
 
-    // Create source from input stream
     this.sourceNode = this.audioContext.createMediaStreamSource(inputStream);
 
-    // Create processing chain
-    // Source -> HighPass -> Compressor -> Gain -> Analyser -> Destination
-    
     let lastNode: AudioNode = this.sourceNode;
 
     // High-pass filter (removes low frequency rumble)
@@ -91,19 +137,34 @@ export class AudioProcessor {
       this.highPassFilter = this.audioContext.createBiquadFilter();
       this.highPassFilter.type = 'highpass';
       this.highPassFilter.frequency.value = this.config.highPassFrequency;
-      this.highPassFilter.Q.value = 0.7; // Butterworth response
+      this.highPassFilter.Q.value = 0.7;
       lastNode.connect(this.highPassFilter);
       lastNode = this.highPassFilter;
     }
 
-    // Dynamic compressor (normalizes volume, limits peaks)
+    // RNNoise ML noise suppression (Krisp-like)
+    if (this.config.enableRNNoise) {
+      const loaded = await this.loadRNNoise(this.audioContext);
+      if (loaded) {
+        try {
+          this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
+          lastNode.connect(this.rnnoiseNode);
+          lastNode = this.rnnoiseNode;
+          console.log('[AudioProcessor] RNNoise noise suppression active');
+        } catch (error) {
+          console.warn('[AudioProcessor] Failed to create RNNoise node:', error);
+        }
+      }
+    }
+
+    // Dynamic compressor
     if (this.config.enableCompression) {
       this.compressorNode = this.audioContext.createDynamicsCompressor();
       this.compressorNode.threshold.value = this.config.compressionThreshold;
       this.compressorNode.ratio.value = this.config.compressionRatio;
-      this.compressorNode.knee.value = 6; // Soft knee
-      this.compressorNode.attack.value = 0.003; // 3ms attack
-      this.compressorNode.release.value = 0.1; // 100ms release
+      this.compressorNode.knee.value = 6;
+      this.compressorNode.attack.value = 0.003;
+      this.compressorNode.release.value = 0.1;
       lastNode.connect(this.compressorNode);
       lastNode = this.compressorNode;
     }
@@ -114,24 +175,24 @@ export class AudioProcessor {
     lastNode.connect(this.gainNode);
     lastNode = this.gainNode;
 
-    // Analyser for VAD
+    // Analyser for spectral VAD — larger FFT for better frequency resolution
     this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 256;
-    this.analyserNode.smoothingTimeConstant = 0.3;
+    this.analyserNode.fftSize = 2048; // 1024 frequency bins, ~23Hz resolution at 48kHz
+    this.analyserNode.smoothingTimeConstant = 0.4;
     lastNode.connect(this.analyserNode);
 
-    // Destination (processed output stream)
+    // Destination
     this.destinationNode = this.audioContext.createMediaStreamDestination();
     this.analyserNode.connect(this.destinationNode);
 
     this.processedStream = this.destinationNode.stream;
 
-    console.log('[AudioProcessor] Processing chain created');
+    console.log('[AudioProcessor] Processing chain created (RNNoise:', this.rnnoiseNode ? 'ON' : 'OFF', ')');
     return this.processedStream;
   }
 
   /**
-   * Get current audio level (0-1)
+   * Get current audio level (0-1) — RMS of frequency data
    */
   getAudioLevel(): number {
     if (!this.analyserNode) return 0;
@@ -139,7 +200,6 @@ export class AudioProcessor {
     const dataArray = new Uint8Array(this.analyserNode.frequencyBinCount);
     this.analyserNode.getByteFrequencyData(dataArray);
     
-    // Calculate RMS for more accurate level
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
       const value = dataArray[i] / 255;
@@ -160,6 +220,65 @@ export class AudioProcessor {
   }
 
   /**
+   * Compute a "voice score" (0-1) using spectral analysis.
+   * Compares energy in vocal frequency bands vs total energy.
+   */
+  private computeSpectralVoiceScore(): number {
+    if (!this.analyserNode || !this.audioContext) return 0;
+
+    const sampleRate = this.audioContext.sampleRate;
+    const binCount = this.analyserNode.frequencyBinCount;
+    const freqResolution = sampleRate / (binCount * 2); // Hz per bin
+
+    const dataArray = new Uint8Array(binCount);
+    this.analyserNode.getByteFrequencyData(dataArray);
+
+    // Frequency band bin ranges
+    const voiceLowBin = Math.floor(VOICE_FREQ_LOW / freqResolution);
+    const voiceHighBin = Math.ceil(VOICE_FREQ_HIGH / freqResolution);
+    const formantLowBin = Math.floor(FORMANT_FREQ_LOW / freqResolution);
+    const formantHighBin = Math.ceil(FORMANT_FREQ_HIGH / freqResolution);
+
+    let voiceEnergy = 0;
+    let formantEnergy = 0;
+    let totalEnergy = 0;
+
+    for (let i = 0; i < binCount; i++) {
+      const energy = (dataArray[i] / 255) ** 2;
+      totalEnergy += energy;
+
+      if (i >= voiceLowBin && i <= voiceHighBin) {
+        voiceEnergy += energy;
+      }
+      if (i >= formantLowBin && i <= formantHighBin) {
+        formantEnergy += energy;
+      }
+    }
+
+    if (totalEnergy < 0.001) return 0; // Silence
+
+    // Voice score: weighted combination of fundamental + formant energy ratios
+    const fundamentalRatio = voiceEnergy / totalEnergy;
+    const formantRatio = formantEnergy / totalEnergy;
+
+    // Typical voice: ~15-25% fundamental, ~50-70% formant
+    // Noise: energy spread more evenly across spectrum
+    const normalizedFundamental = Math.min(1, fundamentalRatio / 0.2);
+    const normalizedFormant = Math.min(1, formantRatio / 0.6);
+
+    const rawScore = normalizedFundamental * 0.4 + normalizedFormant * 0.6;
+
+    // Smooth with history
+    this.spectralHistory.push(rawScore);
+    if (this.spectralHistory.length > this.SPECTRAL_HISTORY_SIZE) {
+      this.spectralHistory.shift();
+    }
+    const smoothedScore = this.spectralHistory.reduce((a, b) => a + b, 0) / this.spectralHistory.length;
+
+    return Math.min(1, smoothedScore);
+  }
+
+  /**
    * Update ambient noise level for adaptive VAD
    */
   updateAmbientNoise(level: number): void {
@@ -169,55 +288,59 @@ export class AudioProcessor {
       this.ambientSamples.shift();
     }
 
-    // Calculate ambient as the 20th percentile of samples
-    // This represents the "quiet" periods
     const sorted = [...this.ambientSamples].sort((a, b) => a - b);
     const percentileIndex = Math.floor(sorted.length * 0.2);
     this.ambientNoiseLevel = sorted[percentileIndex] || 0.05;
   }
 
   /**
-   * Get adaptive VAD state with hysteresis
+   * Get adaptive VAD state combining spectral analysis + adaptive threshold + hysteresis
    */
   getVADState(): VADState {
     const level = this.getAudioLevel();
+    const spectralVoiceScore = this.computeSpectralVoiceScore();
     
-    // Update ambient noise tracking
     this.updateAmbientNoise(level);
 
-    // Calculate adaptive threshold
-    // Threshold = ambient level + offset, but clamped
+    // Adaptive threshold based on ambient noise
     const adaptiveThreshold = Math.max(
-      0.05, // Minimum threshold
-      Math.min(0.15, this.ambientNoiseLevel + 0.08)
+      0.04,
+      Math.min(0.15, this.ambientNoiseLevel + 0.06)
     );
 
-    // Hysteresis: different thresholds for starting/stopping speaking
-    const speakStartThreshold = adaptiveThreshold * 1.3;
-    const speakStopThreshold = adaptiveThreshold * 0.8;
+    // Combined detection: both level AND spectral score must agree
+    // This dramatically reduces false positives from non-voice noise
+    const speakStartThreshold = adaptiveThreshold * 1.2;
+    const speakStopThreshold = adaptiveThreshold * 0.7;
+    const spectralSpeakThreshold = 0.35; // Must be at least 35% voice-like to trigger
+    const spectralStopThreshold = 0.2;
 
     let isSpeaking = this.speakingState;
 
-    if (!this.speakingState && level > speakStartThreshold) {
-      // Start speaking
+    const levelAboveStart = level > speakStartThreshold;
+    const levelAboveStop = level >= speakStopThreshold;
+    const spectralIsVoice = spectralVoiceScore > spectralSpeakThreshold;
+    const spectralStillVoice = spectralVoiceScore > spectralStopThreshold;
+
+    if (!this.speakingState && levelAboveStart && spectralIsVoice) {
+      // Start speaking — both volume and spectral agree
       isSpeaking = true;
       this.speakingState = true;
       
-      // Clear any pending hold timer
       if (this.speakingHoldTimer) {
         clearTimeout(this.speakingHoldTimer);
         this.speakingHoldTimer = null;
       }
-    } else if (this.speakingState && level < speakStopThreshold) {
-      // Below threshold, but hold for a bit before stopping
+    } else if (this.speakingState && (!levelAboveStop || !spectralStillVoice)) {
+      // Below threshold or no longer voice-like — hold before stopping
       if (!this.speakingHoldTimer) {
         this.speakingHoldTimer = setTimeout(() => {
           this.speakingState = false;
           this.speakingHoldTimer = null;
         }, this.SPEAKING_HOLD_MS);
       }
-    } else if (this.speakingState && level >= speakStopThreshold) {
-      // Back above threshold, cancel hold timer
+    } else if (this.speakingState && levelAboveStop && spectralStillVoice) {
+      // Still speaking — cancel any pending stop
       if (this.speakingHoldTimer) {
         clearTimeout(this.speakingHoldTimer);
         this.speakingHoldTimer = null;
@@ -228,6 +351,7 @@ export class AudioProcessor {
       isSpeaking,
       level,
       adaptiveThreshold,
+      spectralVoiceScore,
     };
   }
 
@@ -241,7 +365,6 @@ export class AudioProcessor {
     const shouldOpen = level > threshold;
 
     if (shouldOpen && !this.isGateOpen) {
-      // Open gate with quick attack
       this.isGateOpen = true;
       this.gainNode.gain.cancelScheduledValues(this.audioContext!.currentTime);
       this.gainNode.gain.linearRampToValueAtTime(
@@ -254,7 +377,6 @@ export class AudioProcessor {
         this.gateHoldTimer = null;
       }
     } else if (!shouldOpen && this.isGateOpen) {
-      // Close gate with slower release (hold first)
       if (!this.gateHoldTimer) {
         this.gateHoldTimer = setTimeout(() => {
           this.isGateOpen = false;
@@ -264,9 +386,24 @@ export class AudioProcessor {
             this.audioContext!.currentTime + this.config.noiseGateRelease / 1000
           );
           this.gateHoldTimer = null;
-        }, 100); // 100ms hold before release
+        }, 100);
       }
     }
+  }
+
+  /**
+   * Check if RNNoise is active
+   */
+  isRNNoiseActive(): boolean {
+    return this.rnnoiseNode !== null;
+  }
+
+  /**
+   * Toggle RNNoise on/off at runtime
+   */
+  setRNNoiseEnabled(enabled: boolean): void {
+    this.config.enableRNNoise = enabled;
+    // Note: requires re-processing stream to take effect
   }
 
   /**
@@ -275,7 +412,6 @@ export class AudioProcessor {
   updateConfig(newConfig: Partial<AudioProcessorConfig>): void {
     this.config = { ...this.config, ...newConfig };
     
-    // Apply changes to existing nodes
     if (this.highPassFilter && this.config.enableHighPass) {
       this.highPassFilter.frequency.value = this.config.highPassFrequency;
     }
@@ -309,12 +445,14 @@ export class AudioProcessor {
 
     this.sourceNode?.disconnect();
     this.highPassFilter?.disconnect();
+    this.rnnoiseNode?.disconnect();
     this.compressorNode?.disconnect();
     this.gainNode?.disconnect();
     this.analyserNode?.disconnect();
     
     this.sourceNode = null;
     this.highPassFilter = null;
+    this.rnnoiseNode = null;
     this.compressorNode = null;
     this.gainNode = null;
     this.analyserNode = null;
@@ -328,6 +466,7 @@ export class AudioProcessor {
 
     this.ambientSamples = [];
     this.ambientNoiseLevel = 0.05;
+    this.spectralHistory = [];
     this.isGateOpen = false;
     this.speakingState = false;
 

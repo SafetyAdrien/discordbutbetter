@@ -1,10 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Thread } from '@/types/thread';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useThreads = (channelId: string | undefined) => {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription for threads
+  useEffect(() => {
+    if (!channelId) return;
+
+    const channel = supabase
+      .channel(`threads-rt-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'threads', filter: `channel_id=eq.${channelId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, queryClient]);
+
   return useQuery({
     queryKey: ['threads', channelId],
     queryFn: async () => {

@@ -41,8 +41,8 @@ export function useChannels(
   useEffect(() => {
     if (!serverId || !user) return;
 
-    const channel = supabase
-      .channel(`channels-realtime-${serverId}`)
+    const channelsChannel = supabase
+      .channel(`channels-rt-${serverId}`)
       .on(
         'postgres_changes',
         {
@@ -52,10 +52,7 @@ export function useChannels(
           filter: `server_id=eq.${serverId}`
         },
         () => {
-          // Skip invalidation if a local mutation is in progress
           if (mutationLockRef.current) return;
-          
-          // Debounce to avoid flickering
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
@@ -63,6 +60,10 @@ export function useChannels(
           }, 300);
         }
       )
+      .subscribe();
+
+    const categoriesChannel = supabase
+      .channel(`categories-rt-${serverId}`)
       .on(
         'postgres_changes',
         {
@@ -72,9 +73,7 @@ export function useChannels(
           filter: `server_id=eq.${serverId}`
         },
         () => {
-          // Skip invalidation if a local mutation is in progress
           if (mutationLockRef.current) return;
-          
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
@@ -86,7 +85,8 @@ export function useChannels(
 
     return () => {
       clearTimeout(debounceRef.current);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelsChannel);
+      supabase.removeChannel(categoriesChannel);
     };
   }, [serverId, user, queryClient]);
 

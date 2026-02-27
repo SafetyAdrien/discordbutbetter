@@ -18,16 +18,34 @@ export function useServerUnreadCounts() {
   useEffect(() => {
     if (!user) return;
 
+    // Cache all user's channel IDs for client-side filtering
+    let userChannelIds: Set<string> | null = null;
+    supabase
+      .from('server_members')
+      .select('server_id')
+      .eq('user_id', user.id)
+      .then(async ({ data: memberships }) => {
+        if (!memberships?.length) return;
+        const { data: channels } = await supabase
+          .from('channels')
+          .select('id')
+          .in('server_id', memberships.map(m => m.server_id));
+        userChannelIds = new Set(channels?.map(c => c.id) || []);
+      });
+
     const messagesChannel = supabase
       .channel('server-unread-messages')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          if (payload.new && (payload.new as { author_id: string }).author_id !== user.id) {
+          const newMsg = payload.new as { author_id: string; channel_id: string };
+          // Client-side filter: only process messages from user's servers
+          if (userChannelIds && !userChannelIds.has(newMsg.channel_id)) return;
+          
+          if (newMsg.author_id !== user.id) {
             soundEffects.playMessageNotification();
           }
-          // Debounce to coalesce rapid messages
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });

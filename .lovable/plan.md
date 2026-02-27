@@ -1,111 +1,61 @@
 
-# Correction globale du Realtime et des mises a jour instantanees
 
-## Problemes identifies
+# Fix: Duplicated channel hidden by visibility filter
 
-Apres une analyse approfondie de l'ensemble des hooks (28+ hooks, 24 fichiers avec des subscriptions Realtime), voici les problemes detectes et les corrections necessaires.
+## Root cause
 
----
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Categorie 1 : Subscriptions Realtime multi-tables sur un seul channel
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**Probleme** : `useChannels.ts` souscrit a `channels` ET `categories` sur le meme channel Supabase, ce qui peut causer des conflits de bindings ("mismatch between server and client bindings").
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Correction** : Separer en 2 channels distincts, un pour `channels` et un pour `categories`, conformement au pattern deja applique dans `useMembers` et `usePermissionsRealtime`.
+## Fix
 
-**Fichier** : `src/hooks/useChannels.ts`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
----
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Categorie 2 : Subscriptions globales sans filtre (performance)
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-**Probleme** : `useServerUnreadCounts` et `useChannelUnreadCounts` ecoutent la table `messages` globalement (pas de filtre `server_id`). Chaque message envoye dans toute l'app declenche une invalidation pour tous les utilisateurs connectes.
+### 2. In `onSuccess`: invalidate the permissions cache
 
-De meme, `poll_votes` dans `usePolls` ecoute globalement sans filtre `poll_id`.
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**Correction** : Pas de filtre serveur possible cote Supabase (messages n'a pas `server_id`), mais on peut ajouter un filtrage client-side plus intelligent : verifier que le `channel_id` du message correspond aux channels du serveur avant d'invalider.
+### 3. Hook needs `useAuth` for the user ID
 
-**Fichiers** : `src/hooks/useServerUnreadCounts.ts`, `src/hooks/useChannelUnreadCounts.ts`
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
----
+## Detailed changes
 
-## Categorie 3 : Hooks sans aucune subscription Realtime
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-**Probleme** : Plusieurs hooks n'ont aucune subscription Realtime, causant un affichage perime jusqu'au prochain refetch :
-
-| Hook | Table | Impact |
-|------|-------|--------|
-| `usePinnedMessages` | `pinned_messages` | Pin/unpin pas visible par les autres en temps reel |
-| `useThreads` | `threads` | Nouveau thread pas visible par les autres |
-| `useAnnouncements` | `announcements` | Nouvelles annonces non synchronisees |
-| `useAnnouncementComments` | `announcement_comments` | Commentaires non synchronises |
-| `useServerSettings` | `server_settings` | Changements de settings non propages |
-
-**Correction** : Ajouter des subscriptions Realtime a chacun de ces hooks avec debounce de 300ms pour coalescence.
-
-**Fichiers** : `src/hooks/usePinnedMessages.ts`, `src/hooks/useThreads.ts`, `src/hooks/useAnnouncements.ts`, `src/hooks/useServerSettings.ts`
-
----
-
-## Categorie 4 : Reactions sans Realtime
-
-**Probleme** : `useReactions.ts` n'a aucune subscription Realtime. Les reactions ajoutees par d'autres utilisateurs ne sont pas visibles en temps reel.
-
-**Correction** : Ajouter une subscription Realtime sur la table `reactions` dans `useMessageReactions`, avec mise a jour directe du cache via `setQueryData` (pas juste une invalidation, pour eviter un refetch lourd de toutes les reactions).
-
-**Fichier** : `src/hooks/useReactions.ts`
-
----
-
-## Categorie 5 : Thread messages -- double refetch inutile
-
-**Probleme** : `useThreadMessages` ecoute `event: '*'` et invalide le cache a chaque evenement. Pour un message envoye par l'utilisateur courant, cela cause un refetch inutile car le message est deja present via optimistic update. De plus, `useSendThreadMessage.onSettled` invalide aussi les thread-messages, causant un double refetch.
-
-**Correction** : Filtrer les evenements INSERT de l'utilisateur courant (comme fait dans `useMessages`), et utiliser `setQueryData` pour les messages d'autres utilisateurs au lieu d'invalider.
-
-**Fichier** : `src/hooks/useThreadMessages.ts`
-
----
-
-## Categorie 6 : `useServerSettings` staleTime trop eleve
-
-**Probleme** : `useServerSettings` a un `staleTime: 5 * 60 * 1000` (5 minutes). Quand un admin change `flexible_channel_names`, les autres admins ne voient pas le changement pendant 5 minutes, meme avec une subscription Realtime.
-
-**Correction** : Reduire le `staleTime` a 30 secondes et ajouter une subscription Realtime pour invalidation immediate.
-
-**Fichier** : `src/hooks/useServerSettings.ts`
-
----
-
-## Resume des fichiers modifies
-
-| Fichier | Modifications |
-|---------|--------------|
-| `src/hooks/useChannels.ts` | Separer subscriptions channels/categories en 2 channels distincts |
-| `src/hooks/useReactions.ts` | Ajouter subscription Realtime + mise a jour cache directe |
-| `src/hooks/useThreadMessages.ts` | Filtrer propres messages, setQueryData au lieu d'invalidation |
-| `src/hooks/usePinnedMessages.ts` | Ajouter subscription Realtime sur `pinned_messages` |
-| `src/hooks/useThreads.ts` | Ajouter subscription Realtime sur `threads` |
-| `src/hooks/useAnnouncements.ts` | Ajouter subscription Realtime sur `announcements` |
-| `src/hooks/useServerSettings.ts` | Reduire staleTime + ajouter subscription Realtime |
-| `src/hooks/useServerUnreadCounts.ts` | Ajouter filtrage client-side du channel_id |
-| `src/hooks/useChannelUnreadCounts.ts` | Ajouter filtrage client-side du channel_id |
-
----
-
-## Approche technique
-
-Pour chaque hook, le pattern applique sera :
+### Code sketch for onMutate addition (after servers cache update)
 
 ```text
-1. useEffect avec serverId/channelId comme dependance
-2. supabase.channel('nom-unique-par-scope')
-3. .on('postgres_changes', { event, schema, table, filter? })
-4. Callback avec :
-   - Filtrage client-side si necessaire
-   - Debounce 300ms pour coalescence
-   - setQueryData pour mise a jour directe OU invalidateQueries pour refetch
-5. Cleanup via supabase.removeChannel()
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-Aucune migration de base de donnees n'est necessaire.
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -24,6 +25,32 @@ export interface ServerSettings {
 
 export function useServerSettings(serverId: string) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription for server_settings changes
+  useEffect(() => {
+    if (!serverId || !user) return;
+
+    const channel = supabase
+      .channel(`server-settings-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_settings', filter: `server_id=eq.${serverId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['server-settings', serverId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, user, queryClient]);
 
   return useQuery({
     queryKey: ['server-settings', serverId],
@@ -55,7 +82,7 @@ export function useServerSettings(serverId: string) {
       return data;
     },
     enabled: !!serverId && !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache for better performance
+    staleTime: 30 * 1000, // 30s — Realtime handles immediate invalidation
   });
 }
 

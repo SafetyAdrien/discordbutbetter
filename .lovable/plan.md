@@ -1,44 +1,61 @@
 
-# Utiliser le profil membre pour "Gerer les roles" depuis le clic-droit
 
-## Objectif
+# Fix: Duplicated channel hidden by visibility filter
 
-Quand l'utilisateur clique sur "Gerer les roles" dans le menu contextuel de la liste des membres, ouvrir le **UserProfilePopup** du membre (la meme carte de profil que lors d'un clic normal) avec le panneau de roles deja visible, au lieu du Dialog simplifie actuel (`RoleAssignmentPopover asDialog`).
+## Root cause
 
-## Changements
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 1. `src/components/profile/UserProfilePopup.tsx` - Ajouter prop `initialShowRolePanel`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Ajouter une prop optionnelle `initialShowRolePanel?: boolean` qui, quand `true`, initialise `showRolePanel` a `true` des le montage. Cela permet d'ouvrir directement le panneau lateral des roles.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-```typescript
-interface UserProfilePopupProps {
-  // ... existing props
-  initialShowRolePanel?: boolean;
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
-
-// Inside component:
-const [showRolePanel, setShowRolePanel] = useState(initialShowRolePanel ?? false);
 ```
 
-Un `useEffect` synchronisera `showRolePanel` avec `initialShowRolePanel` quand la popup s'ouvre pour un nouveau membre.
+### Code for onSuccess addition
 
-### 2. `src/components/layout/MemberList.tsx` - Remplacer le Dialog par le ProfilePopup
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-- Supprimer le rendu de `RoleAssignmentPopover asDialog` (lignes 708-732).
-- Quand "Gerer les roles" est clique dans le context menu, appeler `setSelectedMember(member)` avec un flag indiquant d'ouvrir le panneau de roles.
-- Ajouter un etat `openWithRoles: boolean` qui est passe comme `initialShowRolePanel` au `UserProfilePopup` existant.
-- Supprimer l'etat `roleAssignmentTarget` devenu inutile.
-- Supprimer l'import de `RoleAssignmentPopover`.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 
-Le flux devient :
-1. Clic droit sur un membre -> "Gerer les roles"
-2. Ouvre le `UserProfilePopup` en mode `card` avec `initialShowRolePanel={true}`
-3. Le panneau lateral des roles est immediatement visible
-
-### Fichiers modifies
-
-| Fichier | Action |
-|---|---|
-| `src/components/profile/UserProfilePopup.tsx` | Ajouter prop `initialShowRolePanel` |
-| `src/components/layout/MemberList.tsx` | Remplacer `RoleAssignmentPopover asDialog` par ouverture du `UserProfilePopup` avec roles |

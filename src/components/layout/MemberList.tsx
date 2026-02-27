@@ -45,7 +45,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
 import { Shield } from "lucide-react";
-import { RoleAssignmentPopover } from "@/components/members/RoleAssignmentPopover";
+
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
@@ -247,7 +247,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-  const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<MemberWithRoles | null>(null);
+  const [openWithRoles, setOpenWithRoles] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);
@@ -587,7 +587,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           {canManageRoles && !isOwner && !isSecondaryOwner && memberId && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => setRoleAssignmentTarget({ ...member, memberId })}>
+              <ContextMenuItem onClick={() => {
+                setOpenWithRoles(true);
+                setSelectedMember({ ...member, memberId });
+              }}>
                 <Shield className="w-4 h-4 mr-2" />
                 Gérer les rôles
               </ContextMenuItem>
@@ -690,7 +693,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
       <UserProfilePopup
         user={selectedMember}
         open={!!selectedMember}
-        onOpenChange={(open) => !open && setSelectedMember(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedMember(null);
+            setOpenWithRoles(false);
+          }
+        }}
         roles={selectedMember?.roles}
         onOpenDM={onOpenDM}
         serverId={serverId}
@@ -703,33 +711,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           top: 60,
           right: 280,
         }}
+        initialShowRolePanel={openWithRoles}
       />
-
-      {/* Role assignment popover triggered from context menu */}
-      {roleAssignmentTarget && roleAssignmentTarget.memberId && serverId && (
-        <RoleAssignmentPopover
-          member={{
-            id: roleAssignmentTarget.memberId,
-            user: {
-              id: roleAssignmentTarget.id,
-              display_name: roleAssignmentTarget.displayName,
-              username: roleAssignmentTarget.username,
-              avatar_url: roleAssignmentTarget.avatar || null,
-            },
-            roles: roleAssignmentTarget.roles?.map(r => ({
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              icon_url: r.icon_url || null,
-              position: r.position,
-            })) || [],
-          } as any}
-          serverId={serverId}
-          open={!!roleAssignmentTarget}
-          onOpenChange={(open) => { if (!open) setRoleAssignmentTarget(null); }}
-          asDialog
-        />
-      )}
     </>
   );
 });

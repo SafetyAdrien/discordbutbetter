@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef, useEffect } from 'react';
+import { useState, useRef, forwardRef } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -42,7 +42,6 @@ interface UserProfilePopupProps {
   canBan?: boolean;
   mode?: 'dialog' | 'card';
   cardPosition?: { top: number; right: number };
-  initialShowRolePanel?: boolean;
 }
 
 const statusColors = {
@@ -115,7 +114,6 @@ export function UserProfilePopup({
   canBan = false,
   mode = 'dialog',
   cardPosition,
-  initialShowRolePanel = false,
 }: UserProfilePopupProps) {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -126,12 +124,7 @@ export function UserProfilePopup({
   const kickMember = useKickMember();
   const banMember = useBanMember();
   const [dmCreated, setDmCreated] = useState(false);
-  const [showRolePanel, setShowRolePanel] = useState(initialShowRolePanel);
-
-  // Sync showRolePanel when the popup opens for a different member
-  useEffect(() => {
-    setShowRolePanel(initialShowRolePanel);
-  }, [initialShowRolePanel, user?.id]);
+  const [showRolePanel, setShowRolePanel] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
 
   if (!user) return null;

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
+import { RoleManagementPanel } from "@/components/members/RoleManagementPanel";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -247,7 +248,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-  const [openWithRoles, setOpenWithRoles] = useState(false);
+  const [roleTarget, setRoleTarget] = useState<{ memberId: string; userId: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);
@@ -588,8 +589,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             <>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => {
-                setOpenWithRoles(true);
-                setSelectedMember({ ...member, memberId });
+                setRoleTarget({ memberId, userId: member.id });
               }}>
                 <Shield className="w-4 h-4 mr-2" />
                 Gérer les rôles
@@ -696,7 +696,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         onOpenChange={(open) => {
           if (!open) {
             setSelectedMember(null);
-            setOpenWithRoles(false);
           }
         }}
         roles={selectedMember?.roles}
@@ -711,8 +710,17 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           top: 60,
           right: 280,
         }}
-        initialShowRolePanel={openWithRoles}
       />
+
+      {roleTarget && serverId && (
+        <RoleManagementPanel
+          serverId={serverId}
+          memberId={roleTarget.memberId}
+          userId={roleTarget.userId}
+          onClose={() => setRoleTarget(null)}
+          position={{ top: 60, right: 280 }}
+        />
+      )}
     </>
   );
 });

@@ -83,13 +83,13 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     if (!file) return;
 
     // Validate file
-    const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
     if (!validTypes.includes(file.type)) {
-      toast.error('Format non supporté. Utilisez PNG, JPG, WEBP ou GIF.');
+      toast.error('Format non supporté. Utilisez PNG, JPG, WEBP, GIF ou SVG.');
       return;
     }
-    if (file.size > 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 1 Mo.');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 10 Mo.');
       return;
     }
 
@@ -188,7 +188,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
               className="hidden"
               onChange={handleIconUpload}
             />

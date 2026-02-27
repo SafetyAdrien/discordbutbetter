@@ -946,6 +946,59 @@ export type Database = {
           },
         ]
       }
+      media_posts: {
+        Row: {
+          alt_text: string | null
+          author_id: string
+          channel_id: string
+          created_at: string | null
+          description: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+          is_spoiler: boolean | null
+          title: string
+        }
+        Insert: {
+          alt_text?: string | null
+          author_id: string
+          channel_id: string
+          created_at?: string | null
+          description?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url: string
+          id?: string
+          is_spoiler?: boolean | null
+          title: string
+        }
+        Update: {
+          alt_text?: string | null
+          author_id?: string
+          channel_id?: string
+          created_at?: string | null
+          description?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          is_spoiler?: boolean | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_posts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_roles: {
         Row: {
           id: string

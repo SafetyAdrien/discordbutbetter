@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Upload, Grid, List, Users } from 'lucide-react';
+import { Upload, Grid, List, Users, EyeOff } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
+import { useMediaPosts, useCreateMediaPost } from '@/hooks/useMediaPosts';
 
 interface Channel {
   id: string;
@@ -25,7 +26,10 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
+
+  // Real data hooks
+  const { data: mediaItems = [] } = useMediaPosts(channel.id);
+  const createPost = useCreateMediaPost(channel.id);
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
@@ -65,8 +69,6 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     }
   }, []);
 
-  const mediaItems: { id: string; url: string; name: string; type: 'image' | 'video'; uploadedAt: Date }[] = [];
-
   const handleUploadClick = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -85,10 +87,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     altText: string;
     isSpoiler: boolean;
   }) => {
-    setIsPublishing(true);
-    // TODO: Implement actual upload to storage + save metadata
-    console.log('Publishing media post:', data);
-    setIsPublishing(false);
+    createPost.mutate(data);
     setSelectedFile(null);
   };
 
@@ -182,22 +181,50 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                 key={item.id}
                 className={cn(
                   'group relative rounded-lg overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all',
-                  viewMode === 'grid' ? 'aspect-square' : 'flex items-center gap-4 p-2'
+                  viewMode === 'grid' ? 'aspect-square' : 'flex items-center gap-4 p-2',
+                  item._isPending && 'opacity-60'
                 )}
               >
-                <img
-                  src={item.url}
-                  alt={item.name}
-                  className={cn(
-                    'object-cover',
-                    viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
-                  )}
-                />
+                {/* Spoiler overlay */}
+                {item.is_spoiler && (
+                  <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-xl flex items-center justify-center">
+                    <EyeOff className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                )}
+
+                {item.file_type === 'video' ? (
+                  <video
+                    src={item.file_url}
+                    className={cn(
+                      'object-cover',
+                      viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
+                    )}
+                    muted
+                  />
+                ) : (
+                  <img
+                    src={item.file_url}
+                    alt={item.alt_text || item.title}
+                    className={cn(
+                      'object-cover',
+                      viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
+                    )}
+                  />
+                )}
+
+                {/* Grid overlay with title */}
+                {viewMode === 'grid' && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                  </div>
+                )}
+
                 {viewMode === 'list' && (
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{item.name}</p>
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {item.uploadedAt.toLocaleDateString('fr-FR')}
+                      {new Date(item.created_at).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
                 )}
@@ -213,7 +240,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
           file={selectedFile}
           onClose={() => setSelectedFile(null)}
           onPublish={handlePublish}
-          isPending={isPublishing}
+          isPending={createPost.isPending}
         />
       )}
     </div>

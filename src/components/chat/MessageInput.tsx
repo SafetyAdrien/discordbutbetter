@@ -3,12 +3,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { MarkdownPreview } from './MarkdownPreview';
+import { InputMarkdownOverlay } from './InputMarkdownOverlay';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
 
 interface MessageInputProps {
   value: string;
@@ -89,7 +89,6 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
@@ -122,17 +121,6 @@ export function MessageInput({
     adjustTextareaHeight();
   }, [value, adjustTextareaHeight]);
 
-  // Ctrl+P keyboard shortcut for markdown preview toggle
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        setShowPreview(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // Handle file input change
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,61 +1,47 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corrections du menu "Gérer les rôles"
 
-## Root cause
+## Problèmes identifiés
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+1. **Le menu n'est pas accessible pour soi-même** : La condition à la ligne 588 exclut les propriétaires et seconds propriétaires (`!isOwner && !isSecondaryOwner`). Si l'utilisateur connecté est le propriétaire du serveur et fait un clic droit sur lui-même, l'option n'apparaît pas.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+2. **Le menu contextuel se ferme au clic sur "Gérer les rôles"** : Le composant `ContextMenuItem` de Radix ferme automatiquement le menu au clic. Pour empêcher cela, il faut utiliser `onSelect` avec `e.preventDefault()` au lieu de `onClick`.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Changements
 
-## Fix
+### `src/components/layout/MemberList.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**A. Retirer la restriction sur soi-même**
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+Modifier la condition de visibilité de l'option :
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Avant (ligne 588)
+{canManageRoles && !isOwner && !isSecondaryOwner && memberId && (
+
+// Après
+{canManageRoles && memberId && (
 ```
 
-### Code for onSuccess addition
+Cela permet à tout utilisateur ayant la permission de gérer les rôles de voir l'option, y compris pour lui-même.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+**B. Empêcher la fermeture du menu contextuel**
+
+Remplacer `onClick` par `onSelect` avec `preventDefault()` sur le `ContextMenuItem` de "Gérer les rôles" :
+
+```typescript
+<ContextMenuItem onSelect={(e) => {
+  e.preventDefault();
+  setRoleTarget({ memberId, userId: member.id });
+}}>
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+`e.preventDefault()` dans `onSelect` empêche Radix de fermer le menu contextuel. Le panneau de rôles s'ouvrira à côté du menu qui restera visible.
+
+### Fichiers modifiés
+
+| Fichier | Modification |
+|---|---|
+| `src/components/layout/MemberList.tsx` | Retirer la restriction owner/secondaryOwner + utiliser `onSelect` avec `preventDefault` |
 

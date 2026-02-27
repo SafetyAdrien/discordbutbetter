@@ -784,7 +784,6 @@ export function ChannelList({
       }
     } catch {
       toast.error("Erreur lors de la suppression");
-      });
     }
   };
   const handleDuplicateChannel = (channelId: string) => {

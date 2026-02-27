@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, getLineTypeAtCursor, lineFontSizes, lineLineHeights } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT } from './InputMarkdownOverlay';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
@@ -91,24 +91,19 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
-  const [caretFontSize, setCaretFontSize] = useState('0.875rem');
-  const [caretLineHeight, setCaretLineHeight] = useState('1.25rem');
   const overlayRef = useRef<HTMLDivElement>(null);
   const hasMarkdown = useMemo(() => /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m.test(value), [value]);
 
-  // Update caret size based on cursor position
-  const updateCaretSize = useCallback((cursorPos: number) => {
-    const lineType = getLineTypeAtCursor(value, cursorPos);
-    setCaretFontSize(lineFontSizes[lineType]);
-    setCaretLineHeight(lineLineHeights[lineType]);
-  }, [value]);
-
-  // Adjust textarea height to match overlay
+  // Adjust textarea height and reset overlay scroll position
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
     textarea.style.height = textarea.scrollHeight + 'px';
+    // Reset overlay scroll sync when content changes
+    if (overlayRef.current) {
+      overlayRef.current.style.transform = `translateY(-${textarea.scrollTop}px)`;
+    }
   }, []);
 
   useEffect(() => {
@@ -201,7 +196,6 @@ export function MessageInput({
     const cursorPos = e.target.selectionStart;
     
     onChange(newValue);
-    updateCaretSize(cursorPos);
     
     // Detect mention triggers
     const mentionTrigger = detectMentionTrigger(newValue, cursorPos);
@@ -467,7 +461,7 @@ export function MessageInput({
           </Popover>
           
           {/* Textarea container with markdown overlay */}
-          <div className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}>
+          <div className={`relative flex-1 min-w-0 overflow-hidden`}>
             <InputMarkdownOverlay ref={overlayRef} content={value} compact={compact} />
             <textarea
               ref={textareaRef}
@@ -475,16 +469,20 @@ export function MessageInput({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              onSelect={(e) => updateCaretSize((e.target as HTMLTextAreaElement).selectionStart)}
-              onClick={(e) => updateCaretSize((e.target as HTMLTextAreaElement).selectionStart)}
+              onScroll={() => {
+                if (overlayRef.current && textareaRef.current) {
+                  overlayRef.current.style.transform = `translateY(-${textareaRef.current.scrollTop}px)`;
+                }
+              }}
               placeholder={placeholder}
               disabled={disabled}
-              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words box-border ${
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT }}
+              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none break-words box-border font-normal tracking-normal ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
-                  ? "py-1 text-sm pr-2" 
-                  : "py-3 text-sm pr-1"
+                  ? `py-1 text-sm pr-2 max-h-[120px] overflow-y-auto` 
+                  : `py-3 text-sm pr-1 max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />

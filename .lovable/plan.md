@@ -1,110 +1,61 @@
 
-Objectif: corriger définitivement le décalage overlay/textarea (surtout Firefox) sans perdre les markdowns déjà ajoutés dans l’input.
 
-Constat précis après audit
-1) Le “contrat de métriques” n’est pas strict entre les 2 couches.
-- `InputMarkdownOverlay.tsx` garde des variations qui changent la géométrie du texte (`font-bold`, `font-semibold`, `font-mono`).
-- Le textarea reste en métriques régulières.
-- Résultat: en Firefox, largeur des glyphes + position du caret divergent (effet “décalé” même si taille/line-height sont identiques).
+# Fix: Duplicated channel hidden by visibility filter
 
-2) Le modèle de scroll actuel est fragile.
-- Le scroll est porté par le conteneur parent (`overflow-y-auto`) alors que l’overlay est en `absolute inset-0`.
-- Cette combinaison est notoirement instable cross-browser pour des couches superposées (position visuelle vs texte natif/caret).
+## Root cause
 
-3) La logique caret dynamique est devenue inutilement complexe.
-- `caretFontSize/caretLineHeight` sont encore calculés, mais n’apportent plus de bénéfice réel avec le mode “métriques uniformes”.
-- Cela augmente les rerenders pendant la saisie et peut accentuer la sensation de jitter.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Plan d’implémentation
-1) Verrouiller un “style métrique unique” partagé
-Fichiers:
-- `src/components/chat/InputMarkdownOverlay.tsx`
-- `src/components/chat/MessageInput.tsx`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Actions:
-- Créer une base commune strictement identique entre overlay et textarea:
-  - `text-sm`
-  - `leading-5`
-  - `font-normal`
-  - `tracking-normal`
-  - mêmes paddings (`py/pr/pl`) explicites
-  - `box-border`
-- Supprimer dans l’overlay toute variation qui modifie la largeur des glyphes:
-  - retirer `font-bold/font-semibold/font-mono` des line styles de rendu input.
-- Conserver la mise en évidence markdown uniquement via couleurs + décorations visuelles (pas via changements de police/poids).
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-2) Rebasculer sur un scroll natif textarea + synchronisation overlay
-Fichier:
-- `src/components/chat/MessageInput.tsx`
+## Fix
 
-Actions:
-- Faire porter le scroll vertical au textarea (et non au parent):
-  - parent: `overflow-hidden`
-  - textarea: `max-h-* + overflow-y-auto`
-- Synchroniser overlay avec `textarea.scrollTop` sur `onScroll`.
-- Réinitialiser scroll/hauteur proprement au reset du message (après envoi / contenu vide).
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-3) Rendre les décorations markdown “non intrusives” (sans décaler le texte)
-Fichiers:
-- `src/components/chat/InputMarkdownOverlay.tsx`
-- `src/index.css`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Actions:
-- Garder blockquote/list/code dans l’overlay, mais en décorations absolues/pseudo-éléments qui n’ajoutent pas de padding structurel.
-- Si indentation visuelle nécessaire, elle doit être “overlay-only” (absolue), sans déplacer le point de départ du texte tapé.
-- Maintenir les séparateurs titres/sous-titres visibles dans les messages envoyés (déjà améliorés) et harmoniser la teinte côté input sans changer les métriques.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-4) Simplifier la logique caret pour stabiliser Firefox
-Fichier:
-- `src/components/chat/MessageInput.tsx`
+### 2. In `onSuccess`: invalidate the permissions cache
 
-Actions:
-- Supprimer (ou neutraliser proprement) `caretFontSize/caretLineHeight` et les callbacks associés tant que toutes les lignes utilisent les mêmes métriques.
-- Garder uniquement la logique de transparence texte:
-  - markdown actif => textarea `text-transparent caret-foreground`, overlay affiche toutes les lignes
-  - pas de markdown => overlay masqué, textarea `text-foreground`
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-Détails techniques ciblés (changements attendus)
-- `InputMarkdownOverlay.tsx`
-  - `lineStyles`:
-    - headers/subtext/code/list/quote: plus de poids ou famille de police différente
-    - uniquement `text-foreground/text-muted-foreground` + classes décoratives
-  - base class overlay: mêmes paddings exacts que textarea (`compact` et non-compact)
-- `MessageInput.tsx`
-  - conteneur overlay/textarea: `overflow-hidden` (plus `overflow-y-auto` parent)
-  - textarea: `overflow-y-auto` + `max-h-[...]`
-  - ajouter `onScroll` pour copier `scrollTop` vers overlay
-  - nettoyer états caret inutilisés
-- `index.css`
-  - classes `discord-overlay-*` revues pour être purement décoratives (position absolue, sans impact largeur/hauteur de texte)
+### 3. Hook needs `useAuth` for the user ID
 
-Vérification (obligatoire)
-1) Cas 1 ligne:
-- texte normal
-- `# titre`, `##`, `###`, `-#`
-- `> quote`, `- item`, `1. item`, bloc code
-=> caret doit rester collé au texte affiché.
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-2) Cas multi-lignes mixtes:
-- alternance markdown/non-markdown
-- suppression/reédition de préfixes markdown
-=> aucun “saut” à l’activation/désactivation overlay.
+## Detailed changes
 
-3) Cas long (scroll):
-- dépasser `max-h`
-- scroller en milieu de texte
-=> overlay et caret restent alignés pendant le scroll.
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-4) Cross-browser:
-- Firefox (prioritaire)
-- Chromium
-=> rendu identique à ±1px max.
+### Code sketch for onMutate addition (after servers cache update)
 
-Risques et mitigation
-- Risque: perte d’effet “titre gras” dans l’input live.
-- Mitigation: conserver l’emphase via couleur + séparateur visuel, et garder le rendu riche complet dans le message envoyé (`markdown.tsx`) où l’alignement caret n’est pas un enjeu.
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
 
-Résultat attendu
-- Plus de décalage persistant dans l’input.
-- Overlay robuste en Firefox.
-- Tous les markdowns demandés restent supportés dans l’overlay, sans casser l’édition.
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

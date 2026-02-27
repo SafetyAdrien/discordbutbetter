@@ -1,61 +1,54 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger la synchronisation Realtime des roles entre utilisateurs
 
-## Root cause
+## Probleme identifie
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+La table `member_roles` n'a **jamais ete ajoutee a la publication Realtime** (`supabase_realtime`). Cela signifie que lorsque l'utilisateur A assigne un role a l'utilisateur B :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+- L'utilisateur A voit le changement instantanement (mise a jour optimiste locale)
+- L'utilisateur B ne recoit **aucun evenement Realtime** car la base de donnees n'emet rien pour cette table
+- L'utilisateur B doit recharger la page pour voir ses nouveaux roles et permissions
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Les hooks `useMembers` et `usePermissionsRealtime` ecoutent bien les changements sur `member_roles`, mais aucun evenement n'est emis car la table n'est pas dans la publication.
 
-## Fix
+## Verification
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- `REPLICA IDENTITY FULL` est deja configure sur `member_roles` (migration `20251220225837`)
+- Les politiques RLS permettent aux membres de voir les `member_roles` (necessaire pour recevoir les evenements Realtime)
+- Les hooks cote client sont deja en place et fonctionnels
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+## Changement requis
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### Migration SQL
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Ajouter `member_roles` a la publication `supabase_realtime` :
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```sql
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'member_roles'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.member_roles;
+  END IF;
+END $$;
 ```
 
-### Code for onSuccess addition
+### Impact
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+Une fois cette migration appliquee :
+- Les evenements INSERT/DELETE sur `member_roles` seront emis a tous les clients connectes
+- Le hook `useMembers` (canal `member-roles-for-members`) recevra les changements et mettra a jour les badges de roles
+- Le hook `usePermissionsRealtime` (canal `perms-member-roles`) recevra les changements et declenchera un refetch de toutes les permissions actives
+- L'utilisateur B verra instantanement ses nouvelles permissions (visibilite des salons, boutons actives/desactives, etc.)
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichiers modifies
+
+| Element | Modification |
+|---|---|
+| Nouvelle migration SQL | Ajouter `member_roles` a `supabase_realtime` |
+
+Aucun changement de code frontend necessaire - toute l'infrastructure cote client est deja en place.
 

@@ -311,6 +311,7 @@ const Index = () => {
         name: ch.name,
         type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
         description: ch.description || undefined,
+        icon_url: ch.icon_url || undefined,
       })),
     })),
   }));
@@ -331,6 +332,7 @@ const Index = () => {
         name: ch.name,
         type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
         description: ch.description || undefined,
+        icon_url: ch.icon_url || undefined,
       })),
     })),
   } : null;

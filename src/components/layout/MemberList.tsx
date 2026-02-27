@@ -247,6 +247,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
+  const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<MemberWithRoles | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);
@@ -583,6 +584,15 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
+          {canManageRoles && !isOwner && !isSecondaryOwner && memberId && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => setRoleAssignmentTarget(member)}>
+                <Shield className="w-4 h-4 mr-2" />
+                Gérer les rôles
+              </ContextMenuItem>
+            </>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem>
             <VolumeX className="w-4 h-4 mr-2" />

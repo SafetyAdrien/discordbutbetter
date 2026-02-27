@@ -1,61 +1,40 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Ouvrir uniquement le panneau de roles (sans le profil) depuis le menu contextuel
 
-## Root cause
+## Objectif
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Quand l'utilisateur clique sur "Gerer les roles" dans le menu contextuel de la liste des membres, afficher **uniquement** le panneau lateral de gestion des roles (le meme design que celui qui apparait a cote du profil), sans ouvrir la carte de profil du membre.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Extraire le panneau de roles dans un composant autonome
 
-## Fix
+Creer `src/components/members/RoleManagementPanel.tsx` qui reprend exactement le design du `RoleSidePanel` actuellement imbrique dans `UserProfilePopup.tsx` :
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- Header "Gerer les roles" avec bouton X pour fermer
+- ScrollArea avec la liste des `RoleCheckboxItem`
+- Memes styles (bg-card, border, rounded-lg, shadow-2xl)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Props : `serverId`, `memberId`, `userId`, `onClose`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 2. Modifier `MemberList.tsx`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+- Supprimer l'approche actuelle qui ouvre le `UserProfilePopup` avec `initialShowRolePanel` et `openWithRoles`.
+- Remplacer par un rendu direct du `RoleManagementPanel` dans un Portal, positionne de maniere absolue (similaire au positionnement actuel de la carte profil, mais sans la carte).
+- Le state `openWithRoles` + `roleAssignmentTarget` (ou equivalent) controle l'affichage du panneau seul.
+- Cliquer en dehors ferme le panneau.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 3. Nettoyer `UserProfilePopup.tsx`
 
-### 3. Hook needs `useAuth` for the user ID
+- Supprimer la prop `initialShowRolePanel` et le `useEffect` associe.
+- Garder le `RoleSidePanel` interne tel quel (il est toujours utilise quand on clique "Gerer les roles" depuis la carte profil elle-meme).
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+## Fichiers concernes
 
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Action |
+|---|---|
+| `src/components/members/RoleManagementPanel.tsx` | Nouveau — panneau autonome de gestion des roles |
+| `src/components/layout/MemberList.tsx` | Remplacer ouverture profil par rendu du panneau seul |
+| `src/components/profile/UserProfilePopup.tsx` | Supprimer `initialShowRolePanel` et le useEffect associe |
 

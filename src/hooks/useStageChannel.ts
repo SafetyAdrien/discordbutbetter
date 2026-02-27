@@ -580,7 +580,7 @@ export function useChangeParticipantRole() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Rôle modifié' });
+      toast.success('Rôle modifié');
     },
     onSettled: (_, __, { sessionId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-participants', sessionId] });

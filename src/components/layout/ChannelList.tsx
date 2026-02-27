@@ -826,9 +826,7 @@ export function ChannelList({
     copyToClipboard(link, "Lien copié");
   };
   const handleMarkAsRead = (channelId: string) => {
-    toast({
-      title: "Marqué comme lu",
-    });
+    toast.success("Marqué comme lu");
   };
   const handleCreateInvite = (channelId: string) => {
     setInviteChannelId(channelId);

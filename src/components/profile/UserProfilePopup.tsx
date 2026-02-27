@@ -127,6 +127,19 @@ export function UserProfilePopup({
   const [showRolePanel, setShowRolePanel] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
 
+  // Reactive roles from members cache — updates instantly on optimistic/realtime changes
+  const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
+    queryKey: ["members", serverId],
+    queryFn: () => Promise.resolve(queryClient.getQueryData<MemberWithProfile[]>(["members", serverId]) ?? []),
+    select: (members) => {
+      const member = members?.find((m) => m.id === memberId);
+      return (member?.roles as Role[]) ?? [];
+    },
+    enabled: !!serverId && !!memberId,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
   if (!user) return null;
 
   const isOwnProfile = currentUser?.id === user.id;
@@ -141,19 +154,6 @@ export function UserProfilePopup({
   );
   const isFriend = friendship?.status === 'accepted';
   const isPending = friendship?.status === 'pending';
-
-  // Reactive roles from members cache — updates instantly on optimistic/realtime changes
-  const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
-    queryKey: ["members", serverId],
-    queryFn: () => Promise.resolve(queryClient.getQueryData<MemberWithProfile[]>(["members", serverId]) ?? []),
-    select: (members) => {
-      const member = members?.find((m) => m.id === memberId);
-      return (member?.roles as Role[]) ?? [];
-    },
-    enabled: !!serverId && !!memberId,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
 
   
 

@@ -476,13 +476,13 @@ export function MessageInput({
               }}
               placeholder={placeholder}
               disabled={disabled}
-              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT }}
-              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none break-words box-border font-normal tracking-normal ${
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: 'inherit', fontWeight: 400, letterSpacing: 'normal' }}
+              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent p-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
                   ? `py-1 text-sm pr-2 max-h-[120px] overflow-y-auto` 
-                  : `py-3 text-sm pr-1 max-h-[200px] overflow-y-auto`
+                  : `pt-[13px] pb-[11px] text-sm pr-1 max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />

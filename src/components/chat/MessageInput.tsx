@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, getLineTypeAtCursor, lineFontSizes, lineLineHeights } from './InputMarkdownOverlay';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
@@ -91,6 +91,28 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+  const [caretFontSize, setCaretFontSize] = useState('0.875rem');
+  const [caretLineHeight, setCaretLineHeight] = useState('1.25rem');
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Update caret size based on cursor position
+  const updateCaretSize = useCallback((cursorPos: number) => {
+    const lineType = getLineTypeAtCursor(value, cursorPos);
+    setCaretFontSize(lineFontSizes[lineType]);
+    setCaretLineHeight(lineLineHeights[lineType]);
+  }, [value]);
+
+  // Adjust textarea height to match overlay
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  }, []);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [value, adjustTextareaHeight]);
 
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
@@ -178,6 +200,7 @@ export function MessageInput({
     const cursorPos = e.target.selectionStart;
     
     onChange(newValue);
+    updateCaretSize(cursorPos);
     
     // Detect mention triggers
     const mentionTrigger = detectMentionTrigger(newValue, cursorPos);
@@ -443,7 +466,7 @@ export function MessageInput({
           </Popover>
           
           {/* Textarea container with markdown overlay */}
-          <div className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}>
+          <div ref={overlayRef} className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}>
             <InputMarkdownOverlay content={value} compact={compact} />
             <textarea
               ref={textareaRef}
@@ -451,9 +474,15 @@ export function MessageInput({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              onSelect={(e) => updateCaretSize((e.target as HTMLTextAreaElement).selectionStart)}
+              onClick={(e) => updateCaretSize((e.target as HTMLTextAreaElement).selectionStart)}
               placeholder={placeholder}
               disabled={disabled}
-              className={`absolute inset-0 z-10 w-full h-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words ${
+              style={{
+                fontSize: value.match(/^(#{1,3} |-# )/m) ? caretFontSize : undefined,
+                lineHeight: value.match(/^(#{1,3} |-# )/m) ? caretLineHeight : undefined,
+              }}
+              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words ${
                 value.match(/^(#{1,3} |-# )/m) ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 

@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef, useEffect } from 'react';
+import { useState, useRef, forwardRef } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';

@@ -5,16 +5,16 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X, UserMinus, Ban } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { membersMutationLockRef } from '@/hooks/useMembers';
+import { MemberWithProfile } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
 import { toast } from 'sonner';
 import * as Portal from '@radix-ui/react-portal';
@@ -130,7 +130,7 @@ export function UserProfilePopup({
   if (!user) return null;
 
   const isOwnProfile = currentUser?.id === user.id;
-  const isGodUser = currentUser?.id === ownerId || currentUser?.id === secondaryOwnerId;
+  
   const isTargetOwner = user.id === ownerId || user.id === secondaryOwnerId;
   
   // Can't kick/ban owners or yourself
@@ -142,7 +142,20 @@ export function UserProfilePopup({
   const isFriend = friendship?.status === 'accepted';
   const isPending = friendship?.status === 'pending';
 
-  const userRoleIds = roles?.map(r => r.id) || [];
+  // Reactive roles from members cache — updates instantly on optimistic/realtime changes
+  const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
+    queryKey: ["members", serverId],
+    queryFn: () => Promise.resolve(queryClient.getQueryData<MemberWithProfile[]>(["members", serverId]) ?? []),
+    select: (members) => {
+      const member = members?.find((m) => m.id === memberId);
+      return (member?.roles as Role[]) ?? [];
+    },
+    enabled: !!serverId && !!memberId,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  
 
   const handleSendMessage = () => {
     createDM(user.id, {
@@ -195,8 +208,8 @@ export function UserProfilePopup({
     );
   };
 
-  const displayRoles = roles
-    ?.filter(role => role.name !== '@everyone')
+  const displayRoles = (reactiveRoles ?? roles ?? [])
+    .filter(role => role.name !== '@everyone')
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
   const assignableRoles = allRoles
@@ -354,7 +367,7 @@ export function UserProfilePopup({
           )}
 
           {/* Afficher la section Rôles si l'utilisateur a des rôles OU si on peut les gérer */}
-          {((displayRoles && displayRoles.length > 0) || (canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0)) && (
+          {((displayRoles && displayRoles.length > 0) || (canManageRoles && serverId && memberId && assignableRoles.length > 0)) && (
             <>
               <div className="border-t border-border" />
               <div ref={rolesSectionRef}>
@@ -362,7 +375,7 @@ export function UserProfilePopup({
                   <h4 className="text-xs font-semibold text-muted-foreground tracking-wide">
                     Rôles
                   </h4>
-                  {canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0 && (
+                  {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
                     <button
                       onClick={() => setShowRolePanel(true)}
                       className="text-xs text-primary hover:underline transition-colors"
@@ -516,7 +529,7 @@ export function UserProfilePopup({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Role Side Panel */}
-            {showRolePanel && canManageRoles && (!isOwnProfile || isGodUser) && serverId && memberId && assignableRoles.length > 0 && (
+            {showRolePanel && canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
               <RoleSidePanel />
             )}
             

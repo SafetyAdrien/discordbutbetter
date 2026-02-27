@@ -37,6 +37,7 @@ export function CreateCategoryModal({ serverId, onClose }: CreateCategoryModalPr
           e.preventDefault();
           onClose();
         }
+        e.stopPropagation();
       }}>
         <DialogHeader>
           <DialogTitle>Créer une catégorie</DialogTitle>

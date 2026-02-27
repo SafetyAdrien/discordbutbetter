@@ -112,10 +112,11 @@ export function CreateChannelModal({
       <DialogContent
         className="sm:max-w-lg"
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
+          if (e.key === 'Escape') {
             e.preventDefault();
             onClose();
           }
+          e.stopPropagation();
         }}
       >
         <DialogHeader>

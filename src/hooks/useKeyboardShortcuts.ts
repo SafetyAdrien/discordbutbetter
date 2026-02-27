@@ -19,12 +19,13 @@ export function useKeyboardShortcuts({
     (e: KeyboardEvent) => {
       if (!enabled) return;
 
-      // Don't trigger shortcuts when typing in inputs
+      // Don't trigger shortcuts when typing in inputs or inside dialogs
       const target = e.target as HTMLElement;
       const isInputActive =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable;
+      const isInsideDialog = !!(target.closest('[role="dialog"]'));
 
       // Escape always works
       if (e.key === 'Escape' && onEscape) {
@@ -33,8 +34,8 @@ export function useKeyboardShortcuts({
         return;
       }
 
-      // Other shortcuts only when not in input
-      if (isInputActive) return;
+      // Other shortcuts only when not in input or dialog
+      if (isInputActive || isInsideDialog) return;
 
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const modifier = isMac ? e.metaKey : e.ctrlKey;

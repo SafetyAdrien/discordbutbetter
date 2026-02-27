@@ -474,6 +474,7 @@ export function MessageInput({
               }`}
               rows={1}
             />
+          </div>
           
           <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
             <EmojiStickerPicker

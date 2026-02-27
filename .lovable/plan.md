@@ -1,61 +1,66 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger le caret pour suivre la taille du markdown
 
-## Root cause
+## Probleme actuel
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le textarea est en `absolute inset-0` (changement non demande) et le caret ne suit pas la taille des headers. Un `<textarea>` HTML standard ne supporte pas les tailles de police variables par ligne.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Revenir au layout original du textarea
 
-## Fix
+**Fichier** : `src/components/chat/MessageInput.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- Remettre le textarea en flow normal (pas `absolute inset-0`)
+- Remettre l'overlay en `absolute inset-0` derriere le textarea
+- Restaurer le calcul dynamique de hauteur (`adjustTextareaHeight`) qui existait avant
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Ajuster dynamiquement le font-size du textarea selon la ligne du curseur
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**Fichier** : `src/components/chat/MessageInput.tsx`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+- Ajouter un state `currentLineStyle` qui detecte sur quelle ligne se trouve le curseur
+- Sur chaque `onSelect` / `onClick` / `onChange` du textarea, determiner la ligne courante et son type markdown
+- Appliquer dynamiquement le `fontSize` du textarea pour correspondre au type de la ligne courante :
+  - `# ` -> `text-2xl` (1.5rem)
+  - `## ` -> `text-xl` (1.25rem)  
+  - `### ` -> `text-lg` (1.125rem)
+  - `-# ` -> `text-[12px]`
+  - Normal -> `text-sm` (0.875rem)
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+Cela fait que le caret prend la hauteur de la ligne courante, meme si les autres lignes ont une taille differente visuellement (geree par l'overlay).
 
-### 3. Hook needs `useAuth` for the user ID
+### 3. Ajuster la hauteur du textarea pour correspondre a l'overlay
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+**Fichier** : `src/components/chat/MessageInput.tsx`
 
-## Detailed changes
+- Utiliser un `useEffect` + `ResizeObserver` sur l'overlay pour synchroniser la hauteur du textarea avec celle de l'overlay
+- Le textarea reste en flow normal mais sa hauteur est forcee pour correspondre au contenu rendu par l'overlay
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+### 4. Synchroniser le line-height entre overlay et textarea
 
-### Code sketch for onMutate addition (after servers cache update)
+**Fichier** : `src/components/chat/InputMarkdownOverlay.tsx`
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+- S'assurer que chaque type de ligne dans l'overlay utilise le meme `line-height` que le `fontSize` correspondant applique au textarea
+- Mettre a jour les `leading-*` pour correspondre exactement
 
-### Code for onSuccess addition
+### Schema
 
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+Quand le curseur est sur "# Titre" :
+  - textarea font-size = 1.5rem (text-2xl) -> caret grand
+  - overlay affiche "# Titre" en text-2xl  -> texte visible grand
+
+Quand le curseur est sur "texte normal" :
+  - textarea font-size = 0.875rem (text-sm) -> caret normal  
+  - overlay affiche en text-transparent     -> texte invisible (textarea visible)
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichiers modifies
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/chat/MessageInput.tsx` | Revenir au layout normal, ajouter detection de ligne courante, ajuster fontSize dynamiquement, synchroniser hauteur avec overlay |
+| `src/components/chat/InputMarkdownOverlay.tsx` | Aligner les line-heights avec les fontSize du textarea |
 

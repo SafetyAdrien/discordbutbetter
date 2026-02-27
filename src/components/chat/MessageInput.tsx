@@ -479,11 +479,11 @@ export function MessageInput({
               placeholder={placeholder}
               disabled={disabled}
               style={{
-                fontSize: value.match(/^(#{1,3} |-# )/m) ? caretFontSize : undefined,
-                lineHeight: value.match(/^(#{1,3} |-# )/m) ? caretLineHeight : undefined,
+                fontSize: value.match(/^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m) ? caretFontSize : undefined,
+                lineHeight: value.match(/^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m) ? caretLineHeight : undefined,
               }}
               className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words ${
-                value.match(/^(#{1,3} |-# )/m) ? 'text-transparent caret-foreground' : 'text-foreground'
+                value.match(/^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m) ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
                   ? "py-1 text-sm pr-2" 

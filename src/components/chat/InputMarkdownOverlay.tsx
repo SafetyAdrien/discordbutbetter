@@ -6,20 +6,38 @@ interface InputMarkdownOverlayProps {
 }
 
 interface OverlayLine {
-  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'normal';
+  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'codeBlockDelimiter' | 'codeBlockLine' | 'normal';
   text: string;
 }
 
 function parseLines(content: string): OverlayLine[] {
   if (!content) return [{ type: 'normal', text: '' }];
-  
-  return content.split('\n').map(line => {
-    if (line.startsWith('### ')) return { type: 'header3', text: line };
-    if (line.startsWith('## ')) return { type: 'header2', text: line };
-    if (line.startsWith('# ')) return { type: 'header1', text: line };
-    if (line.startsWith('-# ')) return { type: 'subtext', text: line };
-    return { type: 'normal', text: line };
-  });
+
+  const lines = content.split('\n');
+  const result: OverlayLine[] = [];
+  let inCodeBlock = false;
+
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      result.push({ type: 'codeBlockDelimiter', text: line });
+      continue;
+    }
+    if (inCodeBlock) {
+      result.push({ type: 'codeBlockLine', text: line });
+      continue;
+    }
+    if (line.startsWith('### ')) { result.push({ type: 'header3', text: line }); continue; }
+    if (line.startsWith('## ')) { result.push({ type: 'header2', text: line }); continue; }
+    if (line.startsWith('# ')) { result.push({ type: 'header1', text: line }); continue; }
+    if (line.startsWith('-# ')) { result.push({ type: 'subtext', text: line }); continue; }
+    if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
+    if (/^(\s*)[-*] /.test(line)) { result.push({ type: 'listItem', text: line }); continue; }
+    if (/^(\s*)\d+\. /.test(line)) { result.push({ type: 'orderedListItem', text: line }); continue; }
+    result.push({ type: 'normal', text: line });
+  }
+
+  return result;
 }
 
 const lineStyles: Record<OverlayLine['type'], string> = {
@@ -27,6 +45,11 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   header2: 'text-xl font-bold text-foreground leading-[1.875rem]',
   header3: 'text-lg font-semibold text-foreground leading-[1.6875rem]',
   subtext: 'text-[12px] text-muted-foreground leading-[1.125rem]',
+  blockquote: 'border-l-[4px] border-[hsl(228,6%,32%)] pl-3 text-muted-foreground',
+  listItem: 'text-foreground',
+  orderedListItem: 'text-foreground',
+  codeBlockDelimiter: 'font-mono text-muted-foreground bg-[hsl(var(--surface-elevated))] rounded-t px-2',
+  codeBlockLine: 'font-mono text-foreground bg-[hsl(var(--surface-elevated))] px-2',
   normal: '',
 };
 
@@ -36,6 +59,11 @@ export const lineFontSizes: Record<OverlayLine['type'], string> = {
   header2: '1.25rem',
   header3: '1.125rem',
   subtext: '12px',
+  blockquote: '0.875rem',
+  listItem: '0.875rem',
+  orderedListItem: '0.875rem',
+  codeBlockDelimiter: '0.875rem',
+  codeBlockLine: '0.875rem',
   normal: '0.875rem',
 };
 
@@ -44,6 +72,11 @@ export const lineLineHeights: Record<OverlayLine['type'], string> = {
   header2: '1.875rem',
   header3: '1.6875rem',
   subtext: '1.125rem',
+  blockquote: '1.25rem',
+  listItem: '1.25rem',
+  orderedListItem: '1.25rem',
+  codeBlockDelimiter: '1.25rem',
+  codeBlockLine: '1.25rem',
   normal: '1.25rem',
 };
 
@@ -52,15 +85,32 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   const textBefore = content.slice(0, cursorPos);
   const lastNewline = textBefore.lastIndexOf('\n');
   const currentLine = content.slice(lastNewline + 1).split('\n')[0];
+
+  // Check if cursor is inside a code block
+  const linesBefore = textBefore.split('\n');
+  let inCodeBlock = false;
+  for (const l of linesBefore) {
+    if (l.startsWith('```')) inCodeBlock = !inCodeBlock;
+  }
+  if (inCodeBlock && !currentLine.startsWith('```')) return 'codeBlockLine';
+  if (currentLine.startsWith('```')) return 'codeBlockDelimiter';
+
   if (currentLine.startsWith('### ')) return 'header3';
   if (currentLine.startsWith('## ')) return 'header2';
   if (currentLine.startsWith('# ')) return 'header1';
   if (currentLine.startsWith('-# ')) return 'subtext';
+  if (currentLine.startsWith('> ') || currentLine.startsWith('>>> ')) return 'blockquote';
+  if (/^(\s*)[-*] /.test(currentLine)) return 'listItem';
+  if (/^(\s*)\d+\. /.test(currentLine)) return 'orderedListItem';
   return 'normal';
 }
 
 export function InputMarkdownOverlay({ content, compact = false }: InputMarkdownOverlayProps) {
   const lines = useMemo(() => parseLines(content), [content]);
+
+  const hasMarkdown = useMemo(() => lines.some(l => l.type !== 'normal'), [lines]);
+
+  if (!hasMarkdown) return null;
 
   return (
     <div

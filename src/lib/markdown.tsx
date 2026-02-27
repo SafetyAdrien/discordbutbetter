@@ -566,7 +566,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
           <h1 className="text-2xl font-bold text-white my-2">
             {renderInlineContent(block.content)}
           </h1>
-          <hr className="border-t border-border mb-1" />
+          <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
         </div>
       );
     case 'header2':
@@ -575,7 +575,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
           <h2 className="text-xl font-bold text-white my-1.5">
             {renderInlineContent(block.content)}
           </h2>
-          <hr className="border-t border-border mb-1" />
+          <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
         </div>
       );
     case 'header3':
@@ -584,13 +584,13 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
           <h3 className="text-lg font-semibold text-white my-1">
             {renderInlineContent(block.content)}
           </h3>
-          <hr className="border-t border-border mb-1" />
+          <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
         </div>
       );
     case 'subtext':
       return (
         <div key={key}>
-          <hr className="border-t border-border mt-1" />
+          <hr className="border-t border-[hsl(228,6%,26%)] mt-2 mb-0.5" />
           <p className="text-[12px] text-muted-foreground leading-4">
             {renderInlineContent(block.content)}
           </p>

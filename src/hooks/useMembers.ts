@@ -1,6 +1,6 @@
 /* @refresh reset */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -148,6 +148,33 @@ export function useMembers(serverId: string | null) {
     };
   }, [serverId, user, queryClient]);
 
+  // Debounced refetch to guarantee server truth after local patch
+  const debouncedRefetchRef = useRef<ReturnType<typeof setTimeout>>();
+  const pendingPostLockRef = useRef(false);
+
+  const scheduleGuaranteedRefetch = useCallback(() => {
+    // If mutation lock is active, schedule refetch for after lock releases
+    if (membersMutationLockRef.current) {
+      pendingPostLockRef.current = true;
+      return;
+    }
+    clearTimeout(debouncedRefetchRef.current);
+    debouncedRefetchRef.current = setTimeout(() => {
+      queryClient.refetchQueries({ queryKey: ['members', serverId] });
+    }, 300);
+  }, [queryClient, serverId]);
+
+  // Check for pending post-lock refetch
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingPostLockRef.current && !membersMutationLockRef.current) {
+        pendingPostLockRef.current = false;
+        queryClient.refetchQueries({ queryKey: ['members', serverId] });
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [queryClient, serverId]);
+
   // Separate real-time subscription for member_roles changes
   useEffect(() => {
     if (!serverId || !user) return;
@@ -174,6 +201,10 @@ export function useMembers(serverId: string | null) {
           table: 'member_roles',
         },
         async (payload) => {
+          // Always schedule a guaranteed refetch (even during lock — it'll run post-lock)
+          scheduleGuaranteedRefetch();
+
+          // Skip optimistic patch if lock is active (local mutation already handled it)
           if (membersMutationLockRef.current) return;
 
           if (payload.eventType === 'INSERT') {
@@ -220,7 +251,8 @@ export function useMembers(serverId: string | null) {
         }
       )
       .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setHasRealtimeError(true);
           retryTimeoutRef.current = setTimeout(() => {
             queryClient.refetchQueries({ queryKey: ['members', serverId] });
           }, 2000);
@@ -228,6 +260,7 @@ export function useMembers(serverId: string | null) {
       });
 
     return () => {
+      clearTimeout(debouncedRefetchRef.current);
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
@@ -236,7 +269,7 @@ export function useMembers(serverId: string | null) {
         rolesChannelRef.current = null;
       }
     };
-  }, [serverId, user, queryClient]);
+  }, [serverId, user, queryClient, scheduleGuaranteedRefetch]);
 
   return query;
 }

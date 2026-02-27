@@ -125,11 +125,18 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
           if (error && error.code !== "23505") throw error;
         }
 
-        // Force refresh related queries for consistency
+        // Force refresh related queries for full consistency across clients
         if (userId) {
           queryClient.invalidateQueries({ queryKey: ["profile", userId] });
         }
         queryClient.invalidateQueries({ queryKey: ["role-member-counts", serverId] });
+        // Ensure permissions + members caches converge to server truth
+        queryClient.invalidateQueries({ queryKey: ["members", serverId] });
+        [
+          'channel-permission', 'channel-permissions', 'user-channel-permissions',
+          'user-permissions', 'category-permissions', 'roles', 'role-permissions',
+          'member-roles', 'server-channel-permissions',
+        ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
       } catch (err: any) {
         console.error("[RoleCheckboxItem] Failed to toggle member role", {
           serverId, memberId, userId, roleId: role.id, roleName: role.name, shouldRemove, err,

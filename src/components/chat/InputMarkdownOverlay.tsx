@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, forwardRef } from 'react';
 
 interface InputMarkdownOverlayProps {
   content: string;
@@ -40,17 +40,33 @@ function parseLines(content: string): OverlayLine[] {
   return result;
 }
 
+// These styles use NO horizontal padding/margin that would shift text.
+// Visual decorations are done via pseudo-elements or box-shadow to avoid misalignment.
 const lineStyles: Record<OverlayLine['type'], string> = {
-  header1: 'text-2xl font-bold text-foreground leading-[2.25rem]',
-  header2: 'text-xl font-bold text-foreground leading-[1.875rem]',
-  header3: 'text-lg font-semibold text-foreground leading-[1.6875rem]',
-  subtext: 'text-[12px] text-muted-foreground leading-[1.125rem]',
-  blockquote: 'border-l-[4px] border-[hsl(228,6%,32%)] pl-3 text-muted-foreground',
+  header1: 'text-2xl font-bold text-foreground',
+  header2: 'text-xl font-bold text-foreground',
+  header3: 'text-lg font-semibold text-foreground',
+  subtext: 'text-[12px] text-muted-foreground',
+  blockquote: 'text-muted-foreground discord-overlay-blockquote',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
-  codeBlockDelimiter: 'font-mono text-muted-foreground bg-[hsl(var(--surface-elevated))] rounded-t px-2',
-  codeBlockLine: 'font-mono text-foreground bg-[hsl(var(--surface-elevated))] px-2',
-  normal: '',
+  codeBlockDelimiter: 'font-mono text-muted-foreground discord-overlay-code',
+  codeBlockLine: 'font-mono text-foreground discord-overlay-code',
+  normal: 'text-foreground',
+};
+
+// Line heights must match exactly between overlay and textarea for each type
+const lineHeightStyles: Record<OverlayLine['type'], string> = {
+  header1: 'leading-[2.25rem]',
+  header2: 'leading-[1.875rem]',
+  header3: 'leading-[1.6875rem]',
+  subtext: 'leading-[1.125rem]',
+  blockquote: 'leading-[1.25rem]',
+  listItem: 'leading-[1.25rem]',
+  orderedListItem: 'leading-[1.25rem]',
+  codeBlockDelimiter: 'leading-[1.25rem]',
+  codeBlockLine: 'leading-[1.25rem]',
+  normal: 'leading-[1.25rem]',
 };
 
 // Map line type to fontSize values (used by MessageInput for caret sizing)
@@ -105,30 +121,36 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   return 'normal';
 }
 
-export function InputMarkdownOverlay({ content, compact = false }: InputMarkdownOverlayProps) {
-  const lines = useMemo(() => parseLines(content), [content]);
+export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
+  ({ content, compact = false }, ref) => {
+    const lines = useMemo(() => parseLines(content), [content]);
+    const hasMarkdown = useMemo(() => lines.some(l => l.type !== 'normal'), [lines]);
 
-  const hasMarkdown = useMemo(() => lines.some(l => l.type !== 'normal'), [lines]);
+    if (!hasMarkdown) return null;
 
-  if (!hasMarkdown) return null;
+    // When markdown is active, render ALL lines (including normal) so
+    // the textarea can be fully transparent and only show its caret.
+    // Each line is a block-level div to guarantee identical line-box heights.
+    return (
+      <div
+        ref={ref}
+        aria-hidden
+        className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words text-sm ${
+          compact ? 'py-1 min-h-[24px]' : 'py-3 min-h-[24px]'
+        }`}
+      >
+        {lines.map((line, i) => (
+          <div
+            key={i}
+            className={`${lineStyles[line.type]} ${lineHeightStyles[line.type]}`}
+          >
+            {/* Use a zero-width space for empty lines to preserve height */}
+            {line.text || '\u200B'}
+          </div>
+        ))}
+      </div>
+    );
+  }
+);
 
-  return (
-    <div
-      aria-hidden
-      className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words ${
-        compact ? 'py-1 text-sm min-h-[24px]' : 'py-3 text-sm min-h-[24px]'
-      }`}
-    >
-      {lines.map((line, i) => (
-        <span key={i}>
-          {i > 0 && '\n'}
-          {line.type !== 'normal' ? (
-            <span className={lineStyles[line.type]}>{line.text}</span>
-          ) : (
-            <span className="text-transparent">{line.text}</span>
-          )}
-        </span>
-      ))}
-    </div>
-  );
-}
+InputMarkdownOverlay.displayName = 'InputMarkdownOverlay';

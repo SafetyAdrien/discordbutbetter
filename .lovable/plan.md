@@ -1,31 +1,61 @@
 
-# Reactivity des roles et raccourci clic-droit
 
-## Probleme
+# Fix: Duplicated channel hidden by visibility filter
 
-Le composant `RoleAssignmentPopover` maintient un etat local (`optimisticRoleIds`) qui se desynchronise du cache React Query. De plus, il ne passe pas l'objet `role` complet aux mutations, ce qui fait que l'optimistic update dans `useRoles.ts` n'a que `{ id: roleId }` sans les infos de nom/couleur. Le composant `RoleCheckboxItem` utilise deja le bon pattern (lecture directe du cache React Query).
+## Root cause
 
-## Changements
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 1. `src/components/members/RoleAssignmentPopover.tsx` - Refonte complete
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Remplacer l'etat local `optimisticRoleIds` / `pendingRoleIds` par le meme pattern que `RoleCheckboxItem` :
-- Lire l'etat des roles directement depuis le cache React Query (`['members', serverId]`) au lieu de maintenir un `useState<Set>`.
-- Utiliser `RoleCheckboxItem` directement au lieu de reimplementer la logique de toggle.
-- Supprimer les `useEffect` de synchronisation qui causent les desynchronisations.
-- Passer le `role` complet dans les appels de mutation pour que l'optimistic update ait toutes les donnees (nom, couleur, icone).
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 2. `src/components/layout/MemberList.tsx` - Ajouter "Gerer les roles" au menu contextuel
+## Fix
 
-Ajouter un `ContextMenuItem` avec l'icone `Shield` et le label "Gerer les roles" dans le menu contextuel de chaque membre. Au clic, ouvrir le `RoleAssignmentPopover` (ou un equivalent). Conditionner l'affichage a `canManageRoles` et au fait que l'utilisateur cible n'est pas le proprietaire.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Approche technique :
-- Importer `RoleAssignmentPopover` dans `MemberList.tsx`.
-- Ajouter un etat `roleAssignmentTarget` pour stocker le membre cible.
-- Le `ContextMenuItem` "Gerer les roles" ouvrira le popover via cet etat.
-- Condition d'affichage : `canManageRoles && !isOwner && !isSecondaryOwner`.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Fichiers modifies
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- `src/components/members/RoleAssignmentPopover.tsx` : refonte pour utiliser `RoleCheckboxItem` et le cache React Query
-- `src/components/layout/MemberList.tsx` : ajout du raccourci "Gerer les roles" dans le ContextMenu
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

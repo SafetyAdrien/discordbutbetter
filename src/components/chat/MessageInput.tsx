@@ -108,18 +108,6 @@ export function MessageInput({
     }
   }, [value, onChange]);
 
-  const adjustTextareaHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      const maxHeight = compact ? 120 : 200;
-      textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
-    }
-  }, [compact]);
-
-  useEffect(() => {
-    adjustTextareaHeight();
-  }, [value, adjustTextareaHeight]);
 
 
   // Handle file input change
@@ -455,7 +443,7 @@ export function MessageInput({
           </Popover>
           
           {/* Textarea container with markdown overlay */}
-          <div className="relative flex-1 min-w-0">
+          <div className={`relative flex-1 min-w-0 overflow-y-auto ${compact ? 'max-h-[120px]' : 'max-h-[200px]'}`}>
             <InputMarkdownOverlay content={value} compact={compact} />
             <textarea
               ref={textareaRef}
@@ -465,12 +453,12 @@ export function MessageInput({
               onPaste={handlePaste}
               placeholder={placeholder}
               disabled={disabled}
-              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
+              className={`absolute inset-0 z-10 w-full h-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-hidden break-words ${
                 value.match(/^(#{1,3} |-# )/m) ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
-                  ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
-                  : "py-3 text-sm min-h-[24px] max-h-[200px] pr-1"
+                  ? "py-1 text-sm pr-2" 
+                  : "py-3 text-sm pr-1"
               }`}
               rows={1}
             />

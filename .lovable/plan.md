@@ -1,61 +1,73 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Connexion instantanee aux salons vocaux
 
-## Root cause
+## Probleme
+La connexion a un salon vocal est perceptiblement lente car toutes les operations sont sequentielles : suppression de l'ancien etat vocal, insertion du nouvel etat, connexion WebRTC, puis mise a jour de l'UI. L'utilisateur ne voit le changement qu'apres 2-3 allers-retours reseau.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Solution
+Appliquer un pattern **optimistic update** : mettre a jour l'UI locale immediatement, puis executer les operations DB et WebRTC en arriere-plan.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### `src/contexts/VoiceContext.tsx` - Fonction `joinChannel`
 
-## Fix
+1. **UI instantanee** : Appeler `setVoiceState()` et jouer le son `soundEffects.playJoin()` immediatement, avant toute operation asynchrone
+2. **Operations paralleles** : Lancer la suppression/insertion DB et la connexion WebRTC en parallele avec `Promise.all` au lieu de les enchainer sequentiellement
+3. **Rollback en cas d'erreur** : Sauvegarder l'etat precedent et restaurer en cas d'echec
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### `src/contexts/VoiceContext.tsx` - Fonction `leaveChannel`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+1. **UI instantanee** : Mettre l'etat a `null` et jouer le son immediatement
+2. **Operations en arriere-plan** : Deconnexion WebRTC et suppression DB apres la mise a jour visuelle
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### `src/components/layout/ChannelList.tsx`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+1. Retirer le `try/catch` bloquant autour de `joinChannel` dans le handler de clic pour ne pas retarder la navigation
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### Detail technique
 
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
+**Avant (sequentiel) :**
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+[clic] -> delete DB (100ms) -> insert DB (100ms) -> WebRTC connect (200ms) -> setState -> son
+Total percu : ~400ms+
 ```
 
-### Code for onSuccess addition
-
+**Apres (optimistic) :**
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+[clic] -> setState + son (0ms) -> [DB + WebRTC en parallele, arriere-plan]
+Total percu : ~0ms
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**Pattern de rollback :**
+```typescript
+const joinChannel = useCallback(async (channelId, channelName, serverName) => {
+  const prevState = { ...voiceState };
+
+  // 1. Mise a jour instantanee
+  setVoiceState({ channelId, channelName, serverName, isMuted: prevState.isMuted, isDeafened: prevState.isDeafened });
+  soundEffects.playJoin();
+  toast.success(`Connecte a ${channelName}`);
+
+  // 2. Operations DB + WebRTC en arriere-plan
+  try {
+    await supabase.from('voice_states').delete().eq('user_id', user.id);
+    const [dbResult] = await Promise.all([
+      supabase.from('voice_states').insert({ ... }),
+      webrtc.connect(channelId),
+    ]);
+    if (dbResult.error) throw dbResult.error;
+    queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
+  } catch (error) {
+    // 3. Rollback
+    setVoiceState(prevState);
+    webrtc.disconnect();
+    toast.error('Impossible de rejoindre le canal vocal');
+  }
+});
+```
+
+### Fichiers modifies
+- `src/contexts/VoiceContext.tsx` (joinChannel + leaveChannel)
+- `src/components/layout/ChannelList.tsx` (handler de clic vocal)
 

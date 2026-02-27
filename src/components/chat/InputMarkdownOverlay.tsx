@@ -46,7 +46,7 @@ export function InputMarkdownOverlay({ content, compact = false }: InputMarkdown
           {line.type !== 'normal' ? (
             <span className={lineStyles[line.type]}>{line.text}</span>
           ) : (
-            <span className="text-transparent">{line.text}</span>
+            <span className={lineStyles.normal}>{line.text}</span>
           )}
         </span>
       ))}

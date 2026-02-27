@@ -1,61 +1,77 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Markdown dans l'input et separateurs pour titres
 
-## Root cause
+## Deux changements demandes
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### 1. Apercu Markdown en direct dans l'input
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Actuellement, l'input est un `<textarea>` HTML standard qui ne peut pas afficher du texte formate. Pour afficher les titres directement dans l'input, il faut remplacer le textarea par un systeme a deux couches (overlay) :
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+- Une couche d'arriere-plan qui affiche le contenu rendu (titres en gros, sous-titres en petit, etc.)
+- Un `<textarea>` transparent par-dessus pour capturer la saisie
 
-## Fix
+Ce systeme est utilise par Discord : le texte brut est invisible mais positionne exactement, et le rendu visuel est affiche en dessous.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Fichier** : `src/components/chat/MessageInput.tsx`
+- Remplacer le textarea simple par un conteneur avec overlay
+- Ajouter un composant `InputMarkdownOverlay` qui parse le contenu en temps reel et affiche les titres avec leur taille appropriee
+- Le textarea reste transparent pour la saisie, le curseur et la selection
+- Supprimer le bouton d'apercu separe (Eye/EyeOff) et le composant `MarkdownPreview` puisque l'apercu est maintenant integre
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+**Nouveau fichier** : `src/components/chat/InputMarkdownOverlay.tsx`
+- Composant qui recoit le texte brut et affiche le rendu des headers uniquement (pas bold/italic qui changerait la largeur du texte)
+- Les lignes commencant par `#` sont affichees en grande taille
+- Les lignes commencant par `-#` sont affichees en petite taille
+- Le reste du texte est affiche normalement pour garder l'alignement avec le textarea
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 2. Separateurs pour titres et sous-titres dans les messages envoyes
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Fichier** : `src/lib/markdown.tsx` (fonction `renderBlockToken`)
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+- **Titres (`#`, `##`, `###`)** : Ajouter un `<hr>` / separateur en dessous de chaque titre
+- **Sous-titre (`-#`)** : Ajouter un separateur au-dessus du sous-titre
 
-### 3. Hook needs `useAuth` for the user ID
+Les separateurs seront des lignes fines avec la couleur `border` existante.
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+---
 
-## Detailed changes
+## Details techniques
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
+### InputMarkdownOverlay
 
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
++------------------------------------------+
+|  [Overlay div - texte rendu visible]     |
+|    # Titre  -> affiche en text-2xl       |
+|    texte    -> affiche en text-sm        |
++------------------------------------------+
+|  [Textarea transparent par-dessus]       |
+|    meme contenu, meme font, invisible    |
++------------------------------------------+
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Le textarea et l'overlay partagent exactement les memes proprietes CSS (font, padding, line-height) pour que le texte se superpose parfaitement. Le textarea a `color: transparent` et `caret-color: white` pour que seul le curseur soit visible.
+
+### Separateurs dans renderBlockToken
+
+Pour les headers :
+```text
+# Mon titre
+─────────────  (separateur en dessous)
+```
+
+Pour les sous-titres :
+```text
+─────────────  (separateur au-dessus)
+-# Mon sous-titre
+```
+
+### Fichiers modifies
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/chat/InputMarkdownOverlay.tsx` | Nouveau composant overlay pour rendu en direct |
+| `src/components/chat/MessageInput.tsx` | Integrer l'overlay, rendre le textarea transparent, supprimer le bouton apercu |
+| `src/lib/markdown.tsx` | Ajouter separateurs aux headers et sous-titres |
 

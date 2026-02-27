@@ -52,7 +52,8 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const { data: serverSettings } = useServerSettings(channel.server_id);
 
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
-  const shouldFormatStrict = !isFlexible;
+  const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
+  const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
   // Reformat name when shouldFormatStrict becomes true (e.g. after settings load)
   useEffect(() => {

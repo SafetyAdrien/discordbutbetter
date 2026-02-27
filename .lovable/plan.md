@@ -1,35 +1,61 @@
 
 
-# Autoriser les majuscules pour les salons Vocaux et Stage en mode strict
+# Fix: Duplicated channel hidden by visibility filter
 
-## Contexte
-Actuellement, quand le reglage `flexible_channel_names` est desactive, **tous** les types de salons sont forces en minuscules avec tirets. Or, dans Discord, les salons vocaux et stage conservent leur casse libre (majuscules autorisees) meme en mode strict. Il faut reproduire ce comportement.
+## Root cause
 
-## Changements
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Logique
-Les types `voice` et `stage` sont exemptes du formatage strict. Le formatage ne s'applique qu'aux types : `text`, `forum`, `announcement`, `media`, `calendar`, `tasks`.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Fichiers a modifier
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**1. `src/components/modals/CreateChannelModal.tsx`**
-- Ajouter une condition : si le type selectionne est `voice` ou `stage`, ne pas appliquer `formatStrictChannelName`, meme si `isFlexible` est `false`
-- Mettre a jour le placeholder dynamiquement ("Nouveau salon" pour voice/stage, "nouveau-salon" pour les autres en mode strict)
-- Appliquer la meme logique dans `onChange` et dans `handleSubmit`
+## Fix
 
-**2. `src/components/channel-settings/ChannelOverview.tsx`**
-- Ajouter la meme exemption : si `channel.type` est `voice` ou `stage`, `shouldFormatStrict` reste `false`
-- Ajuster le `useEffect` de reformatage et le `onChange` pour respecter cette regle
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Detail technique
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Dans les deux fichiers, la condition devient :
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
-const isExemptFromStrict = type === 'voice' || type === 'stage';
-const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-Cela garantit que :
-- Les salons vocaux et stage acceptent les majuscules et espaces librement
-- Les autres types continuent d'etre forces en minuscules-tirets quand le mode strict est actif
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

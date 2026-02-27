@@ -3,12 +3,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { MarkdownPreview } from './MarkdownPreview';
+import { InputMarkdownOverlay } from './InputMarkdownOverlay';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Eye, EyeOff } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
 
 interface MessageInputProps {
   value: string;
@@ -89,7 +89,6 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
@@ -122,17 +121,6 @@ export function MessageInput({
     adjustTextareaHeight();
   }, [value, adjustTextareaHeight]);
 
-  // Ctrl+P keyboard shortcut for markdown preview toggle
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        setShowPreview(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // Handle file input change
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -406,9 +394,6 @@ export function MessageInput({
         onUpdate={(id, updates) => onUpdateAttachment?.(id, updates)}
       />
 
-      {showPreview && value.trim() && (
-        <MarkdownPreview content={value} className="mb-2 max-h-[150px] overflow-y-auto scrollbar-thin w-full" />
-      )}
       <form onSubmit={handleSubmit} className="relative w-full min-w-0 shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
         {/* Mention Autocomplete */}
         {mentionState && (
@@ -469,21 +454,27 @@ export function MessageInput({
             </PopoverContent>
           </Popover>
           
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={placeholder}
-            disabled={disabled}
-            className={`flex-1 min-w-0 bg-transparent text-foreground placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
-              compact 
-                ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
-                : "py-3 min-h-[24px] max-h-[200px] pr-1"
-            }`}
-            rows={1}
-          />
+          {/* Textarea container with markdown overlay */}
+          <div className="relative flex-1 min-w-0">
+            <InputMarkdownOverlay content={value} compact={compact} />
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={placeholder}
+              disabled={disabled}
+              className={`relative z-10 w-full bg-transparent placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none resize-none overflow-y-auto break-words ${
+                value.match(/^(#{1,3} |-# )/m) ? 'text-transparent caret-foreground' : 'text-foreground'
+              } ${
+                compact 
+                  ? "py-1 text-sm min-h-[24px] max-h-[120px] pr-2" 
+                  : "py-3 text-sm min-h-[24px] max-h-[200px] pr-1"
+              }`}
+              rows={1}
+            />
+          </div>
           
           <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
             <EmojiStickerPicker
@@ -512,14 +503,6 @@ export function MessageInput({
                 </button>
               }
             />
-            <button
-              type="button"
-              onClick={() => setShowPreview(!showPreview)}
-              className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'} ${showPreview ? 'text-primary' : ''}`}
-              title={showPreview ? "Masquer l'aperçu (Ctrl+P)" : "Aperçu Markdown (Ctrl+P)"}
-            >
-              {showPreview ? <EyeOff className={compact ? "w-4 h-4" : "w-5 h-5"} /> : <Eye className={compact ? "w-4 h-4" : "w-5 h-5"} />}
-            </button>
             {(value.trim() || attachments.length > 0) && (
               <button 
                 type="submit" 

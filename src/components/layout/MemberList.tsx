@@ -585,10 +585,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
-          {canManageRoles && !isOwner && !isSecondaryOwner && memberId && (
+          {canManageRoles && memberId && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => {
+              <ContextMenuItem onSelect={(e) => {
+                e.preventDefault();
                 setRoleTarget({ memberId, userId: member.id });
               }}>
                 <Shield className="w-4 h-4 mr-2" />

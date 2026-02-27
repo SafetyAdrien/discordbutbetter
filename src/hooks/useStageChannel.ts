@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import type { StageSession, StageParticipant, StageHandRequest, StageRole } from '@/types/stage';
 import { useEffect } from 'react';
 
@@ -183,10 +183,10 @@ export function useStartStageSession() {
       if (context?.previousSession !== undefined) {
         queryClient.setQueryData(['stage-session', channelId], context.previousSession);
       }
-      toast({ title: 'Erreur', description: 'Impossible de créer la session', variant: 'destructive' });
+      toast.error('Impossible de créer la session');
     },
     onSuccess: () => {
-      toast({ title: 'Session créée' });
+      toast.success('Session créée');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
@@ -228,7 +228,7 @@ export function useGoLive() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Session en direct !' });
+      toast.success('Session en direct !');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
@@ -264,7 +264,7 @@ export function useEndStageSession() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Session terminée' });
+      toast.success('Session terminée');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
@@ -425,7 +425,7 @@ export function useRaiseHand() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Main levée', description: 'En attente d\'approbation' });
+      toast.success('Main levée', { description: 'En attente d\'approbation' });
     },
     onSettled: (sessionId) => {
       if (sessionId) {
@@ -580,7 +580,7 @@ export function useChangeParticipantRole() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Rôle modifié' });
+      toast.success('Rôle modifié');
     },
     onSettled: (_, __, { sessionId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-participants', sessionId] });

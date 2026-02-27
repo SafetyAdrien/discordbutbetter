@@ -62,7 +62,7 @@ import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
 import { copyToClipboard } from "@/lib/clipboard";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useVoice, useVoiceParticipants } from "@/contexts/VoiceContext";
 import { useUpdateCategory } from "@/hooks/useCategories";
 import { useServerEmojis } from "@/hooks/useServerAssets";
@@ -772,9 +772,7 @@ export function ChannelList({
         channelId,
         serverId: server.id,
       });
-      toast({
-        title: `Salon #${channelName} supprimé`,
-      });
+      toast.success(`Salon #${channelName} supprimé`);
 
       // If deleted channel was active, clear selection
       if (activeChannelId === channelId) {
@@ -785,10 +783,7 @@ export function ChannelList({
         }
       }
     } catch {
-      toast({
-        title: "Erreur lors de la suppression",
-        variant: "destructive",
-      });
+      toast.error("Erreur lors de la suppression");
     }
   };
   const handleDuplicateChannel = (channelId: string) => {
@@ -831,9 +826,7 @@ export function ChannelList({
     copyToClipboard(link, "Lien copié");
   };
   const handleMarkAsRead = (channelId: string) => {
-    toast({
-      title: "Marqué comme lu",
-    });
+    toast.success("Marqué comme lu");
   };
   const handleCreateInvite = (channelId: string) => {
     setInviteChannelId(channelId);

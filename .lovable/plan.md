@@ -1,54 +1,61 @@
 
-# Supprimer completement le systeme de toast shadcn (popup)
 
-## Objectif
-Retirer entierement le systeme de notification shadcn (`Toaster` / `use-toast`) et migrer tous les appels vers **Sonner** (deja utilise dans 51 fichiers du projet).
+# Fix: Duplicated channel hidden by visibility filter
 
-## Fichiers a migrer (remplacer `toast({title, description, variant})` par `toast.success/error()` de sonner)
+## Root cause
 
-### 1. `src/hooks/useStageChannel.ts`
-- Changer l'import de `'@/hooks/use-toast'` vers `'sonner'`
-- Convertir ~6 appels `toast({...})` :
-  - `toast({ title: 'Erreur', variant: 'destructive' })` -> `toast.error('Erreur : ...')`
-  - `toast({ title: 'Session creee' })` -> `toast.success('Session creee')`
-  - etc.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 2. `src/components/dm/DMList.tsx`
-- Changer l'import vers sonner
-- Convertir 3 appels (appels vocaux, conversation fermee, supprimee)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 3. `src/components/layout/ServerList.tsx`
-- Changer l'import vers sonner
-- Convertir 2 appels (marque comme lu, erreur proprietaire)
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 4. `src/components/layout/ChannelList.tsx`
-- Changer l'import vers sonner
-- Convertir 3 appels (salon supprime, erreur suppression, marque comme lu)
+## Fix
 
-### 5. `src/hooks/useServerOrder.ts`
-- Changer l'import vers sonner
-- Convertir 1 appel erreur
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 6. `src/lib/clipboard.ts`
-- Changer l'import vers sonner
-- Convertir 2 appels (succes copie, erreur copie)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Fichiers a supprimer / nettoyer
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 7. `src/App.tsx`
-- Retirer l'import et le composant `<Toaster />` (garder `<Sonner />`)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### 8. Fichiers devenus inutiles (a supprimer)
-- `src/hooks/use-toast.ts` -- le hook shadcn complet
-- `src/components/ui/toaster.tsx` -- le composant Toaster
-- `src/components/ui/toast.tsx` -- les primitives Toast
-- `src/components/ui/use-toast.ts` -- le re-export
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-## Convention de migration
+### 3. Hook needs `useAuth` for the user ID
 
-| Avant (shadcn) | Apres (sonner) |
-|---|---|
-| `toast({ title: 'X' })` | `toast.success('X')` |
-| `toast({ title: 'X', description: 'Y' })` | `toast.success('X', { description: 'Y' })` |
-| `toast({ title: 'X', variant: 'destructive' })` | `toast.error('X')` |
-| `toast({ title: 'X', description: 'Y', variant: 'destructive' })` | `toast.error('X', { description: 'Y' })` |
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { copyToClipboard } from '@/lib/clipboard';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
@@ -318,7 +318,7 @@ export function ServerList({
 
   const handleMarkAsRead = (serverId: string) => {
     markServerAsRead(serverId);
-    toast({ title: 'Serveur marqué comme lu' });
+    toast.success('Serveur marqué comme lu');
   };
 
   const handleInvite = (serverId: string) => {
@@ -333,7 +333,7 @@ export function ServerList({
     // Check if user is the owner
     if (server.ownerId === user?.id) {
       console.log('[DEBUG] User is owner, cannot leave');
-      toast({ title: "Vous ne pouvez pas quitter un serveur dont vous êtes propriétaire", variant: "destructive" });
+      toast.error("Vous ne pouvez pas quitter un serveur dont vous êtes propriétaire");
       return;
     }
     console.log('[DEBUG] Opening leave dialog');

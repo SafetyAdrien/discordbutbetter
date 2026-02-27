@@ -1,61 +1,44 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: "Rendered more hooks than during the previous render" in UserProfilePopup
 
-## Root cause
+## Root Cause
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+In `src/components/profile/UserProfilePopup.tsx`, there is an early return at **line 130** (`if (!user) return null;`) that occurs **before** the `useQuery` hook at **line 146**. This violates React's rules of hooks: hooks must always be called in the same order on every render.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+- When `user` is `null`: hooks at lines 118-129 run, then the component returns early -- the `useQuery` at line 146 never runs.
+- When `user` becomes non-null (e.g., after a role is added and a re-render is triggered): hooks at lines 118-129 run, then `useQuery` at line 146 also runs -- **one more hook than last time**.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+This is why removing a role works (doesn't change the hook count) but adding one crashes.
 
 ## Fix
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Move the early return (`if (!user) return null;`) to **after** all hooks have been called. The `useQuery` at line 146 already has `enabled: !!serverId && !!memberId`, so it safely no-ops when data isn't available. We just need to ensure the hook always executes.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### File: `src/components/profile/UserProfilePopup.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+1. **Remove** the early return at line 130 (`if (!user) return null;`)
+2. **Move** it to after line 156 (after the `useQuery` call and any other hooks)
+3. This ensures all hooks are always called regardless of `user` being null or not
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### Technical Detail
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+```
+// BEFORE (broken):
+const { data: friends } = useFriends();           // hook 5
+const { data: allRoles } = useServerRoles(...);   // hook 6
+...
+if (!user) return null;                            // <-- EARLY RETURN HERE
+...
+const { data: reactiveRoles } = useQuery(...);     // hook 7 -- SKIPPED when user is null!
 
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// AFTER (fixed):
+const { data: friends } = useFriends();
+const { data: allRoles } = useServerRoles(...);
+...
+const { data: reactiveRoles } = useQuery(...);     // hook 7 -- always runs
+if (!user) return null;                            // moved after all hooks
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+No other files need changes. This is a one-line move.
 

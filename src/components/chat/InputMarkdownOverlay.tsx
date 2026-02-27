@@ -36,8 +36,8 @@ export function InputMarkdownOverlay({ content, compact = false }: InputMarkdown
   return (
     <div
       aria-hidden
-      className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-hidden ${
-        compact ? 'py-1 text-sm' : 'py-3 text-sm'
+      className={`pointer-events-none whitespace-pre-wrap break-words ${
+        compact ? 'py-1 text-sm min-h-[24px]' : 'py-3 text-sm min-h-[24px]'
       }`}
     >
       {lines.map((line, i) => (

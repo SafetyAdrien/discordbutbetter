@@ -5,14 +5,14 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, Plus, X, UserMinus, Ban } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { membersMutationLockRef, MemberWithProfile } from '@/hooks/useMembers';
+import { MemberWithProfile } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
@@ -130,7 +130,7 @@ export function UserProfilePopup({
   if (!user) return null;
 
   const isOwnProfile = currentUser?.id === user.id;
-  const isGodUser = currentUser?.id === ownerId || currentUser?.id === secondaryOwnerId;
+  
   const isTargetOwner = user.id === ownerId || user.id === secondaryOwnerId;
   
   // Can't kick/ban owners or yourself
@@ -155,7 +155,7 @@ export function UserProfilePopup({
     gcTime: Infinity,
   });
 
-  const userRoleIds = roles?.map(r => r.id) || [];
+  
 
   const handleSendMessage = () => {
     createDM(user.id, {

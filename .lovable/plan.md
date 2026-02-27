@@ -1,61 +1,41 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix Status Panel Positioning Next to Profile Popover
 
-## Root cause
+## Problem
+The status submenu (Portal) calculates its position from the status button's bounding rect, but the math doesn't reliably place it adjacent to the profile popover panel. It can appear disconnected or misaligned.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Solution
+Update the positioning logic in `handleStatusHover` so the Portal-based status menu appears flush to the right of the **popover container** (not just the button), properly vertically aligned.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### File: `src/components/profile/UserProfileCard.tsx`
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+1. **Add a ref on the PopoverContent wrapper** to get the popover panel's bounding rect
+2. **Update `handleStatusHover`** to use the popover panel's right edge and vertical center for positioning, so the status menu appears directly beside the popover
+3. **Adjust the `left` calculation** to use `popoverRect.right + 4` (right edge of the popover + small gap)
+4. **Adjust the `top` calculation** to vertically align the status menu with the status button row within the popover
 
-## Fix
+### Technical Detail
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+```typescript
+// Add ref to PopoverContent wrapper
+const popoverRef = useRef<HTMLDivElement>(null);
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+// Updated positioning logic
+const handleStatusHover = () => {
+  if (statusButtonRef.current && popoverRef.current) {
+    const buttonRect = statusButtonRef.current.getBoundingClientRect();
+    const popoverRect = popoverRef.current.getBoundingClientRect();
+    const menuHeight = 160;
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+    setMenuPosition({
+      top: Math.max(10, buttonRect.top - menuHeight / 2 + buttonRect.height / 2),
+      left: popoverRect.right + 4, // Flush to the right of the popover
+    });
+  }
+  setShowStatusMenu(true);
+};
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+No other files are affected. This is a positioning adjustment only -- the visual design of both panels stays the same.
 

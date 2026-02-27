@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
+import { lockPermissionsMutation } from './usePermissionsRealtime';
 
 type ServerPermission = Database['public']['Enums']['server_permission'];
 
@@ -69,6 +70,7 @@ export function useSetPermissionOverride() {
       return { channelId, roleId, permission, type };
     },
     onMutate: async ({ channelId, roleId, permission, type }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
       const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
       
@@ -102,9 +104,10 @@ export function useSetPermissionOverride() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
-      // Invalider les permissions utilisateur en cache
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      // Immediately refetch active permission queries for instant UI update
+      queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' });
     },
   });
 }
@@ -133,6 +136,7 @@ export function useRemovePermissionOverride() {
       return { channelId, roleId, permission };
     },
     onMutate: async ({ channelId, roleId, permission }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
       const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
       
@@ -149,8 +153,9 @@ export function useRemovePermissionOverride() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' });
     },
   });
 }
@@ -170,6 +175,7 @@ export function useSyncWithCategory() {
       return { channelId };
     },
     onMutate: async ({ channelId }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
       const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
       
@@ -184,8 +190,9 @@ export function useSyncWithCategory() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' });
     },
   });
 }
@@ -206,6 +213,7 @@ export function useResetRoleChannelOverrides() {
       return { channelId, roleId };
     },
     onMutate: async ({ channelId, roleId }) => {
+      lockPermissionsMutation(600);
       await queryClient.cancelQueries({ queryKey: ['channel-permissions', channelId] });
       const previousOverrides = queryClient.getQueryData<ChannelPermissionOverride[]>(['channel-permissions', channelId]);
       
@@ -222,8 +230,9 @@ export function useResetRoleChannelOverrides() {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channel-permissions', variables.channelId] });
-      queryClient.invalidateQueries({ queryKey: ['user-channel-permissions'] });
-      queryClient.invalidateQueries({ queryKey: ['channel-permission'] });
+      queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' });
     },
   });
 }

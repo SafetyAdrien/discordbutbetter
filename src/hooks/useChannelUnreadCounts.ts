@@ -31,12 +31,26 @@ export function useChannelUnreadCounts(serverId: string | null) {
       )
       .subscribe();
 
+    // Cache channel IDs for client-side filtering
+    let serverChannelIds: Set<string> | null = null;
+    supabase
+      .from('channels')
+      .select('id')
+      .eq('server_id', serverId)
+      .then(({ data }) => {
+        serverChannelIds = new Set(data?.map(c => c.id) || []);
+      });
+
     const messagesChannel = supabase
       .channel(`channel-messages-${serverId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => {
+        (payload) => {
+          // Client-side filter: only invalidate if the message belongs to this server
+          const channelId = (payload.new as any)?.channel_id;
+          if (serverChannelIds && channelId && !serverChannelIds.has(channelId)) return;
+          
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });

@@ -2,12 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ThreadMessage } from '@/types/thread';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useThreadMessages = (threadId: string | undefined) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   
-  // Real-time subscription
+  // Real-time subscription — skip own INSERTs (handled by optimistic update)
   useEffect(() => {
     if (!threadId) return;
     
@@ -21,16 +24,24 @@ export const useThreadMessages = (threadId: string | undefined) => {
           table: 'thread_messages',
           filter: `thread_id=eq.${threadId}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });
+        (payload) => {
+          // Skip own INSERT events — already handled by optimistic update
+          if (payload.eventType === 'INSERT' && user && (payload.new as any)?.author_id === user.id) {
+            return;
+          }
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });
+          }, 300);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [threadId, queryClient]);
+  }, [threadId, user?.id, queryClient]);
 
   return useQuery({
     queryKey: ['thread-messages', threadId],
@@ -82,7 +93,6 @@ export const useSendThreadMessage = () => {
       await queryClient.cancelQueries({ queryKey: ['thread-messages', threadId] });
       const previous = queryClient.getQueryData(['thread-messages', threadId]);
       
-      // Optimistic update
       queryClient.setQueryData(['thread-messages', threadId], (old: ThreadMessage[] = []) => [
         ...old,
         {
@@ -103,6 +113,7 @@ export const useSendThreadMessage = () => {
       toast.error('Erreur lors de l\'envoi du message');
     },
     onSettled: (_, __, { threadId }) => {
+      // Single invalidation — Realtime skips own INSERTs so this is necessary
       queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });
       queryClient.invalidateQueries({ queryKey: ['threads'] });
     },

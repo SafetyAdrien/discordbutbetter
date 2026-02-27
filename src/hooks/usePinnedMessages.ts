@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -23,6 +24,35 @@ export interface PinnedMessage {
 }
 
 export function usePinnedMessages(channelId: string) {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription for pinned_messages
+  useEffect(() => {
+    if (!channelId) return;
+
+    const channel = supabase
+      .channel(`pinned-messages-rt-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pinned_messages' },
+        (payload) => {
+          const record = (payload.new || payload.old) as { channel_id?: string } | undefined;
+          if (record?.channel_id && record.channel_id !== channelId) return;
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, queryClient]);
+
   return useQuery({
     queryKey: ['pinned-messages', channelId],
     queryFn: async () => {

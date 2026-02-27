@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -12,6 +13,41 @@ export interface Reaction {
 }
 
 export function useMessageReactions(messageIds: string[]) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription for reactions on these messages
+  useEffect(() => {
+    if (messageIds.length === 0) return;
+
+    const channel = supabase
+      .channel(`reactions-rt-${messageIds[0]}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reactions' },
+        (payload) => {
+          const record = (payload.new || payload.old) as { message_id?: string; user_id?: string } | undefined;
+          if (!record?.message_id) return;
+          // Only react to messages we're tracking
+          if (!messageIds.includes(record.message_id)) return;
+          // Skip own events (handled by optimistic updates)
+          if (user && record.user_id === user.id) return;
+
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['reactions'] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [messageIds.join(','), user?.id, queryClient]);
+
   return useQuery({
     queryKey: ['reactions', messageIds],
     queryFn: async () => {

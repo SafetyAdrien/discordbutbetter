@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -51,6 +52,33 @@ export interface AnnouncementReaction {
 
 // Fetch announcements for a channel
 export function useAnnouncements(channelId: string) {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription for announcements
+  useEffect(() => {
+    if (!channelId) return;
+
+    const channel = supabase
+      .channel(`announcements-rt-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'announcements', filter: `channel_id=eq.${channelId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['announcements', channelId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, queryClient]);
+
   return useQuery({
     queryKey: ['announcements', channelId],
     queryFn: async () => {

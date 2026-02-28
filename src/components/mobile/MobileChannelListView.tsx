@@ -43,6 +43,7 @@ interface MobileChannelListViewProps {
   onBack: () => void;
   onChannelSelect: (channelId: string, channelType: string) => void;
   onOpenSettings?: () => void;
+  embedded?: boolean;
 }
 
 export function MobileChannelListView({

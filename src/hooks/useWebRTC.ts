@@ -238,8 +238,20 @@ export function useWebRTC(): UseWebRTCReturn {
     try {
       channelIdRef.current = channelId;
 
-      // Try to start microphone - don't fail if it doesn't work
-      const micSuccess = await mediaManager.tryStartMicrophone();
+      // Start signaling service (created before parallel block so it's ready for signals)
+      signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);
+
+      // Parallelize: microphone init, signaling start, and participant query
+      const [micSuccess, , participantsResult] = await Promise.all([
+        mediaManager.tryStartMicrophone(),
+        signalingServiceRef.current.start(),
+        supabase
+          .from('voice_states')
+          .select('user_id')
+          .eq('channel_id', channelId)
+          .neq('user_id', user.id),
+      ]);
+
       setHasMicrophoneAccess(micSuccess);
       setMicrophoneError(!micSuccess);
       
@@ -320,17 +332,8 @@ export function useWebRTC(): UseWebRTCReturn {
         }
       }, 2000); // Update every 2 seconds
 
-      // Start signaling service
-      signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);
-      await signalingServiceRef.current.start();
-
-      // Get current participants
-      const { data: existingParticipants } = await supabase
-        .from('voice_states')
-        .select('user_id')
-        .eq('channel_id', channelId)
-        .neq('user_id', user.id);
-
+      // Connect to existing participants
+      const existingParticipants = participantsResult.data;
       if (existingParticipants && existingParticipants.length > 0) {
         await connectToParticipants(existingParticipants);
       }

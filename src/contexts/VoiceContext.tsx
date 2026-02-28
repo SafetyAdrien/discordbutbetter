@@ -199,20 +199,21 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Background: DB + WebRTC in parallel
     try {
-      await supabase
-        .from('voice_states')
-        .delete()
-        .eq('user_id', user.id);
-
       const [dbResult] = await Promise.all([
         supabase
           .from('voice_states')
-          .insert({
-            user_id: user.id,
-            channel_id: channelId,
-            muted: prevState.isMuted,
-            deafened: prevState.isDeafened,
-          }),
+          .delete()
+          .eq('user_id', user.id)
+          .then(() =>
+            supabase
+              .from('voice_states')
+              .insert({
+                user_id: user.id,
+                channel_id: channelId,
+                muted: prevState.isMuted,
+                deafened: prevState.isDeafened,
+              })
+          ),
         webrtc.connect(channelId),
       ]);
 

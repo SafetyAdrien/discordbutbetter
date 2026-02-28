@@ -1,7 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Signal, SignalHigh, SignalLow, SignalMedium, SignalZero } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, useEffect, useRef } from 'react';
 
 export interface ConnectionStats {
   latency: number;
@@ -15,12 +14,9 @@ export interface ConnectionStats {
 interface VoiceConnectionIndicatorProps {
   stats: ConnectionStats | null;
   className?: string;
-  onQualityChange?: (quality: QualityLevel | null) => void;
 }
 
 export type QualityLevel = 'excellent' | 'good' | 'poor' | 'critical';
-
-const qualityOrder: QualityLevel[] = ['critical', 'poor', 'good', 'excellent'];
 
 const qualityConfig = {
   excellent: {
@@ -52,53 +48,8 @@ function getQuality(stats: ConnectionStats): QualityLevel {
   return 'critical';
 }
 
-export function VoiceConnectionIndicator({ stats, className, onQualityChange }: VoiceConnectionIndicatorProps) {
-  const [animatedQuality, setAnimatedQuality] = useState<QualityLevel | null>(null);
-  const isFirstConnection = useRef(true);
-  const animationTimers = useRef<NodeJS.Timeout[]>([]);
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      animationTimers.current.forEach(clearTimeout);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!stats) {
-      setAnimatedQuality(null);
-      onQualityChange?.(null);
-      isFirstConnection.current = true;
-      return;
-    }
-
-    const targetQuality = getQuality(stats);
-
-    if (isFirstConnection.current) {
-      // Progressive entrance animation
-      isFirstConnection.current = false;
-      animationTimers.current.forEach(clearTimeout);
-      animationTimers.current = [];
-
-      const targetIndex = qualityOrder.indexOf(targetQuality);
-
-      qualityOrder.forEach((level, i) => {
-        if (i <= targetIndex) {
-          const timer = setTimeout(() => {
-            setAnimatedQuality(level);
-            onQualityChange?.(level);
-          }, i * 300);
-          animationTimers.current.push(timer);
-        }
-      });
-    } else {
-      // Smooth transition for ongoing quality changes
-      setAnimatedQuality(targetQuality);
-      onQualityChange?.(targetQuality);
-    }
-  }, [stats, onQualityChange]);
-
-  if (!stats || !animatedQuality) {
+export function VoiceConnectionIndicator({ stats, className }: VoiceConnectionIndicatorProps) {
+  if (!stats) {
     return (
       <div className={cn('flex items-center', className)}>
         <Signal className="w-4 h-4 text-muted-foreground animate-pulse" />
@@ -106,7 +57,8 @@ export function VoiceConnectionIndicator({ stats, className, onQualityChange }: 
     );
   }
 
-  const config = qualityConfig[animatedQuality];
+  const quality = getQuality(stats);
+  const config = qualityConfig[quality];
   const Icon = config.icon;
 
   const connectionTypeLabels: Record<string, string> = {
@@ -122,14 +74,14 @@ export function VoiceConnectionIndicator({ stats, className, onQualityChange }: 
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={cn('flex items-center cursor-help', className)}>
-            <Icon className={cn('w-4 h-4 transition-colors duration-500 ease-out', config.color)} />
+            <Icon className={cn('w-4 h-4', config.color)} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="p-3">
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">Qualité</span>
-              <span className={cn('font-medium transition-colors duration-500', config.color)}>{config.label}</span>
+              <span className={cn('font-medium', config.color)}>{config.label}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">Latence</span>

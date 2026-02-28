@@ -84,7 +84,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
 
       setMenuPosition({
         top: Math.max(10, buttonRect.top - menuHeight / 2 + buttonRect.height / 2),
-        left: popoverRect.right + 4,
+        left: popoverRect.right + 1,
       });
     }
     setShowStatusMenu(true);
@@ -194,7 +194,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                       onMouseLeave={() => setShowStatusMenu(false)}
                     >
                       {/* Invisible bridge to connect popover to this menu */}
-                      <div className="absolute top-0 -left-3 w-3 h-full" />
+                      <div className="absolute top-0 -left-1 w-1 h-full" />
                       {/* Actual menu content */}
                       <div className="w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 animate-slide-in-right">
                         <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>

@@ -1,5 +1,12 @@
 @tailwind base;
 
+/* Dynamic viewport height fallback for older browsers */
+@supports not (height: 100dvh) {
+  .h-\[100dvh\] {
+    height: 100vh;
+  }
+}
+
 /* ============================================
    DND-KIT DRAG AND DROP STYLES
    Discord-like experience

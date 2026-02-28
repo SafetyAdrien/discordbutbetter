@@ -258,7 +258,7 @@ export function MobileLayout({
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden relative">
+    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden relative">
       {/* Main Content */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="popLayout">

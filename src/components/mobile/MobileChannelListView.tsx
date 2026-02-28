@@ -43,6 +43,7 @@ interface MobileChannelListViewProps {
   onBack: () => void;
   onChannelSelect: (channelId: string, channelType: string) => void;
   onOpenSettings?: () => void;
+  embedded?: boolean;
 }
 
 export function MobileChannelListView({
@@ -53,6 +54,7 @@ export function MobileChannelListView({
   onBack,
   onChannelSelect,
   onOpenSettings,
+  embedded = false,
 }: MobileChannelListViewProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
@@ -69,17 +71,29 @@ export function MobileChannelListView({
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Header */}
-      <div className="h-12 px-3 flex items-center gap-2 border-b border-border">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
-        {onOpenSettings && (
-          <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-            <Settings className="w-5 h-5" />
+      {!embedded && (
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border">
+          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <ChevronLeft className="w-5 h-5" />
           </button>
-        )}
-      </div>
+          <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
+          {onOpenSettings && (
+            <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <Settings className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      )}
+      {embedded && (
+        <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
+          <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
+          {onOpenSettings && (
+            <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <Settings className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Channel List */}
       <div className="flex-1 overflow-y-auto py-2">

@@ -1,47 +1,61 @@
 
-# Fix Status Panel Accessibility - Bridge the Gap
 
-## Problem
-The status submenu (Portal) is positioned 4px to the right of the profile popover. When the user moves their mouse from the status button to the submenu, they cross a gap where neither panel has hover -- triggering `onMouseLeave` and closing the menu before they can reach it.
+# Fix: Duplicated channel hidden by visibility filter
 
-## Solution
-Add an invisible "bridge" element that extends from the left edge of the status submenu back toward the profile popover, covering the gap. This keeps the `onMouseEnter`/`onMouseLeave` chain unbroken.
+## Root cause
 
-### File: `src/components/profile/UserProfileCard.tsx`
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-1. **Add a transparent bridge div** inside the Portal status menu container, positioned to the left of the menu, covering the 4px gap (plus some padding for tolerance). This div will be absolutely positioned, extending ~12px to the left of the menu with full height, ensuring the mouse never "leaves" when traveling between panels.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-2. **Wrap the status menu content** so the bridge and the visible menu share the same `onMouseEnter`/`onMouseLeave` handlers.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Visual representation
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
 ```text
-+------------------+    +----------------+
-| Profile Popover  |####| Status Menu    |
-|                  |####|  * En ligne    |
-|  [Status row] -->|####|  * Inactif     |
-|                  |####|  * Ne pas...   |
-+------------------+    +----------------+
-                    ^^^^
-              invisible bridge div
-              (transparent, covers the gap)
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### Implementation detail
-Inside the Portal `<div>`, add a sibling div before the menu content:
-```tsx
-<div
-  className="fixed z-[100]"
-  style={{ top: menuPosition.top, left: menuPosition.left }}
-  onMouseEnter={() => setShowStatusMenu(true)}
-  onMouseLeave={() => setShowStatusMenu(false)}
->
-  {/* Invisible bridge to connect popover to this menu */}
-  <div className="absolute top-0 -left-3 w-3 h-full" />
-  {/* Actual menu content */}
-  <div className="w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 animate-slide-in-right">
-    ...
-  </div>
-</div>
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-No other files are affected. This is a single accessibility fix in `UserProfileCard.tsx`.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

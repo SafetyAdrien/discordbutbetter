@@ -41,6 +41,15 @@ const Index = () => {
   
   // Navigation state persistence
   const {
+    activeServerId: persistedServerId,
+    activeDMId: persistedDMId,
+    setActiveServerId: setPersistedServerId,
+    setActiveDMId: setPersistedDMId,
+    setChannelForServer,
+    getChannelForServer,
+  } = useNavigationState();
+  
+  const [activeServerId, setActiveServerIdLocal] = useState<string | null>(persistedServerId);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeDMId, setActiveDMIdLocal] = useState<string | null>(persistedDMId);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);

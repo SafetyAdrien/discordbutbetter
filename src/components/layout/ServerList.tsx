@@ -243,7 +243,7 @@ export function ServerList({
   const { sortServers, reorderServers } = useServerOrder();
   const leaveServer = useLeaveServer();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  
 
   // Leave server dialog state
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);

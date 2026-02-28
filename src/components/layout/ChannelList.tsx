@@ -17,6 +17,7 @@ import {
   LogOut,
   Copy,
   Headphones,
+  MessageSquare,
 } from "lucide-react";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
@@ -167,6 +168,7 @@ interface ChannelListProps {
   orphanChannels?: OrphanChannel[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
+  onOpenVoiceChat?: (channelId: string) => void;
 }
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;
@@ -382,6 +384,7 @@ interface SortableChannelProps {
   showArchivedThreads?: boolean;
   canManageChannels?: boolean;
   isVoiceLocked?: boolean;
+  onOpenChat?: () => void;
 }
 // Sortable Channel Component
 const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
@@ -409,6 +412,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
       showArchivedThreads = false,
       canManageChannels = false,
       isVoiceLocked = false,
+      onOpenChat,
     },
     ref,
   ) => {
@@ -483,6 +487,15 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 )}
 
                 <div className="hidden group-hover:flex gap-[5px]">
+                  {(isVoice || isStage) && onOpenChat && (
+                    <MessageSquare
+                      className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenChat();
+                      }}
+                    />
+                  )}
                   <UserPlus
                     className="w-4 h-4 text-muted-foreground hover:text-foreground"
                     onClick={(e) => {
@@ -658,6 +671,7 @@ export function ChannelList({
   orphanChannels = [],
   activeThreadId,
   onThreadSelect,
+  onOpenVoiceChat,
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);
@@ -1317,6 +1331,11 @@ export function ChannelList({
                         isVoiceLocked={
                           (channel.type === "voice" || channel.type === "stage") && isVoiceChannelLocked(channel.id)
                         }
+                        onOpenChat={
+                          (channel.type === "voice" || channel.type === "stage")
+                            ? () => onOpenVoiceChat?.(channel.id)
+                            : undefined
+                        }
                       />
                     ))}
                   </SortableContext>
@@ -1379,6 +1398,11 @@ export function ChannelList({
                               isVoiceLocked={
                                 (channel.type === "voice" || channel.type === "stage") &&
                                 isVoiceChannelLocked(channel.id)
+                              }
+                              onOpenChat={
+                                (channel.type === "voice" || channel.type === "stage")
+                                  ? () => onOpenVoiceChat?.(channel.id)
+                                  : undefined
                               }
                             />
                           ))}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,8 @@ interface VoiceChannelViewProps {
   members: any[];
   ownerId: string;
   onOpenDM: (conversationId: string) => void;
+  initialShowChat?: boolean;
+  onChatOpened?: () => void;
 }
 
 export function VoiceChannelView({ 
@@ -31,11 +33,21 @@ export function VoiceChannelView({
   serverId, 
   members,
   ownerId,
-  onOpenDM 
+  onOpenDM,
+  initialShowChat = false,
+  onChatOpened,
 }: VoiceChannelViewProps) {
   const { user } = useAuth();
-  const [showChat, setShowChat] = useState(false);
+  const [showChat, setShowChat] = useState(initialShowChat);
   const [showMembers, setShowMembers] = useState(false);
+
+  // React to initialShowChat prop changes
+  useEffect(() => {
+    if (initialShowChat) {
+      setShowChat(true);
+      onChatOpened?.();
+    }
+  }, [initialShowChat, onChatOpened]);
   const [isConnecting, setIsConnecting] = useState(false);
   
   const { 

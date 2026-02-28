@@ -88,6 +88,7 @@ function ServerProfileSheet({
   const server = servers?.find((s) => s.id === serverId);
   const isOwner = server?.owner_id === user?.id || server?.secondary_owner_id === user?.id;
   const ownerMember = members?.find((m) => m.user.id === server?.owner_id);
+  const secondaryOwnerMember = members?.find((m) => m.user.id === server?.secondary_owner_id);
   const memberCount = members?.length ?? 0;
 
   const maxEmojis = 10;
@@ -184,6 +185,15 @@ function ServerProfileSheet({
                 <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-yellow-500" size={16} />
                 <span className="text-xs">
                   Fondateur : <span className="text-foreground font-medium">{ownerMember.user.display_name}</span>
+                </span>
+              </div>
+            )}
+
+            {secondaryOwnerMember && (
+              <div className="flex items-center gap-2.5 text-muted-foreground">
+                <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-gray-400" size={16} />
+                <span className="text-xs">
+                  Co-propriétaire : <span className="text-foreground font-medium">{secondaryOwnerMember.user.display_name}</span>
                 </span>
               </div>
             )}

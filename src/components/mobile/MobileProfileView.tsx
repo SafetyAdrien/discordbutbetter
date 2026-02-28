@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Settings, LogOut, User, Moon, Pencil, Circle, MinusCircle, EyeOff } from 'lucide-react';
+import { Settings, LogOut, Moon, Pencil, Circle, MinusCircle, EyeOff } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,7 +18,7 @@ const STATUS_OPTIONS = [
 export function MobileProfileView() {
   const { profile, signOut, user } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
-  const [showSettingsTab, setShowSettingsTab] = useState<'account' | 'profile'>('account');
+  const [_showSettingsTab, setShowSettingsTab] = useState<'account' | 'profile'>('account');
   const [showStatus, setShowStatus] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
 
@@ -29,7 +29,7 @@ export function MobileProfileView() {
     offline: 'bg-[hsl(var(--offline))]',
   };
 
-  const handleStatusChange = async (status: string) => {
+  const handleStatusChange = async (status: 'online' | 'idle' | 'dnd' | 'offline') => {
     if (!user?.id) return;
     await supabase.from('profiles').update({ status }).eq('id', user.id);
     setStatusOpen(false);

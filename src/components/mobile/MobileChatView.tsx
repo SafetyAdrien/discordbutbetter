@@ -1,4 +1,4 @@
-import { ChevronLeft, Users, Search, Info } from 'lucide-react';
+import { ChevronLeft, Users, Info } from 'lucide-react';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

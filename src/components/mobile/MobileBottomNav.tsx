@@ -30,7 +30,7 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 mx-3 mb-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border/50 shadow-lg pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/50 shadow-lg pb-safe">
       <div className="flex items-center justify-around h-14">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;

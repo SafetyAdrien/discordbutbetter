@@ -112,7 +112,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
       {/* FAB - New Message - positioned above bottom nav */}
       <button
         onClick={() => setShowNewMessage(true)}
-        className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
+        className="absolute bottom-20 right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
       >
         <Plus className="w-6 h-6" />
       </button>

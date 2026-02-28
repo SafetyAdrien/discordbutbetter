@@ -301,7 +301,7 @@ export function MobileLayout({
         </AnimatePresence>
 
         {/* Base tab views */}
-        <div className="h-full">
+        <div className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]">
           {activeTab === 'home' && (
             <MobileHomeView
               activeDMId={activeDMId}

@@ -83,7 +83,13 @@ export function MobileLayout({
 
   const handleServerSelect = (serverId: string) => {
     onServerSelect(serverId);
-    setMobileView({ type: 'channels', serverId });
+  };
+
+  const handleServerChannelSelect = (channelId: string, channelType: string) => {
+    const serverId = activeServerId || servers[0]?.id;
+    if (serverId) {
+      setMobileView({ type: 'chat', serverId, channelId, channelType });
+    }
   };
 
   const handleChannelSelect = (channelId: string, channelType: string) => {

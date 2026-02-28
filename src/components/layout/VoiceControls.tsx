@@ -3,8 +3,7 @@ import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio }
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoice } from '@/contexts/VoiceContext';
-import { VoiceConnectionIndicator, type QualityLevel } from '@/components/channels/voice/VoiceConnectionIndicator';
-import { useState, useCallback } from 'react';
+import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
 
 interface VoiceControlsProps {
   channelName: string;
@@ -35,30 +34,13 @@ export function VoiceControls({
     connectionStats,
   } = useVoice();
 
-  const [currentQuality, setCurrentQuality] = useState<QualityLevel | null>(null);
-
-  const handleQualityChange = useCallback((quality: QualityLevel | null) => {
-    setCurrentQuality(quality);
-  }, []);
-
-  const qualityColorMap: Record<string, string> = {
-    excellent: 'text-[hsl(var(--online))]',
-    good: 'text-yellow-500',
-    poor: 'text-orange-500',
-    critical: 'text-destructive',
-  };
-
-  const connectedTextColor = currentQuality 
-    ? qualityColorMap[currentQuality] 
-    : 'text-muted-foreground';
-
   return (
     <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
       {/* Connection Info */}
       <div className="flex items-center gap-2 mb-2 px-1">
-        <VoiceConnectionIndicator stats={connectionStats} onQualityChange={handleQualityChange} />
+        <VoiceConnectionIndicator stats={connectionStats} />
         <div className="flex-1 min-w-0">
-          <p className={cn('text-xs font-semibold transition-colors duration-500 ease-out', connectedTextColor)}>
+          <p className="text-xs font-semibold text-[hsl(var(--online))]">
             Connecté
           </p>
           <p className="text-xs text-muted-foreground truncate">

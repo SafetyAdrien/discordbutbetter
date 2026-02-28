@@ -71,15 +71,15 @@ export function MobileServersView({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
   }));
 
-  const sidebarWidth = isSmallMobile ? 'w-12' : 'w-14';
-  const iconSize = isSmallMobile ? 'w-9 h-9' : 'w-10 h-10';
+  const sidebarWidth = isSmallMobile ? 'w-[45%]' : 'w-1/2';
+  const iconSize = isSmallMobile ? 'w-12 h-12' : 'w-14 h-14';
 
   return (
     <div className="flex h-full">
       {/* Left: Server icons column */}
       <div className={cn(
         sidebarWidth,
-        'flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'flex-shrink-0 bg-sidebar flex flex-col items-center py-3 gap-2 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         {servers.map((server) => {
           const info = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };

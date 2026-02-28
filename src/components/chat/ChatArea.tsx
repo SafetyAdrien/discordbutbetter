@@ -770,7 +770,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           ref.current = node;
         }
       }}
-      className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
+      className="flex-1 flex flex-col bg-background min-w-0 min-h-0 w-full overflow-x-hidden relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}

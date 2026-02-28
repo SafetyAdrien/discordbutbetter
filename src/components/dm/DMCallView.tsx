@@ -114,7 +114,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <VoiceConnectionIndicator stats={connectionStats} />
+          <VoiceConnectionIndicator stats={connectionStats} connected={isConnected} />
           <Button variant="ghost" size="icon">
             <Maximize2 className="w-4 h-4" />
           </Button>

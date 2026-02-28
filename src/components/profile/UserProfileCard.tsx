@@ -51,6 +51,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showCustomStatusModal, setShowCustomStatusModal] = useState(false);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   const currentStatus = profile?.status || "offline";
@@ -76,13 +77,14 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   const handleStatusHover = () => {
-    if (statusButtonRef.current) {
-      const rect = statusButtonRef.current.getBoundingClientRect();
+    if (statusButtonRef.current && popoverRef.current) {
+      const buttonRect = statusButtonRef.current.getBoundingClientRect();
+      const popoverRect = popoverRef.current.getBoundingClientRect();
       const menuHeight = 160;
 
       setMenuPosition({
-        top: Math.max(10, rect.top - menuHeight + rect.height + 50),
-        left: rect.right + 4,
+        top: Math.max(10, buttonRect.top - menuHeight / 2 + buttonRect.height / 2),
+        left: popoverRect.right + 4,
       });
     }
     setShowStatusMenu(true);
@@ -128,7 +130,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             </div>
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" side="top" className="w-72 p-0 overflow-hidden">
+        <PopoverContent ref={popoverRef} align="start" side="top" className="w-72 p-0 overflow-hidden">
           {/* Profile Header with Banner */}
           <div className="relative">
             {profile?.banner_url ? (

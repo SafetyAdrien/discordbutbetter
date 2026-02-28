@@ -31,7 +31,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onKeyDown, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -44,7 +44,9 @@ const DialogContent = React.forwardRef<
         const modifier = e.ctrlKey || e.metaKey;
         if (modifier && ['c', 'v', 'a', 'x'].includes(e.key.toLowerCase())) {
           e.stopPropagation();
+          return;
         }
+        onKeyDown?.(e);
       }}
       {...props}
     >

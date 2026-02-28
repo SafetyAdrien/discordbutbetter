@@ -90,8 +90,10 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
 
   const displayIcon = previewUrl || iconUrl;
 
+  const effectiveName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
+
   const hasChanges = 
-    name !== channel.name || 
+    effectiveName !== channel.name || 
     description !== (channel.description || '') ||
     (canToggleType && channelType !== channel.type) ||
     iconUrl !== (channel.icon_url || null) ||
@@ -262,15 +264,15 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
           <Input
             id="channel-name"
             value={name}
-            onChange={(e) => {
-              const val = e.target.value;
-              setName(shouldFormatStrict ? formatStrictChannelName(val) : val);
-            }}
+            onChange={(e) => setName(e.target.value)}
             placeholder={shouldFormatStrict ? "nom-du-salon" : "Nom du salon"}
             maxLength={100}
             className="flex-1"
           />
         </div>
+        {shouldFormatStrict && name !== formatStrictChannelName(name) && (
+          <p className="text-xs text-muted-foreground">Les caractères spéciaux seront convertis à l'enregistrement.</p>
+        )}
       </div>
 
       <div className="space-y-2">

@@ -40,6 +40,14 @@ export function VoiceChannelView({
   const { user } = useAuth();
   const [showChat, setShowChat] = useState(initialShowChat);
   const [showMembers, setShowMembers] = useState(false);
+
+  // React to initialShowChat prop changes
+  useEffect(() => {
+    if (initialShowChat) {
+      setShowChat(true);
+      onChatOpened?.();
+    }
+  }, [initialShowChat, onChatOpened]);
   const [isConnecting, setIsConnecting] = useState(false);
   
   const { 

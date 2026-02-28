@@ -70,11 +70,12 @@ export function useUpdateChannel() {
       channelId: string; 
       serverId: string; 
       name: string; 
-      description?: string;
+      description?: string | null;
       type?: 'text' | 'announcement';
       icon_url?: string | null;
     }) => {
-      const updateData: { name: string; description?: string; type?: 'text' | 'announcement'; icon_url?: string | null } = { name, description };
+      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; icon_url?: string | null } = { name };
+      if (description !== undefined) updateData.description = description;
       if (type) updateData.type = type;
       if (icon_url !== undefined) updateData.icon_url = icon_url;
 

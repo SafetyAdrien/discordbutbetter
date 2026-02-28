@@ -63,6 +63,16 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
+  // Re-sync local state when channel prop changes (after save or realtime update)
+  useEffect(() => {
+    setName(channel.name);
+    setDescription(channel.description || '');
+    setChannelType(channel.type === 'announcement' ? 'announcement' : 'text');
+    if (!pendingFile) {
+      setIconUrl(channel.icon_url || null);
+    }
+  }, [channel.id, channel.name, channel.description, channel.type, channel.icon_url]);
+
   // Cleanup object URLs
   useEffect(() => {
     return () => {
@@ -191,7 +201,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         channelId: channel.id,
         serverId: channel.server_id,
         name: finalName,
-        description: description.trim() || undefined,
+        description: description.trim() || null,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
         icon_url: finalIconUrl,
       });

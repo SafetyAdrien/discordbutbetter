@@ -397,6 +397,24 @@ const Index = () => {
   // Determine if we're on home (DM) view
   const isHomeView = activeServerId === null;
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <MobileLayout
+        servers={serverListData}
+        activeServerId={activeServerId}
+        activeDMId={activeDMId}
+        onServerSelect={handleServerSelect}
+        onOpenDM={handleOpenDM}
+        onShowFriends={handleShowFriends}
+        onJoinServer={handleJoinServer}
+        onCreateServer={handleCreateServer}
+        discoverableServers={discoverableServers}
+        rawServers={servers}
+      />
+    );
+  }
+
   return (
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Server List */}

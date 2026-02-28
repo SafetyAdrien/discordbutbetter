@@ -14,7 +14,6 @@ export interface ChannelWithCategory {
   position: number | null;
   category_id: string | null;
   server_id: string;
-  icon_url?: string | null;
 }
 
 export interface CategoryWithChannels {
@@ -107,7 +106,7 @@ export function useChannels(
       // Fetch channels
       const { data: channels, error: chanError } = await supabase
         .from('channels')
-        .select('id, name, type, description, position, category_id, server_id, icon_url')
+        .select('id, name, type, description, position, category_id, server_id')
         .eq('server_id', serverId)
         .order('position', { ascending: true });
 

@@ -35,7 +35,6 @@ export interface Channel {
   description?: string;
   unreadCount?: number;
   server_id?: string;
-  icon_url?: string;
 }
 
 export interface Message {

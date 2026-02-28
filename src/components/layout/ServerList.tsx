@@ -260,7 +260,7 @@ export function ServerList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
-  const dropPositionRef = useRef<'before' | 'after'>('after');
+  const wasDraggingRef = useRef(false);
   
   const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
 
@@ -359,65 +359,52 @@ export function ServerList({
     });
   };
 
-  const handleServerClick = (serverId: string) => {
+  const handleServerClick = useCallback((serverId: string) => {
+    if (wasDraggingRef.current) return;
     onServerSelect(serverId);
     markServerAsRead(serverId);
-  };
+  }, [onServerSelect, markServerAsRead]);
 
-  // DnD handlers
-  const handleDragStart = (event: DragStartEvent) => {
+  // DnD handlers (mobile-style)
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
-    dropPositionRef.current = 'after';
-    setDropPosition('after');
-  };
+    wasDraggingRef.current = true;
+  }, []);
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
     }
-
     setOverId(over.id as string);
+    const activeIdx = serverIds.indexOf(active.id as string);
+    const overIdx = serverIds.indexOf(over.id as string);
+    setDropPosition(activeIdx < overIdx ? 'after' : 'before');
+  }, [serverIds]);
 
-    // Determine position based on relative indices (stable + immediate)
-    const activeIndex = sortedServers.findIndex(s => s.id === active.id);
-    const overIndex = sortedServers.findIndex(s => s.id === over.id);
-
-    const nextPosition: 'before' | 'after' = activeIndex > overIndex ? 'before' : 'after';
-    dropPositionRef.current = nextPosition;
-    setDropPosition(nextPosition);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
     setOverId(null);
 
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = sortedServers.findIndex(s => s.id === active.id);
-    const overIndex = sortedServers.findIndex(s => s.id === over.id);
-
-    if (oldIndex === -1 || overIndex === -1) return;
-
-    const finalDropPosition = dropPositionRef.current;
-
-    // Calculate new index based on drop position
-    let newIndex = finalDropPosition === 'before' ? overIndex : overIndex + 1;
-    if (oldIndex < overIndex) newIndex--;
-    newIndex = Math.max(0, Math.min(newIndex, sortedServers.length - 1));
-
-    if (oldIndex !== newIndex) {
-      const newOrder = arrayMove(serverIds, oldIndex, newIndex);
-      reorderServers(newOrder);
+    if (over && active.id !== over.id) {
+      const oldIndex = serverIds.indexOf(active.id as string);
+      const newIndex = serverIds.indexOf(over.id as string);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(serverIds, oldIndex, newIndex);
+        reorderServers(newOrder);
+      }
     }
-  };
 
-  const handleDragCancel = () => {
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, [serverIds, reorderServers]);
+
+  const handleDragCancel = useCallback(() => {
     setActiveId(null);
     setOverId(null);
-  };
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, []);
 
   return (
     <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2 border-r border-border/50">
@@ -464,7 +451,7 @@ export function ServerList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        modifiers={[restrictToVerticalAxis]}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -482,8 +469,8 @@ export function ServerList({
                   hasUnread={serverInfo.hasUnread}
                   mentionCount={serverInfo.mentionCount}
                   isShaking={shakingServers.has(server.id)}
-                  showDropIndicator={overId === server.id && activeId !== server.id}
-                  dropPosition={dropPosition}
+                  isDragging={activeId === server.id}
+                  dropIndicator={overId === server.id && activeId !== server.id ? dropPosition : null}
                   onClick={() => handleServerClick(server.id)}
                   onOpenSettings={() => onOpenServerSettings?.(server.id)}
                   onMarkAsRead={() => handleMarkAsRead(server.id)}
@@ -496,7 +483,7 @@ export function ServerList({
           </div>
         </SortableContext>
 
-        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+        <DragOverlay dropAnimation={null}>
           {activeServer && <ServerDragOverlay server={activeServer} />}
         </DragOverlay>
       </DndContext>

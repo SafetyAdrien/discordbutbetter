@@ -1,41 +1,61 @@
 
 
-# Correction du support Unicode/emojis dans les noms de salons
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme
+## Root cause
 
-La fonction `formatStrictChannelName` utilise un regex trop restrictif qui n'autorise que les caracteres latins basiques (`a-z0-9`) et etendus (`\u00C0-\u024F`). Les emojis, caracteres CJK, separateurs Unicode (comme `・`), et autres symboles sont supprimes.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Solution
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Modifier la regex dans `formatStrictChannelName` pour utiliser les classes Unicode de JavaScript (`\p{L}` pour les lettres, `\p{N}` pour les chiffres, `\p{Emoji}` pour les emojis, `\p{So}` pour les symboles). Cela permet d'accepter tous les caracteres "significatifs" tout en supprimant uniquement les caracteres de controle et les caracteres non imprimables.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-## Fichiers a modifier
+## Fix
 
-### 1. `src/components/channel-settings/ChannelOverview.tsx` (ligne 20-25)
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Remplacer le regex dans `formatStrictChannelName` :
-- Ancien : `[^a-z0-9\u00C0-\u024F-_]`
-- Nouveau : utiliser un regex Unicode-aware avec le flag `u` qui conserve les lettres (`\p{L}`), chiffres (`\p{N}`), emojis, tirets, underscores, et les separateurs courants comme `・`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-La fonction deviendra :
-```
-function formatStrictChannelName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\p{L}\p{N}\p{Emoji_Presentation}\p{So}・\-_]/gu, '');
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
 ```
 
-### 2. `src/components/modals/CreateChannelModal.tsx` (ligne 18-23)
+### Code for onSuccess addition
 
-Meme modification exacte de la fonction `formatStrictChannelName` dupliquee dans ce fichier.
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-## Ce qui ne change pas
-
-- Le mode "flexible" (aucun formatage applique)
-- L'exemption pour les salons voice/stage
-- La logique de sauvegarde et de detection de changements
-- Tout le reste de l'interface
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

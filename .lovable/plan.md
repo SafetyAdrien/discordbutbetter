@@ -1,55 +1,61 @@
 
 
-# Refactoriser le Drag & Drop Desktop des serveurs (adopter l'approche Mobile)
+# Fix: Duplicated channel hidden by visibility filter
 
-## Analyse des differences
+## Root cause
 
-Le code mobile (`MobileServersView`) est plus simple et plus fiable :
-- Utilise `arrayMove` directement sans calcul complexe before/after
-- `dropAnimation={null}` pour un overlay plus fluide
-- `wasDraggingRef` pour eviter les clics parasites apres un drag
-- `useCallback` sur tous les handlers
-- Pas de `restrictToParentElement` (evite les blocages aux bords)
-- Drop indicator rendu inline (avant/apres le bouton) au lieu d'un positionnement absolu fragile
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Le code desktop (`ServerList`) a une logique plus complexe et fragile :
-- `dropPositionRef` + `dropPosition` state en parallele
-- Calcul manuel de `newIndex` avec before/after et ajustements d'index
-- Pas de protection contre les clics post-drag
-- Drop indicator en position absolue
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Changements prevus
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Fichier : `src/components/layout/ServerList.tsx`
+## Fix
 
-1. **Simplifier les handlers DnD** :
-   - `handleDragStart` : ajouter `wasDraggingRef.current = true`
-   - `handleDragOver` : simplifier comme le mobile (juste `setOverId` + calcul before/after par index)
-   - `handleDragEnd` : utiliser `arrayMove(serverIds, oldIndex, newIndex)` directement comme le mobile, sans le calcul complexe before/after
-   - `handleDragCancel` : ajouter le `setTimeout` pour `wasDraggingRef`
-   - Envelopper tous les handlers avec `useCallback`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-2. **Ajouter `wasDraggingRef`** pour empecher les clics parasites apres un drag, comme sur mobile
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-3. **Supprimer `dropPositionRef`** devenu inutile avec la logique simplifiee
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-4. **DragOverlay** : ajouter `dropAnimation={null}` pour un rendu plus fluide
+### 2. In `onSuccess`: invalidate the permissions cache
 
-5. **Retirer `restrictToParentElement`** du tableau de modifiers (garder uniquement `restrictToVerticalAxis`)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-6. **Drop indicator** : passer au rendu inline (avant/apres le bouton) au lieu du positionnement absolu, comme sur mobile
+### 3. Hook needs `useAuth` for the user ID
 
-7. **Proteger `handleServerClick`** : ignorer si `wasDraggingRef.current` est true
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-## Fichier modifie
+## Detailed changes
 
-| Fichier | Changement |
-|---------|-----------|
-| `src/components/layout/ServerList.tsx` | Refactoriser la logique DnD pour adopter l'approche mobile |
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-## Resultat attendu
+### Code sketch for onMutate addition (after servers cache update)
 
-- Comportement de drag identique au mobile : fluide, sans clics parasites, indicateur visible
-- Code plus simple et maintenable
-- Pas de changement visuel pour l'utilisateur (memes indicateurs bleus, meme overlay)
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

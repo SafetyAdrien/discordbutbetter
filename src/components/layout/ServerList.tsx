@@ -26,28 +26,16 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
+
 
 // DnD Kit imports
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
-// Discord-style Drop Indicator for servers
-const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
-  if (!isVisible) return null;
-  return (
-    <div 
-      className={cn(
-        "absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none",
-        "w-10 h-[2px] bg-primary rounded-full shadow-[0_0_4px_hsl(var(--primary)/0.5)]",
-        position === 'before' ? "-top-[5px]" : "-bottom-[5px]"
-      )}
-    />
-  );
-};
+// (Drop indicator removed - now rendered inline like mobile)
 
 // Sortable Server Icon Component
 function SortableServerIcon({
@@ -56,8 +44,8 @@ function SortableServerIcon({
   hasUnread,
   mentionCount,
   isShaking,
-  showDropIndicator,
-  dropPosition,
+  isDragging,
+  dropIndicator,
   onClick,
   onOpenSettings,
   onMarkAsRead,
@@ -70,8 +58,8 @@ function SortableServerIcon({
   hasUnread: boolean;
   mentionCount: number;
   isShaking: boolean;
-  showDropIndicator: boolean;
-  dropPosition: 'before' | 'after';
+  isDragging: boolean;
+  dropIndicator: 'before' | 'after' | null;
   onClick: () => void;
   onOpenSettings?: () => void;
   onMarkAsRead: () => void;
@@ -85,7 +73,6 @@ function SortableServerIcon({
     setNodeRef,
     transform,
     transition,
-    isDragging,
   } = useSortable({
     id: server.id,
     data: { type: 'server', server },
@@ -93,16 +80,19 @@ function SortableServerIcon({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : transition,
+    transition,
   };
 
   return (
     <div 
       ref={setNodeRef} 
       style={style}
-      className={cn("relative overflow-visible will-change-transform", isDragging && "z-50 opacity-30")}
+      className="relative overflow-visible will-change-transform"
     >
-      <ServerDropIndicator isVisible={showDropIndicator} position={dropPosition} />
+      {/* Inline drop indicator - before */}
+      {dropIndicator === 'before' && (
+        <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mb-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
+      )}
       
       <ContextMenu>
         <Tooltip>
@@ -116,7 +106,8 @@ function SortableServerIcon({
                   'server-icon relative group select-none',
                   isActive
                     ? 'bg-primary text-white rounded-[16px]'
-                    : 'bg-card hover:bg-primary/80 hover:text-white'
+                    : 'bg-card hover:bg-primary/80 hover:text-white',
+                  isDragging && 'opacity-30'
                 )}
               >
                 {/* Active indicator - now shows for hasUnread without mentions too */}
@@ -131,7 +122,7 @@ function SortableServerIcon({
                   )}
                 />
                 
-                {server.icon ? (
+              {server.icon ? (
                   server.icon.startsWith('http') ? (
                     <img 
                       src={server.icon} 
@@ -158,6 +149,10 @@ function SortableServerIcon({
                   </div>
                 )}
               </button>
+      {/* Inline drop indicator - after */}
+      {dropIndicator === 'after' && (
+        <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
+      )}
             </TooltipTrigger>
           </ContextMenuTrigger>
           <TooltipContent side="right">
@@ -248,7 +243,7 @@ export function ServerList({
   const { sortServers, reorderServers } = useServerOrder();
   const leaveServer = useLeaveServer();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  
 
   // Leave server dialog state
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -266,7 +261,7 @@ export function ServerList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
-  const dropPositionRef = useRef<'before' | 'after'>('after');
+  const wasDraggingRef = useRef(false);
   
   const activeServer = activeId ? sortedServers.find(s => s.id === activeId) : null;
 
@@ -365,65 +360,52 @@ export function ServerList({
     });
   };
 
-  const handleServerClick = (serverId: string) => {
+  const handleServerClick = useCallback((serverId: string) => {
+    if (wasDraggingRef.current) return;
     onServerSelect(serverId);
     markServerAsRead(serverId);
-  };
+  }, [onServerSelect, markServerAsRead]);
 
-  // DnD handlers
-  const handleDragStart = (event: DragStartEvent) => {
+  // DnD handlers (mobile-style)
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
-    dropPositionRef.current = 'after';
-    setDropPosition('after');
-  };
+    wasDraggingRef.current = true;
+  }, []);
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
     }
-
     setOverId(over.id as string);
+    const activeIdx = serverIds.indexOf(active.id as string);
+    const overIdx = serverIds.indexOf(over.id as string);
+    setDropPosition(activeIdx < overIdx ? 'after' : 'before');
+  }, [serverIds]);
 
-    // Determine position based on relative indices (stable + immediate)
-    const activeIndex = sortedServers.findIndex(s => s.id === active.id);
-    const overIndex = sortedServers.findIndex(s => s.id === over.id);
-
-    const nextPosition: 'before' | 'after' = activeIndex > overIndex ? 'before' : 'after';
-    dropPositionRef.current = nextPosition;
-    setDropPosition(nextPosition);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
     setOverId(null);
 
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = sortedServers.findIndex(s => s.id === active.id);
-    const overIndex = sortedServers.findIndex(s => s.id === over.id);
-
-    if (oldIndex === -1 || overIndex === -1) return;
-
-    const finalDropPosition = dropPositionRef.current;
-
-    // Calculate new index based on drop position
-    let newIndex = finalDropPosition === 'before' ? overIndex : overIndex + 1;
-    if (oldIndex < overIndex) newIndex--;
-    newIndex = Math.max(0, Math.min(newIndex, sortedServers.length - 1));
-
-    if (oldIndex !== newIndex) {
-      const newOrder = arrayMove(serverIds, oldIndex, newIndex);
-      reorderServers(newOrder);
+    if (over && active.id !== over.id) {
+      const oldIndex = serverIds.indexOf(active.id as string);
+      const newIndex = serverIds.indexOf(over.id as string);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(serverIds, oldIndex, newIndex);
+        reorderServers(newOrder);
+      }
     }
-  };
 
-  const handleDragCancel = () => {
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, [serverIds, reorderServers]);
+
+  const handleDragCancel = useCallback(() => {
     setActiveId(null);
     setOverId(null);
-  };
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, []);
 
   return (
     <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2 border-r border-border/50">
@@ -470,7 +452,7 @@ export function ServerList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        modifiers={[restrictToVerticalAxis]}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -488,8 +470,8 @@ export function ServerList({
                   hasUnread={serverInfo.hasUnread}
                   mentionCount={serverInfo.mentionCount}
                   isShaking={shakingServers.has(server.id)}
-                  showDropIndicator={overId === server.id && activeId !== server.id}
-                  dropPosition={dropPosition}
+                  isDragging={activeId === server.id}
+                  dropIndicator={overId === server.id && activeId !== server.id ? dropPosition : null}
                   onClick={() => handleServerClick(server.id)}
                   onOpenSettings={() => onOpenServerSettings?.(server.id)}
                   onMarkAsRead={() => handleMarkAsRead(server.id)}
@@ -502,7 +484,7 @@ export function ServerList({
           </div>
         </SortableContext>
 
-        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+        <DragOverlay dropAnimation={null}>
           {activeServer && <ServerDragOverlay server={activeServer} />}
         </DragOverlay>
       </DndContext>

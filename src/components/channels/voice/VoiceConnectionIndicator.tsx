@@ -77,22 +77,28 @@ export function VoiceConnectionIndicator({ stats, className, connected = false }
               <span className="text-muted-foreground">Qualité</span>
               <span className={cn('font-medium', config.color)}>{config.label}</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Latence</span>
-              <span className="font-medium">{stats.latency}ms</span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Perte de paquets</span>
-              <span className="font-medium">{stats.packetLoss}%</span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Jitter</span>
-              <span className="font-medium">{stats.jitter}ms</span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Connexion</span>
-              <span className="font-medium">{connectionTypeLabels[stats.connectionType] || stats.connectionType}</span>
-            </div>
+            {stats ? (
+              <>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Latence</span>
+                  <span className="font-medium">{stats.latency}ms</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Perte de paquets</span>
+                  <span className="font-medium">{stats.packetLoss}%</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Jitter</span>
+                  <span className="font-medium">{stats.jitter}ms</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Connexion</span>
+                  <span className="font-medium">{connectionTypeLabels[stats.connectionType] || stats.connectionType}</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-muted-foreground italic">Aucune donnée pair disponible</div>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>

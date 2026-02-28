@@ -1,9 +1,29 @@
-import { ChevronLeft, Users } from 'lucide-react';
+import { ChevronLeft, Users, Info } from 'lucide-react';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberList } from '@/components/layout/MemberList';
+import { StreamlineHash } from '@/components/icons/StreamlineHash';
+import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
+import { StreamlineForum } from '@/components/icons/StreamlineForum';
+import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
+import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
+import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
+import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
+import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import type { Message, User } from '@/types/app';
 import type { MemberWithProfile } from '@/hooks/useMembers';
+
+const channelIcons: Record<string, React.ElementType> = {
+  text: StreamlineHash,
+  voice: StreamlineVoice,
+  forum: StreamlineForum,
+  announcement: StreamlineMegaphone,
+  media: StreamlineMedia,
+  calendar: StreamlineCalendar,
+  tasks: StreamlineTasks,
+  stage: StreamlineStage,
+};
 
 interface MobileChatViewProps {
   channel: {
@@ -42,19 +62,43 @@ export function MobileChatView({
   activeThreadId,
   onCloseThread,
 }: MobileChatViewProps) {
+  const ChannelIcon = channelIcons[channel.type] || StreamlineHash;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-12 px-2 flex items-center gap-2 border-b border-border flex-shrink-0">
+      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0">
         <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
+
+        <ChannelIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+
         <div className="flex-1 min-w-0">
           <h2 className="font-semibold text-sm truncate">{channel.name}</h2>
-          {channel.description && (
-            <p className="text-[10px] text-muted-foreground truncate">{channel.description}</p>
-          )}
         </div>
+
+        {/* Channel info popover */}
+        {channel.description && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+                <Info className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-72">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <ChannelIcon className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">{channel.name}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">{channel.description}</p>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Members sheet */}
         <Sheet>
           <SheetTrigger asChild>
             <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">

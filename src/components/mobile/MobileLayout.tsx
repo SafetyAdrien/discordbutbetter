@@ -22,6 +22,7 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -244,6 +245,11 @@ export function MobileLayout({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
   }));
 
+  // Swipe-back handlers for overlays
+  const chatSwipe = useSwipeBack({ onBack: handleBackToChannels });
+  const channelSwipe = useSwipeBack({ onBack: handleBackToServers });
+  const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden relative">
       {/* Main Content */}
@@ -258,6 +264,9 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className="absolute inset-0 z-30 bg-background"
+              onTouchStart={threadSwipe.onTouchStart}
+              onTouchMove={threadSwipe.onTouchMove}
+              onTouchEnd={threadSwipe.onTouchEnd}
             >
               <MobileThreadView
                 threadId={mobileView.threadId}
@@ -278,6 +287,9 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className="absolute inset-0 z-20 bg-background"
+              onTouchStart={chatSwipe.onTouchStart}
+              onTouchMove={chatSwipe.onTouchMove}
+              onTouchEnd={chatSwipe.onTouchEnd}
             >
               {renderChannelContent()}
             </motion.div>
@@ -292,6 +304,9 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className="absolute inset-0 z-10 bg-background"
+              onTouchStart={channelSwipe.onTouchStart}
+              onTouchMove={channelSwipe.onTouchMove}
+              onTouchEnd={channelSwipe.onTouchEnd}
             >
               <MobileChannelListView
                 serverName={currentServer?.name || 'Serveur'}

@@ -1,78 +1,61 @@
 
 
-# Amelioration globale de l'interface mobile
+# Fix: Duplicated channel hidden by visibility filter
 
-## 1. Navigation et transitions
+## Root cause
 
-### Geste de swipe-back
-Ajouter un geste de glissement horizontal (swipe depuis le bord gauche) pour revenir en arriere sur les vues chat, thread et channel list. Utiliser `framer-motion` avec `dragConstraints` et `onDragEnd` pour detecter le geste et declencher `onBack`.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Transitions plus fluides
-- Les vues `chat` et `thread` glissent depuis la droite (deja en place)
-- Ajouter une transition de fade/scale subtile sur le contenu en arriere-plan quand une vue passe au-dessus
-- Harmoniser les transitions entre les onglets du bottom nav (crossfade au lieu de switch instantane)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Bottom nav intelligente
-- Masquer la bottom nav avec une animation slide-down quand on est dans un chat (deja fait pour `mobileView.type !== 'tab'`)
-- Afficher un mini indicateur de voice/appel en cours au-dessus de la bottom nav quand elle est visible
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-## 2. Vue chat mobile
+## Fix
 
-### Header ameliore
-- Ajouter un bouton de recherche dans le header du chat
-- Ajouter un bouton d'info/description du salon (popover avec description + actions rapides)
-- Afficher l'icone du type de salon (hash, voice, etc.) a cote du nom
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Interactions messages mobile
-- Remplacer le hover toolbar (inutile sur mobile) par un long-press qui ouvre un bottom sheet avec toutes les actions (reagir, repondre, copier, supprimer, etc.)
-- Le bottom sheet utilise le composant `Drawer` (vaul) deja installe
-- Integrer les reactions rapides en haut du bottom sheet
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### Clavier et input
-- Ajuster le padding-bottom du chat quand le clavier mobile est ouvert (utiliser `visualViewport` API)
-- S'assurer que la zone d'input reste visible et ne soit pas cachee par le clavier
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-## 3. Profil et parametres mobile
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### Page profil enrichie
-- Ajouter la banniere de profil en haut (si disponible)
-- Ajouter un selecteur de statut en ligne (online/idle/dnd/invisible) sous le nom
-- Ajouter l'activite en cours si definie
-- Ajouter un lien vers "Modifier le profil" qui ouvre directement le bon onglet dans AccountSettings
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-### Parametres du compte
-- S'assurer que `AccountSettingsModal` est bien adapte au mobile (full-screen au lieu de modal centree)
-- Navigation par onglets verticaux sur mobile au lieu de la sidebar desktop
+### 3. Hook needs `useAuth` for the user ID
 
-## 4. Vue serveurs
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### Indicateur de serveur selectionne
-- Ajouter un tooltip/label ephemere quand on tape sur un serveur (le nom du serveur apparait brievement)
+## Detailed changes
 
-### Scroll horizontal des salons
-- S'assurer que la liste de salons scrolle bien verticalement sans conflit avec le swipe-back
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-## 5. Vue DM/Accueil
+### Code sketch for onMutate addition (after servers cache update)
 
-### Conversation DM
-- S'assurer que le bouton retour dans DMConversation ramene bien a la liste de DMs
-- Ajouter les appels audio/video depuis le header de la conversation DM sur mobile
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
 
-### Liste de DMs
-- Afficher un apercu du dernier message dans chaque conversation
-- Afficher l'heure du dernier message
+### Code for onSuccess addition
 
-## Plan technique (fichiers a modifier)
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-| Fichier | Changements |
-|---------|------------|
-| `MobileLayout.tsx` | Swipe-back gesture, transitions crossfade entre onglets, bottom nav animation |
-| `MobileChatView.tsx` | Header enrichi (icone salon, bouton search, info), channel description popover |
-| `MobileHomeView.tsx` | Meilleure integration DM retour, apercu dernier message |
-| `MobileProfileView.tsx` | Banniere, selecteur de statut, activite, liens parametres |
-| `MobileBottomNav.tsx` | Animation slide in/out, indicateur voice |
-| `MobileServersView.tsx` | Tooltip nom serveur au tap |
-| Nouveau: `MobileMessageActions.tsx` | Bottom sheet (Drawer) pour les actions sur message en long-press |
-
-L'implementation sera faite fichier par fichier en veillant a ne rien casser sur desktop (les composants mobile sont isoles dans `src/components/mobile/`).
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

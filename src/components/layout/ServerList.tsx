@@ -26,28 +26,16 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef, useMemo, forwardRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // DnD Kit imports
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
-// Discord-style Drop Indicator for servers
-const ServerDropIndicator = ({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) => {
-  if (!isVisible) return null;
-  return (
-    <div 
-      className={cn(
-        "absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none",
-        "w-10 h-[2px] bg-primary rounded-full shadow-[0_0_4px_hsl(var(--primary)/0.5)]",
-        position === 'before' ? "-top-[5px]" : "-bottom-[5px]"
-      )}
-    />
-  );
-};
+// (Drop indicator removed - now rendered inline like mobile)
 
 // Sortable Server Icon Component
 function SortableServerIcon({
@@ -56,8 +44,8 @@ function SortableServerIcon({
   hasUnread,
   mentionCount,
   isShaking,
-  showDropIndicator,
-  dropPosition,
+  isDragging,
+  dropIndicator,
   onClick,
   onOpenSettings,
   onMarkAsRead,
@@ -70,8 +58,8 @@ function SortableServerIcon({
   hasUnread: boolean;
   mentionCount: number;
   isShaking: boolean;
-  showDropIndicator: boolean;
-  dropPosition: 'before' | 'after';
+  isDragging: boolean;
+  dropIndicator: 'before' | 'after' | null;
   onClick: () => void;
   onOpenSettings?: () => void;
   onMarkAsRead: () => void;
@@ -85,7 +73,6 @@ function SortableServerIcon({
     setNodeRef,
     transform,
     transition,
-    isDragging,
   } = useSortable({
     id: server.id,
     data: { type: 'server', server },
@@ -93,16 +80,19 @@ function SortableServerIcon({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'opacity 150ms ease' : transition,
+    transition,
   };
 
   return (
     <div 
       ref={setNodeRef} 
       style={style}
-      className={cn("relative overflow-visible will-change-transform", isDragging && "z-50 opacity-30")}
+      className="relative overflow-visible will-change-transform"
     >
-      <ServerDropIndicator isVisible={showDropIndicator} position={dropPosition} />
+      {/* Inline drop indicator - before */}
+      {dropIndicator === 'before' && (
+        <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mb-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
+      )}
       
       <ContextMenu>
         <Tooltip>
@@ -131,7 +121,7 @@ function SortableServerIcon({
                   )}
                 />
                 
-                {server.icon ? (
+              {server.icon ? (
                   server.icon.startsWith('http') ? (
                     <img 
                       src={server.icon} 
@@ -158,6 +148,10 @@ function SortableServerIcon({
                   </div>
                 )}
               </button>
+      {/* Inline drop indicator - after */}
+      {dropIndicator === 'after' && (
+        <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
+      )}
             </TooltipTrigger>
           </ContextMenuTrigger>
           <TooltipContent side="right">

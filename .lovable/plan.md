@@ -1,61 +1,33 @@
 
+# Correctifs Mobile : Profil et Navigation
 
-# Fix: Duplicated channel hidden by visibility filter
+## 1. Profil mobile -- Supprimer le contenu par defaut
 
-## Root cause
+Le profil mobile affiche actuellement un faux bandeau degrade (`bg-gradient-to-br from-primary/30 to-primary/10`) meme quand l'utilisateur n'a pas configure de banniere. Cela donne l'impression que le profil est enrichi par defaut.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### Changements dans `MobileProfileView.tsx`
+- Supprimer le bandeau degrade par defaut (lignes 57-58). Si l'utilisateur n'a pas de `banner_url`, afficher simplement un petit espace vide (par exemple `h-6`) au lieu d'un faux bandeau colore
+- Conserver l'affichage de la banniere uniquement si `profile?.banner_url` existe
+- Le bio, le statut personnalise et les autres champs restent conditionnels (ils ne s'affichent que si remplis, c'est deja le cas)
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## 2. Navigation serveurs -- Corriger la duplication de la liste des salons
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Le probleme
+Quand l'utilisateur est sur l'onglet "Serveurs" (qui contient deja la liste des salons en mode embarque), il clique sur un salon et arrive dans le chat. Quand il revient en arriere, la fonction `handleBackToChannels` cree un overlay `{ type: 'channels' }` au lieu de revenir a l'onglet serveurs. Resultat : l'utilisateur voit la liste des salons une deuxieme fois, sous forme de page separee.
 
-## Fix
+### Correction dans `MobileLayout.tsx`
+- Modifier `handleBackToChannels` pour verifier d'ou vient l'utilisateur
+- Si le `mobileView` precedent etait de type `tab` (l'utilisateur venait de l'onglet serveurs avec la liste embarquee), revenir directement a `{ type: 'tab' }` au lieu de creer un overlay `channels`
+- Concretement : utiliser un ref ou un champ supplementaire dans `mobileView` pour tracker l'origine de la navigation. Option plus simple : dans `handleServerChannelSelect` (appele depuis l'onglet serveurs), marquer que la source est `tab`. Puis dans `handleBackToChannels`, verifier cette source
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### Implementation technique
+- Ajouter un champ optionnel `fromTab?: boolean` au type `MobileView` pour le type `chat`
+- Dans `handleServerChannelSelect` (ligne 89) : passer `fromTab: true` dans le state
+- Dans `handleBackToChannels` (ligne 106) : si `fromTab` est vrai, revenir a `{ type: 'tab' }` au lieu de `{ type: 'channels' }`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+## Fichiers modifies
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+| Fichier | Changement |
+|---------|-----------|
+| `MobileProfileView.tsx` | Supprimer le bandeau degrade par defaut |
+| `MobileLayout.tsx` | Ajouter `fromTab` au type de vue chat + corriger `handleBackToChannels` |

@@ -285,7 +285,7 @@
 
   .channel-item {
     @apply flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
-           text-muted-foreground hover:text-foreground hover:bg-surface-hover hover:opacity-80
+           text-muted-foreground hover:text-foreground hover:bg-surface-hover hover:opacity-65
            transition-all duration-200;
   }
 

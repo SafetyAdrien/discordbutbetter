@@ -85,6 +85,7 @@ export function MessageInput({
   onFollowClick,
 }: MessageInputProps) {
   const { isMobile } = useBreakpoint();
+  const useCompactMetrics = compact || isMobile;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -424,7 +425,7 @@ export function MessageInput({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-2' : 'p-3'}`}
+                className={`text-muted-foreground hover:text-foreground transition-colors ${useCompactMetrics ? 'p-2' : 'p-3'}`}
               >
                 <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
               </button>
@@ -464,7 +465,7 @@ export function MessageInput({
           
           {/* Textarea container with markdown overlay */}
           <div className={`relative flex-1 min-w-0 overflow-hidden`}>
-            <InputMarkdownOverlay ref={overlayRef} content={value} compact={compact} />
+            <InputMarkdownOverlay ref={overlayRef} content={value} compact={useCompactMetrics} />
             <textarea
               ref={textareaRef}
               value={value}
@@ -482,7 +483,7 @@ export function MessageInput({
               className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent p-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
-                compact 
+                useCompactMetrics 
                   ? `py-1 text-sm pr-2 max-h-[120px] overflow-y-auto` 
                   : `pt-[13px] pb-[11px] text-sm pr-1 max-h-[200px] overflow-y-auto`
               }`}
@@ -490,7 +491,7 @@ export function MessageInput({
             />
           </div>
           
-          <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
+          <div className={`flex items-center gap-1 ${useCompactMetrics ? 'pr-1' : 'pr-2'}`}>
             {!isMobile && (
               <EmojiStickerPicker
                 serverId={serverId}
@@ -499,9 +500,9 @@ export function MessageInput({
                 trigger={
                   <button
                     type="button"
-                    className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                    className={`text-muted-foreground hover:text-foreground transition-colors ${useCompactMetrics ? 'p-1.5' : 'p-2'}`}
                   >
-                    <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                    <Sticker className={useCompactMetrics ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
                 }
               />
@@ -513,9 +514,9 @@ export function MessageInput({
               trigger={
                 <button
                   type="button"
-                  className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                  className={`text-muted-foreground hover:text-foreground transition-colors ${useCompactMetrics ? 'p-1.5' : 'p-2'}`}
                 >
-                  <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                  <Smile className={useCompactMetrics ? "w-4 h-4" : "w-5 h-5"} />
                 </button>
               }
             />
@@ -525,7 +526,7 @@ export function MessageInput({
                 disabled={disabled || (!value.trim() && attachments.length === 0)}
                 className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : ''}`}
               >
-                <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: '#5865f2' }} />
+                <Send className={useCompactMetrics ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: '#5865f2' }} />
               </button>
             )}
           </div>

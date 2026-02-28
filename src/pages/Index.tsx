@@ -18,6 +18,8 @@ import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
 import ThreadView from '@/components/threads/ThreadView';
+import { MobileLayout } from '@/components/mobile/MobileLayout';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -35,7 +37,7 @@ import type { Server, Message, User } from '@/types/app';
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const { isMobile } = useBreakpoint();
   
   // Navigation state persistence
   const {
@@ -46,15 +48,6 @@ const Index = () => {
     setChannelForServer,
     getChannelForServer,
   } = useNavigationState();
-  
-  // Track window resize for responsive behavior
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  const isMobile = windowWidth < 768;
   
   const [activeServerId, setActiveServerIdLocal] = useState<string | null>(persistedServerId);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -403,6 +396,24 @@ const Index = () => {
 
   // Determine if we're on home (DM) view
   const isHomeView = activeServerId === null;
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <MobileLayout
+        servers={serverListData}
+        activeServerId={activeServerId}
+        activeDMId={activeDMId}
+        onServerSelect={handleServerSelect}
+        onOpenDM={handleOpenDM}
+        onShowFriends={handleShowFriends}
+        onJoinServer={handleJoinServer}
+        onCreateServer={handleCreateServer}
+        discoverableServers={discoverableServers}
+        rawServers={servers}
+      />
+    );
+  }
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">

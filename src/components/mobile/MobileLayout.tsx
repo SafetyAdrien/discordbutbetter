@@ -22,6 +22,7 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 

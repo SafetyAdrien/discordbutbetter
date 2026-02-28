@@ -1,73 +1,61 @@
 
-# Correction de l'edition des noms de salons et synchronisation temps reel
 
-## Probleme 1 : Nom des salons textuels non modifiable correctement
+# Fix: Duplicated channel hidden by visibility filter
 
-### Diagnostic
-Dans `ChannelOverview.tsx`, l'etat local (`name`, `description`, `iconUrl`) est initialise une seule fois via `useState(channel.name)`. Apres une sauvegarde, la mise a jour optimiste modifie le `channel` prop, mais l'etat local ne se re-synchronise pas. Cela peut causer des incoherences dans le calcul de `hasChanges` et empecher de nouvelles modifications.
+## Root cause
 
-De plus, la gestion de `description` dans la mutation est problematique : `description: description.trim() || undefined` fait que vider la description ne la sauvegarde jamais (undefined est ignore).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Correction prevue
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**Fichier : `src/components/channel-settings/ChannelOverview.tsx`**
-- Ajouter un `useEffect` qui re-synchronise les etats locaux (`name`, `description`, `channelType`, `iconUrl`) quand le `channel` prop change (apres sauvegarde ou mise a jour temps reel)
-- Corriger la gestion de `description` vide : envoyer `null` au lieu de `undefined` pour permettre de vider la description
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Fichier : `src/hooks/useChannelSettings.ts`**
-- Corriger `useUpdateChannel` pour gerer la description correctement : accepter `null` comme valeur valide (= effacement) en plus de `string` (= mise a jour) et `undefined` (= pas de changement)
+## Fix
 
----
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-## Probleme 2 : L'utilisateur B ne voit pas les changements
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### Diagnostic
-Plusieurs hooks ont des souscriptions Realtime sur des tables qui ne sont PAS dans la publication `supabase_realtime`. Ces souscriptions ne recoivent donc aucun evenement, et l'utilisateur B ne voit pas les changements en temps reel.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-Tables manquantes dans la publication mais ayant des souscriptions dans le code :
-- `threads` (useThreads)
-- `thread_messages` (useThreadMessages)
-- `reactions` (useReactions)
-- `server_settings` (useServerSettings)
-- `server_emojis` (useServerAssets)
-- `server_stickers` (useServerAssets)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-Tables sans souscription ni publication, mais impactantes :
-- `servers` (changement de nom, icone, banniere de serveur)
-- `dm_calls` (statut d'appel)
-- `dm_pinned_messages` (messages epingles)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-### Correction prevue
+### 3. Hook needs `useAuth` for the user ID
 
-**Migration SQL** : Ajouter les tables manquantes a la publication Realtime avec des verifications conditionnelles pour eviter les erreurs si deja presentes :
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
 ```text
-Tables a ajouter :
-- threads
-- thread_messages
-- reactions
-- server_settings
-- server_emojis
-- server_stickers
-- servers
-- dm_calls
-- dm_pinned_messages
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-**Fichier : `src/hooks/useServers.ts`** : Ajouter une souscription Realtime sur la table `servers` pour que les changements de nom/icone soient visibles par tous les membres.
+### Code for onSuccess addition
 
-**Fichier : `src/hooks/useDMCalls.ts`** : Verifier et ajouter une souscription Realtime sur `dm_calls` si absente.
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-**Fichier : `src/hooks/useDMPinnedMessages.ts`** : Verifier et ajouter une souscription Realtime sur `dm_pinned_messages` si absente.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 
----
-
-## Resume des fichiers a modifier
-
-| Fichier | Modification |
-|---|---|
-| `src/components/channel-settings/ChannelOverview.tsx` | Sync etat local avec props, corriger description vide |
-| `src/hooks/useChannelSettings.ts` | Gerer `description: null` pour effacement |
-| Migration SQL | Ajouter 9 tables a `supabase_realtime` |
-| `src/hooks/useServers.ts` | Ajouter souscription Realtime sur `servers` |
-| `src/hooks/useDMCalls.ts` | Ajouter souscription Realtime si manquante |
-| `src/hooks/useDMPinnedMessages.ts` | Ajouter souscription Realtime si manquante |

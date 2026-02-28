@@ -1,61 +1,35 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correctifs Mobile : Hauteur ecran et bouton flottant
 
-## Root cause
+## Probleme 1 : Hauteur de l'interface mobile
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+L'application utilise `h-screen` (100vh) dans `MobileLayout.tsx` (ligne 261). Sur iOS et Android, `100vh` ne correspond pas a la hauteur reelle visible du navigateur car les barres d'adresse et de navigation du systeme sont ignorees. Le contenu depasse et est coupe en bas.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Solution
+Remplacer `h-screen` par `h-dvh` (dynamic viewport height) avec un fallback CSS pour les navigateurs qui ne supportent pas encore `dvh`. Le `dvh` s'adapte dynamiquement quand la barre d'adresse du navigateur apparait/disparait.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Fichier** : `src/components/mobile/MobileLayout.tsx`
+- Ligne 261 : remplacer `h-screen` par `h-[100dvh]`
 
-## Fix
+**Fichier** : `src/index.css`
+- Ajouter un fallback CSS qui definit `h-[100dvh]` comme `100vh` pour les navigateurs ne supportant pas `dvh`, puis `100dvh` via `@supports`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+## Probleme 2 : Bouton flottant (FAB) dans les DMs
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Le FAB "Nouveau message" dans `MobileHomeView.tsx` (ligne 113-118) utilise `absolute bottom-20 right-4` ce qui le positionne de facon fixe a 80px du bas. Ce positionnement ne prend pas en compte la hauteur reelle de la bottom nav ni le safe area inset sur iOS.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### Solution
+Remplacer le positionnement `absolute bottom-20` par un positionnement qui respecte le safe area : `fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))]`. Utiliser `fixed` au lieu de `absolute` pour qu'il reste toujours visible meme quand la liste de DMs scrolle.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Fichier** : `src/components/mobile/MobileHomeView.tsx`
+- Ligne 113-118 : changer les classes du bouton FAB de `absolute bottom-20` a `fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))]`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+## Fichiers modifies
 
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Changement |
+|---------|-----------|
+| `src/components/mobile/MobileLayout.tsx` | `h-screen` remplace par `h-[100dvh]` |
+| `src/index.css` | Ajout du fallback CSS pour `dvh` |
+| `src/components/mobile/MobileHomeView.tsx` | FAB repositionne avec `fixed` + safe area |
 

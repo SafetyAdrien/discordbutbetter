@@ -29,7 +29,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 type MobileView = 
   | { type: 'tab' }
   | { type: 'channels'; serverId: string }
-  | { type: 'chat'; serverId: string; channelId: string; channelType: string }
+  | { type: 'chat'; serverId: string; channelId: string; channelType: string; fromTab?: boolean }
   | { type: 'thread'; serverId: string; channelId: string; threadId: string; channelName: string };
 
 interface MobileLayoutProps {
@@ -89,7 +89,7 @@ export function MobileLayout({
   const handleServerChannelSelect = (channelId: string, channelType: string) => {
     const serverId = activeServerId || servers[0]?.id;
     if (serverId) {
-      setMobileView({ type: 'chat', serverId, channelId, channelType });
+      setMobileView({ type: 'chat', serverId, channelId, channelType, fromTab: true });
     }
   };
 
@@ -104,7 +104,14 @@ export function MobileLayout({
   };
 
   const handleBackToChannels = () => {
-    if (mobileView.type === 'chat' || mobileView.type === 'thread') {
+    if ((mobileView.type === 'chat' && mobileView.fromTab) || (mobileView.type === 'thread')) {
+      // If came from embedded server tab, go back to tab directly
+      if (mobileView.type === 'chat' && mobileView.fromTab) {
+        setMobileView({ type: 'tab' });
+      } else {
+        setMobileView({ type: 'channels', serverId: mobileView.serverId });
+      }
+    } else if (mobileView.type === 'chat') {
       setMobileView({ type: 'channels', serverId: mobileView.serverId });
     }
   };

@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
@@ -102,8 +102,10 @@ export function MessageInput({
     if (!textarea) return;
     const minH = compact ? 28 : 40;
     textarea.style.height = 'auto';
-    const clamped = Math.max(textarea.scrollHeight, minH);
-    textarea.style.height = clamped + 'px';
+    const sh = textarea.scrollHeight;
+    // For desktop single-line: clamp to baseline if scrollHeight is within tolerance
+    const height = (!compact && sh <= minH + 2) ? minH : Math.max(sh, minH);
+    textarea.style.height = height + 'px';
     // Reset overlay scroll sync when content changes
     if (overlayRef.current) {
       overlayRef.current.style.transform = `translateY(-${textarea.scrollTop}px)`;
@@ -480,13 +482,13 @@ export function MessageInput({
               }}
               placeholder={placeholder}
               disabled={disabled}
-              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: 'inherit', fontWeight: 400, letterSpacing: 'normal' }}
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
               className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
+                  : `pt-[11px] pb-[9px] text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />

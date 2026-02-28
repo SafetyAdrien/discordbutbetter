@@ -1,66 +1,61 @@
 
-Objectif: corriger définitivement le centrage vertical du texte/placeholder dans le chat input Desktop (pas mobile), y compris quand l’overlay Markdown s’active.
 
-Constat confirmé dans le code actuel
-1. Le textarea Desktop est configuré avec `py-2.5`, `min-h-[40px]`, `line-height: 20px`, mais la hauteur réelle est recalculée via `scrollHeight` sur chaque changement (`adjustTextareaHeight`), avec seulement une borne basse (`Math.max(..., 40)`).
-2. Sur Desktop, ce calcul peut produire une hauteur “1 ligne” légèrement supérieure à 40px selon la métrique de police/rendu navigateur, ce qui laisse visuellement le texte trop haut.
-3. Le textarea + overlay utilisent `fontFamily: 'inherit'`. Or le body utilise `gg-sans` (avec tiret), alors que la police déclarée est `gg sans` (avec espace), ce qui peut basculer sur une fallback avec métriques verticales différentes.
-4. L’alignement est donc instable/optique: “mathématiquement proche”, mais visuellement trop haut (cas placeholder + texte saisi).
+# Fix: Duplicated channel hidden by visibility filter
 
-Approche de correction (Desktop only, ciblée)
-1) Verrouiller des métriques Desktop explicites et optiques
-- Non-compact Desktop:
-  - hauteur 1 ligne visée: 40px
-  - padding vertical asymétrique léger pour correction optique (ex: `pt-[11px] pb-[9px]`), au lieu d’un `py-2.5` strict.
-- Compact + mobile: inchangés.
+## Root cause
 
-2) Stabiliser le calcul de hauteur du textarea
-- Dans `adjustTextareaHeight`:
-  - conserver `height = auto` puis recalcul.
-  - ajouter une logique “single-line baseline”:
-    - tant que le `scrollHeight` reste dans une petite tolérance autour de la base Desktop, forcer 40px.
-    - sinon croissance normale jusqu’à `max-h`.
-- But: empêcher que la ligne unique “gonfle” légèrement et remonte visuellement le texte.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-3) Fixer explicitement la famille de police du couple textarea/overlay
-- Introduire une constante partagée (dans l’overlay) pour la famille de police utilisée par l’input:
-  - `"gg sans", "Noto Sans", "Helvetica", sans-serif`
-- L’appliquer au textarea ET à l’overlay (au lieu de `inherit`) pour obtenir des métriques identiques et prévisibles.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-4) Garder la synchro overlay/textarea stricte
-- Répliquer exactement le même padding Desktop et les mêmes min-heights dans `InputMarkdownOverlay.tsx`.
-- Aucun changement de poids/size/line-height (on garde les règles déjà sécurisées).
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Fichiers à modifier
-1. `src/components/chat/MessageInput.tsx`
-- Ajuster la logique de `adjustTextareaHeight` (baseline Desktop 1 ligne + tolérance + clamp max).
-- Appliquer padding vertical Desktop corrigé (asymétrique) uniquement en non-compact desktop.
-- Utiliser la même famille de police explicite que l’overlay.
+## Fix
 
-2. `src/components/chat/InputMarkdownOverlay.tsx`
-- Ajouter/utiliser la constante de font family partagée.
-- Aligner padding/min-height Desktop avec le textarea (mêmes valeurs exactes).
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Pourquoi cette approche va corriger “trop en haut”
-- Elle corrige à la fois:
-  1) l’effet visuel (padding optique Desktop),
-  2) l’instabilité de hauteur 1 ligne (scrollHeight),
-  3) les divergences de métriques de police (inherit/fallback).
-- Donc le placeholder ET le texte tapé restent centrés de manière cohérente.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Vérification à faire après implémentation
-1. Desktop (obligatoire)
-- Placeholder vide: visuellement centré dans la barre.
-- Texte 1 ligne: centré, sans effet “collé en haut”.
-- Texte multi-lignes: croissance fluide sans décalage.
-- Markdown (overlay actif): superposition parfaite, pas de saut vertical.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-2. Régression rapide
-- Mobile inchangé.
-- Mode compact inchangé.
-- Boutons adjacents inchangés fonctionnellement (envoi/emoji/+).
+### 2. In `onSuccess`: invalidate the permissions cache
 
-Notes techniques
-- Aucun impact backend.
-- Aucune modification du flux d’envoi.
-- Correction strictement UI/metrics sur le chat input Desktop.
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

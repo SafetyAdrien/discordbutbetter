@@ -428,10 +428,34 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const defaultVoiceContext: VoiceContextType = {
+  voiceState: { channelId: null, channelName: null, serverName: null, isMuted: false, isDeafened: false },
+  joinChannel: async () => {},
+  leaveChannel: async () => {},
+  toggleMute: async () => {},
+  toggleDeafen: async () => {},
+  isConnected: false,
+  speakingUsers: new Set(),
+  audioLevels: new Map(),
+  localAudioLevel: 0,
+  microphoneError: false,
+  hasMicrophoneAccess: false,
+  retryMicrophone: async () => false,
+  isPushToTalkMode: false,
+  togglePushToTalkMode: () => {},
+  setPushToTalkActive: () => {},
+  isCameraActive: false,
+  localCameraStream: null,
+  toggleCamera: async () => {},
+  isScreenSharing: false,
+  localScreenStream: null,
+  toggleScreenShare: async () => {},
+  remoteVideoStreams: new Map(),
+  remoteScreenStreams: new Map(),
+  connectionStats: null,
+};
+
 export function useVoice() {
   const context = useContext(VoiceContext);
-  if (!context) {
-    throw new Error('useVoice must be used within a VoiceProvider');
-  }
-  return context;
+  return context ?? defaultVoiceContext;
 }

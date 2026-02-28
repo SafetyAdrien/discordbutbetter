@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -9,7 +9,28 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useChannelUnreadCounts } from '@/hooks/useChannelUnreadCounts';
+import { useServers } from '@/hooks/useServers';
+import { useMembers } from '@/hooks/useMembers';
+import { useServerEmojis } from '@/hooks/useServerAssets';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLeaveServer } from '@/hooks/useLeaveServer';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const channelIcons: Record<string, React.ElementType> = {
   text: StreamlineHash,
@@ -46,6 +67,167 @@ interface MobileChannelListViewProps {
   embedded?: boolean;
 }
 
+// ─── Server Profile Sheet ────────────────────────────────────────────
+
+function ServerProfileSheet({
+  serverId,
+  serverName,
+  trigger,
+}: {
+  serverId: string;
+  serverName: string;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const { data: servers } = useServers();
+  const { data: members } = useMembers(open ? serverId : null);
+  const { data: emojis } = useServerEmojis(open ? serverId : null);
+  const leaveServer = useLeaveServer();
+
+  const server = servers?.find((s) => s.id === serverId);
+  const isOwner = server?.owner_id === user?.id || server?.secondary_owner_id === user?.id;
+  const ownerMember = members?.find((m) => m.user.id === server?.owner_id);
+  const memberCount = members?.length ?? 0;
+
+  const maxEmojis = 10;
+  const displayedEmojis = emojis?.slice(0, maxEmojis) ?? [];
+  const remainingEmojis = (emojis?.length ?? 0) - maxEmojis;
+
+  const handleLeave = () => {
+    leaveServer.mutate(serverId, {
+      onSuccess: () => setOpen(false),
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto">
+        {/* Banner */}
+        <div className="relative h-28 w-full overflow-hidden rounded-t-2xl">
+          {server?.banner_url ? (
+            <img
+              src={server.banner_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/60 to-primary/30" />
+          )}
+
+          {/* Leave button on banner */}
+          {!isOwner && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm text-destructive text-xs font-medium hover:bg-background/90 transition-colors">
+                  <LogOut className="w-3.5 h-3.5" />
+                  Quitter
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Quitter « {serverName} » ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Vous ne pourrez plus accéder à ce serveur sauf si vous êtes réinvité.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleLeave}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Quitter le serveur
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+
+        {/* Server info */}
+        <div className="px-4 pb-5 pt-3 space-y-4">
+          {/* Icon + name + description */}
+          <div className="flex items-start gap-3">
+            <Avatar className="w-14 h-14 rounded-2xl border-2 border-background -mt-8 shadow-lg">
+              {server?.icon_url ? (
+                <AvatarImage src={server.icon_url} alt={serverName} />
+              ) : null}
+              <AvatarFallback className="rounded-2xl bg-primary text-primary-foreground text-lg font-bold">
+                {serverName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0 pt-1">
+              <h3 className="font-bold text-base text-foreground truncate">{serverName}</h3>
+              {server?.description && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  {server.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Metadata */}
+          <div className="space-y-2.5">
+            {server?.created_at && (
+              <div className="flex items-center gap-2.5 text-muted-foreground">
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                <span className="text-xs">
+                  Créé le {format(new Date(server.created_at), 'd MMMM yyyy', { locale: fr })}
+                </span>
+              </div>
+            )}
+
+            {ownerMember && (
+              <div className="flex items-center gap-2.5 text-muted-foreground">
+                <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-yellow-500" size={16} />
+                <span className="text-xs">
+                  Fondateur : <span className="text-foreground font-medium">{ownerMember.user.display_name}</span>
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2.5 text-muted-foreground">
+              <Users className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs">
+                {memberCount} membre{memberCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+
+          {/* Emojis */}
+          {displayedEmojis.length > 0 && (
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-semibold text-muted-foreground">
+                Emojis ({emojis?.length ?? 0})
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {displayedEmojis.map((emoji) => (
+                  <img
+                    key={emoji.id}
+                    src={emoji.image_url}
+                    alt={emoji.name}
+                    title={`:${emoji.name}:`}
+                    className="w-7 h-7 rounded object-contain"
+                  />
+                ))}
+                {remainingEmojis > 0 && (
+                  <span className="w-7 h-7 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground font-medium">
+                    +{remainingEmojis}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────
+
 export function MobileChannelListView({
   serverName,
   serverId,
@@ -68,6 +250,13 @@ export function MobileChannelListView({
     });
   };
 
+  const serverNameTrigger = (
+    <button className="flex items-center gap-1 text-left min-w-0">
+      <h2 className="font-semibold text-sm truncate">{serverName}</h2>
+      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+    </button>
+  );
+
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Header */}
@@ -76,7 +265,9 @@ export function MobileChannelListView({
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
+          <div className="flex-1 min-w-0">
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} />
+          </div>
           {onOpenSettings && (
             <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Settings className="w-5 h-5" />
@@ -86,7 +277,9 @@ export function MobileChannelListView({
       )}
       {embedded && (
         <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
-          <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
+          <div className="flex-1 min-w-0">
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} />
+          </div>
           {onOpenSettings && (
             <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Settings className="w-5 h-5" />

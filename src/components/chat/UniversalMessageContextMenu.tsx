@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -6,9 +6,12 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Reply, Copy, Pin, Link, Hash, Pencil, Trash2, Flag, SmilePlus } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useLongPress } from '@/hooks/useLongPress';
 
 // Émojis favoris pour le menu contextuel
 const CONTEXT_MENU_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -60,8 +63,105 @@ export function UniversalMessageContextMenu({
   onPin,
   onReport,
 }: UniversalMessageContextMenuProps) {
-  // Can delete if own message OR has manage_messages permission
+  const { isMobile } = useBreakpoint();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const canDeleteMessage = isOwnMessage || canManageMessages;
+
+  const longPressHandlers = useLongPress({
+    onLongPress: () => setSheetOpen(true),
+  });
+
+  // Shared action items renderer
+  const renderActions = (onAction?: () => void) => (
+    <>
+      {/* Emoji reactions */}
+      {canAddReactions && (
+        <div className="flex items-center gap-1 p-2 pb-3 border-b border-border mb-1">
+          {CONTEXT_MENU_REACTIONS.map(emoji => (
+            <button 
+              key={emoji} 
+              onClick={() => { onAddReaction(emoji); onAction?.(); }} 
+              className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
+      
+      {/* Main actions */}
+      <button onClick={() => { onReply(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <Reply className="w-4 h-4 text-muted-foreground" /> Répondre
+      </button>
+      <button onClick={() => { onCopyText(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <Copy className="w-4 h-4 text-muted-foreground" /> Copier le texte
+      </button>
+      {onPin && (
+        <button onClick={() => { onPin(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <Pin className="w-4 h-4 text-muted-foreground" /> {isPinned ? 'Désépingler' : 'Épingler'}
+        </button>
+      )}
+      {onCreateThread && (
+        <button onClick={() => { onCreateThread(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <StreamlineThreads className="w-4 h-4 text-muted-foreground" /> Créer un thread
+        </button>
+      )}
+      <button onClick={() => { onCopyLink(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <Link className="w-4 h-4 text-muted-foreground" /> Copier le lien
+      </button>
+      <button onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <Hash className="w-4 h-4 text-muted-foreground" /> Copier l'ID
+      </button>
+      
+      {/* Danger zone */}
+      <div className="h-px bg-border my-1" />
+      {isOwnMessage ? (
+        <>
+          {onEdit && (
+            <button onClick={() => { onEdit(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+              <Pencil className="w-4 h-4 text-muted-foreground" /> Modifier
+            </button>
+          )}
+          {onDelete && (
+            <button onClick={() => { onDelete(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+              <Trash2 className="w-4 h-4" /> Supprimer
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          {canManageMessages && onDelete && (
+            <button onClick={() => { onDelete(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+              <Trash2 className="w-4 h-4" /> Supprimer
+            </button>
+          )}
+          {onReport && (
+            <button onClick={() => { onReport(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+              <Flag className="w-4 h-4" /> Signaler
+            </button>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  // Mobile: long press -> Sheet
+  if (isMobile) {
+    return (
+      <>
+        <div {...longPressHandlers}>
+          {children}
+        </div>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto p-4">
+            {renderActions(() => setSheetOpen(false))}
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
+
+  // Desktop: context menu
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -155,7 +255,6 @@ export function UniversalMessageContextMenu({
           </>
         ) : (
           <>
-            {/* Moderators can delete other's messages */}
             {canManageMessages && onDelete && (
               <ContextMenuItem 
                 className="text-destructive focus:text-destructive focus:bg-destructive/10" 

@@ -1,61 +1,42 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Ajouter un raccourci chat sur les salons vocaux au hover
 
-## Root cause
+## Objectif
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Ajouter une icone de conversation (bulle de message) dans les actions qui apparaissent au survol des salons vocaux et stage dans la sidebar, permettant d'ouvrir directement le panneau de chat du salon vocal.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Modification
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### `src/components/layout/ChannelList.tsx`
 
-## Fix
+Dans le composant `SortableChannel`, ajouter une icone `MessageSquare` dans le bloc d'actions hover (`hidden group-hover:flex`), visible uniquement pour les salons de type `voice` ou `stage`.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Au clic, cette icone declenchera la navigation vers le salon vocal avec le chat ouvert. Comme le composant n'a pas actuellement de callback pour ouvrir le chat directement, on ajoutera un nouveau prop optionnel `onOpenChat` au composant `SortableChannel` et a l'interface `SortableChannelProps`.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+#### Changements concrets :
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+1. **Ajouter `onOpenChat?: () => void`** dans l'interface `SortableChannelProps` (vers la ligne 383)
 
-### 2. In `onSuccess`: invalidate the permissions cache
+2. **Ajouter l'icone dans le bloc hover** (ligne 485-502) : inserer une icone `MessageSquare` avant `UserPlus`, conditionnee par `isVoice || isStage`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```tsx
+{(isVoice || isStage) && (
+  <MessageSquare
+    className="w-4 h-4 text-muted-foreground hover:text-foreground"
+    onClick={(e) => {
+      e.stopPropagation();
+      onOpenChat?.();
+    }}
+  />
+)}
 ```
 
-### Code for onSuccess addition
+3. **Passer le callback depuis le parent** (vers lignes 1290 et 1359) : ajouter `onOpenChat` qui navigue vers le salon et active le chat. Le plus simple est de stocker un state `voiceChatChannelId` dans le composant parent pour indiquer quel salon vocal doit s'ouvrir avec le chat actif, et le transmettre au `VoiceChannelView` via un nouveau prop `initialShowChat`.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+4. **Modifier `VoiceChannelView`** pour accepter un prop `initialShowChat` qui initialise `showChat` a `true` si fourni.
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Resultat
+
+Au survol d'un salon vocal dans la sidebar, une icone de bulle de message apparaitra a cote des icones existantes. Un clic dessus ouvrira le salon vocal avec le panneau de chat directement visible.
 

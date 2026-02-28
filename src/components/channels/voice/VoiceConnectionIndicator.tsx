@@ -14,6 +14,7 @@ export interface ConnectionStats {
 interface VoiceConnectionIndicatorProps {
   stats: ConnectionStats | null;
   className?: string;
+  connected?: boolean;
 }
 
 export type QualityLevel = 'excellent' | 'good' | 'poor' | 'critical';
@@ -48,16 +49,9 @@ function getQuality(stats: ConnectionStats): QualityLevel {
   return 'critical';
 }
 
-export function VoiceConnectionIndicator({ stats, className }: VoiceConnectionIndicatorProps) {
-  if (!stats) {
-    return (
-      <div className={cn('flex items-center', className)}>
-        <Signal className="w-4 h-4 text-muted-foreground animate-pulse" />
-      </div>
-    );
-  }
-
-  const quality = getQuality(stats);
+export function VoiceConnectionIndicator({ stats, className, connected = false }: VoiceConnectionIndicatorProps) {
+  // When connected but no stats yet (e.g. alone in channel), default to excellent
+  const quality: QualityLevel = stats ? getQuality(stats) : (connected ? 'excellent' : 'excellent');
   const config = qualityConfig[quality];
   const Icon = config.icon;
 

@@ -71,6 +71,7 @@ function SortableMobileServerIcon({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: 'none',
   };
 
   return (
@@ -162,7 +163,7 @@ export function MobileServersView({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 15 } })
   );
 
   const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);
@@ -278,7 +279,7 @@ export function MobileServersView({
             })}
           </SortableContext>
 
-          <DragOverlay>
+          <DragOverlay dropAnimation={null}>
             {draggedServer ? <ServerIconOverlay server={draggedServer} /> : null}
           </DragOverlay>
         </DndContext>

@@ -100,11 +100,14 @@ export function MessageInput({
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const minH = compact ? 28 : 40;
+    const DESKTOP_MIN_HEIGHT = 40;
+    const COMPACT_MIN_HEIGHT = 28;
+    const DESKTOP_SINGLE_LINE_TOLERANCE = 6;
+    const minH = compact ? COMPACT_MIN_HEIGHT : DESKTOP_MIN_HEIGHT;
     textarea.style.height = 'auto';
     const sh = textarea.scrollHeight;
-    // For desktop single-line: clamp to baseline if scrollHeight is within tolerance
-    const height = (!compact && sh <= minH + 2) ? minH : Math.max(sh, minH);
+    // For desktop single-line: clamp to baseline if scrollHeight is within tolerance (handles 43-46px browser variance)
+    const height = (!compact && sh <= DESKTOP_MIN_HEIGHT + DESKTOP_SINGLE_LINE_TOLERANCE) ? DESKTOP_MIN_HEIGHT : Math.max(sh, minH);
     textarea.style.height = height + 'px';
     // Reset overlay scroll sync when content changes
     if (overlayRef.current) {
@@ -488,7 +491,7 @@ export function MessageInput({
               } ${
                 compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `pt-[11px] pb-[9px] text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
+                  : `pt-[12px] pb-[8px] text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />
@@ -503,7 +506,7 @@ export function MessageInput({
                 trigger={
                   <button
                     type="button"
-                    className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                    className={`text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-10 w-10 p-0 min-h-0'}`}
                   >
                     <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
@@ -517,7 +520,7 @@ export function MessageInput({
               trigger={
                 <button
                   type="button"
-                  className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                  className={`text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-10 w-10 p-0 min-h-0'}`}
                 >
                   <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
                 </button>

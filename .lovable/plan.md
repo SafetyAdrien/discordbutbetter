@@ -1,43 +1,61 @@
 
 
-# Long-press drag-and-drop pour reordonner les serveurs sur mobile
+# Fix: Duplicated channel hidden by visibility filter
 
-## Objectif
+## Root cause
 
-Permettre aux utilisateurs de maintenir le doigt sur une icone de serveur dans la vue mobile pour activer le drag-and-drop et reorganiser l'ordre des serveurs, en reutilisant le systeme `useServerOrder` et dnd-kit deja en place sur desktop.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. `src/components/mobile/MobileServersView.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Integrer dnd-kit dans la colonne de serveurs mobile :
+## Fix
 
-- Importer `DndContext`, `SortableContext`, `useSortable`, `DragOverlay`, `closestCenter`, `TouchSensor`, `arrayMove`, `restrictToVerticalAxis` de dnd-kit
-- Importer `useServerOrder` pour acceder a `sortServers` et `reorderServers`
-- Utiliser `TouchSensor` avec un delai de 200ms (long-press) et une tolerance de 10px, plus `PointerSensor` avec distance 5px comme fallback
-- Wrapper la liste de serveurs dans `DndContext` + `SortableContext`
-- Extraire chaque bouton serveur dans un sous-composant `SortableMobileServerIcon` utilisant le hook `useSortable`
-- Ajouter un `DragOverlay` affichant l'icone du serveur en cours de deplacement (semi-transparent, legerement agrandi)
-- Appliquer le tri des serveurs via `sortServers(servers)` avant le rendu
-- Sur `onDragEnd`, calculer le nouvel ordre avec `arrayMove` et appeler `reorderServers`
-- Ajouter un indicateur visuel de drop (ligne bleue `bg-primary` de 2px) au-dessus ou en dessous de l'element survole
-- L'element en cours de drag passe en `opacity-30`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. Comportement tactile
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- **Long-press (200ms)** : active le mode drag via `TouchSensor` de dnd-kit (parametre `delay: 200, tolerance: 10`)
-- **Tap court** : continue de selectionner le serveur normalement (le drag ne s'active pas)
-- Pendant le drag, le scroll de la colonne reste fonctionnel pour les listes longues
-- Le modificateur `restrictToVerticalAxis` empeche le deplacement horizontal
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 3. Indicateurs visuels pendant le drag
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- Ligne bleue horizontale (2px, `bg-primary`) positionnee avant ou apres l'element survole
-- L'icone originale est assombrie (`opacity-30`)
-- Le `DragOverlay` montre une copie de l'icone avec `scale-110` et `shadow-lg`
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-## Fichier modifie
+### 3. Hook needs `useAuth` for the user ID
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/components/mobile/MobileServersView.tsx` | Ajout DndContext/SortableContext, TouchSensor long-press, DragOverlay, tri via useServerOrder |
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

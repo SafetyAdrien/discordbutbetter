@@ -61,7 +61,7 @@ export function MobileLayout({
   const [mobileView, setMobileView] = useState<MobileView>({ type: 'tab' });
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [showServerSettings, setShowServerSettings] = useState(false);
+  const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
 
   const { voiceState, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoiceState();
 
@@ -322,7 +322,7 @@ export function MobileLayout({
                 orphanChannels={orphanChannelsForList}
                 onBack={handleBackToServers}
                 onChannelSelect={handleChannelSelect}
-                onOpenSettings={() => setShowServerSettings(true)}
+                onOpenSettings={() => setSettingsServerId(mobileView.serverId)}
               />
             </motion.div>
           )}
@@ -346,7 +346,7 @@ export function MobileLayout({
               onChannelSelect={handleServerChannelSelect}
               onDiscoverClick={() => setShowDiscover(true)}
               onCreateClick={() => setShowCreate(true)}
-              onOpenSettings={() => setShowServerSettings(true)}
+              onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
             />
           )}
           {activeTab === 'notifications' && <MobileNotificationsView />}
@@ -391,13 +391,16 @@ export function MobileLayout({
           }}
         />
       )}
-      {showServerSettings && currentServerId && currentServer && (
-        <ServerSettingsModal
-          serverId={currentServerId}
-          serverName={currentServer.name}
-          onClose={() => setShowServerSettings(false)}
-        />
-      )}
+      {settingsServerId && (() => {
+        const settingsServer = rawServers.find((s: any) => s.id === settingsServerId);
+        return settingsServer ? (
+          <ServerSettingsModal
+            serverId={settingsServerId}
+            serverName={settingsServer.name}
+            onClose={() => setSettingsServerId(null)}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }

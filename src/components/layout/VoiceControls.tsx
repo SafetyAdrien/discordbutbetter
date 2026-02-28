@@ -3,7 +3,8 @@ import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio }
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoice } from '@/contexts/VoiceContext';
-import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
+import { VoiceConnectionIndicator, type QualityLevel } from '@/components/channels/voice/VoiceConnectionIndicator';
+import { useState, useCallback } from 'react';
 
 interface VoiceControlsProps {
   channelName: string;

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -39,6 +40,32 @@ export interface ServerWithDetails {
 
 export function useServers() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime subscription on servers table for name/icon/banner changes
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('servers-rt')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'servers' },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['servers'] });
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 
   return useQuery({
     queryKey: ['servers'],

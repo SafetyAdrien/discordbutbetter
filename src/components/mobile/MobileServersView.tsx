@@ -91,7 +91,7 @@ function SortableMobileServerIcon({
       >
         {/* Active indicator */}
         <div className={cn(
-          'absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
+          'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
           isActive ? 'h-8' : hasUnread ? 'h-3' : 'h-0 opacity-0'
         )} />
 
@@ -249,7 +249,7 @@ export function MobileServersView({
     <div className="flex h-full">
       {/* Left: Server icons column */}
       <div className={cn(
-        'w-[72px] flex-shrink-0 bg-sidebar flex flex-col pl-[10px] py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'w-[72px] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         <DndContext
           sensors={sensors}

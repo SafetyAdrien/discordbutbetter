@@ -481,7 +481,7 @@ export function MessageInput({
               placeholder={placeholder}
               disabled={disabled}
               style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: 'inherit', fontWeight: 400, letterSpacing: 'normal' }}
-              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent p-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
+              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 

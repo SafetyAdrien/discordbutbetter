@@ -1,13 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Plus, Compass } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
-
+import { useServerOrder } from '@/hooks/useServerOrder';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { MobileChannelListView } from './MobileChannelListView';
 import { Separator } from '@/components/ui/separator';
 import type { Server } from '@/types/app';
+
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+  TouchSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface MobileServersViewProps {
   servers: Server[];
@@ -18,6 +38,100 @@ interface MobileServersViewProps {
   onDiscoverClick: () => void;
   onCreateClick: () => void;
   onOpenSettings?: () => void;
+}
+
+const ICON_SIZE = 'w-[50px] h-[50px]';
+
+function SortableMobileServerIcon({
+  server,
+  isActive,
+  hasUnread,
+  mentionCount,
+  isDragging,
+  onTap,
+}: {
+  server: Server;
+  isActive: boolean;
+  hasUnread: boolean;
+  mentionCount: number;
+  isDragging: boolean;
+  onTap: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isOver,
+  } = useSortable({ id: server.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {/* Drop indicator line */}
+      {isOver && (
+        <div className="w-10 h-0.5 bg-primary rounded-full mx-auto -mt-0.5 mb-0.5" />
+      )}
+      <button
+        onClick={onTap}
+        className={cn(
+          'relative flex items-center justify-center w-full py-0.5 group',
+          isDragging && 'opacity-30'
+        )}
+      >
+        {/* Active indicator */}
+        <div className={cn(
+          'absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
+          isActive ? 'h-8' : hasUnread ? 'h-3' : 'h-0 opacity-0'
+        )} />
+
+        <div className="relative">
+          <Avatar className={cn(
+            ICON_SIZE,
+            'rounded-2xl transition-all',
+            isActive && 'rounded-xl ring-2 ring-primary'
+          )}>
+            {server.icon?.startsWith('http') ? (
+              <AvatarImage src={server.icon} />
+            ) : null}
+            <AvatarFallback className="bg-muted text-foreground text-base rounded-2xl">
+              {server.icon && !server.icon.startsWith('http')
+                ? server.icon
+                : server.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+
+          {mentionCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+              {mentionCount > 99 ? '99+' : mentionCount}
+            </span>
+          )}
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function ServerIconOverlay({ server }: { server: Server }) {
+  return (
+    <div className="scale-110 drop-shadow-lg">
+      <Avatar className={cn(ICON_SIZE, 'rounded-2xl')}>
+        {server.icon?.startsWith('http') ? (
+          <AvatarImage src={server.icon} />
+        ) : null}
+        <AvatarFallback className="bg-muted text-foreground text-base rounded-2xl">
+          {server.icon && !server.icon.startsWith('http')
+            ? server.icon
+            : server.name.slice(0, 2).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+    </div>
+  );
 }
 
 export function MobileServersView({
@@ -32,38 +146,63 @@ export function MobileServersView({
 }: MobileServersViewProps) {
   const { unreadInfo } = useServerUnreadCounts();
   const { isSmallMobile } = useBreakpoint();
+  const { sortServers, reorderServers } = useServerOrder();
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  // Sync with external active server
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } })
+  );
+
+  const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);
+  const serverIds = useMemo(() => sortedServers.map(s => s.id), [sortedServers]);
+
   useEffect(() => {
     if (activeServerId && !selectedServerId) {
       setSelectedServerId(activeServerId);
     }
   }, [activeServerId]);
 
-  // Auto-select first server if none selected
   useEffect(() => {
-    if (!selectedServerId && servers.length > 0) {
-      setSelectedServerId(servers[0].id);
+    if (!selectedServerId && sortedServers.length > 0) {
+      setSelectedServerId(sortedServers[0].id);
     }
-  }, [servers, selectedServerId]);
+  }, [sortedServers, selectedServerId]);
 
   const handleServerTap = (serverId: string) => {
+    if (activeDragId) return;
     setSelectedServerId(serverId);
     onServerSelect(serverId);
   };
 
-  // Build categories/channels for selected server
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragId(null);
+
+    if (over && active.id !== over.id) {
+      const oldIndex = serverIds.indexOf(String(active.id));
+      const newIndex = serverIds.indexOf(String(over.id));
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(serverIds, oldIndex, newIndex);
+        reorderServers(newOrder);
+      }
+    }
+  };
+
+  const draggedServer = activeDragId ? sortedServers.find(s => s.id === activeDragId) : null;
+
   const selectedRawServer = rawServers.find(s => s.id === selectedServerId);
 
   const categoriesForList = selectedRawServer?.categories.map((cat: any) => ({
     id: cat.id,
     name: cat.name,
     channels: cat.channels.map((ch: any) => ({
-      id: ch.id,
-      name: ch.name,
-      type: ch.type || 'text',
-      description: ch.description,
+      id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
     })),
   })) || [];
 
@@ -71,64 +210,43 @@ export function MobileServersView({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
   }));
 
-  const sidebarWidth = 'w-[20%]';
-  const iconSize = 'w-[50px] h-[50px]';
-
   return (
     <div className="flex h-full">
       {/* Left: Server icons column */}
       <div className={cn(
-        sidebarWidth,
-        'flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'w-[20%] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
-        {servers.map((server) => {
-          const info = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
-          const isActive = selectedServerId === server.id;
-          return (
-            <button
-              key={server.id}
-              onClick={() => handleServerTap(server.id)}
-              className="relative flex items-center justify-center w-full py-0.5 group"
-            >
-              {/* Active indicator */}
-              <div className={cn(
-                'absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
-                isActive ? 'h-8' : info.hasUnread ? 'h-3' : 'h-0 opacity-0'
-              )} />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
+            {sortedServers.map((server) => {
+              const info = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
+              return (
+                <SortableMobileServerIcon
+                  key={server.id}
+                  server={server}
+                  isActive={selectedServerId === server.id}
+                  hasUnread={info.hasUnread}
+                  mentionCount={info.mentionCount}
+                  isDragging={activeDragId === server.id}
+                  onTap={() => handleServerTap(server.id)}
+                />
+              );
+            })}
+          </SortableContext>
 
-              <div className="relative">
-                <Avatar className={cn(
-                  iconSize,
-                  'rounded-2xl transition-all',
-                  isActive && 'rounded-xl ring-2 ring-primary'
-                )}>
-                  {server.icon?.startsWith('http') ? (
-                    <AvatarImage src={server.icon} />
-                  ) : null}
-                  <AvatarFallback className="bg-muted text-foreground text-base rounded-2xl">
-                    {server.icon && !server.icon.startsWith('http')
-                      ? server.icon
-                      : server.name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+          <DragOverlay>
+            {draggedServer ? <ServerIconOverlay server={draggedServer} /> : null}
+          </DragOverlay>
+        </DndContext>
 
-                {/* Mention badge */}
-                {info.mentionCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
-                    {info.mentionCount > 99 ? '99+' : info.mentionCount}
-                  </span>
-                )}
-              </div>
+        {servers.length > 0 && <Separator className="w-8 my-1" />}
 
-            </button>
-          );
-        })}
-
-        {servers.length > 0 && (
-          <Separator className="w-8 my-1" />
-        )}
-
-        {/* Discover */}
         <button
           onClick={onDiscoverClick}
           className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
@@ -136,7 +254,6 @@ export function MobileServersView({
           <Compass className="w-5 h-5" />
         </button>
 
-        {/* Create */}
         <button
           onClick={onCreateClick}
           className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"

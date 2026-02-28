@@ -484,7 +484,7 @@ export function MessageInput({
               } ${
                 compact 
                   ? `py-1 text-sm pr-2 max-h-[120px] overflow-y-auto` 
-                  : `pt-[13px] pb-[11px] text-sm pr-1 max-h-[200px] overflow-y-auto`
+                  : `py-3 text-sm pr-1 max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />

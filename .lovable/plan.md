@@ -1,29 +1,61 @@
 
 
-# Elargir la colonne serveurs pour rendre l'indicateur visible
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme
+## Root cause
 
-L'indicateur actif (la petite barre blanche sur le cote gauche) est positionne a `left-0` a l'interieur du bouton, mais le bouton est centre dans une colonne de `w-[20%]`. L'indicateur se retrouve coupe ou invisible car il n'y a pas assez d'espace a gauche de l'icone.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Corrections dans `src/components/mobile/MobileServersView.tsx`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. Elargir legerement la colonne serveurs
-Passer de `w-[20%]` a `w-[72px]` (largeur fixe). Cela donne 50px pour l'icone + ~11px a gauche pour l'indicateur + ~11px a droite pour le padding. Une largeur fixe est plus previsible qu'un pourcentage.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 2. Ajuster l'alignement des icones
-Remplacer `items-center` par un padding gauche (`pl-[10px]`) pour laisser l'espace necessaire a l'indicateur tout en gardant les icones bien positionnees.
+## Fix
 
-### 3. Repositionner l'indicateur actif
-L'indicateur reste a `left-0` dans le bouton mais comme le bouton n'est plus centre avec `items-center`, il sera visible dans l'espace de padding gauche.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-## Resultat attendu
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- La barre blanche d'activite/unread est visible sur le bord gauche
-- Les icones serveurs restent bien alignees
-- La liste de salons a droite s'adapte automatiquement via `flex-1`
-- L'espacement global reste harmonieux
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-## Fichier modifie
+### 2. In `onSuccess`: invalidate the permissions cache
 
-`src/components/mobile/MobileServersView.tsx` -- largeur colonne + alignement
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

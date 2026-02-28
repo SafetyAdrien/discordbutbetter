@@ -14,10 +14,14 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
+import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
+import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
+import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
 import { toast } from 'sonner';
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
+import { cn } from '@/lib/utils';
 
 function formatDate(date: Date): string {
   const today = new Date();
@@ -46,13 +50,21 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
+  const isShiftPressed = useShiftKey();
   const { data: messages = [] } = useMessages(channelId);
   const sendMessage = useSendMessage();
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
+  const addReaction = useAddReaction();
+  const removeReaction = useRemoveReaction();
+  
+  const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
+  const { data: reactionsData = {} } = useMessageReactions(messageIds);
   
   const {
     attachments, isDragging, addFiles, removeAttachment,
@@ -133,6 +145,19 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
     }
   };
 
+  const handleAddReaction = (messageId: string, emoji: string) => {
+    if (!user) return;
+    const messageReactions = reactionsData[messageId] || [];
+    const existingReaction = messageReactions.find(
+      r => r.user_id === user.id && r.emoji === emoji
+    );
+    if (existingReaction) {
+      removeReaction.mutate({ messageId, emoji });
+    } else {
+      addReaction.mutate({ messageId, emoji });
+    }
+  };
+
   return (
     <div 
       className="w-80 border-l border-white/10 flex flex-col bg-[#2b2d31] relative"
@@ -167,6 +192,18 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
               const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
               const isOwnMessage = user?.id === (message as any).author_id || user?.id === message.author?.id;
               const isEditing = editingMessageId === message.id;
+              const messageReactions = reactionsData[message.id] || [];
+              const isHovered = hoveredMessageId === message.id || openDropdownMessageId === message.id;
+              
+              // Group reactions by emoji
+              const groupedReactions = messageReactions.reduce<Record<string, { emoji: string; count: number; userReacted: boolean }>>((acc, r) => {
+                if (!acc[r.emoji]) {
+                  acc[r.emoji] = { emoji: r.emoji, count: 0, userReacted: false };
+                }
+                acc[r.emoji].count++;
+                if (r.user_id === user?.id) acc[r.emoji].userReacted = true;
+                return acc;
+              }, {});
               
               return (
                 <div key={message.id}>
@@ -181,7 +218,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     messageId={message.id}
                     isOwnMessage={isOwnMessage}
                     onReply={() => {}}
-                    onAddReaction={() => {}}
+                    onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                     onCopyText={() => {
                       copyToClipboard(message.content);
                       toast.success('Texte copié');
@@ -197,7 +234,31 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}
                     onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
                   >
-                    <div className="group">
+                    <div 
+                      className="relative group"
+                      onMouseEnter={() => setHoveredMessageId(message.id)}
+                      onMouseLeave={() => { if (!openDropdownMessageId) setHoveredMessageId(null); }}
+                    >
+                      {/* Hover toolbar */}
+                      <UniversalMessageActions
+                        isVisible={isHovered}
+                        isShiftPressed={isShiftPressed}
+                        isOwnMessage={isOwnMessage}
+                        onReply={() => {}}
+                        onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                        onCopyLink={() => {
+                          copyToClipboard(`${window.location.origin}/channels/${serverId}/${channelId}/${message.id}`);
+                          toast.success('Lien copié');
+                        }}
+                        onCopyId={() => {
+                          copyToClipboard(message.id);
+                          toast.success('ID copié');
+                        }}
+                        onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}
+                        onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
+                        onDropdownOpenChange={(open) => setOpenDropdownMessageId(open ? message.id : null)}
+                      />
+                      
                       <div className="flex items-start gap-2">
                         <Avatar className="w-7 h-7 flex-shrink-0">
                           <AvatarImage src={message.author?.avatar_url || undefined} />
@@ -234,12 +295,33 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm text-foreground/90 break-words">
-                              {message.content}
-                              {message.edited_at && (
-                                <span className="text-[10px] text-muted-foreground ml-1">(modifié)</span>
+                            <>
+                              <p className="text-sm text-foreground/90 break-words">
+                                {message.content}
+                                {message.edited_at && (
+                                  <span className="text-[10px] text-muted-foreground ml-1">(modifié)</span>
+                                )}
+                              </p>
+                              {/* Reactions display */}
+                              {Object.keys(groupedReactions).length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {Object.values(groupedReactions).map(({ emoji, count, userReacted }) => (
+                                    <button
+                                      key={emoji}
+                                      onClick={() => handleAddReaction(message.id, emoji)}
+                                      className={cn(
+                                        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors",
+                                        "bg-muted/50 hover:bg-muted",
+                                        userReacted && "border border-primary/60 bg-primary/10"
+                                      )}
+                                    >
+                                      <span>{emoji}</span>
+                                      <span className="text-muted-foreground">{count}</span>
+                                    </button>
+                                  ))}
+                                </div>
                               )}
-                            </p>
+                            </>
                           )}
                         </div>
                       </div>

@@ -249,6 +249,7 @@ export function MobileChannelListView({
   embedded = false,
 }: MobileChannelListViewProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
 
   const toggleCategory = (id: string) => {
@@ -307,8 +308,8 @@ export function MobileChannelListView({
           return (
             <button
               key={ch.id}
-              onClick={() => onChannelSelect(ch.id, ch.type)}
-              className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-muted/50 transition-colors"
+              onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+              className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
             >
               <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <span className={cn(
@@ -342,8 +343,8 @@ export function MobileChannelListView({
                 return (
                   <button
                     key={ch.id}
-                    onClick={() => onChannelSelect(ch.id, ch.type)}
-                    className="w-full flex items-center gap-2 px-5 py-2.5 hover:bg-muted/50 transition-colors"
+                    onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+                    className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                   >
                     <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <span className={cn(

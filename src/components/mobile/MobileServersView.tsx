@@ -72,14 +72,14 @@ export function MobileServersView({
   }));
 
   const sidebarWidth = 'w-[20%]';
-  const iconSize = 'w-10 h-10';
+  const iconSize = 'w-[50px] h-[50px]';
 
   return (
     <div className="flex h-full">
       {/* Left: Server icons column */}
       <div className={cn(
         sidebarWidth,
-        'flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         {servers.map((server) => {
           const info = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
@@ -88,7 +88,7 @@ export function MobileServersView({
             <button
               key={server.id}
               onClick={() => handleServerTap(server.id)}
-              className="relative flex items-center justify-center w-full py-1 group"
+              className="relative flex items-center justify-center w-full py-0.5 group"
             >
               {/* Active indicator */}
               <div className={cn(
@@ -131,7 +131,7 @@ export function MobileServersView({
         {/* Discover */}
         <button
           onClick={onDiscoverClick}
-          className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
         >
           <Compass className="w-5 h-5" />
         </button>
@@ -139,7 +139,7 @@ export function MobileServersView({
         {/* Create */}
         <button
           onClick={onCreateClick}
-          className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
         >
           <Plus className="w-5 h-5" />
         </button>

@@ -149,10 +149,6 @@ function SortableServerIcon({
                   </div>
                 )}
               </button>
-      {/* Inline drop indicator - after */}
-      {dropIndicator === 'after' && (
-        <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
-      )}
             </TooltipTrigger>
           </ContextMenuTrigger>
           <TooltipContent side="right">
@@ -190,6 +186,10 @@ function SortableServerIcon({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      {/* Inline drop indicator - after */}
+      {dropIndicator === 'after' && (
+        <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
+      )}
     </div>
   );
 }

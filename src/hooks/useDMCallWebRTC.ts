@@ -125,29 +125,11 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
       callIdRef.current = callId;
       remoteUserIdRef.current = remoteUserId;
 
-      // Start microphone
-      const micSuccess = await mediaManager.tryStartMicrophone();
-      if (!micSuccess) {
-        console.warn('[DMCallWebRTC] Could not access microphone');
-      }
-
-      // Start audio level monitoring
-      audioLevelIntervalRef.current = setInterval(() => {
-        const level = mediaManager.getAudioLevel();
-        setAudioLevel(level);
-      }, 50);
-
-      // Create peer connection
+      // Create peer connection early so signals can be handled
       const pc = createPeerConnection(remoteUserId);
       peerConnectionRef.current = pc;
 
-      // Add local audio stream
-      const localStream = mediaManager.getLocalAudioStream();
-      if (localStream) {
-        pc.addAudioStream(localStream);
-      }
-
-      // Subscribe to signals
+      // Set up signal subscription (non-blocking creation)
       signalSubscriptionRef.current = supabase
         .channel(`dm-call-signals:${callId}`)
         .on(
@@ -171,6 +153,24 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
           }
         )
         .subscribe();
+
+      // Parallelize: microphone init runs alongside signal subscription setup
+      const micSuccess = await mediaManager.tryStartMicrophone();
+      if (!micSuccess) {
+        console.warn('[DMCallWebRTC] Could not access microphone');
+      }
+
+      // Add local audio stream once mic is ready
+      const localStream = mediaManager.getLocalAudioStream();
+      if (localStream) {
+        pc.addAudioStream(localStream);
+      }
+
+      // Start audio level monitoring
+      audioLevelIntervalRef.current = setInterval(() => {
+        const level = mediaManager.getAudioLevel();
+        setAudioLevel(level);
+      }, 50);
 
       // Process any pending signals
       await processPendingSignals();

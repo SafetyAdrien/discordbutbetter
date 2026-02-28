@@ -1,29 +1,61 @@
 
 
-# Centrer le texte du textarea dans la barre de saisie sur mobile
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme
+## Root cause
 
-Le texte du placeholder/saisie n'est pas centre verticalement dans le conteneur arrondi (la barre de saisie). Le textarea a du padding `py-3` qui ne correspond pas bien a la hauteur des boutons adjacents, creant un decalage visuel.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Solution
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Ajuster le padding du textarea et de l'overlay pour que le texte soit parfaitement centre dans la barre. Sur mobile, utiliser un padding vertical plus petit (`py-2.5` soit 10px) pour mieux s'aligner avec les boutons qui ont `p-3` (plus button) et `p-2` (emoji/send buttons). Egalement ajuster le padding du bouton "+" sur mobile pour uniformiser la hauteur.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-## Changements
+## Fix
 
-### Fichier : `src/components/chat/MessageInput.tsx`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-1. **Textarea padding (ligne ~485-487)** : Changer `py-3` en `py-2.5` pour le mode non-compact afin de mieux centrer le texte dans le conteneur.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-2. **Bouton plus (ligne ~427)** : Uniformiser le padding du bouton "+" pour qu'il soit coherent avec la hauteur du textarea.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### Fichier : `src/components/chat/InputMarkdownOverlay.tsx`
+### 2. In `onSuccess`: invalidate the permissions cache
 
-1. **Overlay padding (ligne ~96)** : Changer le padding non-compact de `py-3` a `py-2.5` pour rester synchronise avec le textarea.
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-| Fichier | Changement |
-|---------|-----------|
-| `src/components/chat/MessageInput.tsx` | Textarea padding `py-3` -> `py-2.5`, ajustement bouton "+" |
-| `src/components/chat/InputMarkdownOverlay.tsx` | Overlay padding `py-3` -> `py-2.5` pour rester aligne |
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

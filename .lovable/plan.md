@@ -1,61 +1,43 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Supprimer le double header mobile et deplacer les icones
 
-## Root cause
+## Probleme
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Sur mobile, deux barres de header sont visibles :
+1. **Header MobileChatView** (en haut) : `< # NOM` + icone membres -- c'est celui qu'on garde
+2. **Header interne ChatArea** (en dessous) : `# NOM` + cloche + resume + epingle + membres + threads -- c'est celui qu'on doit cacher sur mobile
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Les icones utiles du header ChatArea (notifications, epingles, threads) doivent etre deplacees.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Solution
 
-## Fix
+### 1. Cacher le header interne de ChatArea sur mobile
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Dans `src/components/chat/ChatArea.tsx`, entourer le bloc header (ligne ~786, le `div.h-12` avec les icones) d'une condition `!isMobile` pour ne pas le rendre sur mobile. Cela supprime completement la deuxieme barre visible dans la capture.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Ajouter les icones utiles dans le panel membres (Sheet) de MobileChatView
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Dans `src/components/mobile/MobileChatView.tsx`, a l'interieur du `SheetContent` qui contient le `MemberList`, ajouter une barre d'actions en haut du sheet avec :
+- **Notifications** (Bell) : popover ou bouton pour configurer les notifications du salon
+- **Messages epingles** (Pin) : bouton qui affiche les messages epingles
+- **Threads** (StreamlineThreads) : bouton qui affiche les threads du salon
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Ces icones seront affichees dans une rangee horizontale au-dessus de la liste de membres, dans le sheet lateral droit.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 3. Props supplementaires pour MobileChatView
 
-### 3. Hook needs `useAuth` for the user ID
+Passer le `channelId` aux composants de threads et de messages epingles a l'interieur du sheet pour qu'ils puissent charger les donnees correctes.
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+## Fichiers modifies
 
-## Detailed changes
+| Fichier | Changement |
+|---------|-----------|
+| `src/components/chat/ChatArea.tsx` | Cacher le header (`h-12` + icones) quand `isMobile` est vrai |
+| `src/components/mobile/MobileChatView.tsx` | Ajouter une barre d'icones (notifications, pins, threads) en haut du Sheet des membres |
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+## Resultat attendu
 
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+- Un seul header visible sur mobile (celui de MobileChatView avec le bouton retour)
+- Les fonctions notifications, epingles et threads accessibles via le panneau membres (icone en haut a droite du header)
+- Aucun changement sur desktop

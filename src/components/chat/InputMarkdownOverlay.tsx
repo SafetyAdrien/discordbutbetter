@@ -98,7 +98,7 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
         ref={ref}
         aria-hidden
         className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm leading-5 font-normal tracking-normal ${
-          compact ? 'py-1 pr-2 min-h-[24px]' : 'py-3 pr-1 min-h-[24px]'
+          compact ? 'py-1 pr-2 min-h-[24px]' : 'py-2.5 pr-1 min-h-[24px]'
         }`}
         style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: 'inherit', fontWeight: 400, letterSpacing: 'normal' }}
       >

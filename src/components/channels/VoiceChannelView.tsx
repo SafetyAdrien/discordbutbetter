@@ -24,6 +24,8 @@ interface VoiceChannelViewProps {
   members: any[];
   ownerId: string;
   onOpenDM: (conversationId: string) => void;
+  initialShowChat?: boolean;
+  onChatOpened?: () => void;
 }
 
 export function VoiceChannelView({ 
@@ -31,10 +33,12 @@ export function VoiceChannelView({
   serverId, 
   members,
   ownerId,
-  onOpenDM 
+  onOpenDM,
+  initialShowChat = false,
+  onChatOpened,
 }: VoiceChannelViewProps) {
   const { user } = useAuth();
-  const [showChat, setShowChat] = useState(false);
+  const [showChat, setShowChat] = useState(initialShowChat);
   const [showMembers, setShowMembers] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   

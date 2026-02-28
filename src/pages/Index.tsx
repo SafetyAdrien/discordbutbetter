@@ -67,6 +67,7 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+  const [voiceChatChannelId, setVoiceChatChannelId] = useState<string | null>(null);
 
   // Wrapper functions to persist navigation state
   const setActiveServerId = (id: string | null) => {
@@ -445,6 +446,15 @@ const Index = () => {
               setActiveThreadId(threadId);
               setThreadChannelId(activeChannelId); // Stocker le channel d'origine du thread
             }}
+            onOpenVoiceChat={(channelId) => {
+              setActiveChannelId(channelId);
+              if (activeServerId) {
+                setChannelForServer(activeServerId, channelId);
+              }
+              setActiveThreadId(null);
+              setThreadChannelId(null);
+              setVoiceChatChannelId(channelId);
+            }}
           />
 
           {/* Main Content Area - flex container for 60/40 split when thread is open */}
@@ -459,6 +469,8 @@ const Index = () => {
                     members={memberListData}
                     ownerId={activeServer.owner_id || ''}
                     onOpenDM={handleOpenDM}
+                    initialShowChat={voiceChatChannelId === channelForChat.id}
+                    onChatOpened={() => setVoiceChatChannelId(null)}
                   />
                 ) : channelForChat.type === 'media' ? (
                   <MediaChannel 

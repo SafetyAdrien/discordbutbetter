@@ -66,7 +66,6 @@ export function EditCategoryModal({
             e.preventDefault();
             onClose();
           }
-          e.stopPropagation();
         }}
       >
         <DialogHeader>

@@ -116,7 +116,6 @@ export function CreateChannelModal({
             e.preventDefault();
             onClose();
           }
-          e.stopPropagation();
         }}
       >
         <DialogHeader>
@@ -160,10 +159,7 @@ export function CreateChannelModal({
             <Input
               id="name"
               value={name}
-              onChange={(e) => {
-                const val = e.target.value;
-                setName(shouldFormatStrict ? formatStrictChannelName(val) : val);
-              }}
+              onChange={(e) => setName(e.target.value)}
               placeholder={shouldFormatStrict ? "nouveau-salon" : "Nouveau salon"}
               autoFocus
               className="w-full"

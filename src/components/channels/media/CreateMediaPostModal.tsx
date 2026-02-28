@@ -74,7 +74,6 @@ export function CreateMediaPostModal({
             e.preventDefault();
             onClose();
           }
-          e.stopPropagation();
         }}
       >
         <DialogHeader>

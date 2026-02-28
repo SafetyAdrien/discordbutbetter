@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -53,8 +53,21 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   const statusButtonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const closeTimeoutRef = useRef<NodeJS.Timeout>();
 
   const currentStatus = profile?.status || "offline";
+
+  const startCloseTimer = useCallback(() => {
+    closeTimeoutRef.current = setTimeout(() => setShowStatusMenu(false), 150);
+  }, []);
+
+  const cancelCloseTimer = useCallback(() => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current); };
+  }, []);
 
   // Get activity icon if present
   const ActivityIcon = profile?.activity_type
@@ -171,10 +184,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
 
             <div className="border-t border-border pt-2 space-y-0.5">
               {/* Status Selector with Portal */}
-              <div className="relative" onMouseLeave={() => setShowStatusMenu(false)}>
+              <div className="relative" onMouseLeave={startCloseTimer}>
                 <button
                   ref={statusButtonRef}
-                  onMouseEnter={handleStatusHover}
+                  onMouseEnter={() => { cancelCloseTimer(); handleStatusHover(); }}
                   className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
                 >
                   <div className="flex items-center gap-2">
@@ -190,8 +203,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                     <div
                       className="fixed z-[100]"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
-                      onMouseEnter={() => setShowStatusMenu(true)}
-                      onMouseLeave={() => setShowStatusMenu(false)}
+                      onMouseEnter={cancelCloseTimer}
+                      onMouseLeave={startCloseTimer}
                     >
                       {/* Invisible bridge to connect popover to this menu */}
                       <div className="absolute top-0 -left-1 w-1 h-full" />

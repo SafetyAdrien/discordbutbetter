@@ -1,57 +1,61 @@
 
-Objectif: corriger définitivement l’alignement vertical du textarea dans la barre de saisie (vue serveur/chat), y compris quand le viewport change (clavier mobile) et quand l’overlay markdown est actif.
 
-Constat précis (après lecture du code actuel)
-- `MessageInput` est dans une row `flex items-center`, mais ses sous-éléments n’ont pas des hauteurs cohérentes:
-  - bouton “+” non-compact: `p-3` (≈44px)
-  - textarea non-compact: `py-2.5` + `line-height: 20px` (≈40px)
-  - autres boutons (emoji/send): plus petits
-- La hauteur du textarea est pilotée par `scrollHeight` brut (`adjustTextareaHeight`), sans hauteur plancher. Selon navigateur/device, la hauteur d’une ligne varie légèrement → impression visuelle “pas centré”.
-- `InputMarkdownOverlay` n’a pas la même contrainte de hauteur min (`min-h-[24px]` actuellement), ce qui casse la synchronisation stricte textarea/overlay dans certains cas.
+# Fix: Duplicated channel hidden by visibility filter
 
-Approche de correction
-1) Stabiliser une métrique verticale unique (et déterministe)
-- Dans `MessageInput.tsx`, définir des hauteurs de base explicites:
-  - non-compact: 40px (1 ligne)
-  - compact: 28px
-- Adapter `adjustTextareaHeight` pour appliquer:
-  - `height = auto`
-  - `height = clamp(scrollHeight, minHeight, maxHeight)`
-- Résultat: la première ligne est toujours centrée de façon identique, quel que soit le device.
+## Root cause
 
-2) Uniformiser les hauteurs des contrôles autour du textarea
-- Toujours dans `MessageInput.tsx`, passer les boutons d’action non-compact (`+`, emoji, send) sur une hauteur fixe cohérente (`h-10 w-10`, `p-0`, `min-h-0`, `flex items-center justify-center`).
-- Garder le mode `compact` inchangé (ou minimalement ajusté) pour ne pas impacter les contexts compacts existants.
-- Résultat: la row n’est plus “tirée” par un bouton plus haut que le textarea.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-3) Resynchroniser overlay et textarea
-- Dans `InputMarkdownOverlay.tsx`, aligner les min-heights et paddings avec le textarea:
-  - non-compact → min-height 40px + padding vertical identique
-  - compact → min-height 28px + padding vertical identique
-- Conserver `OVERLAY_FONT_SIZE` et `OVERLAY_LINE_HEIGHT` (déjà corrects) pour éviter toute dérive de glyph metrics.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-4) Prévenir l’effet des règles globales mobile
-- Les règles globales mobile imposent un `min-height` sur `button`.
-- Neutraliser localement sur les boutons du `MessageInput` via `min-h-0` + hauteur explicite, pour que la barre reste mathématiquement stable.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Fichiers à modifier
-- `src/components/chat/MessageInput.tsx`
-  - `adjustTextareaHeight` (clamp min/max)
-  - classes des boutons d’action (hauteur fixe cohérente)
-  - classes textarea (min-height explicite)
-- `src/components/chat/InputMarkdownOverlay.tsx`
-  - min-height + padding alignés sur textarea
+## Fix
 
-Vérification (obligatoire)
-1. Test end-to-end visuel dans un salon serveur:
-- placeholder vide
-- texte simple (1 ligne)
-- texte multi-lignes
-- markdown (pour activer overlay)
-2. Vérifier en mobile (avec ouverture clavier) et desktop.
-3. Confirmer que le texte/caret restent centrés et que les boutons ne “tirent” plus la hauteur de la barre.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Notes techniques
-- Aucun changement backend.
-- Aucun changement de logique d’envoi.
-- Correction purement UI/metrics, ciblée et sans impact fonctionnel hors alignement.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

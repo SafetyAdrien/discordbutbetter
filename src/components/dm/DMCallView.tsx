@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2, Signal, SignalLow, SignalMedium } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2 } from 'lucide-react';
 import { DMCall } from '@/hooks/useDMCalls';
 import { useDMCallWebRTC } from '@/hooks/useDMCallWebRTC';
+import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
 import { cn } from '@/lib/utils';
 
 interface DMCallViewProps {
@@ -92,17 +93,6 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
 
   const displayName = participant?.display_name || 'Utilisateur';
 
-  // Connection quality indicator
-  const getConnectionQuality = () => {
-    if (!connectionStats) return null;
-    const latency = connectionStats.latency || 0;
-    if (latency < 100) return { icon: Signal, color: 'text-[hsl(var(--online))]', label: 'Excellent' };
-    if (latency < 200) return { icon: SignalMedium, color: 'text-yellow-500', label: 'Bon' };
-    return { icon: SignalLow, color: 'text-destructive', label: 'Faible' };
-  };
-
-  const quality = getConnectionQuality();
-
   return (
     <div className="absolute inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col">
       {/* Header */}
@@ -124,12 +114,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {quality && (
-            <div className={cn("flex items-center gap-1 text-xs", quality.color)}>
-              <quality.icon className="w-4 h-4" />
-              <span>{quality.label}</span>
-            </div>
-          )}
+          <VoiceConnectionIndicator stats={connectionStats} />
           <Button variant="ghost" size="icon">
             <Maximize2 className="w-4 h-4" />
           </Button>

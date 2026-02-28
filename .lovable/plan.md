@@ -1,29 +1,61 @@
 
-# Augmenter la visibilite des noms de salons dans la sidebar
 
-## Probleme
+# Fix: Duplicated channel hidden by visibility filter
 
-Les icones d'action (invitation + parametres) a droite du nom de salon utilisent `opacity-0` au repos. Elles restent dans le flux CSS et reservent de l'espace, ce qui reduit la zone de texte et provoque une troncature prematuree du nom (ex: "Aide & Cons..." au lieu de "Aide & Consultations").
+## Root cause
 
-## Solution
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Remplacer `opacity-0 group-hover:opacity-100` par `hidden group-hover:flex` sur le conteneur des icones d'action. Ainsi, les icones ne prennent aucune place au repos et le nom du salon dispose de toute la largeur disponible. Au survol, les icones apparaissent normalement.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Fichier a modifier
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### `src/components/layout/ChannelList.tsx` (ligne 485)
+## Fix
 
-Changer:
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
-<div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
-```
-En:
-```
-<div className="hidden group-hover:flex gap-[5px]">
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-## Impact
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 
-- Les noms de salons seront visibles sur toute la largeur disponible au repos
-- Au survol, les icones apparaitront comme avant (avec un leger changement : pas de transition d'opacite, apparition directe)
-- Aucun changement de fonctionnalite

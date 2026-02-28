@@ -319,9 +319,12 @@ export function MobileLayout({
             <MobileServersView
               servers={servers}
               activeServerId={activeServerId}
+              rawServers={rawServers}
               onServerSelect={handleServerSelect}
+              onChannelSelect={handleServerChannelSelect}
               onDiscoverClick={() => setShowDiscover(true)}
               onCreateClick={() => setShowCreate(true)}
+              onOpenSettings={() => setShowServerSettings(true)}
             />
           )}
           {activeTab === 'notifications' && <MobileNotificationsView />}

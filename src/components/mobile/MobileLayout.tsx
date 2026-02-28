@@ -88,7 +88,6 @@ export function MobileLayout({
 
   const handleChannelSelect = (channelId: string, channelType: string) => {
     if (mobileView.type === 'channels') {
-      setActiveChannelId(channelId);
       setMobileView({ type: 'chat', serverId: mobileView.serverId, channelId, channelType });
     }
   };

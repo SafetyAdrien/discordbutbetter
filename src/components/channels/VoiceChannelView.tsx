@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';

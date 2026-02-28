@@ -137,7 +137,7 @@ export function MobileServersView({
         {/* Discover */}
         <button
           onClick={onDiscoverClick}
-          className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
         >
           <Compass className="w-5 h-5" />
         </button>
@@ -145,14 +145,14 @@ export function MobileServersView({
         {/* Create */}
         <button
           onClick={onCreateClick}
-          className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
         >
           <Plus className="w-5 h-5" />
         </button>
       </div>
 
       {/* Right: Channel list */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-w-0 overflow-hidden">
         {selectedServerId && selectedRawServer ? (
           <MobileChannelListView
             embedded

@@ -482,7 +482,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   </span>
                 )}
 
-                <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-[5px]">
+                <div className="hidden group-hover:flex gap-[5px]">
                   <UserPlus
                     className="w-4 h-4 text-muted-foreground hover:text-foreground"
                     onClick={(e) => {

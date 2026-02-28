@@ -671,6 +671,7 @@ export function ChannelList({
   orphanChannels = [],
   activeThreadId,
   onThreadSelect,
+  onOpenVoiceChat,
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);

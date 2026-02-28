@@ -1,62 +1,61 @@
 
 
-# Adaptation mobile multi-ecrans Android/iOS
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme principal
+## Root cause
 
-Le bouton FAB "Nouveau message" (`absolute bottom-4 right-4` = 16px du bas) est masque par la barre de navigation mobile (`fixed bottom-0` avec `mb-3` = 12px de marge + `h-14` = 56px de hauteur + safe area). Le FAB doit etre repositionne au-dessus de la nav bar.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Corrections a apporter
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. `index.html` -- Viewport meta pour iOS safe areas
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Ajouter `viewport-fit=cover` au meta viewport pour que `env(safe-area-inset-bottom)` fonctionne sur iOS :
+## Fix
 
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### 2. `src/components/mobile/MobileHomeView.tsx` -- Repositionner le FAB
+### Code for onSuccess addition
 
-Changer le positionnement du bouton FAB de `bottom-4` a `bottom-20` (80px) pour le placer au-dessus de la barre de navigation (qui fait ~68px avec marges). Ajouter aussi `mb-safe` pour iOS.
-
-```tsx
-// Avant
-className="absolute bottom-4 right-4 ..."
-
-// Apres  
-className="absolute bottom-20 right-4 ..."
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-### 3. `src/components/mobile/MobileBottomNav.tsx` -- Meilleur support safe areas
-
-Actuellement la nav utilise `pb-safe` mais la hauteur totale peut varier. Ajuster pour que le contenu principal sache exactement combien d'espace reserver :
-- Remplacer `fixed bottom-0 mx-3 mb-3` par une approche qui inclut la safe area dans le calcul
-- Ajouter une classe CSS variable pour la hauteur totale de la nav
-
-### 4. `src/components/mobile/MobileLayout.tsx` -- Padding bas pour le contenu
-
-Le contenu principal doit avoir un padding-bottom suffisant pour ne pas etre cache derriere la nav bar fixe. Ajouter `pb-[80px]` quand la nav est visible (quand `mobileView.type === 'tab'` et pas de DM actif).
-
-### 5. `src/index.css` -- Utilitaires supplementaires pour ecrans varies
-
-Ajouter des media queries supplementaires pour les petits ecrans Android (320px-360px) et les grands ecrans iOS (428px+) :
-- Reduire les paddings sur les tres petits ecrans
-- Ajuster les tailles de police pour les ecrans < 360px
-- Ajouter `min-h-[env(safe-area-inset-bottom)]` comme fallback
-
-### 6. `src/hooks/useBreakpoint.ts` -- Ajouter detection de taille fine
-
-Ajouter `isSmallMobile` (< 375px) pour les petits Android (Galaxy A series, etc.) afin de pouvoir adapter les composants pour ces ecrans etroits.
-
-## Resume des fichiers
-
-| Fichier | Action |
-|---------|--------|
-| `index.html` | Ajouter `viewport-fit=cover` |
-| `src/components/mobile/MobileHomeView.tsx` | Repositionner FAB a `bottom-20` |
-| `src/components/mobile/MobileBottomNav.tsx` | Ameliorer safe area support |
-| `src/components/mobile/MobileLayout.tsx` | Ajouter padding bas pour le contenu |
-| `src/hooks/useBreakpoint.ts` | Ajouter `isSmallMobile` |
-| `src/index.css` | Media queries petits ecrans |
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

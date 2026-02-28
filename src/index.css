@@ -874,3 +874,20 @@
     touch-action: manipulation;
   }
 }
+
+/* Very small screens (320px - Galaxy A series, iPhone SE) */
+@media (max-width: 374px) {
+  .channel-item {
+    padding-left: 0.375rem;
+    padding-right: 0.375rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Large mobile screens (iPhone Pro Max, Galaxy S Ultra) */
+@media (min-width: 428px) and (max-width: 640px) {
+  .channel-item {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}

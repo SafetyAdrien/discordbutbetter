@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const BREAKPOINTS = {
+  xs: 375,
   sm: 640,
   md: 1024,
 } as const;
@@ -15,6 +16,7 @@ export function useBreakpoint() {
   }, []);
 
   return {
+    isSmallMobile: width < BREAKPOINTS.xs,
     isMobile: width < BREAKPOINTS.sm,
     isTablet: width >= BREAKPOINTS.sm && width < BREAKPOINTS.md,
     isDesktop: width >= BREAKPOINTS.md,

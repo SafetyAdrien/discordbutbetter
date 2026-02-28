@@ -4,7 +4,7 @@ import { Plus, Compass } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
+
 import { MobileChannelListView } from './MobileChannelListView';
 import { Separator } from '@/components/ui/separator';
 import type { Server } from '@/types/app';
@@ -68,10 +68,9 @@ function SortableMobileServerIcon({
     listeners,
   } = useSortable({ id: server.id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    touchAction: 'manipulation' as const,
   };
 
   return (
@@ -154,7 +153,6 @@ export function MobileServersView({
   onOpenSettings,
 }: MobileServersViewProps) {
   const { unreadInfo } = useServerUnreadCounts();
-  const { isSmallMobile } = useBreakpoint();
   const { sortServers, reorderServers } = useServerOrder();
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);

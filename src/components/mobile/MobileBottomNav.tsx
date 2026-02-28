@@ -1,0 +1,63 @@
+import { cn } from '@/lib/utils';
+import { MessageCircle, Globe, Bell, User } from 'lucide-react';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
+
+export type MobileTab = 'home' | 'servers' | 'notifications' | 'profile';
+
+interface MobileBottomNavProps {
+  activeTab: MobileTab;
+  onTabChange: (tab: MobileTab) => void;
+}
+
+const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
+  { id: 'home', label: 'Accueil', icon: MessageCircle },
+  { id: 'servers', label: 'Serveurs', icon: Globe },
+  { id: 'notifications', label: 'Notifs', icon: Bell },
+  { id: 'profile', label: 'Vous', icon: User },
+];
+
+export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps) {
+  const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
+  const notifCount = useUnreadNotificationsCount();
+
+  const totalDMs = Object.values(dmUnreadCounts).reduce((a, b) => a + b, 0);
+
+  const getBadge = (id: MobileTab) => {
+    if (id === 'home' && totalDMs > 0) return totalDMs;
+    if (id === 'notifications' && notifCount > 0) return notifCount;
+    return 0;
+  };
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 mx-3 mb-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border/50 shadow-lg pb-safe">
+      <div className="flex items-center justify-around h-14">
+        {tabs.map(({ id, label, icon: Icon }) => {
+          const isActive = activeTab === id;
+          const badge = getBadge(id);
+
+          return (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              className={cn(
+                'flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-colors relative',
+                isActive ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              <div className="relative">
+                <Icon className="w-5 h-5" />
+                {badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

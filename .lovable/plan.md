@@ -1,61 +1,44 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger le positionnement du chat input en bas de l'ecran mobile
 
-## Root cause
+## Probleme
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le conteneur qui enveloppe `ChatArea` dans `MobileChatView` (ligne 169) est `flex-1 overflow-hidden` mais n'est **pas un conteneur flex**. Or, `ChatArea` utilise `flex-1` pour remplir son parent -- ce qui ne fonctionne que dans un conteneur flex. Resultat : le ChatArea ne remplit pas toute la hauteur disponible et l'input n'est pas colle en bas de l'ecran.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Correction
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Fichier : `src/components/mobile/MobileChatView.tsx`
 
-## Fix
+**Ligne 169** - Ajouter `flex flex-col` au conteneur wrapper du ChatArea pour que `flex-1` fonctionne correctement a l'interieur :
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+```
+// Avant
+<div className="flex-1 overflow-hidden">
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Apres
+<div className="flex-1 overflow-hidden flex flex-col">
 ```
 
-### Code for onSuccess addition
+Ce changement unique garantit que le ChatArea remplit 100% de la hauteur disponible, et donc que le `flex-shrink-0` du MessageInput le positionne bien tout en bas de l'ecran.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+### Fichier : `src/components/chat/ChatArea.tsx`
+
+**Ligne 773** - Ajouter `min-h-0` au conteneur racine de ChatArea pour eviter que le flex-child deborde :
+
+```
+// Avant
+className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
+
+// Apres
+className="flex-1 flex flex-col bg-background min-w-0 min-h-0 w-full overflow-x-hidden relative"
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Resume
 
+| Fichier | Ligne | Changement |
+|---------|-------|-----------|
+| MobileChatView.tsx | 169 | Ajouter `flex flex-col` au wrapper |
+| ChatArea.tsx | 773 | Ajouter `min-h-0` au root |
+
+Deux classes CSS ajoutees, zero risque de regression desktop.

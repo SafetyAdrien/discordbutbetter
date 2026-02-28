@@ -82,11 +82,6 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     };
   }, [previewUrl]);
 
-  useEffect(() => {
-    if (shouldFormatStrict) {
-      setName(prev => formatStrictChannelName(prev));
-    }
-  }, [shouldFormatStrict]);
 
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;

@@ -1,61 +1,68 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger les bugs de navigation Parametres Serveur sur mobile
 
-## Root cause
+## Probleme racine
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le modal des parametres serveur (`ServerSettingsModal`) depend de `currentServerId` pour s'afficher (ligne 394 de MobileLayout). Or `currentServerId` est derive de `mobileView` qui doit etre de type `channels`, `chat` ou `thread`. Quand l'utilisateur est sur l'onglet serveurs (`mobileView.type === 'tab'`), `currentServerId` est `null` et le modal ne s'affiche jamais.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+L'etat `showServerSettings = true` reste en memoire. Quand l'utilisateur clique ensuite sur un salon, `mobileView` passe a `chat`, `currentServerId` devient valide, et le modal des parametres apparait a la place du chat.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Solution
 
-## Fix
+Stocker le `serverId` pour les parametres dans un state dedie au lieu de dependre de `currentServerId`.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### Modification dans `src/components/mobile/MobileLayout.tsx`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+1. Remplacer `showServerSettings` (boolean) par `settingsServerId` (string | null) :
+   - `null` = modal ferme
+   - une valeur = modal ouvert pour ce serveur
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+2. Mettre a jour les deux endroits ou les parametres sont ouverts :
+   - Depuis l'onglet serveurs (ligne 349) : passer `activeServerId`
+   - Depuis la liste de salons (ligne 325) : passer `mobileView.serverId`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+3. Mettre a jour le rendu du modal (ligne 394-400) : utiliser `settingsServerId` pour trouver le serveur et afficher le modal, sans dependre de `currentServerId`.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### Detail technique
 
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+**Avant** :
+```tsx
+const [showServerSettings, setShowServerSettings] = useState(false);
+// ...
+onOpenSettings={() => setShowServerSettings(true)}
+// ...
+{showServerSettings && currentServerId && currentServer && (
+  <ServerSettingsModal serverId={currentServerId} ... onClose={() => setShowServerSettings(false)} />
+)}
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+**Apres** :
+```tsx
+const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
+// ...
+// Onglet serveurs :
+onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
+// Liste salons :
+onOpenSettings={() => setSettingsServerId(mobileView.serverId)}
+// ...
+{settingsServerId && (() => {
+  const settingsServer = rawServers.find(s => s.id === settingsServerId);
+  return settingsServer ? (
+    <ServerSettingsModal serverId={settingsServerId} serverName={settingsServer.name} onClose={() => setSettingsServerId(null)} />
+  ) : null;
+})()}
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Fichier modifie
+
+| Fichier | Changement |
+|---------|-----------|
+| `src/components/mobile/MobileLayout.tsx` | Remplacer `showServerSettings` boolean par `settingsServerId` string, corriger les callbacks et le rendu du modal |
+
+## Resultat attendu
+
+- Cliquer sur l'engrenage ouvre immediatement les parametres du serveur selectionne
+- Cliquer sur un salon ouvre bien le chat, pas les parametres
+- Fermer les parametres (croix) revient proprement a la vue precedente sans crash
 

@@ -1,61 +1,54 @@
 
+Objectif
+- Corriger définitivement l’alignement du textarea dans le MessageInput mobile, tout en gardant l’input collé en bas de l’écran avec un espacement minimal.
 
-# Fix: Duplicated channel hidden by visibility filter
+Constat après inspection
+- Le positionnement bas est géré par la structure `MobileChatView -> ChatArea` (flex colonne + zone input en bas), donc la base est bonne.
+- Le décalage visuel vient surtout du `MessageInput` mobile :
+  - conteneur externe réduit (`px-2 py-1.5 ...`) mais
+  - textarea et overlay utilisent encore les métriques “desktop” (`pt-[13px] pb-[11px]`) quand `compact=false`,
+  - bouton “+” reste en `p-3`, ce qui augmente la hauteur perçue de la barre.
+- Résultat : impression de textarea non centré dans la box.
 
-## Root cause
+Plan d’implémentation
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+1) Unifier la logique “mobile compact” dans `MessageInput`
+- Fichier: `src/components/chat/MessageInput.tsx`
+- Ajouter un booléen dérivé (ex: `isMobileInput = isMobile && !compact`) puis un booléen de métriques (ex: `useCompactMetrics = compact || isMobileInput`).
+- But: appliquer les mêmes règles de densité mobile au textarea + overlay + boutons, sans casser le mode `compact` existant.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+2) Corriger le conteneur externe mobile (spacing minimal + bas d’écran)
+- Garder une marge/padding minimal en mobile.
+- Conserver la gestion safe-area, mais avec un padding bas propre et cohérent pour éviter l’effet “textarea qui flotte trop haut”.
+- Appliquer la même logique mobile dans les états spéciaux (permission denied / follow bar) pour ne pas retomber sur un rendu desktop en mobile.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+3) Centrage réel du textarea dans la barre
+- Conserver `items-center` sur la rangée principale.
+- Ajouter une hauteur minimale cohérente de barre (touch target mobile) pour stabiliser l’alignement.
+- Basculer les paddings des boutons d’action (plus / emoji / send) sur la variante compacte en mobile afin d’éviter qu’un bouton “étire” visuellement la hauteur.
 
-## Fix
+4) Synchroniser overlay et textarea (important)
+- Passer `compact={useCompactMetrics}` à `InputMarkdownOverlay`.
+- Utiliser `useCompactMetrics` aussi dans les classes du textarea (padding vertical, max-height).
+- Cela garantit que l’overlay Markdown reste parfaitement aligné avec le texte tapé (pas de régression caret/ligne).
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+5) Vérification ciblée après modification
+- Mobile (chat salon texte) :
+  - input collé en bas avec spacing minimal,
+  - textarea visuellement centré,
+  - aucun grand vide sous la barre (hors safe-area réel).
+- Cas fonctionnels :
+  - message vide / long / multi-ligne,
+  - overlay Markdown (liste, quote, code block) toujours aligné,
+  - présence de pièces jointes.
+- Non-régression desktop :
+  - style actuel desktop inchangé,
+  - mode compact (voice/thread) inchangé ou amélioré sans rupture.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Fichiers prévus
+- `src/components/chat/MessageInput.tsx` (principal, suffisant pour cette correction)
+- Pas de changement backend/base de données.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+Risques et mitigation
+- Risque: micro-décalage typographique spécifique iOS.
+- Mitigation: si un décalage de 1px persiste après harmonisation des métriques, appliquer un ajustement mobile très localisé (ex. line-height/padding fin) uniquement dans `MessageInput`, sans toucher la logique globale de markdown overlay.

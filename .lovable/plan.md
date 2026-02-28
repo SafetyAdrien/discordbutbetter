@@ -1,42 +1,61 @@
 
-# Sidebar serveurs a 20% -- compact sans espace vide
 
-## Changement
+# Fix: Duplicated channel hidden by visibility filter
 
-Reduire la colonne serveurs de 50% a 20% de la largeur, tout en supprimant les elements qui creent du vide inutile (noms de serveurs sous les icones, grands espacements).
+## Root cause
 
-## Modifications dans `src/components/mobile/MobileServersView.tsx`
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Largeur du sidebar
-- Passer de `w-1/2` / `w-[45%]` a `w-[20%]` (fixe, identique sur tous les ecrans)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Taille des icones
-- Reduire de `w-14 h-14` / `w-12 h-12` a `w-10 h-10` pour que les icones remplissent bien la colonne etroite sans marges excessives
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Supprimer les noms de serveurs
-- Retirer le `<span>` avec le nom du serveur sous chaque icone -- dans une colonne a 20%, le texte serait illisible et creerait du vide
-- Le bouton passe de `flex-col items-center gap-1` a simplement un conteneur centre pour l'icone
+## Fix
 
-### Reduire les espacements
-- Passer `gap-2` a `gap-1` entre les icones
-- Passer `py-3` a `py-2` pour le padding vertical du conteneur
-- Reduire les boutons Discover/Create de `w-12 h-12` a `w-10 h-10`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Resultat visuel
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
 ```text
-+------+------------------------+
-|  O   |                        |
-|  O   |   Liste des salons     |
-|  O   |   (80% de largeur)     |
-|  --  |                        |
-|  +   |                        |
-|  🧭  |                        |
-+------+------------------------+
- ~20%         ~80%
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-## Fichier modifie
+### Code for onSuccess addition
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/components/mobile/MobileServersView.tsx` | Largeur 20%, icones 40px, suppression noms, espacement reduit |
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

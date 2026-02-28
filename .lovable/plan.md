@@ -1,61 +1,45 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger le centrage vertical du textarea (Desktop) -- Cause racine identifiee
 
-## Root cause
+## Probleme
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le texte et le placeholder apparaissent trop haut dans la barre de saisie sur Desktop.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Cause racine
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
-
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+Dans `MessageInput.tsx` (ligne 484), le textarea a les classes suivantes :
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+p-0 ... py-2.5 text-sm pr-1 min-h-[40px]
 ```
 
-### Code for onSuccess addition
+Le probleme est un **conflit Tailwind entre `p-0` et `py-2.5`**. `p-0` genere `padding: 0px` (shorthand CSS), tandis que `py-2.5` genere `padding-top: 0.625rem; padding-bottom: 0.625rem` (longhand CSS). Selon l'ordre de generation des utilitaires dans le fichier CSS compile par Tailwind, **`p-0` peut ecraser `py-2.5`**, ce qui met le padding vertical a 0px. Le texte se retrouve alors colle en haut du conteneur de 40px.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+## Solution
+
+Remplacer `p-0` par `px-0` dans les classes du textarea. Ainsi, seul le padding horizontal est mis a zero, et `py-2.5` s'applique correctement sans conflit.
+
+## Changements
+
+### Fichier : `src/components/chat/MessageInput.tsx` (ligne 484)
+
+Remplacer :
+```
+p-0 shadow-none
+```
+Par :
+```
+px-0 shadow-none
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Aucun autre fichier a modifier -- le `InputMarkdownOverlay` utilise deja `py-2.5` sans `p-0`, donc il est deja correct.
+
+| Fichier | Changement |
+|---------|-----------|
+| `src/components/chat/MessageInput.tsx` | `p-0` -> `px-0` pour supprimer le conflit Tailwind |
+
+## Verification
+
+Apres ce changement, le padding vertical de 10px (py-2.5) sera effectif. Avec une line-height de 20px, le texte sera centre dans le conteneur de 40px (10 + 20 + 10 = 40).
 

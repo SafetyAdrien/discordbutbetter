@@ -27,7 +27,7 @@ import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 
 // DnD Kit imports
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
@@ -106,7 +106,8 @@ function SortableServerIcon({
                   'server-icon relative group select-none',
                   isActive
                     ? 'bg-primary text-white rounded-[16px]'
-                    : 'bg-card hover:bg-primary/80 hover:text-white'
+                    : 'bg-card hover:bg-primary/80 hover:text-white',
+                  isDragging && 'opacity-30'
                 )}
               >
                 {/* Active indicator - now shows for hasUnread without mentions too */}

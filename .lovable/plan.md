@@ -1,48 +1,61 @@
 
 
-# Centrer le textarea indépendamment dans le conteneur chatInput
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme actuel
+## Root cause
 
-Le conteneur principal (ligne 429) utilise `flex items-center`, ce qui tente d'aligner verticalement le textarea ET les icones ensemble. Cela cree des conflits car le textarea et les icones ont des hauteurs/paddings differents.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Nouvelle approche
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Decoupler l'alignement vertical du textarea de celui des icones. Le textarea se centre dans le conteneur de maniere autonome, les icones s'alignent independamment.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-## Changements
+## Fix
 
-### Fichier : `src/components/chat/MessageInput.tsx`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-1. **Conteneur parent (ligne 429)** : Remplacer `items-center` par `items-stretch` pour que chaque enfant occupe toute la hauteur et gere son propre centrage vertical.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-2. **Bouton "+" (ligne 432-437)** : Ajouter `self-center` pour que le bouton reste centre verticalement de maniere independante.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-3. **Textarea container (ligne 473)** : Ajouter `flex items-center` pour centrer le textarea dans son propre conteneur. Cela signifie que le textarea sera centre dans l'espace disponible sans dependre des icones.
+### 2. In `onSuccess`: invalidate the permissions cache
 
-4. **Textarea (ligne 475-497)** : Revenir a un padding vertical symetrique simple (`py-2.5` pour Desktop, `py-1` pour compact) au lieu du padding asymetrique `pt-[12px] pb-[8px]`. Le centrage sera gere par flexbox, pas par le padding.
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-5. **Boutons de droite (ligne 500)** : Ajouter `self-center` au conteneur des boutons emoji/sticker/send.
+### 3. Hook needs `useAuth` for the user ID
 
-### Fichier : `src/components/chat/InputMarkdownOverlay.tsx`
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-6. **Overlay padding** : Revenir a un padding symetrique (`py-2.5` pour Desktop, `py-1` pour compact) pour rester synchronise avec le textarea.
+## Detailed changes
 
-## Resume des changements
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-| Fichier | Element | Changement |
-|---------|---------|-----------|
-| MessageInput.tsx | Conteneur parent | `items-center` vers `items-stretch` |
-| MessageInput.tsx | Bouton + | Ajouter `self-center` |
-| MessageInput.tsx | Textarea container | Ajouter `flex items-center` |
-| MessageInput.tsx | Textarea | `pt-[12px] pb-[8px]` vers `py-2.5` |
-| MessageInput.tsx | Boutons droite | Ajouter `self-center` |
-| InputMarkdownOverlay.tsx | Overlay | `pt-[12px] pb-[8px]` vers `py-2.5` |
+### Code sketch for onMutate addition (after servers cache update)
 
-## Pourquoi ca marche
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
 
-- Le textarea est centre par flexbox dans son propre conteneur, independamment des icones
-- Les icones se centrent elles-memes via `self-center`
-- Plus besoin de hacks de padding asymetrique
-- L'overlay reste parfaitement synchronise avec le textarea
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

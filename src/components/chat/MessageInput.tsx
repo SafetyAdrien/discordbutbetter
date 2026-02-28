@@ -426,12 +426,12 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-center gap-2 rounded-lg transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
+        <div className={`flex items-stretch gap-2 rounded-lg transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
+                className={`self-center text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
               >
                 <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
               </button>
@@ -470,7 +470,7 @@ export function MessageInput({
           </Popover>
           
           {/* Textarea container with markdown overlay */}
-          <div className={`relative flex-1 min-w-0 overflow-hidden`}>
+          <div className={`relative flex-1 min-w-0 overflow-hidden flex items-center`}>
             <InputMarkdownOverlay ref={overlayRef} content={value} compact={compact} />
             <textarea
               ref={textareaRef}
@@ -489,15 +489,15 @@ export function MessageInput({
               className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
-                compact 
+              compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `pt-[12px] pb-[8px] text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
+                  : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />
           </div>
           
-          <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
+          <div className={`self-center flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
             {!isMobile && (
               <EmojiStickerPicker
                 serverId={serverId}

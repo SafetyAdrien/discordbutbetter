@@ -389,7 +389,7 @@ export function MessageInput({
   return (
     <div 
       ref={containerRef}
-      className={compact ? "p-3 border-t border-white/10 w-full relative" : `${isMobile ? "px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]" : "px-4 py-3"} flex-shrink-0 flex flex-col w-full min-w-0 relative`}
+      className={compact ? "p-3 border-t border-white/10 w-full relative" : `${isMobile ? "px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom,0px))]" : "px-4 py-3"} flex-shrink-0 flex flex-col w-full min-w-0 relative`}
     >
       {/* Hidden file input */}
       <input
@@ -426,7 +426,7 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-stretch gap-2 rounded-lg transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
+        <div className={`flex items-stretch gap-2 ${isMobile ? 'rounded-2xl' : 'rounded-lg'} transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button

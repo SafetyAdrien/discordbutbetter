@@ -61,6 +61,7 @@ const lineStyles: Record<OverlayLine['type'], string> = {
 // All types use identical metrics - no exceptions
 export const OVERLAY_FONT_SIZE = '0.875rem';
 export const OVERLAY_LINE_HEIGHT = '1.25rem';
+export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif';
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
   if (!content) return 'normal';
@@ -98,15 +99,15 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
         ref={ref}
         aria-hidden
         className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm leading-5 font-normal tracking-normal ${
-          compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]'
+          compact ? 'py-1 pr-2 min-h-[28px]' : 'pt-[11px] pb-[9px] pr-1 min-h-[40px]'
         }`}
-        style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: 'inherit', fontWeight: 400, letterSpacing: 'normal' }}
+        style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
       >
         {lines.map((line, i) => (
           <div
             key={i}
             className={`${lineStyles[line.type]} relative`}
-            style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: 'inherit', fontWeight: 400, letterSpacing: 'normal' }}
+            style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
           >
             {line.text || '\u200B'}
           </div>

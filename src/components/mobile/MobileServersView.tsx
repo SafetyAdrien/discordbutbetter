@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Plus, Compass } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
-import { useChannels } from '@/hooks/useChannels';
+
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { MobileChannelListView } from './MobileChannelListView';
 import { Separator } from '@/components/ui/separator';

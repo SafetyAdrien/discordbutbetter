@@ -1,61 +1,64 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correction de la latence de connexion aux salons vocaux et DM
 
-## Root cause
+## Probleme identifie
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+La connexion a un salon vocal prend trop de temps a cause de plusieurs operations executees en serie au lieu d'etre parallelisees. Voici les goulots d'etranglement :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+1. **VoiceContext.joinChannel** : la suppression de l'ancien voice_state (`DELETE`) est faite AVANT le `Promise.all(insert, connect)` -- c'est une requete reseau bloquante inutilement sequentielle
+2. **useWebRTC.connect** : `tryStartMicrophone()` est await en premier, ce qui bloque tout le reste (signaling, participants). L'initialisation du micro avec RNNoise peut prendre 200-500ms
+3. **useWebRTC.connect** : le demarrage du SignalingService et la requete des participants existants sont faits en serie au lieu d'etre en parallele
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Corrections prevues
 
-## Fix
+### Fichier 1 : `src/contexts/VoiceContext.tsx` (joinChannel)
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+Fusionner le `DELETE` et le `INSERT + connect` dans un seul `Promise.all` :
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+Avant :
+  await delete(voice_states)       // ~100ms reseau
+  await Promise.all([insert, connect])
+
+Apres :
+  await Promise.all([
+    delete(voice_states).then(() => insert(voice_states)),
+    webrtc.connect(channelId)      // demarre immediatement
+  ])
 ```
 
-### Code for onSuccess addition
+### Fichier 2 : `src/hooks/useWebRTC.ts` (connect)
+
+Paralleliser les 3 operations d'initialisation qui sont actuellement sequentielles :
 
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+Avant (sequentiel) :
+  1. await tryStartMicrophone()      // 200-500ms
+  2. new SignalingService + start()   // ~100ms
+  3. await query participants         // ~100ms
+  4. connectToParticipants()
+  Total : ~400-700ms
+
+Apres (parallele) :
+  const [micSuccess, _, participants] = await Promise.all([
+    mediaManager.tryStartMicrophone(),
+    signalingService.start(),
+    supabase.from('voice_states').select(...)
+  ])
+  // Puis connecter aux participants
+  Total : ~200-500ms (temps de la plus longue operation)
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Cela reduit le temps de connexion de moitie environ, tout en gardant la meme logique fonctionnelle.
+
+### Fichier 3 : `src/hooks/useDMCallWebRTC.ts` (connect)
+
+Meme optimisation pour les appels DM : paralleliser le demarrage du micro avec la creation de la souscription aux signaux.
+
+## Impact
+
+- Temps de connexion reduit d'environ 50%
+- Aucun changement fonctionnel : memes operations, meme resultat
+- L'indicateur "Connecte" apparait plus vite
 

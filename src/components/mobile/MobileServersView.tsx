@@ -249,7 +249,7 @@ export function MobileServersView({
     <div className="flex h-full">
       {/* Left: Server icons column */}
       <div className={cn(
-        'w-[20%] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'w-[72px] flex-shrink-0 bg-sidebar flex flex-col pl-[10px] py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         <DndContext
           sensors={sensors}

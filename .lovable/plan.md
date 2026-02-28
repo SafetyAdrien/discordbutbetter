@@ -1,61 +1,45 @@
 
+# Fix du drag-and-drop serveurs sur mobile
 
-# Fix: Duplicated channel hidden by visibility filter
+## Problemes identifies
 
-## Root cause
+1. **Conflit touch events** : Les `listeners` et `attributes` de dnd-kit sont places sur le `div` wrapper au lieu du `button`. Sur mobile, cela capture tous les evenements tactiles et empeche les taps normaux et le scroll de fonctionner.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+2. **Pas de `touch-action` gere** : Le `useSortable` de dnd-kit applique `touch-action: none` par defaut, ce qui bloque le scroll natif de la colonne serveurs.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+3. **Pas de `onDragOver` handler** : Sans cela, l'indicateur de drop ne se positionne pas correctement (avant/apres l'element survole). Le desktop utilise un `handleDragOver` avec tracking de position, le mobile n'en a pas.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+4. **Pas de `onDragCancel`** : Si le drag est annule (doigt sorti de l'ecran), l'etat `activeDragId` reste bloque et empeche les taps suivants.
 
-## Fix
+## Corrections dans `src/components/mobile/MobileServersView.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 1. Deplacer listeners/attributes sur le bouton
+Comme sur desktop (ServerList.tsx ligne 112-113), les props `{...attributes}` et `{...listeners}` doivent etre sur le `<button>` et non le `<div>` wrapper. Cela permet au bouton de gerer a la fois le tap (onClick) et le long-press (drag activation), sans bloquer le scroll du conteneur parent.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Ajouter `touch-action: manipulation` sur le wrapper
+Forcer `touch-action: manipulation` sur le div wrapper pour permettre le scroll vertical tout en gardant le drag fonctionnel. Cela surcharge le `touch-action: none` par defaut de dnd-kit.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 3. Ajouter un handler `onDragOver` et `onDragCancel`
+- `onDragOver` : tracker l'element survole et calculer la position (before/after) avec un ref pour stabilite
+- `onDragCancel` : reset l'etat drag proprement
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### 4. Ameliorer l'indicateur de drop
+Utiliser un systeme `overId` + `dropPosition` (before/after) comme le desktop, au lieu du simple `isOver` qui ne donne pas assez d'information visuelle.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 5. Empecher le click apres un drag
+Ajouter un flag `wasDragging` qui se reset apres un court delai pour eviter que le `onClick` du bouton se declenche apres un drag-and-drop.
 
-### 3. Hook needs `useAuth` for the user ID
+## Resume des changements
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+| Element | Avant | Apres |
+|---------|-------|-------|
+| listeners/attributes | Sur le `div` wrapper | Sur le `<button>` |
+| touch-action | none (defaut dnd-kit) | manipulation (scroll ok) |
+| onDragOver | absent | tracker overId + dropPosition |
+| onDragCancel | absent | reset activeDragId, overId |
+| Drop indicator | `isOver` simple | position before/after avec ref |
+| Protection click post-drag | basique | flag wasDragging avec timeout |
 
-## Detailed changes
+## Fichier modifie
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+`src/components/mobile/MobileServersView.tsx` -- toutes les corrections ci-dessus

@@ -270,7 +270,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className="absolute inset-0 z-30 bg-background"
+              className="absolute inset-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-30 bg-background"
               onTouchStart={threadSwipe.onTouchStart}
               onTouchMove={threadSwipe.onTouchMove}
               onTouchEnd={threadSwipe.onTouchEnd}
@@ -293,7 +293,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className="absolute inset-0 z-20 bg-background"
+              className="absolute inset-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-20 bg-background"
               onTouchStart={chatSwipe.onTouchStart}
               onTouchMove={chatSwipe.onTouchMove}
               onTouchEnd={chatSwipe.onTouchEnd}
@@ -310,7 +310,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className="absolute inset-0 z-10 bg-background"
+              className="absolute inset-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-10 bg-background"
               onTouchStart={channelSwipe.onTouchStart}
               onTouchMove={channelSwipe.onTouchMove}
               onTouchEnd={channelSwipe.onTouchEnd}
@@ -369,9 +369,12 @@ export function MobileLayout({
         </div>
       )}
 
-      {/* Bottom Navigation - only show when no overlay view */}
-      {mobileView.type === 'tab' && !activeDMId && (
-        <MobileBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* Bottom Navigation - always visible */}
+      {!activeDMId && (
+        <MobileBottomNav activeTab={activeTab} onTabChange={(tab) => {
+          setActiveTab(tab);
+          setMobileView({ type: 'tab' });
+        }} />
       )}
 
       {/* Modals */}

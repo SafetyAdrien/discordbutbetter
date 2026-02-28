@@ -19,7 +19,7 @@ function formatStrictChannelName(name: string): string {
   return name
     .toLowerCase()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\u00C0-\u024F-_]/g, '');
+    .replace(/[^\p{L}\p{N}\p{Emoji_Presentation}\p{So}・\-_]/gu, '');
 }
 
 interface CreateChannelModalProps {

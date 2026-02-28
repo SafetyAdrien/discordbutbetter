@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { MemberList } from '@/components/layout/MemberList';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
-import { ThreadsPopover } from '@/components/threads/ThreadsPopover';
+import ThreadsPopover from '@/components/threads/ThreadsPopover';
 import { Button } from '@/components/ui/button';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';

@@ -71,15 +71,15 @@ export function MobileServersView({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
   }));
 
-  const sidebarWidth = isSmallMobile ? 'w-[45%]' : 'w-1/2';
-  const iconSize = isSmallMobile ? 'w-12 h-12' : 'w-14 h-14';
+  const sidebarWidth = 'w-[20%]';
+  const iconSize = 'w-10 h-10';
 
   return (
     <div className="flex h-full">
       {/* Left: Server icons column */}
       <div className={cn(
         sidebarWidth,
-        'flex-shrink-0 bg-sidebar flex flex-col items-center py-3 gap-2 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         {servers.map((server) => {
           const info = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
@@ -88,7 +88,7 @@ export function MobileServersView({
             <button
               key={server.id}
               onClick={() => handleServerTap(server.id)}
-              className="relative flex flex-col items-center gap-1 w-full py-1 group"
+              className="relative flex items-center justify-center w-full py-1 group"
             >
               {/* Active indicator */}
               <div className={cn(
@@ -120,12 +120,6 @@ export function MobileServersView({
                 )}
               </div>
 
-              <span className={cn(
-                'text-[11px] text-center truncate w-full px-1',
-                isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
-              )}>
-                {server.name}
-              </span>
             </button>
           );
         })}
@@ -137,7 +131,7 @@ export function MobileServersView({
         {/* Discover */}
         <button
           onClick={onDiscoverClick}
-          className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
         >
           <Compass className="w-5 h-5" />
         </button>
@@ -145,7 +139,7 @@ export function MobileServersView({
         {/* Create */}
         <button
           onClick={onCreateClick}
-          className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
         >
           <Plus className="w-5 h-5" />
         </button>

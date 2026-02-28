@@ -48,8 +48,8 @@ export function ServerSettingsModal({
   serverName,
   onClose
 }: ServerSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab | null>('profile');
   const { isMobile } = useBreakpoint();
+  const [activeTab, setActiveTab] = useState<SettingsTab | null>(isMobile ? null : 'profile');
 
   const sections: Section[] = [
     {

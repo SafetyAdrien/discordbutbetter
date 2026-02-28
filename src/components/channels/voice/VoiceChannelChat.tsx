@@ -110,7 +110,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
 
   const handleSaveEdit = () => {
     if (!editingMessageId || !editContent.trim()) return;
-    editMessage.mutate({ messageId: editingMessageId, content: editContent.trim() });
+    editMessage.mutate({ messageId: editingMessageId, channelId, content: editContent.trim() });
     setEditingMessageId(null);
     setEditContent('');
   };
@@ -121,7 +121,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   };
 
   const handleDelete = (messageId: string) => {
-    deleteMessage.mutate(messageId);
+    deleteMessage.mutate({ messageId, channelId });
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
@@ -165,7 +165,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
               const prevMessage = idx > 0 ? messages[idx - 1] : null;
               const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;
               const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
-              const isOwnMessage = user?.id === message.author_id;
+              const isOwnMessage = user?.id === (message as any).author_id || user?.id === message.author?.id;
               const isEditing = editingMessageId === message.id;
               
               return (

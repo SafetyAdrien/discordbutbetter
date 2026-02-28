@@ -88,35 +88,44 @@ export function MobileServersView({
             <button
               key={server.id}
               onClick={() => handleServerTap(server.id)}
-              className="relative flex items-center justify-center w-full group"
+              className="relative flex flex-col items-center gap-1 w-full py-1 group"
             >
               {/* Active indicator */}
               <div className={cn(
-                'absolute left-0 w-1 rounded-r-full bg-foreground transition-all',
-                isActive ? 'h-5' : info.hasUnread ? 'h-2' : 'h-0 opacity-0'
+                'absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
+                isActive ? 'h-8' : info.hasUnread ? 'h-3' : 'h-0 opacity-0'
               )} />
 
-              <Avatar className={cn(
-                iconSize,
-                'rounded-2xl transition-all',
-                isActive && 'rounded-xl ring-2 ring-primary'
-              )}>
-                {server.icon?.startsWith('http') ? (
-                  <AvatarImage src={server.icon} />
-                ) : null}
-                <AvatarFallback className="bg-muted text-foreground text-sm rounded-2xl">
-                  {server.icon && !server.icon.startsWith('http')
-                    ? server.icon
-                    : server.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className={cn(
+                  iconSize,
+                  'rounded-2xl transition-all',
+                  isActive && 'rounded-xl ring-2 ring-primary'
+                )}>
+                  {server.icon?.startsWith('http') ? (
+                    <AvatarImage src={server.icon} />
+                  ) : null}
+                  <AvatarFallback className="bg-muted text-foreground text-base rounded-2xl">
+                    {server.icon && !server.icon.startsWith('http')
+                      ? server.icon
+                      : server.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
 
-              {/* Mention badge */}
-              {info.mentionCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full">
-                  {info.mentionCount > 99 ? '99+' : info.mentionCount}
-                </span>
-              )}
+                {/* Mention badge */}
+                {info.mentionCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                    {info.mentionCount > 99 ? '99+' : info.mentionCount}
+                  </span>
+                )}
+              </div>
+
+              <span className={cn(
+                'text-[11px] text-center truncate w-full px-1',
+                isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+              )}>
+                {server.name}
+              </span>
             </button>
           );
         })}

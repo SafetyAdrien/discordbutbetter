@@ -1331,6 +1331,11 @@ export function ChannelList({
                         isVoiceLocked={
                           (channel.type === "voice" || channel.type === "stage") && isVoiceChannelLocked(channel.id)
                         }
+                        onOpenChat={
+                          (channel.type === "voice" || channel.type === "stage")
+                            ? () => onOpenVoiceChat?.(channel.id)
+                            : undefined
+                        }
                       />
                     ))}
                   </SortableContext>
@@ -1393,6 +1398,11 @@ export function ChannelList({
                               isVoiceLocked={
                                 (channel.type === "voice" || channel.type === "stage") &&
                                 isVoiceChannelLocked(channel.id)
+                              }
+                              onOpenChat={
+                                (channel.type === "voice" || channel.type === "stage")
+                                  ? () => onOpenVoiceChat?.(channel.id)
+                                  : undefined
                               }
                             />
                           ))}

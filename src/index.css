@@ -825,3 +825,41 @@
   border-radius: 3px;
   z-index: -1;
 }
+
+/* ============================================
+   MOBILE SAFE AREA UTILITIES
+   ============================================ */
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Mobile touch optimizations */
+@media (max-width: 640px) {
+  /* Disable hover effects on mobile for better touch experience */
+  .message-hover:hover {
+    background: transparent;
+  }
+  
+  /* Larger touch targets */
+  .channel-item {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+  
+  /* Hide scrollbars on mobile */
+  .scrollbar-thin {
+    scrollbar-width: none;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    display: none;
+  }
+}

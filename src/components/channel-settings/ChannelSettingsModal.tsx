@@ -8,7 +8,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ChevronLeft, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';

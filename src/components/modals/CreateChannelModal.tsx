@@ -112,10 +112,6 @@ export function CreateChannelModal({
         <p className="text-sm text-muted-foreground mb-4">
           {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
         </p>
-          <p className="text-sm text-muted-foreground">
-            {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
-          </p>
-        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

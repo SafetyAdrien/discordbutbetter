@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Lock, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';
 import { EmojiManager } from './EmojiManager';
@@ -8,7 +8,6 @@ import { StickerManager } from './StickerManager';
 import { MemberManager } from './MemberManager';
 import { RoleManager } from './RoleManager';
 import { InviteManager } from './InviteManager';
-import { PrivacySettings } from './PrivacySettings';
 import { BannedMembersManager } from './BannedMembersManager';
 import { AuditLogManager } from './AuditLogManager';
 import { BoostBenefitsPage } from './BoostBenefitsPage';

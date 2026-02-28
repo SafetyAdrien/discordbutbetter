@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Inbox, Plus } from 'lucide-react';
+import { Users, Inbox, Plus, Search } from 'lucide-react';
 import { DMList } from '@/components/dm/DMList';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { InboxPanel } from '@/components/inbox/InboxPanel';
@@ -7,6 +7,7 @@ import { DMConversation } from '@/components/dm/DMConversation';
 import { NewMessageModal } from '@/components/dm/NewMessageModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 
 interface MobileHomeViewProps {
   activeDMId: string | null;
@@ -17,6 +18,7 @@ interface MobileHomeViewProps {
 export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends }: MobileHomeViewProps) {
   const [view, setView] = useState<'list' | 'friends' | 'inbox'>('list');
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const unreadCount = useUnreadNotificationsCount();
 
   // If a DM is selected, show the conversation full-screen
@@ -66,8 +68,21 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
         <h2 className="font-semibold text-sm flex-1">Messages</h2>
       </div>
 
+      {/* Search */}
+      <div className="px-3 py-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher une conversation..."
+            className="pl-9 h-9 bg-input text-sm"
+          />
+        </div>
+      </div>
+
       {/* Quick Actions */}
-      <div className="px-3 py-2 flex gap-2">
+      <div className="px-3 pb-2 flex gap-2">
         <button
           onClick={() => setView('friends')}
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm flex-1"
@@ -94,10 +109,10 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
         <DMList activeConversationId={activeDMId} onConversationSelect={onConversationSelect} />
       </div>
 
-      {/* FAB - New Message */}
+      {/* FAB - New Message - positioned above bottom nav */}
       <button
         onClick={() => setShowNewMessage(true)}
-        className="absolute bottom-20 right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+        className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
       >
         <Plus className="w-6 h-6" />
       </button>

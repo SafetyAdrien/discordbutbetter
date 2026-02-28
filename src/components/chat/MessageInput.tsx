@@ -9,6 +9,7 @@ import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface MessageInputProps {
   value: string;
@@ -83,6 +84,7 @@ export function MessageInput({
   showFollowBar = false,
   onFollowClick,
 }: MessageInputProps) {
+  const { isMobile } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -489,19 +491,21 @@ export function MessageInput({
           </div>
           
           <div className={`flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
-            <EmojiStickerPicker
-              serverId={serverId}
-              onEmojiSelect={insertEmoji}
-              defaultTab="sticker"
-              trigger={
-                <button
-                  type="button"
-                  className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
-                >
-                  <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
-                </button>
-              }
-            />
+            {!isMobile && (
+              <EmojiStickerPicker
+                serverId={serverId}
+                onEmojiSelect={insertEmoji}
+                defaultTab="sticker"
+                trigger={
+                  <button
+                    type="button"
+                    className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                  >
+                    <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                  </button>
+                }
+              />
+            )}
             <EmojiStickerPicker
               serverId={serverId}
               onEmojiSelect={insertEmoji}
@@ -515,11 +519,11 @@ export function MessageInput({
                 </button>
               }
             />
-            {(value.trim() || attachments.length > 0) && (
+            {(value.trim() || attachments.length > 0 || isMobile) && (
               <button 
                 type="submit" 
-                disabled={disabled}
-                className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''}`}
+                disabled={disabled || (!value.trim() && attachments.length === 0)}
+                className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : ''}`}
               >
                 <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: '#5865f2' }} />
               </button>

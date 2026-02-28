@@ -569,7 +569,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           />
         </div>
 
-        {/* User Info Panel - Full height */}
+      {/* User Info Panel - Sheet on mobile, panel on desktop */}
         {showUserInfoPanel && participant && (
           <DMUserInfoPanel 
             participant={{

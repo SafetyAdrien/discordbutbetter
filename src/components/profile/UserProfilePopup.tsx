@@ -1,6 +1,8 @@
 import { useState, useRef, forwardRef } from 'react';
 import { User } from '@/types/app';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -115,6 +117,7 @@ export function UserProfilePopup({
   mode = 'dialog',
   cardPosition,
 }: UserProfilePopupProps) {
+  const { isMobile } = useBreakpoint();
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const { mutate: createDM, isPending: isCreatingDM } = useCreateDMConversation();
@@ -543,7 +546,20 @@ export function UserProfilePopup({
     );
   }
 
-  // Mode Dialog (comportement par défaut)
+  // Mobile: Drawer from bottom
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
+          <div className="overflow-y-auto">
+            <ProfileContent />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Dialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">

@@ -853,6 +853,12 @@
   .channel-item {
     padding-top: 0.625rem;
     padding-bottom: 0.625rem;
+    min-height: 44px;
+  }
+  
+  /* Minimum touch target for all interactive elements */
+  button, a, [role="button"] {
+    min-height: 36px;
   }
   
   /* Hide scrollbars on mobile */
@@ -861,5 +867,10 @@
   }
   .scrollbar-thin::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Prevent double-tap zoom on interactive elements */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 }

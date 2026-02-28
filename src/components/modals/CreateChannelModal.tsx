@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,18 +108,10 @@ export function CreateChannelModal({
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        className="sm:max-w-lg"
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Créer un salon</DialogTitle>
+    <ResponsiveModal open={true} onOpenChange={(open) => !open && onClose()} title="Créer un salon">
+        <p className="text-sm text-muted-foreground mb-4">
+          {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
+        </p>
           <p className="text-sm text-muted-foreground">
             {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
           </p>
@@ -166,7 +158,7 @@ export function CreateChannelModal({
             />
           </div>
 
-          <DialogFooter>
+          <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               Annuler
             </Button>
@@ -177,9 +169,8 @@ export function CreateChannelModal({
             >
               {createChannel.isPending ? "Création..." : "Créer le salon"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveModal>
   );
 }

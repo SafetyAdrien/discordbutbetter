@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/useGlobalSearch';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MarkdownText } from '@/lib/markdown';
@@ -407,9 +408,14 @@ export function GlobalSearchModal({
     }
   };
 
+  const { isMobile } = useBreakpoint();
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+      <DialogContent className={cn(
+        "flex flex-col p-0 gap-0",
+        isMobile ? "h-full max-h-full w-full max-w-full rounded-none" : "sm:max-w-2xl max-h-[80vh]"
+      )}>
         <DialogHeader className="px-4 py-3 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <Search className="w-5 h-5" />

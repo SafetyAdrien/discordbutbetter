@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 import { X, Camera, ChevronRight, ArrowLeft, Loader2, ImageIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { JoinServerModal } from './JoinServerModal';
@@ -20,6 +22,7 @@ const templates = [
 ];
 
 export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: CreateServerModalProps) {
+  const { isMobile } = useBreakpoint();
   const [serverName, setServerName] = useState('');
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
@@ -143,7 +146,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
       <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
         <div className="absolute inset-0 backdrop-optimized" onClick={onClose} />
         
-        <div className="relative w-full max-w-md bg-card rounded-xl border border-border shadow-2xl overflow-hidden animate-slide-in-right gpu-accelerated">
+        <div className={cn("relative w-full bg-card overflow-hidden animate-slide-in-right gpu-accelerated", isMobile ? "h-full" : "max-w-md rounded-xl border border-border shadow-2xl")}>
           {/* Header */}
           <div className="p-6 text-center relative">
             <Button 

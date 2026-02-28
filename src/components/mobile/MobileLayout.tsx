@@ -61,7 +61,6 @@ export function MobileLayout({
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
 
   const { voiceState, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoiceState();
 
@@ -84,7 +83,6 @@ export function MobileLayout({
 
   const handleServerSelect = (serverId: string) => {
     onServerSelect(serverId);
-    const server = rawServers.find(s => s.id === serverId);
     setMobileView({ type: 'channels', serverId });
   };
 

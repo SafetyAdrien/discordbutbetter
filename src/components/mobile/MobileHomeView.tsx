@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
 import { Users, Inbox, Plus } from 'lucide-react';
 import { DMList } from '@/components/dm/DMList';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';

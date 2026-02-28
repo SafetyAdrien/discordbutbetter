@@ -1,4 +1,3 @@
-import { ChevronLeft } from 'lucide-react';
 import ThreadView from '@/components/threads/ThreadView';
 
 interface MobileThreadViewProps {

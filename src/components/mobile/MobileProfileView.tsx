@@ -5,8 +5,10 @@ import { Settings, LogOut, User, Moon } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export function MobileProfileView() {
-  const { user, profile, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
 
@@ -77,7 +79,7 @@ export function MobileProfileView() {
       </div>
 
       {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} />}
-      {showStatus && <CustomStatusModal onClose={() => setShowStatus(false)} />}
+      {showStatus && <CustomStatusModal open={showStatus} onOpenChange={setShowStatus} />}
     </div>
   );
 }

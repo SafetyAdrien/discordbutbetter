@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronLeft, Settings } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
@@ -10,7 +10,6 @@ import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { useChannelUnreadCounts } from '@/hooks/useChannelUnreadCounts';
-import type { ChannelType } from '@/hooks/useChannels';
 
 const channelIcons: Record<string, React.ElementType> = {
   text: StreamlineHash,

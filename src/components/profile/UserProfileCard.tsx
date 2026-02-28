@@ -188,25 +188,30 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 {showStatusMenu && (
                   <Portal.Root>
                     <div
-                      className="fixed w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 z-[100] animate-slide-in-right"
+                      className="fixed z-[100]"
                       style={{ top: menuPosition.top, left: menuPosition.left }}
                       onMouseEnter={() => setShowStatusMenu(true)}
                       onMouseLeave={() => setShowStatusMenu(false)}
                     >
-                      <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
-                      {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => handleStatusChange(status)}
-                          className={cn(
-                            "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                            currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted",
-                          )}
-                        >
-                          <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[status])} />
-                          <span>{statusLabels[status]}</span>
-                        </button>
-                      ))}
+                      {/* Invisible bridge to connect popover to this menu */}
+                      <div className="absolute top-0 -left-3 w-3 h-full" />
+                      {/* Actual menu content */}
+                      <div className="w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 animate-slide-in-right">
+                        <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
+                        {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => handleStatusChange(status)}
+                            className={cn(
+                              "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                              currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted",
+                            )}
+                          >
+                            <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[status])} />
+                            <span>{statusLabels[status]}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </Portal.Root>
                 )}

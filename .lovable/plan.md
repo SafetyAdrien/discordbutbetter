@@ -1,61 +1,67 @@
 
+Objectif: corriger le problème “copier / couper / coller” dans les modales, en particulier dans les écrans de paramètres de salon, sans casser les autres raccourcis clavier existants.
 
-# Fix: Duplicated channel hidden by visibility filter
+Constats après analyse du code + replay:
+1) Le garde-fou clavier dans `src/components/ui/dialog.tsx` n’est pas fiable dans tous les cas:
+   - `onKeyDown` est défini puis écrasé par `{...props}` (ordre actuel), donc si un écran passe son propre `onKeyDown`, la protection clipboard globale saute.
+2) Plusieurs modales appliquent `e.stopPropagation()` sur *toutes* les touches dans `DialogContent`:
+   - `src/components/modals/CreateChannelModal.tsx`
+   - `src/components/modals/CreateCategoryModal.tsx`
+   - `src/components/category-settings/EditCategoryModal.tsx`
+   - `src/components/channels/media/CreateMediaPostModal.tsx`
+   Ce pattern peut casser les raccourcis natifs sur certains navigateurs (notamment Firefox).
+3) Dans `ChannelOverview`, le nom est reformatté à chaque frappe (`onChange`) en mode strict:
+   - les caractères collés peuvent apparaître puis disparaître instantanément, ce qui donne l’impression que le collage “ne marche pas”.
 
-## Root cause
+Plan d’implémentation:
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+1) Fiabiliser la gestion clavier globale des dialogs
+- Fichier: `src/components/ui/dialog.tsx`
+- Modifications prévues:
+  - Extraire `onKeyDown` depuis `props` (ex: `({ className, children, onKeyDown, ...props }, ref)`).
+  - Composer le handler interne + le handler externe au lieu d’en écraser un:
+    - interne: laisser passer les raccourcis natifs `Ctrl/Cmd + C/V/X/A` (protection anti-interception globale)
+    - externe: appeler `onKeyDown?.(e)` ensuite (ou avant selon la convention choisie, mais de façon déterministe).
+  - Garder le comportement actuel des dialogs, sans régression sur fermeture Escape/focus.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+2) Supprimer les blocages clavier “globaux” dans les modales locales
+- Fichiers:
+  - `src/components/modals/CreateChannelModal.tsx`
+  - `src/components/modals/CreateCategoryModal.tsx`
+  - `src/components/category-settings/EditCategoryModal.tsx`
+  - `src/components/channels/media/CreateMediaPostModal.tsx`
+- Modifications prévues:
+  - Remplacer `e.stopPropagation()` inconditionnel par une logique ciblée:
+    - gérer uniquement `Escape` (si nécessaire)
+    - ne pas bloquer la propagation de toutes les autres touches.
+  - Résultat attendu: les raccourcis natifs de texte restent fonctionnels dans les inputs/textareas.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+3) Rendre l’édition de nom de salon compatible avec le collage (sans perdre la règle “strict”)
+- Fichiers:
+  - `src/components/channel-settings/ChannelOverview.tsx`
+  - `src/components/modals/CreateChannelModal.tsx`
+- Modifications prévues:
+  - Ne plus reformater en direct dans `onChange` (conserver la valeur saisie/collée telle quelle dans l’input).
+  - Appliquer le format strict au moment de sauvegarder/créer (déjà partiellement en place, à harmoniser).
+  - Ajuster la détection de changements (`hasChanges`) pour comparer la valeur “effective” (normalisée en mode strict), afin d’éviter des faux changements.
+  - Ajouter un message d’aide discret en mode strict (ex: “certains caractères seront convertis à l’enregistrement”) pour éviter l’effet “coller ne marche pas”.
 
-## Fix
+4) Vérification manuelle ciblée
+- Cas à tester:
+  - Dans “Paramètres de salon” (nom + description):
+    - Ctrl/Cmd + A, C, X, V dans Firefox et Chrome.
+  - Dans les modales listées ci-dessus:
+    - les raccourcis natifs fonctionnent toujours.
+    - Escape ferme correctement.
+  - En mode “noms stricts”:
+    - le collage est visible pendant l’édition.
+    - à l’enregistrement, le formatage strict est bien appliqué.
+  - En mode “noms flexibles”:
+    - aucun formatage forcé.
+- Critère de succès:
+  - plus de sensation de raccourcis bloqués, et comportement cohérent entre toutes les modales.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+Notes techniques complémentaires:
+- Aucun changement backend requis.
+- Cette correction reste alignée avec les conventions existantes (Radix Dialog + hooks clavier globaux).
+- Le warning console “Function components cannot be given refs” observé sur `ChannelDangerZone` est séparé du bug clipboard; je le laisserai hors scope de ce correctif pour éviter d’introduire des changements non liés.

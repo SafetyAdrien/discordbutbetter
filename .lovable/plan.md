@@ -1,29 +1,61 @@
 
-# Ajout du support copy/paste dans les modales
 
-## Probleme
+# Fix: Duplicated channel hidden by visibility filter
 
-Les raccourcis clavier natifs (Ctrl+C, Ctrl+V, Ctrl+A, Ctrl+X) ne fonctionnent pas dans les champs de saisie a l'interieur des modales (dialogs). Cela empeche notamment de copier/coller du texte dans le champ de nom de salon dans les parametres.
+## Root cause
 
-## Cause
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Le composant `DialogContent` de Radix UI peut intercepter les evenements clavier. Il manque un gestionnaire `onKeyDown` qui protege les raccourcis natifs en arretant leur propagation quand l'utilisateur utilise Ctrl/Cmd avec C, V, A ou X.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Correction
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Fichier : `src/components/ui/dialog.tsx`**
+## Fix
 
-Ajouter un `onKeyDown` dans le `DialogPrimitive.Content` qui detecte les combinaisons Ctrl/Cmd + C/V/A/X et appelle `e.stopPropagation()` pour empecher l'interception par d'autres gestionnaires. Cela permet aux raccourcis natifs du navigateur (copier, coller, tout selectionner, couper) de fonctionner normalement dans tous les inputs et textareas des modales.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-## Details techniques
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
 
 ```text
-onKeyDown = (e) => {
-  const modifier = e.ctrlKey || e.metaKey;
-  if (modifier && ['c','v','a','x'].includes(e.key.toLowerCase())) {
-    e.stopPropagation();  // laisse le navigateur gerer le raccourci
-  }
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
 ```
 
-Un seul fichier modifie, correction globale pour toutes les modales de l'application.
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

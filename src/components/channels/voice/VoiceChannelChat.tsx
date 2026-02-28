@@ -18,6 +18,7 @@ import { UniversalMessageActions } from '@/components/chat/UniversalMessageActio
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
+import { MarkdownText } from '@/lib/markdown';
 import { toast } from 'sonner';
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
@@ -296,12 +297,12 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                             </div>
                           ) : (
                             <>
-                              <p className="text-sm text-foreground/90 break-words">
-                                {message.content}
+                              <div className="text-sm text-foreground/90 break-words">
+                                <MarkdownText content={message.content} />
                                 {message.edited_at && (
                                   <span className="text-[10px] text-muted-foreground ml-1">(modifié)</span>
                                 )}
-                              </p>
+                              </div>
                               {/* Reactions display */}
                               {Object.keys(groupedReactions).length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1">

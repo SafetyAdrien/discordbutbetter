@@ -1,51 +1,61 @@
 
-# Ajouter modifier/supprimer dans le chat vocal
 
-## Probleme
+# Fix: Duplicated channel hidden by visibility filter
 
-Les messages dans le panneau de chat des salons vocaux (`VoiceChannelChat`) n'ont aucune interaction : pas de clic droit, pas de modification, pas de suppression. Le composant affiche les messages en lecture seule.
+## Root cause
 
-## Solution
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Integrer le composant `UniversalMessageContextMenu` (deja utilise dans `ChatArea`) autour de chaque message dans `VoiceChannelChat`, et ajouter la logique d'edition inline et de suppression.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Fichier a modifier
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### `src/components/channels/voice/VoiceChannelChat.tsx`
+## Fix
 
-1. **Importer les hooks et composants necessaires** :
-   - `useEditMessage`, `useDeleteMessage` depuis `@/hooks/useMessages`
-   - `useAuth` depuis `@/contexts/AuthContext`
-   - `UniversalMessageContextMenu` depuis `@/components/chat/UniversalMessageContextMenu`
-   - `copyToClipboard` depuis `@/lib/clipboard`
-   - `Textarea` depuis `@/components/ui/textarea`
-   - `toast` depuis `sonner`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-2. **Ajouter les etats locaux** :
-   - `editingMessageId` : ID du message en cours d'edition (ou `null`)
-   - `editContent` : contenu du champ d'edition
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-3. **Instancier les hooks** :
-   - `useEditMessage()`, `useDeleteMessage()`, `useAuth()` pour connaitre l'utilisateur courant
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-4. **Creer les handlers** :
-   - `handleEdit(messageId, content)` : active le mode edition
-   - `handleSaveEdit()` : appelle `editMessage.mutate` puis reset l'etat
-   - `handleCancelEdit()` : reset l'etat
-   - `handleDelete(messageId)` : appelle `deleteMessage.mutate`
-   - `handleCopyText(content)` : copie le texte dans le presse-papier
-   - `handleCopyId(messageId)` : copie l'ID
-   - `handleCopyLink(messageId)` : copie un lien vers le message
+### 2. In `onSuccess`: invalidate the permissions cache
 
-5. **Envelopper chaque message** avec `UniversalMessageContextMenu` :
-   - Passer `isOwnMessage` base sur `user?.id === message.author_id`
-   - Fournir les callbacks `onEdit`, `onDelete`, `onCopyText`, `onCopyId`, `onCopyLink`, `onReply`
-   - Desactiver `onCreateThread` et `onPin` (non pertinents pour le chat vocal)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-6. **Afficher le mode edition inline** :
-   - Quand `editingMessageId === message.id`, remplacer le `<p>` du contenu par un `<Textarea>` avec boutons Sauvegarder/Annuler
-   - Touche Entree pour sauvegarder, Echap pour annuler
+### 3. Hook needs `useAuth` for the user ID
 
-## Resultat
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-Les utilisateurs pourront faire un clic droit sur leurs messages dans le chat vocal pour les modifier ou supprimer, avec le meme menu contextuel que dans les salons textuels classiques.
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

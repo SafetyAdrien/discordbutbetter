@@ -100,13 +100,15 @@ export function MessageInput({
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+    const minH = compact ? 28 : 40;
     textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
+    const clamped = Math.max(textarea.scrollHeight, minH);
+    textarea.style.height = clamped + 'px';
     // Reset overlay scroll sync when content changes
     if (overlayRef.current) {
       overlayRef.current.style.transform = `translateY(-${textarea.scrollTop}px)`;
     }
-  }, []);
+  }, [compact]);
 
   useEffect(() => {
     adjustTextareaHeight();
@@ -424,7 +426,7 @@ export function MessageInput({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`text-muted-foreground hover:text-foreground transition-colors ${compact ? 'p-2' : 'p-3'}`}
+                className={`text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
               >
                 <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
               </button>
@@ -483,8 +485,8 @@ export function MessageInput({
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact 
-                  ? `py-1 text-sm pr-2 max-h-[120px] overflow-y-auto` 
-                  : `py-2.5 text-sm pr-1 max-h-[200px] overflow-y-auto`
+                  ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
+                  : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
               }`}
               rows={1}
             />

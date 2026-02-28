@@ -13,7 +13,6 @@ export interface ChannelDetails {
   server_id: string;
   category_id: string | null;
   position: number | null;
-  icon_url: string | null;
 }
 
 export function useChannelDetails(channelId: string | null) {
@@ -51,7 +50,7 @@ export function useChannelDetails(channelId: string | null) {
 
       const { data, error } = await supabase
         .from('channels')
-        .select('id, name, description, type, server_id, category_id, position, icon_url')
+        .select('id, name, description, type, server_id, category_id, position')
         .eq('id', channelId)
         .single();
 
@@ -66,18 +65,16 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, serverId, name, description, type, icon_url }: { 
+    mutationFn: async ({ channelId, serverId, name, description, type }: { 
       channelId: string; 
       serverId: string; 
       name: string; 
       description?: string | null;
       type?: 'text' | 'announcement';
-      icon_url?: string | null;
     }) => {
-      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; icon_url?: string | null } = { name };
+      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement' } = { name };
       if (description !== undefined) updateData.description = description;
       if (type) updateData.type = type;
-      if (icon_url !== undefined) updateData.icon_url = icon_url;
 
       const { error } = await supabase
         .from('channels')
@@ -85,9 +82,9 @@ export function useUpdateChannel() {
         .eq('id', channelId);
 
       if (error) throw error;
-      return { channelId, serverId, name, description, type, icon_url };
+      return { channelId, serverId, name, description, type };
     },
-    onMutate: async ({ channelId, serverId, name, description, type, icon_url }) => {
+    onMutate: async ({ channelId, serverId, name, description, type }) => {
       await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
@@ -102,14 +99,13 @@ export function useUpdateChannel() {
           name,
           description: description ?? previousDetails.description,
           type: type ?? previousDetails.type,
-          icon_url: icon_url !== undefined ? icon_url : previousDetails.icon_url,
         });
       }
       
       if (previousChannels) {
       const updateChannel = (ch: any) => 
           ch.id === channelId 
-            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type, icon_url: icon_url !== undefined ? icon_url : ch.icon_url } 
+            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type } 
             : ch;
         
         queryClient.setQueryData(['channels', serverId], {
@@ -130,7 +126,7 @@ export function useUpdateChannel() {
                   categories: server.categories?.map((cat: any) => ({
                     ...cat,
                     channels: cat.channels?.map((ch: any) =>
-                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type, icon_url: icon_url !== undefined ? icon_url : ch.icon_url } : ch
+                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type } : ch
                     ) || []
                   })) || []
                 }

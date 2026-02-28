@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Plus, Compass } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -19,6 +19,7 @@ import {
   useSensors,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -48,6 +49,7 @@ function SortableMobileServerIcon({
   hasUnread,
   mentionCount,
   isDragging,
+  dropIndicator,
   onTap,
 }: {
   server: Server;
@@ -55,29 +57,32 @@ function SortableMobileServerIcon({
   hasUnread: boolean;
   mentionCount: number;
   isDragging: boolean;
+  dropIndicator: 'before' | 'after' | null;
   onTap: () => void;
 }) {
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
-    isOver,
+    attributes,
+    listeners,
   } = useSortable({ id: server.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: 'manipulation' as const,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {/* Drop indicator line */}
-      {isOver && (
-        <div className="w-10 h-0.5 bg-primary rounded-full mx-auto -mt-0.5 mb-0.5" />
+    <div ref={setNodeRef} style={style}>
+      {/* Drop indicator - before */}
+      {dropIndicator === 'before' && (
+        <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />
       )}
       <button
+        {...attributes}
+        {...listeners}
         onClick={onTap}
         className={cn(
           'relative flex items-center justify-center w-full py-0.5 group',
@@ -113,6 +118,10 @@ function SortableMobileServerIcon({
           )}
         </div>
       </button>
+      {/* Drop indicator - after */}
+      {dropIndicator === 'after' && (
+        <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mt-0.5" />
+      )}
     </div>
   );
 }
@@ -149,6 +158,9 @@ export function MobileServersView({
   const { sortServers, reorderServers } = useServerOrder();
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  const wasDraggingRef = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -170,19 +182,34 @@ export function MobileServersView({
     }
   }, [sortedServers, selectedServerId]);
 
-  const handleServerTap = (serverId: string) => {
-    if (activeDragId) return;
+  const handleServerTap = useCallback((serverId: string) => {
+    if (wasDraggingRef.current) return;
     setSelectedServerId(serverId);
     onServerSelect(serverId);
-  };
+  }, [onServerSelect]);
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveDragId(String(event.active.id));
-  };
+    wasDraggingRef.current = true;
+  }, []);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setOverId(null);
+      return;
+    }
+    setOverId(String(over.id));
+    // Determine before/after based on position in the sorted list
+    const activeIdx = serverIds.indexOf(String(event.active.id));
+    const overIdx = serverIds.indexOf(String(over.id));
+    setDropPosition(activeIdx < overIdx ? 'after' : 'before');
+  }, [serverIds]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragId(null);
+    setOverId(null);
 
     if (over && active.id !== over.id) {
       const oldIndex = serverIds.indexOf(String(active.id));
@@ -192,7 +219,16 @@ export function MobileServersView({
         reorderServers(newOrder);
       }
     }
-  };
+
+    // Prevent tap from firing right after drag
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, [serverIds, reorderServers]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null);
+    setOverId(null);
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, []);
 
   const draggedServer = activeDragId ? sortedServers.find(s => s.id === activeDragId) : null;
 
@@ -221,11 +257,14 @@ export function MobileServersView({
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
             {sortedServers.map((server) => {
               const info = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
+              const isOver = overId === server.id && activeDragId !== server.id;
               return (
                 <SortableMobileServerIcon
                   key={server.id}
@@ -234,6 +273,7 @@ export function MobileServersView({
                   hasUnread={info.hasUnread}
                   mentionCount={info.mentionCount}
                   isDragging={activeDragId === server.id}
+                  dropIndicator={isOver ? dropPosition : null}
                   onTap={() => handleServerTap(server.id)}
                 />
               );

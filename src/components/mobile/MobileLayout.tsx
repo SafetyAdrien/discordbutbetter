@@ -29,7 +29,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 type MobileView = 
   | { type: 'tab' }
   | { type: 'channels'; serverId: string }
-  | { type: 'chat'; serverId: string; channelId: string; channelType: string }
+  | { type: 'chat'; serverId: string; channelId: string; channelType: string; fromTab?: boolean }
   | { type: 'thread'; serverId: string; channelId: string; threadId: string; channelName: string };
 
 interface MobileLayoutProps {

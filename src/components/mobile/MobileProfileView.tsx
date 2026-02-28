@@ -54,7 +54,7 @@ export function MobileProfileView() {
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80" />
           </div>
         ) : (
-          <div className="h-20 w-full bg-gradient-to-br from-primary/30 to-primary/10" />
+          <div className="h-6" />
         )}
 
         {/* Profile Card */}

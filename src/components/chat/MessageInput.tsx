@@ -382,7 +382,7 @@ export function MessageInput({
   return (
     <div 
       ref={containerRef}
-      className={compact ? "p-3 border-t border-white/10 w-full relative" : `${isMobile ? "px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]" : "px-4 py-3"} flex-shrink-0 flex flex-col w-full min-w-0 relative`}
+      className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}
     >
       {/* Hidden file input */}
       <input

@@ -709,8 +709,9 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
       );
     case 'listItem': {
       const ulIndent = (block.indentLevel || 0) * 4 + 4;
+      const bulletStyle = (block.indentLevel || 0) === 0 ? 'list-disc' : (block.indentLevel || 0) === 1 ? 'list-[circle]' : 'list-[square]';
       return (
-        <li key={key} className="list-disc" style={{ marginLeft: `${ulIndent * 4}px` }}>
+        <li key={key} className={bulletStyle} style={{ marginLeft: `${ulIndent * 4}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );

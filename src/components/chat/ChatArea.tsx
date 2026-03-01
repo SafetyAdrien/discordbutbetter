@@ -86,6 +86,7 @@ import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageA
 import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { LinkEmbeds } from "@/components/chat/LinkEmbed";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -1266,6 +1267,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
                             )}
 
+                            {/* Link Embeds */}
+                            <LinkEmbeds content={message.content} />
+
                             {/* Edited indicator - after attachments */}
                             {message.edited_at && (
                               <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
@@ -1375,6 +1379,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             {(message as any).attachments && (message as any).attachments.length > 0 && (
                               <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
                             )}
+
+                            {/* Link Embeds */}
+                            <LinkEmbeds content={message.content} />
 
                             {/* Edited indicator - after attachments */}
                             {message.edited_at && (

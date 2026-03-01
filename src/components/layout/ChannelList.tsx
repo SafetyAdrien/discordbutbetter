@@ -1304,61 +1304,12 @@ export function ChannelList({
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* Server quick menu - dropdown with settings and shortcuts */}
-        {canAccessSettings && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="p-1.5 hover:bg-muted rounded-md transition-colors">
-                <ChevronDown className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-52 p-1.5">
-              <button
-                onClick={() => onOpenServerSettings?.()}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                <Settings className="w-4 h-4 text-muted-foreground" />
-                Paramètres du serveur
-              </button>
-              <button
-                onClick={() => onOpenServerSettings?.('profile')}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                <Info className="w-4 h-4 text-muted-foreground" />
-                Profil du serveur
-              </button>
-              <div className="my-1 h-px bg-border" />
-              <button
-                onClick={() => onOpenServerSettings?.('emojis')}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                <Smile className="w-4 h-4 text-muted-foreground" />
-                Émojis
-              </button>
-              <button
-                onClick={() => onOpenServerSettings?.('stickers')}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                <Sticker className="w-4 h-4 text-muted-foreground" />
-                Stickers
-              </button>
-              <button
-                onClick={() => onOpenServerSettings?.('soundboard')}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                <Volume2 className="w-4 h-4 text-muted-foreground" />
-                SoundBoard
-              </button>
-            </PopoverContent>
-          </Popover>
-        )}
       </div>
 
       {/* Channels with DnD */}
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-2" onScroll={handleChannelListScroll}>
+          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-1" onScroll={handleChannelListScroll}>
             <DndContext
               sensors={sensors}
               collisionDetection={customCollisionDetection}

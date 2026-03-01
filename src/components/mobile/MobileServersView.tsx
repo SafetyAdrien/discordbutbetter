@@ -176,7 +176,7 @@ export function MobileServersView({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 1500, tolerance: 8 } })
   );
 
   const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);

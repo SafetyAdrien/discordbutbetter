@@ -269,6 +269,8 @@ function ServerProfileSheet({
       {showCreateChannel && (
         <CreateChannelModal
           serverId={serverId}
+          categoryId={null}
+          categoryName=""
           onClose={() => setShowCreateChannel(false)}
         />
       )}

@@ -1,30 +1,61 @@
 
-# Ajouter les boutons "Créer un salon", "Créer une catégorie" et "Signaler le serveur" dans la carte du serveur mobile
 
-## Résumé
+# Fix: Duplicated channel hidden by visibility filter
 
-Trois nouveaux boutons seront ajoutés en bas de la carte du serveur (Sheet) sur mobile, après la section des emojis : "Créer un salon", "Créer une catégorie" et "Signaler le serveur". Les deux premiers ouvriront les modales existantes (`CreateChannelModal` et `CreateCategoryModal`), le troisième ouvrira le `ReportModal` existant.
+## Root cause
 
-## Détails techniques
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Fichier : `src/components/mobile/MobileChannelListView.tsx`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**Imports à ajouter :**
-- `Plus`, `Flag` depuis `lucide-react`
-- `CreateChannelModal` depuis `@/components/modals/CreateChannelModal`
-- `CreateCategoryModal` depuis `@/components/modals/CreateCategoryModal`
-- `ReportModal` depuis `@/components/chat/ReportModal`
-- `Separator` depuis `@/components/ui/separator`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Dans `ServerProfileSheet` (lignes 72-236) :**
+## Fix
 
-1. Ajouter 3 états : `showCreateChannel`, `showCreateCategory`, `showReportServer`
-2. Après la section emojis (ligne 232) et avant la fermeture du `</div>` principal, ajouter :
-   - Un `<Separator />`
-   - Une section "Actions" contenant 3 boutons stylisés :
-     - **Créer un salon** (icône `Plus`) -- ouvre `CreateChannelModal`
-     - **Créer une catégorie** (icône `Plus`) -- ouvre `CreateCategoryModal`
-     - **Signaler le serveur** (icône `Flag`, couleur destructive) -- ouvre `ReportModal`
-3. Rendre les modales conditionnellement sous le Sheet
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Les boutons seront des `<button>` pleine largeur avec un style cohérent (fond `muted/50`, texte à gauche, icône + label), similaire aux patterns existants dans l'app.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

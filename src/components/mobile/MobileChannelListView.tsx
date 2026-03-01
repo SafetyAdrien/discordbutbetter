@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
+import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -79,6 +82,8 @@ function ServerProfileSheet({
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
   const { user } = useAuth();
   const { data: servers } = useServers();
   const { data: members } = useMembers(open ? serverId : null);
@@ -102,137 +107,181 @@ function ServerProfileSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto">
-        {/* Banner */}
-        <div className="relative h-28 w-full overflow-hidden rounded-t-2xl">
-          {server?.banner_url ? (
-            <img
-              src={server.banner_url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/60 to-primary/30" />
-          )}
+    <>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>{trigger}</SheetTrigger>
+        <SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto">
+          {/* Banner */}
+          <div className="relative h-28 w-full overflow-hidden rounded-t-2xl">
+            {server?.banner_url ? (
+              <img
+                src={server.banner_url}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/60 to-primary/30" />
+            )}
 
-          {/* Leave button on banner */}
-          {!isOwner && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm text-destructive text-xs font-medium hover:bg-background/90 transition-colors">
-                  <LogOut className="w-3.5 h-3.5" />
-                  Quitter
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Quitter « {serverName} » ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Vous ne pourrez plus accéder à ce serveur sauf si vous êtes réinvité.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleLeave}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Quitter le serveur
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-
-        {/* Server info */}
-        <div className="px-4 pb-5 pt-3 space-y-4">
-          {/* Icon + name + description */}
-          <div className="flex items-start gap-3">
-            <Avatar className="w-14 h-14 rounded-2xl border-2 border-background -mt-8 shadow-lg">
-              {server?.icon_url ? (
-                <AvatarImage src={server.icon_url} alt={serverName} />
-              ) : null}
-              <AvatarFallback className="rounded-2xl bg-primary text-primary-foreground text-lg font-bold">
-                {serverName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0 pt-1">
-              <h3 className="font-bold text-base text-foreground truncate">{serverName}</h3>
-              {server?.description && (
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                  {server.description}
-                </p>
-              )}
-            </div>
+            {/* Leave button on banner */}
+            {!isOwner && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm text-destructive text-xs font-medium hover:bg-background/90 transition-colors">
+                    <LogOut className="w-3.5 h-3.5" />
+                    Quitter
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Quitter « {serverName} » ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Vous ne pourrez plus accéder à ce serveur sauf si vous êtes réinvité.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleLeave}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Quitter le serveur
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
 
-          {/* Metadata */}
-          <div className="space-y-2.5">
-            {server?.created_at && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Calendar className="w-4 h-4 flex-shrink-0" />
-                <span className="text-xs">
-                  Créé le {format(new Date(server.created_at), 'd MMMM yyyy', { locale: fr })}
-                </span>
-              </div>
-            )}
-
-            {ownerMember && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-yellow-500" size={16} />
-                <span className="text-xs">
-                  Fondateur : <span className="text-foreground font-medium">{ownerMember.user.display_name}</span>
-                </span>
-              </div>
-            )}
-
-            {secondaryOwnerMember && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-gray-400" size={16} />
-                <span className="text-xs">
-                  Co-propriétaire : <span className="text-foreground font-medium">{secondaryOwnerMember.user.display_name}</span>
-                </span>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2.5 text-muted-foreground">
-              <Users className="w-4 h-4 flex-shrink-0" />
-              <span className="text-xs">
-                {memberCount} membre{memberCount !== 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-
-          {/* Emojis */}
-          {displayedEmojis.length > 0 && (
-            <div className="space-y-1.5">
-              <h4 className="text-xs font-semibold text-muted-foreground">
-                Emojis ({emojis?.length ?? 0})
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {displayedEmojis.map((emoji) => (
-                  <img
-                    key={emoji.id}
-                    src={emoji.image_url}
-                    alt={emoji.name}
-                    title={`:${emoji.name}:`}
-                    className="w-7 h-7 rounded object-contain"
-                  />
-                ))}
-                {remainingEmojis > 0 && (
-                  <span className="w-7 h-7 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground font-medium">
-                    +{remainingEmojis}
-                  </span>
+          {/* Server info */}
+          <div className="px-4 pb-5 pt-3 space-y-4">
+            {/* Icon + name + description */}
+            <div className="flex items-start gap-3">
+              <Avatar className="w-14 h-14 rounded-2xl border-2 border-background -mt-8 shadow-lg">
+                {server?.icon_url ? (
+                  <AvatarImage src={server.icon_url} alt={serverName} />
+                ) : null}
+                <AvatarFallback className="rounded-2xl bg-primary text-primary-foreground text-lg font-bold">
+                  {serverName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 pt-1">
+                <h3 className="font-bold text-base text-foreground truncate">{serverName}</h3>
+                {server?.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                    {server.description}
+                  </p>
                 )}
               </div>
             </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+
+            {/* Metadata */}
+            <div className="space-y-2.5">
+              {server?.created_at && (
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <Calendar className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs">
+                    Créé le {format(new Date(server.created_at), 'd MMMM yyyy', { locale: fr })}
+                  </span>
+                </div>
+              )}
+
+              {ownerMember && (
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-yellow-500" size={16} />
+                  <span className="text-xs">
+                    Fondateur : <span className="text-foreground font-medium">{ownerMember.user.display_name}</span>
+                  </span>
+                </div>
+              )}
+
+              {secondaryOwnerMember && (
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-gray-400" size={16} />
+                  <span className="text-xs">
+                    Co-propriétaire : <span className="text-foreground font-medium">{secondaryOwnerMember.user.display_name}</span>
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2.5 text-muted-foreground">
+                <Users className="w-4 h-4 flex-shrink-0" />
+                <span className="text-xs">
+                  {memberCount} membre{memberCount !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+
+            {/* Emojis */}
+            {displayedEmojis.length > 0 && (
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-semibold text-muted-foreground">
+                  Emojis ({emojis?.length ?? 0})
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {displayedEmojis.map((emoji) => (
+                    <img
+                      key={emoji.id}
+                      src={emoji.image_url}
+                      alt={emoji.name}
+                      title={`:${emoji.name}:`}
+                      className="w-7 h-7 rounded object-contain"
+                    />
+                  ))}
+                  {remainingEmojis > 0 && (
+                    <span className="w-7 h-7 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground font-medium">
+                      +{remainingEmojis}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <Separator />
+            <div className="space-y-1">
+              <button
+                onClick={() => { setOpen(false); setShowCreateChannel(true); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+              >
+                <Plus className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">Créer un salon</span>
+              </button>
+              <button
+                onClick={() => { setOpen(false); setShowCreateCategory(true); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+              >
+                <Plus className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">Créer une catégorie</span>
+              </button>
+              <button
+                onClick={() => {}}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+              >
+                <Flag className="w-4 h-4 text-destructive" />
+                <span className="text-sm text-destructive">Signaler le serveur</span>
+              </button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {showCreateChannel && (
+        <CreateChannelModal
+          serverId={serverId}
+          categoryId={null}
+          categoryName=""
+          onClose={() => setShowCreateChannel(false)}
+        />
+      )}
+
+      {showCreateCategory && (
+        <CreateCategoryModal
+          serverId={serverId}
+          onClose={() => setShowCreateCategory(false)}
+        />
+      )}
+    </>
   );
 }
 

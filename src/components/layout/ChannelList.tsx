@@ -62,6 +62,7 @@ import { EditCategoryModal } from "@/components/category-settings/EditCategoryMo
 import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
+import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
@@ -1616,6 +1617,13 @@ export function ChannelList({
       )}
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
+
+      {externalLinkModal && (
+        <ExternalLinkWarningModal
+          url={externalLinkModal.url}
+          onClose={() => setExternalLinkModal(null)}
+        />
+      )}
 
       {inviteChannelId && (
         <CreateInviteModal

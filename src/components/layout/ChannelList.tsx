@@ -1298,19 +1298,50 @@ export function ChannelList({
               <div className="px-2 py-1.5 space-y-0.5">
                 <button
                   onClick={() => setInviteChannelId('server')}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
+                  className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
                 >
-                  <UserPlus className="w-4 h-4" />
+                  <UserPlus className="w-4 h-4 text-muted-foreground" />
                   Créer une invitation
                 </button>
                 {canAccessSettings && (
-                  <button
-                    onClick={() => onOpenServerSettings?.()}
-                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Paramètres du serveur
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onOpenServerSettings?.()}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-muted-foreground" />
+                      Paramètres du serveur
+                    </button>
+                    <button
+                      onClick={() => onOpenServerSettings?.('profile')}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                      Profil du serveur
+                    </button>
+                    <div className="my-1 h-px bg-border" />
+                    <button
+                      onClick={() => onOpenServerSettings?.('emojis')}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Smile className="w-4 h-4 text-muted-foreground" />
+                      Émojis
+                    </button>
+                    <button
+                      onClick={() => onOpenServerSettings?.('stickers')}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Sticker className="w-4 h-4 text-muted-foreground" />
+                      Stickers
+                    </button>
+                    <button
+                      onClick={() => onOpenServerSettings?.('soundboard')}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Volume2 className="w-4 h-4 text-muted-foreground" />
+                      SoundBoard
+                    </button>
+                  </>
                 )}
               </div>
             </div>

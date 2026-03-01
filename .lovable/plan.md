@@ -1,61 +1,66 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# New Channel Type: "Chaîne de liaison" (Link Channel)
 
-## Root cause
+## Overview
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Add a new channel type `link` that stores an external URL. Clicking this channel won't navigate to a chat view -- instead it opens a warning modal about the external link, showing the full URL and letting the user choose to open it or cancel.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changes Required
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Database Migration -- Add `link` to `channel_type` enum
 
-## Fix
+Add a new value `link` to the existing `channel_type` PostgreSQL enum. The channel's `description` field will store the URL (no new columns needed).
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```sql
+ALTER TYPE public.channel_type ADD VALUE IF NOT EXISTS 'link';
 ```
 
-### Code for onSuccess addition
+### 2. Create a Link icon component
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+Create `src/components/icons/StreamlineLink.tsx` -- a simple link/chain icon matching the existing Streamline icon style.
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### 3. Update `CreateChannelModal.tsx`
+
+- Add `link` to the channel type list with a new icon and French label "Chaîne de liaison"
+- When `link` is selected, replace the standard "Nom du salon" input with:
+  - **Nom du salon** (label/name input)
+  - **URL** (url input with validation: must start with `http://` or `https://`)
+- On submit, save the URL in the channel's `description` field via the existing `useCreateChannel` mutation (which already supports passing description or we adapt it)
+
+### 4. Update `useCreateChannel` hook
+
+Extend the mutation to accept an optional `description` parameter so the link URL can be stored.
+
+### 5. Update `ChannelList.tsx` -- Desktop
+
+- Add `link` to the `channelIcons` map
+- In `handleChannelClick`: if channel type is `link`, don't call `onChannelSelect`. Instead, open a new "External Link Warning" modal showing the URL (stored in `channel.description`)
+
+### 6. Update `MobileChannelListView.tsx` -- Mobile
+
+Same logic as desktop: intercept link channel clicks to show the warning modal instead of navigating.
+
+### 7. Create `ExternalLinkWarningModal.tsx`
+
+A new modal component (`src/components/modals/ExternalLinkWarningModal.tsx`) using `ResponsiveModal`:
+- Title: "Lien externe"
+- Warning text: "Tu es sur le point de visiter un site externe."
+- Read-only input showing the full URL
+- "Copier" button to copy URL
+- "Ouvrir le lien" button (opens in new tab via `window.open`)
+- "Annuler" button
+
+### 8. Update supporting type maps
+
+- `src/hooks/useChannels.ts`: Add `'link'` to the `ChannelType` union
+- `src/types/app.ts`: Add `'link'` to the Channel type union
+- `src/constants/permissions.ts`: Add `link: ['general']` to `CHANNEL_TYPE_CATEGORIES`
+- `src/pages/Index.tsx`: Add `'link'` to the type cast
+
+### Technical Details
+
+- The URL is stored in `channels.description` (existing `text` column) -- no schema change beyond the enum
+- URL validation: must match `https?://` pattern, validated client-side with a regex before submission
+- The `ExternalLinkWarningModal` uses the existing `ResponsiveModal` wrapper for mobile/desktop consistency
 

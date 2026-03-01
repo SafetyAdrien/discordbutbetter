@@ -104,6 +104,7 @@ export function useNavigationState() {
     threadChannelId: state.threadChannelId,
     mobileActiveTab: state.mobileActiveTab,
     mobileView: state.mobileView,
+    channelsByServer: state.channelsByServer,
     setActiveServerId,
     setActiveDMId,
     setChannelForServer,

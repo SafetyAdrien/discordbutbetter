@@ -1,74 +1,61 @@
 
-# Redirection apres suppression/depart de serveur + Style du header
 
-## 1. Redirection vers le dernier serveur consulte
+# Fix: Duplicated channel hidden by visibility filter
 
-### Probleme actuel
+## Root cause
 
-- **Quitter un serveur (ChannelList)** : redirige vers `/channels/@me` (vue DM) au lieu du dernier serveur consulte.
-- **Quitter un serveur (ServerList)** : appelle `onServerSelect(null)` qui va a la vue Home/DM.
-- **Supprimer un serveur (ServerDeletePage)** : appelle `onClose()` qui ferme juste le modal de settings, laissant l'utilisateur sur un serveur qui n'existe plus (ecran vide).
-- **Mobile (MobileChannelListView)** : ferme le sheet, aucune redirection.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Solution
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Centraliser la logique de redirection dans `Index.tsx` via un effet reactif : quand le serveur actif (`activeServerId`) n'existe plus dans la liste `servers`, basculer automatiquement vers le dernier serveur visite (en utilisant l'historique de `channelsByServer` dans `useNavigationState`), ou a defaut vers le premier serveur disponible, ou vers la vue Home si aucun serveur n'existe.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Fichiers modifies
+## Fix
 
-**`src/pages/Index.tsx`** :
-- Ajouter un `useEffect` qui surveille `activeServerId` et `servers`. Si `activeServerId` est defini mais n'existe plus dans `servers` :
-  1. Chercher le dernier serveur consulte via les cles de `channelsByServer` (qui contient l'historique serveur→channel).
-  2. Si trouve et encore dans `servers`, basculer dessus.
-  3. Sinon, prendre le premier serveur de la liste.
-  4. Sinon, aller a Home (`setActiveServerId(null)`).
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-**`src/hooks/useNavigationState.ts`** :
-- Exposer `channelsByServer` dans le retour du hook pour permettre a `Index.tsx` de lire l'historique des serveurs visites.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**`src/hooks/useLeaveServer.ts`** :
-- Pas de changement. La logique de redirection est deja geree par l'effet reactif dans `Index.tsx` (le serveur disparait de la liste → l'effet se declenche).
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-**`src/components/server-settings/ServerDeletePage.tsx`** :
-- Pas de changement necessaire. Apres suppression, `onClose()` ferme le modal, le serveur disparait de la query, l'effet dans `Index.tsx` redirige automatiquement.
+### 2. In `onSuccess`: invalidate the permissions cache
 
-**`src/components/layout/ChannelList.tsx`** :
-- Supprimer le `navigate("/channels/@me")` dans `handleLeaveServer` car la redirection sera geree automatiquement par `Index.tsx`.
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**`src/components/layout/ServerList.tsx`** :
-- Supprimer la logique de redirection dans `confirmLeaveServer` (`onServerSelect(null)`) car l'effet reactif dans `Index.tsx` s'en chargera.
+### 3. Hook needs `useAuth` for the user ID
 
----
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-## 2. Header du serveur (teinte et separateur)
+## Detailed changes
 
-### Etat actuel
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-Le header du channel list (desktop) utilise `bg-[hsl(var(--card))] bg-[#121421]` — un fond code en dur qui ne suit pas la teinte de la liste des salons.
+### Code sketch for onMutate addition (after servers cache update)
 
-La liste des salons a une `bg-card` comme fond. Il n'y a pas de barre de recherche sur desktop (elle existe sur mobile uniquement).
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
 
-### Modifications
+### Code for onSuccess addition
 
-**`src/components/layout/ChannelList.tsx`** :
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-1. **Header** : Remplacer `bg-[hsl(var(--card))] bg-[#121421]` par `bg-[hsl(var(--surface-elevated))]` — legèrement plus clair que `bg-card` de la liste de salons, en utilisant la variable semantique existante.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 
-2. **Barre de recherche (desktop)** : Ajouter une barre de recherche sous le header avec un fond plus fonce (`bg-[hsl(var(--background))]`) pour creer le contraste inverse. Au clic, elle ouvrira le `GlobalSearchModal` existant (via `onOpenGlobalSearch` prop) ou declenchera `Ctrl+K`.
-
-3. **Separateur** : Ajouter un `Separator` avec `bg-border/30` entre la zone header+recherche et la liste des salons, identique au pattern mobile (`MobileChannelListView`).
-
-**`src/components/layout/ChannelList.tsx` (interface)** :
-- Ajouter une prop `onOpenGlobalSearch?: () => void` a `ChannelListProps`.
-
-**`src/pages/Index.tsx`** :
-- Passer `onOpenGlobalSearch={() => setShowGlobalSearch(true)}` au composant `ChannelList`.
-
-## Resume des fichiers modifies
-
-| Fichier | Type de modification |
-|---|---|
-| `src/pages/Index.tsx` | Ajout de l'effet reactif de redirection + prop `onOpenGlobalSearch` |
-| `src/hooks/useNavigationState.ts` | Exposer `channelsByServer` |
-| `src/components/layout/ChannelList.tsx` | Header bg, barre de recherche, separateur, suppression du navigate |
-| `src/components/layout/ServerList.tsx` | Suppression de la redirection dans confirmLeaveServer |

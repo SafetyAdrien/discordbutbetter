@@ -42,7 +42,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
             </Avatar>
           </TooltipTrigger>
           <TooltipPortal>
-            <TooltipContent side="top" sideOffset={20} className="text-xs z-[100]">
+            <TooltipContent side="top" sideOffset={20} className="text-xs">
               {vote.user?.display_name || 'Utilisateur inconnu'}
             </TooltipContent>
           </TooltipPortal>
@@ -59,7 +59,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
             </div>
           </TooltipTrigger>
           <TooltipPortal>
-            <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px] z-[100]">
+            <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px]">
               {votes.slice(maxVisible).map(v => v.user?.display_name || 'Inconnu').join(', ')}
             </TooltipContent>
           </TooltipPortal>

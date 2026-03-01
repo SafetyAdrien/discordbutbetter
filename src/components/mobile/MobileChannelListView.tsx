@@ -656,6 +656,74 @@ export function MobileChannelListView({
           onClose={() => setEditingChannelId(null)}
         />
       )}
+
+      {/* Delete channel confirmation */}
+      <AlertDialog open={!!deletingChannelId} onOpenChange={(open) => !open && setDeletingChannelId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le salon</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer <strong className="text-foreground">
+                #{[...orphanChannels, ...categories.flatMap(c => c.channels)].find(c => c.id === deletingChannelId)?.name}
+              </strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteChannel.isPending}
+              onClick={async () => {
+                if (!deletingChannelId) return;
+                try {
+                  await deleteChannel.mutateAsync({ channelId: deletingChannelId, serverId });
+                  toast.success('Salon supprimé');
+                } catch {
+                  toast.error('Erreur lors de la suppression');
+                }
+                setDeletingChannelId(null);
+              }}
+            >
+              {deleteChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete category confirmation */}
+      <AlertDialog open={!!deletingCategoryId} onOpenChange={(open) => !open && setDeletingCategoryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la catégorie</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer <strong className="text-foreground">
+                {categories.find(c => c.id === deletingCategoryId)?.name}
+              </strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteCategoryMut.isPending}
+              onClick={async () => {
+                if (!deletingCategoryId) return;
+                try {
+                  await deleteCategoryMut.mutateAsync({ categoryId: deletingCategoryId, serverId });
+                  toast.success('Catégorie supprimée');
+                } catch {
+                  toast.error('Erreur lors de la suppression');
+                }
+                setDeletingCategoryId(null);
+              }}
+            >
+              {deleteCategoryMut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

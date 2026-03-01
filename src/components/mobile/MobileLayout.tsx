@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { MobileBottomNav, MobileTab } from './MobileBottomNav';
 import { MobileHomeView } from './MobileHomeView';
 import { MobileServersView } from './MobileServersView';
@@ -23,6 +23,8 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
+import { useNavigationState } from '@/hooks/useNavigationState';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -57,11 +59,99 @@ export function MobileLayout({
   discoverableServers,
   rawServers,
 }: MobileLayoutProps) {
-  const [activeTab, setActiveTab] = useState<MobileTab>('home');
-  const [mobileView, setMobileView] = useState<MobileView>({ type: 'tab' });
+  const {
+    mobileActiveTab: persistedTab,
+    mobileView: persistedView,
+    setMobileActiveTab: persistMobileTab,
+    setMobileView: persistMobileView,
+  } = useNavigationState();
+
+  // Restore persisted state on mount
+  const [activeTab, setActiveTabLocal] = useState<MobileTab>(() => {
+    return (persistedTab as MobileTab) || 'home';
+  });
+  const [mobileView, setMobileViewLocal] = useState<MobileView>(() => {
+    if (persistedView && persistedView.type) {
+      return persistedView as unknown as MobileView;
+    }
+    return { type: 'tab' };
+  });
+
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
+
+  // Persist on change
+  const setActiveTab = useCallback((tab: MobileTab) => {
+    setActiveTabLocal(tab);
+    persistMobileTab(tab);
+  }, [persistMobileTab]);
+
+  const setMobileView = useCallback((view: MobileView) => {
+    setMobileViewLocal(view);
+    persistMobileView(view.type === 'tab' ? { type: 'tab' } : view as any);
+  }, [persistMobileView]);
+
+  // History navigation
+  const buildHistoryState = useCallback((view: MobileView, tab: MobileTab): HistoryViewState => ({
+    serverId: null,
+    channelId: null,
+    dmId: null,
+    threadId: null,
+    mobileView: view.type,
+    mobileTab: tab,
+    mobileServerId: 'serverId' in view ? view.serverId : undefined,
+    mobileChannelId: 'channelId' in view ? view.channelId : undefined,
+    mobileChannelType: view.type === 'chat' ? view.channelType : undefined,
+    mobileThreadId: view.type === 'thread' ? view.threadId : undefined,
+    mobileChannelName: view.type === 'thread' ? view.channelName : undefined,
+    mobileFromTab: view.type === 'chat' ? view.fromTab : undefined,
+  }), []);
+
+  const handlePop = useCallback((state: HistoryViewState) => {
+    if (!state.mobileView) return;
+    const tab = (state.mobileTab as MobileTab) || 'home';
+    setActiveTabLocal(tab);
+    persistMobileTab(tab);
+
+    let view: MobileView;
+    switch (state.mobileView) {
+      case 'channels':
+        view = { type: 'channels', serverId: state.mobileServerId || '' };
+        break;
+      case 'chat':
+        view = { type: 'chat', serverId: state.mobileServerId || '', channelId: state.mobileChannelId || '', channelType: state.mobileChannelType || 'text', fromTab: state.mobileFromTab };
+        break;
+      case 'thread':
+        view = { type: 'thread', serverId: state.mobileServerId || '', channelId: state.mobileChannelId || '', threadId: state.mobileThreadId || '', channelName: state.mobileChannelName || '' };
+        break;
+      default:
+        view = { type: 'tab' };
+    }
+    setMobileViewLocal(view);
+    persistMobileView(view.type === 'tab' ? { type: 'tab' } : view as any);
+  }, [persistMobileTab, persistMobileView]);
+
+  const { pushView, replaceView } = useHistoryNavigation(handlePop);
+
+  // Replace initial state
+  const initialReplaced = useRef(false);
+  useEffect(() => {
+    if (!initialReplaced.current) {
+      initialReplaced.current = true;
+      replaceView(buildHistoryState(mobileView, activeTab));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push history on navigation (not on initial mount)
+  const prevViewRef = useRef<string>('');
+  useEffect(() => {
+    const key = JSON.stringify({ type: mobileView.type, tab: activeTab, ...('channelId' in mobileView ? { ch: mobileView.channelId } : {}), ...('threadId' in mobileView ? { th: mobileView.threadId } : {}) });
+    if (prevViewRef.current && prevViewRef.current !== key) {
+      pushView(buildHistoryState(mobileView, activeTab));
+    }
+    prevViewRef.current = key;
+  }, [mobileView, activeTab, pushView, buildHistoryState]);
 
   const { voiceState, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoiceState();
 
@@ -105,7 +195,6 @@ export function MobileLayout({
 
   const handleBackToChannels = () => {
     if ((mobileView.type === 'chat' && mobileView.fromTab) || (mobileView.type === 'thread')) {
-      // If came from embedded server tab, go back to tab directly
       if (mobileView.type === 'chat' && mobileView.fromTab) {
         setMobileView({ type: 'tab' });
       } else {

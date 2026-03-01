@@ -558,20 +558,20 @@ export function MobileChannelListView({
       {showEmptyLongPressMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowEmptyLongPressMenu(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute bottom-6 left-4 right-4 bg-popover rounded-xl p-2 shadow-xl border border-border" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute bottom-4 left-6 right-6 bg-popover rounded-lg p-1 shadow-xl border border-border" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateChannel(true); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"
             >
-              <Hash className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm text-foreground font-medium">Créer un salon</span>
+              <Hash className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-foreground font-medium">Créer un salon</span>
             </button>
             <button
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateCategory(true); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"
             >
-              <Layers className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm text-foreground font-medium">Créer une catégorie</span>
+              <Layers className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-foreground font-medium">Créer une catégorie</span>
             </button>
           </div>
         </div>

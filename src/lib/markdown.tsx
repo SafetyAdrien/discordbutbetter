@@ -417,13 +417,13 @@ function parseBlocks(content: string): BlockToken[] {
       // Unordered list (with indentation support)
       else if (/^(\s*)[-*] /.test(line)) {
         const listMatch = line.match(/^(\s*)[-*] /);
-        const indentLevel = listMatch ? Math.floor(listMatch[1].length / 2) : 0;
+        const indentLevel = listMatch ? listMatch[1].length : 0;
         blocks.push({ type: 'listItem', content: line.slice(listMatch![0].length), indentLevel });
       }
       // Ordered list (with indentation support)
       else if (/^(\s*)\d+\. /.test(line)) {
         const listMatch = line.match(/^(\s*)\d+\. /);
-        const indentLevel = listMatch ? Math.floor(listMatch[1].length / 2) : 0;
+        const indentLevel = listMatch ? listMatch[1].length : 0;
         blocks.push({ type: 'orderedListItem', content: line.slice(listMatch![0].length), indentLevel });
       }
       // Regular paragraph
@@ -708,18 +708,18 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
         </blockquote>
       );
     case 'listItem': {
-      const ulIndent = (block.indentLevel || 0) * 4 + 4;
-      const bulletStyle = (block.indentLevel || 0) === 0 ? 'list-disc' : (block.indentLevel || 0) === 1 ? 'list-[circle]' : 'list-[square]';
+      const level = block.indentLevel || 0;
+      const bulletStyle = level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]';
       return (
-        <li key={key} className={bulletStyle} style={{ marginLeft: `${ulIndent * 4}px` }}>
+        <li key={key} className={bulletStyle} style={{ marginLeft: `${(level + 1) * 16}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );
     }
     case 'orderedListItem': {
-      const olIndent = (block.indentLevel || 0) * 4 + 4;
+      const level = block.indentLevel || 0;
       return (
-        <li key={key} className="list-decimal" style={{ marginLeft: `${olIndent * 4}px` }}>
+        <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>
           {renderInlineContent(block.content)}
         </li>
       );

@@ -1,61 +1,47 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Affichage du nom du serveur sur la banniere avec ombre
 
-## Root cause
+## Objectif
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Superposer le nom du serveur en bas de la banniere avec un effet d'ombre (gradient sombre), sur mobile (ServerProfileSheet) et desktop (PopoverContent dans ChannelList). Le sheet mobile doit se fermer instantanement au swipe vers le bas (pas d'animation de sortie sur la banniere).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Mobile - `src/components/mobile/MobileChannelListView.tsx`
 
-## Fix
+**Banniere du ServerProfileSheet (lignes 122-171)** :
+- Ajouter un gradient sombre (`bg-gradient-to-t from-black/70 to-transparent`) en overlay absolu en bas de la banniere
+- Placer le nom du serveur (`serverName`) en position absolue `bottom-2 left-3`, en blanc, avec `text-shadow` pour la lisibilite
+- Le nom sera tronque (`truncate`) et en `font-bold text-sm`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Fermeture instantanee** :
+- Ajouter la classe CSS pour desactiver l'animation de fermeture du `SheetContent` : ajouter `data-[state=closed]:duration-0` ou utiliser la prop de transition du Sheet pour que la banniere disparaisse sans delai au swipe vers le bas
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Desktop - `src/components/layout/ChannelList.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**Banniere du PopoverContent (lignes 1182-1206)** :
+- Meme traitement : ajouter un overlay gradient sombre en bas de la banniere
+- Afficher le nom du serveur en bas a gauche de la banniere avec ombre portee
+- Le nom sera en `font-bold text-sm text-white` avec `drop-shadow`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### Detail technique
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+Le gradient overlay et le texte seront positionnes en `absolute` dans le conteneur `relative` de la banniere existant. Aucun changement structurel, seulement des ajouts visuels.
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
++---------------------------+
+|                           |
+|        (banniere)         |
+|  gradient sombre -------> |
+|  Nom du serveur           |
++---------------------------+
 ```
 
-### Code for onSuccess addition
+### Fichiers modifies
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Modification |
+|---|---|
+| `MobileChannelListView.tsx` | Overlay gradient + nom sur banniere, fermeture instantanee |
+| `ChannelList.tsx` | Overlay gradient + nom sur banniere desktop |
 

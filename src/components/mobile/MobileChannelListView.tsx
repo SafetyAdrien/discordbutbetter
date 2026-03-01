@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search, AtSign, FileText, Pin, UserCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
 import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
+import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
+import { Input } from '@/components/ui/input';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -365,12 +367,50 @@ export function MobileChannelListView({
     });
   };
 
+  // Invite modal state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
+  const [isClosingFilters, setIsClosingFilters] = useState(false);
+  const [filterSelectedIndex, setFilterSelectedIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const mobileSearchFilters = [
+    { prefix: 'de:', label: 'de la personne', icon: UserCircle },
+    { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign },
+    { prefix: 'contient:', label: 'dispose de données spécifiques', icon: FileText },
+    { prefix: 'dans:', label: 'dans un salon spécifique', icon: Hash },
+    { prefix: 'pendant:', label: 'envoyé à une date', icon: Calendar },
+    { prefix: 'avant:', label: 'avant la date', icon: Calendar },
+    { prefix: 'après:', label: 'après la date', icon: Calendar },
+    { prefix: 'épinglé:', label: 'épinglé', icon: Pin },
+  ];
+
+  const availableSearchFilters = useMemo(() => {
+    const lowerQuery = searchQuery.toLowerCase();
+    if (mobileSearchFilters.some(f => lowerQuery.startsWith(f.prefix))) return [];
+    if (lowerQuery.trim()) {
+      return mobileSearchFilters.filter(f => f.prefix.toLowerCase().includes(lowerQuery) || f.label.toLowerCase().includes(lowerQuery));
+    }
+    return mobileSearchFilters;
+  }, [searchQuery]);
+
+  useEffect(() => { setFilterSelectedIndex(0); }, [searchQuery, showSearchFilters]);
+
+  const handleSearchFilterSelect = (prefix: string) => {
+    setSearchQuery(prefix);
+    setShowSearchFilters(false);
+    searchInputRef.current?.focus();
+  };
+
   const serverNameTrigger = (
     <button className="flex items-center gap-1 text-left min-w-0">
       <h2 className="font-semibold text-sm truncate">{serverName}</h2>
-      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
     </button>
   );
+
 
     const bannerUrl = currentServer?.banner_url;
 
@@ -382,9 +422,8 @@ export function MobileChannelListView({
     return (
     <div className="flex flex-col h-full bg-card">
       {/* Banner */}
-      {/* Banner (both embedded and non-embedded) */}
       {showBanner && bannerUrl && (
-        <div className="relative h-24 flex-shrink-0 overflow-hidden">
+        <div className="relative h-24 flex-shrink-0 overflow-hidden rounded-b-xl">
           <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute bottom-2.5 left-3 z-10 flex items-center gap-2">
@@ -396,22 +435,68 @@ export function MobileChannelListView({
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={
               <button className="flex items-center gap-1 text-left min-w-0">
                 <h2 className="font-semibold text-sm truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
-                <ChevronDown className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
               </button>
             } onOpenSettings={onOpenSettings} />
+            {/* Invite icon on banner */}
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="p-1 rounded-lg bg-background/30 hover:bg-background/50 transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-white" />
+            </button>
+            {/* Settings chevron on banner */}
+            {onOpenSettings && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="p-1 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
+                    <ChevronDown className="w-3.5 h-3.5 text-white/70" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="start" className="w-52 p-2 rounded-xl">
+                  <button
+                    onClick={() => onOpenSettings?.()}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    Paramètres du serveur
+                  </button>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
       )}
 
       {/* Header (shown when no banner or scrolled) */}
       {!(showBanner && bannerUrl) && !embedded && (
-        <div className="h-12 px-3 flex items-center gap-2 border-b border-border">
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-b-xl">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
+          <button onClick={() => setShowInviteModal(true)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <UserPlus className="w-4 h-4" />
+          </button>
+          {onOpenSettings && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-52 p-2 rounded-xl">
+                <button
+                  onClick={() => onOpenSettings?.()}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  Paramètres du serveur
+                </button>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       )}
       {!(showBanner && bannerUrl) && embedded && (
@@ -419,8 +504,70 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
+          <button onClick={() => setShowInviteModal(true)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <UserPlus className="w-4 h-4" />
+          </button>
+          {onOpenSettings && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-52 p-2 rounded-xl">
+                <button
+                  onClick={() => onOpenSettings?.()}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  Paramètres du serveur
+                </button>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       )}
+
+      {/* Search bar */}
+      <div className="px-3 py-2 relative">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+          <Input
+            ref={searchInputRef}
+            placeholder="Rechercher"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => { setIsClosingFilters(false); setShowSearchFilters(true); }}
+            onBlur={() => { setIsClosingFilters(true); setTimeout(() => { setShowSearchFilters(false); setIsClosingFilters(false); }, 150); }}
+            className="h-8 pl-8 text-sm bg-input rounded-xl"
+          />
+          {showSearchFilters && availableSearchFilters.length > 0 && (
+            <div className={cn(
+              "absolute top-full left-0 right-0 z-50 bg-card border border-border rounded-xl shadow-xl p-2 mt-1",
+              isClosingFilters ? "animate-slide-up" : "animate-slide-down"
+            )}>
+              <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
+              {availableSearchFilters.map((filter, index) => {
+                const Icon = filter.icon;
+                return (
+                  <button
+                    key={filter.prefix}
+                    onClick={() => handleSearchFilterSelect(filter.prefix)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-sm text-left transition-colors",
+                      index === filterSelectedIndex ? "bg-muted" : "hover:bg-muted"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-primary font-medium min-w-[70px]">{filter.prefix}</span>
+                    <span className="text-muted-foreground/70 truncate">{filter.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Channel List */}
       <div
@@ -759,6 +906,13 @@ export function MobileChannelListView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showInviteModal && (
+        <CreateInviteModal
+          serverId={serverId}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </div>
   );
 }

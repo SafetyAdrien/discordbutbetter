@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, ClipboardCopy, Flag } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { DeleteMessageDialog } from '@/components/chat/DeleteMessageDialog';
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥', '😮', '😢'];
 
@@ -48,6 +50,8 @@ export function MobileMessageActions({
   canAddReactions = true,
   canManageMessages = false,
 }: MobileMessageActionsProps) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   const handleAction = (fn: () => void) => {
     fn();
     onOpenChange(false);
@@ -117,12 +121,14 @@ export function MobileMessageActions({
               <ActionButton
                 icon={Trash2}
                 label="Supprimer"
-                onClick={() => handleAction(onDelete)}
+                onClick={() => { onOpenChange(false); setDeleteOpen(true); }}
                 destructive
               />
             </>
           )}
         </div>
+
+        <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />
       </DrawerContent>
     </Drawer>
   );

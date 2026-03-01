@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useUrlMetadata, extractUrls } from '@/hooks/useUrlMetadata';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -8,8 +8,15 @@ interface LinkEmbedProps {
 
 export function LinkEmbed({ url }: LinkEmbedProps) {
   const { data, isLoading } = useUrlMetadata(url);
+  const [timedOut, setTimedOut] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading) { setTimedOut(false); return; }
+    const timer = setTimeout(() => setTimedOut(true), 10000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  if (isLoading && !timedOut) {
     return (
       <div className="flex gap-3 max-w-[520px] rounded bg-[hsl(228,6%,17%)] border-l-4 border-[hsl(235,86%,65%)] p-3 mt-1">
         <div className="flex-1 space-y-2">

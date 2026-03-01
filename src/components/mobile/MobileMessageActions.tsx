@@ -121,12 +121,14 @@ export function MobileMessageActions({
               <ActionButton
                 icon={Trash2}
                 label="Supprimer"
-                onClick={() => handleAction(onDelete)}
+                onClick={() => { onOpenChange(false); setDeleteOpen(true); }}
                 destructive
               />
             </>
           )}
         </div>
+
+        <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />
       </DrawerContent>
     </Drawer>
   );

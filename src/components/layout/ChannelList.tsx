@@ -1177,147 +1177,131 @@ export function ChannelList({
         )} />
       </div>
       {/* Server Header - styled like User Panel */}
-      <div className="flex items-center bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421] rounded-t-xl"
-        style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
-      >
-        {/* Server Name → Card Popover */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full rounded-tl-xl"
-            >
-              {showBanner && server.bannerUrl && (
-                <div className="absolute inset-0 overflow-hidden rounded-tl-xl">
-                  <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                </div>
-              )}
-              <div className={cn(
-                "flex-1 min-w-0 text-left relative z-10 px-3",
-                showBanner && server.bannerUrl ? "self-end pb-2" : ""
-              )}>
-                <p className={cn(
-                  "text-sm font-semibold truncate",
-                  showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
-                )}>{server.name}</p>
-                {!(showBanner && server.bannerUrl) && (
-                  <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
-                )}
-              </div>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
-            {/* Banner with Leave Button */}
-            <div className="relative">
-              {server.bannerUrl ? (
-                <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" />
-              ) : (
-                <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
-              )}
-
-              {/* Leave Server Button - Only visible for non-owners */}
-              {!isOwner && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => setShowLeaveDialog(true)}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Quitter le serveur</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                {server.iconUrl ? (
-                  <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
-                    {server.name.charAt(0).toUpperCase()}
+      <div className="bg-[hsl(var(--surface-elevated))]">
+        <div className="flex items-center rounded-t-xl"
+          style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
+        >
+          {/* Server Name → Card Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full rounded-tl-xl"
+              >
+                {showBanner && server.bannerUrl && (
+                  <div className="absolute inset-0 overflow-hidden rounded-tl-xl">
+                    <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-lg text-foreground truncate">{server.name}</h3>
-                  {server.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
+                <div className={cn(
+                  "flex-1 min-w-0 text-left relative z-10 px-3",
+                  showBanner && server.bannerUrl ? "self-end pb-2" : ""
+                )}>
+                  <p className={cn(
+                    "text-sm font-semibold truncate",
+                    showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
+                  )}>{server.name}</p>
+                  {!(showBanner && server.bannerUrl) && (
+                    <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
                   )}
                 </div>
-              </div>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
+              {/* Banner with Leave Button */}
+              <div className="relative">
+                {server.bannerUrl ? (
+                  <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" />
+                ) : (
+                  <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
+                )}
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>Créé le {formatServerDate(server.createdAt)}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
+                {/* Leave Server Button - Only visible for non-owners */}
+                {!isOwner && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span>
-                        <StreamlineCrown size={16} className="text-yellow-500" />
-                      </span>
+                      <button
+                        onClick={() => setShowLeaveDialog(true)}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Propriétaire du serveur</p>
+                      <p>Quitter le serveur</p>
                     </TooltipContent>
                   </Tooltip>
-                  <span>Fondateur: {ownerProfile?.user?.username?.toLowerCase() || "Inconnu"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="w-4 h-4" />
-                  <span>{membersData?.length || 0} membres</span>
-                </div>
+                )}
               </div>
 
-              {serverEmojis.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
-                  <div className="flex flex-wrap gap-1">
-                    {serverEmojis.slice(0, 10).map((emoji) => (
-                      <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />
-                    ))}
-                    {serverEmojis.length > 10 && (
-                      <span className="text-xs text-muted-foreground self-center ml-1">
-                        +{serverEmojis.length - 10}
-                      </span>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  {server.iconUrl ? (
+                    <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
+                      {server.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-lg text-foreground truncate">{server.name}</h3>
+                    {server.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
 
-        {/* Action icons - right side of header */}
-        <div className={cn(
-          "flex items-center gap-1 pr-2 relative z-10",
-          showBanner && server.bannerUrl ? "self-end pb-2" : ""
-        )}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setInviteChannelId('server')}
-                className={cn(
-                  "p-1.5 rounded-lg transition-colors",
-                  showBanner && server.bannerUrl
-                    ? "hover:bg-background/30 text-white"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span>Créé le {formatServerDate(server.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <StreamlineCrown size={16} className="text-yellow-500" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Propriétaire du serveur</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <span>Fondateur: {ownerProfile?.user?.username?.toLowerCase() || "Inconnu"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>{membersData?.length || 0} membres</span>
+                  </div>
+                </div>
+
+                {serverEmojis.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
+                    <div className="flex flex-wrap gap-1">
+                      {serverEmojis.slice(0, 10).map((emoji) => (
+                        <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />
+                      ))}
+                      {serverEmojis.length > 10 && (
+                        <span className="text-xs text-muted-foreground self-center ml-1">
+                          +{serverEmojis.length - 10}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
-              >
-                <UserPlus className="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent><p>Créer une invitation</p></TooltipContent>
-          </Tooltip>
+              </div>
+            </PopoverContent>
+          </Popover>
 
-          {canAccessSettings && (
-            <Popover>
-              <PopoverTrigger asChild>
+          {/* Action icons - right side of header */}
+          <div className={cn(
+            "flex items-center gap-1 pr-2 relative z-10",
+            showBanner && server.bannerUrl ? "self-end pb-2" : ""
+          )}>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <button
+                  onClick={() => setInviteChannelId('server')}
                   className={cn(
                     "p-1.5 rounded-lg transition-colors",
                     showBanner && server.bannerUrl
@@ -1325,16 +1309,48 @@ export function ChannelList({
                       : "hover:bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <ChevronDown className="w-4 h-4" />
+                  <UserPlus className="w-4 h-4" />
                 </button>
-              </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" className="w-56 p-1.5">
-                <ServerSettingsQuickMenu onSelect={(tabId) => onOpenServerSettings?.(tabId)} />
-              </PopoverContent>
-            </Popover>
-          )}
+              </TooltipTrigger>
+              <TooltipContent><p>Créer une invitation</p></TooltipContent>
+            </Tooltip>
+
+            {canAccessSettings && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      showBanner && server.bannerUrl
+                        ? "hover:bg-background/30 text-white"
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="end" className="w-56 p-1.5">
+                  <ServerSettingsQuickMenu onSelect={(tabId) => onOpenServerSettings?.(tabId)} />
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="px-2 py-2">
+          <button
+            onClick={() => onOpenGlobalSearch?.()}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-background text-muted-foreground text-sm hover:bg-background/80 transition-colors"
+          >
+            <Search className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Rechercher</span>
+          </button>
         </div>
       </div>
+
+      {/* Separator between header area and channel list */}
+      <Separator className="bg-border/30" />
 
       {/* Channels with DnD */}
       <ContextMenu>

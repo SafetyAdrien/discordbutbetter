@@ -643,7 +643,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border/50 rounded-tr-xl">
+      <div ref={ref} className="w-full sm:w-60 bg-card flex flex-col sm:border-l sm:border-border/50 sm:rounded-tr-xl">
         {/* Search input and Inbox */}
         <div className="px-3 pt-3 border-border bg-card">
           <div className="flex items-center gap-2">
@@ -730,7 +730,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         secondaryOwnerId={server?.secondary_owner_id}
         memberId={selectedMember?.memberId}
         canManageRoles={canManageRoles}
-        mode="card"
+        mode={window.innerWidth < 640 ? "modal" : "card"}
         cardPosition={{
           top: 60,
           right: 280,

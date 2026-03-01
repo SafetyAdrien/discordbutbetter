@@ -108,7 +108,7 @@ export function MobileChatView({
               <Users className="w-5 h-5" />
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-0 rounded-l-xl">
+          <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-xl">
             {/* Header with title and action icons */}
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground">Membres</h3>

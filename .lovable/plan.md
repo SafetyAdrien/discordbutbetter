@@ -1,42 +1,61 @@
 
 
-# Renommer le nom d'utilisateur (username) dans "Mon Compte"
+# Fix: Duplicated channel hidden by visibility filter
 
-## Objectif
-Ajouter la possibilité de modifier son nom d'utilisateur directement depuis l'onglet "Mon Compte" des paramètres utilisateur.
+## Root cause
 
-## Comportement attendu
-- Dans la carte "Informations du compte", le username affiché devient modifiable via un bouton "Modifier".
-- En cliquant, un champ de saisie apparait avec le username actuel pré-rempli.
-- Validation :
-  - Le username doit etre en minuscules (conversion automatique).
-  - Ne peut pas etre vide.
-  - Verification de disponibilite via la fonction SQL `check_username_availability` deja existante en base.
-- Boutons "Annuler" et "Enregistrer".
-- En cas de succes, le profil local est mis a jour et un toast de confirmation s'affiche.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changements techniques
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Fichier : `src/components/account-settings/AccountSettings.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-1. **Ajouter les etats** pour gerer le mode edition du username :
-   - `isChangingUsername` (boolean)
-   - `newUsername` (string, initialise avec `profile?.username`)
+## Fix
 
-2. **Ajouter la fonction `handleChangeUsername`** :
-   - Convertir en minuscules et trim.
-   - Verifier que le champ n'est pas vide.
-   - Appeler `supabase.rpc('check_username_availability', { p_username: newUsername })` pour verifier la disponibilite.
-   - Si disponible, mettre a jour via `supabase.from('profiles').update({ username: newUsername }).eq('id', user.id)`.
-   - Mettre a jour le profil local via `updateProfile` du AuthContext.
-   - Toast succes/erreur.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-3. **Modifier la section d'affichage du username** (actuellement lignes 133-136) :
-   - Mode lecture : afficher le username avec un bouton "Modifier" a cote.
-   - Mode edition : afficher un `Input` avec le nouveau username, un texte d'aide, et les boutons Annuler/Enregistrer.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### Aucun changement backend necessaire
-- La fonction `check_username_availability` existe deja.
-- La table `profiles` autorise deja les utilisateurs a modifier leur propre profil (RLS policy "Users can update their own profile").
-- Le champ `username` existe deja dans la table.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -692,6 +692,7 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{ url: string } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
@@ -851,6 +852,13 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
+    // Link channels open external link warning modal
+    if (channel.type === "link") {
+      const url = channel.description || '';
+      if (url) setExternalLinkModal({ url });
+      return;
+    }
+
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
     const isVoiceOrStage = isVoice || isStage;

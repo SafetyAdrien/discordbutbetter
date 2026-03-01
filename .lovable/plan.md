@@ -1,61 +1,53 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Banniere mobile + Menu deroulant desktop + Positionnement salons
 
-## Root cause
+## 1. Banniere du serveur sur mobile (mode embedded)
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Fichier** : `src/components/mobile/MobileChannelListView.tsx`
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Actuellement la banniere s'affiche uniquement en mode non-embedded. Il faut que la banniere s'affiche aussi en mode `embedded` (vue MobileServersView). Le header embedded (lignes 416-422) doit aussi supporter le mode banniere avec les memes regles : affichage quand `scrollTop === 0`, disparition au scroll.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Changement** : Fusionner la logique de banniere pour qu'elle fonctionne quel que soit le mode `embedded`. Quand `showBanner && bannerUrl`, afficher la banniere avec le nom du serveur superpose (sans le bouton retour en mode embedded).
 
-## Fix
+## 2. Remplacer l'engrenage par un menu deroulant (Desktop)
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Fichier** : `src/components/layout/ChannelList.tsx`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Remplacer le bouton `<Settings>` (lignes 1294-1299) par un bouton `<ChevronDown>` (petite fleche vers le bas). Au clic, afficher un `Popover` contenant :
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+- **Parametres du serveur** (icone `Settings`) -- ouvre `onOpenServerSettings`
+- **Profil du serveur** (icone `Info`) -- ouvre les settings sur l'onglet `profile`
+- **Separateur**
+- **Emojis** (icone `Smile`) -- ouvre les settings sur l'onglet `emojis`
+- **Stickers** (icone `Sticker`) -- ouvre les settings sur l'onglet `stickers`
+- **SoundBoard** (icone `Volume2`) -- ouvre les settings sur l'onglet `soundboard`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Pour supporter l'ouverture directe sur un onglet specifique, le callback `onOpenServerSettings` doit accepter un parametre optionnel `initialTab`. Il faut propager ce parametre depuis `ChannelList` -> `Index.tsx` -> `ServerSettingsModal`.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+**Fichiers impactes** :
+- `src/components/layout/ChannelList.tsx` : modifier le header pour afficher le popover au lieu de l'engrenage
+- `src/pages/Index.tsx` : modifier `onOpenServerSettings` pour accepter un `initialTab` optionnel et le passer a `ServerSettingsModal`
+- `src/components/server-settings/ServerSettingsModal.tsx` : ajouter un prop `initialTab` optionnel qui definit le tab actif a l'ouverture
 
-### 3. Hook needs `useAuth` for the user ID
+## 3. Positionnement de la liste des salons
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+**Fichiers** : `src/components/mobile/MobileChannelListView.tsx` et `src/components/layout/ChannelList.tsx`
 
-## Detailed changes
+La zone des salons et categories (`overflow-y-auto`) doit etre correctement collee au bord de la section. Actuellement il y a un `px-2` / `py-2` sur le conteneur scrollable. On ajuste pour que le contenu soit bien aligne au bord de la zone visible, en retirant le padding horizontal excessif et en s'assurant que les items occupent toute la largeur disponible.
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+**Changement concret** :
+- Sur desktop (`ChannelList.tsx` ligne 1305) : verifier que le `px-2` est coherent et que les salons sont bien colles au bord lateral
+- Sur mobile (`MobileChannelListView.tsx` ligne 426) : meme ajustement, supprimer ou reduire le padding pour que les salons s'etendent jusqu'au bord de la vue
 
-### Code sketch for onMutate addition (after servers cache update)
+---
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+### Resume des fichiers modifies
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Changement |
+|---|---|
+| `MobileChannelListView.tsx` | Afficher la banniere aussi en mode embedded ; ajuster le padding des salons |
+| `ChannelList.tsx` | Remplacer l'engrenage par un menu deroulant avec fleche ; ajuster le padding |
+| `Index.tsx` | Propager `initialTab` vers `ServerSettingsModal` |
+| `ServerSettingsModal.tsx` | Ajouter prop `initialTab` pour ouverture directe sur un onglet |
 

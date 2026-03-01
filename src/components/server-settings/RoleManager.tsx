@@ -5,7 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 // DnD Kit imports

@@ -308,6 +308,7 @@ export function MobileChannelListView({
   const [longPressedChannelId, setLongPressedChannelId] = useState<string | null>(null);
   const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
   const [showEmptyLongPressMenu, setShowEmptyLongPressMenu] = useState(false);
+  const [longPressPosition, setLongPressPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,7 +324,11 @@ export function MobileChannelListView({
   const handleEmptyTouchStart = useCallback((e: React.TouchEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]') || target.closest('a')) return;
+    const touch = e.touches[0];
+    const touchX = touch.clientX;
+    const touchY = touch.clientY;
     emptyLongPressTimer.current = setTimeout(() => {
+      setLongPressPosition({ x: touchX, y: touchY });
       setShowEmptyLongPressMenu(true);
     }, 500);
   }, []);
@@ -558,7 +563,14 @@ export function MobileChannelListView({
       {showEmptyLongPressMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowEmptyLongPressMenu(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute bottom-4 left-6 right-6 bg-popover rounded-lg p-1 shadow-xl border border-border" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed bg-popover rounded-lg p-1 shadow-xl border border-border w-44"
+            style={{
+              left: Math.min(longPressPosition.x, window.innerWidth - 190),
+              top: Math.min(longPressPosition.y - 40, window.innerHeight - 100),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateChannel(true); }}
               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"

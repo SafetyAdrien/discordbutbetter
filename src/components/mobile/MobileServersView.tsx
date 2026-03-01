@@ -271,10 +271,11 @@ export function MobileServersView({
         <button
           onClick={handleDMClick}
           className={cn(
-            'relative flex items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all',
+            'relative flex items-center justify-center transition-all',
+            ICON_SIZE,
             showDMs
-              ? 'bg-primary text-primary-foreground rounded-xl'
-              : 'bg-muted/50 hover:bg-primary/20 hover:text-primary text-muted-foreground'
+              ? 'bg-primary text-primary-foreground rounded-[16px]'
+              : 'bg-muted text-muted-foreground rounded-[24px] hover:rounded-[16px] hover:bg-primary/20 hover:text-primary'
           )}
         >
           <div className={cn(
@@ -328,14 +329,20 @@ export function MobileServersView({
 
         <button
           onClick={onDiscoverClick}
-          className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className={cn(
+            'flex items-center justify-center rounded-[24px] bg-muted text-muted-foreground hover:rounded-[16px] hover:bg-primary/20 hover:text-primary transition-all',
+            ICON_SIZE
+          )}
         >
           <Compass className="w-5 h-5" />
         </button>
 
         <button
           onClick={onCreateClick}
-          className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className={cn(
+            'flex items-center justify-center rounded-[24px] bg-muted text-muted-foreground hover:rounded-[16px] hover:bg-primary/20 hover:text-primary transition-all',
+            ICON_SIZE
+          )}
         >
           <Plus className="w-5 h-5" />
         </button>

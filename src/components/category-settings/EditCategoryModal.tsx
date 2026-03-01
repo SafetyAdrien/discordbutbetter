@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FolderOpen, ChevronLeft, X } from 'lucide-react';
 import { CategoryOverview } from './CategoryOverview';
 import { CategoryPermissions } from './CategoryPermissions';
 import { CategoryDangerZone } from './CategoryDangerZone';
 import { supabase } from '@/integrations/supabase/client';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
 
 interface EditCategoryModalProps {

@@ -313,6 +313,10 @@ export function MobileChannelListView({
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+  const deleteChannel = useDeleteChannel();
+  const deleteCategoryMut = useDeleteCategory();
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
 
   const clearEmptyLongPress = useCallback(() => {

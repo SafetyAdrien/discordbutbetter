@@ -22,6 +22,7 @@ interface ServerSettingsModalProps {
   serverId: string;
   serverName: string;
   onClose: () => void;
+  initialTab?: SettingsTab;
 }
 
 type SettingsTab = 

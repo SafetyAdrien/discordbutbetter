@@ -413,6 +413,21 @@ export function MobileChannelListView({
           </div>
         </div>
       )}
+      {/* Banner in embedded mode */}
+      {showBanner && bannerUrl && embedded && (
+        <div className="relative h-20 flex-shrink-0 overflow-hidden">
+          <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-2 left-3 z-10 flex items-center gap-2">
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={
+              <button className="flex items-center gap-1 text-left min-w-0">
+                <h2 className="font-semibold text-sm truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+                <ChevronDown className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
+              </button>
+            } onOpenSettings={onOpenSettings} />
+          </div>
+        </div>
+      )}
       {!(showBanner && bannerUrl) && embedded && (
         <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
           <div className="flex-1 min-w-0">

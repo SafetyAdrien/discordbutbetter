@@ -1,61 +1,36 @@
 
+Objectif: rendre TooltipContent réellement visible au survol (hover), y compris dans les zones avec overlays/popovers/containers scrollables.
 
-# Fix: Duplicated channel hidden by visibility filter
+Constat après inspection
+1) Le composant global `src/components/ui/tooltip.tsx` a bien un `z-[9999]`, mais `TooltipContent` n’est pas rendu via un portal par défaut.
+2) Sans portal, un tooltip peut rester piégé dans un contexte de stacking/overflow/transform (cas fréquent dans cette UI avec DnD, panneaux, modales, sidebars).
+3) `src/components/chat/PollDisplay.tsx` force localement `className="... z-[100]"` sur `TooltipContent`, ce qui peut diminuer la priorité visuelle (et contredire le fix global).
 
-## Root cause
+Plan d’implémentation
+1) Solidifier le composant tooltip global
+   - Fichier: `src/components/ui/tooltip.tsx`
+   - Envelopper `TooltipContent` dans `TooltipPrimitive.Portal` pour sortir du contexte visuel local et l’afficher au-dessus de l’UI.
+   - Verrouiller un niveau de couche élevé côté composant (pas seulement dépendre des classes appelantes), afin d’éviter qu’un `className` local baisse le z-index.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+2) Supprimer les overrides de z-index qui cassent l’intention globale
+   - Fichier: `src/components/chat/PollDisplay.tsx`
+   - Retirer les `z-[100]` passés à `TooltipContent`.
+   - Garder les styles fonctionnels (taille texte/max-width), sans override de couche.
+   - Simplifier l’usage si nécessaire (portal explicite devenu redondant si le composant global le gère).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+3) Vérifications fonctionnelles ciblées
+   - Hover sur icônes serveur (desktop): le tooltip doit apparaître au-dessus des panneaux adjacents.
+   - Hover dans zones avec couches concurrentes (popover/menu/modal): tooltip visible et lisible.
+   - Hover sur avatars de votes (PollDisplay): tooltip visible, non coupé.
+   - Régression: pas d’erreur runtime, pas de décalage de position évident, pas de clipping.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Critères d’acceptation
+- Tous les `TooltipContent` sont visibles au hover dans les écrans concernés.
+- Aucun tooltip ne passe “derrière” une popover/modale/panneau.
+- Pas de régression sur l’UX tooltip existante (position, animation, lisibilité).
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+Détails techniques (pour implémentation)
+- Fichiers à modifier:
+  - `src/components/ui/tooltip.tsx`
+  - `src/components/chat/PollDisplay.tsx`
+- Aucun changement backend/base de données nécessaire.

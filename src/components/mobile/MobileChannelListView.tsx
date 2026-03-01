@@ -399,7 +399,7 @@ export function MobileChannelListView({
     }, []);
 
     return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full bg-card select-none">
       {/* Banner (both embedded and non-embedded) */}
       {showBanner && bannerUrl && (
         <div className="relative h-24 flex-shrink-0 overflow-hidden rounded-t-xl">

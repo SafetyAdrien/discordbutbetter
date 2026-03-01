@@ -441,7 +441,7 @@ export function MobileChannelListView({
 
       {/* Search bar below banner */}
       {showBanner && bannerUrl && (
-        <div className="px-3 pt-2 pb-1">
+        <div className="px-3 pt-2 pb-1 bg-surface-elevated">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
             <Input
@@ -456,7 +456,7 @@ export function MobileChannelListView({
 
       {/* Header (shown when no banner or scrolled) */}
       {!(showBanner && bannerUrl) && !embedded && (
-        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl">
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-surface-elevated">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -484,7 +484,7 @@ export function MobileChannelListView({
         </div>
       )}
       {!(showBanner && bannerUrl) && embedded && (
-        <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
+        <div className="h-12 px-4 flex items-center gap-2 border-b border-border bg-surface-elevated">
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
@@ -511,7 +511,7 @@ export function MobileChannelListView({
 
       {/* Search bar when no banner */}
       {!(showBanner && bannerUrl) && (
-        <div className="px-3 pt-2 pb-1">
+        <div className="px-3 pt-2 pb-1 bg-surface-elevated">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
             <Input
@@ -523,6 +523,9 @@ export function MobileChannelListView({
           </div>
         </div>
       )}
+
+      {/* Separator before channel list */}
+      <div className="h-px bg-border/30" />
 
       {/* Channel List */}
       <div

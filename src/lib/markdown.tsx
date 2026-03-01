@@ -115,6 +115,8 @@ function tokenizeInline(text: string): MarkdownToken[] {
       mentionId?: string;
       mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
       embedData?: { serverId: string; channelId: string; messageId: string };
+      timestamp?: number;
+      timestampFormat?: string;
     } | null = null;
     
     // Check for message link embed (highest priority for URLs)

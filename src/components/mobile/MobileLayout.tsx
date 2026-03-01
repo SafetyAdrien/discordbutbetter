@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { MobileBottomNav, MobileTab } from './MobileBottomNav';
-import { MobileHomeView } from './MobileHomeView';
 import { MobileServersView } from './MobileServersView';
 import { MobileChannelListView } from './MobileChannelListView';
 import { MobileChatView } from './MobileChatView';
@@ -69,7 +68,9 @@ export function MobileLayout({
 
   // Restore persisted state on mount
   const [activeTab, setActiveTabLocal] = useState<MobileTab>(() => {
-    return (persistedTab as MobileTab) || 'home';
+    const tab = persistedTab as MobileTab;
+    if (tab === 'servers' || tab === 'notifications' || tab === 'profile') return tab;
+    return 'servers';
   });
   const [mobileView, setMobileViewLocal] = useState<MobileView>(() => {
     if (persistedView && persistedView.type) {
@@ -117,7 +118,7 @@ export function MobileLayout({
 
   const handlePop = useCallback((state: HistoryViewState) => {
     if (!state.mobileView) return;
-    const tab = (state.mobileTab as MobileTab) || 'home';
+    const tab = (state.mobileTab as MobileTab) || 'servers';
     setActiveTabLocal(tab);
     persistMobileTab(tab);
 
@@ -354,7 +355,7 @@ export function MobileLayout({
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
 
   // Swipe between tabs
-  const TAB_ORDER: MobileTab[] = ['home', 'servers', 'notifications', 'profile'];
+  const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
 
   const handleSwipeTab = useCallback((newIndex: number) => {
@@ -454,23 +455,19 @@ export function MobileLayout({
           } : {})}
         >
           <div className="h-full">
-            {activeTab === 'home' && (
-              <MobileHomeView
-                activeDMId={activeDMId}
-                onConversationSelect={onOpenDM}
-                onShowFriends={onShowFriends}
-              />
-            )}
             {activeTab === 'servers' && (
               <MobileServersView
                 servers={servers}
                 activeServerId={activeServerId}
                 rawServers={rawServers}
+                activeDMId={activeDMId}
                 onServerSelect={handleServerSelect}
                 onChannelSelect={handleServerChannelSelect}
                 onDiscoverClick={() => setShowDiscover(true)}
                 onCreateClick={() => setShowCreate(true)}
                 onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
+                onOpenDM={onOpenDM}
+                onShowFriends={onShowFriends}
               />
             )}
             {activeTab === 'notifications' && <MobileNotificationsView />}

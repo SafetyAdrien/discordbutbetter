@@ -1,7 +1,7 @@
 import { Server } from '@/types/app';
 import { cn } from '@/lib/utils';
 import { Compass, Plus, MessageCircle, Settings, UserPlus, Hash, LogOut, CheckCircle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -94,10 +94,10 @@ function SortableServerIcon({
         <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mb-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
       )}
       
-      <ContextMenu>
-        <Tooltip>
-          <ContextMenuTrigger asChild>
-            <TooltipTrigger asChild>
+      <Tooltip>
+        <ContextMenu>
+          <TooltipTrigger asChild>
+            <ContextMenuTrigger asChild>
               <button
                 {...attributes}
                 {...listeners}
@@ -149,13 +149,9 @@ function SortableServerIcon({
                   </div>
                 )}
               </button>
-            </TooltipTrigger>
-          </ContextMenuTrigger>
-          <TooltipContent side="right">
-            <p>{server.name}</p>
-          </TooltipContent>
-        </Tooltip>
-        <ContextMenuContent className="w-48">
+            </ContextMenuTrigger>
+          </TooltipTrigger>
+          <ContextMenuContent className="w-48">
           <ContextMenuItem onSelect={onMarkAsRead}>
             <CheckCircle className="w-4 h-4 mr-2" />
             Marquer comme lu
@@ -184,8 +180,14 @@ function SortableServerIcon({
             <LogOut className="w-4 h-4 mr-2" />
             Quitter le serveur
           </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+          </ContextMenuContent>
+        </ContextMenu>
+        <TooltipPortal>
+          <TooltipContent side="right">
+            <p>{server.name}</p>
+          </TooltipContent>
+        </TooltipPortal>
+      </Tooltip>
       {/* Inline drop indicator - after */}
       {dropIndicator === 'after' && (
         <div className="w-10 h-[2px] bg-primary rounded-full mx-auto mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
@@ -438,9 +440,11 @@ export function ServerList({
             )}
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>Messages Privés</p>
-        </TooltipContent>
+        <TooltipPortal>
+          <TooltipContent side="right">
+            <p>Messages Privés</p>
+          </TooltipContent>
+        </TooltipPortal>
       </Tooltip>
 
       <div className="w-8 h-[2px] bg-border rounded-full my-1" />
@@ -498,9 +502,11 @@ export function ServerList({
             <Plus className="w-6 h-6" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>Ajouter un serveur</p>
-        </TooltipContent>
+        <TooltipPortal>
+          <TooltipContent side="right">
+            <p>Ajouter un serveur</p>
+          </TooltipContent>
+        </TooltipPortal>
       </Tooltip>
 
       <Tooltip>
@@ -512,9 +518,11 @@ export function ServerList({
             <Compass className="w-6 h-6" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>Découvrir des serveurs</p>
-        </TooltipContent>
+        <TooltipPortal>
+          <TooltipContent side="right">
+            <p>Découvrir des serveurs</p>
+          </TooltipContent>
+        </TooltipPortal>
       </Tooltip>
 
       {/* Leave Server Confirmation Dialog */}

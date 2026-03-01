@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
 import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
+import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
+import { Input } from '@/components/ui/input';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -91,6 +93,7 @@ function ServerProfileSheet({
   const [open, setOpen] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [showCreateInvite, setShowCreateInvite] = useState(false);
   const { user } = useAuth();
   const { data: servers } = useServers();
   const { data: members } = useMembers(open ? serverId : null);
@@ -258,6 +261,13 @@ function ServerProfileSheet({
             <Separator />
             <div className="space-y-1">
               <button
+                onClick={() => { setOpen(false); setShowCreateInvite(true); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+              >
+                <UserPlus className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">Créer une invitation</span>
+              </button>
+              <button
                 onClick={() => { setOpen(false); setShowCreateChannel(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
@@ -298,6 +308,13 @@ function ServerProfileSheet({
           onClose={() => setShowCreateCategory(false)}
         />
       )}
+
+      {showCreateInvite && (
+        <CreateInviteModal
+          serverId={serverId}
+          onClose={() => setShowCreateInvite(false)}
+        />
+      )}
     </>
   );
 }
@@ -321,6 +338,8 @@ export function MobileChannelListView({
   const [longPressedChannelId, setLongPressedChannelId] = useState<string | null>(null);
   const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
   const [showEmptyLongPressMenu, setShowEmptyLongPressMenu] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [longPressPosition, setLongPressPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
@@ -368,7 +387,6 @@ export function MobileChannelListView({
   const serverNameTrigger = (
     <button className="flex items-center gap-1 text-left min-w-0">
       <h2 className="font-semibold text-sm truncate">{serverName}</h2>
-      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
     </button>
   );
 
@@ -381,13 +399,12 @@ export function MobileChannelListView({
 
     return (
     <div className="flex flex-col h-full bg-card">
-      {/* Banner */}
       {/* Banner (both embedded and non-embedded) */}
       {showBanner && bannerUrl && (
-        <div className="relative h-24 flex-shrink-0 overflow-hidden">
+        <div className="relative h-24 flex-shrink-0 overflow-hidden rounded-t-xl">
           <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-2.5 left-3 z-10 flex items-center gap-2">
+          <div className="absolute bottom-2.5 left-3 right-3 z-10 flex items-center gap-2">
             {!embedded && (
               <button onClick={onBack} className="p-1 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
                 <ChevronLeft className="w-4 h-4 text-white" />
@@ -396,28 +413,94 @@ export function MobileChannelListView({
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={
               <button className="flex items-center gap-1 text-left min-w-0">
                 <h2 className="font-semibold text-sm truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
-                <ChevronDown className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
               </button>
             } onOpenSettings={onOpenSettings} />
+            <div className="flex-1" />
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors"
+            >
+              <UserPlus className="w-4 h-4 text-white" />
+            </button>
+            {onOpenSettings && (
+              <button
+                onClick={onOpenSettings}
+                className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors"
+              >
+                <ChevronDown className="w-4 h-4 text-white/80" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Search bar below banner */}
+      {showBanner && bannerUrl && (
+        <div className="px-3 pt-2 pb-1">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+            <Input
+              placeholder="Rechercher messages, membres, salons..."
+              value={mobileSearchQuery}
+              onChange={(e) => setMobileSearchQuery(e.target.value)}
+              className="h-9 pl-8 text-sm bg-input rounded-xl"
+            />
           </div>
         </div>
       )}
 
       {/* Header (shown when no banner or scrolled) */}
       {!(showBanner && bannerUrl) && !embedded && (
-        <div className="h-12 px-3 flex items-center gap-2 border-b border-border">
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
+          {onOpenSettings && (
+            <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
       {!(showBanner && bannerUrl) && embedded && (
         <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
+          </div>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
+          {onOpenSettings && (
+            <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Search bar when no banner */}
+      {!(showBanner && bannerUrl) && (
+        <div className="px-3 pt-2 pb-1">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+            <Input
+              placeholder="Rechercher messages, membres, salons..."
+              value={mobileSearchQuery}
+              onChange={(e) => setMobileSearchQuery(e.target.value)}
+              className="h-9 pl-8 text-sm bg-input rounded-xl"
+            />
           </div>
         </div>
       )}
@@ -759,6 +842,13 @@ export function MobileChannelListView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showInviteModal && (
+        <CreateInviteModal
+          serverId={serverId}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </div>
   );
 }

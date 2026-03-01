@@ -70,7 +70,7 @@ export function MobileChatView({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0">
+      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0 rounded-t-xl">
         <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -108,51 +108,54 @@ export function MobileChatView({
               <Users className="w-5 h-5" />
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-0">
-            {/* Action icons relocated from ChatArea header */}
-            <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
-              {/* Notifications */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Bell className="w-4 h-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="start" className="w-56 p-3">
-                  <h4 className="font-semibold text-foreground mb-3 text-sm">Notifications</h4>
-                  <div className="space-y-1">
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
-                      <BellRing className="w-4 h-4 text-muted-foreground" />
-                      <span>Tous les messages</span>
-                    </button>
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
-                      <AtSign className="w-4 h-4 text-muted-foreground" />
-                      <span>Mentions uniquement</span>
-                    </button>
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
-                      <BellOff className="w-4 h-4 text-muted-foreground" />
-                      <span>Aucun</span>
-                    </button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+          <SheetContent side="right" className="w-72 p-0 rounded-l-xl">
+            {/* Header with title and action icons */}
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Membres</h3>
+              <div className="flex items-center gap-0.5">
+                {/* Notifications */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Bell className="w-4 h-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="end" className="w-56 p-3 rounded-xl">
+                    <h4 className="font-semibold text-foreground mb-3 text-sm">Notifications</h4>
+                    <div className="space-y-1">
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
+                        <BellRing className="w-4 h-4 text-muted-foreground" />
+                        <span>Tous les messages</span>
+                      </button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
+                        <AtSign className="w-4 h-4 text-muted-foreground" />
+                        <span>Mentions uniquement</span>
+                      </button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
+                        <BellOff className="w-4 h-4 text-muted-foreground" />
+                        <span>Aucun</span>
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-              {/* Pinned Messages */}
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Pin className="w-4 h-4" />
-              </Button>
+                {/* Pinned Messages */}
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Pin className="w-4 h-4" />
+                </Button>
 
-              {/* Threads */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <StreamlineThreads className="w-4 h-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="start" className="w-80 p-0">
-                  <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
-                </PopoverContent>
-              </Popover>
+                {/* Threads */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <StreamlineThreads className="w-4 h-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="end" className="w-80 p-0 rounded-xl">
+                    <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             <MemberList

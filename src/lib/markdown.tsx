@@ -19,13 +19,16 @@ interface MarkdownToken {
     | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' 
     | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock'
     | 'userMention' | 'roleMention' | 'channelMention' | 'specialMention'
-    | 'everyoneMention' | 'messageLinkEmbed';
+    | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink';
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
   // Mention-specific data
   mentionId?: string;
   mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
+  // Timestamp data
+  timestamp?: number;
+  timestampFormat?: string;
   // Message link embed data
   embedData?: {
     serverId: string;
@@ -35,7 +38,7 @@ interface MarkdownToken {
 }
 
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty' | 'separator';
   content: string;
   language?: string;
   indentLevel?: number;

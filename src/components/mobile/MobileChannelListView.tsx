@@ -842,6 +842,13 @@ export function MobileChannelListView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showInviteModal && (
+        <CreateInviteModal
+          serverId={serverId}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </div>
   );
 }

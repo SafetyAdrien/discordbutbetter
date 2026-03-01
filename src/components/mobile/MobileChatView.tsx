@@ -1,6 +1,7 @@
 import { ChevronLeft, Users, Info, Bell, Pin, BellRing, BellOff, AtSign } from 'lucide-react';
 import { ChatArea } from '@/components/chat/ChatArea';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberList } from '@/components/layout/MemberList';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';

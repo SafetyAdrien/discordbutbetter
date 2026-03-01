@@ -70,7 +70,7 @@ export function MobileChatView({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0">
+      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0 rounded-t-xl">
         <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>

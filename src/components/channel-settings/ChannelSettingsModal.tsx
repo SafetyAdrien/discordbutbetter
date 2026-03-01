@@ -88,10 +88,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
             </div>
           ) : channel ? (
             <div className="space-y-6">
-              <ChannelOverview channel={channel} />
-              <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-
-              <Tabs defaultValue="permissions" className="mt-4">
+              <Tabs defaultValue="permissions">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="permissions">Permissions</TabsTrigger>
                   <TabsTrigger value="integrations">Intégrations</TabsTrigger>
@@ -103,6 +100,13 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
                   <ChannelWebhooks channelId={channelId} />
                 </TabsContent>
               </Tabs>
+
+              <div className="border-t border-border pt-6">
+                <ChannelOverview channel={channel} />
+                <div className="mt-6">
+                  <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+                </div>
+              </div>
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-8">Salon introuvable</p>

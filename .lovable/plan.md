@@ -1,61 +1,50 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corrections mobile : Threads et Recherche
 
-## Root cause
+## 1. Threads Popover - Adapter la taille du conteneur
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### Probleme
+Le composant `ThreadsPopover` utilise des dimensions fixes `h-[450px] w-[380px]` (ligne 38). Dans le Sheet mobile des membres (max 320px de large), ce conteneur deborde largement de l'ecran.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Solution
+Remplacer les dimensions fixes par des dimensions responsives dans `ThreadsPopover.tsx` :
+- `w-[380px]` devient `w-full max-w-[380px]`
+- `h-[450px]` devient `max-h-[350px] sm:h-[450px]`
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+De plus, dans `MobileChatView.tsx`, le `PopoverContent` qui encapsule le `ThreadsPopover` a `w-80` (320px). On le change en `w-[calc(85vw-1rem)] max-w-80` pour s'adapter a la largeur du Sheet mobile.
 
-## Fix
+### Fichier modifie
+- `src/components/threads/ThreadsPopover.tsx` (ligne 38) : dimensions responsives
+- `src/components/mobile/MobileChatView.tsx` (ligne 162) : largeur du PopoverContent
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+---
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+## 2. Recherche - Popup de filtres qui deborde sur mobile
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### Probleme
+Le `GlobalSearchModal` affiche une liste de 9 prefixes de recherche dans un dropdown absolu (`showPrefixSuggestions`, lignes 445-465). Sur mobile, ce dropdown deborde du conteneur.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### Solution
+Integrer les suggestions de filtres directement dans le corps du modal sur mobile, au lieu d'un dropdown absolu flottant :
+- Sur mobile (`isMobile`), afficher les prefixes sous forme de chips/tags horizontaux scrollables sous l'input, faisant partie du flux normal du document (pas de positionnement absolu)
+- Sur desktop, conserver le dropdown actuel
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+Concretement dans `GlobalSearchModal.tsx` :
+1. Extraire le bloc `showPrefixSuggestions` dans un rendu conditionnel
+2. Sur mobile : afficher les prefixes comme une grille 2 colonnes compacte ou une liste horizontale scrollable directement sous l'input (sans `absolute`, sans `z-50`)
+3. Sur desktop : garder le rendu actuel avec `absolute z-50 top-full`
 
-### 3. Hook needs `useAuth` for the user ID
+### Fichier modifie
+- `src/components/modals/GlobalSearchModal.tsx` : rendu conditionnel mobile/desktop des suggestions de prefixes
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+---
 
-## Detailed changes
+## Resume des fichiers modifies
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Modification |
+|---|---|
+| `src/components/threads/ThreadsPopover.tsx` | Dimensions responsives du conteneur |
+| `src/components/mobile/MobileChatView.tsx` | Largeur du PopoverContent des threads |
+| `src/components/modals/GlobalSearchModal.tsx` | Filtres inline sur mobile au lieu d'un dropdown absolu |
 

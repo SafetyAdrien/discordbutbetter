@@ -18,10 +18,6 @@ import {
   Copy,
   Headphones,
   MessageSquare,
-  Info,
-  Smile,
-  Sticker,
-  Volume2,
 } from "lucide-react";
 import { ServerSettingsQuickMenu } from "@/components/server-settings/ServerSettingsQuickMenu";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";

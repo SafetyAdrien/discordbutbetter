@@ -1178,20 +1178,20 @@ export function ChannelList({
       </div>
       {/* Server Header - styled like User Panel */}
       <div className="bg-[hsl(var(--surface-header))]">
-        <div className="flex items-center rounded-t-xl"
+        <div className="flex items-center rounded-t-xl relative overflow-hidden"
           style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
         >
+          {showBanner && server.bannerUrl && (
+            <div className="absolute inset-0 z-0 overflow-hidden rounded-t-xl">
+              <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            </div>
+          )}
           {/* Server Name → Card Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full rounded-tl-xl"
+              <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative z-10 h-full rounded-tl-xl"
               >
-                {showBanner && server.bannerUrl && (
-                  <div className="absolute inset-0 overflow-hidden rounded-tl-xl">
-                    <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  </div>
-                )}
                 <div className={cn(
                   "flex-1 min-w-0 text-left relative z-10 px-3",
                   showBanner && server.bannerUrl ? "self-end pb-2" : ""

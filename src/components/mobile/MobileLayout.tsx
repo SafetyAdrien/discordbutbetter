@@ -23,6 +23,7 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useSwipeTabs } from '@/hooks/useSwipeTabs';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import type { Server, Message, User } from '@/types/app';
@@ -346,6 +347,35 @@ export function MobileLayout({
   const channelSwipe = useSwipeBack({ onBack: handleBackToServers });
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
 
+  // Swipe between tabs
+  const TAB_ORDER: MobileTab[] = ['home', 'servers', 'notifications', 'profile'];
+  const tabIndex = TAB_ORDER.indexOf(activeTab);
+  const prevTabIndexRef = useRef(tabIndex);
+  const [swipeDirection, setSwipeDirection] = useState(0); // -1 left, 1 right
+
+  const handleSwipeTab = useCallback((newIndex: number) => {
+    setSwipeDirection(newIndex > tabIndex ? -1 : 1);
+    const tab = TAB_ORDER[newIndex];
+    setActiveTab(tab);
+    setMobileView({ type: 'tab' });
+  }, [tabIndex, setActiveTab, setMobileView]);
+
+  // Track direction for programmatic tab changes too
+  useEffect(() => {
+    if (tabIndex !== prevTabIndexRef.current) {
+      setSwipeDirection(tabIndex > prevTabIndexRef.current ? -1 : 1);
+      prevTabIndexRef.current = tabIndex;
+    }
+  }, [tabIndex]);
+
+  const swipeTabs = useSwipeTabs({
+    currentIndex: tabIndex,
+    tabCount: TAB_ORDER.length,
+    onSwipe: handleSwipeTab,
+  });
+
+  const isOverlayActive = mobileView.type !== 'tab';
+
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden relative">
       {/* Main Content */}
@@ -417,29 +447,47 @@ export function MobileLayout({
           )}
         </AnimatePresence>
 
-        {/* Base tab views */}
-        <div className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]">
-          {activeTab === 'home' && (
-            <MobileHomeView
-              activeDMId={activeDMId}
-              onConversationSelect={onOpenDM}
-              onShowFriends={onShowFriends}
-            />
-          )}
-          {activeTab === 'servers' && (
-            <MobileServersView
-              servers={servers}
-              activeServerId={activeServerId}
-              rawServers={rawServers}
-              onServerSelect={handleServerSelect}
-              onChannelSelect={handleServerChannelSelect}
-              onDiscoverClick={() => setShowDiscover(true)}
-              onCreateClick={() => setShowCreate(true)}
-              onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
-            />
-          )}
-          {activeTab === 'notifications' && <MobileNotificationsView />}
-          {activeTab === 'profile' && <MobileProfileView />}
+        {/* Base tab views with swipe */}
+        <div
+          className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]"
+          {...(!isOverlayActive ? {
+            onTouchStart: swipeTabs.onTouchStart,
+            onTouchMove: swipeTabs.onTouchMove,
+            onTouchEnd: swipeTabs.onTouchEnd,
+          } : {})}
+        >
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={{ x: swipeDirection === -1 ? '40%' : '-40%', opacity: 0.5 }}
+              animate={{ x: swipeTabs.offsetX, opacity: 1 }}
+              exit={{ x: swipeDirection === -1 ? '-40%' : '40%', opacity: 0.5 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+              className="h-full"
+            >
+              {activeTab === 'home' && (
+                <MobileHomeView
+                  activeDMId={activeDMId}
+                  onConversationSelect={onOpenDM}
+                  onShowFriends={onShowFriends}
+                />
+              )}
+              {activeTab === 'servers' && (
+                <MobileServersView
+                  servers={servers}
+                  activeServerId={activeServerId}
+                  rawServers={rawServers}
+                  onServerSelect={handleServerSelect}
+                  onChannelSelect={handleServerChannelSelect}
+                  onDiscoverClick={() => setShowDiscover(true)}
+                  onCreateClick={() => setShowCreate(true)}
+                  onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
+                />
+              )}
+              {activeTab === 'notifications' && <MobileNotificationsView />}
+              {activeTab === 'profile' && <MobileProfileView />}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 

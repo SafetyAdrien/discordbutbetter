@@ -1,45 +1,61 @@
 
 
-# Swipe horizontal entre les onglets de la navigation mobile
+# Fix: Duplicated channel hidden by visibility filter
 
-## Objectif
+## Root cause
 
-Permettre a l'utilisateur de glisser horizontalement (swipe gauche/droite) pour naviguer entre les 4 onglets de la barre de navigation mobile (Messages, Serveurs, Notifs, Vous), en plus du swipe-back depuis le bord gauche deja en place pour les vues superposees (channels, chat, thread).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Approche
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. Creer un hook `useSwipeTabs`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Nouveau fichier** : `src/hooks/useSwipeTabs.ts`
+## Fix
 
-Ce hook gere le swipe horizontal sur la zone principale des onglets :
-- Detecte un swipe horizontal (dx > dy * 1.5, seuil minimum de 50px)
-- Ne se declenche PAS depuis le bord gauche (< 30px) pour ne pas conflictuellement avec `useSwipeBack`
-- Swipe vers la gauche = onglet suivant, swipe vers la droite = onglet precedent
-- Retourne `onTouchStart`, `onTouchMove`, `onTouchEnd` et un `offsetX` pour animer le glissement en temps reel
-- Accepte l'index courant de l'onglet et le nombre total d'onglets
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. Integrer dans `MobileLayout.tsx`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- Importer `useSwipeTabs`
-- Definir l'ordre des onglets : `['home', 'servers', 'notifications', 'profile']`
-- Attacher les handlers touch sur le conteneur `<div>` des vues d'onglets (ligne 421)
-- Au declenchement du swipe, appeler `setActiveTab` avec l'onglet precedent/suivant
-- Ajouter une translation CSS en temps reel (`transform: translateX(offsetX)`) sur le conteneur pour un retour visuel fluide pendant le geste
-- Ne PAS activer le swipe-tabs quand une vue superposee est active (`mobileView.type !== 'tab'`)
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 3. Animation de transition entre onglets
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- Envelopper le contenu des onglets dans un conteneur anime avec `framer-motion`
-- Utiliser `AnimatePresence` avec une direction (gauche/droite) basee sur l'index de l'onglet precedent vs le nouveau
-- Transition rapide de type spring pour un rendu fluide
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
----
+### 3. Hook needs `useAuth` for the user ID
 
-## Resume des fichiers
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-| Fichier | Changement |
-|---|---|
-| `src/hooks/useSwipeTabs.ts` | Nouveau hook pour le swipe horizontal entre onglets |
-| `src/components/mobile/MobileLayout.tsx` | Integrer le swipe-tabs sur la zone des onglets avec animation directionnelle |
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

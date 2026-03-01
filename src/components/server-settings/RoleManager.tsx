@@ -5,7 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 // DnD Kit imports
@@ -83,17 +83,25 @@ function SortableRole({
       )}
 
       <div
-        {...attributes}
-        {...listeners}
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-150 group',
-          'cursor-grab active:cursor-grabbing',
+          'flex items-center gap-2 px-1 py-2 rounded-lg transition-all duration-150 group',
           isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
           isDragging && 'opacity-30',
-          !canDragAbove && 'opacity-50 cursor-not-allowed'
+          !canDragAbove && 'opacity-50'
         )}
         onClick={onSelect}
       >
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className={cn(
+            'flex items-center justify-center w-5 h-5 flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors',
+            !canDragAbove && 'cursor-not-allowed'
+          )}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </div>
         <RoleIcon role={role} />
         <span className="flex-1 truncate text-sm">{role.name}</span>
 

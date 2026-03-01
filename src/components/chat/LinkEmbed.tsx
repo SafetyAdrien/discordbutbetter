@@ -30,7 +30,7 @@ export function LinkEmbed({ url }: LinkEmbedProps) {
 
   if (!data) return null;
 
-  const borderColor = data.themeColor || '#5865F2';
+  const borderColor = data.themeColor || '#202225';
 
   return (
     <div

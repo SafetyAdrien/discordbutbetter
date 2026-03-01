@@ -308,6 +308,7 @@ export function MobileChannelListView({
   const [longPressedChannelId, setLongPressedChannelId] = useState<string | null>(null);
   const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
   const [showEmptyLongPressMenu, setShowEmptyLongPressMenu] = useState(false);
+  const [longPressPosition, setLongPressPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,7 +324,11 @@ export function MobileChannelListView({
   const handleEmptyTouchStart = useCallback((e: React.TouchEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]') || target.closest('a')) return;
+    const touch = e.touches[0];
+    const touchX = touch.clientX;
+    const touchY = touch.clientY;
     emptyLongPressTimer.current = setTimeout(() => {
+      setLongPressPosition({ x: touchX, y: touchY });
       setShowEmptyLongPressMenu(true);
     }, 500);
   }, []);

@@ -31,6 +31,7 @@ import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
 import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import StreamlineThreadBranch from "@/components/icons/StreamlineThreadBranch";
 import { useState, useCallback, useMemo, useRef, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +62,7 @@ import { EditCategoryModal } from "@/components/category-settings/EditCategoryMo
 import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
+import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
@@ -184,6 +186,7 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
   stage: StreamlineStage,
+  link: StreamlineLink,
 };
 const statusColors = {
   online: "bg-[hsl(var(--online))]",
@@ -690,6 +693,7 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{ url: string } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
@@ -849,6 +853,13 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
+    // Link channels open external link warning modal
+    if (channel.type === "link") {
+      const url = channel.description || '';
+      if (url) setExternalLinkModal({ url });
+      return;
+    }
+
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
     const isVoiceOrStage = isVoice || isStage;
@@ -1606,6 +1617,13 @@ export function ChannelList({
       )}
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
+
+      {externalLinkModal && (
+        <ExternalLinkWarningModal
+          url={externalLinkModal.url}
+          onClose={() => setExternalLinkModal(null)}
+        />
+      )}
 
       {inviteChannelId && (
         <CreateInviteModal

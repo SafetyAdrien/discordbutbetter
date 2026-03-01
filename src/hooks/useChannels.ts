@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export type ChannelType = 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks' | 'stage';
+export type ChannelType = 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link';
 
 export interface ChannelWithCategory {
   id: string;
@@ -229,11 +229,13 @@ export function useCreateChannel() {
       categoryId,
       name,
       type,
+      description,
     }: {
       serverId: string;
       categoryId: string | null;
       name: string;
       type: ChannelType;
+      description?: string;
     }) => {
       // Get max position in category (or server for orphan channels)
       let existing;
@@ -266,6 +268,7 @@ export function useCreateChannel() {
           name,
           type: type as any,
           position: nextPosition,
+          ...(description ? { description } : {}),
         })
         .select()
         .single();

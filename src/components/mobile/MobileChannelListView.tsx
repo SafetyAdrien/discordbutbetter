@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
 import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
 import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
+import { ExternalLinkWarningModal } from '@/components/modals/ExternalLinkWarningModal';
 import { Input } from '@/components/ui/input';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
@@ -20,6 +21,7 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useChannelUnreadCounts } from '@/hooks/useChannelUnreadCounts';
 import { useServers } from '@/hooks/useServers';
@@ -52,6 +54,7 @@ const channelIcons: Record<string, React.ElementType> = {
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
   stage: StreamlineStage,
+  link: StreamlineLink,
 };
 
 interface Channel {
@@ -344,6 +347,7 @@ export function MobileChannelListView({
   const [longPressPosition, setLongPressPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [externalLinkModal, setExternalLinkModal] = useState<{ url: string } | null>(null);
   const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
@@ -562,7 +566,14 @@ export function MobileChannelListView({
             <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
               <PopoverTrigger asChild>
                 <button
-                  onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+                  onClick={() => {
+                    if (ch.type === 'link') {
+                      const url = ch.description || '';
+                      if (url) setExternalLinkModal({ url });
+                      return;
+                    }
+                    setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
+                  }}
                   {...chLongPressHandlers}
                   className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                 >
@@ -688,7 +699,14 @@ export function MobileChannelListView({
                   <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
                     <PopoverTrigger asChild>
                       <button
-                        onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+                        onClick={() => {
+                          if (ch.type === 'link') {
+                            const url = ch.description || '';
+                            if (url) setExternalLinkModal({ url });
+                            return;
+                          }
+                          setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
+                        }}
                         {...chLongPressHandlers}
                         className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                       >
@@ -869,6 +887,13 @@ export function MobileChannelListView({
         <CreateInviteModal
           serverId={serverId}
           onClose={() => setShowInviteModal(false)}
+        />
+      )}
+
+      {externalLinkModal && (
+        <ExternalLinkWarningModal
+          url={externalLinkModal.url}
+          onClose={() => setExternalLinkModal(null)}
         />
       )}
     </div>

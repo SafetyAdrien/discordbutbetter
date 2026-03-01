@@ -2827,6 +2827,7 @@ export type Database = {
         | "calendar"
         | "tasks"
         | "stage"
+        | "link"
       friendship_status: "pending" | "accepted" | "blocked"
       server_permission:
         | "manage_server"
@@ -3079,6 +3080,7 @@ export const Constants = {
         "calendar",
         "tasks",
         "stage",
+        "link",
       ],
       friendship_status: ["pending", "accepted", "blocked"],
       server_permission: [

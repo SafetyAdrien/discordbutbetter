@@ -54,7 +54,7 @@ export interface PermissionCategory {
 }
 
 // Channel types for filtering permissions
-export type ChannelType = 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage';
+export type ChannelType = 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link';
 
 // Permission categories with all permissions
 export const PERMISSION_CATEGORIES: PermissionCategory[] = [
@@ -260,6 +260,7 @@ export const CHANNEL_TYPE_CATEGORIES: Record<ChannelType, string[]> = {
   calendar: ['general', 'calendar'],
   tasks: ['general', 'tasks'],
   stage: ['general', 'stage', 'voice'],
+  link: ['general'],
 };
 
 // Category permissions use general + moderation categories

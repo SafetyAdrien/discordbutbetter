@@ -1,37 +1,61 @@
 
-# Refactorer le modal de modification de salon
 
-## Objectif
-Aligner le `ChannelSettingsModal` sur le meme pattern que le `EditCategoryModal` : utiliser `ResponsiveModal` au lieu d'un `Dialog` brut + gestion mobile custom, et appliquer le meme spacing (`px-1` sur les tabs, `p-4` sur le contenu).
+# Fix: Duplicated channel hidden by visibility filter
 
-## Changements
+## Root cause
 
-### Fichier : `src/components/channel-settings/ChannelSettingsModal.tsx`
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-1. Remplacer l'import de `Dialog/DialogContent/DialogHeader/DialogTitle` et la gestion mobile manuelle par `ResponsiveModal`
-2. Supprimer les imports inutiles (`ChevronLeft`, `X`, `useBreakpoint`)
-3. Simplifier la structure : un seul rendu avec `ResponsiveModal` qui gere automatiquement desktop (Dialog) et mobile (Drawer)
-4. Appliquer `px-1` au `TabsList` et `p-4` au conteneur scrollable du contenu des tabs, comme dans `EditCategoryModal`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Structure finale (simplifiee)
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
 
 ```text
-ResponsiveModal
-  +-- Loading spinner (si chargement)
-  +-- Tabs
-       +-- TabsList (grid-cols-3, px-1)
-       +-- Contenu scrollable (p-4)
-            +-- TabsContent "overview"
-                 +-- ChannelOverview
-                 +-- ChannelDangerZone
-            +-- TabsContent "permissions"
-            +-- TabsContent "integrations"
-  +-- Message "Salon introuvable" (si erreur)
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### Details techniques
+### Code for onSuccess addition
 
-- Le titre du modal inclura l'icone du type de salon + "Parametres de {nom}"
-- Le composant passera de ~120 lignes (avec duplication mobile/desktop) a ~50 lignes
-- Le `ResponsiveModal` gere deja le responsive (Dialog sur desktop, Drawer sur mobile)
-- L'etat `activeTab` commencera a `'overview'` au lieu de pouvoir etre `null` (plus besoin de navigation 2 niveaux sur mobile)
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

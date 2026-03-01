@@ -168,7 +168,7 @@ interface ChannelListProps {
   server: Server;
   activeChannelId: string | null;
   onChannelSelect: (channelId: string) => void;
-  onOpenServerSettings?: () => void;
+  onOpenServerSettings?: (initialTab?: string) => void;
   orphanChannels?: OrphanChannel[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;

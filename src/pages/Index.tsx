@@ -269,10 +269,11 @@ const Index = () => {
     }
   };
 
-  const handleOpenServerSettings = (serverId?: string) => {
+  const handleOpenServerSettings = (serverId?: string, initialTab?: string) => {
     if (serverId) {
       setActiveServerId(serverId);
     }
+    setServerSettingsInitialTab(initialTab);
     setShowServerSettings(true);
   };
 

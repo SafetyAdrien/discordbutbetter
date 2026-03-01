@@ -1,10 +1,9 @@
 import { cn } from '@/lib/utils';
-import { MessageCircle, Globe, Bell, User } from 'lucide-react';
-import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { Globe, Bell, User } from 'lucide-react';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { motion } from 'framer-motion';
 
-export type MobileTab = 'home' | 'servers' | 'notifications' | 'profile';
+export type MobileTab = 'servers' | 'notifications' | 'profile';
 
 interface MobileBottomNavProps {
   activeTab: MobileTab;
@@ -12,20 +11,15 @@ interface MobileBottomNavProps {
 }
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
-  { id: 'home', label: 'Messages', icon: MessageCircle },
   { id: 'servers', label: 'Serveurs', icon: Globe },
   { id: 'notifications', label: 'Notifs', icon: Bell },
   { id: 'profile', label: 'Vous', icon: User },
 ];
 
 export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps) {
-  const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
   const notifCount = useUnreadNotificationsCount();
 
-  const totalDMs = Object.values(dmUnreadCounts).reduce((a, b) => a + b, 0);
-
   const getBadge = (id: MobileTab) => {
-    if (id === 'home' && totalDMs > 0) return totalDMs;
     if (id === 'notifications' && notifCount > 0) return notifCount;
     return 0;
   };

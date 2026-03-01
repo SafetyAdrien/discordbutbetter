@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { Plus, Compass } from 'lucide-react';
+import { Plus, Compass, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 
 import { MobileChannelListView } from './MobileChannelListView';
+import { MobileHomeView } from './MobileHomeView';
 import { Separator } from '@/components/ui/separator';
 import type { Server } from '@/types/app';
 
@@ -34,11 +36,14 @@ interface MobileServersViewProps {
   servers: Server[];
   activeServerId: string | null;
   rawServers: any[];
+  activeDMId: string | null;
   onServerSelect: (serverId: string) => void;
   onChannelSelect: (channelId: string, channelType: string) => void;
   onDiscoverClick: () => void;
   onCreateClick: () => void;
   onOpenSettings?: (initialTab?: string) => void;
+  onOpenDM: (conversationId: string) => void;
+  onShowFriends: () => void;
 }
 
 const ICON_SIZE = 'w-[50px] h-[50px]';
@@ -76,7 +81,6 @@ function SortableMobileServerIcon({
 
   return (
     <div ref={setNodeRef} style={style}>
-      {/* Drop indicator - before */}
       {dropIndicator === 'before' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />
       )}
@@ -89,7 +93,6 @@ function SortableMobileServerIcon({
           isDragging && 'opacity-30'
         )}
       >
-        {/* Active indicator */}
         <div className={cn(
           'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
           isActive ? 'h-8' : hasUnread ? 'h-3' : 'h-0 opacity-0'
@@ -118,7 +121,6 @@ function SortableMobileServerIcon({
           )}
         </div>
       </button>
-      {/* Drop indicator - after */}
       {dropIndicator === 'after' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mt-0.5" />
       )}
@@ -147,19 +149,26 @@ export function MobileServersView({
   servers,
   activeServerId,
   rawServers,
+  activeDMId,
   onServerSelect,
   onChannelSelect,
   onDiscoverClick,
   onCreateClick,
   onOpenSettings,
+  onOpenDM,
+  onShowFriends,
 }: MobileServersViewProps) {
   const { unreadInfo } = useServerUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
+  const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
+  const [showDMs, setShowDMs] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
   const wasDraggingRef = useRef(false);
+
+  const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((a, b) => a + b, 0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -176,13 +185,20 @@ export function MobileServersView({
   }, [activeServerId]);
 
   useEffect(() => {
-    if (!selectedServerId && sortedServers.length > 0) {
+    if (!selectedServerId && !showDMs && sortedServers.length > 0) {
       setSelectedServerId(sortedServers[0].id);
     }
-  }, [sortedServers, selectedServerId]);
+  }, [sortedServers, selectedServerId, showDMs]);
+
+  const handleDMClick = useCallback(() => {
+    if (wasDraggingRef.current) return;
+    setShowDMs(true);
+    setSelectedServerId(null);
+  }, []);
 
   const handleServerTap = useCallback((serverId: string) => {
     if (wasDraggingRef.current) return;
+    setShowDMs(false);
     setSelectedServerId(serverId);
     onServerSelect(serverId);
   }, [onServerSelect]);
@@ -199,7 +215,6 @@ export function MobileServersView({
       return;
     }
     setOverId(String(over.id));
-    // Determine before/after based on position in the sorted list
     const activeIdx = serverIds.indexOf(String(event.active.id));
     const overIdx = serverIds.indexOf(String(over.id));
     setDropPosition(activeIdx < overIdx ? 'after' : 'before');
@@ -219,7 +234,6 @@ export function MobileServersView({
       }
     }
 
-    // Prevent tap from firing right after drag
     setTimeout(() => { wasDraggingRef.current = false; }, 100);
   }, [serverIds, reorderServers]);
 
@@ -253,6 +267,30 @@ export function MobileServersView({
         className={cn(
         'w-[72px] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
+        {/* DM Button */}
+        <button
+          onClick={handleDMClick}
+          className={cn(
+            'relative flex items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all',
+            showDMs
+              ? 'bg-primary text-primary-foreground rounded-xl'
+              : 'bg-muted/50 hover:bg-primary/20 hover:text-primary text-muted-foreground'
+          )}
+        >
+          <div className={cn(
+            'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
+            showDMs ? 'h-8' : totalUnreadDMs > 0 ? 'h-3' : 'h-0 opacity-0'
+          )} />
+          <MessageCircle className="w-5 h-5" />
+          {totalUnreadDMs > 0 && !showDMs && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+              {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
+            </span>
+          )}
+        </button>
+
+        <Separator className="w-8 my-1" />
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -270,7 +308,7 @@ export function MobileServersView({
                 <SortableMobileServerIcon
                   key={server.id}
                   server={server}
-                  isActive={selectedServerId === server.id}
+                  isActive={!showDMs && selectedServerId === server.id}
                   hasUnread={info.hasUnread}
                   mentionCount={info.mentionCount}
                   isDragging={activeDragId === server.id}
@@ -303,9 +341,15 @@ export function MobileServersView({
         </button>
       </div>
 
-      {/* Right: Channel list */}
+      {/* Right: Content panel */}
       <div className="flex-1 min-w-0 overflow-hidden">
-        {selectedServerId && selectedRawServer ? (
+        {showDMs ? (
+          <MobileHomeView
+            activeDMId={activeDMId}
+            onConversationSelect={onOpenDM}
+            onShowFriends={onShowFriends}
+          />
+        ) : selectedServerId && selectedRawServer ? (
           <MobileChannelListView
             embedded
             serverName={selectedRawServer.name}

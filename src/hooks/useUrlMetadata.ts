@@ -21,17 +21,28 @@ async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
 
   const promise = (async () => {
     try {
+      console.log('[LinkEmbed] Fetching metadata for:', url);
       const { data, error } = await supabase.functions.invoke('fetch-url-metadata', {
         body: { url },
       });
-      if (error || data?.error) {
+      console.log('[LinkEmbed] Response:', { data, error });
+      if (error) {
+        console.error('[LinkEmbed] Invoke error:', error);
         metadataCache.set(url, null);
         return null;
       }
-      const metadata = data as UrlMetadata;
+      // Handle both direct response and nested data
+      const payload = data?.title !== undefined ? data : data?.data;
+      if (!payload || payload.error) {
+        console.warn('[LinkEmbed] No metadata or error in payload:', payload);
+        metadataCache.set(url, null);
+        return null;
+      }
+      const metadata = payload as UrlMetadata;
       metadataCache.set(url, metadata);
       return metadata;
-    } catch {
+    } catch (e) {
+      console.error('[LinkEmbed] Fetch exception:', e);
       metadataCache.set(url, null);
       return null;
     } finally {

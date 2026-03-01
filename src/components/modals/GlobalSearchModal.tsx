@@ -441,26 +441,38 @@ export function GlobalSearchModal({
               autoFocus
             />
 
-            {/* Prefix suggestions */}
+            {/* Prefix suggestions - inline on mobile, absolute dropdown on desktop */}
             {showPrefixSuggestions && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+              <div className={cn(
+                "bg-popover border border-border rounded-lg shadow-lg overflow-hidden",
+                isMobile
+                  ? "mt-2"
+                  : "absolute z-50 top-full left-0 right-0 mt-1"
+              )}>
                 <p className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
                   Options de recherche
                 </p>
-                {searchPrefixes.map(prefixConfig => {
-                  const Icon = prefixConfig.icon;
-                  return (
-                    <button
-                      key={prefixConfig.prefix}
-                      onClick={() => handlePrefixSelect(prefixConfig.prefix)}
-                      className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-primary">{prefixConfig.prefix}</span>
-                      <span className="text-sm text-muted-foreground">{prefixConfig.label}</span>
-                    </button>
-                  );
-                })}
+                <div className={cn(
+                  isMobile && "grid grid-cols-2 gap-0"
+                )}>
+                  {searchPrefixes.map(prefixConfig => {
+                    const Icon = prefixConfig.icon;
+                    return (
+                      <button
+                        key={prefixConfig.prefix}
+                        onClick={() => handlePrefixSelect(prefixConfig.prefix)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors text-left",
+                          isMobile ? "text-xs" : "w-full text-sm"
+                        )}
+                      >
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium text-primary truncate">{prefixConfig.prefix}</span>
+                        {!isMobile && <span className="text-muted-foreground">{prefixConfig.label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

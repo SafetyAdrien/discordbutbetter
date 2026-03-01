@@ -35,7 +35,7 @@ const ThreadsPopover: React.FC<ThreadsPopoverProps> = ({ channelId, onSelectThre
   };
 
   return (
-    <div className="flex flex-col h-[450px] w-[380px]">
+    <div className="flex flex-col max-h-[350px] sm:h-[450px] w-full max-w-[380px]">
       {/* Header */}
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-3">

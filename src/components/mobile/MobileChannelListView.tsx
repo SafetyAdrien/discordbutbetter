@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -302,6 +302,8 @@ export function MobileChannelListView({
 }: MobileChannelListViewProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [longPressedCategoryId, setLongPressedCategoryId] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; channelCount: number } | null>(null);
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
 
   const toggleCategory = (id: string) => {
@@ -380,15 +382,51 @@ export function MobileChannelListView({
         {/* Categories */}
         {categories.map(cat => {
           const isCollapsed = collapsedCategories.has(cat.id);
+          const longPressHandlers = {
+            onTouchStart: (() => {
+              let timer: ReturnType<typeof setTimeout> | null = null;
+              return (e: React.TouchEvent) => {
+                timer = setTimeout(() => {
+                  setLongPressedCategoryId(cat.id);
+                }, 500);
+                (e.currentTarget as any).__longPressTimer = timer;
+              };
+            })(),
+            onTouchEnd: (e: React.TouchEvent) => {
+              const timer = (e.currentTarget as any).__longPressTimer;
+              if (timer) clearTimeout(timer);
+            },
+            onTouchMove: (e: React.TouchEvent) => {
+              const timer = (e.currentTarget as any).__longPressTimer;
+              if (timer) clearTimeout(timer);
+            },
+          };
           return (
             <div key={cat.id}>
-              <button
-                onClick={() => toggleCategory(cat.id)}
-                className="w-full flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wide"
-              >
-                <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
-                {cat.name}
-              </button>
+              <Popover open={longPressedCategoryId === cat.id} onOpenChange={(open) => !open && setLongPressedCategoryId(null)}>
+                <PopoverTrigger asChild>
+                  <button
+                    onClick={() => toggleCategory(cat.id)}
+                    {...longPressHandlers}
+                    className="w-full flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wide"
+                  >
+                    <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
+                    {cat.name}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-1" side="bottom" align="start">
+                  <button
+                    onClick={() => {
+                      setLongPressedCategoryId(null);
+                      setEditingCategory({ id: cat.id, name: cat.name, channelCount: cat.channels.length });
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left"
+                  >
+                    <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                    Modifier la catégorie
+                  </button>
+                </PopoverContent>
+              </Popover>
               {!isCollapsed && cat.channels.map(ch => {
                 const Icon = channelIcons[ch.type] || StreamlineHash;
                 const info = channelUnreadInfo[ch.id];
@@ -414,6 +452,17 @@ export function MobileChannelListView({
             </div>
           );
         })}
+      </div>
+
+      {editingCategory && (
+        <EditCategoryModal
+          categoryId={editingCategory.id}
+          categoryName={editingCategory.name}
+          serverId={serverId}
+          channelCount={editingCategory.channelCount}
+          onClose={() => setEditingCategory(null)}
+        />
+      )}
       </div>
     </div>
   );

@@ -745,7 +745,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
 // ============================================
 export function parseMarkdown(content: string): React.ReactNode {
   // Check if content has any block-level elements
-  const hasBlockElements = /^(#{1,3} |-# |> |>>> |\d+\. |[-*] )/m.test(content) || content.includes('```');
+  const hasBlockElements = /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |-{3,}|\*{3,}|_{3,})/m.test(content) || content.includes('```');
   
   if (!hasBlockElements) {
     // Simple inline-only parsing with line break support

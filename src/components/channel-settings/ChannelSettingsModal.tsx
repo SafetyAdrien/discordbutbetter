@@ -37,6 +37,7 @@ const channelIcons = {
   media: StreamlineMedia,
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
+  link: StreamlineLink,
 };
 
 export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {

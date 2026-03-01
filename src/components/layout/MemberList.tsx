@@ -730,7 +730,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         secondaryOwnerId={server?.secondary_owner_id}
         memberId={selectedMember?.memberId}
         canManageRoles={canManageRoles}
-        mode={window.innerWidth < 640 ? "modal" : "card"}
+        mode={window.innerWidth < 640 ? "dialog" : "card"}
         cardPosition={{
           top: 60,
           right: 280,

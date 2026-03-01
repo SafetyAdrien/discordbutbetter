@@ -827,7 +827,6 @@ export function ChannelList({
     leaveServer.mutate(server.id, {
       onSuccess: () => {
         setShowLeaveDialog(false);
-        navigate("/channels/@me");
       },
     });
   };

@@ -349,10 +349,7 @@ export function ServerList({
         console.log('[DEBUG] Leave server success');
         setShowLeaveDialog(false);
         setServerToLeave(null);
-        // If the user was viewing the server they left, go to DMs
-        if (activeServerId === serverToLeave.id) {
-          onServerSelect(null);
-        }
+        // Redirection is handled reactively by Index.tsx useEffect
       },
       onError: (error) => {
         console.log('[DEBUG] Leave server error:', error);

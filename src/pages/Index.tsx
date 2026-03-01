@@ -47,6 +47,7 @@ const Index = () => {
     activeChannelId: persistedChannelId,
     activeThreadId: persistedThreadId,
     threadChannelId: persistedThreadChannelId,
+    channelsByServer,
     setActiveServerId: setPersistedServerId,
     setActiveDMId: setPersistedDMId,
     setActiveChannelId: setPersistedChannelId,
@@ -232,6 +233,31 @@ const Index = () => {
       // User can click a server to switch
     }
   }, [servers, activeServerId, activeDMId]);
+
+  // Reactive redirect: if active server no longer exists (left/deleted), go to last visited server
+  useEffect(() => {
+    if (!activeServerId || !servers || serversLoading) return;
+    const stillExists = servers.some(s => s.id === activeServerId);
+    if (stillExists) return;
+
+    // Find last visited server from channelsByServer history
+    const visitedServerIds = Object.keys(channelsByServer);
+    const fallbackServer = visitedServerIds
+      .filter(id => id !== activeServerId)
+      .reverse()
+      .find(id => servers.some(s => s.id === id));
+
+    if (fallbackServer) {
+      setActiveServerId(fallbackServer);
+    } else if (servers.length > 0) {
+      setActiveServerId(servers[0].id);
+    } else {
+      setActiveServerId(null);
+    }
+    setActiveChannelId(null);
+    setActiveThreadId(null);
+    setThreadChannelId(null);
+  }, [activeServerId, servers, serversLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update active channel when server changes - restore last visited or first text channel
   useEffect(() => {

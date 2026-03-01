@@ -1276,7 +1276,7 @@ export function ChannelList({
       {/* Channels with DnD */}
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
+          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-2">
             <DndContext
               sensors={sensors}
               collisionDetection={customCollisionDetection}

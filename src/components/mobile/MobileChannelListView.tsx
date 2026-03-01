@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
+import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';

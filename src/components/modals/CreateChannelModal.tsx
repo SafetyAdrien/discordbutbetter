@@ -12,6 +12,7 @@ import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
 import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import { useCreateChannel, ChannelType } from "@/hooks/useChannels";
 import { useServerSettings } from "@/hooks/useServerSettings";
 
@@ -80,6 +81,12 @@ const channelTypes: { value: ChannelType; label: string; icon: React.ElementType
     icon: StreamlineTasks,
     description: "Créer et gère ta liste de tâche à accomplir sur ton serveur.",
   },
+  {
+    value: "link",
+    label: "Chaîne de liaison",
+    icon: StreamlineLink,
+    description: "Ajoute un lien externe qui redirige vers un site ou une ressource.",
+  },
 ];
 
 export function CreateChannelModal({
@@ -90,6 +97,7 @@ export function CreateChannelModal({
 }: CreateChannelModalProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<ChannelType>("text");
+  const [linkUrl, setLinkUrl] = useState("");
   const createChannel = useCreateChannel();
   const { data: serverSettings } = useServerSettings(serverId);
   
@@ -97,14 +105,21 @@ export function CreateChannelModal({
   const isExemptFromStrict = type === 'voice' || type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
+  const isLink = type === 'link';
+  const isValidUrl = /^https?:\/\/.+/.test(linkUrl.trim());
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (isLink && !isValidUrl) return;
 
     const finalName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
     if (!finalName) return;
 
-    createChannel.mutate({ serverId, categoryId, name: finalName, type }, { onSuccess: onClose });
+    createChannel.mutate(
+      { serverId, categoryId, name: finalName, type, ...(isLink ? { description: linkUrl.trim() } : {}) },
+      { onSuccess: onClose }
+    );
   };
 
   return (
@@ -154,13 +169,30 @@ export function CreateChannelModal({
             />
           </div>
 
+          {isLink && (
+            <div className="space-y-2">
+              <Label htmlFor="link-url">URL</Label>
+              <Input
+                id="link-url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://example.com"
+                type="url"
+                className="w-full"
+              />
+              {linkUrl && !isValidUrl && (
+                <p className="text-xs text-destructive">L'URL doit commencer par http:// ou https://</p>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               Annuler
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || createChannel.isPending}
+              disabled={!name.trim() || createChannel.isPending || (isLink && !isValidUrl)}
               className="bg-[#5865f2] hover:bg-[#5865f2]/90"
             >
               {createChannel.isPending ? "Création..." : "Créer le salon"}

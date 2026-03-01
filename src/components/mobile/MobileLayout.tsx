@@ -447,29 +447,47 @@ export function MobileLayout({
           )}
         </AnimatePresence>
 
-        {/* Base tab views */}
-        <div className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]">
-          {activeTab === 'home' && (
-            <MobileHomeView
-              activeDMId={activeDMId}
-              onConversationSelect={onOpenDM}
-              onShowFriends={onShowFriends}
-            />
-          )}
-          {activeTab === 'servers' && (
-            <MobileServersView
-              servers={servers}
-              activeServerId={activeServerId}
-              rawServers={rawServers}
-              onServerSelect={handleServerSelect}
-              onChannelSelect={handleServerChannelSelect}
-              onDiscoverClick={() => setShowDiscover(true)}
-              onCreateClick={() => setShowCreate(true)}
-              onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
-            />
-          )}
-          {activeTab === 'notifications' && <MobileNotificationsView />}
-          {activeTab === 'profile' && <MobileProfileView />}
+        {/* Base tab views with swipe */}
+        <div
+          className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]"
+          {...(!isOverlayActive ? {
+            onTouchStart: swipeTabs.onTouchStart,
+            onTouchMove: swipeTabs.onTouchMove,
+            onTouchEnd: swipeTabs.onTouchEnd,
+          } : {})}
+        >
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={{ x: swipeDirection === -1 ? '40%' : '-40%', opacity: 0.5 }}
+              animate={{ x: swipeTabs.offsetX, opacity: 1 }}
+              exit={{ x: swipeDirection === -1 ? '-40%' : '40%', opacity: 0.5 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+              className="h-full"
+            >
+              {activeTab === 'home' && (
+                <MobileHomeView
+                  activeDMId={activeDMId}
+                  onConversationSelect={onOpenDM}
+                  onShowFriends={onShowFriends}
+                />
+              )}
+              {activeTab === 'servers' && (
+                <MobileServersView
+                  servers={servers}
+                  activeServerId={activeServerId}
+                  rawServers={rawServers}
+                  onServerSelect={handleServerSelect}
+                  onChannelSelect={handleServerChannelSelect}
+                  onDiscoverClick={() => setShowDiscover(true)}
+                  onCreateClick={() => setShowCreate(true)}
+                  onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
+                />
+              )}
+              {activeTab === 'notifications' && <MobileNotificationsView />}
+              {activeTab === 'profile' && <MobileProfileView />}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 

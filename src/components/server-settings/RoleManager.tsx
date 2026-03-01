@@ -57,7 +57,6 @@ function SortableRole({
   memberCount: number;
   dropIndicator: 'before' | 'after' | null;
   canDragAbove?: boolean;
-  isDragActive: boolean;
 }) {
   const {
     attributes,
@@ -352,7 +351,6 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                   memberCount={memberCounts[role.id] || 0}
                   dropIndicator={overId === role.id && activeId !== role.id ? dropPosition : null}
                   canDragAbove={canDragRole(role)}
-                  isDragActive={!!activeId}
                 />
               ))}
             </div>

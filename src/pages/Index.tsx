@@ -409,7 +409,7 @@ const Index = () => {
       channels: cat.channels.map(ch => ({
         id: ch.id,
         name: ch.name,
-        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
+        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link',
         description: ch.description || undefined,
       })),
     })),
@@ -429,7 +429,7 @@ const Index = () => {
       channels: cat.channels.map(ch => ({
       id: ch.id,
         name: ch.name,
-        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage',
+        type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link',
         description: ch.description || undefined,
       })),
     })),

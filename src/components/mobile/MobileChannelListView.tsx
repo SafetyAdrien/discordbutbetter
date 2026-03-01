@@ -330,6 +330,9 @@ export function MobileChannelListView({
   const deleteChannel = useDeleteChannel();
   const deleteCategoryMut = useDeleteCategory();
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
+  const [showBanner, setShowBanner] = useState(true);
+  const { data: servers } = useServers();
+  const currentServer = servers?.find(s => s.id === serverId);
 
   const clearEmptyLongPress = useCallback(() => {
     if (emptyLongPressTimer.current) {

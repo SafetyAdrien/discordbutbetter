@@ -50,6 +50,8 @@ export function MobileMessageActions({
   canAddReactions = true,
   canManageMessages = false,
 }: MobileMessageActionsProps) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   const handleAction = (fn: () => void) => {
     fn();
     onOpenChange(false);

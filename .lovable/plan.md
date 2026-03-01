@@ -1,53 +1,61 @@
 
 
-# Fix: Server Icon Tooltips Not Displaying Reliably
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problem
+## Root cause
 
-In the `ServerList` component, each server icon is wrapped in both a `ContextMenu` and a `Tooltip`. The nesting of `ContextMenuTrigger > TooltipTrigger` can cause pointer event conflicts that dismiss the tooltip prematurely. Additionally, the tooltip content renders without a `Portal`, which means it could be clipped by the scroll container (`overflow-y-auto` on the parent div).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Session replay confirms: some server tooltips appear for seconds (working), while others flash for ~20ms (broken), suggesting an intermittent event conflict.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Solution
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Two changes in `src/components/layout/ServerList.tsx`:
+## Fix
 
-1. **Wrap `TooltipContent` in `TooltipPortal`**: This ensures the tooltip renders at the document root, outside any scroll container or stacking context, preventing clipping.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-2. **Swap the nesting order**: Change from `ContextMenuTrigger > TooltipTrigger` to `TooltipTrigger > ContextMenuTrigger`. This prevents the context menu's pointer event handling from prematurely dismissing the tooltip.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Technical Changes
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### File: `src/components/layout/ServerList.tsx`
+### 2. In `onSuccess`: invalidate the permissions cache
 
-**Import**: Add `TooltipPortal` to the existing tooltip import (line 4).
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**SortableServerIcon** (lines 97-157): Restructure the nesting from:
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
 ```text
-ContextMenu
-  Tooltip
-    ContextMenuTrigger asChild
-      TooltipTrigger asChild
-        button
-    TooltipContent
-  ContextMenuContent
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-To:
+### Code for onSuccess addition
+
 ```text
-Tooltip
-  ContextMenu
-    TooltipTrigger asChild
-      ContextMenuTrigger asChild
-        button
-    ContextMenuContent
-  TooltipPortal
-    TooltipContent
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-This puts `Tooltip` as the outer wrapper so its pointer events take priority, and portals the content to avoid clipping.
-
-**Home/DM button tooltip** (lines 441-444): Also wrap `TooltipContent` in `TooltipPortal` for consistency.
-
-**Action buttons** (Create, Discover -- lines 492+): Same `TooltipPortal` wrap for consistency.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

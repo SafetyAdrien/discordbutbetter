@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, ClipboardCopy, Flag } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { DeleteMessageDialog } from '@/components/chat/DeleteMessageDialog';
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥', '😮', '😢'];
 

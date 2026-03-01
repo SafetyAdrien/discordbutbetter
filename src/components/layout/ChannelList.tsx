@@ -1145,7 +1145,7 @@ export function ChannelList({
   return (
     <div
       className={cn(
-        "bg-card flex flex-col border-r border-border relative",
+        "bg-card flex flex-col border-r border-border relative select-none",
         // Smooth width transition only when not actively resizing
         !isResizing.current && "transition-[width] duration-300 ease-out"
       )}

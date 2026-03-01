@@ -404,7 +404,7 @@ export function MobileChannelListView({
       {showBanner && bannerUrl && (
         <div className="relative h-24 flex-shrink-0 overflow-hidden rounded-t-xl">
           <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute bottom-2.5 left-3 right-3 z-10 flex items-center gap-2">
             {!embedded && (
               <button onClick={onBack} className="p-1 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">

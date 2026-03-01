@@ -6,7 +6,7 @@ interface InputMarkdownOverlayProps {
 }
 
 interface OverlayLine {
-  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'codeBlockDelimiter' | 'codeBlockLine' | 'normal';
+  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
   text: string;
 }
 
@@ -34,6 +34,7 @@ function parseLines(content: string): OverlayLine[] {
     if (line.startsWith('# ')) { result.push({ type: 'header1', text: line }); continue; }
     if (line.startsWith('-# ')) { result.push({ type: 'subtext', text: line }); continue; }
     if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
+    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
     if (/^(\s*)[-*] /.test(line)) { result.push({ type: 'listItem', text: line }); continue; }
     if (/^(\s*)\d+\. /.test(line)) { result.push({ type: 'orderedListItem', text: line }); continue; }
     result.push({ type: 'normal', text: line });
@@ -53,6 +54,7 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   blockquote: 'text-muted-foreground discord-overlay-blockquote',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
+  separator: 'text-muted-foreground',
   codeBlockDelimiter: 'text-muted-foreground discord-overlay-code',
   codeBlockLine: 'text-foreground discord-overlay-code',
   normal: 'text-foreground',
@@ -82,6 +84,7 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   if (currentLine.startsWith('# ')) return 'header1';
   if (currentLine.startsWith('-# ')) return 'subtext';
   if (currentLine.startsWith('> ') || currentLine.startsWith('>>> ')) return 'blockquote';
+  if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(currentLine.trim())) return 'separator';
   if (/^(\s*)[-*] /.test(currentLine)) return 'listItem';
   if (/^(\s*)\d+\. /.test(currentLine)) return 'orderedListItem';
   return 'normal';

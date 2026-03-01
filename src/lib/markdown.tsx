@@ -19,13 +19,16 @@ interface MarkdownToken {
     | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' 
     | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock'
     | 'userMention' | 'roleMention' | 'channelMention' | 'specialMention'
-    | 'everyoneMention' | 'messageLinkEmbed';
+    | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink';
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
   // Mention-specific data
   mentionId?: string;
   mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
+  // Timestamp data
+  timestamp?: number;
+  timestampFormat?: string;
   // Message link embed data
   embedData?: {
     serverId: string;
@@ -35,7 +38,7 @@ interface MarkdownToken {
 }
 
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty' | 'separator';
   content: string;
   language?: string;
   indentLevel?: number;
@@ -112,6 +115,8 @@ function tokenizeInline(text: string): MarkdownToken[] {
       mentionId?: string;
       mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
       embedData?: { serverId: string; channelId: string; messageId: string };
+      timestamp?: number;
+      timestampFormat?: string;
     } | null = null;
     
     // Check for message link embed (highest priority for URLs)
@@ -207,6 +212,21 @@ function tokenizeInline(text: string): MarkdownToken[] {
         url: linkMatch[2],
       };
     }
+
+    // Check for dynamic timestamps <t:TIMESTAMP:FORMAT>
+    const timestampRegex = /<t:(\d+):([tTdDfFR])>/g;
+    timestampRegex.lastIndex = 0;
+    const timestampMatch = timestampRegex.exec(remaining);
+    if (timestampMatch && (earliestMatch === null || timestampMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: timestampMatch.index,
+        length: timestampMatch[0].length,
+        content: timestampMatch[0],
+        type: 'timestamp' as MarkdownToken['type'],
+        timestamp: parseInt(timestampMatch[1], 10),
+        timestampFormat: timestampMatch[2],
+      };
+    }
     
     // Check for inline patterns (bold, italic, etc.)
     for (const { regex, type } of INLINE_PATTERNS) {
@@ -220,6 +240,20 @@ function tokenizeInline(text: string): MarkdownToken[] {
           type,
         };
       }
+    }
+
+    // Check for auto-linking bare URLs (lowest priority, after all other patterns)
+    const urlRegex = /(https?:\/\/[^\s<>\])"]+)/g;
+    urlRegex.lastIndex = 0;
+    const urlMatch = urlRegex.exec(remaining);
+    if (urlMatch && (earliestMatch === null || urlMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: urlMatch.index,
+        length: urlMatch[0].length,
+        content: urlMatch[1],
+        type: 'autoLink' as MarkdownToken['type'],
+        url: urlMatch[1],
+      };
     }
     
     if (earliestMatch) {
@@ -275,6 +309,19 @@ function tokenizeInline(text: string): MarkdownToken[] {
           type: 'messageLinkEmbed',
           content: '',
           embedData: earliestMatch.embedData,
+        });
+      } else if (earliestMatch.type === 'timestamp') {
+        tokens.push({
+          type: 'timestamp',
+          content: earliestMatch.content,
+          timestamp: earliestMatch.timestamp,
+          timestampFormat: earliestMatch.timestampFormat,
+        });
+      } else if (earliestMatch.type === 'autoLink') {
+        tokens.push({
+          type: 'autoLink',
+          content: earliestMatch.content,
+          url: earliestMatch.url,
         });
       } else {
         // Recursively parse content for other types
@@ -342,6 +389,12 @@ function parseBlocks(content: string): BlockToken[] {
     for (const line of lines) {
       if (line.trim() === '') {
         blocks.push({ type: 'empty', content: '' });
+        continue;
+      }
+
+      // Horizontal separator (---, ***, ___)
+      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+        blocks.push({ type: 'separator', content: '' });
         continue;
       }
       
@@ -545,6 +598,52 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
       );
     }
     
+    case 'timestamp': {
+      const ts = token.timestamp;
+      const fmt = token.timestampFormat || 'f';
+      if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
+      const date = new Date(ts * 1000);
+      const locale = 'fr-FR';
+      let formatted: string;
+      switch (fmt) {
+        case 't': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
+        case 'T': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); break;
+        case 'd': formatted = date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }); break;
+        case 'D': formatted = date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }); break;
+        case 'f': formatted = date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
+        case 'F': formatted = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
+        case 'R': {
+          const now = Date.now();
+          const diffS = Math.floor((now - ts * 1000) / 1000);
+          if (diffS < 60) formatted = 'à l\'instant';
+          else if (diffS < 3600) formatted = `il y a ${Math.floor(diffS / 60)} min`;
+          else if (diffS < 86400) formatted = `il y a ${Math.floor(diffS / 3600)}h`;
+          else if (diffS < 2592000) formatted = `il y a ${Math.floor(diffS / 86400)}j`;
+          else formatted = date.toLocaleDateString(locale);
+          break;
+        }
+        default: formatted = date.toLocaleString(locale);
+      }
+      return (
+        <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/15 text-primary text-sm cursor-default" title={date.toLocaleString(locale)}>
+          {formatted}
+        </span>
+      );
+    }
+
+    case 'autoLink':
+      return (
+        <a
+          key={key}
+          href={token.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline break-all"
+        >
+          {(token.content as string).length > 80 ? (token.content as string).slice(0, 77) + '...' : token.content as string}
+        </a>
+      );
+
     default:
       return <React.Fragment key={key}>{renderContent(token.content)}</React.Fragment>;
   }
@@ -626,6 +725,8 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     }
     case 'codeBlock':
       return <CodeBlock key={key} code={block.content} language={block.language} />;
+    case 'separator':
+      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-2" />;
     case 'empty':
       return <br key={key} />;
     case 'paragraph':
@@ -644,7 +745,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
 // ============================================
 export function parseMarkdown(content: string): React.ReactNode {
   // Check if content has any block-level elements
-  const hasBlockElements = /^(#{1,3} |-# |> |>>> |\d+\. |[-*] )/m.test(content) || content.includes('```');
+  const hasBlockElements = /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |-{3,}|\*{3,}|_{3,})/m.test(content) || content.includes('```');
   
   if (!hasBlockElements) {
     // Simple inline-only parsing with line break support

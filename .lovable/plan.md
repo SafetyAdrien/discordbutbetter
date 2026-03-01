@@ -1,66 +1,61 @@
 
 
-# Ajout de nouveaux formats Markdown
+# Fix: Duplicated channel hidden by visibility filter
 
-## Formats a ajouter (inspires de Discord)
+## Root cause
 
-### 1. Horodatages dynamiques
-**Syntaxe** : `<t:TIMESTAMP:FORMAT>`
-- Formats : `t` (heure courte), `T` (heure longue), `d` (date courte), `D` (date longue), `f` (date+heure), `F` (date+heure longue), `R` (relatif "il y a 2h")
-- Rendu : badge avec l'heure/date formatee selon la locale de l'utilisateur
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 2. URLs automatiques (auto-linking)
-**Syntaxe** : texte contenant `https://example.com` sans syntaxe `[]()`
-- Actuellement, les URLs brutes ne sont pas cliquables sauf les liens message Discord
-- Detection automatique des URLs (`https?://...`) et transformation en liens cliquables
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 3. Ligne horizontale (separateur)
-**Syntaxe** : `---` ou `***` ou `___` (seul sur une ligne)
-- Rendu : trait horizontal separateur, comme les `<hr>` sous les headers mais utilisable librement
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 4. Texte en exposant (non-Discord, mais utile)
-Ce point est optionnel et sort du scope Discord strict.
+## Fix
 
----
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-## Plan d'implementation
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### Fichiers concernes
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-| Fichier | Changement |
-|---|---|
-| `src/lib/markdown.tsx` | Ajouter les patterns inline (timestamps, auto-link) et bloc (separateur) |
-| `src/components/chat/InputMarkdownOverlay.tsx` | Ajouter le type `separator` pour le rendu live dans l'input |
-| `src/index.css` | Styles pour le badge timestamp |
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### Detail technique
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-#### 1. Horodatages dynamiques (`<t:TIMESTAMP:FORMAT>`)
+### 3. Hook needs `useAuth` for the user ID
 
-**Inline pattern** a ajouter dans `tokenizeInline` :
-- Regex : `<t:(\d+):([tTdDfFR])>`
-- Nouveau type de token : `timestamp`
-- Rendu : composant `TimestampBadge` qui formate le timestamp Unix avec `Intl.DateTimeFormat` ou `date-fns` (deja installe) selon le format demande
-- Style : badge avec fond translucide similaire aux mentions, texte clair
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-#### 2. Auto-linking des URLs
+## Detailed changes
 
-**Inline pattern** a ajouter dans `tokenizeInline` :
-- Regex : `(https?:\/\/[^\s<>\])"]+)` (URLs brutes hors syntaxe markdown existante)
-- Priorite basse dans le parseur (apres les liens masques `[text](url)` et les message link embeds)
-- Rendu : `<a>` cliquable avec style identique aux liens masques existants
-- Troncature visuelle optionnelle pour les URLs tres longues (afficher max ~60 chars)
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-#### 3. Separateur horizontal
+### Code sketch for onMutate addition (after servers cache update)
 
-**Block pattern** a ajouter dans `parseBlocks` :
-- Detection : ligne composee uniquement de `---`, `***`, ou `___` (3+ caracteres)
-- Nouveau type de bloc : `separator`
-- Rendu : `<hr>` stylise comme les separateurs sous les headers (border-[hsl(228,6%,26%)])
-- Mise a jour de `InputMarkdownOverlay` pour reconnaitre ce type de ligne
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
 
-### Ordre d'implementation
+### Code for onSuccess addition
 
-1. Separateur horizontal (le plus simple, bloc uniquement)
-2. Auto-linking des URLs (inline, priorite basse dans le parseur)
-3. Horodatages dynamiques (inline + nouveau composant de rendu)
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

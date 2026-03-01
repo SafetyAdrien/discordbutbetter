@@ -699,7 +699,14 @@ export function MobileChannelListView({
                   <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
                     <PopoverTrigger asChild>
                       <button
-                        onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+                        onClick={() => {
+                          if (ch.type === 'link') {
+                            const url = ch.description || '';
+                            if (url) setExternalLinkModal({ url });
+                            return;
+                          }
+                          setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
+                        }}
                         {...chLongPressHandlers}
                         className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                       >
@@ -880,6 +887,13 @@ export function MobileChannelListView({
         <CreateInviteModal
           serverId={serverId}
           onClose={() => setShowInviteModal(false)}
+        />
+      )}
+
+      {externalLinkModal && (
+        <ExternalLinkWarningModal
+          url={externalLinkModal.url}
+          onClose={() => setExternalLinkModal(null)}
         />
       )}
     </div>

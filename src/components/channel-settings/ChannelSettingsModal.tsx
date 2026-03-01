@@ -15,6 +15,7 @@ import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
+import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
@@ -36,6 +37,7 @@ const channelIcons = {
   media: StreamlineMedia,
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
+  link: StreamlineLink,
 };
 
 export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {

@@ -563,7 +563,14 @@ export function MobileChannelListView({
       {showEmptyLongPressMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowEmptyLongPressMenu(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute bottom-4 left-6 right-6 bg-popover rounded-lg p-1 shadow-xl border border-border" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed bg-popover rounded-lg p-1 shadow-xl border border-border w-44"
+            style={{
+              left: Math.min(longPressPosition.x, window.innerWidth - 190),
+              top: Math.min(longPressPosition.y - 40, window.innerHeight - 100),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateChannel(true); }}
               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"

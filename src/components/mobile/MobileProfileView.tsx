@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Settings, LogOut, Moon, Pencil, Circle, MinusCircle, EyeOff } from 'lucide-react';
+import { Settings, Moon, Pencil, Circle, MinusCircle, EyeOff } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,7 +16,7 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export function MobileProfileView() {
-  const { profile, signOut, user } = useAuth();
+  const { profile, user } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [_showSettingsTab, setShowSettingsTab] = useState<'account' | 'profile'>('account');
   const [showStatus, setShowStatus] = useState(false);

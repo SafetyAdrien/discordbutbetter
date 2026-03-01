@@ -1180,15 +1180,16 @@ export function ChannelList({
         )} />
       </div>
       {/* Server Header - styled like User Panel */}
-      <div className="flex items-center bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]"
+      <div className="flex items-center bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421] rounded-t-xl"
         style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
       >
+        {/* Server Name → Card Popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full"
+            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full rounded-tl-xl"
             >
               {showBanner && server.bannerUrl && (
-                <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden rounded-tl-xl">
                   <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
@@ -1205,20 +1206,9 @@ export function ChannelList({
                   <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
                 )}
               </div>
-              {canAccessSettings && (
-                <div className={cn(
-                  "relative z-10 pr-2",
-                  showBanner && server.bannerUrl ? "self-end pb-2" : ""
-                )}>
-                  <ChevronDown className={cn(
-                    "w-4 h-4 transition-colors",
-                    showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
-                  )} />
-                </div>
-              )}
             </button>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden">
+          <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
             {/* Banner with Leave Button */}
             <div className="relative">
               {server.bannerUrl ? (
@@ -1233,7 +1223,7 @@ export function ChannelList({
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setShowLeaveDialog(true)}
-                      className="absolute top-2 right-2 p-1.5 rounded-md bg-background/20 hover:bg-destructive/90 text-white transition-colors"
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                     </button>
@@ -1299,56 +1289,91 @@ export function ChannelList({
                       </span>
                     )}
                   </div>
-            </div>
-              )}
-
-              {/* Quick settings shortcuts */}
-              {canAccessSettings && (
-                <>
-                  <div className="my-2 h-px bg-border" />
-                  <div className="space-y-0.5">
-                    <button
-                      onClick={() => onOpenServerSettings?.()}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Settings className="w-4 h-4 text-muted-foreground" />
-                      Paramètres du serveur
-                    </button>
-                    <button
-                      onClick={() => onOpenServerSettings?.('profile')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                      Profil du serveur
-                    </button>
-                    <div className="my-1 h-px bg-border" />
-                    <button
-                      onClick={() => onOpenServerSettings?.('emojis')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Smile className="w-4 h-4 text-muted-foreground" />
-                      Émojis
-                    </button>
-                    <button
-                      onClick={() => onOpenServerSettings?.('stickers')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Sticker className="w-4 h-4 text-muted-foreground" />
-                      Stickers
-                    </button>
-                    <button
-                      onClick={() => onOpenServerSettings?.('soundboard')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Volume2 className="w-4 h-4 text-muted-foreground" />
-                      SoundBoard
-                    </button>
-                  </div>
-                </>
+                </div>
               )}
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Invite Icon */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setInviteChannelId('server')}
+              className={cn(
+                "relative z-10 p-1.5 rounded-lg hover:bg-muted/50 transition-colors",
+                showBanner && server.bannerUrl ? "self-end mb-2" : ""
+              )}
+            >
+              <UserPlus className={cn(
+                "w-4 h-4",
+                showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
+              )} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Créer une invitation</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Settings Arrow → Settings Menu */}
+        {canAccessSettings && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={cn(
+                  "relative z-10 p-1.5 pr-2 rounded-lg hover:bg-muted/50 transition-colors",
+                  showBanner && server.bannerUrl ? "self-end mb-2" : ""
+                )}
+              >
+                <ChevronDown className={cn(
+                  "w-4 h-4 transition-colors",
+                  showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
+                )} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-56 p-1 rounded-xl">
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => onOpenServerSettings?.()}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  Paramètres du serveur
+                </button>
+                <button
+                  onClick={() => onOpenServerSettings?.('profile')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Info className="w-4 h-4 text-muted-foreground" />
+                  Profil du serveur
+                </button>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  onClick={() => onOpenServerSettings?.('emojis')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Smile className="w-4 h-4 text-muted-foreground" />
+                  Émojis
+                </button>
+                <button
+                  onClick={() => onOpenServerSettings?.('stickers')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Sticker className="w-4 h-4 text-muted-foreground" />
+                  Stickers
+                </button>
+                <button
+                  onClick={() => onOpenServerSettings?.('soundboard')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Volume2 className="w-4 h-4 text-muted-foreground" />
+                  SoundBoard
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       {/* Channels with DnD */}

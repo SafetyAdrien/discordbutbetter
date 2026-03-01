@@ -1180,23 +1180,22 @@ export function ChannelList({
         )} />
       </div>
       {/* Server Header - styled like User Panel */}
-      <div className="px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]"
+      <div className="flex items-center bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]"
         style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
       >
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 rounded-md p-1.5 transition-colors relative overflow-hidden"
-              style={{ height: showBanner && server.bannerUrl ? '84px' : '40px' }}
+            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full"
             >
               {showBanner && server.bannerUrl && (
-                <div className="absolute inset-0 rounded-md overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden">
                   <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
               )}
               <div className={cn(
-                "flex-1 min-w-0 text-left relative z-10",
-                showBanner && server.bannerUrl ? "self-end pb-1" : ""
+                "flex-1 min-w-0 text-left relative z-10 px-3",
+                showBanner && server.bannerUrl ? "self-end pb-2" : ""
               )}>
                 <p className={cn(
                   "text-sm font-semibold truncate",
@@ -1206,6 +1205,17 @@ export function ChannelList({
                   <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
                 )}
               </div>
+              {canAccessSettings && (
+                <div className={cn(
+                  "relative z-10 pr-2",
+                  showBanner && server.bannerUrl ? "self-end pb-2" : ""
+                )}>
+                  <ChevronDown className={cn(
+                    "w-4 h-4 transition-colors",
+                    showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
+                  )} />
+                </div>
+              )}
             </button>
           </PopoverTrigger>
           <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden">

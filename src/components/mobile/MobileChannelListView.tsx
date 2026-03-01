@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
-
+import { useDeleteChannel, useDeleteCategory } from '@/hooks/useChannels';
+import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
 import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';
@@ -312,6 +313,10 @@ export function MobileChannelListView({
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+  const deleteChannel = useDeleteChannel();
+  const deleteCategoryMut = useDeleteCategory();
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
 
   const clearEmptyLongPress = useCallback(() => {
@@ -444,6 +449,16 @@ export function MobileChannelListView({
                   <Settings className="w-4 h-4 text-muted-foreground" />
                   Modifier le salon
                 </button>
+                <button
+                  onClick={() => {
+                    setLongPressedChannelId(null);
+                    setDeletingChannelId(ch.id);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Supprimer le salon
+                </button>
               </PopoverContent>
             </Popover>
           );
@@ -494,6 +509,16 @@ export function MobileChannelListView({
                   >
                     <FolderOpen className="w-4 h-4 text-muted-foreground" />
                     Modifier la catégorie
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLongPressedCategoryId(null);
+                      setDeletingCategoryId(cat.id);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer la catégorie
                   </button>
                 </PopoverContent>
               </Popover>
@@ -549,6 +574,16 @@ export function MobileChannelListView({
                       >
                         <Settings className="w-4 h-4 text-muted-foreground" />
                         Modifier le salon
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLongPressedChannelId(null);
+                          setDeletingChannelId(ch.id);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Supprimer le salon
                       </button>
                     </PopoverContent>
                   </Popover>
@@ -621,6 +656,74 @@ export function MobileChannelListView({
           onClose={() => setEditingChannelId(null)}
         />
       )}
+
+      {/* Delete channel confirmation */}
+      <AlertDialog open={!!deletingChannelId} onOpenChange={(open) => !open && setDeletingChannelId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le salon</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer <strong className="text-foreground">
+                #{[...orphanChannels, ...categories.flatMap(c => c.channels)].find(c => c.id === deletingChannelId)?.name}
+              </strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteChannel.isPending}
+              onClick={async () => {
+                if (!deletingChannelId) return;
+                try {
+                  await deleteChannel.mutateAsync({ channelId: deletingChannelId, serverId });
+                  toast.success('Salon supprimé');
+                } catch {
+                  toast.error('Erreur lors de la suppression');
+                }
+                setDeletingChannelId(null);
+              }}
+            >
+              {deleteChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete category confirmation */}
+      <AlertDialog open={!!deletingCategoryId} onOpenChange={(open) => !open && setDeletingCategoryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la catégorie</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer <strong className="text-foreground">
+                {categories.find(c => c.id === deletingCategoryId)?.name}
+              </strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteCategoryMut.isPending}
+              onClick={async () => {
+                if (!deletingCategoryId) return;
+                try {
+                  await deleteCategoryMut.mutateAsync({ categoryId: deletingCategoryId, serverId });
+                  toast.success('Catégorie supprimée');
+                } catch {
+                  toast.error('Erreur lors de la suppression');
+                }
+                setDeletingCategoryId(null);
+              }}
+            >
+              {deleteCategoryMut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

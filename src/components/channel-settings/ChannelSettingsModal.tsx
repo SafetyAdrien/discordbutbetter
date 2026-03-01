@@ -87,27 +87,23 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
           ) : channel ? (
-            <div className="space-y-6">
-              <Tabs defaultValue="permissions">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="permissions">Permissions</TabsTrigger>
-                  <TabsTrigger value="integrations">Intégrations</TabsTrigger>
-                </TabsList>
-                <TabsContent value="permissions" className="mt-4">
-                  <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
-                </TabsContent>
-                <TabsContent value="integrations" className="mt-4">
-                  <ChannelWebhooks channelId={channelId} />
-                </TabsContent>
-              </Tabs>
-
-              <div className="border-t border-border pt-6">
+            <Tabs defaultValue="overview">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Aperçu</TabsTrigger>
+                <TabsTrigger value="permissions">Permissions</TabsTrigger>
+                <TabsTrigger value="integrations">Intégrations</TabsTrigger>
+              </TabsList>
+              <TabsContent value="overview" className="mt-4 space-y-6">
                 <ChannelOverview channel={channel} />
-                <div className="mt-6">
-                  <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-                </div>
-              </div>
-            </div>
+                <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+              </TabsContent>
+              <TabsContent value="permissions" className="mt-4">
+                <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
+              </TabsContent>
+              <TabsContent value="integrations" className="mt-4">
+                <ChannelWebhooks channelId={channelId} />
+              </TabsContent>
+            </Tabs>
           ) : (
             <p className="text-muted-foreground text-center py-8">Salon introuvable</p>
           )}

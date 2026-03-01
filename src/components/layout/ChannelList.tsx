@@ -31,6 +31,7 @@ import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
 import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import StreamlineThreadBranch from "@/components/icons/StreamlineThreadBranch";
 import { useState, useCallback, useMemo, useRef, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -184,6 +185,7 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
   stage: StreamlineStage,
+  link: StreamlineLink,
 };
 const statusColors = {
   online: "bg-[hsl(var(--online))]",

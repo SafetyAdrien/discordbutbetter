@@ -20,6 +20,7 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useChannelUnreadCounts } from '@/hooks/useChannelUnreadCounts';
 import { useServers } from '@/hooks/useServers';
@@ -52,6 +53,7 @@ const channelIcons: Record<string, React.ElementType> = {
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
   stage: StreamlineStage,
+  link: StreamlineLink,
 };
 
 interface Channel {

@@ -691,6 +691,7 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
+  const [showServerInvite, setShowServerInvite] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
@@ -1179,24 +1180,26 @@ export function ChannelList({
           isHoveringResize || isResizing.current ? "opacity-100" : "opacity-0"
         )} />
       </div>
-      {/* Server Header - styled like User Panel */}
-      <div className="flex items-center bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]"
+      {/* Server Header - Split into 3 zones */}
+      <div className="flex items-center bg-[hsl(var(--card))] border-b border-border/50 rounded-b-xl bg-[#121421] relative overflow-hidden"
         style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
       >
+        {/* Banner background */}
+        {showBanner && server.bannerUrl && (
+          <div className="absolute inset-0 overflow-hidden">
+            <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          </div>
+        )}
+
+        {/* Zone 1: Server Name → Opens server profile card */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative overflow-hidden h-full"
-            >
-              {showBanner && server.bannerUrl && (
-                <div className="absolute inset-0 overflow-hidden">
-                  <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                </div>
-              )}
-              <div className={cn(
-                "flex-1 min-w-0 text-left relative z-10 px-3",
-                showBanner && server.bannerUrl ? "self-end pb-2" : ""
-              )}>
+            <button className={cn(
+              "flex-1 min-w-0 text-left relative z-10 px-3 h-full flex items-end hover:bg-muted/10 transition-colors",
+              showBanner && server.bannerUrl ? "pb-2" : "items-center pb-0"
+            )}>
+              <div className="min-w-0">
                 <p className={cn(
                   "text-sm font-semibold truncate",
                   showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
@@ -1205,20 +1208,9 @@ export function ChannelList({
                   <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
                 )}
               </div>
-              {canAccessSettings && (
-                <div className={cn(
-                  "relative z-10 pr-2",
-                  showBanner && server.bannerUrl ? "self-end pb-2" : ""
-                )}>
-                  <ChevronDown className={cn(
-                    "w-4 h-4 transition-colors",
-                    showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
-                  )} />
-                </div>
-              )}
             </button>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden">
+          <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-2xl">
             {/* Banner with Leave Button */}
             <div className="relative">
               {server.bannerUrl ? (
@@ -1226,14 +1218,12 @@ export function ChannelList({
               ) : (
                 <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
               )}
-
-              {/* Leave Server Button - Only visible for non-owners */}
               {!isOwner && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setShowLeaveDialog(true)}
-                      className="absolute top-2 right-2 p-1.5 rounded-md bg-background/20 hover:bg-destructive/90 text-white transition-colors"
+                      className="absolute top-2 right-2 p-1.5 rounded-xl bg-background/20 hover:bg-destructive/90 text-white transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                     </button>
@@ -1244,7 +1234,6 @@ export function ChannelList({
                 </Tooltip>
               )}
             </div>
-
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-3">
                 {server.iconUrl ? (
@@ -1261,7 +1250,6 @@ export function ChannelList({
                   )}
                 </div>
               </div>
-
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="w-4 h-4" />
@@ -1285,7 +1273,6 @@ export function ChannelList({
                   <span>{membersData?.length || 0} membres</span>
                 </div>
               </div>
-
               {serverEmojis.length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
@@ -1299,56 +1286,89 @@ export function ChannelList({
                       </span>
                     )}
                   </div>
-            </div>
-              )}
-
-              {/* Quick settings shortcuts */}
-              {canAccessSettings && (
-                <>
-                  <div className="my-2 h-px bg-border" />
-                  <div className="space-y-0.5">
-                    <button
-                      onClick={() => onOpenServerSettings?.()}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Settings className="w-4 h-4 text-muted-foreground" />
-                      Paramètres du serveur
-                    </button>
-                    <button
-                      onClick={() => onOpenServerSettings?.('profile')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                      Profil du serveur
-                    </button>
-                    <div className="my-1 h-px bg-border" />
-                    <button
-                      onClick={() => onOpenServerSettings?.('emojis')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Smile className="w-4 h-4 text-muted-foreground" />
-                      Émojis
-                    </button>
-                    <button
-                      onClick={() => onOpenServerSettings?.('stickers')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Sticker className="w-4 h-4 text-muted-foreground" />
-                      Stickers
-                    </button>
-                    <button
-                      onClick={() => onOpenServerSettings?.('soundboard')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Volume2 className="w-4 h-4 text-muted-foreground" />
-                      SoundBoard
-                    </button>
-                  </div>
-                </>
+                </div>
               )}
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Zone 2: Invite icon */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setShowServerInvite(true)}
+              className={cn(
+                "relative z-10 p-2 rounded-xl hover:bg-muted/20 transition-colors flex-shrink-0",
+                showBanner && server.bannerUrl ? "self-end mb-1" : ""
+              )}
+            >
+              <UserPlus className={cn(
+                "w-4 h-4",
+                showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
+              )} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Créer une invitation</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Zone 3: ChevronDown → Settings menu */}
+        {canAccessSettings && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={cn(
+                "relative z-10 p-2 rounded-xl hover:bg-muted/20 transition-colors flex-shrink-0",
+                showBanner && server.bannerUrl ? "self-end mb-1" : ""
+              )}>
+                <ChevronDown className={cn(
+                  "w-4 h-4 transition-colors",
+                  showBanner && server.bannerUrl ? "text-white/80" : "text-muted-foreground"
+                )} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-56 p-2 rounded-xl">
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => onOpenServerSettings?.()}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  Paramètres du serveur
+                </button>
+                <button
+                  onClick={() => onOpenServerSettings?.('profile')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Info className="w-4 h-4 text-muted-foreground" />
+                  Profil du serveur
+                </button>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  onClick={() => onOpenServerSettings?.('emojis')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Smile className="w-4 h-4 text-muted-foreground" />
+                  Émojis
+                </button>
+                <button
+                  onClick={() => onOpenServerSettings?.('stickers')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Sticker className="w-4 h-4 text-muted-foreground" />
+                  Stickers
+                </button>
+                <button
+                  onClick={() => onOpenServerSettings?.('soundboard')}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                  <Volume2 className="w-4 h-4 text-muted-foreground" />
+                  SoundBoard
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       {/* Channels with DnD */}
@@ -1608,6 +1628,13 @@ export function ChannelList({
           serverId={server.id}
           channelName={getChannelName(inviteChannelId)}
           onClose={() => setInviteChannelId(null)}
+        />
+      )}
+
+      {showServerInvite && (
+        <CreateInviteModal
+          serverId={server.id}
+          onClose={() => setShowServerInvite(false)}
         />
       )}
 

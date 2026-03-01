@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
-
+import { useDeleteChannel, useDeleteCategory } from '@/hooks/useChannels';
+import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
 import { CreateCategoryModal } from '@/components/modals/CreateCategoryModal';

@@ -1,61 +1,36 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correction du bouton de fermeture dans le panneau des membres (mobile)
 
-## Root cause
+## Probleme
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le composant `SheetContent` (dans `sheet.tsx`) inclut automatiquement un bouton de fermeture (croix) positionne en `absolute right-4 top-4`. Ce bouton se superpose a l'icone "Threads" dans le header du panneau des membres, car les deux occupent le meme emplacement en haut a droite.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Deux modifications complementaires :
 
-## Fix
+### 1. Masquer le bouton de fermeture par defaut du Sheet
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Dans `MobileChatView.tsx`, ajouter la classe `[&>button.absolute]:hidden` sur le `SheetContent` du panneau des membres. Cela masque le bouton de fermeture auto-genere par le composant Sheet sans modifier le composant partage `sheet.tsx` (qui est utilise ailleurs).
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Ajouter un bouton de fermeture explicite dans le header
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Importer `SheetClose` depuis le composant Sheet et l'ajouter a gauche du titre "Membres" (ou a droite apres les icones d'action) pour garder un moyen visible de fermer le panneau sans conflit de position.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+## Fichier modifie
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+- `src/components/mobile/MobileChatView.tsx` : masquer la croix par defaut + ajouter `SheetClose` dans le header du panneau
 
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+## Detail technique
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+Avant :
+[Membres]  [Bell] [Pin] [Threads] [X auto-genere qui se superpose]
+
+Apres :
+[X SheetClose] [Membres]  [Bell] [Pin] [Threads]
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Le bouton de fermeture sera place a gauche du titre "Membres" sous forme d'icone, coherent avec le pattern de navigation mobile (retour/fermeture a gauche).
 

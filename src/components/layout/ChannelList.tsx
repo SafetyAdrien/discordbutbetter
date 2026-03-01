@@ -1108,7 +1108,7 @@ export function ChannelList({
   ];
   // Banner visibility on scroll
   const [showBanner, setShowBanner] = useState(true);
-  const channelListRef = useRef<HTMLDivElement>(null);
+  
   const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = (e.target as HTMLDivElement).scrollTop;
     setShowBanner(scrollTop === 0);

@@ -1,61 +1,98 @@
 
+# Ameliorations UI: Arrondis, Carte serveur, Mobile
 
-# Fix: Duplicated channel hidden by visibility filter
+## 1. Arrondir les angles sur l'interface (Mobile et Desktop)
 
-## Root cause
+Ajout de coins arrondis (`rounded-xl` / `rounded-2xl`) sur les elements principaux :
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Fichiers concernes :**
+- `src/components/layout/ChannelList.tsx` : Header du serveur (ligne ~1183), popover carte serveur (ligne ~1221)
+- `src/components/layout/MemberList.tsx` : Container principal (ligne ~646), barre de recherche
+- `src/components/chat/ChatArea.tsx` : Zone de chat principale
+- `src/components/mobile/MobileChatView.tsx` : Header mobile (ligne ~73)
+- `src/components/mobile/MobileChannelListView.tsx` : Headers, boutons
+- `src/index.css` : Ajouter des variables CSS pour les rayons d'arrondi globaux si necessaire
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+**Modifications :**
+- Headers : `rounded-b-xl` sur les barres superieures
+- Popovers/cartes : `rounded-2xl` et `overflow-hidden`
+- Boutons d'action : `rounded-xl`
+- Zone de saisie : deja `rounded-2xl` sur mobile, verifier coherence desktop
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+---
 
-## Fix
+## 2. Carte de serveur : Separation nom / fleche + Icone invitation
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 2a. Icone d'invitation a cote du nom du serveur (Desktop)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+**Fichier :** `src/components/layout/ChannelList.tsx` (lignes ~1182-1220)
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Actuellement, le header du serveur est un seul bouton qui ouvre un Popover contenant la carte ET les raccourcis de parametres.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Nouvelle logique :**
+- Le **nom du serveur** (cliquable) ouvre **uniquement la carte de profil du serveur** (banniere, icone, description, membres, emojis)
+- La **fleche ChevronDown** (bouton separe) ouvre **le menu des parametres du serveur** (Parametres, Profil, Emojis, Stickers, SoundBoard)
+- A cote du nom, ajouter une **icone UserPlus** (ou `Users` avec un `+`) parfaitement alignee au centre verticalement, qui ouvre la modale `CreateInviteModal`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+**Implementation :**
+- Separer le `<Popover>` actuel en deux elements :
+  1. Zone cliquable "nom du serveur" → Popover avec carte de profil (banniere, icon, description, date creation, proprietaire, membres, emojis)
+  2. Bouton "invite" (icone UserPlus) → Ouvre `CreateInviteModal`
+  3. Bouton ChevronDown → Popover avec les raccourcis de parametres (Parametres serveur, Profil, Emojis, Stickers, SoundBoard, Quitter)
 
-### 3. Hook needs `useAuth` for the user ID
+### 2b. Meme logique sur Mobile
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+**Fichier :** `src/components/mobile/MobileChannelListView.tsx` (lignes ~368-423)
 
-## Detailed changes
+- Le **nom du serveur** ouvre le `ServerProfileSheet` (deja en place)
+- La **fleche ChevronDown** ouvre un menu separement avec les options de parametres
+- Ajouter l'icone d'invitation a cote du nom
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+---
 
-### Code sketch for onMutate addition (after servers cache update)
+## 3. Mobile : Corriger la section liste des membres
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+**Fichier :** `src/components/mobile/MobileChatView.tsx` (lignes ~104-165)
 
-### Code for onSuccess addition
+Problemes actuels :
+- Les icones d'action (Notifications, Pin, Threads) sont dans le `SheetContent` au-dessus de la MemberList, mais peuvent etre mal organisees
+- Le MemberList occupe tout l'espace sans padding/arrondis propres
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+**Corrections :**
+- Reorganiser les icones d'action dans une barre proprement alignee avec espacement uniforme
+- Ajouter des libelles courts sous les icones ou des tooltips pour la clarte
+- Arrondir les coins du Sheet (`rounded-t-2xl`)
+- S'assurer que la MemberList utilise un `ScrollArea` propre avec padding adequat
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+---
 
+## 4. Mobile : Barre de recherche avancee sous la banniere
+
+**Fichier :** `src/components/mobile/MobileChannelListView.tsx`
+
+Ajouter une barre de recherche sous la banniere/nom du serveur, avec un systeme de filtrage avance similaire a celui deja implemente dans `MemberList.tsx` (lignes ~103-197).
+
+**Fonctionnalites :**
+- Barre de recherche avec icone loupe
+- Au focus, affichage d'un dropdown avec les options de filtrage (de:, mentions:, contient:, dans:, pendant:, avant:, apres:, epingle:, auteur:)
+- Navigation clavier (fleches + Tab pour selectionner un filtre)
+- Les filtres sont cumulables (ex: `de:alice dans:#general`)
+- Resultats affiches dans un panel deroulant
+
+**Implementation :**
+- Reutiliser le composant `SearchFilters` deja existant dans `MemberList.tsx`
+- Extraire `SearchFilters` et la logique de filtrage dans un composant partage (`src/components/ui/search-with-filters.tsx`)
+- Integrer la barre de recherche entre le header et la liste des salons dans `MobileChannelListView`
+
+---
+
+## Detail technique des fichiers a modifier
+
+| Fichier | Modifications |
+|---|---|
+| `src/components/layout/ChannelList.tsx` | Separer le header en 3 zones (nom → carte, invite → modal, fleche → parametres). Arrondir les angles. |
+| `src/components/mobile/MobileChannelListView.tsx` | Separer nom/fleche, ajouter icone invitation, ajouter barre de recherche avancee sous la banniere |
+| `src/components/mobile/MobileChatView.tsx` | Corriger layout du Sheet des membres, arrondir, reorganiser icones |
+| `src/components/layout/MemberList.tsx` | Arrondir les angles du container |
+| `src/components/ui/search-with-filters.tsx` | Nouveau composant : barre de recherche reutilisable avec filtres avances |
+| `src/index.css` | Ajustements CSS globaux pour les arrondis si necessaire |

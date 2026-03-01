@@ -210,6 +210,21 @@ function tokenizeInline(text: string): MarkdownToken[] {
         url: linkMatch[2],
       };
     }
+
+    // Check for dynamic timestamps <t:TIMESTAMP:FORMAT>
+    const timestampRegex = /<t:(\d+):([tTdDfFR])>/g;
+    timestampRegex.lastIndex = 0;
+    const timestampMatch = timestampRegex.exec(remaining);
+    if (timestampMatch && (earliestMatch === null || timestampMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: timestampMatch.index,
+        length: timestampMatch[0].length,
+        content: timestampMatch[0],
+        type: 'timestamp' as MarkdownToken['type'],
+        timestamp: parseInt(timestampMatch[1], 10),
+        timestampFormat: timestampMatch[2],
+      };
+    }
     
     // Check for inline patterns (bold, italic, etc.)
     for (const { regex, type } of INLINE_PATTERNS) {
@@ -223,6 +238,20 @@ function tokenizeInline(text: string): MarkdownToken[] {
           type,
         };
       }
+    }
+
+    // Check for auto-linking bare URLs (lowest priority, after all other patterns)
+    const urlRegex = /(https?:\/\/[^\s<>\])"]+)/g;
+    urlRegex.lastIndex = 0;
+    const urlMatch = urlRegex.exec(remaining);
+    if (urlMatch && (earliestMatch === null || urlMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: urlMatch.index,
+        length: urlMatch[0].length,
+        content: urlMatch[1],
+        type: 'autoLink' as MarkdownToken['type'],
+        url: urlMatch[1],
+      };
     }
     
     if (earliestMatch) {
@@ -278,6 +307,19 @@ function tokenizeInline(text: string): MarkdownToken[] {
           type: 'messageLinkEmbed',
           content: '',
           embedData: earliestMatch.embedData,
+        });
+      } else if (earliestMatch.type === 'timestamp') {
+        tokens.push({
+          type: 'timestamp',
+          content: earliestMatch.content,
+          timestamp: earliestMatch.timestamp,
+          timestampFormat: earliestMatch.timestampFormat,
+        });
+      } else if (earliestMatch.type === 'autoLink') {
+        tokens.push({
+          type: 'autoLink',
+          content: earliestMatch.content,
+          url: earliestMatch.url,
         });
       } else {
         // Recursively parse content for other types

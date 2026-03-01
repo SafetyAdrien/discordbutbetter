@@ -39,9 +39,9 @@ const channelIcons = {
 };
 
 export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<string | null>('overview');
-  const { data: channel, isLoading } = useChannelDetails(channelId);
   const { isMobile } = useBreakpoint();
+  const [activeTab, setActiveTab] = useState<string | null>(isMobile ? null : 'overview');
+  const { data: channel, isLoading } = useChannelDetails(channelId);
 
   const Icon = channel?.type ? channelIcons[channel.type] : StreamlineHash;
 

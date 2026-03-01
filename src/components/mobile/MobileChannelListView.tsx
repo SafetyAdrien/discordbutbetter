@@ -411,12 +411,6 @@ export function MobileChannelListView({
     </button>
   );
 
-  // Settings menu trigger (separate from server name)
-  const settingsMenuTrigger = (
-    <button className="p-1 rounded-lg hover:bg-muted/30 transition-colors">
-      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-    </button>
-  );
 
     const bannerUrl = currentServer?.banner_url;
 

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X, ArrowRight, Search } from 'lucide-react';
-import { X, ArrowRight, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFriends } from '@/hooks/useFriends';
 import { useCreateDMConversation } from '@/hooks/useDMs';

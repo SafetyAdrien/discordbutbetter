@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
+import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 
 import { Separator } from '@/components/ui/separator';
 import { CreateChannelModal } from '@/components/modals/CreateChannelModal';
@@ -304,6 +305,8 @@ export function MobileChannelListView({
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [longPressedCategoryId, setLongPressedCategoryId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; channelCount: number } | null>(null);
+  const [longPressedChannelId, setLongPressedChannelId] = useState<string | null>(null);
+  const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
 
   const toggleCategory = (id: string) => {
@@ -359,23 +362,58 @@ export function MobileChannelListView({
         {orphanChannels.map(ch => {
           const Icon = channelIcons[ch.type] || StreamlineHash;
           const info = channelUnreadInfo[ch.id];
+          const chLongPressHandlers = {
+            onTouchStart: (() => {
+              let timer: ReturnType<typeof setTimeout> | null = null;
+              return (e: React.TouchEvent) => {
+                timer = setTimeout(() => {
+                  setLongPressedChannelId(ch.id);
+                }, 500);
+                (e.currentTarget as any).__longPressTimer = timer;
+              };
+            })(),
+            onTouchEnd: (e: React.TouchEvent) => {
+              const timer = (e.currentTarget as any).__longPressTimer;
+              if (timer) clearTimeout(timer);
+            },
+            onTouchMove: (e: React.TouchEvent) => {
+              const timer = (e.currentTarget as any).__longPressTimer;
+              if (timer) clearTimeout(timer);
+            },
+          };
           return (
-            <button
-              key={ch.id}
-              onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
-              className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
-            >
-              <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <span className={cn(
-                "text-sm truncate flex-1 text-left",
-                info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
-              )}>{ch.name}</span>
-              {(info?.mentionCount ?? 0) > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full font-bold">
-                  {info!.mentionCount}
-                </span>
-              )}
-            </button>
+            <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
+              <PopoverTrigger asChild>
+                <button
+                  onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+                  {...chLongPressHandlers}
+                  className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
+                >
+                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className={cn(
+                    "text-sm truncate flex-1 text-left",
+                    info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
+                  )}>{ch.name}</span>
+                  {(info?.mentionCount ?? 0) > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full font-bold">
+                      {info!.mentionCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-1" side="bottom" align="start">
+                <button
+                  onClick={() => {
+                    setLongPressedChannelId(null);
+                    setEditingChannelId(ch.id);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  Modifier le salon
+                </button>
+              </PopoverContent>
+            </Popover>
           );
         })}
 
@@ -430,23 +468,58 @@ export function MobileChannelListView({
               {!isCollapsed && cat.channels.map(ch => {
                 const Icon = channelIcons[ch.type] || StreamlineHash;
                 const info = channelUnreadInfo[ch.id];
+                const chLongPressHandlers = {
+                  onTouchStart: (() => {
+                    let timer: ReturnType<typeof setTimeout> | null = null;
+                    return (e: React.TouchEvent) => {
+                      timer = setTimeout(() => {
+                        setLongPressedChannelId(ch.id);
+                      }, 500);
+                      (e.currentTarget as any).__longPressTimer = timer;
+                    };
+                  })(),
+                  onTouchEnd: (e: React.TouchEvent) => {
+                    const timer = (e.currentTarget as any).__longPressTimer;
+                    if (timer) clearTimeout(timer);
+                  },
+                  onTouchMove: (e: React.TouchEvent) => {
+                    const timer = (e.currentTarget as any).__longPressTimer;
+                    if (timer) clearTimeout(timer);
+                  },
+                };
                 return (
-                  <button
-                    key={ch.id}
-                    onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
-                    className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
-                  >
-                    <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className={cn(
-                      "text-sm truncate flex-1 text-left",
-                      info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
-                    )}>{ch.name}</span>
-                    {(info?.mentionCount ?? 0) > 0 && (
-                      <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full font-bold">
-                        {info!.mentionCount}
-                      </span>
-                    )}
-                  </button>
+                  <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={() => { setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type); }}
+                        {...chLongPressHandlers}
+                        className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
+                      >
+                        <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className={cn(
+                          "text-sm truncate flex-1 text-left",
+                          info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
+                        )}>{ch.name}</span>
+                        {(info?.mentionCount ?? 0) > 0 && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full font-bold">
+                            {info!.mentionCount}
+                          </span>
+                        )}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-1" side="bottom" align="start">
+                      <button
+                        onClick={() => {
+                          setLongPressedChannelId(null);
+                          setEditingChannelId(ch.id);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left"
+                      >
+                        <Settings className="w-4 h-4 text-muted-foreground" />
+                        Modifier le salon
+                      </button>
+                    </PopoverContent>
+                  </Popover>
                 );
               })}
             </div>
@@ -461,6 +534,14 @@ export function MobileChannelListView({
           serverId={serverId}
           channelCount={editingCategory.channelCount}
           onClose={() => setEditingCategory(null)}
+        />
+      )}
+
+      {editingChannelId && (
+        <ChannelSettingsModal
+          channelId={editingChannelId}
+          serverId={serverId}
+          onClose={() => setEditingChannelId(null)}
         />
       )}
     </div>

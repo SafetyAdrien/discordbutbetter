@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
@@ -30,6 +30,7 @@ import { usePermissionsRealtime, useGlobalPermissionsRealtime } from '@/hooks/us
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { useNavigationState } from '@/hooks/useNavigationState';
+import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { Loader2 } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
@@ -43,17 +44,23 @@ const Index = () => {
   const {
     activeServerId: persistedServerId,
     activeDMId: persistedDMId,
+    activeChannelId: persistedChannelId,
+    activeThreadId: persistedThreadId,
+    threadChannelId: persistedThreadChannelId,
     setActiveServerId: setPersistedServerId,
     setActiveDMId: setPersistedDMId,
+    setActiveChannelId: setPersistedChannelId,
+    setActiveThreadId: setPersistedThreadId,
+    setThreadChannelId: setPersistedThreadChannelId,
     setChannelForServer,
     getChannelForServer,
   } = useNavigationState();
   
   const [activeServerId, setActiveServerIdLocal] = useState<string | null>(persistedServerId);
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [activeChannelId, setActiveChannelIdLocal] = useState<string | null>(persistedChannelId);
   const [activeDMId, setActiveDMIdLocal] = useState<string | null>(persistedDMId);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [threadChannelId, setThreadChannelId] = useState<string | null>(null);
+  const [activeThreadId, setActiveThreadIdLocal] = useState<string | null>(persistedThreadId);
+  const [threadChannelId, setThreadChannelIdLocal] = useState<string | null>(persistedThreadChannelId);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
@@ -64,15 +71,76 @@ const Index = () => {
   const [voiceChatChannelId, setVoiceChatChannelId] = useState<string | null>(null);
 
   // Wrapper functions to persist navigation state
-  const setActiveServerId = (id: string | null) => {
+  const setActiveServerId = useCallback((id: string | null) => {
     setActiveServerIdLocal(id);
     setPersistedServerId(id);
-  };
+  }, [setPersistedServerId]);
   
-  const setActiveDMId = (id: string | null) => {
+  const setActiveDMId = useCallback((id: string | null) => {
     setActiveDMIdLocal(id);
     setPersistedDMId(id);
-  };
+  }, [setPersistedDMId]);
+
+  const setActiveChannelId = useCallback((id: string | null) => {
+    setActiveChannelIdLocal(id);
+    setPersistedChannelId(id);
+  }, [setPersistedChannelId]);
+
+  const setActiveThreadId = useCallback((id: string | null) => {
+    setActiveThreadIdLocal(id);
+    setPersistedThreadId(id);
+  }, [setPersistedThreadId]);
+
+  const setThreadChannelId = useCallback((id: string | null) => {
+    setThreadChannelIdLocal(id);
+    setPersistedThreadChannelId(id);
+  }, [setPersistedThreadChannelId]);
+
+  // --- History navigation (desktop) ---
+  const buildHistoryState = useCallback((): HistoryViewState => ({
+    serverId: activeServerId,
+    channelId: activeChannelId,
+    dmId: activeDMId,
+    threadId: activeThreadId,
+  }), [activeServerId, activeChannelId, activeDMId, activeThreadId]);
+
+  const handleHistoryPop = useCallback((state: HistoryViewState) => {
+    setActiveServerIdLocal(state.serverId);
+    setPersistedServerId(state.serverId);
+    setActiveChannelIdLocal(state.channelId);
+    setPersistedChannelId(state.channelId);
+    setActiveDMIdLocal(state.dmId);
+    setPersistedDMId(state.dmId);
+    setActiveThreadIdLocal(state.threadId);
+    setPersistedThreadId(state.threadId);
+  }, [setPersistedServerId, setPersistedChannelId, setPersistedDMId, setPersistedThreadId]);
+
+  const { pushView, replaceView } = useHistoryNavigation(handleHistoryPop);
+
+  // Replace initial history entry
+  const initialReplaced = useRef(false);
+  useEffect(() => {
+    if (!isMobile && !initialReplaced.current) {
+      initialReplaced.current = true;
+      replaceView(buildHistoryState());
+    }
+  }, [isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push history on significant navigation changes (desktop only)
+  const prevNavKey = useRef('');
+  useEffect(() => {
+    if (isMobile) return;
+    const key = `${activeServerId}|${activeChannelId}|${activeDMId}|${activeThreadId}`;
+    if (prevNavKey.current && prevNavKey.current !== key) {
+      pushView({
+        serverId: activeServerId,
+        channelId: activeChannelId,
+        dmId: activeDMId,
+        threadId: activeThreadId,
+      });
+    }
+    prevNavKey.current = key;
+  }, [activeServerId, activeChannelId, activeDMId, activeThreadId, isMobile, pushView]);
 
   // Data hooks
   const { data: servers = [], isLoading: serversLoading } = useServers();
@@ -170,6 +238,16 @@ const Index = () => {
     if (activeServerId) {
       const server = servers.find(s => s.id === activeServerId);
       if (server) {
+        // If we already have a persisted channel for this server from session restore, use it
+        if (activeChannelId) {
+          const allChannels = [
+            ...server.categories.flatMap(c => c.channels),
+            ...(server.orphanChannels || channelsData?.orphanChannels || [])
+          ];
+          const exists = allChannels.find(ch => ch.id === activeChannelId);
+          if (exists) return; // already set and valid
+        }
+
         // Try to restore last visited channel for this server
         const savedChannelId = getChannelForServer(activeServerId);
         const allChannels = [
@@ -193,7 +271,7 @@ const Index = () => {
         }
       }
     }
-  }, [activeServerId, servers, channelsData?.orphanChannels, getChannelForServer, setChannelForServer]);
+  }, [activeServerId, servers, channelsData?.orphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeServer = servers.find((s) => s.id === activeServerId);
   const activeChannel = activeServer?.categories

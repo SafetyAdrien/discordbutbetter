@@ -1291,6 +1291,27 @@ export function ChannelList({
                   </div>
                 </div>
               )}
+
+              {/* Actions bar */}
+              <Separator className="bg-border/50" />
+              <div className="px-2 py-1.5 space-y-0.5">
+                <button
+                  onClick={() => setInviteChannelId('server')}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Créer une invitation
+                </button>
+                {canAccessSettings && (
+                  <button
+                    onClick={() => onOpenServerSettings?.()}
+                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Paramètres du serveur
+                  </button>
+                )}
+              </div>
             </div>
           </PopoverContent>
         </Popover>

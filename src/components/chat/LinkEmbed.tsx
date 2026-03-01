@@ -1,4 +1,5 @@
-import { useUrlMetadata } from '@/hooks/useUrlMetadata';
+import { useMemo } from 'react';
+import { useUrlMetadata, extractUrls } from '@/hooks/useUrlMetadata';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface LinkEmbedProps {
@@ -30,14 +31,11 @@ export function LinkEmbed({ url }: LinkEmbedProps) {
       style={{ borderLeft: `4px solid ${borderColor}` }}
     >
       <div className="flex-1 min-w-0 space-y-1">
-        {/* Site name */}
         {data.siteName && (
           <p className="text-xs text-muted-foreground font-medium truncate">
             {data.siteName}
           </p>
         )}
-
-        {/* Title */}
         {data.title && (
           <a
             href={url}
@@ -48,8 +46,6 @@ export function LinkEmbed({ url }: LinkEmbedProps) {
             {data.title}
           </a>
         )}
-
-        {/* Description */}
         {data.description && (
           <p className="text-sm text-muted-foreground line-clamp-3">
             {data.description.length > 300
@@ -58,8 +54,6 @@ export function LinkEmbed({ url }: LinkEmbedProps) {
           </p>
         )}
       </div>
-
-      {/* Thumbnail */}
       {data.image && (
         <img
           src={data.image}
@@ -80,9 +74,7 @@ interface LinkEmbedsProps {
 }
 
 export function LinkEmbeds({ content }: LinkEmbedsProps) {
-  // Import here to avoid circular deps
-  const { extractUrls } = require('@/hooks/useUrlMetadata');
-  const urls = extractUrls(content);
+  const urls = useMemo(() => extractUrls(content), [content]);
   
   if (urls.length === 0) return null;
   

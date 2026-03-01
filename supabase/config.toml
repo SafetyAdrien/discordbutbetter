@@ -2,3 +2,6 @@ project_id = "ixdznbvbjjnydqttmaam"
 
 [functions.summarize-channel]
 verify_jwt = true
+
+[functions.fetch-url-metadata]
+verify_jwt = false

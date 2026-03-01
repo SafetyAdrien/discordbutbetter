@@ -1,61 +1,41 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Header mobile : teinte plus claire + separateur
 
-## Root cause
+## Objectif
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Appliquer une teinte de fond legerement plus claire sur la zone header + barre de recherche sur mobile, et ajouter un separateur subtil avant la liste des salons.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Modifications
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Fichier : `src/components/mobile/MobileChannelListView.tsx`
 
-## Fix
+**1. Teinte plus claire pour le header (non-banner + embedded)**
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Les headers aux lignes ~459 et ~487 utilisent actuellement le fond `bg-card` herite du parent. On va leur ajouter `bg-surface-elevated` (variable CSS deja definie, legerement plus claire que `--card`).
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+- Ligne 459 : ajouter `bg-[hsl(var(--surface-elevated))]` au div du header non-banner
+- Ligne 487 : idem pour le header embedded
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**2. Teinte plus claire pour la barre de recherche**
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Les deux blocs de recherche (lignes ~444 et ~514) : envelopper dans un fond `bg-[hsl(var(--surface-elevated))]` pour que la barre de recherche partage la meme teinte que le header.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+- Lignes 444-454 (recherche sous banner) : ajouter `bg-[hsl(var(--surface-elevated))]`
+- Lignes 513-524 (recherche sans banner) : ajouter `bg-[hsl(var(--surface-elevated))]`
 
-### 3. Hook needs `useAuth` for the user ID
+**3. Separateur avant la liste des salons**
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+Ajouter un composant `Separator` (ou `div` avec `h-px bg-border/50`) juste avant le `<div>` de la liste des salons (ligne ~528), pour creer une separation visuelle subtile entre la zone header/recherche et la liste des salons.
 
-## Detailed changes
+## Resume des changements
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+| Element | Avant | Apres |
+|---|---|---|
+| Header mobile (non-banner) | `bg-card` (herite) | `bg-[hsl(var(--surface-elevated))]` |
+| Header mobile (embedded) | `bg-card` (herite) | `bg-[hsl(var(--surface-elevated))]` |
+| Barre de recherche (2 blocs) | fond transparent | `bg-[hsl(var(--surface-elevated))]` |
+| Avant liste des salons | rien | `Separator` leger (`bg-border/30`) |
 
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Un seul fichier modifie : `src/components/mobile/MobileChannelListView.tsx`
 

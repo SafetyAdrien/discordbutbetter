@@ -1,58 +1,61 @@
 
 
-# Modifications mobile demandees
+# Fix: Duplicated channel hidden by visibility filter
 
-## 1. Empecher les proprietaires de quitter leur serveur
+## Root cause
 
-**Fichier** : `src/components/mobile/MobileChannelListView.tsx`
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Le bouton "Quitter" dans `ServerProfileSheet` est deja masque pour les proprietaires (`!isOwner`). Cependant, le hook `useLeaveServer` ne bloque pas cote client. On va verifier que `isOwner` couvre bien les deux cas (owner + secondary owner) -- c'est deja le cas (ligne 99). Aucun changement necessaire ici, la protection existe deja.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## 2. Deplacer l'icone d'engrenage dans la carte de profil serveur
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Fichier** : `src/components/mobile/MobileChannelListView.tsx`
+## Fix
 
-- Retirer le bouton `Settings` (engrenage) du header de la liste des salons (lignes 371-375 et 383-387)
-- Ajouter un bouton engrenage dans le `ServerProfileSheet`, en position `absolute top-2.5 left-2.5` sur la banniere (symetrique au bouton Quitter qui est a droite)
-- Le `ServerProfileSheet` devra recevoir un nouveau prop `onOpenSettings` pour declencher l'ouverture des parametres du serveur
-- Au clic, fermer le sheet puis appeler `onOpenSettings`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-## 3. Renommer "Accueil" en "Messages"
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**Fichier** : `src/components/mobile/MobileBottomNav.tsx`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- Changer `label: 'Accueil'` en `label: 'Messages'` (ligne 17)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-## 4. Deplacer "Se deconnecter" dans les parametres globaux
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**Fichier** : `src/components/mobile/MobileProfileView.tsx`
+### 3. Hook needs `useAuth` for the user ID
 
-- Supprimer le bouton "Deconnexion" de la page profil (lignes 132-139)
-- Le bouton est deja present dans `AccountSettingsModal` via `renderNavList` (ligne 99-102), donc rien a ajouter la-bas
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-## 5. Ouvrir les parametres sur la liste (pas sur un onglet specifique)
+## Detailed changes
 
-**Fichier** : `src/components/mobile/MobileProfileView.tsx`
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-- Modifier le bouton "Parametres du compte" pour ouvrir `AccountSettingsModal` avec `activeTab` a `null` (ce qui affiche la liste de navigation sur mobile, cf. lignes 139-149 de AccountSettingsModal)
+### Code sketch for onMutate addition (after servers cache update)
 
-**Fichier** : `src/components/account-settings/AccountSettingsModal.tsx`
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
 
-- Ajouter un prop optionnel `initialTab` (par defaut `null` sur mobile, `'account'` sur desktop)
-- Utiliser ce prop comme valeur initiale du state `activeTab`
+### Code for onSuccess addition
 
-**Fichier** : `src/components/mobile/MobileProfileView.tsx`
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-- Passer `initialTab={null}` au `AccountSettingsModal` pour que l'utilisateur arrive sur la liste
-
----
-
-### Resume des fichiers modifies
-
-| Fichier | Changement |
-|---|---|
-| `MobileBottomNav.tsx` | Renommer "Accueil" -> "Messages" |
-| `MobileChannelListView.tsx` | Deplacer engrenage du header vers ServerProfileSheet ; passer `onOpenSettings` en prop |
-| `MobileProfileView.tsx` | Supprimer bouton deconnexion ; passer `initialTab={null}` aux parametres |
-| `AccountSettingsModal.tsx` | Ajouter prop `initialTab` optionnel |
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

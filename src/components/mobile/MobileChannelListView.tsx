@@ -81,10 +81,12 @@ function ServerProfileSheet({
   serverId,
   serverName,
   trigger,
+  onOpenSettings,
 }: {
   serverId: string;
   serverName: string;
   trigger: React.ReactNode;
+  onOpenSettings?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -126,6 +128,16 @@ function ServerProfileSheet({
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary/60 to-primary/30" />
+            )}
+
+            {/* Settings button on banner */}
+            {onOpenSettings && (
+              <button
+                onClick={() => { setOpen(false); onOpenSettings(); }}
+                className="absolute top-2.5 left-2.5 flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm text-foreground hover:bg-background/90 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
             )}
 
             {/* Leave button on banner */}
@@ -366,25 +378,15 @@ export function MobileChannelListView({
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} />
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          {onOpenSettings && (
-            <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-              <Settings className="w-5 h-5" />
-            </button>
-          )}
         </div>
       )}
       {embedded && (
         <div className="h-12 px-4 flex items-center gap-2 border-b border-border">
           <div className="flex-1 min-w-0">
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} />
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          {onOpenSettings && (
-            <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-              <Settings className="w-5 h-5" />
-            </button>
-          )}
         </div>
       )}
 

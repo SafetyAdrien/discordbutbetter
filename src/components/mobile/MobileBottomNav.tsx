@@ -12,7 +12,7 @@ interface MobileBottomNavProps {
 }
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
-  { id: 'home', label: 'Accueil', icon: MessageCircle },
+  { id: 'home', label: 'Messages', icon: MessageCircle },
   { id: 'servers', label: 'Serveurs', icon: Globe },
   { id: 'notifications', label: 'Notifs', icon: Bell },
   { id: 'profile', label: 'Vous', icon: User },

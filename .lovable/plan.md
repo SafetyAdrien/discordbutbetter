@@ -1,61 +1,37 @@
 
+# Appui long dans le vide - Popup de creation rapide
 
-# Fix: Duplicated channel hidden by visibility filter
+## Objectif
 
-## Root cause
+Permettre a l'utilisateur de maintenir appuye dans une zone vide de la liste des salons pour afficher un popover avec deux raccourcis : "Creer un salon" et "Creer une categorie".
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Changements
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Fichier : `src/components/mobile/MobileChannelListView.tsx`
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+1. **Ajouter deux states** :
+   - `showEmptyLongPressMenu` (boolean) pour afficher/masquer le popover
+   - `showCreateChannel` et `showCreateCategory` (boolean) pour les modals de creation
 
-## Fix
+2. **Ajouter un handler d'appui long sur le conteneur** de la liste (le `div` avec `className="flex-1 overflow-y-auto py-2 px-2"` ligne 360) :
+   - `onTouchStart` : demarre un timer de 500ms. Verifie que le touch ne cible pas un bouton/element interactif (via `e.target`) pour ne se declencher que dans le "vide"
+   - `onTouchEnd` / `onTouchMove` : annule le timer
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+3. **Ajouter un Popover** positionne au centre ou en bas de la zone, contenant deux boutons :
+   - "Creer un salon" (icone `Plus`) -> ouvre `CreateChannelModal`
+   - "Creer une categorie" (icone `Plus`) -> ouvre `CreateCategoryModal`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+4. **Ajouter les modals** `CreateChannelModal` et `CreateCategoryModal` en bas du composant (imports deja presents)
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### Detail technique
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+Le handler d'appui long sur le conteneur doit verifier que l'element touche est bien le conteneur lui-meme ou un espace vide (pas un bouton de salon/categorie). On utilisera une verification du type :
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+const target = e.target as HTMLElement;
+if (target.closest('button') || target.closest('[role="button"]')) return;
 ```
 
-### Code for onSuccess addition
+Cela garantit que l'appui long sur un salon ou une categorie declenche leur propre menu, pas celui du vide.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+Le popover sera implemente avec un Dialog/Popover centre (utilisant le composant `Popover` existant avec un `PopoverTrigger` invisible ou un simple Dialog conditionnel).

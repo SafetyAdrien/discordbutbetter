@@ -48,7 +48,6 @@ function SortableRole({
   memberCount,
   dropIndicator,
   canDragAbove,
-  isDragActive,
 }: {
   role: RoleWithPermissions;
   isSelected: boolean;
@@ -65,7 +64,6 @@ function SortableRole({
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
   } = useSortable({
     id: role.id,
@@ -163,10 +161,6 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     return canDragRolePosition(role.position);
   };
 
-  const canModifyRole = (role: RoleWithPermissions) => {
-    if (role.is_default) return false;
-    return canManageRole(role.position);
-  };
 
   // DnD sensors with TouchSensor for mobile
   const sensors = useSensors(

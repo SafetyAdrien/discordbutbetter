@@ -456,14 +456,15 @@ export function MobileLayout({
             onTouchEnd: swipeTabs.onTouchEnd,
           } : {})}
         >
-          <AnimatePresence mode="popLayout" initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
-              initial={{ x: swipeDirection === -1 ? '40%' : '-40%', opacity: 0.5 }}
-              animate={{ x: swipeTabs.offsetX, opacity: 1 }}
-              exit={{ x: swipeDirection === -1 ? '-40%' : '40%', opacity: 0.5 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+              initial={{ x: swipeDirection === -1 ? '30%' : '-30%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: swipeDirection === -1 ? '-30%' : '30%', opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               className="h-full"
+              style={swipeTabs.offsetX !== 0 ? { transform: `translateX(${swipeTabs.offsetX}px)` } : undefined}
             >
               {activeTab === 'home' && (
                 <MobileHomeView

@@ -391,6 +391,12 @@ function parseBlocks(content: string): BlockToken[] {
         blocks.push({ type: 'empty', content: '' });
         continue;
       }
+
+      // Horizontal separator (---, ***, ___)
+      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+        blocks.push({ type: 'separator', content: '' });
+        continue;
+      }
       
       // Header patterns
       if (line.startsWith('### ')) {
@@ -592,6 +598,52 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
       );
     }
     
+    case 'timestamp': {
+      const ts = token.timestamp;
+      const fmt = token.timestampFormat || 'f';
+      if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
+      const date = new Date(ts * 1000);
+      const locale = 'fr-FR';
+      let formatted: string;
+      switch (fmt) {
+        case 't': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
+        case 'T': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); break;
+        case 'd': formatted = date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }); break;
+        case 'D': formatted = date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }); break;
+        case 'f': formatted = date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
+        case 'F': formatted = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
+        case 'R': {
+          const now = Date.now();
+          const diffS = Math.floor((now - ts * 1000) / 1000);
+          if (diffS < 60) formatted = 'à l\'instant';
+          else if (diffS < 3600) formatted = `il y a ${Math.floor(diffS / 60)} min`;
+          else if (diffS < 86400) formatted = `il y a ${Math.floor(diffS / 3600)}h`;
+          else if (diffS < 2592000) formatted = `il y a ${Math.floor(diffS / 86400)}j`;
+          else formatted = date.toLocaleDateString(locale);
+          break;
+        }
+        default: formatted = date.toLocaleString(locale);
+      }
+      return (
+        <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/15 text-primary text-sm cursor-default" title={date.toLocaleString(locale)}>
+          {formatted}
+        </span>
+      );
+    }
+
+    case 'autoLink':
+      return (
+        <a
+          key={key}
+          href={token.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline break-all"
+        >
+          {(token.content as string).length > 80 ? (token.content as string).slice(0, 77) + '...' : token.content as string}
+        </a>
+      );
+
     default:
       return <React.Fragment key={key}>{renderContent(token.content)}</React.Fragment>;
   }
@@ -673,6 +725,8 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     }
     case 'codeBlock':
       return <CodeBlock key={key} code={block.content} language={block.language} />;
+    case 'separator':
+      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-2" />;
     case 'empty':
       return <br key={key} />;
     case 'paragraph':

@@ -565,7 +565,7 @@ export function MobileChannelListView({
           <div
             className="fixed bg-popover rounded-lg p-1 shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-border w-44"
             style={{
-              left: Math.min(longPressPosition.x, window.innerWidth - 190),
+              left: Math.max(8, longPressPosition.x - 180),
               top: Math.min(longPressPosition.y - 40, window.innerHeight - 100),
             }}
             onClick={(e) => e.stopPropagation()}

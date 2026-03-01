@@ -1,37 +1,61 @@
 
-# Ajouter un menu contextuel "Modifier la catégorie" par appui long sur mobile
 
-## Résumé
+# Fix: Duplicated channel hidden by visibility filter
 
-Un appui long sur le nom d'une catégorie dans la liste des salons mobile affichera une petite popup (Popover) avec l'option "Modifier la catégorie". Cliquer dessus ouvrira le `EditCategoryModal` existant (qui affiche Aperçu + Permissions, sans page Intégration).
+## Root cause
 
-## Détails techniques
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Fichier : `src/components/mobile/MobileChannelListView.tsx`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**Imports à ajouter :**
-- `EditCategoryModal` depuis `@/components/category-settings/EditCategoryModal`
-- `useLongPress` depuis `@/hooks/useLongPress`
-- `Popover`, `PopoverContent`, `PopoverTrigger` depuis `@/components/ui/popover`
-- `FolderOpen` depuis `lucide-react`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Dans le composant `MobileChannelListView` :**
+## Fix
 
-1. Ajouter deux états :
-   - `longPressedCategoryId: string | null` -- contrôle l'ouverture du Popover sur la catégorie ciblée
-   - `editingCategory: { id: string; name: string; channelCount: number } | null` -- contrôle l'ouverture du `EditCategoryModal`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-2. Modifier le rendu de chaque catégorie (ligne 381-411) :
-   - Envelopper le bouton de catégorie dans un `Popover` contrôlé (`open={longPressedCategoryId === cat.id}`)
-   - Attacher les handlers `useLongPress` (`onTouchStart`, `onTouchEnd`, `onTouchMove`) au bouton existant
-   - Le `PopoverContent` contiendra un seul bouton "Modifier la catégorie" avec l'icône `FolderOpen`
-   - Au clic sur ce bouton : fermer le Popover et ouvrir `EditCategoryModal` avec les infos de la catégorie
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-3. Rendre conditionnellement `EditCategoryModal` quand `editingCategory` est non-null
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### Comportement
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- Appui court : collapse/expand la catégorie (inchangé)
-- Appui long (~500ms) : affiche le Popover avec "Modifier la catégorie"
-- Clic sur "Modifier la catégorie" : ouvre le modal plein écran existant (Aperçu + Permissions)
-- Le modal n'a pas de page "Intégration" (le `EditCategoryModal` n'en contient déjà pas)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

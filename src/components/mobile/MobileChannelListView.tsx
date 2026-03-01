@@ -261,6 +261,13 @@ function ServerProfileSheet({
             <Separator />
             <div className="space-y-1">
               <button
+                onClick={() => { setOpen(false); setShowCreateInvite(true); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+              >
+                <UserPlus className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">Créer une invitation</span>
+              </button>
+              <button
                 onClick={() => { setOpen(false); setShowCreateChannel(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
@@ -299,6 +306,13 @@ function ServerProfileSheet({
         <CreateCategoryModal
           serverId={serverId}
           onClose={() => setShowCreateCategory(false)}
+        />
+      )}
+
+      {showCreateInvite && (
+        <CreateInviteModal
+          serverId={serverId}
+          onClose={() => setShowCreateInvite(false)}
         />
       )}
     </>

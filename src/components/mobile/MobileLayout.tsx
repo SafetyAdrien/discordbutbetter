@@ -81,6 +81,12 @@ export function MobileLayout({
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
+
+  const openServerSettings = (serverId: string, initialTab?: string) => {
+    setSettingsInitialTab(initialTab);
+    setSettingsServerId(serverId);
+  };
 
   // Persist on change
   const setActiveTab = useCallback((tab: MobileTab) => {
@@ -431,7 +437,7 @@ export function MobileLayout({
                 orphanChannels={orphanChannelsForList}
                 onBack={handleBackToServers}
                 onChannelSelect={handleChannelSelect}
-                onOpenSettings={() => setSettingsServerId(mobileView.serverId)}
+                onOpenSettings={(initialTab) => openServerSettings(mobileView.serverId, initialTab)}
               />
             </motion.div>
           )}
@@ -464,7 +470,7 @@ export function MobileLayout({
                 onChannelSelect={handleServerChannelSelect}
                 onDiscoverClick={() => setShowDiscover(true)}
                 onCreateClick={() => setShowCreate(true)}
-                onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
+                onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
               />
             )}
             {activeTab === 'notifications' && <MobileNotificationsView />}
@@ -519,7 +525,8 @@ export function MobileLayout({
           <ServerSettingsModal
             serverId={settingsServerId}
             serverName={settingsServer.name}
-            onClose={() => setSettingsServerId(null)}
+            onClose={() => { setSettingsServerId(null); setSettingsInitialTab(undefined); }}
+            initialTab={settingsInitialTab as any}
           />
         ) : null;
       })()}

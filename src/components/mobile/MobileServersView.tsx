@@ -38,7 +38,7 @@ interface MobileServersViewProps {
   onChannelSelect: (channelId: string, channelType: string) => void;
   onDiscoverClick: () => void;
   onCreateClick: () => void;
-  onOpenSettings?: () => void;
+  onOpenSettings?: (initialTab?: string) => void;
 }
 
 const ICON_SIZE = 'w-[50px] h-[50px]';

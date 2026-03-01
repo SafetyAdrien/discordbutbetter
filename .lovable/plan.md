@@ -1,61 +1,38 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix du drag-and-drop des roles sur mobile
 
-## Root cause
+## Probleme identifie
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+La session replay montre des drags qui demarrent puis sont immediatement annules en boucle. Deux causes :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+1. **Conflit PointerSensor + TouchSensor** : Sur mobile, les evenements tactiles declenchent aussi les pointer events. Les deux sensors entrent en competition -- le PointerSensor demarre le drag (apres 5px), puis le TouchSensor interfere et provoque une annulation. Le ServerList (qui fonctionne) utilise uniquement `PointerSensor`.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+2. **`restrictToParentElement`** annule le drag si le doigt sort legerement du conteneur parent (tres frequent sur mobile avec un petit conteneur de roles).
 
-## Fix
+## Modifications
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### Fichier : `src/components/server-settings/RoleManager.tsx`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+**1. Retirer `TouchSensor` des sensors**
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Aligner sur le pattern ServerList : utiliser uniquement `PointerSensor` (qui gere deja les touch events via l'API Pointer Events) et `KeyboardSensor`.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**2. Retirer `restrictToParentElement` des modifiers**
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+Garder uniquement `restrictToVerticalAxis`. Le parent est trop petit sur mobile et provoque des annulations immediates.
 
-### 3. Hook needs `useAuth` for the user ID
+**3. Agrandir la zone tactile du grip handle**
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+Passer de `w-5 h-5` a `w-8 h-8` avec un `min-h-[44px] min-w-[44px]` pour respecter les recommandations d'accessibilite tactile (44px minimum).
 
-## Detailed changes
+## Resume
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+| Aspect | Avant | Apres |
+|---|---|---|
+| Sensors | PointerSensor + TouchSensor + KeyboardSensor | PointerSensor + KeyboardSensor |
+| Modifiers | restrictToVerticalAxis + restrictToParentElement | restrictToVerticalAxis uniquement |
+| Zone tactile grip | w-5 h-5 (~20px) | w-8 h-8 min-44px |
 
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Un seul fichier modifie : `src/components/server-settings/RoleManager.tsx`
 

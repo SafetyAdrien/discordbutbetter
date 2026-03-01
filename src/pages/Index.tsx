@@ -57,6 +57,7 @@ const Index = () => {
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
+  const [serverSettingsInitialTab, setServerSettingsInitialTab] = useState<string | undefined>(undefined);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);

@@ -18,6 +18,10 @@ import {
   Copy,
   Headphones,
   MessageSquare,
+  Info,
+  Smile,
+  Sticker,
+  Volume2,
 } from "lucide-react";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";

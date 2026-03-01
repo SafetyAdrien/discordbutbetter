@@ -47,10 +47,11 @@ interface Section {
 export function ServerSettingsModal({
   serverId,
   serverName,
-  onClose
+  onClose,
+  initialTab,
 }: ServerSettingsModalProps) {
   const { isMobile } = useBreakpoint();
-  const [activeTab, setActiveTab] = useState<SettingsTab | null>(isMobile ? null : 'profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab ?? (isMobile ? null : 'profile'));
 
   const sections: Section[] = [
     {

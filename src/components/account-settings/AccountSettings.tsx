@@ -21,9 +21,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export function AccountSettings() {
-  const { profile, user, signOut } = useAuth();
+  const { profile, user, signOut, updateProfile } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [isChangingUsername, setIsChangingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",

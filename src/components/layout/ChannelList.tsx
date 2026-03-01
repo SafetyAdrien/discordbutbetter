@@ -1184,7 +1184,7 @@ export function ChannelList({
           {showBanner && server.bannerUrl && (
             <div className="absolute inset-0 z-0 overflow-hidden rounded-t-xl">
               <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
             </div>
           )}
           {/* Server Name → Card Popover */}

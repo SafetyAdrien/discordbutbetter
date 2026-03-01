@@ -1,61 +1,128 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Plan : Sous-listes imbriquees et Embeds de liens avec metadonnees
 
-## Root cause
+## 1. Sous-listes imbriquees avec puces differenciees
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### Probleme actuel
+Les listes utilisent toutes `list-disc` (point plein) quel que soit le niveau d'indentation. Discord affiche des puces differentes selon la profondeur :
+- Niveau 0 : disc (point plein)
+- Niveau 1 : circle (cercle vide) 
+- Niveau 2+ : square (carre)
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Changement
+**Fichier** : `src/lib/markdown.tsx` (lignes 710-716)
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Remplacer le style fixe `list-disc` par un style dynamique base sur `indentLevel` :
+- `indentLevel === 0` : `list-disc`
+- `indentLevel === 1` : `list-[circle]`
+- `indentLevel >= 2` : `list-[square]`
 
-## Fix
+---
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+## 2. Embeds de liens avec metadonnees Open Graph
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### Fonctionnement
+Quand un message contient une URL brute (auto-link), un composant embed s'affiche sous le message. Cet embed recupere les metadonnees du site (og:title, og:description, og:image, theme-color) via une fonction backend et les affiche dans un bloc stylise avec :
+- Barre laterale coloree (couleur du site ou couleur par defaut)
+- Titre du site (cliquable)
+- Description
+- Image miniature (si disponible)
+- Nom du site source
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### Implementation
 
-### 2. In `onSuccess`: invalidate the permissions cache
+#### A. Fonction backend : `fetch-url-metadata`
+**Fichier** : `supabase/functions/fetch-url-metadata/index.ts`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+- Recoit une URL en POST
+- Fetch la page HTML cote serveur
+- Extrait les balises meta Open Graph (`og:title`, `og:description`, `og:image`, `og:site_name`, `theme-color`) par parsing HTML
+- Retourne un objet JSON avec les metadonnees
+- Gestion des erreurs (timeout, URL invalide, pas de metadata)
 
-### 3. Hook needs `useAuth` for the user ID
+#### B. Composant `LinkEmbed`
+**Fichier** : `src/components/chat/LinkEmbed.tsx` (nouveau)
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+- Recoit une URL en prop
+- Appelle la fonction backend pour recuperer les metadonnees
+- Affiche un embed style Discord :
+  - Barre gauche coloree (theme-color du site ou bleu par defaut)
+  - Nom du site source en petit texte
+  - Titre cliquable (lien vers l'URL)
+  - Description (tronquee a 300 caracteres)
+  - Image miniature a droite ou en bas selon la taille
+- Etats de chargement (skeleton) et d'erreur (pas d'embed affiche)
+- Cache en memoire pour eviter les appels repetes
 
-## Detailed changes
+#### C. Integration dans le rendu des messages
+**Fichier** : `src/lib/markdown.tsx`
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+- Apres le rendu du message, collecter toutes les URLs auto-linkees
+- Passer ces URLs au composant parent pour afficher les embeds sous le message
 
-### Code sketch for onMutate addition (after servers cache update)
+**Fichier** : `src/components/chat/ChatArea.tsx` (et `DMConversation.tsx`)
+
+- Detecter les URLs dans le contenu du message
+- Afficher les composants `LinkEmbed` sous chaque message contenant des URLs
+- Limiter a 5 embeds maximum par message
+
+---
+
+## Detail technique
+
+### Fonction backend (`fetch-url-metadata`)
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
+POST /fetch-url-metadata
+Body: { url: string }
+Response: {
+  title?: string,
+  description?: string,
+  image?: string,
+  siteName?: string,
+  themeColor?: string,
+  favicon?: string
 }
 ```
 
-### Code for onSuccess addition
+La fonction :
+- Fait un fetch HTTP de l'URL avec un timeout de 5 secondes
+- Parse le HTML pour extraire les meta tags via regex (pas de DOM parser cote Deno)
+- Tags cherches : `og:title`, `og:description`, `og:image`, `og:site_name`, `twitter:title`, `twitter:description`, `twitter:image`, `meta[name=theme-color]`, `meta[name=description]`, `<title>`
+- Fallback : `twitter:*` si `og:*` absent, puis `<title>` et `meta[name=description]`
+
+### Composant LinkEmbed
 
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
++--+------------------------------------+
+|  | siteName                           |
+|C | Titre (lien cliquable)        [img]|
+|O | Description tronquee...            |
+|L |                                    |
++--+------------------------------------+
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+- Barre gauche : 4px, couleur = themeColor ou `#5865F2`
+- Fond : `bg-[#2b2d31]` 
+- Largeur max : 520px (comme Discord)
+- Image : thumbnail a droite (80x80) si petite, ou en bas pleine largeur si grande
+
+### Hook `useUrlMetadata`
+**Fichier** : `src/hooks/useUrlMetadata.ts` (nouveau)
+
+- Cache en memoire (Map globale URL -> metadata)
+- Appel a la fonction backend via `supabase.functions.invoke`
+- Retourne `{ data, isLoading, error }`
+
+### Fichiers concernes (resume)
+
+| Fichier | Action |
+|---|---|
+| `src/lib/markdown.tsx` | Puces differenciees par niveau d'indentation |
+| `supabase/functions/fetch-url-metadata/index.ts` | Nouvelle fonction backend pour extraire les meta OG |
+| `src/components/chat/LinkEmbed.tsx` | Nouveau composant d'affichage embed |
+| `src/hooks/useUrlMetadata.ts` | Nouveau hook pour fetch + cache des metadonnees |
+| `src/components/chat/ChatArea.tsx` | Integration des embeds sous les messages |
+| `src/components/dm/DMConversation.tsx` | Integration des embeds dans les DMs |
 

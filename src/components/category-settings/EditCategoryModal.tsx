@@ -69,7 +69,7 @@ export function EditCategoryModal({
         </div>
       ) : category ? (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 px-1">
             {tabItems.map(item => (
               <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
             ))}

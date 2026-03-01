@@ -86,7 +86,7 @@ export function ChannelWebhooks({ channelId }: ChannelWebhooksProps) {
         </div>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Créer
+          Créer un Webhook
         </Button>
       </div>
 

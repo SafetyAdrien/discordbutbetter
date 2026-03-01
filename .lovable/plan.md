@@ -1,61 +1,30 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: Server banner cut off by action icons (Desktop)
 
-## Root cause
+## Problem
+The server header uses a flex row where the server name button (`flex-1`) contains the banner image with `absolute inset-0`, and the action icons sit as a separate flex child next to it. This means the banner image only fills the button area, not the full header width -- the icons visually "cut" the banner.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Solution
+Move the banner image out of the button and into the parent container so it spans the full header width. The server name and action icons will then overlay on top of the banner instead of sitting beside it.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Changes in `src/components/layout/ChannelList.tsx`
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+1. **Make the header row `relative overflow-hidden`** (line 1181) so it can host the banner as an absolute background
+2. **Move the banner `<img>` and gradient overlay** from inside the PopoverTrigger button (lines 1189-1193) up to the header row level, as a background layer spanning the full width
+3. **Remove `overflow-hidden` and banner-related code from the button** -- it becomes a simple transparent overlay trigger
+4. **Keep the action icons unchanged** -- they naturally sit on top of the full-width banner
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+### Visual result
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+Before:
+[  Banner (button only)  ] [Icons (no banner)]
+
+After:
+[        Banner (full width background)       ]
+[  Server Name (overlay)  ] [Icons (overlay)  ]
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Only one file is modified: `src/components/layout/ChannelList.tsx`.
 

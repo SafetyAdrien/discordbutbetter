@@ -1,61 +1,66 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Restructurer le header serveur : icones integrees + menu rapide parametres
 
-## Root cause
+## Resume
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Repositionner les icones `UserPlus` et `ChevronDown` dans le header a cote du nom du serveur (opposes, avec espacement). Le nom du serveur ouvre uniquement la carte serveur. La fleche ouvre un menu compact listant les pages de parametres pour y acceder en un clic. Sur mobile, ce menu a une hauteur maximale avec scroll.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Modifications
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Desktop - `src/components/layout/ChannelList.tsx`
 
-## Fix
+**Header (lignes ~1184-1350)** :
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- Le bouton du nom du serveur reste un `PopoverTrigger` qui ouvre la carte serveur (PopoverContent existant)
+- **Retirer** les boutons d'action (Creer une invitation, Parametres, Profil, Emojis, etc.) du PopoverContent de la carte serveur -- la carte redevient informative uniquement
+- Ajouter a **droite** du nom du serveur (dans le header, alignes a l'oppose) deux icones cote a cote avec espacement :
+  - `UserPlus` : ouvre le modal d'invitation (`setInviteChannelId('server')`)
+  - `ChevronDown` : enveloppe dans un **nouveau Popover** qui affiche un menu compact listant toutes les pages de parametres serveur (Profil, Engagement, Boost, Emojis, Stickers, Soundboard, Membres, Roles, Invitations, Integrations, Audit Log, Bannis, Template, Supprimer). Chaque item appelle `onOpenServerSettings?.('tab_id')` directement
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
+**Structure du header resultante** :
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+[Nom du serveur (-> carte)]  [espace flexible]  [UserPlus]  [ChevronDown (-> menu parametres)]
 ```
 
-### Code for onSuccess addition
+Le menu du ChevronDown est un Popover avec les sections groupees (comme dans `ServerSettingsModal`), chaque item cliquable amenant directement a la page correspondante.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+### 2. Mobile - `src/components/mobile/MobileChannelListView.tsx`
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**Meme logique** sur les 3 variantes de header (banner, non-banner, embedded) :
+
+- Le nom du serveur (`ServerProfileSheet` trigger) ouvre la carte serveur (Sheet) -- inchange
+- `UserPlus` : ouvre le modal d'invitation -- inchange
+- `ChevronDown` : au lieu d'appeler `onOpenSettings` directement, l'envelopper dans un **Popover** qui affiche le meme menu de pages de parametres
+- Le Popover mobile aura une **hauteur maximale** (`max-h-[60vh]`) avec `overflow-y-auto` pour eviter de prendre trop de place sur l'ecran
+
+### 3. Carte serveur nettoyee
+
+**Desktop** (`ChannelList.tsx` PopoverContent, lignes ~1296-1346) : Supprimer la section "Actions bar" (Separator + boutons Creer invitation / Parametres / Profil / Emojis / Stickers / Soundboard). La carte n'affiche plus que les infos (banniere, nom, description, date, fondateur, membres, emojis).
+
+**Mobile** (`MobileChannelListView.tsx` ServerProfileSheet) : La carte reste en l'etat (elle a deja ses propres actions de creation).
+
+## Detail technique du menu parametres (Popover ChevronDown)
+
+Le menu reutilisera les memes sections que `ServerSettingsModal` :
+
+| Section | Items |
+|---|---|
+| Serveur | Profil, Engagement, Boost |
+| Expressions | Emojis, Stickers, Soundboard |
+| Personnes | Membres, Roles, Invitations |
+| Apps | Integrations |
+| Moderations | Audit Log, Bannis |
+| -- | Template, Supprimer (style danger) |
+
+Chaque item a son icone + label. Au clic, le Popover se ferme et `onOpenServerSettings?.('tab_id')` est appele.
+
+Largeur du menu : `w-56` (desktop), `w-52` (mobile). Hauteur max mobile : `max-h-[60vh] overflow-y-auto`.
+
+## Fichiers modifies
+
+| Fichier | Action |
+|---|---|
+| `src/components/layout/ChannelList.tsx` | Restructurer header + nettoyer carte serveur + ajouter Popover menu parametres |
+| `src/components/mobile/MobileChannelListView.tsx` | Remplacer le bouton ChevronDown par un Popover menu parametres avec max-height |
 

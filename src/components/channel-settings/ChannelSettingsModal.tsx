@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { ChevronLeft, X } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -21,6 +13,7 @@ import { ChannelWebhooks } from './ChannelWebhooks';
 import { ChannelDangerZone } from './ChannelDangerZone';
 import { useChannelDetails } from '@/hooks/useChannelSettings';
 import { ChannelType } from '@/constants/permissions';
+import { ResponsiveModal } from '@/components/ui/responsive-modal';
 
 interface ChannelSettingsModalProps {
   channelId: string;
@@ -39,9 +32,8 @@ const channelIcons = {
 };
 
 export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<string | null>('overview');
+  const [activeTab, setActiveTab] = useState('overview');
   const { data: channel, isLoading } = useChannelDetails(channelId);
-  const { isMobile } = useBreakpoint();
 
   const Icon = channel?.type ? channelIcons[channel.type] : StreamlineHash;
 
@@ -51,121 +43,41 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     { id: 'integrations', label: 'Intégrations' },
   ];
 
-  const renderTabContent = () => {
-    if (!channel) return null;
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="space-y-6">
-            <ChannelOverview channel={channel} />
-            <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-          </div>
-        );
-      case 'permissions':
-        return <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />;
-      case 'integrations':
-        return <ChannelWebhooks channelId={channelId} />;
-      default:
-        return null;
-    }
-  };
-
-  // Mobile: fullscreen 2-level navigation
-  if (isMobile) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        {activeTab === null ? (
-          <>
-            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
-                <X className="w-5 h-5" />
-              </button>
-              <Icon className="w-4 h-4 text-muted-foreground" />
-              <h2 className="font-semibold text-sm flex-1 truncate">Paramètres de {channel?.name || 'salon'}</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                </div>
-              ) : (
-                <nav className="space-y-0.5">
-                  {tabItems.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className="w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    >
-                      {item.label}
-                      <ChevronLeft className="w-4 h-4 rotate-180" />
-                    </button>
-                  ))}
-                </nav>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
-              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-lg hover:bg-muted">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <h3 className="font-semibold text-sm flex-1 truncate">
-                {tabItems.find(t => t.id === activeTab)?.label}
-              </h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              {renderTabContent()}
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  // Desktop
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Icon className="w-5 h-5 text-muted-foreground" />
-            Paramètres de {channel?.name || 'salon'}
-          </DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal
+      open={true}
+      onOpenChange={(open) => !open && onClose()}
+      title={`Paramètres de ${channel?.name || 'salon'}`}
+      className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+    >
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : channel ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3 px-1">
+            {tabItems.map(item => (
+              <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
+            ))}
+          </TabsList>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <div className="flex-1 overflow-y-auto p-4">
+            <TabsContent value="overview" className="mt-0 space-y-6">
+              <ChannelOverview channel={channel} />
+              <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+            </TabsContent>
+            <TabsContent value="permissions" className="mt-0">
+              <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
+            </TabsContent>
+            <TabsContent value="integrations" className="mt-0">
+              <ChannelWebhooks channelId={channelId} />
+            </TabsContent>
           </div>
-        ) : channel ? (
-          <Tabs value={activeTab || 'overview'} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-3">
-              {tabItems.map(item => (
-                <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
-              ))}
-            </TabsList>
-
-            <div className="flex-1 overflow-y-auto mt-4">
-              <TabsContent value="overview" className="mt-0 space-y-6">
-                <ChannelOverview channel={channel} />
-                <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-              </TabsContent>
-              <TabsContent value="permissions" className="mt-0">
-                <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
-              </TabsContent>
-              <TabsContent value="integrations" className="mt-0">
-                <ChannelWebhooks channelId={channelId} />
-              </TabsContent>
-            </div>
-          </Tabs>
-        ) : (
-          <p className="text-muted-foreground text-center py-8">Salon introuvable</p>
-        )}
-      </DialogContent>
-    </Dialog>
+        </Tabs>
+      ) : (
+        <p className="text-muted-foreground text-center py-8">Salon introuvable</p>
+      )}
+    </ResponsiveModal>
   );
 }

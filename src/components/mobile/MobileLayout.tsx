@@ -350,23 +350,12 @@ export function MobileLayout({
   // Swipe between tabs
   const TAB_ORDER: MobileTab[] = ['home', 'servers', 'notifications', 'profile'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
-  const prevTabIndexRef = useRef(tabIndex);
-  const [swipeDirection, setSwipeDirection] = useState(0); // -1 left, 1 right
 
   const handleSwipeTab = useCallback((newIndex: number) => {
-    setSwipeDirection(newIndex > tabIndex ? -1 : 1);
     const tab = TAB_ORDER[newIndex];
     setActiveTab(tab);
     setMobileView({ type: 'tab' });
-  }, [tabIndex, setActiveTab, setMobileView]);
-
-  // Track direction for programmatic tab changes too
-  useEffect(() => {
-    if (tabIndex !== prevTabIndexRef.current) {
-      setSwipeDirection(tabIndex > prevTabIndexRef.current ? -1 : 1);
-      prevTabIndexRef.current = tabIndex;
-    }
-  }, [tabIndex]);
+  }, [setActiveTab, setMobileView]);
 
   const swipeTabs = useSwipeTabs({
     currentIndex: tabIndex,
@@ -375,12 +364,13 @@ export function MobileLayout({
   });
 
   const isOverlayActive = mobileView.type !== 'tab';
+  const canSwipeTabs = !isOverlayActive && !activeDMId && !showDiscover && !showCreate && !settingsServerId;
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden relative">
       {/* Main Content */}
       <div className="flex-1 overflow-hidden relative">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           {/* Thread overlay */}
           {mobileView.type === 'thread' && (
             <motion.div
@@ -450,10 +440,11 @@ export function MobileLayout({
         {/* Base tab views with swipe */}
         <div
           className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]"
-          {...(!isOverlayActive ? {
+          {...(canSwipeTabs ? {
             onTouchStart: swipeTabs.onTouchStart,
             onTouchMove: swipeTabs.onTouchMove,
             onTouchEnd: swipeTabs.onTouchEnd,
+            onTouchCancel: swipeTabs.onTouchCancel,
           } : {})}
         >
           <div className="h-full">

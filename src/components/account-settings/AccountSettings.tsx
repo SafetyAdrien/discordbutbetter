@@ -35,6 +35,34 @@ export function AccountSettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
+  const handleChangeUsername = async () => {
+    const trimmed = newUsername.trim().toLowerCase();
+    if (!trimmed) {
+      toast.error("Le nom d'utilisateur ne peut pas être vide");
+      return;
+    }
+    if (trimmed === profile?.username) {
+      setIsChangingUsername(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { data: isAvailable, error: rpcError } = await supabase.rpc('check_username_availability', { p_username: trimmed });
+      if (rpcError) throw rpcError;
+      if (!isAvailable) {
+        toast.error("Ce nom d'utilisateur est déjà pris");
+        return;
+      }
+      await updateProfile({ username: trimmed });
+      toast.success("Nom d'utilisateur mis à jour");
+      setIsChangingUsername(false);
+    } catch (error: any) {
+      toast.error(error.message || "Erreur lors du changement de nom d'utilisateur");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error("Les mots de passe ne correspondent pas");
@@ -133,8 +161,48 @@ export function AccountSettings() {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-lg">{profile?.username}</p>
-              <p className="text-sm text-muted-foreground">{profile?.username}</p>
+              <p className="font-semibold text-lg">{profile?.display_name}</p>
+              {!isChangingUsername ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">{profile?.username}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      setNewUsername(profile?.username || "");
+                      setIsChangingUsername(true);
+                    }}
+                  >
+                    Modifier
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 mt-1">
+                  <Input
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value.toLowerCase())}
+                    placeholder="nom_utilisateur"
+                    className="h-8 text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Le nom d'utilisateur doit être unique et en minuscules.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsChangingUsername(false)}
+                    >
+                      Annuler
+                    </Button>
+                    <Button size="sm" onClick={handleChangeUsername} disabled={isLoading}>
+                      {isLoading && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                      Enregistrer
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

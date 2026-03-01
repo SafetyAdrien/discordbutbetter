@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Trash2, Loader2 } from 'lucide-react';
 import { useDeleteCategory } from '@/hooks/useChannels';
 import { toast } from 'sonner';
 
@@ -57,29 +57,16 @@ export function CategoryDangerZone({
   }, [showDeleteDialog, handleDelete, deleteCategory.isPending]);
 
   return (
-    <div className="space-y-4 border-t border-destructive/20 pt-4">
-      <div className="flex items-center gap-2 text-destructive">
-        <AlertTriangle className="w-4 h-4" />
-        <h3 className="font-semibold">Zone de danger</h3>
-      </div>
-
-      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-        <p className="text-sm text-muted-foreground mb-3">
-          La suppression de cette catégorie est irréversible. 
-          {channelCount > 0 
-            ? ` Les ${channelCount} salon(s) de cette catégorie deviendront des salons sans catégorie.`
-            : ' Cette catégorie est vide.'
-          }
-        </p>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setShowDeleteDialog(true)}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Supprimer la catégorie
-        </Button>
-      </div>
+    <>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => setShowDeleteDialog(true)}
+        className="w-full"
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Supprimer la catégorie
+      </Button>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-md">
@@ -110,6 +97,6 @@ export function CategoryDangerZone({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

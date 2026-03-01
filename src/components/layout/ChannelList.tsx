@@ -1190,7 +1190,10 @@ export function ChannelList({
           {/* Server Name → Card Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 transition-colors relative z-10 h-full rounded-tl-xl"
+              <button className={cn(
+                "flex items-center gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
+                showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
+              )}
               >
                 <div className={cn(
                   "flex-1 min-w-0 text-left relative z-10 px-3",

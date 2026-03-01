@@ -1187,6 +1187,12 @@ export function ChannelList({
                 <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
               )}
 
+              {/* Gradient overlay + server name */}
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+              <span className="absolute bottom-2 left-3 text-white font-bold text-sm truncate max-w-[70%] drop-shadow-md pointer-events-none">
+                {server.name}
+              </span>
+
               {/* Leave Server Button - Only visible for non-owners */}
               {!isOwner && (
                 <Tooltip>

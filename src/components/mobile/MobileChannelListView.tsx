@@ -500,14 +500,14 @@ export function MobileChannelListView({
             <UserPlus className="w-4 h-4" />
           </button>
           {onOpenSettings && (
-            <Popover>
+            <Popover open={settingsPopoverOpen} onOpenChange={setSettingsPopoverOpen}>
               <PopoverTrigger asChild>
                 <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                   <ChevronDown className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="end" className="w-52 p-1.5 max-h-[60vh] overflow-y-auto">
-                <ServerSettingsQuickMenu onSelect={(tabId) => onOpenSettings(tabId)} />
+                <ServerSettingsQuickMenu onSelect={(tabId) => { setSettingsPopoverOpen(false); onOpenSettings(tabId); }} />
               </PopoverContent>
             </Popover>
           )}

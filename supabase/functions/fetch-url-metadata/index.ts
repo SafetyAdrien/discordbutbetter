@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     const description = extractMeta(html, 'og:description') || extractMeta(html, 'twitter:description') || extractMeta(html, 'description');
     const image = extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image');
     const siteName = extractMeta(html, 'og:site_name') || parsedUrl.hostname;
-    const themeColor = extractMeta(html, 'theme-color');
+    const themeColor = extractMeta(html, 'theme-color') || extractMeta(html, 'msapplication-TileColor') || extractMeta(html, 'og:theme_color');
 
     // Resolve relative image URL
     let resolvedImage = image;

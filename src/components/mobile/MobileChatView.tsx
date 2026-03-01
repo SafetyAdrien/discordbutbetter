@@ -159,7 +159,7 @@ export function MobileChatView({
                       <StreamlineThreads className="w-4 h-4" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent side="bottom" align="end" className="w-[calc(85vw-1rem)] max-w-80 p-0 rounded-xl">
+                  <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-xl">
                     <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
                   </PopoverContent>
                 </Popover>

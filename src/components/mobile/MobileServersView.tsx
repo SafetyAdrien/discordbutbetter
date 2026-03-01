@@ -248,7 +248,9 @@ export function MobileServersView({
   return (
     <div className="flex h-full">
       {/* Left: Server icons column */}
-      <div className={cn(
+      <div
+        data-swipe-ignore="true"
+        className={cn(
         'w-[72px] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         <DndContext

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, useRoleMemberCounts, RoleWithPermissions } from '@/hooks/useRoles';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -9,7 +9,7 @@ import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle } from 'lucid
 import { toast } from 'sonner';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, UniqueIdentifier } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, UniqueIdentifier } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
@@ -24,7 +24,6 @@ function RoleIcon({ role, size = 'sm' }: { role: RoleWithPermissions; size?: 'sm
   const textSize = size === 'sm' ? 'text-sm' : 'text-base';
 
   if (role.icon_url) {
-    // Check if it's an emoji (not a URL)
     if (!role.icon_url.startsWith('http')) {
       return <span className={textSize}>{role.icon_url}</span>;
     }
@@ -39,26 +38,6 @@ function RoleIcon({ role, size = 'sm' }: { role: RoleWithPermissions; size?: 'sm
   );
 }
 
-// Discord-style Drop Indicator - Absolute positioned
-function RoleDropIndicator({ isVisible, position }: { isVisible: boolean; position: 'before' | 'after' }) {
-  if (!isVisible) return null;
-  return (
-    <div 
-      className={cn(
-        "absolute left-0 right-0 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2]",
-        // Circles at endpoints
-        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-        "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
-        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-        "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-        // Position based on 'before' or 'after'
-        position === 'before' ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
-      )}
-    />
-  );
-}
-
 // Sortable Role Component
 function SortableRole({
   role,
@@ -67,9 +46,9 @@ function SortableRole({
   onDelete,
   onDuplicate,
   memberCount,
-  showDropIndicator,
-  dropPosition,
+  dropIndicator,
   canDragAbove,
+  isDragActive,
 }: {
   role: RoleWithPermissions;
   isSelected: boolean;
@@ -77,9 +56,9 @@ function SortableRole({
   onDelete: () => void;
   onDuplicate: () => void;
   memberCount: number;
-  showDropIndicator?: boolean;
-  dropPosition?: 'before' | 'after';
+  dropIndicator: 'before' | 'after' | null;
   canDragAbove?: boolean;
+  isDragActive: boolean;
 }) {
   const {
     attributes,
@@ -94,61 +73,67 @@ function SortableRole({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging 
-      ? 'opacity 150ms ease' 
+    transition: isDragging
+      ? 'opacity 150ms ease'
       : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
-    opacity: isDragging ? 0.3 : 1,
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={style}
-      className={cn(
-        'relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-150 group',
-        'cursor-grab active:cursor-grabbing',
-        isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
-        isDragging && 'bg-muted/20 scale-[0.98]',
-        !canDragAbove && 'opacity-50 cursor-not-allowed'
+    <div ref={setNodeRef} style={style} className="relative">
+      {/* Inline drop indicator - before */}
+      {dropIndicator === 'before' && (
+        <div className="h-[2px] bg-primary rounded-full mx-1 mb-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
       )}
-      onClick={onSelect}
-    >
-      {/* Drop Indicator - Absolute positioned */}
-      {showDropIndicator && <RoleDropIndicator isVisible={true} position={dropPosition || 'after'} />}
-      
-      <RoleIcon role={role} />
-      <span className="flex-1 truncate text-sm">{role.name}</span>
-      
-      {/* Member count */}
-      <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
-        <Users className="w-3 h-3" />
-        <span>{memberCount}</span>
+
+      <div
+        {...attributes}
+        {...listeners}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-150 group',
+          'cursor-grab active:cursor-grabbing',
+          isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
+          isDragging && 'opacity-30',
+          !canDragAbove && 'opacity-50 cursor-not-allowed'
+        )}
+        onClick={onSelect}
+      >
+        <RoleIcon role={role} />
+        <span className="flex-1 truncate text-sm">{role.name}</span>
+
+        {/* Member count */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+          <Users className="w-3 h-3" />
+          <span>{memberCount}</span>
+        </div>
+
+        {!role.is_default && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate();
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
+              title="Dupliquer ce rôle"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
       </div>
 
-      {!role.is_default && (
-        <>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDuplicate();
-            }}
-            className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
-            title="Dupliquer ce rôle"
-          >
-            <Copy className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </>
+      {/* Inline drop indicator - after */}
+      {dropIndicator === 'after' && (
+        <div className="h-[2px] bg-primary rounded-full mx-1 mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
       )}
     </div>
   );
@@ -169,114 +154,100 @@ export function RoleManager({ serverId }: RoleManagerProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  const wasDraggingRef = useRef(false);
 
   const selectedRole = roles.find(r => r.id === selectedRoleId);
+  const roleIds = useMemo(() => roles.map(r => r.id), [roles]);
 
-  // Check if user can drag a role using the permission hook
   const canDragRole = (role: RoleWithPermissions) => {
     return canDragRolePosition(role.position);
   };
-  
-  // Check if user can delete/modify a role
+
   const canModifyRole = (role: RoleWithPermissions) => {
-    if (role.is_default) return false; // Can't delete @everyone
+    if (role.is_default) return false;
     return canManageRole(role.position);
   };
 
-  // DnD sensors with 5px activation distance
+  // DnD sensors with TouchSensor for mobile
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 10 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     const id = event.active.id as string;
     const role = roles.find(r => r.id === id);
-    
-    // Check if user can drag this role
+
     if (role && !canDragRole(role)) {
       toast.error('Vous ne pouvez pas déplacer un rôle au-dessus du vôtre');
       return;
     }
-    
-    setActiveId(id);
-  };
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over, delta } = event;
-    
+    setActiveId(id);
+    wasDraggingRef.current = true;
+  }, [roles]);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+
     if (!over || over.id === active.id) {
       setOverId(null);
       return;
     }
 
-    // Calculate drop position based on cursor
-    const overRect = over.rect;
-    if (overRect) {
-      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
-      let clientY = 0;
-      if (activatorEvent) {
-        if ('clientY' in activatorEvent) {
-          clientY = activatorEvent.clientY + delta.y;
-        } else if ('touches' in activatorEvent && activatorEvent.touches[0]) {
-          clientY = activatorEvent.touches[0].clientY + delta.y;
-        }
-      }
-      const middleY = overRect.top + overRect.height / 2;
-      setDropPosition(clientY < middleY ? 'before' : 'after');
-    }
-    
     setOverId(over.id as string);
-  };
+    // Index-based position calculation (like ServerList)
+    const activeIdx = roleIds.indexOf(active.id as string);
+    const overIdx = roleIds.indexOf(over.id as string);
+    setDropPosition(activeIdx < overIdx ? 'after' : 'before');
+  }, [roleIds]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
     setOverId(null);
 
-    if (!over || active.id === over.id) return;
+    if (over && active.id !== over.id) {
+      const activeRole = roles.find(r => r.id === active.id);
+      const overRole = roles.find(r => r.id === over.id);
 
-    const activeRole = roles.find(r => r.id === active.id);
-    const overRole = roles.find(r => r.id === over.id);
+      if (activeRole && overRole && !isGod) {
+        const targetPosition = overRole.position ?? 0;
+        if (targetPosition >= userHighestRolePosition) {
+          toast.error('Vous ne pouvez pas déplacer un rôle au-dessus du vôtre');
+          setTimeout(() => { wasDraggingRef.current = false; }, 100);
+          return;
+        }
+      }
 
-    // Security: Check if target position is allowed (Gods can move anything)
-    if (activeRole && overRole && !isGod) {
-      const targetPosition = overRole.position ?? 0;
-      
-      // Can't move a role above own highest role
-      if (targetPosition >= userHighestRolePosition) {
-        toast.error('Vous ne pouvez pas déplacer un rôle au-dessus du vôtre');
-        return;
+      const oldIndex = roleIds.indexOf(active.id as string);
+      const newIndex = roleIds.indexOf(over.id as string);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(roleIds, oldIndex, newIndex);
+        reorderRoles.mutate({ serverId, orderedIds: newOrder });
       }
     }
 
-    // Calculate new order with precise insertion
-    const oldIndex = roles.findIndex(r => r.id === active.id);
-    const overIndex = roles.findIndex(r => r.id === over.id);
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, [roles, roleIds, isGod, userHighestRolePosition, serverId, reorderRoles]);
 
-    if (oldIndex !== -1 && overIndex !== -1) {
-      // Remove active role and insert at precise position
-      const reorderedRoles = roles.filter(r => r.id !== active.id);
-      let insertIndex = dropPosition === 'before' ? overIndex : overIndex + 1;
-      
-      // Adjust if we removed an element before the insertion point
-      if (oldIndex < overIndex) {
-        insertIndex--;
-      }
-      
-      insertIndex = Math.max(0, Math.min(insertIndex, reorderedRoles.length));
-      reorderedRoles.splice(insertIndex, 0, roles[oldIndex]);
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+    setOverId(null);
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+  }, []);
 
-      reorderRoles.mutate({
-        serverId,
-        orderedIds: reorderedRoles.map(r => r.id),
-      });
-    }
-  };
+  const handleRoleSelect = useCallback((roleId: string) => {
+    if (wasDraggingRef.current) return;
+    setSelectedRoleId(roleId);
+  }, []);
 
   const handleCreateRole = () => {
     if (!newRoleName.trim()) return;
@@ -369,9 +340,10 @@ export function RoleManager({ serverId }: RoleManagerProps) {
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext
-            items={roles.map(r => r.id)}
+            items={roleIds}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-1">
@@ -380,23 +352,20 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                   key={role.id}
                   role={role}
                   isSelected={selectedRoleId === role.id}
-                  onSelect={() => setSelectedRoleId(role.id)}
+                  onSelect={() => handleRoleSelect(role.id)}
                   onDelete={() => handleDeleteRole(role.id)}
                   onDuplicate={() => handleDuplicateRole(role.id)}
                   memberCount={memberCounts[role.id] || 0}
-                  showDropIndicator={overId === role.id}
-                  dropPosition={dropPosition}
+                  dropIndicator={overId === role.id && activeId !== role.id ? dropPosition : null}
                   canDragAbove={canDragRole(role)}
+                  isDragActive={!!activeId}
                 />
               ))}
             </div>
           </SortableContext>
 
-          {/* Drag Overlay - Semi-transparent ghost */}
-          <DragOverlay dropAnimation={{
-            duration: 200,
-            easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
-          }}>
+          {/* Drag Overlay - No drop animation (instant like ServerList) */}
+          <DragOverlay dropAnimation={null}>
             {activeRole && (
               <div className={cn(
                 "flex items-center gap-2 px-3 py-2 rounded-lg min-w-[200px]",

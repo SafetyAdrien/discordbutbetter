@@ -75,7 +75,7 @@ export function EditCategoryModal({
             ))}
           </TabsList>
 
-          <div className="flex-1 overflow-y-auto mt-4">
+          <div className="flex-1 overflow-y-auto p-4">
             <TabsContent value="overview" className="mt-0 space-y-6">
               <CategoryOverview category={category} onSaved={onClose} />
               <CategoryDangerZone categoryId={categoryId} categoryName={category.name} serverId={serverId} channelCount={channelCount} onDeleted={onClose} />

@@ -332,25 +332,34 @@ export function MessageInput({
     handleSendMessage();
   };
 
-  // Handle paste to preserve markdown syntax
+  // Handle paste: if text is selected and clipboard contains a URL, wrap as [text](url)
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     
-    // Get plain text from clipboard (preserves markdown syntax)
     const text = e.clipboardData.getData('text/plain');
-    
     const textarea = textareaRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newValue = value.slice(0, start) + text + value.slice(end);
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.slice(start, end);
+
+    // If there's a selection and the pasted content is a URL, create a masked link
+    if (selectedText.length > 0 && /^https?:\/\/\S+$/.test(text.trim())) {
+      const maskedLink = `[${selectedText}](${text.trim()})`;
+      const newValue = value.slice(0, start) + maskedLink + value.slice(end);
       onChange(newValue);
-      
-      // Reposition cursor after pasted text
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        textarea.selectionStart = textarea.selectionEnd = start + maskedLink.length;
       }, 0);
+      return;
     }
+
+    const newValue = value.slice(0, start) + text + value.slice(end);
+    onChange(newValue);
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    }, 0);
   }, [value, onChange]);
 
   // Render follow bar for announcement channels when permission is denied

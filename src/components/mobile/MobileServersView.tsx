@@ -314,6 +314,7 @@ export function MobileServersView({
                   hasUnread={info.hasUnread}
                   mentionCount={info.mentionCount}
                   isDragging={activeDragId === server.id}
+                  dragActive={!!activeDragId}
                   dropIndicator={isOver ? dropPosition : null}
                   onTap={() => handleServerTap(server.id)}
                 />

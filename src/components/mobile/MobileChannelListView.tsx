@@ -93,6 +93,7 @@ function ServerProfileSheet({
   const [open, setOpen] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [showCreateInvite, setShowCreateInvite] = useState(false);
   const { user } = useAuth();
   const { data: servers } = useServers();
   const { data: members } = useMembers(open ? serverId : null);

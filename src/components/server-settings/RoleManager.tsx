@@ -140,7 +140,7 @@ function SortableRole({
 export function RoleManager({ serverId }: RoleManagerProps) {
   const { data: roles = [], isLoading } = useServerRoles(serverId);
   const { data: memberCounts = {} } = useRoleMemberCounts(serverId);
-  const { isGod, canDragRole: canDragRolePosition, canManageRole, userHighestRolePosition } = usePermissions(serverId);
+  const { isGod, canDragRole: canDragRolePosition, userHighestRolePosition } = usePermissions(serverId);
   const createRole = useCreateRole();
   const deleteRole = useDeleteRole();
   const reorderRoles = useReorderRoles();

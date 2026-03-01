@@ -1177,7 +1177,7 @@ export function ChannelList({
         )} />
       </div>
       {/* Server Header - styled like User Panel */}
-      <div className="bg-[hsl(var(--surface-elevated))]">
+      <div className="bg-[hsl(var(--surface-header))]">
         <div className="flex items-center rounded-t-xl"
           style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
         >

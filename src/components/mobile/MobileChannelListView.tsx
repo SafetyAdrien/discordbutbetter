@@ -117,7 +117,7 @@ function ServerProfileSheet({
     <>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>{trigger}</SheetTrigger>
-        <SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto">
+        <SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto data-[state=closed]:duration-0">
           {/* Banner */}
           <div className="relative h-28 w-full overflow-hidden rounded-t-2xl">
             {server?.banner_url ? (
@@ -139,6 +139,12 @@ function ServerProfileSheet({
                 <Settings className="w-4 h-4" />
               </button>
             )}
+
+            {/* Gradient overlay + server name */}
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+            <span className="absolute bottom-2 left-3 text-white font-bold text-sm truncate max-w-[70%] drop-shadow-md pointer-events-none">
+              {serverName}
+            </span>
 
             {/* Leave button on banner */}
             {!isOwner && (

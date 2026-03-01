@@ -1106,6 +1106,14 @@ export function ChannelList({
     ...visibleCategories.flatMap((c) => c.channels.map((ch) => `channel-${ch.id}`)),
     ...visibleOrphanChannels.map((ch) => `channel-${ch.id}`),
   ];
+  // Banner visibility on scroll
+  const [showBanner, setShowBanner] = useState(true);
+  
+  const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = (e.target as HTMLDivElement).scrollTop;
+    setShowBanner(scrollTop === 0);
+  }, []);
+
   // Sidebar resizing
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [isHoveringResize, setIsHoveringResize] = useState(false);
@@ -1168,13 +1176,31 @@ export function ChannelList({
         )} />
       </div>
       {/* Server Header - styled like User Panel */}
-      <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]">
+      <div className="px-2 flex items-center gap-2 bg-[hsl(var(--card))] border-b border-border/50 bg-[#121421]"
+        style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
+      >
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1.5 transition-colors">
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold truncate">{server.name}</p>
-                <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
+            <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/30 rounded-md p-1.5 transition-colors relative overflow-hidden"
+              style={{ height: showBanner && server.bannerUrl ? '84px' : '40px' }}
+            >
+              {showBanner && server.bannerUrl && (
+                <div className="absolute inset-0 rounded-md overflow-hidden">
+                  <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                </div>
+              )}
+              <div className={cn(
+                "flex-1 min-w-0 text-left relative z-10",
+                showBanner && server.bannerUrl ? "self-end pb-1" : ""
+              )}>
+                <p className={cn(
+                  "text-sm font-semibold truncate",
+                  showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
+                )}>{server.name}</p>
+                {!(showBanner && server.bannerUrl) && (
+                  <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
+                )}
               </div>
             </button>
           </PopoverTrigger>
@@ -1276,7 +1302,7 @@ export function ChannelList({
       {/* Channels with DnD */}
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-2">
+          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-2" onScroll={handleChannelListScroll}>
             <DndContext
               sensors={sensors}
               collisionDetection={customCollisionDetection}

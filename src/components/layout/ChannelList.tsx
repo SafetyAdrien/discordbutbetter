@@ -1312,7 +1312,7 @@ export function ChannelList({
                 Paramètres du serveur
               </button>
               <button
-                onClick={() => (onOpenServerSettings as any)?.('profile')}
+                onClick={() => onOpenServerSettings?.('profile')}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
               >
                 <Info className="w-4 h-4 text-muted-foreground" />
@@ -1320,21 +1320,21 @@ export function ChannelList({
               </button>
               <div className="my-1 h-px bg-border" />
               <button
-                onClick={() => (onOpenServerSettings as any)?.('emojis')}
+                onClick={() => onOpenServerSettings?.('emojis')}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
               >
                 <Smile className="w-4 h-4 text-muted-foreground" />
                 Émojis
               </button>
               <button
-                onClick={() => (onOpenServerSettings as any)?.('stickers')}
+                onClick={() => onOpenServerSettings?.('stickers')}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
               >
                 <Sticker className="w-4 h-4 text-muted-foreground" />
                 Stickers
               </button>
               <button
-                onClick={() => (onOpenServerSettings as any)?.('soundboard')}
+                onClick={() => onOpenServerSettings?.('soundboard')}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
               >
                 <Volume2 className="w-4 h-4 text-muted-foreground" />

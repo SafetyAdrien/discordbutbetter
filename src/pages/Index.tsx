@@ -452,7 +452,10 @@ const Index = () => {
               setActiveThreadId(null);
               setThreadChannelId(null);
             }}
-            onOpenServerSettings={() => setShowServerSettings(true)}
+            onOpenServerSettings={(initialTab) => {
+              setServerSettingsInitialTab(initialTab);
+              setShowServerSettings(true);
+            }}
             orphanChannels={activeServer?.orphanChannels || channelsData?.orphanChannels || []}
             activeThreadId={activeThreadId}
             onThreadSelect={(threadId) => {
@@ -597,7 +600,8 @@ const Index = () => {
         <ServerSettingsModal
           serverId={activeServer.id}
           serverName={activeServer.name}
-          onClose={() => setShowServerSettings(false)}
+          onClose={() => { setShowServerSettings(false); setServerSettingsInitialTab(undefined); }}
+          initialTab={serverSettingsInitialTab as any}
         />
       )}
 

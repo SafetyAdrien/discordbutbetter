@@ -449,6 +449,16 @@ export function MobileChannelListView({
                   <Settings className="w-4 h-4 text-muted-foreground" />
                   Modifier le salon
                 </button>
+                <button
+                  onClick={() => {
+                    setLongPressedChannelId(null);
+                    setDeletingChannelId(ch.id);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Supprimer le salon
+                </button>
               </PopoverContent>
             </Popover>
           );
@@ -499,6 +509,16 @@ export function MobileChannelListView({
                   >
                     <FolderOpen className="w-4 h-4 text-muted-foreground" />
                     Modifier la catégorie
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLongPressedCategoryId(null);
+                      setDeletingCategoryId(cat.id);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer la catégorie
                   </button>
                 </PopoverContent>
               </Popover>
@@ -554,6 +574,16 @@ export function MobileChannelListView({
                       >
                         <Settings className="w-4 h-4 text-muted-foreground" />
                         Modifier le salon
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLongPressedChannelId(null);
+                          setDeletingChannelId(ch.id);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors w-full text-left text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Supprimer le salon
                       </button>
                     </PopoverContent>
                   </Popover>

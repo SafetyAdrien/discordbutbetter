@@ -1,61 +1,34 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: Couleur des embeds basee sur les metadonnees
 
-## Root cause
+## Probleme
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Actuellement, quand un site ne fournit pas de `theme-color` dans ses metadonnees (cas frequent -- YouTube, GitHub, etc.), l'embed utilise un bleu fixe (`#5865F2`) qui ne correspond pas au site. L'utilisateur souhaite que la couleur vienne toujours des metadonnees du site.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Ameliorer l'extraction de couleur dans le backend
 
-## Fix
+**Fichier** : `supabase/functions/fetch-url-metadata/index.ts`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Extraire la couleur depuis plusieurs sources de metadonnees, par ordre de priorite :
+1. `meta[name="theme-color"]` (standard)
+2. `meta[name="msapplication-TileColor"]` (Microsoft)
+3. `meta[property="og:theme_color"]` (variante OG)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Si aucune de ces sources n'est disponible, retourner `null` (le frontend gerera le fallback).
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 2. Fallback neutre dans le composant
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Fichier** : `src/components/chat/LinkEmbed.tsx`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+Quand `themeColor` est `null`, utiliser un gris neutre discret (`#202225`) au lieu du bleu `#5865F2`, pour que l'embed reste coherent visuellement sans afficher une fausse couleur de marque.
 
-### 3. Hook needs `useAuth` for the user ID
+## Fichiers a modifier
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Modification |
+|---|---|
+| `supabase/functions/fetch-url-metadata/index.ts` | Ajouter extraction `msapplication-TileColor` et `og:theme_color` |
+| `src/components/chat/LinkEmbed.tsx` | Changer le fallback de `#5865F2` vers un gris neutre |
 

@@ -271,7 +271,7 @@ export function MobileServersView({
         <button
           onClick={handleDMClick}
           className={cn(
-            'relative flex items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all',
+            ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
             showDMs
               ? 'bg-primary text-primary-foreground rounded-xl'
               : 'bg-muted/50 hover:bg-primary/20 hover:text-primary text-muted-foreground'
@@ -328,14 +328,14 @@ export function MobileServersView({
 
         <button
           onClick={onDiscoverClick}
-          className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
           <Compass className="w-5 h-5" />
         </button>
 
         <button
           onClick={onCreateClick}
-          className="flex items-center justify-center w-[50px] h-[50px] rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground"
+          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
           <Plus className="w-5 h-5" />
         </button>

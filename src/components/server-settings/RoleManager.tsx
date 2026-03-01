@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, useRoleMemberCounts, RoleWithPermissions } from '@/hooks/useRoles';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -18,25 +18,29 @@ interface RoleManagerProps {
   serverId: string;
 }
 
-// Role Icon Component
-function RoleIcon({ role, size = 'sm' }: { role: RoleWithPermissions; size?: 'sm' | 'md' }) {
-  const sizeClasses = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
-  const textSize = size === 'sm' ? 'text-sm' : 'text-base';
+// Role Icon Component - supports forwardRef for DragOverlay compatibility
+const RoleIcon = forwardRef<HTMLDivElement, { role: RoleWithPermissions; size?: 'sm' | 'md' }>(
+  ({ role, size = 'sm' }, ref) => {
+    const sizeClasses = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
+    const textSize = size === 'sm' ? 'text-sm' : 'text-base';
 
-  if (role.icon_url) {
-    if (!role.icon_url.startsWith('http')) {
-      return <span className={textSize}>{role.icon_url}</span>;
+    if (role.icon_url) {
+      if (!role.icon_url.startsWith('http')) {
+        return <span ref={ref as React.Ref<HTMLSpanElement>} className={textSize}>{role.icon_url}</span>;
+      }
+      return <img src={role.icon_url} alt="" className={cn(sizeClasses, 'object-contain flex-shrink-0')} />;
     }
-    return <img src={role.icon_url} alt="" className={cn(sizeClasses, 'object-contain flex-shrink-0')} />;
-  }
 
-  return (
-    <div
-      className={cn(sizeClasses, 'rounded-full flex-shrink-0')}
-      style={{ backgroundColor: role.color || '#99AAB5' }}
-    />
-  );
-}
+    return (
+      <div
+        ref={ref}
+        className={cn(sizeClasses, 'rounded-full flex-shrink-0')}
+        style={{ backgroundColor: role.color || '#99AAB5' }}
+      />
+    );
+  }
+);
+RoleIcon.displayName = 'RoleIcon';
 
 // Sortable Role Component
 function SortableRole({
@@ -58,14 +62,18 @@ function SortableRole({
   dropIndicator: 'before' | 'after' | null;
   canDragAbove?: boolean;
 }) {
+  const isDisabled = !canDragAbove;
+
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     isDragging,
   } = useSortable({
     id: role.id,
+    disabled: isDisabled,
   });
 
   const style = {
@@ -87,18 +95,24 @@ function SortableRole({
           'flex items-center gap-2 px-1 py-2 rounded-lg transition-all duration-150 group',
           isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
           isDragging && 'opacity-30',
-          !canDragAbove && 'opacity-50'
+          isDisabled && 'opacity-50'
         )}
         onClick={onSelect}
       >
-        {/* Drag handle */}
+        {/* Drag handle - with setActivatorNodeRef + touch-none */}
         <div
-          {...attributes}
-          {...listeners}
+          ref={setActivatorNodeRef}
+          {...(isDisabled ? {} : { ...attributes, ...listeners })}
           className={cn(
-            'flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors',
-            !canDragAbove && 'cursor-not-allowed'
+            'flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 touch-none select-none',
+            isDisabled
+              ? 'cursor-not-allowed text-muted-foreground/20'
+              : 'cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors'
           )}
+          onPointerDown={(e) => {
+            // Prevent the row onClick from firing when starting a drag
+            e.stopPropagation();
+          }}
         >
           <GripVertical className="w-3.5 h-3.5" />
         </div>
@@ -168,8 +182,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     return canDragRolePosition(role.position);
   };
 
-
-  // DnD sensors with TouchSensor for mobile
+  // DnD sensors - PointerSensor only (handles both mouse and touch via Pointer Events API)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -201,7 +214,6 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     }
 
     setOverId(over.id as string);
-    // Index-based position calculation (like ServerList)
     const activeIdx = roleIds.indexOf(active.id as string);
     const overIdx = roleIds.indexOf(over.id as string);
     setDropPosition(activeIdx < overIdx ? 'after' : 'before');
@@ -220,7 +232,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
         const targetPosition = overRole.position ?? 0;
         if (targetPosition >= userHighestRolePosition) {
           toast.error('Vous ne pouvez pas déplacer un rôle au-dessus du vôtre');
-          setTimeout(() => { wasDraggingRef.current = false; }, 100);
+          setTimeout(() => { wasDraggingRef.current = false; }, 150);
           return;
         }
       }
@@ -233,13 +245,13 @@ export function RoleManager({ serverId }: RoleManagerProps) {
       }
     }
 
-    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+    setTimeout(() => { wasDraggingRef.current = false; }, 150);
   }, [roles, roleIds, isGod, userHighestRolePosition, serverId, reorderRoles]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
     setOverId(null);
-    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+    setTimeout(() => { wasDraggingRef.current = false; }, 150);
   }, []);
 
   const handleRoleSelect = useCallback((roleId: string) => {
@@ -361,7 +373,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
             </div>
           </SortableContext>
 
-          {/* Drag Overlay - No drop animation (instant like ServerList) */}
+          {/* Drag Overlay - inline DOM to avoid ref issues */}
           <DragOverlay dropAnimation={null}>
             {activeRole && (
               <div className={cn(
@@ -370,7 +382,19 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                 "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
                 "scale-105 cursor-grabbing"
               )}>
-                <RoleIcon role={activeRole} />
+                {/* Inline role icon to avoid forwardRef issues in overlay */}
+                {activeRole.icon_url ? (
+                  activeRole.icon_url.startsWith('http') ? (
+                    <img src={activeRole.icon_url} alt="" className="w-3 h-3 object-contain flex-shrink-0" />
+                  ) : (
+                    <span className="text-sm">{activeRole.icon_url}</span>
+                  )
+                ) : (
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: activeRole.color || '#99AAB5' }}
+                  />
+                )}
                 <span className="text-sm font-medium">{activeRole.name}</span>
               </div>
             )}

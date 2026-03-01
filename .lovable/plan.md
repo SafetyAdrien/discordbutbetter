@@ -1,31 +1,61 @@
 
 
-# Intégrer les icônes dans la carte de serveur
+# Fix: Duplicated channel hidden by visibility filter
 
-## Objectif
+## Root cause
 
-Ajouter les icônes **UserPlus** (créer une invitation) et **ChevronDown** (paramètres) **à l'intérieur de la carte de serveur** (le PopoverContent qui s'ouvre en cliquant sur le nom du serveur), tout en conservant leurs positions actuelles dans le header.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Modification
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**Fichier** : `src/components/layout/ChannelList.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Dans le `PopoverContent` de la carte serveur (lignes ~1211-1295), ajouter une barre d'actions en bas de la carte contenant :
+## Fix
 
-1. **Bouton "Créer une invitation"** (icône `UserPlus`) -- ouvre `setInviteChannelId('server')`
-2. **Bouton "Paramètres du serveur"** (icône `ChevronDown` ou `Settings`) -- ouvre `onOpenServerSettings?.()` (visible uniquement si `canAccessSettings`)
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Ces boutons seront placés dans une section en bas de la carte, séparés par un `Separator`, sous forme de boutons pleine largeur stylisés comme des items de menu (cohérent avec le style du popover des paramètres existant).
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Detail technique
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-Ajouter après la section des émojis (ligne ~1293), avant la fermeture du `</div>` principal :
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
 
 ```text
-+-- Separator
-+-- div (actions bar, px-2 pb-2)
-    +-- bouton "Créer une invitation" (UserPlus + texte)
-    +-- bouton "Paramètres du serveur" (Settings + texte) [si canAccessSettings]
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-Aucun autre fichier n'est modifié. Les boutons existants dans le header restent intacts.
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

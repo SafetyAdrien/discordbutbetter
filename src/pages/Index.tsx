@@ -57,6 +57,7 @@ const Index = () => {
   const [showDiscover, setShowDiscover] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
+  const [serverSettingsInitialTab, setServerSettingsInitialTab] = useState<string | undefined>(undefined);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
@@ -268,10 +269,11 @@ const Index = () => {
     }
   };
 
-  const handleOpenServerSettings = (serverId?: string) => {
+  const handleOpenServerSettings = (serverId?: string, initialTab?: string) => {
     if (serverId) {
       setActiveServerId(serverId);
     }
+    setServerSettingsInitialTab(initialTab);
     setShowServerSettings(true);
   };
 
@@ -450,7 +452,10 @@ const Index = () => {
               setActiveThreadId(null);
               setThreadChannelId(null);
             }}
-            onOpenServerSettings={() => setShowServerSettings(true)}
+            onOpenServerSettings={(initialTab) => {
+              setServerSettingsInitialTab(initialTab);
+              setShowServerSettings(true);
+            }}
             orphanChannels={activeServer?.orphanChannels || channelsData?.orphanChannels || []}
             activeThreadId={activeThreadId}
             onThreadSelect={(threadId) => {
@@ -595,7 +600,8 @@ const Index = () => {
         <ServerSettingsModal
           serverId={activeServer.id}
           serverName={activeServer.name}
-          onClose={() => setShowServerSettings(false)}
+          onClose={() => { setShowServerSettings(false); setServerSettingsInitialTab(undefined); }}
+          initialTab={serverSettingsInitialTab as any}
         />
       )}
 

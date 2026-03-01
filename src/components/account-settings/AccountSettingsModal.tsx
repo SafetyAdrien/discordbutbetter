@@ -19,6 +19,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface AccountSettingsModalProps {
   onClose: () => void;
+  initialTab?: SettingsTab | null;
 }
 
 type SettingsTab = 'account' | 'profile' | 'privacy' | 'connections' | 'apps' | 'sessions';
@@ -32,12 +33,12 @@ const tabs = [
   { id: 'sessions' as const, label: 'Sessions actives', icon: Smartphone },
 ];
 
-export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab | null>('account');
+export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsModalProps) {
+  const { isMobile } = useBreakpoint();
+  const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab !== undefined ? initialTab : (isMobile ? null : 'account'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const { signOut } = useAuth();
-  const { isMobile } = useBreakpoint();
 
   const handleSignOut = async () => {
     await signOut();

@@ -463,7 +463,6 @@ export function MobileChannelListView({
           onClose={() => setEditingCategory(null)}
         />
       )}
-      </div>
     </div>
   );
 }

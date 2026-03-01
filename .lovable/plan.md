@@ -1,61 +1,46 @@
 
+# Refonte du layout mobile des paramètres de salon
 
-# Fix: Duplicated channel hidden by visibility filter
+## Objectif
 
-## Root cause
+Sur mobile, au lieu d'afficher d'abord une liste de menus, l'utilisateur arrive directement sur la page "Apercu" avec deux onglets (tabs) au-dessus : **Permissions** et **Integrations**. L'onglet "Integrations" affiche la section Webhooks avec un bouton "Creer un Webhook".
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Changements
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Fichier : `src/components/channel-settings/ChannelSettingsModal.tsx`
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Mobile** : Supprimer la navigation a deux niveaux (menu list -> contenu) et la remplacer par un layout direct :
 
-## Fix
+1. **Header** : Titre du salon + bouton fermer (X)
+2. **Contenu principal** : `ChannelOverview` + `ChannelDangerZone` affiches directement
+3. **Deux tabs en dessous** : "Permissions" et "Integrations" (utiliser le composant `Tabs` existant)
+4. **Etat initial** : `activeTab` commence a `'overview'` sur mobile aussi (plus de `null`)
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+La structure mobile deviendra :
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+[X]  # nom-du-salon  Parametres
+------------------------------
+  ChannelOverview
+  ChannelDangerZone
+------------------------------
+  [ Permissions | Integrations ]   <-- Tabs
+  (contenu du tab selectionne)
 ```
 
-### Code for onSuccess addition
+- Quand "Permissions" est selectionne : affiche `ChannelPermissions`
+- Quand "Integrations" est selectionne : affiche `ChannelWebhooks`
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+### Fichier : `src/components/channel-settings/ChannelWebhooks.tsx`
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Modifier le bouton de creation pour afficher **"Creer un Webhook"** au lieu de simplement "Creer" :
 
+- Changer le texte du bouton principal
+- Garder le reste du composant identique
+
+## Detail technique
+
+Le bloc mobile (lignes 74-127) sera remplace par un layout vertical simple :
+- Header avec X pour fermer
+- ScrollArea contenant : Overview, DangerZone, puis un composant Tabs a 2 onglets (Permissions / Integrations)
+- Plus besoin de ChevronLeft ni de navigation a deux niveaux

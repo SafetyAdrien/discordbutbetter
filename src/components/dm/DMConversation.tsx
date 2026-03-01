@@ -28,6 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Message } from '@/types/app';
 import { MarkdownText } from '@/lib/markdown';
+import { LinkEmbeds } from '@/components/chat/LinkEmbed';
 import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageAttachments';
@@ -520,6 +521,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             {message.attachments && message.attachments.length > 0 && (
                               <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
                             )}
+
+                            {/* Link Embeds */}
+                            <LinkEmbeds content={message.content} />
 
                             {/* Edited indicator - after attachments */}
                             {message.edited_at && (

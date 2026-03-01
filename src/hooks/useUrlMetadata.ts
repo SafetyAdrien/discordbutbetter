@@ -72,8 +72,7 @@ export function useUrlMetadata(url: string | null) {
 
 // Utility to extract URLs from message content
 export function extractUrls(content: string): string[] {
-  const urlRegex = /(https?:\/\/[^\s<>\])"]+)/g;
-  const maskedLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const maskedLinkRegex = /\[([^\]]*)\]\(([^)]+)\)/g;
   const messageLinkRegex = /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\//;
   
   // Collect masked link URLs to exclude
@@ -83,11 +82,17 @@ export function extractUrls(content: string): string[] {
     maskedUrls.add(maskedMatch[2]);
   }
 
+  // Strip masked links from content before extracting bare URLs
+  const strippedContent = content.replace(maskedLinkRegex, '');
+
+  const urlRegex = /(https?:\/\/[^\s<>\])"',]+)/g;
   const urls: string[] = [];
   let match;
-  while ((match = urlRegex.exec(content)) !== null) {
-    const url = match[1];
-    // Skip masked link URLs and Discord message links (already have embeds)
+  while ((match = urlRegex.exec(strippedContent)) !== null) {
+    let url = match[1];
+    // Remove trailing punctuation that's not part of URL
+    url = url.replace(/[.)]+$/, '');
+    // Skip masked link URLs and Discord message links
     if (!maskedUrls.has(url) && !messageLinkRegex.test(url)) {
       urls.push(url);
     }

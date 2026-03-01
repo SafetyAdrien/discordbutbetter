@@ -87,7 +87,6 @@ import { useFollowedThreads } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
 import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
-import { useNavigate } from "react-router-dom";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
 import { Search } from "lucide-react";
 // DnD Kit imports
@@ -675,6 +674,7 @@ export function ChannelList({
   activeThreadId,
   onThreadSelect,
   onOpenVoiceChat,
+  onOpenGlobalSearch,
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);
@@ -702,7 +702,6 @@ export function ChannelList({
   const deleteCategory = useDeleteCategory();
   const duplicateChannel = useDuplicateChannel();
   const leaveServer = useLeaveServer();
-  const navigate = useNavigate();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const { data: serverEmojis = [] } = useServerEmojis(server.id);
   const { data: membersData } = useMembers(server.id);

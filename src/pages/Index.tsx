@@ -575,6 +575,7 @@ const Index = () => {
               setThreadChannelId(null);
               setVoiceChatChannelId(channelId);
             }}
+            onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
 
           {/* Main Content Area - flex container for 60/40 split when thread is open */}

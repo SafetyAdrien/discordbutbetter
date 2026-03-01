@@ -271,11 +271,11 @@ export function MobileServersView({
         <button
           onClick={handleDMClick}
           className={cn(
-            'relative flex items-center justify-center transition-all',
+            'relative flex items-center justify-center rounded-2xl transition-all',
             ICON_SIZE,
             showDMs
-              ? 'bg-primary text-primary-foreground rounded-[16px]'
-              : 'bg-muted text-muted-foreground rounded-[24px] hover:rounded-[16px] hover:bg-primary/20 hover:text-primary'
+              ? 'bg-primary text-primary-foreground rounded-xl'
+              : 'bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary'
           )}
         >
           <div className={cn(
@@ -330,7 +330,7 @@ export function MobileServersView({
         <button
           onClick={onDiscoverClick}
           className={cn(
-            'flex items-center justify-center rounded-[24px] bg-muted text-muted-foreground hover:rounded-[16px] hover:bg-primary/20 hover:text-primary transition-all',
+            'flex items-center justify-center rounded-2xl bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary transition-all',
             ICON_SIZE
           )}
         >
@@ -340,7 +340,7 @@ export function MobileServersView({
         <button
           onClick={onCreateClick}
           className={cn(
-            'flex items-center justify-center rounded-[24px] bg-muted text-muted-foreground hover:rounded-[16px] hover:bg-primary/20 hover:text-primary transition-all',
+            'flex items-center justify-center rounded-2xl bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary transition-all',
             ICON_SIZE
           )}
         >

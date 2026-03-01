@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
@@ -307,7 +307,29 @@ export function MobileChannelListView({
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; channelCount: number } | null>(null);
   const [longPressedChannelId, setLongPressedChannelId] = useState<string | null>(null);
   const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
+  const [showEmptyLongPressMenu, setShowEmptyLongPressMenu] = useState(false);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
+
+  const clearEmptyLongPress = useCallback(() => {
+    if (emptyLongPressTimer.current) {
+      clearTimeout(emptyLongPressTimer.current);
+      emptyLongPressTimer.current = null;
+    }
+  }, []);
+
+  const handleEmptyTouchStart = useCallback((e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('a')) return;
+    emptyLongPressTimer.current = setTimeout(() => {
+      setShowEmptyLongPressMenu(true);
+    }, 500);
+  }, []);
+
+  const handleEmptyTouchEnd = useCallback(() => { clearEmptyLongPress(); }, [clearEmptyLongPress]);
+  const handleEmptyTouchMove = useCallback(() => { clearEmptyLongPress(); }, [clearEmptyLongPress]);
 
   const toggleCategory = (id: string) => {
     setCollapsedCategories(prev => {
@@ -357,7 +379,12 @@ export function MobileChannelListView({
       )}
 
       {/* Channel List */}
-      <div className="flex-1 overflow-y-auto py-2 px-2">
+      <div
+        className="flex-1 overflow-y-auto py-2 px-2"
+        onTouchStart={handleEmptyTouchStart}
+        onTouchEnd={handleEmptyTouchEnd}
+        onTouchMove={handleEmptyTouchMove}
+      >
         {/* Orphan channels */}
         {orphanChannels.map(ch => {
           const Icon = channelIcons[ch.type] || StreamlineHash;
@@ -526,6 +553,45 @@ export function MobileChannelListView({
           );
         })}
       </div>
+
+      {/* Empty space long-press menu */}
+      {showEmptyLongPressMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowEmptyLongPressMenu(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute bottom-6 left-4 right-4 bg-popover rounded-xl p-2 shadow-xl border border-border" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateChannel(true); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors text-left"
+            >
+              <Hash className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm text-foreground font-medium">Créer un salon</span>
+            </button>
+            <button
+              onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateCategory(true); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors text-left"
+            >
+              <Layers className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm text-foreground font-medium">Créer une catégorie</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCreateChannel && (
+        <CreateChannelModal
+          serverId={serverId}
+          categoryId={null}
+          categoryName=""
+          onClose={() => setShowCreateChannel(false)}
+        />
+      )}
+
+      {showCreateCategory && (
+        <CreateCategoryModal
+          serverId={serverId}
+          onClose={() => setShowCreateCategory(false)}
+        />
+      )}
 
       {editingCategory && (
         <EditCategoryModal

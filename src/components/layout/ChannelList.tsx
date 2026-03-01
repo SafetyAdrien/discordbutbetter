@@ -89,7 +89,7 @@ import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
 import { useNavigate } from "react-router-dom";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
-
+import { Search } from "lucide-react";
 // DnD Kit imports
 import {
   DndContext,
@@ -171,6 +171,7 @@ interface ChannelListProps {
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
   onOpenVoiceChat?: (channelId: string) => void;
+  onOpenGlobalSearch?: () => void;
 }
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;

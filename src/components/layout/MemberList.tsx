@@ -643,7 +643,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border/50">
+      <div ref={ref} className="w-60 bg-card flex flex-col border-l border-border/50 rounded-l-xl">
         {/* Search input and Inbox */}
         <div className="px-3 pt-3 border-border bg-card">
           <div className="flex items-center gap-2">

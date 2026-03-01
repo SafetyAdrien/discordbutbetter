@@ -70,7 +70,7 @@ export function MobileChatView({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0">
+      <div className="h-12 px-2 flex items-center gap-1.5 border-b border-border flex-shrink-0 rounded-b-xl">
         <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -108,9 +108,9 @@ export function MobileChatView({
               <Users className="w-5 h-5" />
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-0">
-            {/* Action icons relocated from ChatArea header */}
-            <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+          <SheetContent side="right" className="w-72 p-0 rounded-l-2xl">
+            {/* Action icons bar */}
+            <div className="flex items-center justify-around px-3 py-2.5 border-b border-border">
               {/* Notifications */}
               <Popover>
                 <PopoverTrigger asChild>

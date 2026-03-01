@@ -1,45 +1,61 @@
 
 
-# Correction banniere double + Integration desktop + Padding salons
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme identifie (Mobile)
+## Root cause
 
-La banniere s'affiche en double quand `embedded=true` : le bloc ligne 385-403 ne filtre pas par `embedded`, et le bloc ligne 417-429 l'affiche aussi pour `embedded`. Il faut fusionner ces deux blocs en un seul qui fonctionne dans les deux modes.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. Mobile - Supprimer le doublon de banniere
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Fichier** : `src/components/mobile/MobileChannelListView.tsx`
+## Fix
 
-- Fusionner les deux blocs de banniere (lignes 385-403 et 417-429) en un seul bloc conditionnel `{showBanner && bannerUrl && (...)}` qui gere les deux cas (embedded et non-embedded) :
-  - Si `!embedded` : afficher le bouton retour
-  - Si `embedded` : pas de bouton retour
-  - Le nom du serveur et le ServerProfileSheet restent identiques dans les deux cas
-- Supprimer le bloc duplique (lignes 417-429)
-- Augmenter la hauteur de la banniere de `h-20` a `h-24` pour plus de presence visuelle
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. Desktop - Integrer le ChevronDown dans la banniere
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**Fichier** : `src/components/layout/ChannelList.tsx`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- Deplacer le bouton `ChevronDown` (menu rapide serveur) a l'interieur du bouton-banniere du header, en position absolue en bas a droite
-- Quand la banniere est visible, le ChevronDown apparait en blanc par-dessus l'image
-- Quand la banniere est masquee (scroll), le ChevronDown reste dans le header classique
-- La banniere prend toute la largeur du header (retirer le gap entre le popover serveur et le menu ChevronDown, fusionner en un seul bloc)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### 3. Padding des salons
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**Fichiers** : `MobileChannelListView.tsx` et `ChannelList.tsx`
+### 3. Hook needs `useAuth` for the user ID
 
-- Mobile (ligne 441) : changer `px-2` en `px-1` sur le conteneur scrollable des salons
-- Desktop (ligne 1351) : changer `px-2` en `px-1` sur le conteneur scrollable
-- Desktop orphan channels (ligne 1362) : changer `px-2` en `px-1`
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### Resume des fichiers modifies
+## Detailed changes
 
-| Fichier | Changement |
-|---|---|
-| `MobileChannelListView.tsx` | Fusionner les 2 blocs banniere en 1 ; agrandir la hauteur ; reduire le padding des salons |
-| `ChannelList.tsx` | Integrer le ChevronDown dans la zone banniere ; reduire le padding des salons |
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

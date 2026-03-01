@@ -304,8 +304,9 @@ export function MessageInput({
       }
     }
     
-    // Send message on Enter (without shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // On mobile: Enter inserts a newline, send via button only
+    // On desktop: Enter sends, Shift+Enter inserts newline
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
       e.preventDefault();
       if (value.trim() || attachments.length > 0) {
         handleSendMessage();

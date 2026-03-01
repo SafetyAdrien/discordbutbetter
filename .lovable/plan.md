@@ -1,52 +1,61 @@
 
-Objectif
-- Corriger définitivement les 3 boutons de la colonne serveurs mobile (DM, Découvrir, Créer) pour qu’ils soient:
-  1) parfaitement carrés,
-  2) plus grands,
-  3) visuellement identiques à la forme des icônes de serveurs (même arrondi, même proportions).
 
-Constat technique (actuel)
-- Le fichier concerné est `src/components/mobile/MobileServersView.tsx`.
-- Les boutons DM/Découvrir/Créer utilisent `ICON_SIZE` (`w-[50px] h-[50px]`), mais l’apparence reste perçue comme “rectangulaire”.
-- L’état actif DM applique `rounded-xl` (moins arrondi que le reste), ce qui casse l’uniformité visuelle.
-- Les icônes serveur passent via `Avatar` (style légèrement différent des 3 boutons utilitaires).
+# Fix: Duplicated channel hidden by visibility filter
 
-Plan d’implémentation
-1) Unifier la base visuelle des icônes de la sidebar mobile
-- Créer une base de classes commune (constante) dédiée aux “icônes sidebar”, avec:
-  - dimension explicite agrandie: `size-[56px]` (au lieu de 50),
-  - verrou carré: `aspect-square`,
-  - anti-déformation flex: `shrink-0`,
-  - neutralisation padding natif: `p-0`,
-  - arrondi homogène: `rounded-2xl`.
-- Réutiliser cette base pour:
-  - DM,
-  - Découvrir,
-  - Créer,
-  - Avatar des serveurs (et overlay de drag), pour uniformité totale.
+## Root cause
 
-2) Corriger l’état actif DM pour ne plus donner l’effet “rectangle”
-- Supprimer la divergence `rounded-xl` côté DM actif.
-- Conserver le même arrondi que les autres (`rounded-2xl`) et garder le feedback visuel actif via couleur/ring (pas via forme différente).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-3) Ajuster la lisibilité après agrandissement
-- Ajuster la taille des glyphes internes (ex: de `w-5 h-5` vers `w-6 h-6`) pour garder des proportions cohérentes.
-- Vérifier que les badges d’unread restent bien positionnés (`-top-1 -right-1`) avec la nouvelle taille.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-4) Vérifier la colonne gauche mobile
-- Garder `w-[72px]` si le rendu est propre avec `56px`.
-- Si visuellement trop serré, passer la colonne à `w-[76px]` (ou `w-[80px]`) et ajuster les séparateurs (`w-8` -> `w-9/10`) pour rester harmonieux.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-5) Validation visuelle ciblée
-- Contrôles sur mobile:
-  - DM, Découvrir, Créer sont bien carrés (même largeur/hauteur),
-  - même arrondi que les icônes serveurs,
-  - taille visiblement plus grande,
-  - aucun débordement/collision avec indicateur actif ou badges,
-  - aucun impact sur le drag & drop des serveurs.
+## Fix
 
-Fichier impacté
-- `src/components/mobile/MobileServersView.tsx` (uniquement).
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Résultat attendu
-- Les 3 boutons (DM, Découvrir, Créer) auront exactement la même géométrie que les icônes de serveurs, sans effet rectangulaire, avec une taille plus grande et une uniformité visuelle nette.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

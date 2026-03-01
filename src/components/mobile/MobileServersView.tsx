@@ -46,7 +46,7 @@ interface MobileServersViewProps {
   onShowFriends: () => void;
 }
 
-const ICON_SIZE = 'w-[50px] h-[50px]';
+const ICON_SIZE = 'size-[52px] aspect-square shrink-0';
 
 function SortableMobileServerIcon({
   server,
@@ -273,15 +273,15 @@ export function MobileServersView({
           className={cn(
             ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
             showDMs
-              ? 'bg-primary text-primary-foreground rounded-xl'
-              : 'bg-muted/50 hover:bg-primary/20 hover:text-primary text-muted-foreground'
+              ? 'bg-primary text-primary-foreground rounded-2xl'
+              : 'bg-muted/50 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
           )}
         >
           <div className={cn(
             'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
             showDMs ? 'h-8' : totalUnreadDMs > 0 ? 'h-3' : 'h-0 opacity-0'
           )} />
-          <MessageCircle className="w-5 h-5" />
+          <MessageCircle className="w-6 h-6" />
           {totalUnreadDMs > 0 && !showDMs && (
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
               {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
@@ -330,14 +330,14 @@ export function MobileServersView({
           onClick={onDiscoverClick}
           className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
-          <Compass className="w-5 h-5" />
+          <Compass className="w-6 h-6" />
         </button>
 
         <button
           onClick={onCreateClick}
           className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-6 h-6" />
         </button>
       </div>
 

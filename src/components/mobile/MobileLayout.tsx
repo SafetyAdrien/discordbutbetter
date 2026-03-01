@@ -456,39 +456,29 @@ export function MobileLayout({
             onTouchEnd: swipeTabs.onTouchEnd,
           } : {})}
         >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTab}
-              initial={{ x: swipeDirection === -1 ? '30%' : '-30%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: swipeDirection === -1 ? '-30%' : '30%', opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
-              className="h-full"
-              style={swipeTabs.offsetX !== 0 ? { transform: `translateX(${swipeTabs.offsetX}px)` } : undefined}
-            >
-              {activeTab === 'home' && (
-                <MobileHomeView
-                  activeDMId={activeDMId}
-                  onConversationSelect={onOpenDM}
-                  onShowFriends={onShowFriends}
-                />
-              )}
-              {activeTab === 'servers' && (
-                <MobileServersView
-                  servers={servers}
-                  activeServerId={activeServerId}
-                  rawServers={rawServers}
-                  onServerSelect={handleServerSelect}
-                  onChannelSelect={handleServerChannelSelect}
-                  onDiscoverClick={() => setShowDiscover(true)}
-                  onCreateClick={() => setShowCreate(true)}
-                  onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
-                />
-              )}
-              {activeTab === 'notifications' && <MobileNotificationsView />}
-              {activeTab === 'profile' && <MobileProfileView />}
-            </motion.div>
-          </AnimatePresence>
+          <div className="h-full">
+            {activeTab === 'home' && (
+              <MobileHomeView
+                activeDMId={activeDMId}
+                onConversationSelect={onOpenDM}
+                onShowFriends={onShowFriends}
+              />
+            )}
+            {activeTab === 'servers' && (
+              <MobileServersView
+                servers={servers}
+                activeServerId={activeServerId}
+                rawServers={rawServers}
+                onServerSelect={handleServerSelect}
+                onChannelSelect={handleServerChannelSelect}
+                onDiscoverClick={() => setShowDiscover(true)}
+                onCreateClick={() => setShowCreate(true)}
+                onOpenSettings={() => activeServerId && setSettingsServerId(activeServerId)}
+              />
+            )}
+            {activeTab === 'notifications' && <MobileNotificationsView />}
+            {activeTab === 'profile' && <MobileProfileView />}
+          </div>
         </div>
       </div>
 

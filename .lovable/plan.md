@@ -1,61 +1,102 @@
 
+Objectif
+Stabiliser le swipe horizontal entre les pages de navigation mobile (onglets du bas) sans animation, sans faux déclenchements, et sans conflits avec les autres gestes (retour, scroll, drag, saisie).
 
-# Fix: Duplicated channel hidden by visibility filter
+Constats (à partir du code actuel)
+1) `useSwipeTabs` déclenche un `setState` (`offsetX`) à chaque `touchmove` alors que l’animation a été retirée.
+- Impact: re-renders inutiles pendant le geste, comportement moins fluide, et décision finale basée sur une valeur potentiellement “stale” en `onTouchEnd`.
 
-## Root cause
+2) Le swipe d’onglet est actif trop largement dès que `mobileView.type === 'tab'`.
+- Impact: conflits possibles quand l’utilisateur est dans une conversation DM (`activeDMId`), dans des zones interactives (champ de recherche, drag & drop serveurs), ou avec des modales ouvertes.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+3) Le hook ne gère pas assez les cas mobiles réels.
+- Pas de `onTouchCancel`
+- Pas de garde multi-touch (pinch/zoom)
+- Filtrage de direction trop permissif pour certains scrolls diagonaux
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+4) `MobileLayout` utilise encore `AnimatePresence mode="popLayout"`.
+- Les logs montrent toujours l’avertissement React “Function components cannot be given refs…”
+- `popLayout` est connu pour provoquer ce type de warning sur certains arbres de rendu.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Plan d’implémentation
 
-## Fix
+1) Durcir `useSwipeTabs` (source unique de vérité du geste)
+Fichier: `src/hooks/useSwipeTabs.ts`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- Remplacer la logique basée sur `offsetX` state par des `refs` uniquement:
+  - `startXRef`, `startYRef`, `lastDxRef`, `lockedRef`, `trackingRef`
+- Gardes d’entrée au `touchstart`:
+  - ignorer si `touches.length !== 1`
+  - ignorer zone edge gauche (conserver `edgeGuard`)
+  - ignorer cibles interactives (input, textarea, contenteditable, et zones marquées `data-swipe-ignore="true"`)
+- Améliorer le verrouillage directionnel:
+  - lock horizontal seulement si le mouvement horizontal domine clairement (ratio configurable, ex. `abs(dx) > abs(dy) * 1.25`)
+- Décision de swipe en `touchend` basée sur `lastDxRef` (pas sur state React)
+- Ajouter `onTouchCancel` qui reset totalement le geste
+- Retourner uniquement les handlers nécessaires (pas d’offset visuel)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Résultat attendu:
+- Swipe plus fiable, sans latence de rendu, sans déclenchements fantômes.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+2) Encadrer strictement quand le swipe d’onglet est autorisé
+Fichier: `src/components/mobile/MobileLayout.tsx`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+- Introduire `canSwipeTabs` (au lieu de `!isOverlayActive` seulement):
+  - `mobileView.type === 'tab'`
+  - `!activeDMId`
+  - `!showDiscover`
+  - `!showCreate`
+  - `!settingsServerId`
+- Attacher les handlers uniquement si `canSwipeTabs === true`
+- Ajouter `onTouchCancel` côté conteneur
+- Nettoyer l’état devenu inutile depuis suppression d’animation (`swipeDirection`, `prevTabIndexRef` si non utilisé ailleurs)
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+Résultat attendu:
+- Pas de changement d’onglet involontaire pendant DM, modale, ou autres contextes sensibles.
 
-### 3. Hook needs `useAuth` for the user ID
+3) Réduire les conflits avec zones interactives (drag/scroll/saisie)
+Fichiers:
+- `src/components/mobile/MobileServersView.tsx`
+- (optionnel selon besoin) zones spécifiques dans `MobileHomeView`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+- Marquer les zones qui ne doivent pas déclencher le swipe d’onglet:
+  - colonne des serveurs draggable (DnD) avec `data-swipe-ignore="true"`
+  - autres blocs hautement interactifs si nécessaire
+- Le hook `useSwipeTabs` utilisera ce marquage pour ignorer le geste dès `touchstart`.
 
-## Detailed changes
+Résultat attendu:
+- Drag & drop serveur et interactions locales ne déclenchent plus de changement d’onglet.
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+4) Supprimer le warning refs (stabilité render)
+Fichier: `src/components/mobile/MobileLayout.tsx`
 
-### Code sketch for onMutate addition (after servers cache update)
+- Remplacer `AnimatePresence mode="popLayout"` par `mode="wait"` (ou retirer `mode` si inutile)
+- Conserver les animations d’overlay existantes (channels/chat/thread) inchangées fonctionnellement, tout en éliminant le warning de refs
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+Résultat attendu:
+- Console propre, moins de comportements imprévisibles liés au cycle de rendu.
 
-### Code for onSuccess addition
+5) Validation fonctionnelle (mobile)
+Parcours de test à exécuter après implémentation:
+1. Swipe gauche/droite entre onglets:
+   - home ⇄ servers ⇄ notifications ⇄ profile
+2. Scroll vertical long dans chaque onglet:
+   - aucun changement d’onglet involontaire
+3. Depuis “Serveurs”:
+   - drag d’un serveur: pas de switch d’onglet parasite
+4. Dans DM conversation (`activeDMId`):
+   - le swipe horizontal ne doit pas changer d’onglet
+5. Overlays (channels/chat/thread):
+   - swipe-back edge gauche continue de fonctionner
+6. Console:
+   - disparition du warning “Function components cannot be given refs” dans `MobileLayout`
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+Fichiers ciblés (résumé)
+- `src/hooks/useSwipeTabs.ts` (refactor robuste du geste)
+- `src/components/mobile/MobileLayout.tsx` (gating + cleanup + fix AnimatePresence mode)
+- `src/components/mobile/MobileServersView.tsx` (zones `data-swipe-ignore`)
+- (optionnel) `src/components/mobile/MobileHomeView.tsx` (marquage zones interactives supplémentaires si nécessaire)
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+Notes de périmètre
+- Aucun changement backend/database requis.
+- Comportement “sans animation de swipe” conservé (switch d’onglet instantané).

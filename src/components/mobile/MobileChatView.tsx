@@ -128,7 +128,7 @@ export function MobileChatView({
                       <Bell className="w-4 h-4" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent side="bottom" align="end" className="w-56 p-3 rounded-xl">
+                  <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-56 p-3 rounded-xl">
                     <h4 className="font-semibold text-foreground mb-3 text-sm">Notifications</h4>
                     <div className="space-y-1">
                       <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">

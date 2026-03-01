@@ -562,9 +562,8 @@ export function MobileChannelListView({
       {/* Empty space long-press menu */}
       {showEmptyLongPressMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowEmptyLongPressMenu(false)}>
-          <div className="absolute inset-0 bg-black/40" />
           <div
-            className="fixed bg-popover rounded-lg p-1 shadow-xl border border-border w-44"
+            className="fixed bg-popover rounded-lg p-1 shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-border w-44"
             style={{
               left: Math.min(longPressPosition.x, window.innerWidth - 190),
               top: Math.min(longPressPosition.y - 40, window.innerHeight - 100),

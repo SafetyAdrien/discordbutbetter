@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Plus, Compass, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -130,22 +130,24 @@ function SortableMobileServerIcon({
   );
 }
 
-function ServerIconOverlay({ server }: { server: Server }) {
-  return (
-    <div className="scale-110 drop-shadow-lg">
-      <Avatar className={cn(ICON_SIZE, 'rounded-2xl')}>
-        {server.icon?.startsWith('http') ? (
-          <AvatarImage src={server.icon} />
-        ) : null}
-        <AvatarFallback className="bg-muted text-foreground text-base rounded-2xl">
-          {server.icon && !server.icon.startsWith('http')
-            ? server.icon
-            : server.name.slice(0, 2).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-    </div>
-  );
-}
+const ServerIconOverlay = React.forwardRef<HTMLDivElement, { server: Server }>(
+  function ServerIconOverlay({ server }, ref) {
+    return (
+      <div ref={ref} className="scale-110 drop-shadow-lg">
+        <Avatar className={cn(ICON_SIZE, 'rounded-2xl')}>
+          {server.icon?.startsWith('http') ? (
+            <AvatarImage src={server.icon} />
+          ) : null}
+          <AvatarFallback className="bg-muted text-foreground text-base rounded-2xl">
+            {server.icon && !server.icon.startsWith('http')
+              ? server.icon
+              : server.name.slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      </div>
+    );
+  }
+);
 
 export function MobileServersView({
   servers,
@@ -236,13 +238,13 @@ export function MobileServersView({
       }
     }
 
-    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+    setTimeout(() => { wasDraggingRef.current = false; }, 300);
   }, [serverIds, reorderServers]);
 
   const handleDragCancel = useCallback(() => {
     setActiveDragId(null);
     setOverId(null);
-    setTimeout(() => { wasDraggingRef.current = false; }, 100);
+    setTimeout(() => { wasDraggingRef.current = false; }, 300);
   }, []);
 
   const draggedServer = activeDragId ? sortedServers.find(s => s.id === activeDragId) : null;

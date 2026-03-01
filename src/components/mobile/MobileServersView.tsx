@@ -54,6 +54,7 @@ function SortableMobileServerIcon({
   hasUnread,
   mentionCount,
   isDragging,
+  dragActive,
   dropIndicator,
   onTap,
 }: {
@@ -62,6 +63,7 @@ function SortableMobileServerIcon({
   hasUnread: boolean;
   mentionCount: number;
   isDragging: boolean;
+  dragActive: boolean;
   dropIndicator: 'before' | 'after' | null;
   onTap: () => void;
 }) {
@@ -76,7 +78,7 @@ function SortableMobileServerIcon({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    touchAction: 'manipulation',
+    touchAction: dragActive ? 'none' : 'manipulation',
   };
 
   return (

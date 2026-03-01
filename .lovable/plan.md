@@ -1,61 +1,47 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: Embeds de liens avec metadonnees
 
-## Root cause
+## Diagnostic
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le backend (edge function `fetch-url-metadata`) fonctionne correctement -- teste avec GitHub et YouTube, il retourne bien les metadonnees (titre, description, image, couleur du theme, nom du site).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Le composant `LinkEmbeds` detecte les URLs et affiche un squelette de chargement, mais l'appel au backend depuis le frontend semble echouer silencieusement (erreurs capturees sans log).
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Corrections prevues
 
-## Fix
+### 1. Ajouter du logging dans le hook `useUrlMetadata.ts`
+- Ajouter des `console.log` / `console.error` dans la fonction `fetchMetadata` pour identifier pourquoi l'appel echoue cote frontend
+- Verifier que `supabase.functions.invoke` retourne bien les donnees attendues et pas un format encapsule different
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 2. Corriger le traitement de la reponse dans `useUrlMetadata.ts`
+- Le SDK Supabase peut encapsuler la reponse differemment selon la version. Verifier si `data` contient directement les metadonnees ou si elles sont dans `data.data`
+- Ajouter une gestion robuste du format de reponse
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 3. Ameliorer le composant `LinkEmbed.tsx`
+- Ajouter un etat d'erreur visible en mode developpement
+- S'assurer que le composant ne reste pas bloque sur le squelette de chargement indefiniment (timeout de secours)
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+---
 
-### 2. In `onSuccess`: invalidate the permissions cache
+## Detail technique
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### Fichier : `src/hooks/useUrlMetadata.ts`
 
-### 3. Hook needs `useAuth` for the user ID
+Modifications dans `fetchMetadata()` :
+- Ajouter `console.log('Fetching metadata for:', url)` avant l'appel
+- Ajouter `console.log('Metadata response:', data, error)` apres l'appel
+- Gerer le cas ou la reponse est dans `data.data` plutot que `data` directement
+- Ajouter un timeout de 10 secondes pour eviter que le composant reste en chargement
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+### Fichier : `src/components/chat/LinkEmbed.tsx`
 
-## Detailed changes
+- Aucun changement majeur necessaire, le composant affiche deja correctement les donnees quand elles arrivent
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+### Fichiers concernes
 
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Action |
+|---|---|
+| `src/hooks/useUrlMetadata.ts` | Ajouter logging + corriger traitement reponse |
+| `src/components/chat/LinkEmbed.tsx` | Ajouter timeout de secours sur le chargement |
 

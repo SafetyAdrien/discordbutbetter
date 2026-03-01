@@ -171,8 +171,8 @@ export function MobileServersView({
   const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((a, b) => a + b, 0);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 15 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } })
   );
 
   const sortedServers = useMemo(() => sortServers(servers), [servers, sortServers]);

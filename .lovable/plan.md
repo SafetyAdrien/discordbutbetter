@@ -1,61 +1,18 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+## Réajuster la couleur du header serveur
 
-## Root cause
+**Problème** : La couleur actuelle du header (`220 21% 14%`) ne s'harmonise pas correctement avec la liste des salons (`--card: 218 20% 10%`). La teinte (220° vs 218°) et la saturation (21% vs 20%) divergent légèrement du système de couleurs existant.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Solution** : Réaligner le header sur la teinte de base 218° tout en maintenant une différence de luminosité subtile (+3%) par rapport à la liste des salons.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+| Variable | Actuelle | Nouvelle |
+|---|---|---|
+| `--card` (liste salons) | `218 20% 10%` | inchangé |
+| `--surface-header` | `220 21% 14%` | `218 20% 13%` |
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Modification** :
+- **Fichier** : `src/index.css`, ligne 160
+- Remplacer `--surface-header: 220 21% 14%` par `--surface-header: 218 20% 13%`
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+Cela donne un header légèrement plus clair que la liste des salons (+3% de luminosité), avec une teinte et saturation parfaitement cohérentes avec le reste du design system.

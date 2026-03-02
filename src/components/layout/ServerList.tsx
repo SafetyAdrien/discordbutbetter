@@ -456,7 +456,7 @@ export function ServerList({
         onDragCancel={handleDragCancel}
       >
         <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
-          <div className="flex-1 overflow-y-auto overflow-x-visible scrollbar-thin flex flex-col items-center gap-2 w-full pt-1">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin flex flex-col items-center gap-2 w-full pt-1">
             {sortedServers.map((server) => {
               const serverInfo = unreadInfo[server.id] || { hasUnread: false, mentionCount: 0 };
               return (

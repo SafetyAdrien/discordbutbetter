@@ -1,61 +1,32 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Disparition progressive de la banniere au scroll
 
-## Root cause
+## Comportement actuel
+La banniere s'affiche ou disparait de maniere binaire (`showBanner = scrollTop === 0`). Des que l'utilisateur scroll ne serait-ce qu'un pixel, la banniere disparait instantanement.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Nouveau comportement
+La banniere disparaitra progressivement en fonction du scroll :
+- A `scrollTop = 0` : banniere 100% visible (opacite 1, hauteur pleine)
+- A `scrollTop = 96px` (hauteur de la banniere) : banniere completement disparue (opacite 0, hauteur 0)
+- Entre les deux : transition fluide proportionnelle au scroll
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements techniques
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Fichier : `src/components/mobile/MobileChannelListView.tsx`
 
-## Fix
+1. **Remplacer l'etat booleen par un nombre** : `showBanner` (boolean) devient `bannerProgress` (number entre 0 et 1), ou 1 = banniere pleinement visible et 0 = completement cachee.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+2. **Mettre a jour `handleChannelListScroll`** : Calculer le ratio de disparition base sur `scrollTop` divise par la hauteur de la banniere (96px). Clamper entre 0 et 1.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+3. **Appliquer des styles dynamiques sur le conteneur de la banniere** :
+   - `opacity` proportionnelle au progress
+   - `height` qui passe de 96px a 0px
+   - `overflow: hidden` pour eviter le debordement pendant la transition
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+4. **Gerer la barre de recherche sous la banniere** : Elle reste visible en permanence, seule la banniere image disparait progressivement.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+5. **Condition d'affichage du header compact** : Remplacer `!(showBanner && bannerUrl)` par `bannerProgress < 0.1` (ou similaire) pour afficher le header compact quand la banniere est quasi invisible.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+6. **La barre de recherche** reste toujours affichee (elle ne change que de style selon le contexte banniere/pas banniere).
 

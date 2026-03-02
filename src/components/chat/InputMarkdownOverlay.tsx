@@ -63,7 +63,7 @@ const lineStyles: Record<OverlayLine['type'], string> = {
 // All types use identical metrics - no exceptions
 export const OVERLAY_FONT_SIZE = '0.875rem';
 export const OVERLAY_LINE_HEIGHT = '1.25rem';
-export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif';
+export const INPUT_FONT_FAMILY = "'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
   if (!content) return 'normal';

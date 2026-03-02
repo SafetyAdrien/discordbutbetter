@@ -25,9 +25,9 @@ export default {
         'snap': 'cubic-bezier(0.25, 1, 0.5, 1)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['IBM Plex Sans', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         display: ['Orbitron', 'system-ui', 'sans-serif'],
-        ginto: ['gg sans', 'Noto Sans', 'Helvetica', 'sans-serif'],
+        ginto: ['IBM Plex Sans', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

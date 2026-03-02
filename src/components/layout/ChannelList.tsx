@@ -818,11 +818,11 @@ export function ChannelList({
 
 
 
+
+
       // Error already handled by the hook
     }}; // DnD sensors - optimized with touch support
-  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
-    prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
-    );
+  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
   };
   const handleSignOut = async () => {
     await signOut();
@@ -1355,7 +1355,7 @@ export function ChannelList({
         <div className="px-2 py-2 bg-[#12161c]">
           <button
             onClick={() => onOpenGlobalSearch?.()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-background text-muted-foreground text-sm hover:bg-background/80 transition-colors">
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground text-sm transition-colors bg-[#1b2127]">
 
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Rechercher</span>

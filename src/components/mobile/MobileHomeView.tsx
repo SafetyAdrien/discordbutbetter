@@ -38,7 +38,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   if (view === 'friends') {
     return (
       <div className="flex flex-col h-full">
-        <div className="h-12 px-4 flex items-center border-b border-border">
+        <div className="h-12 px-4 flex items-center border-b border-border bg-[hsl(var(--surface-header))]">
           <button onClick={() => setView('list')} className="text-sm text-muted-foreground mr-3">←</button>
           <h2 className="font-semibold text-sm">Amis</h2>
         </div>
@@ -52,7 +52,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   if (view === 'inbox') {
     return (
       <div className="flex flex-col h-full">
-        <div className="h-12 px-4 flex items-center border-b border-border">
+        <div className="h-12 px-4 flex items-center border-b border-border bg-[hsl(var(--surface-header))]">
           <button onClick={() => setView('list')} className="text-sm text-muted-foreground mr-3">←</button>
           <h2 className="font-semibold text-sm">Boîte de réception</h2>
         </div>
@@ -66,7 +66,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-12 px-4 flex items-center border-b border-border">
+      <div className="h-12 px-4 flex items-center border-b border-border bg-[hsl(var(--surface-header))]">
         <h2 className="font-semibold text-sm flex-1">Messages</h2>
         <div className="flex items-center gap-1">
           <button

@@ -1,26 +1,61 @@
 
-# Appliquer la teinte `surface-header` aux headers Mobile
 
-## Contexte
-Le header desktop du serveur utilise `bg-[hsl(var(--surface-header))]` (`#12161c` / `216 22% 9%`), mais les headers mobile utilisent `bg-surface-elevated` (une teinte differente, plus claire).
+# Fix: Duplicated channel hidden by visibility filter
 
-## Changements
+## Root cause
 
-### Fichier : `src/components/mobile/MobileChannelListView.tsx`
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Remplacer `bg-surface-elevated` par `bg-[hsl(var(--surface-header))]` aux 4 endroits suivants :
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-1. **Ligne 449** - Barre de recherche sous la banniere
-2. **Ligne 464** - Header sans banniere (mode non-embedded)
-3. **Ligne 492** - Header sans banniere (mode embedded)
-4. **Ligne 519** - Barre de recherche sans banniere
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Fichier : `src/components/mobile/MobileHomeView.tsx`
+## Fix
 
-Appliquer `bg-[hsl(var(--surface-header))]` aux headers de la vue DM/Home :
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-1. **Ligne 41** - Header "Amis"
-2. **Ligne 55** - Header "Boite de reception"
-3. **Ligne 69** - Header "Messages"
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Cela harmonisera la teinte sombre `#12161c` entre desktop et mobile pour tous les headers de serveur et de la vue home.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

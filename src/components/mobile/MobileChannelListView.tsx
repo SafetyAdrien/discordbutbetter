@@ -354,7 +354,7 @@ export function MobileChannelListView({
   const deleteChannel = useDeleteChannel();
   const deleteCategoryMut = useDeleteCategory();
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
-  const [showBanner, setShowBanner] = useState(true);
+  const [bannerProgress, setBannerProgress] = useState(1);
   const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
   const { data: servers } = useServers();
   const currentServer = servers?.find(s => s.id === serverId);
@@ -398,17 +398,25 @@ export function MobileChannelListView({
 
     const bannerUrl = currentServer?.banner_url;
 
+    const BANNER_HEIGHT = 96;
     const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
       const scrollTop = (e.target as HTMLDivElement).scrollTop;
-      setShowBanner(scrollTop === 0);
+      const progress = Math.max(0, Math.min(1, 1 - scrollTop / BANNER_HEIGHT));
+      setBannerProgress(progress);
     }, []);
 
     return (
     <div className="flex flex-col h-full bg-card select-none">
-      {/* Banner (both embedded and non-embedded) */}
-      {showBanner && bannerUrl && (
-        <div className="relative h-24 flex-shrink-0 overflow-hidden rounded-t-xl">
-          <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
+      {/* Banner (both embedded and non-embedded) - progressive fade */}
+      {bannerUrl && (
+        <div
+          className="relative flex-shrink-0 overflow-hidden rounded-t-xl"
+          style={{
+            height: `${BANNER_HEIGHT * bannerProgress}px`,
+            opacity: bannerProgress,
+          }}
+        >
+          <img src={bannerUrl} className="w-full h-24 object-cover" alt="" />
           <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute bottom-2.5 left-3 right-3 z-10 flex items-center gap-2">
             {!embedded && (
@@ -444,23 +452,8 @@ export function MobileChannelListView({
         </div>
       )}
 
-      {/* Search bar below banner */}
-      {showBanner && bannerUrl && (
-        <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-header))]">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
-            <Input
-              placeholder="Rechercher messages, membres, salons..."
-              value={mobileSearchQuery}
-              onChange={(e) => setMobileSearchQuery(e.target.value)}
-              className="h-9 pl-8 text-sm bg-input rounded-xl"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Header (shown when no banner or scrolled) */}
-      {!(showBanner && bannerUrl) && !embedded && (
+      {/* Header (shown when no banner or banner nearly hidden) */}
+      {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
         <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-header))]">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
@@ -488,7 +481,7 @@ export function MobileChannelListView({
           )}
         </div>
       )}
-      {!(showBanner && bannerUrl) && embedded && (
+      {(!bannerUrl || bannerProgress < 0.1) && embedded && (
         <div className="h-12 px-4 flex items-center gap-2 border-b border-border bg-[hsl(var(--surface-header))]">
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
@@ -514,20 +507,18 @@ export function MobileChannelListView({
         </div>
       )}
 
-      {/* Search bar when no banner */}
-      {!(showBanner && bannerUrl) && (
-        <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-header))]">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
-            <Input
-              placeholder="Rechercher messages, membres, salons..."
-              value={mobileSearchQuery}
-              onChange={(e) => setMobileSearchQuery(e.target.value)}
-              className="h-9 pl-8 text-sm bg-input rounded-xl"
-            />
-          </div>
+      {/* Search bar - always visible */}
+      <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-header))]">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+          <Input
+            placeholder="Rechercher messages, membres, salons..."
+            value={mobileSearchQuery}
+            onChange={(e) => setMobileSearchQuery(e.target.value)}
+            className="h-9 pl-8 text-sm bg-input rounded-xl"
+          />
         </div>
-      )}
+      </div>
 
       {/* Separator before channel list */}
       <div className="h-px bg-border/30" />

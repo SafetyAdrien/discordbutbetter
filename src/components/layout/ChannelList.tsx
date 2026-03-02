@@ -17,8 +17,8 @@ import {
   LogOut,
   Copy,
   Headphones,
-  MessageSquare,
-} from "lucide-react";
+  MessageSquare } from
+"lucide-react";
 import { ServerSettingsQuickMenu } from "@/components/server-settings/ServerSettingsQuickMenu";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
@@ -45,8 +45,8 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+  ContextMenuTrigger } from
+"@/components/ui/context-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,8 +55,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from
+"@/components/ui/alert-dialog";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { EditCategoryModal } from "@/components/category-settings/EditCategoryModal";
 import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
@@ -80,8 +80,8 @@ import {
   useDeleteCategory,
   useDuplicateChannel,
   ChannelType,
-  OrphanChannel,
-} from "@/hooks/useChannels";
+  OrphanChannel } from
+"@/hooks/useChannels";
 import { Thread } from "@/types/thread";
 import { useThreadUnreadCounts } from "@/hooks/useThreadUnreadCounts";
 import { useChannelUnreadCounts } from "@/hooks/useChannelUnreadCounts";
@@ -99,13 +99,13 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
-  CollisionDetection,
-} from "@dnd-kit/core";
+  CollisionDetection } from
+"@dnd-kit/core";
 import {
   SortableContext,
   verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
+  useSortable } from
+"@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useDndSensors } from "@/hooks/useDndSensors";
@@ -117,29 +117,29 @@ const DropIndicator = React.forwardRef<
   {
     isVisible: boolean;
     position: "before" | "after";
-  }
->(({ isVisible, position }, ref) => {
-  if (!isVisible) return null;
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        // Absolute positioning, full width with overflow for circles
-        "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
-        "bg-[#5865f2]",
-        // Circles at endpoints using pseudo-elements
-        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-        "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
-        "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-        "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-        // Position based on 'before' or 'after'
-        position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
-        // Smooth appearance animation
-        "animate-fade-in",
-      )}
-    />
-  );
-});
+  }>(
+  ({ isVisible, position }, ref) => {
+    if (!isVisible) return null;
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          // Absolute positioning, full width with overflow for circles
+          "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
+          "bg-[#5865f2]",
+          // Circles at endpoints using pseudo-elements
+          "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
+          "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
+          "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
+          "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
+          // Position based on 'before' or 'after'
+          position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
+          // Smooth appearance animation
+          "animate-fade-in"
+        )} />);
+
+
+  });
 DropIndicator.displayName = "DropIndicator";
 interface Channel {
   id: string;
@@ -186,19 +186,19 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
   stage: StreamlineStage,
-  link: StreamlineLink,
+  link: StreamlineLink
 };
 const statusColors = {
   online: "bg-[hsl(var(--online))]",
   idle: "bg-[hsl(var(--idle))]",
   dnd: "bg-[hsl(var(--dnd))]",
-  offline: "bg-[hsl(var(--offline))]",
+  offline: "bg-[hsl(var(--offline))]"
 };
 const statusLabels = {
   online: "En ligne",
   idle: "Inactif",
   dnd: "Ne pas déranger",
-  offline: "Hors ligne",
+  offline: "Hors ligne"
 };
 function formatServerDate(dateString?: string): string {
   if (!dateString) return "Date inconnue";
@@ -206,7 +206,7 @@ function formatServerDate(dateString?: string): string {
   return date.toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "long",
-    year: "numeric",
+    year: "numeric"
   });
 }
 
@@ -222,31 +222,31 @@ function SortableCategory({
   showDropIndicator = false,
   dropPosition = "after",
   canManageChannels = false,
-  serverId,
-}: {
-  category: Category;
-  children: React.ReactNode;
-  isCollapsed: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onCreateChannel: () => void;
-  onDelete: () => void;
-  showDropIndicator?: boolean;
-  dropPosition?: "before" | "after";
-  canManageChannels?: boolean;
-  serverId: string;
-}) {
+  serverId
+
+
+
+
+
+
+
+
+
+
+
+
+}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `category-${category.id}`,
     data: {
       type: "category",
-      categoryId: category.id,
-    },
+      categoryId: category.id
+    }
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: undefined, // Let Tailwind handle transitions
+    transition: undefined // Let Tailwind handle transitions
   };
   return (
     <>
@@ -257,8 +257,8 @@ function SortableCategory({
         className={cn(
           "relative dnd-item",
           isDragging && "dnd-item-dragging"
-        )}
-      >
+        )}>
+
         {/* Drop Indicator - Absolute positioned */}
         {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
@@ -267,29 +267,29 @@ function SortableCategory({
             <div
               {...attributes}
               {...listeners}
-              className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default"
-            >
+              className="flex items-center gap-1 px-2 py-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group cursor-default">
+
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggle();
                 }}
-                className="flex items-center gap-px flex-1"
-              >
+                className="flex items-center gap-px flex-1">
+
                 <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
                 <span className="tracking-wide font-ginto text-[14px] font-normal my-0 py-0 px-[2px] mx-[2px] text-[#c6c7cd]">
                   {category.name}
                 </span>
               </button>
-              {canManageChannels && (
-                <Plus
-                  className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCreateChannel();
-                  }}
-                />
-              )}
+              {canManageChannels &&
+              <Plus
+                className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChannel();
+                }} />
+
+              }
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-52">
@@ -307,8 +307,8 @@ function SortableCategory({
             <ContextMenuSeparator />
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
+              onClick={() => setShowDeleteConfirm(true)}>
+
               <Trash2 className="w-4 h-4 mr-2" />
               Supprimer la catégorie
             </ContextMenuItem>
@@ -328,8 +328,8 @@ function SortableCategory({
               onDelete();
               setShowDeleteConfirm(false);
             }
-          }}
-        >
+          }}>
+
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -337,14 +337,14 @@ function SortableCategory({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Tu es sûr(e) de vouloir supprimer <strong>{category.name}</strong> ? Cette action est irréversible.
-              {category.channels.length > 0 && (
-                <>
+              {category.channels.length > 0 &&
+              <>
                   <br />
                   <br />
                   Les {category.channels.length} salon{category.channels.length > 1 ? "s" : ""} de cette catégorie
                   deviendront des salons sans catégorie.
                 </>
-              )}
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -355,15 +355,15 @@ function SortableCategory({
               onClick={() => {
                 onDelete();
                 setShowDeleteConfirm(false);
-              }}
-            >
+              }}>
+
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
-  );
+    </>);
+
 }
 
 interface SortableChannelProps {
@@ -394,44 +394,44 @@ interface SortableChannelProps {
 // Sortable Channel Component
 const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
   (
-    {
-      channel,
-      serverId,
-      isActive,
-      isVoiceConnected,
-      speakingUsers,
-      hasUnread = false,
-      mentionCount = 0,
-      onChannelClick,
-      onCopyLink,
-      onMarkAsRead,
-      onOpenSettings,
-      onCreateInvite,
-      onDelete,
-      onDuplicate,
-      showDropIndicator = false,
-      dropPosition = "after",
-      threads = [],
-      activeThreadId,
-      onThreadSelect,
-      showArchivedThreads = false,
-      canManageChannels = false,
-      isVoiceLocked = false,
-      onOpenChat,
-    },
-    ref,
-  ) => {
+  {
+    channel,
+    serverId,
+    isActive,
+    isVoiceConnected,
+    speakingUsers,
+    hasUnread = false,
+    mentionCount = 0,
+    onChannelClick,
+    onCopyLink,
+    onMarkAsRead,
+    onOpenSettings,
+    onCreateInvite,
+    onDelete,
+    onDuplicate,
+    showDropIndicator = false,
+    dropPosition = "after",
+    threads = [],
+    activeThreadId,
+    onThreadSelect,
+    showArchivedThreads = false,
+    canManageChannels = false,
+    isVoiceLocked = false,
+    onOpenChat
+  },
+  ref) =>
+  {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: `channel-${channel.id}`,
       data: {
         type: "channel",
-        channelId: channel.id,
-      },
+        channelId: channel.id
+      }
     });
     const style = {
       transform: CSS.Transform.toString(transform),
-      transition: undefined, // Let Tailwind handle transitions
+      transition: undefined // Let Tailwind handle transitions
     };
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
@@ -452,9 +452,9 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           {...listeners}
           className={cn(
             "relative hover:cursor-grab rounded-md dnd-item",
-            isDragging && "dnd-item-dragging",
-          )}
-        >
+            isDragging && "dnd-item-dragging"
+          )}>
+
           {/* Drop Indicator - Absolute positioned */}
           {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
@@ -470,53 +470,53 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   isStage && isActive && "bg-muted/80",
                   isStage && isLiveStage && "bg-[hsl(var(--online))]/10",
                   // Unread channel highlight (tinted background)
-                  hasUnread && !isActive && "bg-muted/30",
-                )}
-              >
-                <DefaultIcon className={cn("w-4 h-4 flex-shrink-0", ((isStage && isLiveStage) || (isVoice && participants.length > 0)) && "text-[hsl(var(--online))]")} />
+                  hasUnread && !isActive && "bg-muted/30"
+                )}>
+
+                <DefaultIcon className={cn("w-4 h-4 flex-shrink-0", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
                 <span
                   className={cn(
                     "truncate flex-1 text-left font-ginto text-[16px] font-medium",
                     // White text for unread channels, gray for read
-                    hasUnread || isActive ? "text-foreground" : "text-[#9B9CA3]",
-                  )}
-                >
+                    hasUnread || isActive ? "text-foreground" : "text-[#9B9CA3]"
+                  )}>
+
                   {channel.name}
                 </span>
 
                 {/* Mention badge - ONLY shows for mentions */}
-                {mentionCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                {mentionCount > 0 &&
+                <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                     {mentionCount}
                   </span>
-                )}
+                }
 
                 <div className="hidden group-hover:flex gap-[5px]">
-                  {(isVoice || isStage) && onOpenChat && (
-                    <MessageSquare
-                      className="w-4 h-4 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenChat();
-                      }}
-                    />
-                  )}
+                  {(isVoice || isStage) && onOpenChat &&
+                  <MessageSquare
+                    className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenChat();
+                    }} />
+
+                  }
                   <UserPlus
                     className="w-4 h-4 text-muted-foreground hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       onCreateInvite();
-                    }}
-                  />
-                  {canManageChannels && (
-                    <Settings
-                      className="w-4 h-4 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenSettings();
-                      }}
-                    />
-                  )}
+                    }} />
+
+                  {canManageChannels &&
+                  <Settings
+                    className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenSettings();
+                    }} />
+
+                  }
                 </div>
               </button>
             </ContextMenuTrigger>
@@ -538,18 +538,18 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 <Settings className="w-4 h-4 mr-2" />
                 Modifier le channel
               </ContextMenuItem>
-              {canManageChannels && (
-                <ContextMenuItem onClick={onDuplicate}>
+              {canManageChannels &&
+              <ContextMenuItem onClick={onDuplicate}>
                   <Copy className="w-4 h-4 mr-2" />
                   Dupliquer le salon
                 </ContextMenuItem>
-              )}
+              }
               <ChannelNotificationMenu channelId={channel.id} serverId={serverId} />
               <ContextMenuSeparator />
               <ContextMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
+                onClick={() => setShowDeleteConfirm(true)}>
+
                 <Trash2 className="w-4 h-4 mr-2" />
                 Supprimer le channel
               </ContextMenuItem>
@@ -557,18 +557,18 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           </ContextMenu>
 
           {/* Voice Participants */}
-          {isVoice && participants.length > 0 && (
-            <div className="ml-6 mt-1 space-y-1">
+          {isVoice && participants.length > 0 &&
+          <div className="ml-6 mt-1 space-y-1">
               {participants.map((participant) => {
-                const isSpeaking = speakingUsers.has(participant.user_id);
-                return (
-                  <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
+              const isSpeaking = speakingUsers.has(participant.user_id);
+              return (
+                <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
                     <Avatar
-                      className={cn(
-                        "w-5 h-5 transition-all",
-                        isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border",
-                      )}
-                    >
+                    className={cn(
+                      "w-5 h-5 transition-all",
+                      isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border"
+                    )}>
+
                       <AvatarImage src={participant.profile.avatar_url || undefined} />
                       <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
                         {participant.profile.display_name.charAt(0).toUpperCase()}
@@ -577,56 +577,56 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                     <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
                     {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
                     {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
-                  </div>
-                );
-              })}
+                  </div>);
+
+            })}
             </div>
-          )}
+          }
 
           {/* Stage Audience Indicator */}
-          {isStage && hasActiveSession && (
-            <div className="ml-6 mt-1 px-2 py-1">
+          {isStage && hasActiveSession &&
+          <div className="ml-6 mt-1 px-2 py-1">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Headphones className="w-3.5 h-3.5" />
                 <span>{stageData.count} en écoute</span>
-                {isLiveStage && (
-                  <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--online))] text-white rounded">
+                {isLiveStage &&
+              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--online))] text-white rounded">
                     LIVE
                   </span>
-                )}
+              }
               </div>
             </div>
-          )}
+          }
         </div>
 
         {/* Threads for text channels - OUTSIDE draggable div */}
-        {channel.type === "text" && threads.length > 0 && (
-          <div className="mt-1 space-y-0.5">
-            {threads
-              .filter((thread) => showArchivedThreads || !thread.archived)
-              .map((thread) => (
-                <div key={thread.id} className="flex items-start w-full px-2">
+        {channel.type === "text" && threads.length > 0 &&
+        <div className="mt-1 space-y-0.5">
+            {threads.
+          filter((thread) => showArchivedThreads || !thread.archived).
+          map((thread) =>
+          <div key={thread.id} className="flex items-start w-full px-2">
                   <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onThreadSelect?.(thread.id);
-                    }}
-                    className={cn(
-                      "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
-                      activeThreadId === thread.id && "bg-muted",
-                      thread.archived && "opacity-50",
-                    )}
-                  >
+              onClick={(e) => {
+                e.stopPropagation();
+                onThreadSelect?.(thread.id);
+              }}
+              className={cn(
+                "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
+                activeThreadId === thread.id && "bg-muted",
+                thread.archived && "opacity-50"
+              )}>
+
                     <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
                       {thread.name}
                       {thread.archived && " (archivé)"}
                     </span>
                   </button>
                 </div>
-              ))}
+          )}
           </div>
-        )}
+        }
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -637,8 +637,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 onDelete();
                 setShowDeleteConfirm(false);
               }
-            }}
-          >
+            }}>
+
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -656,16 +656,16 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 onClick={() => {
                   onDelete();
                   setShowDeleteConfirm(false);
-                }}
-              >
+                }}>
+
                 Supprimer
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </>
-    );
-  },
+      </>);
+
+  }
 );
 SortableChannel.displayName = "SortableChannel";
 export function ChannelList({
@@ -677,14 +677,14 @@ export function ChannelList({
   activeThreadId,
   onThreadSelect,
   onOpenVoiceChat,
-  onOpenGlobalSearch,
+  onOpenGlobalSearch
 }: ChannelListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; channelCount: number } | null>(
-    null,
+  const [editingCategory, setEditingCategory] = useState<{id: string;name: string;channelCount: number;} | null>(
+    null
   );
   const [createChannelForCategory, setCreateChannelForCategory] = useState<{
     id: string | null;
@@ -693,7 +693,7 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
-  const [externalLinkModal, setExternalLinkModal] = useState<{ url: string } | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{url: string;} | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
@@ -722,10 +722,10 @@ export function ChannelList({
 
   // BATCH: Get all channel permissions (view + connect) with a SINGLE RPC call
   // Replaces useChannelsVisibility + useVoiceChannelLocks (N+M calls → 1 call)
-  const { 
-    isVisible, 
-    isLocked: isVoiceChannelLocked, 
-    isLoading: isPermsLoading 
+  const {
+    isVisible,
+    isLocked: isVoiceChannelLocked,
+    isLoading: isPermsLoading
   } = useServerChannelPermissions(server.id);
 
   // Filter visible channels helper - during loading show all to avoid flash
@@ -733,7 +733,7 @@ export function ChannelList({
     (channelId: string) => {
       return isPermsLoading || isVisible(channelId);
     },
-    [isPermsLoading, isVisible],
+    [isPermsLoading, isVisible]
   );
 
   // Filter orphan channels by visibility
@@ -743,12 +743,12 @@ export function ChannelList({
 
   // Filter categories and their channels by visibility
   const visibleCategories = useMemo(() => {
-    return server.categories
-      .map((category) => ({
-        ...category,
-        channels: category.channels.filter((ch) => shouldShowChannel(ch.id)),
-      }))
-      .filter((category) => canManageChannels || category.channels.length > 0); // Show empty categories to admins only
+    return server.categories.
+    map((category) => ({
+      ...category,
+      channels: category.channels.filter((ch) => shouldShowChannel(ch.id))
+    })).
+    filter((category) => canManageChannels || category.channels.length > 0); // Show empty categories to admins only
   }, [server.categories, shouldShowChannel, canManageChannels]);
 
   // Fetch channel unread info (hasUnread + mentionCount)
@@ -776,7 +776,7 @@ export function ChannelList({
   const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
     return followedThreads.map((thread) => ({
       ...thread,
-      unreadCount: unreadCounts[thread.id] || 0,
+      unreadCount: unreadCounts[thread.id] || 0
     }));
   }, [followedThreads, unreadCounts]);
   const ownerProfile = membersData?.find((m) => m.user.id === server.ownerId);
@@ -784,7 +784,7 @@ export function ChannelList({
     try {
       await deleteChannel.mutateAsync({
         channelId,
-        serverId: server.id,
+        serverId: server.id
       });
       toast.success(`Salon #${channelName} supprimé`);
 
@@ -803,25 +803,25 @@ export function ChannelList({
   const handleDuplicateChannel = (channelId: string) => {
     duplicateChannel.mutate({
       channelId,
-      serverId: server.id,
+      serverId: server.id
     });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {
       await deleteCategory.mutateAsync({
         categoryId,
-        serverId: server.id,
+        serverId: server.id
       });
     } catch {
-      // Error already handled by the hook
-    }
-  };
 
-  // DnD sensors - optimized with touch support
-  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });
-  const toggleCategory = (categoryId: string) => {
-    setCollapsedCategories((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+
+
+
+
+      // Error already handled by the hook
+    }}; // DnD sensors - optimized with touch support
+  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
+    prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
   const handleSignOut = async () => {
@@ -831,7 +831,7 @@ export function ChannelList({
     leaveServer.mutate(server.id, {
       onSuccess: () => {
         setShowLeaveDialog(false);
-      },
+      }
     });
   };
   const handleCopyLink = (channelId: string) => {
@@ -881,7 +881,7 @@ export function ChannelList({
     setEditingCategory({
       id: category.id,
       name: category.name,
-      channelCount: category.channels.length,
+      channelCount: category.channels.length
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
@@ -979,7 +979,7 @@ export function ChannelList({
         newCategories.splice(insertIndex, 0, activeCategory);
         reorderCategories.mutate({
           serverId: server.id,
-          orderedIds: newCategories.map((cat) => cat.id),
+          orderedIds: newCategories.map((cat) => cat.id)
         });
       }
     }
@@ -1020,23 +1020,23 @@ export function ChannelList({
             id: ch.id,
             name: ch.name,
             type: (ch.type || "text") as ChannelType,
-            description: ch.description || undefined,
+            description: ch.description || undefined
           }));
         }
 
         // Calculate new order
         const activeChannel = [
-          ...server.categories.flatMap((c) => c.channels),
-          ...orphanChannels.map((ch) => ({
-            id: ch.id,
-            name: ch.name,
-            type: (ch.type || "text") as ChannelType,
-            description: ch.description || undefined,
-          })),
-        ].find((ch) => ch.id === activeChannelId);
+        ...server.categories.flatMap((c) => c.channels),
+        ...orphanChannels.map((ch) => ({
+          id: ch.id,
+          name: ch.name,
+          type: (ch.type || "text") as ChannelType,
+          description: ch.description || undefined
+        }))].
+        find((ch) => ch.id === activeChannelId);
         if (activeChannel) {
           // Same category: use precise insertion based on dropPosition
-          if (sourceCategoryId === targetCategoryId || (sourceCategoryId === null && targetCategoryId === null)) {
+          if (sourceCategoryId === targetCategoryId || sourceCategoryId === null && targetCategoryId === null) {
             const oldIndex = targetChannels.findIndex((ch) => ch.id === activeChannelId);
             const overIndex = targetChannels.findIndex((ch) => ch.id === overChannelId);
             if (oldIndex !== -1 && overIndex !== -1) {
@@ -1055,7 +1055,7 @@ export function ChannelList({
               reorderChannels.mutate({
                 serverId: server.id,
                 categoryId: targetCategoryId,
-                orderedIds: newChannels.map((ch) => ch.id),
+                orderedIds: newChannels.map((ch) => ch.id)
               });
             }
           } else {
@@ -1065,14 +1065,14 @@ export function ChannelList({
             // Calculate insertion index based on dropPosition
             const insertIdx = dropPosition === "before" ? overIdx : overIdx + 1;
             const newOrder = [
-              ...filteredChannels.slice(0, insertIdx),
-              activeChannel,
-              ...filteredChannels.slice(insertIdx),
-            ];
+            ...filteredChannels.slice(0, insertIdx),
+            activeChannel,
+            ...filteredChannels.slice(insertIdx)];
+
             reorderChannels.mutate({
               serverId: server.id,
               categoryId: targetCategoryId,
-              orderedIds: newOrder.map((ch) => ch.id),
+              orderedIds: newOrder.map((ch) => ch.id)
             });
           }
         }
@@ -1087,7 +1087,7 @@ export function ChannelList({
           reorderChannels.mutate({
             serverId: server.id,
             categoryId: targetCategoryId,
-            orderedIds: [...existingIds, activeChannelId],
+            orderedIds: [...existingIds, activeChannelId]
           });
         }
       }
@@ -1106,7 +1106,7 @@ export function ChannelList({
         id: orphan.id,
         name: orphan.name,
         type: (orphan.type || "text") as ChannelType,
-        description: orphan.description || undefined,
+        description: orphan.description || undefined
       };
     }
     return undefined;
@@ -1115,12 +1115,12 @@ export function ChannelList({
   // Get all sortable IDs (use visible categories for DnD)
   const categoryIds = visibleCategories.map((c) => `category-${c.id}`);
   const allChannelIds = [
-    ...visibleCategories.flatMap((c) => c.channels.map((ch) => `channel-${ch.id}`)),
-    ...visibleOrphanChannels.map((ch) => `channel-${ch.id}`),
-  ];
+  ...visibleCategories.flatMap((c) => c.channels.map((ch) => `channel-${ch.id}`)),
+  ...visibleOrphanChannels.map((ch) => `channel-${ch.id}`)];
+
   // Banner visibility on scroll
   const [showBanner, setShowBanner] = useState(true);
-  
+
   const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = (e.target as HTMLDivElement).scrollTop;
     setShowBanner(scrollTop === 0);
@@ -1151,7 +1151,7 @@ export function ChannelList({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [sidebarWidth],
+    [sidebarWidth]
   );
   return (
     <div
@@ -1163,22 +1163,22 @@ export function ChannelList({
       style={{
         width: `${sidebarWidth}px`,
         minWidth: "240px",
-        maxWidth: "340px",
-      }}
-    >
+        maxWidth: "340px"
+      }}>
+
       {/* Enhanced resize handle with visual feedback */}
       <div
         className={cn(
           "absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10",
           "transition-[width,background-color] duration-100",
-          isHoveringResize || isResizing.current
-            ? "w-1.5 bg-primary/70"
-            : "bg-transparent hover:bg-primary/30",
+          isHoveringResize || isResizing.current ?
+          "w-1.5 bg-primary/70" :
+          "bg-transparent hover:bg-primary/30"
         )}
         onMouseEnter={() => setIsHoveringResize(true)}
         onMouseLeave={() => !isResizing.current && setIsHoveringResize(false)}
-        onMouseDown={handleResizeMouseDown}
-      >
+        onMouseDown={handleResizeMouseDown}>
+
         {/* Grip indicator */}
         <div className={cn(
           "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
@@ -1190,22 +1190,22 @@ export function ChannelList({
       {/* Server Header - styled like User Panel */}
       <div className="bg-[hsl(var(--surface-header))]">
         <div className="flex items-center rounded-t-xl relative overflow-hidden"
-          style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}
-        >
-          {showBanner && server.bannerUrl && (
-            <div className="absolute inset-0 z-0 overflow-hidden rounded-t-xl">
+        style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}>
+
+          {showBanner && server.bannerUrl &&
+          <div className="absolute inset-0 z-0 overflow-hidden rounded-t-xl">
               <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
               <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
             </div>
-          )}
+          }
           {/* Server Name → Card Popover */}
           <Popover>
             <PopoverTrigger asChild>
               <button className={cn(
                 "flex items-center gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
                 showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
-              )}
-              >
+              )}>
+
                 <div className={cn(
                   "flex-1 min-w-0 text-left relative z-10 px-3",
                   showBanner && server.bannerUrl ? "self-end pb-2" : ""
@@ -1214,29 +1214,29 @@ export function ChannelList({
                     "text-sm font-semibold truncate",
                     showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
                   )}>{server.name}</p>
-                  {!(showBanner && server.bannerUrl) && (
-                    <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
-                  )}
+                  {!(showBanner && server.bannerUrl) &&
+                  <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
+                  }
                 </div>
               </button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
               {/* Banner with Leave Button */}
               <div className="relative">
-                {server.bannerUrl ? (
-                  <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" />
-                ) : (
-                  <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
-                )}
+                {server.bannerUrl ?
+                <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" /> :
+
+                <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
+                }
 
                 {/* Leave Server Button - Only visible for non-owners */}
-                {!isOwner && (
-                  <Tooltip>
+                {!isOwner &&
+                <Tooltip>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => setShowLeaveDialog(true)}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors"
-                      >
+                      onClick={() => setShowLeaveDialog(true)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors">
+
                         <LogOut className="w-4 h-4" />
                       </button>
                     </TooltipTrigger>
@@ -1244,23 +1244,23 @@ export function ChannelList({
                       <p>Quitter le serveur</p>
                     </TooltipContent>
                   </Tooltip>
-                )}
+                }
               </div>
 
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  {server.iconUrl ? (
-                    <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
+                  {server.iconUrl ?
+                  <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" /> :
+
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
                       {server.name.charAt(0).toUpperCase()}
                     </div>
-                  )}
+                  }
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-lg text-foreground truncate">{server.name}</h3>
-                    {server.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
-                    )}
+                    {server.description &&
+                    <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
+                    }
                   </div>
                 </div>
 
@@ -1288,21 +1288,21 @@ export function ChannelList({
                   </div>
                 </div>
 
-                {serverEmojis.length > 0 && (
-                  <div>
+                {serverEmojis.length > 0 &&
+                <div>
                     <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
                     <div className="flex flex-wrap gap-1">
-                      {serverEmojis.slice(0, 10).map((emoji) => (
-                        <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />
-                      ))}
-                      {serverEmojis.length > 10 && (
-                        <span className="text-xs text-muted-foreground self-center ml-1">
+                      {serverEmojis.slice(0, 10).map((emoji) =>
+                    <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />
+                    )}
+                      {serverEmojis.length > 10 &&
+                    <span className="text-xs text-muted-foreground self-center ml-1">
                           +{serverEmojis.length - 10}
                         </span>
-                      )}
+                    }
                     </div>
                   </div>
-                )}
+                }
               </div>
             </PopoverContent>
           </Popover>
@@ -1318,28 +1318,28 @@ export function ChannelList({
                   onClick={() => setInviteChannelId('server')}
                   className={cn(
                     "p-1.5 rounded-lg transition-colors",
-                    showBanner && server.bannerUrl
-                      ? "hover:bg-background/30 text-white"
-                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
+                    showBanner && server.bannerUrl ?
+                    "hover:bg-background/30 text-white" :
+                    "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}>
+
                   <UserPlus className="w-4 h-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent><p>Créer une invitation</p></TooltipContent>
             </Tooltip>
 
-            {canAccessSettings && (
-              <Popover>
+            {canAccessSettings &&
+            <Popover>
                 <PopoverTrigger asChild>
                   <button
-                    className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      showBanner && server.bannerUrl
-                        ? "hover:bg-background/30 text-white"
-                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                    )}
-                  >
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    showBanner && server.bannerUrl ?
+                    "hover:bg-background/30 text-white" :
+                    "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}>
+
                     <ChevronDown className="w-4 h-4" />
                   </button>
                 </PopoverTrigger>
@@ -1347,16 +1347,16 @@ export function ChannelList({
                   <ServerSettingsQuickMenu onSelect={(tabId) => onOpenServerSettings?.(tabId)} />
                 </PopoverContent>
               </Popover>
-            )}
+            }
           </div>
         </div>
 
         {/* Search bar */}
-        <div className="px-2 py-2">
+        <div className="px-2 py-2 bg-[#12161c]">
           <button
             onClick={() => onOpenGlobalSearch?.()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-background text-muted-foreground text-sm hover:bg-background/80 transition-colors"
-          >
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-background text-muted-foreground text-sm hover:bg-background/80 transition-colors">
+
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Rechercher</span>
           </button>
@@ -1376,174 +1376,174 @@ export function ChannelList({
               modifiers={[restrictToVerticalAxis]}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-            >
+              onDragEnd={handleDragEnd}>
+
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
-              {visibleOrphanChannels.length > 0 && (
-                <div className="px-2 space-y-0.5 mb-2">
+              {visibleOrphanChannels.length > 0 &&
+              <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext
-                    items={visibleOrphanChannels.map((ch) => `channel-${ch.id}`)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {visibleOrphanChannels.map((channel) => (
-                      <SortableChannel
-                        key={channel.id}
-                        channel={{
-                          id: channel.id,
-                          name: channel.name,
-                          type: (channel.type || "text") as ChannelType,
-                          description: channel.description || undefined,
-                        }}
-                        serverId={server.id}
-                        isActive={activeChannelId === channel.id}
-                        isVoiceConnected={voiceState.channelId === channel.id}
-                        speakingUsers={speakingUsers}
-                        hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
-                        mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
-                        onChannelClick={() =>
-                          handleChannelClick({
-                            id: channel.id,
-                            name: channel.name,
-                            type: (channel.type || "text") as ChannelType,
-                            description: channel.description || undefined,
-                          })
-                        }
-                        onCopyLink={() => handleCopyLink(channel.id)}
-                        onMarkAsRead={() => handleMarkAsRead(channel.id)}
-                        onOpenSettings={() => setSelectedChannelId(channel.id)}
-                        onCreateInvite={() => handleCreateInvite(channel.id)}
-                        onDelete={() => handleDeleteChannel(channel.id, channel.name)}
-                        onDuplicate={() => handleDuplicateChannel(channel.id)}
-                        showDropIndicator={overId === `channel-${channel.id}`}
-                        dropPosition={dropPosition}
-                        threads={activeChannelId === channel.id ? threadsWithUnread : []}
-                        activeThreadId={activeThreadId}
-                        onThreadSelect={onThreadSelect}
-                        showArchivedThreads={showArchivedThreads}
-                        canManageChannels={canManageChannels}
-                        isVoiceLocked={
-                          (channel.type === "voice" || channel.type === "stage") && isVoiceChannelLocked(channel.id)
-                        }
-                        onOpenChat={
-                          (channel.type === "voice" || channel.type === "stage")
-                            ? () => onOpenVoiceChat?.(channel.id)
-                            : undefined
-                        }
-                      />
-                    ))}
+                  items={visibleOrphanChannels.map((ch) => `channel-${ch.id}`)}
+                  strategy={verticalListSortingStrategy}>
+
+                    {visibleOrphanChannels.map((channel) =>
+                  <SortableChannel
+                    key={channel.id}
+                    channel={{
+                      id: channel.id,
+                      name: channel.name,
+                      type: (channel.type || "text") as ChannelType,
+                      description: channel.description || undefined
+                    }}
+                    serverId={server.id}
+                    isActive={activeChannelId === channel.id}
+                    isVoiceConnected={voiceState.channelId === channel.id}
+                    speakingUsers={speakingUsers}
+                    hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
+                    mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
+                    onChannelClick={() =>
+                    handleChannelClick({
+                      id: channel.id,
+                      name: channel.name,
+                      type: (channel.type || "text") as ChannelType,
+                      description: channel.description || undefined
+                    })
+                    }
+                    onCopyLink={() => handleCopyLink(channel.id)}
+                    onMarkAsRead={() => handleMarkAsRead(channel.id)}
+                    onOpenSettings={() => setSelectedChannelId(channel.id)}
+                    onCreateInvite={() => handleCreateInvite(channel.id)}
+                    onDelete={() => handleDeleteChannel(channel.id, channel.name)}
+                    onDuplicate={() => handleDuplicateChannel(channel.id)}
+                    showDropIndicator={overId === `channel-${channel.id}`}
+                    dropPosition={dropPosition}
+                    threads={activeChannelId === channel.id ? threadsWithUnread : []}
+                    activeThreadId={activeThreadId}
+                    onThreadSelect={onThreadSelect}
+                    showArchivedThreads={showArchivedThreads}
+                    canManageChannels={canManageChannels}
+                    isVoiceLocked={
+                    (channel.type === "voice" || channel.type === "stage") && isVoiceChannelLocked(channel.id)
+                    }
+                    onOpenChat={
+                    channel.type === "voice" || channel.type === "stage" ?
+                    () => onOpenVoiceChat?.(channel.id) :
+                    undefined
+                    } />
+
+                  )}
                   </SortableContext>
                 </div>
-              )}
+              }
 
               {/* Categories */}
               <SortableContext
                 items={visibleCategories.map((c) => `category-${c.id}`)}
-                strategy={verticalListSortingStrategy}
-              >
-                {visibleCategories.map((category, index) => (
-                  <div key={category.id} className={cn(index > 0 && "mt-4")}>
+                strategy={verticalListSortingStrategy}>
+
+                {visibleCategories.map((category, index) =>
+                <div key={category.id} className={cn(index > 0 && "mt-4")}>
                     <SortableCategory
-                      category={category}
-                      isCollapsed={collapsedCategories.includes(category.id)}
-                      onToggle={() => toggleCategory(category.id)}
-                      onEdit={() => handleStartEditCategory(category)}
-                      onCreateChannel={() =>
-                        setCreateChannelForCategory({
-                          id: category.id,
-                          name: category.name,
-                        })
-                      }
-                      onDelete={() => handleDeleteCategory(category.id)}
-                      showDropIndicator={overId === `category-${category.id}`}
-                      dropPosition={dropPosition}
-                      canManageChannels={canManageChannels}
-                      serverId={server.id}
-                    >
+                    category={category}
+                    isCollapsed={collapsedCategories.includes(category.id)}
+                    onToggle={() => toggleCategory(category.id)}
+                    onEdit={() => handleStartEditCategory(category)}
+                    onCreateChannel={() =>
+                    setCreateChannelForCategory({
+                      id: category.id,
+                      name: category.name
+                    })
+                    }
+                    onDelete={() => handleDeleteCategory(category.id)}
+                    showDropIndicator={overId === `category-${category.id}`}
+                    dropPosition={dropPosition}
+                    canManageChannels={canManageChannels}
+                    serverId={server.id}>
+
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext
-                          items={category.channels.map((ch) => `channel-${ch.id}`)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {category.channels.map((channel) => (
-                            <SortableChannel
-                              key={channel.id}
-                              channel={channel}
-                              serverId={server.id}
-                              isActive={activeChannelId === channel.id}
-                              isVoiceConnected={voiceState.channelId === channel.id}
-                              speakingUsers={speakingUsers}
-                              hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
-                              mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
-                              onChannelClick={() => handleChannelClick(channel)}
-                              onCopyLink={() => handleCopyLink(channel.id)}
-                              onMarkAsRead={() => handleMarkAsRead(channel.id)}
-                              onOpenSettings={() => setSelectedChannelId(channel.id)}
-                              onCreateInvite={() => handleCreateInvite(channel.id)}
-                              onDelete={() => handleDeleteChannel(channel.id, channel.name)}
-                              onDuplicate={() => handleDuplicateChannel(channel.id)}
-                              showDropIndicator={overId === `channel-${channel.id}`}
-                              dropPosition={dropPosition}
-                              threads={activeChannelId === channel.id ? threadsWithUnread : []}
-                              activeThreadId={activeThreadId}
-                              onThreadSelect={onThreadSelect}
-                              showArchivedThreads={showArchivedThreads}
-                              canManageChannels={canManageChannels}
-                              isVoiceLocked={
-                                (channel.type === "voice" || channel.type === "stage") &&
-                                isVoiceChannelLocked(channel.id)
-                              }
-                              onOpenChat={
-                                (channel.type === "voice" || channel.type === "stage")
-                                  ? () => onOpenVoiceChat?.(channel.id)
-                                  : undefined
-                              }
-                            />
-                          ))}
+                        items={category.channels.map((ch) => `channel-${ch.id}`)}
+                        strategy={verticalListSortingStrategy}>
+
+                          {category.channels.map((channel) =>
+                        <SortableChannel
+                          key={channel.id}
+                          channel={channel}
+                          serverId={server.id}
+                          isActive={activeChannelId === channel.id}
+                          isVoiceConnected={voiceState.channelId === channel.id}
+                          speakingUsers={speakingUsers}
+                          hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
+                          mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
+                          onChannelClick={() => handleChannelClick(channel)}
+                          onCopyLink={() => handleCopyLink(channel.id)}
+                          onMarkAsRead={() => handleMarkAsRead(channel.id)}
+                          onOpenSettings={() => setSelectedChannelId(channel.id)}
+                          onCreateInvite={() => handleCreateInvite(channel.id)}
+                          onDelete={() => handleDeleteChannel(channel.id, channel.name)}
+                          onDuplicate={() => handleDuplicateChannel(channel.id)}
+                          showDropIndicator={overId === `channel-${channel.id}`}
+                          dropPosition={dropPosition}
+                          threads={activeChannelId === channel.id ? threadsWithUnread : []}
+                          activeThreadId={activeThreadId}
+                          onThreadSelect={onThreadSelect}
+                          showArchivedThreads={showArchivedThreads}
+                          canManageChannels={canManageChannels}
+                          isVoiceLocked={
+                          (channel.type === "voice" || channel.type === "stage") &&
+                          isVoiceChannelLocked(channel.id)
+                          }
+                          onOpenChat={
+                          channel.type === "voice" || channel.type === "stage" ?
+                          () => onOpenVoiceChat?.(channel.id) :
+                          undefined
+                          } />
+
+                        )}
                         </SortableContext>
                       </div>
                     </SortableCategory>
                   </div>
-                ))}
+                )}
               </SortableContext>
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
               <DragOverlay
                 dropAnimation={{
                   duration: 200,
-                  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-                }}
-              >
-                {activeId && (
-                  <div
-                    className={cn(
-                      // Optimized backdrop with GPU acceleration
-                      "bg-card/95 backdrop-optimized border border-[#5865f2]/50 rounded-md px-3 py-2",
-                      "gpu-accelerated will-change-transform",
-                      "shadow-lg shadow-black/30",
-                      "scale-105 cursor-grabbing",
-                    )}
-                  >
-                    {activeId.startsWith("category-") && (
-                      <div className="flex items-center gap-2">
+                  easing: "cubic-bezier(0.25, 1, 0.5, 1)"
+                }}>
+
+                {activeId &&
+                <div
+                  className={cn(
+                    // Optimized backdrop with GPU acceleration
+                    "bg-card/95 backdrop-optimized border border-[#5865f2]/50 rounded-md px-3 py-2",
+                    "gpu-accelerated will-change-transform",
+                    "shadow-lg shadow-black/30",
+                    "scale-105 cursor-grabbing"
+                  )}>
+
+                    {activeId.startsWith("category-") &&
+                  <div className="flex items-center gap-2">
                         <ChevronDown className="w-3 h-3 text-muted-foreground" />
                         <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
                           {server.categories.find((c) => `category-${c.id}` === activeId)?.name}
                         </span>
                       </div>
-                    )}
+                  }
                     {activeId.startsWith("channel-") &&
-                      (() => {
-                        const channel = findChannelById(activeId.replace("channel-", ""));
-                        const FallbackIcon = channel ? channelIcons[channel.type] : StreamlineHash;
-                        return (
-                          <div className="flex items-center gap-2 text-sm text-foreground">
+                  (() => {
+                    const channel = findChannelById(activeId.replace("channel-", ""));
+                    const FallbackIcon = channel ? channelIcons[channel.type] : StreamlineHash;
+                    return (
+                      <div className="flex items-center gap-2 text-sm text-foreground">
                             <FallbackIcon className="w-4 h-4 text-[#5865f2]" />
                             <span className="font-medium">{channel?.name || "Channel"}</span>
-                          </div>
-                        );
-                      })()}
+                          </div>);
+
+                  })()}
                   </div>
-                )}
+                }
               </DragOverlay>
             </DndContext>
           </div>
@@ -1551,13 +1551,13 @@ export function ChannelList({
         <ContextMenuContent className="w-52">
           <ContextMenuItem
             onClick={() =>
-              setCreateChannelForCategory({
-                id: null,
-                name: "Sans catégorie",
-                showSelector: true,
-              })
-            }
-          >
+            setCreateChannelForCategory({
+              id: null,
+              name: "Sans catégorie",
+              showSelector: true
+            })
+            }>
+
             <Plus className="w-4 h-4 mr-2" />
             Créer un salon
           </ContextMenuItem>
@@ -1569,79 +1569,79 @@ export function ChannelList({
       </ContextMenu>
 
       {/* Voice Controls */}
-      {isConnected && voiceState.channelName && (
-        <VoiceControls
-          channelName={voiceState.channelName}
-          serverName={voiceState.serverName}
-          isMuted={voiceState.isMuted}
-          isDeafened={voiceState.isDeafened}
-          onToggleMute={() => toggleMute()}
-          onToggleDeafen={() => toggleDeafen()}
-          onDisconnect={() => leaveChannel()}
-        />
-      )}
+      {isConnected && voiceState.channelName &&
+      <VoiceControls
+        channelName={voiceState.channelName}
+        serverName={voiceState.serverName}
+        isMuted={voiceState.isMuted}
+        isDeafened={voiceState.isDeafened}
+        onToggleMute={() => toggleMute()}
+        onToggleDeafen={() => toggleDeafen()}
+        onDisconnect={() => leaveChannel()} />
+
+      }
 
       {/* User Panel */}
       <UserProfileCard
         onOpenSettings={() => setShowAccountSettings(true)}
         onOpenProfile={() => setShowAccountSettings(true)}
-        speakingUsers={speakingUsers}
-      />
+        speakingUsers={speakingUsers} />
+
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 
-      {selectedChannelId && (
-        <ChannelSettingsModal
-          channelId={selectedChannelId}
-          serverId={server.id}
-          onClose={() => setSelectedChannelId(null)}
-        />
-      )}
+      {selectedChannelId &&
+      <ChannelSettingsModal
+        channelId={selectedChannelId}
+        serverId={server.id}
+        onClose={() => setSelectedChannelId(null)} />
 
-      {createChannelForCategory && (
-        <CreateChannelModal
-          serverId={server.id}
-          categoryId={createChannelForCategory.id}
-          categoryName={createChannelForCategory.name}
-          categories={
-            createChannelForCategory.showSelector
-              ? server.categories.map((c) => ({
-                  id: c.id,
-                  name: c.name,
-                }))
-              : undefined
-          }
-          showCategorySelector={createChannelForCategory.showSelector}
-          onClose={() => setCreateChannelForCategory(null)}
-        />
-      )}
+      }
+
+      {createChannelForCategory &&
+      <CreateChannelModal
+        serverId={server.id}
+        categoryId={createChannelForCategory.id}
+        categoryName={createChannelForCategory.name}
+        categories={
+        createChannelForCategory.showSelector ?
+        server.categories.map((c) => ({
+          id: c.id,
+          name: c.name
+        })) :
+        undefined
+        }
+        showCategorySelector={createChannelForCategory.showSelector}
+        onClose={() => setCreateChannelForCategory(null)} />
+
+      }
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
 
-      {externalLinkModal && (
-        <ExternalLinkWarningModal
-          url={externalLinkModal.url}
-          onClose={() => setExternalLinkModal(null)}
-        />
-      )}
+      {externalLinkModal &&
+      <ExternalLinkWarningModal
+        url={externalLinkModal.url}
+        onClose={() => setExternalLinkModal(null)} />
 
-      {inviteChannelId && (
-        <CreateInviteModal
-          serverId={server.id}
-          channelName={getChannelName(inviteChannelId)}
-          onClose={() => setInviteChannelId(null)}
-        />
-      )}
+      }
 
-      {editingCategory && (
-        <EditCategoryModal
-          categoryId={editingCategory.id}
-          categoryName={editingCategory.name}
-          serverId={server.id}
-          channelCount={editingCategory.channelCount}
-          onClose={() => setEditingCategory(null)}
-        />
-      )}
+      {inviteChannelId &&
+      <CreateInviteModal
+        serverId={server.id}
+        channelName={getChannelName(inviteChannelId)}
+        onClose={() => setInviteChannelId(null)} />
+
+      }
+
+      {editingCategory &&
+      <EditCategoryModal
+        categoryId={editingCategory.id}
+        categoryName={editingCategory.name}
+        serverId={server.id}
+        channelCount={editingCategory.channelCount}
+        onClose={() => setEditingCategory(null)} />
+
+      }
 
       {/* Leave Server Confirmation Dialog */}
       <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
@@ -1657,13 +1657,13 @@ export function ChannelList({
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLeaveServer}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+
               Quitter le serveur
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
+    </div>);
+
 }

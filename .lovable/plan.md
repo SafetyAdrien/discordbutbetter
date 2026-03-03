@@ -1,61 +1,27 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Aperçu Markdown en temps réel dans les bios
 
-## Root cause
+## Contexte
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Les champs bio (profil global dans `ProfileSettingsTab.tsx` et profil serveur dans `ServerProfileEditModal.tsx`) doivent afficher un aperçu Markdown en temps réel. Le modal serveur a déjà un aperçu basique via `parseMarkdown`, mais le profil global n'en a pas du tout. Les deux doivent supporter : **gras**, *italique*, `code`/```blocs```, > citations, et [liens masqués](url).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+La fonction `parseMarkdown` dans `src/lib/markdown.tsx` supporte déjà tous ces formats — aucun changement nécessaire côté parser.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Changements
 
-## Fix
+### 1. `src/components/account-settings/ProfileSettingsTab.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Ajouter un aperçu markdown live sous le `<Textarea>` de la bio (après ligne 186), identique au pattern du modal serveur :
+- Importer `parseMarkdown` depuis `@/lib/markdown`
+- Quand `formData.bio` n'est pas vide, afficher un bloc d'aperçu avec `parseMarkdown(formData.bio)`
+- Style : `bg-muted/50 border border-border rounded-md p-2` avec label "Aperçu :"
+- Également remplacer la preview statique de la bio dans la card (ligne 122-124) par `parseMarkdown(formData.bio)` au lieu du texte brut
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. `src/components/profile/ServerProfileEditModal.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+L'aperçu existe déjà (lignes 231-238). Aucun changement nécessaire — il utilise déjà `parseMarkdown`.
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichiers modifiés
+- `src/components/account-settings/ProfileSettingsTab.tsx` — ajout import `parseMarkdown` + aperçu live sous la bio + rendu markdown dans la card preview
 

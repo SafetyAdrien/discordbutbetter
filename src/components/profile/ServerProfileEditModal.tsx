@@ -123,6 +123,10 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
 
   const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
+  useEffect(() => {
+    autoResizeBio();
+  }, [formData.bio, autoResizeBio]);
+
   const bioLength = formData.bio.length;
   const maxBio = 500;
 

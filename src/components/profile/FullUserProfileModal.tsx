@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageCircle, UserPlus, UserMinus, Check, X } from 'lucide-react';
+import { parseMarkdown } from '@/lib/markdown';
 import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
@@ -240,9 +241,13 @@ export function FullUserProfileModal({
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
                     À Propos de Moi
                   </h4>
-                  <p className="text-sm">
-                    {user.bio || "Aucune biographie définie."}
-                  </p>
+                  {user.bio ? (
+                    <div className="text-sm markdown-preview prose prose-invert prose-sm max-w-none">
+                      {parseMarkdown(user.bio)}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune biographie définie.</p>
+                  )}
                 </div>
 
                 {/* Member Since */}

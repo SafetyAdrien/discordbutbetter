@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
+import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
 import { InputMarkdownOverlay, parseLines, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 export function ProfileSettingsTab() {

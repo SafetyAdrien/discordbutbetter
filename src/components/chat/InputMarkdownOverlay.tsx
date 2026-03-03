@@ -3,6 +3,7 @@ import { useMemo, forwardRef } from 'react';
 interface InputMarkdownOverlayProps {
   content: string;
   compact?: boolean;
+  className?: string;
 }
 
 interface OverlayLine {
@@ -91,18 +92,20 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
 }
 
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
-  ({ content, compact = false }, ref) => {
+  ({ content, compact = false, className }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
     const hasMarkdown = useMemo(() => lines.some((line) => line.type !== 'normal'), [lines]);
 
     if (!hasMarkdown) return null;
+
+    const defaultPadding = compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]';
 
     return (
       <div
         ref={ref}
         aria-hidden
         className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm leading-5 font-normal tracking-normal ${
-          compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]'
+          className || defaultPadding
         }`}
         style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
       >

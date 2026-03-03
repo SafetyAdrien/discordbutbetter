@@ -186,7 +186,7 @@ export function ProfileSettingsTab() {
               </span>
             </div>
             <div className="relative">
-              <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} />
+              <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px]" />
               <textarea
                 ref={bioTextareaRef}
                 id="bio"

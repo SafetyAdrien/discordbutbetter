@@ -744,6 +744,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         }}
       />
 
+      <ServerProfileEditModal
+        open={serverProfileEditOpen}
+        onOpenChange={setServerProfileEditOpen}
+        initialServerId={serverId}
+      />
     </>
   );
 });

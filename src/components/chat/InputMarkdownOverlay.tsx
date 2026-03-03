@@ -66,6 +66,11 @@ export const OVERLAY_FONT_SIZE = '0.875rem';
 export const OVERLAY_LINE_HEIGHT = '1.25rem';
 export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif';
 
+export function hasInlineMarkdown(content: string): boolean {
+  if (!content) return false;
+  return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
+}
+
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
   if (!content) return 'normal';
   const textBefore = content.slice(0, cursorPos);

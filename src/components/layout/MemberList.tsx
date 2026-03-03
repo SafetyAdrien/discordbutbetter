@@ -49,11 +49,12 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
-import { Shield } from "lucide-react";
+import { Shield, Pencil } from "lucide-react";
 
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
+import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
 interface Role {
   id: string;
   name: string;

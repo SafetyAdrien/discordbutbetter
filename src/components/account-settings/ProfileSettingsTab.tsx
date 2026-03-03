@@ -207,6 +207,7 @@ export function ProfileSettingsTab() {
                 id="bio"
                 value={formData.bio}
                 onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                onInput={autoResizeBio}
                 onScroll={syncBioScroll}
                 placeholder="Parlez de vous..."
                 rows={3}

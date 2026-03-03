@@ -249,6 +249,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                     id="sp_bio"
                     value={formData.bio}
                     onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    onInput={autoResizeBio}
                     onScroll={syncBioScroll}
                     placeholder={profile?.bio || 'Bio spécifique à ce serveur...'}
                     rows={3}

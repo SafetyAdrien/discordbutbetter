@@ -7,6 +7,17 @@ import { useAuth } from '@/contexts/AuthContext';
 // Mutation lock to prevent Realtime invalidations during local role mutations
 export const membersMutationLockRef = { current: false };
 
+export interface ServerProfileData {
+  id: string;
+  user_id: string;
+  server_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  bio: string | null;
+  pronouns: string | null;
+}
+
 export interface MemberWithProfile {
   id: string;
   nickname: string | null;
@@ -31,6 +42,7 @@ export interface MemberWithProfile {
     position: number | null;
     description: string | null;
   }[];
+  serverProfile: ServerProfileData | null;
 }
 
 export function useMembers(serverId: string | null) {
@@ -77,17 +89,34 @@ export function useMembers(serverId: string | null) {
 
       if (error) throw error;
 
+      // Fetch server profiles for all members in one query
+      const userIds = data.map((m) => (m.user as any)?.id).filter(Boolean);
+      const { data: serverProfiles } = userIds.length > 0
+        ? await supabase
+            .from('server_profiles')
+            .select('id, user_id, server_id, display_name, avatar_url, banner_url, bio, pronouns')
+            .eq('server_id', serverId)
+            .in('user_id', userIds)
+        : { data: [] as ServerProfileData[] };
+
+      const profileMap = new Map<string, ServerProfileData>();
+      serverProfiles?.forEach((sp) => profileMap.set(sp.user_id, sp as ServerProfileData));
+
       // Transform data to flatten roles
-      return data.map((member) => ({
-        id: member.id,
-        nickname: member.nickname,
-        joined_at: member.joined_at,
-        user: member.user as MemberWithProfile['user'],
-        roles: member.member_roles
-          .map((mr) => mr.role)
-          .filter((r): r is MemberWithProfile['roles'][0] => r !== null)
-          .sort((a, b) => (b.position ?? 0) - (a.position ?? 0)),
-      }));
+      return data.map((member) => {
+        const userObj = member.user as MemberWithProfile['user'];
+        return {
+          id: member.id,
+          nickname: member.nickname,
+          joined_at: member.joined_at,
+          user: userObj,
+          roles: member.member_roles
+            .map((mr) => mr.role)
+            .filter((r): r is MemberWithProfile['roles'][0] => r !== null)
+            .sort((a, b) => (b.position ?? 0) - (a.position ?? 0)),
+          serverProfile: profileMap.get(userObj?.id) ?? null,
+        };
+      });
     },
     enabled: !!serverId && !!user,
     // Polling fallback if realtime fails

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers } from '@/hooks/useServers';
 import { useServerProfile, useUpdateServerProfile, useDeleteServerProfile, useUploadServerAvatar, useUploadServerBanner } from '@/hooks/useServerProfile';
@@ -6,12 +6,11 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2, RotateCcw, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { parseMarkdown } from '@/lib/markdown';
+import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 interface ServerProfileEditModalProps {
   open: boolean;
@@ -29,6 +28,14 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const uploadBanner = useUploadServerBanner();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const bioOverlayRef = useRef<HTMLDivElement>(null);
+  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const syncBioScroll = useCallback(() => {
+    if (bioOverlayRef.current && bioTextareaRef.current) {
+      bioOverlayRef.current.scrollTop = bioTextareaRef.current.scrollTop;
+    }
+  }, []);
 
   const { data: serverProfile, isLoading } = useServerProfile(profile?.id || null, selectedServerId || null);
 
@@ -220,22 +227,24 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                     {bioLength}/{maxBio}
                   </span>
                 </div>
-                <Textarea
-                  id="sp_bio"
-                  value={formData.bio}
-                  onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                  placeholder={profile?.bio || 'Bio spécifique à ce serveur...'}
-                  rows={3}
-                  maxLength={maxBio}
-                />
-                {formData.bio && (
-                  <div className="p-2 rounded-md bg-muted/50 border border-border">
-                    <p className="text-xs text-muted-foreground mb-1">Aperçu :</p>
-                    <div className="text-sm prose prose-invert prose-sm max-w-none">
-                      {parseMarkdown(formData.bio)}
-                    </div>
-                  </div>
-                )}
+                <div className="relative">
+                  <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} />
+                  <textarea
+                    ref={bioTextareaRef}
+                    id="sp_bio"
+                    value={formData.bio}
+                    onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    onScroll={syncBioScroll}
+                    placeholder={profile?.bio || 'Bio spécifique à ce serveur...'}
+                    rows={3}
+                    maxLength={maxBio}
+                    className={cn(
+                      "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
+                      formData.bio && "text-transparent caret-foreground"
+                    )}
+                    style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
+                  />
+                </div>
               </div>
 
               {/* Actions */}

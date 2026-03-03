@@ -34,7 +34,7 @@ export function parseLines(content: string): OverlayLine[] {
     if (line.startsWith('## ')) { result.push({ type: 'header2', text: line }); continue; }
     if (line.startsWith('# ')) { result.push({ type: 'header1', text: line }); continue; }
     if (line.startsWith('-# ')) { result.push({ type: 'subtext', text: line }); continue; }
-    if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
+    if (line.startsWith('> ') || line.startsWith('>>> ') || (line.startsWith('>') && line.length > 1 && line[1] !== '>')) { result.push({ type: 'blockquote', text: line }); continue; }
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
     if (/^(\s*)[-*] /.test(line)) { result.push({ type: 'listItem', text: line }); continue; }
     if (/^(\s*)\d+\. /.test(line)) { result.push({ type: 'orderedListItem', text: line }); continue; }

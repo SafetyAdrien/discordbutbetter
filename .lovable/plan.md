@@ -1,27 +1,61 @@
 
 
-# Correction des rendus Markdown
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problèmes identifiés
+## Root cause
 
-### 1. Chat input (`MessageInput.tsx`) — détection inline manquante
-La variable `hasMarkdown` (ligne 97) ne détecte que le markdown de bloc (headers, blockquotes, listes, code blocks). Le markdown inline (`**gras**`, `*italique*`, `__souligné__`, `[lien](url)`, `` `code` ``, `||spoiler||`, `~~barré~~`) n'est **pas** détecté. Résultat : le texte du textarea ne devient pas transparent quand on tape du markdown inline, ce qui provoque un chevauchement entre le texte brut et l'overlay.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-**Correction** : Ajouter `hasInlineMarkdown(value)` à la condition, comme c'est déjà fait dans les bios.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 2. Popup profil DM (`DMUserInfoPanel.tsx`) — bio en texte brut
-La bio dans le panneau d'info DM (ligne 116) est rendue comme texte brut `{participant.bio}` sans appel à `parseMarkdown`. Le markdown n'est pas interprété.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Correction** : Importer `parseMarkdown` et l'utiliser pour rendre la bio.
+## Fix
 
-### 3. `InputMarkdownOverlay` — blockquote `>` sans espace
-Dans `parseLines`, la détection des blockquotes exige `> ` (avec espace) ou `>>> `. Si l'utilisateur tape juste `>texte` (sans espace), ce n'est pas détecté comme blockquote dans l'overlay, alors que Discord le supporte.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-**Correction** : Ajouter la détection de `>` suivi directement de texte (sans espace) comme blockquote.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Fichiers modifiés
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- **`src/components/chat/MessageInput.tsx`** : Importer `hasInlineMarkdown` et l'ajouter à la condition `hasMarkdown` → `parseLines(value).some(l => l.type !== 'normal') || hasInlineMarkdown(value)`
-- **`src/components/dm/DMUserInfoPanel.tsx`** : Importer `parseMarkdown` et remplacer `{participant.bio}` par `{parseMarkdown(participant.bio)}`
-- **`src/components/chat/InputMarkdownOverlay.tsx`** : Dans `parseLines`, ajouter la détection de `>` sans espace comme blockquote
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

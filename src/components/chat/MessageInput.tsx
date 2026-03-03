@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, parseLines, hasInlineMarkdown } from './InputMarkdownOverlay';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
@@ -94,7 +94,7 @@ export function MessageInput({
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const overlayRef = useRef<HTMLDivElement>(null);
-  const hasMarkdown = useMemo(() => /^(#{1,3} |-# |> |>>> |\d+\. |[-*] |```)/m.test(value), [value]);
+  const hasMarkdown = useMemo(() => parseLines(value).some(l => l.type !== 'normal') || hasInlineMarkdown(value), [value]);
 
   // Adjust textarea height and reset overlay scroll position
   const adjustTextareaHeight = useCallback(() => {

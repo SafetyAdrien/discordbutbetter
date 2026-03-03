@@ -47,10 +47,6 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
     }
   }, []);
 
-  useEffect(() => {
-    autoResizeBio();
-  }, [formData.bio, autoResizeBio]);
-
   const { data: serverProfile, isLoading } = useServerProfile(profile?.id || null, selectedServerId || null);
 
   const [formData, setFormData] = useState({

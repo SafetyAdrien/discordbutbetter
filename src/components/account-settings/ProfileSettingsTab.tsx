@@ -41,6 +41,20 @@ export function ProfileSettingsTab() {
   });
   const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
+  const autoResizeBio = useCallback(() => {
+    const el = bioTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+    if (bioOverlayRef.current) {
+      bioOverlayRef.current.style.height = el.style.height;
+    }
+  }, []);
+
+  useEffect(() => {
+    autoResizeBio();
+  }, [formData.bio, autoResizeBio]);
+
   const handleSave = () => {
     updateProfile.mutate({
       display_name: formData.display_name,

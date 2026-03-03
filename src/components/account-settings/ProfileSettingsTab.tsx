@@ -39,6 +39,7 @@ export function ProfileSettingsTab() {
     profile_theme: (profile as any)?.profile_theme || { primary: '#00D4FF', accent: '#8B5CF6' },
     featured_server_id: (profile as any)?.featured_server_id || '',
   });
+  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
   const handleSave = () => {
     updateProfile.mutate({

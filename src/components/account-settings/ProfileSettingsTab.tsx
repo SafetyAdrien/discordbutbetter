@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseMarkdown } from '@/lib/markdown';
 
 export function ProfileSettingsTab() {
   const { profile } = useAuth();

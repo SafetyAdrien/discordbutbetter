@@ -37,6 +37,16 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
     }
   }, []);
 
+  const autoResizeBio = useCallback(() => {
+    const el = bioTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+    if (bioOverlayRef.current) {
+      bioOverlayRef.current.style.height = el.style.height;
+    }
+  }, []);
+
   const { data: serverProfile, isLoading } = useServerProfile(profile?.id || null, selectedServerId || null);
 
   const [formData, setFormData] = useState({
@@ -112,6 +122,10 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const displayName = formData.display_name || profile?.display_name || '';
 
   const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
+
+  useEffect(() => {
+    autoResizeBio();
+  }, [formData.bio, autoResizeBio]);
 
   const bioLength = formData.bio.length;
   const maxBio = 500;
@@ -229,7 +243,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                   </span>
                 </div>
                 <div className="relative">
-                  <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px]" />
+                  <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px] max-h-[200px] overflow-y-auto" />
                   <textarea
                     ref={bioTextareaRef}
                     id="sp_bio"
@@ -240,7 +254,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                     rows={3}
                     maxLength={maxBio}
                     className={cn(
-                      "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
+                      "flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
                       hasBioMarkdown && "text-transparent caret-foreground"
                     )}
                     style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}

@@ -531,56 +531,73 @@ export function UserProfilePopup({
   );
   };
 
+  const serverProfileModal = (
+    <ServerProfileEditModal
+      open={serverProfileEditOpen}
+      onOpenChange={setServerProfileEditOpen}
+      initialServerId={serverId}
+    />
+  );
+
   // Mode Card - affichage en carte latérale
   if (mode === 'card' && open) {
     return (
-      <Portal.Root>
-        <div 
-          className="fixed inset-0 z-50"
-          onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
-        >
+      <>
+        <Portal.Root>
           <div 
-            className="absolute flex items-start"
-            style={{ 
-              top: cardPosition?.top ?? 100,
-              right: cardPosition?.right ?? 280
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50"
+            onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
           >
-            {/* Role Side Panel */}
-            {showRolePanel && canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
-              <RoleSidePanel />
-            )}
-            
-            {/* Main Profile Card */}
-            <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
-              <ProfileContent />
+            <div 
+              className="absolute flex items-start"
+              style={{ 
+                top: cardPosition?.top ?? 100,
+                right: cardPosition?.right ?? 280
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Role Side Panel */}
+              {showRolePanel && canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
+                <RoleSidePanel />
+              )}
+              
+              {/* Main Profile Card */}
+              <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
+                <ProfileContent />
+              </div>
             </div>
           </div>
-        </div>
-      </Portal.Root>
+        </Portal.Root>
+        {serverProfileModal}
+      </>
     );
   }
 
   // Mobile: Drawer from bottom
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
-          <div className="overflow-y-auto">
-            <ProfileContent />
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
+            <div className="overflow-y-auto">
+              <ProfileContent />
+            </div>
+          </DrawerContent>
+        </Drawer>
+        {serverProfileModal}
+      </>
     );
   }
 
   // Desktop: Dialog
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
-        <ProfileContent />
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
+          <ProfileContent />
+        </DialogContent>
+      </Dialog>
+      {serverProfileModal}
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useProfile';
 import { useServers } from '@/hooks/useServers';
@@ -187,7 +187,7 @@ export function ProfileSettingsTab() {
               </span>
             </div>
             <div className="relative">
-              <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px]" />
+              <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px] max-h-[200px] overflow-y-auto" />
               <textarea
                 ref={bioTextareaRef}
                 id="bio"
@@ -198,7 +198,7 @@ export function ProfileSettingsTab() {
                 rows={3}
                 maxLength={200}
                 className={cn(
-                  "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
+                  "flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
                   hasBioMarkdown && "text-transparent caret-foreground"
                 )}
                 style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}

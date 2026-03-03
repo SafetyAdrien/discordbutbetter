@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers } from '@/hooks/useServers';
 import { useServerProfile, useUpdateServerProfile, useDeleteServerProfile, useUploadServerAvatar, useUploadServerBanner } from '@/hooks/useServerProfile';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2, RotateCcw, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 interface ServerProfileEditModalProps {
   open: boolean;
@@ -110,7 +110,8 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const displayAvatar = formData.avatar_url || profile?.avatar_url;
   const displayBanner = formData.banner_url || profile?.banner_url;
   const displayName = formData.display_name || profile?.display_name || '';
-  
+
+  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
   const bioLength = formData.bio.length;
   const maxBio = 500;
@@ -240,7 +241,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                     maxLength={maxBio}
                     className={cn(
                       "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
-                      formData.bio && "text-transparent caret-foreground"
+                      hasBioMarkdown && "text-transparent caret-foreground"
                     )}
                     style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
                   />

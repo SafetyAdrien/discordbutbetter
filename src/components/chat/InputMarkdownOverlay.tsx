@@ -11,7 +11,7 @@ interface OverlayLine {
   text: string;
 }
 
-function parseLines(content: string): OverlayLine[] {
+export function parseLines(content: string): OverlayLine[] {
   if (!content) return [{ type: 'normal', text: '' }];
 
   const lines = content.split('\n');

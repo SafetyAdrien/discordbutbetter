@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useProfile';
 import { useServers } from '@/hooks/useServers';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
-import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 export function ProfileSettingsTab() {
   const { profile } = useAuth();
@@ -39,6 +39,7 @@ export function ProfileSettingsTab() {
     profile_theme: (profile as any)?.profile_theme || { primary: '#00D4FF', accent: '#8B5CF6' },
     featured_server_id: (profile as any)?.featured_server_id || '',
   });
+  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
   const handleSave = () => {
     updateProfile.mutate({
@@ -198,7 +199,7 @@ export function ProfileSettingsTab() {
                 maxLength={200}
                 className={cn(
                   "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
-                  formData.bio && "text-transparent caret-foreground"
+                  hasBioMarkdown && "text-transparent caret-foreground"
                 )}
                 style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
               />

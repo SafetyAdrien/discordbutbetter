@@ -110,7 +110,8 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const displayAvatar = formData.avatar_url || profile?.avatar_url;
   const displayBanner = formData.banner_url || profile?.banner_url;
   const displayName = formData.display_name || profile?.display_name || '';
-  
+
+  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
   const bioLength = formData.bio.length;
   const maxBio = 500;

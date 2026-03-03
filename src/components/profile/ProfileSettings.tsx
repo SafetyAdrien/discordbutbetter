@@ -50,6 +50,7 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
   const [useGradient, setUseGradient] = useState(!!profile?.theme_gradient);
   const [gradientStart, setGradientStart] = useState(profile?.theme_gradient?.split(',')[0] || '#00D4FF');
   const [gradientEnd, setGradientEnd] = useState(profile?.theme_gradient?.split(',')[1] || '#8B5CF6');
+  const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
 
   const handleSave = () => {
     const themeGradient = useGradient ? `${gradientStart},${gradientEnd}` : null;
@@ -316,12 +317,20 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" onClick={onClose} className="flex-1">
+            <Button
+              variant="outline"
+              onClick={() => setServerProfileEditOpen(true)}
+              className="gap-2"
+            >
+              <Pencil className="w-4 h-4" />
+              Profils serveur
+            </Button>
+            <div className="flex-1" />
+            <Button variant="outline" onClick={onClose}>
               Annuler
             </Button>
             <Button 
               onClick={handleSave} 
-              className="flex-1"
               disabled={updateProfile.isPending || bioLength > maxBio}
             >
               {updateProfile.isPending ? (
@@ -335,6 +344,11 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
             </Button>
           </div>
         </div>
+
+        <ServerProfileEditModal
+          open={serverProfileEditOpen}
+          onOpenChange={setServerProfileEditOpen}
+        />
       </div>
     </div>
   );

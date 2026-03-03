@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageCircle, UserPlus, UserMinus, Check, X } from 'lucide-react';
+import { parseMarkdown } from '@/lib/markdown';
 import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {

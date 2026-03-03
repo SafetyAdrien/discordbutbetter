@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseMarkdown } from '@/lib/markdown';
 
 export function ProfileSettingsTab() {
   const { profile } = useAuth();
@@ -120,7 +121,7 @@ export function ProfileSettingsTab() {
               <h3 className="font-semibold text-lg">{formData.display_name || profile?.display_name}</h3>
               <p className="text-sm text-muted-foreground">@{profile?.username}</p>
               {formData.bio && (
-                <p className="text-sm mt-2">{formData.bio}</p>
+                <div className="text-sm mt-2 markdown-preview">{parseMarkdown(formData.bio)}</div>
               )}
             </div>
           </div>
@@ -184,6 +185,12 @@ export function ProfileSettingsTab() {
               rows={3}
               maxLength={200}
             />
+            {formData.bio.trim() && (
+              <div className="bg-muted/50 border border-border rounded-md p-2.5 text-sm">
+                <span className="text-xs text-muted-foreground font-medium mb-1.5 block">Aperçu :</span>
+                <div className="markdown-preview">{parseMarkdown(formData.bio)}</div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

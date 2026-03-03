@@ -121,7 +121,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">**</span>
-          <span className="text-[hsl(38,95%,54%)]">{match[2]}</span>
+          <span className="text-foreground">{match[2]}</span>
           <span className="text-muted-foreground/50">**</span>
         </span>
       );
@@ -130,7 +130,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">__</span>
-          <span className="text-[hsl(197,100%,47%)] underline decoration-[hsl(197,100%,47%)]">{match[3]}</span>
+          <span className="text-foreground underline">{match[3]}</span>
           <span className="text-muted-foreground/50">__</span>
         </span>
       );
@@ -139,7 +139,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">~~</span>
-          <span className="text-muted-foreground line-through">{match[4]}</span>
+          <span className="text-foreground line-through">{match[4]}</span>
           <span className="text-muted-foreground/50">~~</span>
         </span>
       );
@@ -148,7 +148,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">||</span>
-          <span className="bg-muted/50 rounded-[3px]">{match[5]}</span>
+          <span className="text-foreground bg-muted/50 rounded-[3px]">{match[5]}</span>
           <span className="text-muted-foreground/50">||</span>
         </span>
       );
@@ -166,7 +166,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">[</span>
-          <span className="text-primary">{match[7]}</span>
+          <span className="text-foreground">{match[7]}</span>
           <span className="text-muted-foreground/50">](</span>
           <span className="text-muted-foreground/40">{match[8]}</span>
           <span className="text-muted-foreground/50">)</span>
@@ -177,7 +177,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">*</span>
-          <span className="text-[hsl(139,47%,44%)]">{match[9]}</span>
+          <span className="text-foreground">{match[9]}</span>
           <span className="text-muted-foreground/50">*</span>
         </span>
       );
@@ -186,7 +186,7 @@ function renderInlineMarkdown(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">_</span>
-          <span className="text-[hsl(139,47%,44%)]">{match[10]}</span>
+          <span className="text-foreground">{match[10]}</span>
           <span className="text-muted-foreground/50">_</span>
         </span>
       );

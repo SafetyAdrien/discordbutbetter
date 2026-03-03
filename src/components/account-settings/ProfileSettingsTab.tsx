@@ -219,6 +219,7 @@ export function ProfileSettingsTab() {
                 style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
               />
             </div>
+            <MarkdownPreview content={formData.bio} />
           </div>
 
           <div className="space-y-2">

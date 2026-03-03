@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
-import { InputMarkdownOverlay, parseLines, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
 
 export function ProfileSettingsTab() {
   const { profile } = useAuth();
@@ -39,7 +40,7 @@ export function ProfileSettingsTab() {
     profile_theme: (profile as any)?.profile_theme || { primary: '#00D4FF', accent: '#8B5CF6' },
     featured_server_id: (profile as any)?.featured_server_id || '',
   });
-  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
+  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal') || hasInlineMarkdown(formData.bio), [formData.bio]);
 
   const autoResizeBio = useCallback(() => {
     const el = bioTextareaRef.current;
@@ -219,6 +220,7 @@ export function ProfileSettingsTab() {
                 style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
               />
             </div>
+            {hasBioMarkdown && <MarkdownPreview content={formData.bio} />}
           </div>
 
           <div className="space-y-2">

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2, RotateCcw, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { InputMarkdownOverlay, parseLines, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
 
 interface ServerProfileEditModalProps {
   open: boolean;
@@ -121,7 +122,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const displayBanner = formData.banner_url || profile?.banner_url;
   const displayName = formData.display_name || profile?.display_name || '';
 
-  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
+  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal') || hasInlineMarkdown(formData.bio), [formData.bio]);
 
   useEffect(() => {
     autoResizeBio();
@@ -261,6 +262,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                     style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
                   />
                 </div>
+                {hasBioMarkdown && <MarkdownPreview content={formData.bio} />}
               </div>
 
               {/* Actions */}

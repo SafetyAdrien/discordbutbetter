@@ -7,6 +7,17 @@ import { useAuth } from '@/contexts/AuthContext';
 // Mutation lock to prevent Realtime invalidations during local role mutations
 export const membersMutationLockRef = { current: false };
 
+export interface ServerProfileData {
+  id: string;
+  user_id: string;
+  server_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  bio: string | null;
+  pronouns: string | null;
+}
+
 export interface MemberWithProfile {
   id: string;
   nickname: string | null;
@@ -31,6 +42,7 @@ export interface MemberWithProfile {
     position: number | null;
     description: string | null;
   }[];
+  serverProfile: ServerProfileData | null;
 }
 
 export function useMembers(serverId: string | null) {

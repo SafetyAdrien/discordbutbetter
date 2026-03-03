@@ -52,7 +52,7 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   header2: 'text-foreground',
   header3: 'text-foreground',
   subtext: 'text-muted-foreground',
-  blockquote: 'text-muted-foreground discord-overlay-blockquote',
+  blockquote: 'text-muted-foreground',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
   separator: 'text-muted-foreground',

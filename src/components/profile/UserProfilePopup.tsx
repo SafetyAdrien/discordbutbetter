@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -20,6 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
 import { toast } from 'sonner';
 import * as Portal from '@radix-ui/react-portal';
+import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 
 interface Role {
   id: string;
@@ -128,6 +129,7 @@ export function UserProfilePopup({
   const banMember = useBanMember();
   const [dmCreated, setDmCreated] = useState(false);
   const [showRolePanel, setShowRolePanel] = useState(false);
+  const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
@@ -245,8 +247,22 @@ export function UserProfilePopup({
           style={getBannerStyle()}
         />
         
-        {/* Header Actions - Message & Friend */}
-        {!isOwnProfile && (
+        {/* Header Actions - Message & Friend or Edit */}
+        {isOwnProfile && serverId ? (
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setServerProfileEditOpen(true)}
+                  className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                >
+                  <Pencil className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Modifier le profil serveur</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : !isOwnProfile ? (
           <div className="absolute top-2 right-2 flex items-center gap-2">
             {/* Message Icon */}
             <Tooltip delayDuration={0}>
@@ -296,7 +312,7 @@ export function UserProfilePopup({
               </TooltipContent>
             </Tooltip>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Profile Content */}
@@ -515,56 +531,73 @@ export function UserProfilePopup({
   );
   };
 
+  const serverProfileModal = (
+    <ServerProfileEditModal
+      open={serverProfileEditOpen}
+      onOpenChange={setServerProfileEditOpen}
+      initialServerId={serverId}
+    />
+  );
+
   // Mode Card - affichage en carte latérale
   if (mode === 'card' && open) {
     return (
-      <Portal.Root>
-        <div 
-          className="fixed inset-0 z-50"
-          onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
-        >
+      <>
+        <Portal.Root>
           <div 
-            className="absolute flex items-start"
-            style={{ 
-              top: cardPosition?.top ?? 100,
-              right: cardPosition?.right ?? 280
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50"
+            onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
           >
-            {/* Role Side Panel */}
-            {showRolePanel && canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
-              <RoleSidePanel />
-            )}
-            
-            {/* Main Profile Card */}
-            <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
-              <ProfileContent />
+            <div 
+              className="absolute flex items-start"
+              style={{ 
+                top: cardPosition?.top ?? 100,
+                right: cardPosition?.right ?? 280
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Role Side Panel */}
+              {showRolePanel && canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
+                <RoleSidePanel />
+              )}
+              
+              {/* Main Profile Card */}
+              <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
+                <ProfileContent />
+              </div>
             </div>
           </div>
-        </div>
-      </Portal.Root>
+        </Portal.Root>
+        {serverProfileModal}
+      </>
     );
   }
 
   // Mobile: Drawer from bottom
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
-          <div className="overflow-y-auto">
-            <ProfileContent />
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
+            <div className="overflow-y-auto">
+              <ProfileContent />
+            </div>
+          </DrawerContent>
+        </Drawer>
+        {serverProfileModal}
+      </>
     );
   }
 
   // Desktop: Dialog
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
-        <ProfileContent />
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
+          <ProfileContent />
+        </DialogContent>
+      </Dialog>
+      {serverProfileModal}
+    </>
   );
 }

@@ -49,11 +49,12 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
-import { Shield } from "lucide-react";
+import { Shield, Pencil } from "lucide-react";
 
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
+import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
 interface Role {
   id: string;
   name: string;
@@ -252,7 +253,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
-  
+  const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);
@@ -585,6 +586,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             Ajouter en ami
           </ContextMenuItem>
           <ContextMenuSeparator />
+          {currentUser && member.id === currentUser.id && (
+            <ContextMenuItem onClick={() => setServerProfileEditOpen(true)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Modifier le profil serveur
+            </ContextMenuItem>
+          )}
           <ContextMenuItem onClick={() => handleCopyId(member.id)}>
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
@@ -737,6 +744,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         }}
       />
 
+      <ServerProfileEditModal
+        open={serverProfileEditOpen}
+        onOpenChange={setServerProfileEditOpen}
+        initialServerId={serverId}
+      />
     </>
   );
 });

@@ -12,7 +12,7 @@ import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
 import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
-import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
+
 
 export function ProfileSettingsTab() {
   const { profile } = useAuth();
@@ -220,7 +220,7 @@ export function ProfileSettingsTab() {
                 style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
               />
             </div>
-            {hasBioMarkdown && <MarkdownPreview content={formData.bio} />}
+            
           </div>
 
           <div className="space-y-2">

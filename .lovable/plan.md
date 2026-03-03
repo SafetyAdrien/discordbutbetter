@@ -1,61 +1,33 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Realtime pour les Server Profiles
 
-## Root cause
+## Constat
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+La table `server_profiles` a déjà le realtime activé (`ALTER PUBLICATION supabase_realtime ADD TABLE public.server_profiles`), mais aucun hook n'écoute les changements en temps réel. Quand l'utilisateur A modifie son profil serveur, l'utilisateur B ne voit le changement qu'après un refresh.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. `src/hooks/useProfilesRealtime.ts` — Ajouter un listener sur `server_profiles`
 
-## Fix
+Ajouter un second channel Supabase (canal séparé, conformément au pattern d'isolation existant) qui écoute les événements `INSERT`, `UPDATE` et `DELETE` sur `public.server_profiles`. À chaque événement :
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- **INSERT/UPDATE** : Mettre à jour le cache `['server-profile', userId, serverId]` directement via `queryClient.setQueryData`. Également invalider le cache `['members', serverId]` pour que la liste de membres reflète le nouveau nom/avatar.
+- **DELETE** : Supprimer l'entrée du cache `['server-profile', userId, serverId]` (le remettre à `null`) et invalider `['members', serverId]`.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. `src/hooks/useMembers.ts` — Joindre les `server_profiles` dans la query
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Enrichir la requête `queryFn` pour inclure les données de `server_profiles` dans chaque membre, afin que le display name/avatar serveur soit disponible directement dans le cache members :
 
-### 2. In `onSuccess`: invalidate the permissions cache
+- Ajouter un select sur `server_profiles` filtré par `server_id`
+- Ajouter un champ `serverProfile` (nullable) dans `MemberWithProfile`
+- Les composants d'affichage pourront utiliser `member.serverProfile?.display_name ?? member.user.display_name`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 3. Mise à jour du cache members dans le listener realtime
 
-### 3. Hook needs `useAuth` for the user ID
+Dans le handler realtime de `server_profiles`, patcher directement le cache `['members', serverId]` pour mettre à jour le `serverProfile` du membre concerné — sans refetch réseau.
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichiers modifiés
+- `src/hooks/useProfilesRealtime.ts` — ajout du channel `server_profiles`
+- `src/hooks/useMembers.ts` — ajout du champ `serverProfile` + jointure SQL
 

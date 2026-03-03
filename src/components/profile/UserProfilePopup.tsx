@@ -247,8 +247,22 @@ export function UserProfilePopup({
           style={getBannerStyle()}
         />
         
-        {/* Header Actions - Message & Friend */}
-        {!isOwnProfile && (
+        {/* Header Actions - Message & Friend or Edit */}
+        {isOwnProfile && serverId ? (
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setServerProfileEditOpen(true)}
+                  className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                >
+                  <Pencil className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Modifier le profil serveur</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : !isOwnProfile ? (
           <div className="absolute top-2 right-2 flex items-center gap-2">
             {/* Message Icon */}
             <Tooltip delayDuration={0}>
@@ -298,7 +312,7 @@ export function UserProfilePopup({
               </TooltipContent>
             </Tooltip>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Profile Content */}

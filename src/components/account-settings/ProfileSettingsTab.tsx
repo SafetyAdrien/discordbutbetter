@@ -24,7 +24,6 @@ export function ProfileSettingsTab() {
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const bioOverlayRef = useRef<HTMLDivElement>(null);
   const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal'), [formData.bio]);
 
   const syncBioScroll = useCallback(() => {
     if (bioOverlayRef.current && bioTextareaRef.current) {

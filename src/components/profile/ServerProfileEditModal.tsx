@@ -151,34 +151,34 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
         ) : (
           <div className="overflow-y-auto max-h-[60vh]">
             {/* Banner Preview */}
-            <div className="relative h-24 bg-primary">
+            <div
+              className="relative h-24 bg-primary group cursor-pointer"
+              onClick={() => bannerInputRef.current?.click()}
+            >
               {displayBanner && (
                 <img src={displayBanner} alt="" className="w-full h-full object-cover" />
               )}
-              <button
-                onClick={() => bannerInputRef.current?.click()}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-              >
-                {uploadBanner.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-              </button>
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                {uploadBanner.isPending ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+              </div>
               <input ref={bannerInputRef} type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
             </div>
 
             {/* Avatar */}
             <div className="px-4 -mt-10 relative z-10">
-              <div className="relative inline-block">
+              <div
+                className="relative inline-block group cursor-pointer"
+                onClick={() => avatarInputRef.current?.click()}
+              >
                 <Avatar className="w-20 h-20 border-4 border-card">
                   <AvatarImage src={displayAvatar || undefined} />
                   <AvatarFallback className="bg-primary/20 text-primary text-xl">
                     {displayName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90"
-                >
-                  {uploadAvatar.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
-                </button>
+                <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {uploadAvatar.isPending ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                </div>
                 <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
               </div>
             </div>

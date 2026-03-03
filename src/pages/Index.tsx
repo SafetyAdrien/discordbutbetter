@@ -438,9 +438,9 @@ const Index = () => {
   const memberListData: (User & { roles?: MemberWithProfile['roles']; activity_type?: string | null; activity_text?: string | null })[] = members.map(m => ({
     id: m.user.id,
     username: m.user.username,
-    displayName: m.nickname || m.user.display_name,
-    avatar: m.user.avatar_url || undefined,
-    banner: m.user.banner_url || undefined,
+    displayName: m.serverProfile?.display_name || m.nickname || m.user.display_name,
+    avatar: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,
+    banner: m.serverProfile?.banner_url || m.user.banner_url || undefined,
     status: m.user.status || 'offline',
     customStatus: m.user.custom_status || undefined,
     activity_type: m.user.activity_type,

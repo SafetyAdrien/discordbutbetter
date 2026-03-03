@@ -241,9 +241,13 @@ export function FullUserProfileModal({
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
                     À Propos de Moi
                   </h4>
-                  <p className="text-sm">
-                    {user.bio || "Aucune biographie définie."}
-                  </p>
+                  {user.bio ? (
+                    <div className="text-sm markdown-preview prose prose-invert prose-sm max-w-none">
+                      {parseMarkdown(user.bio)}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune biographie définie.</p>
+                  )}
                 </div>
 
                 {/* Member Since */}

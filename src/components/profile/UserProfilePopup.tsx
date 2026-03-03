@@ -20,6 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown } from '@/lib/markdown';
 import { toast } from 'sonner';
 import * as Portal from '@radix-ui/react-portal';
+import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 
 interface Role {
   id: string;
@@ -128,6 +129,7 @@ export function UserProfilePopup({
   const banMember = useBanMember();
   const [dmCreated, setDmCreated] = useState(false);
   const [showRolePanel, setShowRolePanel] = useState(false);
+  const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes

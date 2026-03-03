@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useProfile';
 import { useServers } from '@/hooks/useServers';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Camera, Loader2 } from 'lucide-react';
+import { X, Camera, Loader2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
 

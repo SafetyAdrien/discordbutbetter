@@ -1,4 +1,4 @@
-import { useMemo, forwardRef } from 'react';
+import { useMemo, forwardRef, ReactNode } from 'react';
 
 interface InputMarkdownOverlayProps {
   content: string;
@@ -96,10 +96,122 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   return 'normal';
 }
 
+// Inline markdown rendering - uses ONLY color/decoration, never font metrics
+function renderInlineMarkdown(text: string): ReactNode {
+  if (!text) return '\u200B';
+  
+  // Regex to match inline patterns - order matters (longest/most specific first)
+  const inlineRegex = /(\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`(.+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
+  
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  
+  while ((match = inlineRegex.exec(text)) !== null) {
+    // Add text before match
+    if (match.index > lastIndex) {
+      parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+    }
+    
+    const full = match[0];
+    
+    if (match[2] !== undefined) {
+      // **bold**
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">**</span>
+          <span className="text-[hsl(38,95%,54%)]">{match[2]}</span>
+          <span className="text-muted-foreground/50">**</span>
+        </span>
+      );
+    } else if (match[3] !== undefined) {
+      // __underline__
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">__</span>
+          <span className="text-[hsl(197,100%,47%)] underline decoration-[hsl(197,100%,47%)]">{match[3]}</span>
+          <span className="text-muted-foreground/50">__</span>
+        </span>
+      );
+    } else if (match[4] !== undefined) {
+      // ~~strikethrough~~
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">~~</span>
+          <span className="text-muted-foreground line-through">{match[4]}</span>
+          <span className="text-muted-foreground/50">~~</span>
+        </span>
+      );
+    } else if (match[5] !== undefined) {
+      // ||spoiler||
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">||</span>
+          <span className="bg-muted/50 rounded-[3px]">{match[5]}</span>
+          <span className="text-muted-foreground/50">||</span>
+        </span>
+      );
+    } else if (match[6] !== undefined) {
+      // `code`
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">`</span>
+          <span className="bg-muted/40 rounded-[3px] text-[hsl(340,65%,65%)]">{match[6]}</span>
+          <span className="text-muted-foreground/50">`</span>
+        </span>
+      );
+    } else if (match[7] !== undefined && match[8] !== undefined) {
+      // [text](url)
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">[</span>
+          <span className="text-primary">{match[7]}</span>
+          <span className="text-muted-foreground/50">](</span>
+          <span className="text-muted-foreground/40">{match[8]}</span>
+          <span className="text-muted-foreground/50">)</span>
+        </span>
+      );
+    } else if (match[9] !== undefined) {
+      // *italic*
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">*</span>
+          <span className="text-[hsl(139,47%,44%)]">{match[9]}</span>
+          <span className="text-muted-foreground/50">*</span>
+        </span>
+      );
+    } else if (match[10] !== undefined) {
+      // _italic_
+      parts.push(
+        <span key={key++}>
+          <span className="text-muted-foreground/50">_</span>
+          <span className="text-[hsl(139,47%,44%)]">{match[10]}</span>
+          <span className="text-muted-foreground/50">_</span>
+        </span>
+      );
+    } else {
+      parts.push(<span key={key++}>{full}</span>);
+    }
+    
+    lastIndex = match.index + full.length;
+  }
+  
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+  }
+  
+  return parts.length > 0 ? parts : text;
+}
+
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
   ({ content, compact = false, className }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
-    const hasMarkdown = useMemo(() => lines.some((line) => line.type !== 'normal'), [lines]);
+    const hasMarkdown = useMemo(() => 
+      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content),
+      [lines, content]
+    );
 
     if (!hasMarkdown) return null;
 
@@ -120,7 +232,10 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
             className={`${lineStyles[line.type]} relative`}
             style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
           >
-            {line.text || '\u200B'}
+            {line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter'
+              ? (line.text || '\u200B')
+              : renderInlineMarkdown(line.text)
+            }
           </div>
         ))}
       </div>

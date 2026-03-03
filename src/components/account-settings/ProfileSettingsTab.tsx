@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
-import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
 import { InputMarkdownOverlay, parseLines, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 export function ProfileSettingsTab() {
@@ -219,7 +218,6 @@ export function ProfileSettingsTab() {
                 style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
               />
             </div>
-            <MarkdownPreview content={formData.bio} />
           </div>
 
           <div className="space-y-2">

@@ -112,7 +112,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 overflow-hidden max-w-lg bg-card border-border gap-0">
         {/* Server Selector */}
-        <div className="px-4 pt-4 pb-3 border-b border-border">
+        <div className="px-5 pt-5 pb-4 border-b border-border">
           <div className="flex items-center gap-2 mb-2">
             <Pencil className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Modifier le profil serveur</h2>
@@ -184,7 +184,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
             </div>
 
             {/* Form */}
-            <div className="p-4 space-y-4">
+            <div className="px-5 pb-5 pt-3 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="sp_display_name">Nom d'affichage</Label>
                 <Input
@@ -239,7 +239,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-4 border-t border-border">
                 {serverProfile && (
                   <Button
                     variant="outline"

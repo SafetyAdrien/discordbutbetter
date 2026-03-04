@@ -154,6 +154,7 @@ export function MentionAutocomplete({
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Membres</div>
               {(suggestions as MentionMember[]).map((member, index) => (
                 <button
+                  type="button"
                   key={member.id}
                   data-mention-item
                   onClick={() => handleSelect(member)}
@@ -181,6 +182,7 @@ export function MentionAutocomplete({
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Rôles</div>
               {(suggestions as MentionRole[]).map((role, index) => (
                 <button
+                  type="button"
                   key={role.id}
                   data-mention-item
                   onClick={() => handleSelect(role)}
@@ -206,6 +208,7 @@ export function MentionAutocomplete({
                 const ChannelIcon = getChannelIcon(channel.type);
                 return (
                   <button
+                    type="button"
                     key={channel.id}
                     data-mention-item
                     onClick={() => handleSelect(channel)}

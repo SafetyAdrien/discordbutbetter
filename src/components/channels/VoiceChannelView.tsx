@@ -72,6 +72,13 @@ export function VoiceChannelView({
     noiseSuppression,
     setNoiseSuppression,
     rnnoiseAvailable,
+    // Mic settings
+    micVolume,
+    setMicVolume,
+    vadSensitivity,
+    setVadSensitivity,
+    audioFilters,
+    setAudioFilter,
   } = useVoice();
   
   const { data: participants = [] } = useVoiceParticipants(channel.id);

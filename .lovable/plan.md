@@ -1,37 +1,61 @@
 
 
-# Fix: Navigation revient toujours aux DMs après rechargement
+# Fix: Duplicated channel hidden by visibility filter
 
-## Cause racine
+## Root cause
 
-Race condition entre TanStack Query v5 et l'effet de redirection dans `Index.tsx`.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Séquence au rechargement :
-1. `user` est `null`, `authLoading = true` → spinner
-2. Auth résout → `user` défini, `authLoading = false`
-3. `useServers` passe de `enabled: false` à `enabled: true`
-4. **Pendant 1 frame** : `isLoading` est `false` (TanStack Query v5 : `isLoading = isPending && isFetching`, et le fetch n'a pas encore démarré), `servers = []`
-5. Le guard `if (!activeServerId || !servers || serversLoading) return;` (ligne 239) **passe** car `serversLoading = false`
-6. Le serveur actif n'est pas trouvé dans `servers = []` → `setActiveServerId(null)` → DM view
-7. Le serveur ID est persisté comme `null` dans localStorage
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
 ## Fix
 
-**Fichier : `src/pages/Index.tsx`**
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Remplacer `isLoading` par `isPending` de TanStack Query (qui est `true` tant qu'aucune donnée n'a été reçue, même si la requête n'a pas encore démarré le fetch).
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-1. Ligne 147 : extraire `isPending` de `useServers()`
-2. Ligne 239 : utiliser `isPending` au lieu de `serversLoading` dans le guard de l'effet de redirection
-3. Ligne 390 : utiliser `isPending` dans le guard du loading spinner pour éviter un flash de contenu vide
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
 
 ```text
-Avant : const { data: servers = [], isLoading: serversLoading } = useServers();
-Après : const { data: servers = [], isLoading: serversLoading, isPending: serversPending } = useServers();
-
-Guard redirection (l.239) : if (!activeServerId || !servers || serversPending) return;
-Guard spinner (l.390)    : if (authLoading || (user && serversPending)) { ... spinner }
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-Changement minimal, 3 lignes modifiées dans un seul fichier.
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -1,61 +1,48 @@
 
+Contexte confirmé (tes réponses):  
+- Symptôme = **état visuel bloqué**  
+- Repro = **partout** (profil, barre vocale, sidebar)  
+=> Le problème est centralisé dans la logique d’état de `VoiceContext` (pas un bouton isolé).
 
-# Fix: Duplicated channel hidden by visibility filter
+Plan de correction (ciblé et robuste):
 
-## Root cause
+1) Verrouiller la source de vérité locale (anti “état bloqué”)
+- Fichier: `src/contexts/VoiceContext.tsx`
+- Dans `toggleMute` et `toggleDeafen`:
+  - garder l’optimistic update immédiat (UI + WebRTC),
+  - passer sur une logique fonctionnelle pour calculer le prochain état (éviter tout stale state),
+  - **ne plus rebasculer visuellement immédiatement** en cas d’échec DB transitoire (sinon effet “bloqué”),
+  - afficher un toast d’avertissement + retry silencieux de sync.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+2) Corriger la synchro pré-join de façon déterministe
+- Fichier: `src/contexts/VoiceContext.tsx`
+- Dans `joinChannel`, appliquer systématiquement avant `connect`:
+  - `webrtc.setMuted(prevState.isMuted)`
+  - `webrtc.setDeafened(prevState.isDeafened)`
+- Dans le mode hors salon (pré-mute/pré-casque), appeler aussi les setters WebRTC pour garder le manager aligné même avant connexion.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+3) Empêcher l’écrasement de l’état local par la resync DB
+- Fichier: `src/contexts/VoiceContext.tsx`
+- L’effet de sync `dbVoiceState -> setVoiceState` sera limité:
+  - hydrate initiale OK,
+  - mais pendant une session vocale active locale, ne pas écraser `isMuted/isDeafened` à chaque refetch.
+- Objectif: éviter que l’UI revienne immédiatement à l’ancien état après clic.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+4) Durcir la sync backend des toggles
+- Fichier: `src/contexts/VoiceContext.tsx`
+- Sur update `voice_states`:
+  - vérifier explicitement le succès (row effectivement mise à jour),
+  - si 0 ligne: tentative de réparation de ligne voix puis retry update,
+  - conserver l’optimistic state pendant le retry.
 
-## Fix
+5) Sécuriser la politique UPDATE voix (si blocage persistant côté backend)
+- Migration backend:
+  - remplacer la policy UPDATE actuelle “restricted” par une version déterministe (éviter la logique `LIMIT 1` ambiguë),
+  - conserver l’interdiction de modifier `server_muted`, `server_deafened`, `muted_by` côté client.
+- Résultat: plus de faux refus qui re-verrouillent l’UI.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+6) Validation E2E (scénarios exacts du bug)
+- Cas A: pré-mute -> join -> unmute (doit fonctionner visuellement + audio)
+- Cas B: pré-casque -> join -> undeafen (doit fonctionner visuellement + audio)
+- Cas C: pré-mute + pré-casque -> join -> toggles dans les 3 zones UI (profil, action bar, sidebar)
+- Cas D: vérifier sync temps réel pour les autres participants (états muted/deafened cohérents).

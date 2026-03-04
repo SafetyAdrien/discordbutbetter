@@ -1,61 +1,47 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Plan : Corrections et implémentations chat
 
-## Root cause
+## 1. Chargement instantané des images et liens
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Problème** : Les images affichent un skeleton/flash avant de charger, et les embeds de liens causent un décalage de layout pendant le fetch des métadonnées.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+**Solution** :
+- **Images** : Pré-charger les URLs d'images via `new Image()` dès que les messages arrivent, pour que le navigateur les ait en cache avant le rendu.
+- **Link Embeds** : Pré-fetcher les métadonnées de tous les liens dès réception des messages (pas seulement au rendu du composant). Ajouter un `useEffect` dans `ChatArea` qui extrait les URLs de tous les messages et lance `fetchMetadata` en avance.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Fichiers** : `src/components/chat/ChatArea.tsx`, `src/hooks/useUrlMetadata.ts`
 
-## Fix
+## 2. Mentions de salons → navigation
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Problème** : Le clic sur une mention `#salon` doit naviguer vers le salon correspondant.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+**État actuel** : Déjà implémenté via `onChannelNavigate` dans le `markdownContext`. Le callback navigue vers `/channels/${server_id}/${channelId}`. Si un bug existe, il est probablement lié au contexte DM ou au fait que le `ChannelMention` component n'a pas le bon `serverId`. À vérifier et corriger si nécessaire.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**Fichiers** : `src/components/chat/mentions/MentionComponents.tsx`, `src/lib/markdown.tsx`
 
-### 2. In `onSuccess`: invalidate the permissions cache
+## 3. Embeds multiples pour plusieurs liens
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+**État actuel** : `LinkEmbeds` extrait déjà jusqu'à 5 URLs et rend un `LinkEmbed` par URL. Cela fonctionne déjà. Si ce n'est pas visible, c'est probablement dû au fait que le fetch échoue ou que les URLs sont filtrées par `extractUrls`. Je vérifierai que les URLs sont correctement extraites et que chaque embed se rend bien en cascade.
 
-### 3. Hook needs `useAuth` for the user ID
+**Fichiers** : `src/hooks/useUrlMetadata.ts`, `src/components/chat/LinkEmbed.tsx`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+## 4. Backslash `\` pour annuler le formatage
 
-## Detailed changes
+**Problème** : Le `\` fonctionne déjà pour les caractères inline (`\*`, `\~`, etc.) mais PAS pour les blocs (`\# titre`, `\> citation`, `\- liste`). La fonction `parseBlocks` ne vérifie pas les échappements.
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+**Solution** : Dans `parseBlocks`, avant de détecter les headers, blockquotes, listes, vérifier si la ligne commence par `\` suivi du caractère de bloc. Si oui, traiter comme un paragraphe normal en retirant le `\`.
 
-### Code sketch for onMutate addition (after servers cache update)
+**Fichier** : `src/lib/markdown.tsx` (fonction `parseBlocks`, lignes ~388-433)
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+---
 
-### Code for onSuccess addition
+## Résumé des modifications
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Modification |
+|---|---|
+| `src/components/chat/ChatArea.tsx` | Pré-fetch images + métadonnées liens au chargement des messages |
+| `src/hooks/useUrlMetadata.ts` | Exporter `fetchMetadata` pour usage externe de pré-chargement |
+| `src/lib/markdown.tsx` | Gérer `\` devant les blocs (headers, quotes, listes) dans `parseBlocks` |
+| `src/components/chat/LinkEmbed.tsx` | Aucune modification nécessaire (multi-embeds déjà fonctionnel) |
 

@@ -34,6 +34,8 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [connectionStats, setConnectionStats] = useState<ConnectionStats | null>(null);
+  const [remoteMuted, setRemoteMuted] = useState(false);
+  const [remoteVideoOff, setRemoteVideoOff] = useState(true);
 
   const peerConnectionRef = useRef<PeerConnection | null>(null);
   const callIdRef = useRef<string | null>(null);

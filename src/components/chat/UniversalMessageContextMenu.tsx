@@ -257,7 +257,14 @@ export function UniversalMessageContextMenu({
               {onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onClick={() => isShiftPressed ? onDelete?.() : setDeleteOpen(true)}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    if (isShiftPressed) {
+                      onDelete?.();
+                    } else {
+                      setTimeout(() => setDeleteOpen(true), 100);
+                    }
+                  }}
                 >
                   <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                   Supprimer
@@ -269,7 +276,14 @@ export function UniversalMessageContextMenu({
               {canManageMessages && onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onClick={() => isShiftPressed ? onDelete?.() : setDeleteOpen(true)}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    if (isShiftPressed) {
+                      onDelete?.();
+                    } else {
+                      setTimeout(() => setDeleteOpen(true), 100);
+                    }
+                  }}
                 >
                   <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                   Supprimer

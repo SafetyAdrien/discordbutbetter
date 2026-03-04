@@ -228,7 +228,31 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       }
 
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
-      queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
+
+      // Optimistically add self to participants cache immediately
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        queryClient.setQueryData(['voice-participants', channelId], (old: any) => {
+          const existing = old || [];
+          if (existing.some((p: any) => p.user_id === user.id)) return existing;
+          return [...existing, {
+            id: crypto.randomUUID(),
+            user_id: user.id,
+            channel_id: channelId,
+            muted: prevState.isMuted,
+            deafened: prevState.isDeafened,
+            camera: false,
+            streaming: false,
+            joined_at: new Date().toISOString(),
+            profile,
+          }];
+        });
+      }
     } catch (error) {
       // 3. Rollback on failure
       console.error('[VoiceContext] Join failed, rolling back:', error);
@@ -389,17 +413,21 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = async () => {
       const currentUser = userRef.current;
       const currentChannelId = voiceStateRef.current.channelId;
       if (!currentUser || !currentChannelId) return;
+
+      // Get the actual user session token for RLS auth
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       // Use fetch with keepalive to ensure the request completes even as the page closes
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/voice_states?user_id=eq.${currentUser.id}`, {
         method: 'DELETE',
         headers: {
           'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         keepalive: true,

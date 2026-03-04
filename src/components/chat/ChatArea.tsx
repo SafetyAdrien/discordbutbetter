@@ -321,6 +321,7 @@ interface ChatAreaProps {
   activeThreadId?: string | null;
   onCloseThread?: () => void;
   members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
+  onChannelSelect?: (channelId: string) => void;
 }
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("fr-FR", {
@@ -356,6 +357,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     activeThreadId,
     onCloseThread,
     members = [],
+    onChannelSelect,
   },
   ref,
 ) {
@@ -598,21 +600,20 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           });
         }
       },
-      onChannelNavigate: (channelId, targetServerId) => {
-        const serverId = targetServerId || channel.server_id;
-        if (serverId) navigate(`/channels/${serverId}/${channelId}`);
+      onChannelNavigate: (channelId, _targetServerId) => {
+        if (onChannelSelect) {
+          onChannelSelect(channelId);
+        }
       },
-      onMessageJump: (serverId, channelId, messageId) => {
-        // If same channel, just scroll
+      onMessageJump: (_serverId, channelId, messageId) => {
         if (channelId === channel.id) {
           scrollToMessage(messageId);
-        } else {
-          // Navigate to channel first
-          navigate(`/channels/${serverId}/${channelId}?messageId=${messageId}`);
+        } else if (onChannelSelect) {
+          onChannelSelect(channelId);
         }
       },
     });
-  }, [messages, members, serverRoles, allChannels, user?.id, channel, memberRoles, navigate, scrollToMessage]);
+  }, [messages, members, serverRoles, allChannels, user?.id, channel, memberRoles, onChannelSelect, scrollToMessage]);
 
   // Pre-fetch images and link metadata as soon as messages arrive
   useEffect(() => {

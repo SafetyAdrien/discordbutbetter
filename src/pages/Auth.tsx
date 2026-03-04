@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { checkPasswordPwned } from '@/lib/password-security';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { checkRateLimit, resetRateLimit } from '@/lib/rate-limiter';
 
 type AuthView = 'login' | 'forgot-password' | 'reset-password';
 type AuthMethod = 'email' | 'phone';
@@ -245,6 +246,14 @@ export default function Auth() {
       return;
     }
 
+    // Rate limit: 5 attempts per 60s, 30s lockout
+    const rl = checkRateLimit('login', 5, 60_000, 30_000);
+    if (!rl.allowed) {
+      const seconds = Math.ceil((rl.retryAfterMs || 0) / 1000);
+      toast.error(`Trop de tentatives. Réessayez dans ${seconds}s.`);
+      return;
+    }
+
     setLoading(true);
     const { error } = await signIn(email, password);
     setLoading(false);
@@ -258,6 +267,7 @@ export default function Auth() {
         toast.error(error.message);
       }
     } else {
+      resetRateLimit('login');
       toast.success('Connexion réussie !');
       navigate('/');
     }

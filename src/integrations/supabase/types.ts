@@ -2695,7 +2695,55 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      server_bans_safe: {
+        Row: {
+          banned_by: string | null
+          created_at: string | null
+          id: string | null
+          reason: string | null
+          server_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string | null
+          id?: string | null
+          reason?: never
+          server_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string | null
+          id?: string | null
+          reason?: never
+          server_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_bans_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_bans_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_bans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       ban_member: {
@@ -2800,6 +2848,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      insert_audit_log: {
+        Args: {
+          _action_type: string
+          _details?: Json
+          _server_id: string
+          _target_id?: string
+        }
+        Returns: undefined
       }
       is_dm_participant: {
         Args: { _conversation_id: string; _user_id: string }

@@ -445,6 +445,8 @@ const Index = () => {
     customStatus: m.user.custom_status || undefined,
     activity_type: m.user.activity_type,
     activity_text: m.user.activity_text,
+    bio: m.serverProfile?.bio || m.user.bio || undefined,
+    pronouns: m.serverProfile?.pronouns || m.user.pronouns || undefined,
     roles: m.roles,
   }));
 

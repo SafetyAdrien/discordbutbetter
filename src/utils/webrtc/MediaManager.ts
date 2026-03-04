@@ -149,6 +149,13 @@ export class MediaManager {
         source.connect(this.analyser);
       }
 
+      // Apply current mute state to new tracks
+      if (this.isMuted && this.localAudioStream) {
+        this.localAudioStream.getAudioTracks().forEach(track => {
+          track.enabled = false;
+        });
+      }
+
       this._hasMicrophoneAccess = true;
       console.log('[MediaManager] Microphone started successfully');
       return true;

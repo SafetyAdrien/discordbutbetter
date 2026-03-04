@@ -132,7 +132,7 @@ export class PeerConnection {
       if (type === 'screen') {
         try {
           (track as any).contentHint = 'detail';
-        } catch (_) {}
+        } catch { /* contentHint not supported */ }
       }
 
       const sender = this.pc.addTrack(track, stream);

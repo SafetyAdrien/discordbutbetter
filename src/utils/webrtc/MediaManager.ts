@@ -1,4 +1,4 @@
-import { audioProcessor, AudioProcessor } from './AudioProcessor';
+import { audioProcessor } from './AudioProcessor';
 
 export type StreamType = 'audio' | 'camera' | 'screen';
 
@@ -265,22 +265,22 @@ export class MediaManager {
     const preset = SCREEN_SHARE_PRESETS[opts.quality];
 
     try {
-      this.localScreenStream = await navigator.mediaDevices.getDisplayMedia({
+      const displayMediaOptions: DisplayMediaStreamOptions = {
         video: {
           width: { ideal: preset.width },
           height: { ideal: preset.height },
           frameRate: { ideal: opts.frameRate || preset.defaultFps },
-          cursor: opts.cursor as any,
-        },
+        } as MediaTrackConstraints,
         audio: opts.audio,
-      });
+      };
+      this.localScreenStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
 
       // Set content hint for text/detail optimization
       const videoTrack = this.localScreenStream.getVideoTracks()[0];
       if (videoTrack) {
         try {
           (videoTrack as any).contentHint = 'detail';
-        } catch (_) {}
+        } catch { /* contentHint not supported */ }
 
         videoTrack.onended = () => {
           this.stopScreenShare();

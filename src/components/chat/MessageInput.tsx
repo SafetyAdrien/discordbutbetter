@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { MarkdownPreview } from './MarkdownPreview';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
@@ -89,6 +89,13 @@ export function MessageInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const hasMarkdown = useMemo(() => {
+    if (!value) return false;
+    const lines = parseLines(value);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value);
+  }, [value]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
@@ -108,6 +115,10 @@ export function MessageInput({
     // For desktop single-line: clamp to baseline if scrollHeight is within tolerance (handles 43-46px browser variance)
     const height = (!compact && sh <= DESKTOP_MIN_HEIGHT + DESKTOP_SINGLE_LINE_TOLERANCE) ? DESKTOP_MIN_HEIGHT : Math.max(sh, minH);
     textarea.style.height = height + 'px';
+    // Sync overlay scroll
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = textarea.scrollTop;
+    }
   }, [compact]);
 
   useEffect(() => {
@@ -476,19 +487,31 @@ export function MessageInput({
           
           {/* Textarea container */}
           <div className={`relative flex-1 min-w-0 overflow-hidden flex items-center`}>
+            {hasMarkdown && (
+              <InputMarkdownOverlay
+                ref={overlayRef}
+                content={value}
+                compact={compact}
+                className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]'}
+              />
+            )}
             <textarea
               ref={textareaRef}
               value={value}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              onScroll={() => { if (overlayRef.current && textareaRef.current) overlayRef.current.scrollTop = textareaRef.current.scrollTop; }}
               placeholder={placeholder}
               disabled={disabled}
-              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-foreground ${
+              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
+                hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
+              } ${
               compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
                   : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
               }`}
+              style={hasMarkdown ? { fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 } : undefined}
               rows={1}
             />
           </div>
@@ -535,7 +558,7 @@ export function MessageInput({
         </div>
       </form>
 
-      <MarkdownPreview content={value} className="mx-1 mt-1" />
+      
       
       {(channelId || threadId) && (
         <CreatePollModal

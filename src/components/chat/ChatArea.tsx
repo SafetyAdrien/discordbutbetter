@@ -601,17 +601,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         }
       },
       onChannelNavigate: (channelId, _targetServerId) => {
-        // Use internal state navigation instead of URL routing
-        if (props.onChannelSelect) {
-          props.onChannelSelect(channelId);
+        if (onChannelSelect) {
+          onChannelSelect(channelId);
         }
       },
       onMessageJump: (_serverId, channelId, messageId) => {
-        // If same channel, just scroll
         if (channelId === channel.id) {
           scrollToMessage(messageId);
-        } else if (props.onChannelSelect) {
-          props.onChannelSelect(channelId);
+        } else if (onChannelSelect) {
+          onChannelSelect(channelId);
         }
       },
     });

@@ -81,21 +81,23 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
     })),
   });
 
-  // Build a map of permission -> granted
-  const permissionsMap = new Map<ServerPermission, boolean>();
-  queries.forEach((query, index) => {
-    permissionsMap.set(permissions[index], query.data?.granted ?? false);
-  });
-
   const isLoading = queries.some(q => q.isLoading);
   const isError = queries.some(q => q.isError);
+
+  // Build a map of permission -> granted
+  // OPTIMISTIC: default to TRUE during loading to prevent flash of disabled UI on refresh
+  const permissionsMap = new Map<ServerPermission, boolean>();
+  queries.forEach((query, index) => {
+    const optimisticDefault = isLoading ? true : false;
+    permissionsMap.set(permissions[index], query.data?.granted ?? optimisticDefault);
+  });
 
   return {
     permissions: permissionsMap,
     isLoading,
     isError,
     // Helper function to check a specific permission
-    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? false,
+    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isLoading ? true : false),
   };
 }
 

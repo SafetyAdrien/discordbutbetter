@@ -387,9 +387,12 @@ const Index = () => {
     setShowMembers(!showMembers);
   };
 
+  // Preloader — loads everything before showing the app
+  const preloader = usePreloader(authLoading, serversPending, servers);
+
   // Loading state
-  if (authLoading || (user && serversPending)) {
-    return <LoadingScreen />;
+  if (!preloader.ready) {
+    return <LoadingScreen progress={preloader.progress} currentStep={preloader.currentStep} />;
   }
 
   // Transform data for components - full Server type

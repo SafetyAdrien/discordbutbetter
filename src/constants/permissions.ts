@@ -255,7 +255,7 @@ export const CHANNEL_TYPE_CATEGORIES: Record<ChannelType, string[]> = {
   text: ['general', 'text', 'threads', 'polls'],
   voice: ['general', 'voice', 'text'],
   forum: ['general', 'forum', 'threads'],
-  announcement: ['general', 'announcement'],
+  announcement: ['general', 'announcement', 'text', 'threads', 'polls'],
   media: ['general', 'media'],
   calendar: ['general', 'calendar'],
   tasks: ['general', 'tasks'],

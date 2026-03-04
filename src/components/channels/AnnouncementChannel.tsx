@@ -212,7 +212,7 @@ export function AnnouncementChannel({
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
   const isAdminOrOwner = isGod || hasServerPermission('administrator');
 
-  // Check permissions
+  // Check permissions — announcement-specific + text for chat
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
     'send_messages',
     'attach_files',
@@ -220,8 +220,17 @@ export function AnnouncementChannel({
     'create_polls',
     'mention_everyone',
     'create_public_threads',
-    'manage_messages',
     'manage_channels',
+    // Announcement-specific permissions
+    'create_announcements',
+    'edit_announcements',
+    'delete_announcements',
+    'publish_messages',
+    'follow_announcements',
+    'pin_announcements',
+    'feature_announcements',
+    'manage_announcements',
+    'moderate_announcements',
   ]);
 
   // Short-circuit for owners/admins - they always have permissions
@@ -229,8 +238,17 @@ export function AnnouncementChannel({
   const canAttachFiles = isAdminOrOwner || canPerm('attach_files');
   const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
   const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
-  const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
   const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
+  // Announcement-specific
+  const canCreateAnnouncements = isAdminOrOwner || canPerm('create_announcements');
+  const canEditAnnouncements = isAdminOrOwner || canPerm('edit_announcements');
+  const canDeleteAnnouncements = isAdminOrOwner || canPerm('delete_announcements');
+  const canPublishMessages = isAdminOrOwner || canPerm('publish_messages');
+  const canFollowAnnouncements = isAdminOrOwner || canPerm('follow_announcements');
+  const canPinAnnouncements = isAdminOrOwner || canPerm('pin_announcements');
+  const canModerateAnnouncements = isAdminOrOwner || canPerm('moderate_announcements');
+  // manage_announcements = full admin (edit + delete + pin + moderate)
+  const canManageAnnouncements = isAdminOrOwner || canPerm('manage_announcements');
   
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
@@ -388,15 +406,17 @@ export function AnnouncementChannel({
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFollowModalOpen(true)}
-            className="text-sm font-medium flex-shrink-0"
-          >
-            Suivre
-          </Button>
+           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          {canFollowAnnouncements && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFollowModalOpen(true)}
+              className="text-sm font-medium flex-shrink-0"
+            >
+              Suivre
+            </Button>
+          )}
         </div>
 
         {channel.description && (
@@ -600,6 +620,7 @@ export function AnnouncementChannel({
             // Show publish prompt for own messages that haven't been dismissed
             const showPublishPrompt =
               isOwnMessage &&
+              canPublishMessages &&
               followers.length > 0 &&
               !(message as any).publish_dismissed &&
               !(message as any).is_published_message;
@@ -644,15 +665,15 @@ export function AnnouncementChannel({
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
-                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                      onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
-                      onPin={() => handlePinMessage(message.id)}
+                      onEdit={isOwnMessage || canEditAnnouncements || canManageAnnouncements ? () => handleStartEdit(message) : undefined}
+                      onDelete={isOwnMessage || canDeleteAnnouncements || canModerateAnnouncements || canManageAnnouncements ? () => handleDelete(message.id) : undefined}
+                      onPin={canPinAnnouncements || canManageAnnouncements ? () => handlePinMessage(message.id) : undefined}
                       onDropdownOpenChange={(open) => {
                         setOpenDropdownMessageId(open ? message.id : null);
                         if (!open) setHoveredMessageId(null);
                       }}
                       customAction={
-                        isOwnMessage && followers.length > 0 ? (
+                        canPublishMessages && isOwnMessage && followers.length > 0 ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -881,13 +902,18 @@ export function AnnouncementChannel({
                     <Link className="w-4 h-4 mr-2" />
                     Copier le lien du message
                   </ContextMenuItem>
-                  {isOwnMessage && (
+                  {(isOwnMessage || canEditAnnouncements || canManageAnnouncements) && (
                     <>
                       <ContextMenuSeparator />
                       <ContextMenuItem onClick={() => handleStartEdit(message)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Modifier
                       </ContextMenuItem>
+                    </>
+                  )}
+                  {(isOwnMessage || canDeleteAnnouncements || canModerateAnnouncements || canManageAnnouncements) && (
+                    <>
+                      {!(isOwnMessage || canEditAnnouncements || canManageAnnouncements) && <ContextMenuSeparator />}
                       <ContextMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => handleDelete(message.id)}

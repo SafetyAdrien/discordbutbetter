@@ -357,6 +357,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     activeThreadId,
     onCloseThread,
     members = [],
+    onChannelSelect,
   },
   ref,
 ) {

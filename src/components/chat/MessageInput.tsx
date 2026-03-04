@@ -11,6 +11,7 @@ import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { checkCooldown } from '@/lib/rate-limiter';
 
 interface MessageInputProps {
   value: string;
@@ -338,6 +339,10 @@ export function MessageInput({
 
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {
+      // Rate limit: 500ms cooldown between messages
+      const rl = checkCooldown('message-send', 500);
+      if (!rl.allowed) return;
+
       const attachmentData = attachments.map(a => ({
         file: a.file,
         name: a.name,

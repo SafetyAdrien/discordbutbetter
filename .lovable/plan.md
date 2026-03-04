@@ -1,61 +1,42 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Préchargement instantané : ordre des serveurs + permissions par salon
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+1. **Ordre des serveurs** — `useServerOrder` fait un fetch séparé de `profiles.server_order` au montage. Pendant ce temps, la liste des serveurs s'affiche dans l'ordre par défaut puis "saute" quand l'ordre custom arrive.
+2. **Permissions par salon** — `useServerChannelPermissions` (appel RPC `get_server_channel_permissions`) se déclenche seulement quand on navigue sur un serveur. Cela provoque un flash où tous les salons sont visibles puis certains disparaissent.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Étendre `usePreloader` pour précharger ces deux éléments supplémentaires pendant l'écran de chargement.
 
-## Fix
+### Modifications : `src/hooks/usePreloader.ts`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+1. **Ajouter `serverOrderLoaded` et `channelPermsLoaded`** aux states de progression
+2. **Précharger `profiles.server_order`** — déjà récupéré dans l'étape profil, mais on doit explicitement alimenter le cache `['server-order', userId]` :
+   ```ts
+   queryClient.setQueryData(['server-order', user.id], profile?.server_order || []);
+   ```
+3. **Précharger les permissions par salon pour chaque serveur** — nouvel appel batch après les serveurs :
+   ```ts
+   const permPromises = serverIds.map(async (sid) => {
+     const { data } = await supabase.rpc('get_server_channel_permissions', {
+       _user_id: user.id, _server_id: sid
+     });
+     // Construire les Sets viewable/connectable et alimenter le cache
+     queryClient.setQueryData(['server-channel-permissions', sid, user.id], { viewable, connectable });
+   });
+   ```
+4. **Ajouter les 2 nouvelles étapes** dans le tableau `steps` pour la barre de progression
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### Modifications : `src/components/LoadingScreen.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Aucune modification nécessaire — le composant affiche déjà les étapes dynamiquement.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### Fichiers modifiés
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Action |
+|---|---|
+| `src/hooks/usePreloader.ts` | Ajouter préchargement server_order + channel permissions |
 

@@ -243,7 +243,7 @@ export function MessageInput({
 
   const sendAfterMentionRef = useRef(false);
 
-  const handleMentionSelect = useCallback((mention: string, displayText: string) => {
+  const handleMentionSelect = useCallback((mention: string, _displayText: string) => {
     if (!mentionState || !textareaRef.current) return;
     
     const before = value.slice(0, mentionState.startIndex);
@@ -264,10 +264,11 @@ export function MessageInput({
         textareaRef.current.focus();
       }
       if (shouldSend) {
-        handleSendMessage();
+        sendAfterMentionRef.current = false;
+        onSend();
       }
     }, 0);
-  }, [mentionState, value, onChange, handleSendMessage]);
+  }, [mentionState, value, onChange, onSend]);
 
   // Get filtered suggestions count for keyboard navigation
   const getSuggestionsCount = useCallback(() => {
@@ -310,6 +311,10 @@ export function MessageInput({
       }
       if (e.key === 'Tab' || (e.key === 'Enter' && count > 0)) {
         e.preventDefault();
+        // If Enter, flag to send after mention insertion
+        if (e.key === 'Enter') {
+          sendAfterMentionRef.current = true;
+        }
         // Trigger selection of current item - handled by MentionAutocomplete
         const autocompleteContainer = document.querySelector('[data-mention-item]');
         if (autocompleteContainer) {

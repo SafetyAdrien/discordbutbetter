@@ -1,61 +1,36 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Écran de chargement NexusChat
 
-## Root cause
+## Objectif
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Remplacer le spinner `Loader2` actuel par un écran de chargement complet et immersif avec :
+- Le logo NexusChat (`/pwa-192x192.png`) en spinner animé
+- Une phrase de motivation aléatoire
+- Des tips & tricks aléatoires
+- Attente de toutes les données critiques (auth, serveurs, permissions)
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Plan
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Créer le composant `LoadingScreen`
 
-## Fix
+**Nouveau fichier : `src/components/LoadingScreen.tsx`**
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+- Logo `/pwa-192x192.png` avec animation pulse/spin douce (CSS keyframe)
+- Barre de progression animée (indéterminée ou basée sur les étapes chargées)
+- Phrase de motivation aléatoire (pool de ~10 phrases type "Là où les gamers se retrouvent", "Votre communauté vous attend", etc.)
+- Tip aléatoire en bas (pool de ~15 tips : "Astuce : Utilisez Ctrl+K pour rechercher", "Maintenez Shift + clic sur Supprimer pour supprimer sans confirmation", "Créez des fils de discussion pour organiser vos conversations", etc.)
+- Design cohérent avec le thème dark de l'app (`bg-background`)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Modifier `Index.tsx` — Utiliser le nouvel écran
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+- Remplacer le bloc de loading (lignes 390-396) par `<LoadingScreen />`
+- Le composant s'affiche tant que `authLoading || (user && serversPending)` est vrai
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### Fichiers modifiés
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Action |
+|---|---|
+| `src/components/LoadingScreen.tsx` | Créer — composant écran de chargement |
+| `src/pages/Index.tsx` | Modifier — remplacer le spinner par `<LoadingScreen />` |
 

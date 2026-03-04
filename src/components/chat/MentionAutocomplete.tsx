@@ -1,6 +1,15 @@
 import { useRef, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Hash, AtSign } from "lucide-react";
+import { AtSign } from "lucide-react";
+import { StreamlineHash } from "@/components/icons/StreamlineHash";
+import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
+import { StreamlineForum } from "@/components/icons/StreamlineForum";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
+import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
+import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
+import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
+import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uuidToSnowflake } from "@/lib/snowflake";

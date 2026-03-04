@@ -31,7 +31,12 @@ const tips = [
   "Utilisez les webhooks pour intégrer des services externes.",
 ];
 
-export default function LoadingScreen() {
+interface LoadingScreenProps {
+  progress?: number;
+  currentStep?: string;
+}
+
+export default function LoadingScreen({ progress = 0, currentStep }: LoadingScreenProps) {
   const phrase = useMemo(() => motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)], []);
   const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
   const [dots, setDots] = useState('');
@@ -67,15 +72,19 @@ export default function LoadingScreen() {
         </p>
       </div>
 
-      {/* Animated bar */}
-      <div className="w-48 h-1 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full bg-primary rounded-full"
-          style={{
-            width: '40%',
-            animation: 'loading-bar 1.5s ease-in-out infinite',
-          }}
-        />
+      {/* Progress bar — real progress */}
+      <div className="w-64 flex flex-col items-center gap-2">
+        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${Math.max(progress, 5)}%` }}
+          />
+        </div>
+        {currentStep && (
+          <p className="text-xs text-muted-foreground">
+            {currentStep}...
+          </p>
+        )}
       </div>
 
       {/* Tip */}
@@ -86,14 +95,6 @@ export default function LoadingScreen() {
           {tip}
         </p>
       </div>
-
-      <style>{`
-        @keyframes loading-bar {
-          0% { transform: translateX(-100%); }
-          50% { transform: translateX(150%); }
-          100% { transform: translateX(-100%); }
-        }
-      `}</style>
     </div>
   );
 }

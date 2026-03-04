@@ -33,6 +33,7 @@ export interface MemberWithProfile {
     activity_type: string | null;
     activity_text: string | null;
     pronouns: string | null;
+    bio: string | null;
   };
   roles: {
     id: string;
@@ -72,7 +73,8 @@ export function useMembers(serverId: string | null) {
             custom_status,
             activity_type,
             activity_text,
-            pronouns
+            pronouns,
+            bio
           ),
           member_roles (
             role:roles (

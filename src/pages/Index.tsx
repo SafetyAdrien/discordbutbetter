@@ -324,8 +324,9 @@ const Index = () => {
     return members.map(m => ({
       id: m.user.id,
       username: m.user.username,
-      displayName: m.nickname || m.user.display_name,
-      avatar: m.user.avatar_url || undefined
+      displayName: m.serverProfile?.display_name || m.nickname || m.user.display_name,
+      avatar: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,
+      bio: m.serverProfile?.bio || m.user.bio || undefined,
     }));
   }, [members]);
 
@@ -445,6 +446,8 @@ const Index = () => {
     customStatus: m.user.custom_status || undefined,
     activity_type: m.user.activity_type,
     activity_text: m.user.activity_text,
+    bio: m.serverProfile?.bio || m.user.bio || undefined,
+    pronouns: m.serverProfile?.pronouns || m.user.pronouns || undefined,
     roles: m.roles,
   }));
 

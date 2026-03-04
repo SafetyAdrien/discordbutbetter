@@ -222,6 +222,8 @@ export function MobileLayout({
     banner: m.user.banner_url || undefined,
     status: m.user.status || 'offline',
     customStatus: m.user.custom_status || undefined,
+    bio: m.serverProfile?.bio || m.user.bio || undefined,
+    pronouns: m.serverProfile?.pronouns || m.user.pronouns || undefined,
     roles: m.roles,
   }));
 

@@ -1,45 +1,61 @@
 
 
-# Fix: Bio non visible dans la popup de profil utilisateur
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problème
+## Root cause
 
-La bio (globale ou serveur) n'apparaît jamais dans la popup de profil car elle n'est ni récupérée de la base de données, ni transmise aux composants d'affichage.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Cause racine
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-3 niveaux de données manquants :
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-1. **`useMembers.ts`** — La requête Supabase sur `profiles` ne sélectionne pas le champ `bio`
-2. **`Index.tsx`** et **`MobileLayout.tsx`** — Le mapping `memberListData` ne transmet pas `bio` (ni `pronouns`, `createdAt`)
-3. **`ChatArea.tsx`** — Le `handleUserClick` et le `onUserClick` construisent un objet `User` sans `bio`
+## Fix
 
-## Plan
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 1. Ajouter `bio` à la requête Supabase (`useMembers.ts`)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- Ajouter `bio` dans le `select` de la jointure `profiles` (ligne 65-76)
-- Ajouter `bio` au type `MemberWithProfile['user']`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 2. Propager `bio` dans `memberListData` (`Index.tsx`)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- Ajouter `bio: m.serverProfile?.bio || m.user.bio || undefined` au mapping (ligne 438-449)
-- Ajouter aussi `pronouns` et `createdAt` qui manquent également
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-### 3. Propager `bio` dans `memberListData` (`MobileLayout.tsx`)
+### 3. Hook needs `useAuth` for the user ID
 
-- Même correction que Index.tsx (ligne 217-226)
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### 4. Propager `bio` dans ChatArea (`ChatArea.tsx`)
+## Detailed changes
 
-- Le `UserProfilePopup` dans ChatArea reçoit `serverId`, donc il faut aussi passer le `bio` dans les objets User construits aux lignes 586-592 et dans `handleUserClick` (ligne 699-703)
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-### Fichiers modifiés
+### Code sketch for onMutate addition (after servers cache update)
 
-| Fichier | Modification |
-|---|---|
-| `src/hooks/useMembers.ts` | Ajouter `bio` au select et au type |
-| `src/pages/Index.tsx` | Ajouter `bio`, `pronouns`, `createdAt` au mapping memberListData |
-| `src/components/mobile/MobileLayout.tsx` | Idem |
-| `src/components/chat/ChatArea.tsx` | Ajouter `bio` aux objets User construits pour la popup |
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

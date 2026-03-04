@@ -1,61 +1,41 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+## Plan: Afficher les personnes en vocal dans le tooltip du serveur
 
-## Root cause
+### Approche
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Créer un hook `useServerVoiceParticipants` qui récupère tous les participants vocaux d'un serveur (via la jointure `voice_states → channels → server_id`), puis enrichir le `TooltipContent` du serveur pour afficher une liste compacte (2-3 avatars + "+N encore").
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Fichiers à modifier/créer
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**1. `src/hooks/useServerVoiceParticipants.ts`** (nouveau)
+- Query : `voice_states` avec join sur `channels` filtré par `server_id`, + join sur `profiles` pour avatar/nom
+- `refetchInterval: 15_000` (polling léger, pas besoin de realtime ici car c'est juste un tooltip)
+- `staleTime: 10_000`
+- Retourne `{ participants: { user_id, display_name, avatar_url }[], count: number }`
 
-## Fix
+**2. `src/components/layout/ServerList.tsx`**
+- Importer le nouveau hook dans `SortableServerIcon`
+- Modifier le `TooltipContent` (ligne 154-156) pour afficher sous le nom du serveur :
+  - Si `count > 0` : une ligne avec 2-3 mini-avatars (16×16) + noms, et si plus de 3 : `+N en vocal`
+  - Si `count === 0` : rien de plus (comportement actuel)
+- Layout du tooltip : nom du serveur en haut, puis un séparateur fin, puis la liste compacte des participants vocaux avec une petite icône 🔊
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+### Rendu visuel attendu
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+┌──────────────────────┐
+│ Mon Serveur          │
+│ ─────────────────    │
+│ 🔊 En vocal :        │
+│ 🟢 Alice, Bob        │
+│    +3 en vocal       │
+└──────────────────────┘
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Détails techniques
+- Le hook utilise une seule requête SQL avec jointure pour éviter N+1
+- Le polling à 15s est suffisant pour un tooltip (pas critique en temps réel)
+- Le hook n'est activé que quand le serveur existe (`enabled: !!serverId`)
+- Les avatars sont affichés en stack (overlap) style Discord
 

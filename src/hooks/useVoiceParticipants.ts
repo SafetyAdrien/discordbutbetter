@@ -53,7 +53,8 @@ export function useVoiceParticipants(channelId: string | null) {
       }));
     },
     enabled: !!channelId,
-    staleTime: 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   // Real-time subscription with direct cache manipulation
@@ -82,7 +83,7 @@ export function useVoiceParticipants(channelId: string | null) {
           } else if (payload.eventType === 'DELETE') {
             // Remove participant instantly
             queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
-              old?.filter(p => p.user_id !== payload.old.user_id)
+              old?.filter(p => p.user_id !== payload.old.user_id && p.id !== payload.old.id)
             );
           } else if (payload.eventType === 'INSERT') {
             // Need profile data via JOIN — refetch

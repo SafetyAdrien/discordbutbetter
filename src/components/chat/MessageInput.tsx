@@ -11,7 +11,7 @@ import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { checkCooldown } from '@/lib/rate-limiter';
+import { toast } from 'sonner';
 
 interface MessageInputProps {
   value: string;
@@ -44,6 +44,8 @@ interface MessageInputProps {
   canAttachFiles?: boolean;
   canCreatePolls?: boolean;
   canMentionEveryone?: boolean;
+  // Slowmode
+  slowmodeSeconds?: number;
   // Announcement channel follow bar
   showFollowBar?: boolean;
   onFollowClick?: () => void;
@@ -83,6 +85,7 @@ export function MessageInput({
   canAttachFiles = true,
   canCreatePolls = true,
   canMentionEveryone = true,
+  slowmodeSeconds = 0,
   showFollowBar = false,
   onFollowClick,
 }: MessageInputProps) {
@@ -102,6 +105,8 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+  const [lastSentAt, setLastSentAt] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Adjust textarea height and reset overlay scroll position
   const adjustTextareaHeight = useCallback(() => {
@@ -337,12 +342,35 @@ export function MessageInput({
     }
   }, [value, mentionState, getSuggestionsCount, mentionSelectedIndex, attachments.length]);
 
+  // Cooldown timer for slowmode
+  useEffect(() => {
+    if (slowmodeSeconds <= 0 || lastSentAt === 0) {
+      setCooldownRemaining(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = (Date.now() - lastSentAt) / 1000;
+      const remaining = Math.max(0, slowmodeSeconds - elapsed);
+      setCooldownRemaining(Math.ceil(remaining));
+    };
+    tick();
+    const interval = setInterval(tick, 500);
+    return () => clearInterval(interval);
+  }, [slowmodeSeconds, lastSentAt]);
+
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {
-      // Rate limit: 500ms cooldown between messages
-      const rl = checkCooldown('message-send', 500);
-      if (!rl.allowed) return;
+      // Slowmode check
+      if (slowmodeSeconds > 0 && lastSentAt > 0) {
+        const elapsed = (Date.now() - lastSentAt) / 1000;
+        if (elapsed < slowmodeSeconds) {
+          const remaining = Math.ceil(slowmodeSeconds - elapsed);
+          toast.error(`Mode lent activé — attendez ${remaining}s`);
+          return;
+        }
+      }
 
+      setLastSentAt(Date.now());
       const attachmentData = attachments.map(a => ({
         file: a.file,
         name: a.name,
@@ -352,7 +380,7 @@ export function MessageInput({
       onSend(attachmentData.length > 0 ? attachmentData : undefined);
       onClearAttachments?.();
     }
-  }, [value, attachments, disabled, onSend, onClearAttachments]);
+  }, [value, attachments, disabled, onSend, onClearAttachments, slowmodeSeconds, lastSentAt]);
 
   handleSendMessageRef.current = handleSendMessage;
 

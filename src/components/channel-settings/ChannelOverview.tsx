@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Loader2, Clock } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -22,6 +23,20 @@ function formatStrictChannelName(name: string): string {
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^\p{L}\p{N}\p{Emoji_Presentation}\p{So}・\-_]/gu, '');
+}
+
+// Slowmode steps: index -> seconds
+const SLOWMODE_STEPS = [0, 5, 10, 15, 30, 60, 120, 300, 600];
+
+function formatSlowmodeLabel(seconds: number): string {
+  if (seconds === 0) return 'Désactivé';
+  if (seconds < 60) return `${seconds}s`;
+  return `${seconds / 60}m`;
+}
+
+function secondsToIndex(seconds: number): number {
+  const idx = SLOWMODE_STEPS.indexOf(seconds);
+  return idx >= 0 ? idx : 0;
 }
 
 interface ChannelOverviewProps {
@@ -44,6 +59,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
   const [channelType, setChannelType] = useState<'text' | 'announcement'>(
     channel.type === 'announcement' ? 'announcement' : 'text'
   );
+  const [slowmodeIndex, setSlowmodeIndex] = useState(secondsToIndex(channel.slowmode_seconds ?? 0));
   const updateChannel = useUpdateChannel();
   const { data: serverSettings } = useServerSettings(channel.server_id);
 
@@ -56,19 +72,23 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     setName(channel.name);
     setDescription(channel.description || '');
     setChannelType(channel.type === 'announcement' ? 'announcement' : 'text');
-  }, [channel.id, channel.name, channel.description, channel.type]);
+    setSlowmodeIndex(secondsToIndex(channel.slowmode_seconds ?? 0));
+  }, [channel.id, channel.name, channel.description, channel.type, channel.slowmode_seconds]);
 
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
 
   const canToggleType = channel.type === 'text' || channel.type === 'announcement';
+  const supportsSlowmode = channel.type === 'text' || channel.type === 'voice' || channel.type === 'forum';
 
   const effectiveName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
+  const currentSlowmodeSeconds = SLOWMODE_STEPS[slowmodeIndex];
 
   const hasChanges = 
     effectiveName !== channel.name || 
     description !== (channel.description || '') ||
-    (canToggleType && channelType !== channel.type);
+    (canToggleType && channelType !== channel.type) ||
+    (supportsSlowmode && currentSlowmodeSeconds !== (channel.slowmode_seconds ?? 0));
 
   const handleTypeToggle = (isAnnouncement: boolean) => {
     setChannelType(isAnnouncement ? 'announcement' : 'text');
@@ -94,6 +114,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         name: finalName,
         description: description.trim() || null,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
+        slowmode_seconds: supportsSlowmode ? currentSlowmodeSeconds : undefined,
       });
     } catch (error) {
       console.error('Save error:', error);
@@ -135,6 +156,35 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         />
         <p className="text-xs text-muted-foreground">{description.length}/1024</p>
       </div>
+
+      {/* Slowmode slider for text/voice/forum */}
+      {supportsSlowmode && (
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">Mode lent</span>
+            <span className="ml-auto text-sm font-medium text-primary">
+              {formatSlowmodeLabel(currentSlowmodeSeconds)}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Définit le temps d'attente entre chaque message envoyé par un utilisateur.
+          </p>
+          <Slider
+            value={[slowmodeIndex]}
+            onValueChange={([v]) => setSlowmodeIndex(v)}
+            min={0}
+            max={SLOWMODE_STEPS.length - 1}
+            step={1}
+            className="w-full"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground px-0.5">
+            {SLOWMODE_STEPS.map((s) => (
+              <span key={s}>{formatSlowmodeLabel(s)}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Toggle for text <-> announcement */}
       {canToggleType && (

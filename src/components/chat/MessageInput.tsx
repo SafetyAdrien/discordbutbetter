@@ -241,6 +241,8 @@ export function MessageInput({
     }
   }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
 
+  const sendAfterMentionRef = useRef(false);
+
   const handleMentionSelect = useCallback((mention: string, displayText: string) => {
     if (!mentionState || !textareaRef.current) return;
     
@@ -248,18 +250,24 @@ export function MessageInput({
     const after = value.slice(textareaRef.current.selectionStart);
     const newValue = before + mention + ' ' + after;
     
+    const shouldSend = sendAfterMentionRef.current;
+    sendAfterMentionRef.current = false;
+    
     onChange(newValue);
     setMentionState(null);
     
-    // Set cursor position after the mention
+    // Set cursor position after the mention, then send if Enter was pressed
     setTimeout(() => {
       if (textareaRef.current) {
         const newPos = mentionState.startIndex + mention.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
       }
+      if (shouldSend) {
+        handleSendMessage();
+      }
     }, 0);
-  }, [mentionState, value, onChange]);
+  }, [mentionState, value, onChange, handleSendMessage]);
 
   // Get filtered suggestions count for keyboard navigation
   const getSuggestionsCount = useCallback(() => {

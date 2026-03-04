@@ -208,13 +208,15 @@ export function VoiceChannelView({
               onToggleMembers={handleToggleMembers}
               onDisconnect={leaveChannel}
               hasMicrophoneAccess={hasMicrophoneAccess}
+              micVolume={micVolume}
+              onMicVolumeChange={setMicVolume}
+              vadSensitivity={vadSensitivity}
+              onVadSensitivityChange={setVadSensitivity}
               noiseSuppression={noiseSuppression}
-              onToggleNoiseSuppression={() => {
-                const modes = ['off', 'low', 'high'] as const;
-                const idx = modes.indexOf(noiseSuppression);
-                setNoiseSuppression(modes[(idx + 1) % modes.length]);
-              }}
+              onNoiseSuppressionChange={setNoiseSuppression}
               rnnoiseAvailable={rnnoiseAvailable}
+              audioFilters={audioFilters}
+              onAudioFilterChange={setAudioFilter}
             />
           )}
 

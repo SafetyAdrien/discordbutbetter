@@ -406,15 +406,17 @@ export function AnnouncementChannel({
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFollowModalOpen(true)}
-            className="text-sm font-medium flex-shrink-0"
-          >
-            Suivre
-          </Button>
+           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          {canFollowAnnouncements && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFollowModalOpen(true)}
+              className="text-sm font-medium flex-shrink-0"
+            >
+              Suivre
+            </Button>
+          )}
         </div>
 
         {channel.description && (
@@ -618,6 +620,7 @@ export function AnnouncementChannel({
             // Show publish prompt for own messages that haven't been dismissed
             const showPublishPrompt =
               isOwnMessage &&
+              canPublishMessages &&
               followers.length > 0 &&
               !(message as any).publish_dismissed &&
               !(message as any).is_published_message;
@@ -662,15 +665,15 @@ export function AnnouncementChannel({
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
-                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                      onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
-                      onPin={() => handlePinMessage(message.id)}
+                      onEdit={isOwnMessage || canEditAnnouncements || canManageAnnouncements ? () => handleStartEdit(message) : undefined}
+                      onDelete={isOwnMessage || canDeleteAnnouncements || canModerateAnnouncements || canManageAnnouncements ? () => handleDelete(message.id) : undefined}
+                      onPin={canPinAnnouncements || canManageAnnouncements ? () => handlePinMessage(message.id) : undefined}
                       onDropdownOpenChange={(open) => {
                         setOpenDropdownMessageId(open ? message.id : null);
                         if (!open) setHoveredMessageId(null);
                       }}
                       customAction={
-                        isOwnMessage && followers.length > 0 ? (
+                        canPublishMessages && isOwnMessage && followers.length > 0 ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button

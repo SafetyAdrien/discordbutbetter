@@ -64,7 +64,7 @@ export function VoiceActionBar({
                     (!hasMicrophoneAccess || !canSpeak) && 'opacity-50'
                   )}
                   onClick={onToggleMute}
-                  disabled={!hasMicrophoneAccess || !canSpeak}
+                  disabled={!canSpeak}
                 >
                   {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                   <ChevronDown className="w-3 h-3 ml-1 opacity-50" />

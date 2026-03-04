@@ -392,6 +392,13 @@ function parseBlocks(content: string): BlockToken[] {
         continue;
       }
 
+      // Backslash escape for block-level formatting: \# \> \- \* \_ \-# \>>> etc.
+      // If line starts with \ followed by a block marker, treat as plain text
+      if (/^\\([#>\-*_])/.test(line)) {
+        blocks.push({ type: 'paragraph', content: line.slice(1) });
+        continue;
+      }
+
       // Horizontal separator (---, ***, ___)
       if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
         blocks.push({ type: 'separator', content: '' });

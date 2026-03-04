@@ -89,6 +89,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { LinkEmbeds } from "@/components/chat/LinkEmbed";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
+import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -611,6 +612,26 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       },
     });
   }, [messages, members, serverRoles, allChannels, user?.id, channel, memberRoles, navigate, scrollToMessage]);
+
+  // Pre-fetch images and link metadata as soon as messages arrive
+  useEffect(() => {
+    messages.forEach((msg) => {
+      // Pre-fetch link metadata
+      const urls = extractUrls(msg.content);
+      urls.forEach((url) => fetchMetadata(url));
+      
+      // Pre-load images from attachments
+      const attachs = (msg as any).attachments as StoredAttachment[] | undefined;
+      if (attachs) {
+        attachs.forEach((att) => {
+          if (att.type?.startsWith('image/') && att.url) {
+            const img = new Image();
+            img.src = att.url;
+          }
+        });
+      }
+    });
+  }, [messages]);
 
   // Build a map of message_id -> thread for messages that have threads
   const threadsByMessageId = useMemo(() => {

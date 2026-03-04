@@ -13,7 +13,7 @@ export interface UrlMetadata {
 const metadataCache = new Map<string, UrlMetadata | null>();
 const pendingRequests = new Map<string, Promise<UrlMetadata | null>>();
 
-async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
+export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
   if (metadataCache.has(url)) return metadataCache.get(url)!;
   
   // Deduplicate in-flight requests

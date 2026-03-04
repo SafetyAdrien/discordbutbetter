@@ -154,8 +154,34 @@ function SortableServerIcon({
               </button>
             </TooltipTrigger>
           </ContextMenuTrigger>
-          <TooltipContent side="right">
-            <p>{server.name}</p>
+          <TooltipContent side="right" className="max-w-[200px]">
+            <p className="font-semibold">{server.name}</p>
+            {voiceParticipants && voiceParticipants.length > 0 && (
+              <div className="mt-1.5 pt-1.5 border-t border-border/50">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                  <Volume2 className="w-3 h-3" />
+                  <span>En vocal</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {voiceParticipants.slice(0, 3).map((p) => (
+                    <div key={p.user_id} className="flex items-center gap-1.5">
+                      <Avatar className="w-4 h-4">
+                        {p.avatar_url && <AvatarImage src={p.avatar_url} />}
+                        <AvatarFallback className="text-[8px]">
+                          {p.display_name.slice(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs truncate">{p.display_name}</span>
+                    </div>
+                  ))}
+                  {voiceParticipants.length > 3 && (
+                    <span className="text-xs text-muted-foreground ml-5">
+                      +{voiceParticipants.length - 3} en vocal
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </TooltipContent>
         </Tooltip>
         <ContextMenuContent className="w-48">

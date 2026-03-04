@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoice } from '@/contexts/VoiceContext';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
+import { NoiseSuppressionIndicator } from '@/components/channels/voice/NoiseSuppressionIndicator';
+import type { NoiseSuppressonMode } from '@/utils/webrtc/AudioProcessor';
 
 interface VoiceControlsProps {
   channelName: string;
@@ -32,7 +34,17 @@ export function VoiceControls({
     isPushToTalkMode,
     togglePushToTalkMode,
     connectionStats,
+    noiseSuppression,
+    setNoiseSuppression,
+    rnnoiseAvailable,
   } = useVoice();
+
+  const cycleNoiseSuppression = () => {
+    const modes: NoiseSuppressonMode[] = ['off', 'low', 'high'];
+    const currentIndex = modes.indexOf(noiseSuppression);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setNoiseSuppression(nextMode);
+  };
 
   return (
     <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
@@ -161,6 +173,13 @@ export function VoiceControls({
               {isPushToTalkMode ? 'Désactiver Push-to-Talk' : 'Activer Push-to-Talk'}
             </TooltipContent>
           </Tooltip>
+
+          {/* Noise Suppression / Krisp */}
+          <NoiseSuppressionIndicator
+            mode={noiseSuppression}
+            onToggle={cycleNoiseSuppression}
+            available={rnnoiseAvailable}
+          />
 
           <Tooltip>
             <TooltipTrigger asChild>

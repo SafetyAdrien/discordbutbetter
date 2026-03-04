@@ -613,7 +613,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         }
       },
     });
-  }, [messages, members, serverRoles, allChannels, user?.id, channel, memberRoles, navigate, scrollToMessage]);
+  }, [messages, members, serverRoles, allChannels, user?.id, channel, memberRoles, onChannelSelect, scrollToMessage]);
 
   // Pre-fetch images and link metadata as soon as messages arrive
   useEffect(() => {

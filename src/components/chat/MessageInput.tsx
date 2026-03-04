@@ -348,6 +348,14 @@ export function MessageInput({
 
   handleSendMessageRef.current = handleSendMessage;
 
+  // After mention insertion + React re-render with new value, send if Enter was pressed
+  useEffect(() => {
+    if (sendAfterMentionRef.current) {
+      sendAfterMentionRef.current = false;
+      handleSendMessageRef.current?.();
+    }
+  }, [value]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage();

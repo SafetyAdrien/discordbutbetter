@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, hasInlineMentions, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
@@ -94,7 +94,7 @@ export function MessageInput({
   const hasMarkdown = useMemo(() => {
     if (!value) return false;
     const lines = parseLines(value);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value);
   }, [value]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
@@ -516,6 +516,7 @@ export function MessageInput({
                 content={value}
                 compact={compact}
                 className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]'}
+                mentionData={{ members, roles, channels }}
               />
             )}
             <textarea

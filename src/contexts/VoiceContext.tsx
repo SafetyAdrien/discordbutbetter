@@ -268,6 +268,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       { queryKey: ['voice-participants'] },
       (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
     );
+    // Also remove from ALL server-voice-participants caches (cross-server cleanup)
+    queryClient.setQueriesData(
+      { queryKey: ['server-voice-participants'] },
+      (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
+    );
+    // Invalidate server-voice-participants so new server picks up the join
+    queryClient.invalidateQueries({ queryKey: ['server-voice-participants'] });
 
     // 3. Optimistic: add self to target channel cache immediately (with profile fetch)
     const profilePromise = supabase

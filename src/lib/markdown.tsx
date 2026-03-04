@@ -737,6 +737,13 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
       return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-2" />;
     case 'empty':
       return <br key={key} />;
+    case 'escapedParagraph':
+      return (
+        <React.Fragment key={key}>
+          <span>{block.content}</span>
+          {!isLast && <br />}
+        </React.Fragment>
+      );
     case 'paragraph':
     default:
       return (

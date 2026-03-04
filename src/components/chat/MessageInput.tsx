@@ -318,6 +318,7 @@ export function MessageInput({
       }
       if (e.key === 'Escape') {
         e.preventDefault();
+        sendAfterMentionRef.current = false;
         setMentionState(null);
         return;
       }

@@ -144,7 +144,7 @@ const Index = () => {
   }, [activeServerId, activeChannelId, activeDMId, activeThreadId, isMobile, pushView]);
 
   // Data hooks
-  const { data: servers = [], isLoading: serversLoading } = useServers();
+  const { data: servers = [], isLoading: serversLoading, isPending: serversPending } = useServers();
   const { data: publicServers = [] } = usePublicServers();
   
   // Prepare initial channels data from servers cache for instant display
@@ -236,7 +236,7 @@ const Index = () => {
 
   // Reactive redirect: if active server no longer exists (left/deleted), go to last visited server
   useEffect(() => {
-    if (!activeServerId || !servers || serversLoading) return;
+    if (!activeServerId || !servers || serversPending) return;
     const stillExists = servers.some(s => s.id === activeServerId);
     if (stillExists) return;
 
@@ -387,7 +387,7 @@ const Index = () => {
   };
 
   // Loading state
-  if (authLoading || (user && serversLoading)) {
+  if (authLoading || (user && serversPending)) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

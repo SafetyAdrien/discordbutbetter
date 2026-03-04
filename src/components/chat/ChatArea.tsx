@@ -319,7 +319,7 @@ interface ChatAreaProps {
   onSelectThread?: (threadId: string) => void;
   activeThreadId?: string | null;
   onCloseThread?: () => void;
-  members?: Array<{ id: string; displayName: string; username: string; avatar?: string }>;
+  members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
 }
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("fr-FR", {

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useProfile';
 import { useServers } from '@/hooks/useServers';
@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 
 export function ProfileSettingsTab() {
@@ -23,14 +22,7 @@ export function ProfileSettingsTab() {
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
-  const bioOverlayRef = useRef<HTMLDivElement>(null);
   const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const syncBioScroll = useCallback(() => {
-    if (bioOverlayRef.current && bioTextareaRef.current) {
-      bioOverlayRef.current.scrollTop = bioTextareaRef.current.scrollTop;
-    }
-  }, []);
 
   const [formData, setFormData] = useState({
     display_name: profile?.display_name || '',
@@ -40,16 +32,11 @@ export function ProfileSettingsTab() {
     profile_theme: (profile as any)?.profile_theme || { primary: '#00D4FF', accent: '#8B5CF6' },
     featured_server_id: (profile as any)?.featured_server_id || '',
   });
-  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal') || hasInlineMarkdown(formData.bio), [formData.bio]);
-
   const autoResizeBio = useCallback(() => {
     const el = bioTextareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-    if (bioOverlayRef.current) {
-      bioOverlayRef.current.style.height = el.style.height;
-    }
   }, []);
 
   useEffect(() => {
@@ -202,22 +189,16 @@ export function ProfileSettingsTab() {
               </span>
             </div>
             <div className="relative">
-              <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px] max-h-[200px] overflow-y-auto" />
               <textarea
                 ref={bioTextareaRef}
                 id="bio"
                 value={formData.bio}
                 onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                 onInput={autoResizeBio}
-                onScroll={syncBioScroll}
                 placeholder="Parlez de vous..."
                 rows={3}
                 maxLength={200}
-                className={cn(
-                  "flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
-                  hasBioMarkdown && "text-transparent caret-foreground"
-                )}
-                style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
+                className="flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words text-foreground"
               />
             </div>
             

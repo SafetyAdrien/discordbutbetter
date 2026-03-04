@@ -506,6 +506,44 @@ export class AudioProcessor {
   }
 
   /**
+   * Set input gain (mic volume). Maps 0-200 to 0.0-2.0 gain value.
+   */
+  setInputGain(volume: number): void {
+    if (this.gainNode && this.audioContext) {
+      const gain = Math.max(0, Math.min(2, volume / 100));
+      this.gainNode.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
+      console.log('[AudioProcessor] Input gain set to:', gain);
+    }
+  }
+
+  /**
+   * Set de-esser filter enabled/disabled at runtime
+   */
+  setDeEsserEnabled(enabled: boolean): void {
+    if (this.deEsserFilter) {
+      this.deEsserFilter.gain.value = enabled ? -4 : 0;
+    }
+  }
+
+  /**
+   * Set low-shelf boost enabled/disabled at runtime
+   */
+  setLowShelfEnabled(enabled: boolean): void {
+    if (this.lowShelfFilter) {
+      this.lowShelfFilter.gain.value = enabled ? 2 : 0;
+    }
+  }
+
+  /**
+   * Set high-pass filter enabled/disabled at runtime
+   */
+  setHighPassEnabled(enabled: boolean): void {
+    if (this.highPassFilter) {
+      this.highPassFilter.frequency.value = enabled ? this.config.highPassFrequency : 0;
+    }
+  }
+
+  /**
    * Get current noise suppression mode
    */
   getNoiseSuppressionMode(): NoiseSuppressonMode {

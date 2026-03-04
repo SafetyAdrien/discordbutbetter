@@ -6,7 +6,8 @@ import * as Portal from "@radix-ui/react-portal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
-import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, Eye, Trophy, Copy, Settings } from "lucide-react";
+import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff } from "lucide-react";
+import { useVoice } from "@/contexts/VoiceContext";
 import { copyToClipboard } from "@/lib/clipboard";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { CustomStatusModal } from "./CustomStatusModal";
@@ -48,6 +49,7 @@ interface UserProfileCardProps {
 export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
   const { profile, updateStatus } = useAuth();
   const { setManualStatus } = usePresenceContext();
+  const voiceCtx = useVoice();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showCustomStatusModal, setShowCustomStatusModal] = useState(false);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
@@ -257,6 +259,24 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </PopoverContent>
       </Popover>
 
+      <button
+        onClick={() => voiceCtx.toggleMute()}
+        className={cn(
+          "p-1.5 hover:bg-muted rounded-md transition-colors",
+          voiceCtx.voiceState.isMuted && "text-destructive"
+        )}
+      >
+        {voiceCtx.voiceState.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      <button
+        onClick={() => voiceCtx.toggleDeafen()}
+        className={cn(
+          "p-1.5 hover:bg-muted rounded-md transition-colors",
+          voiceCtx.voiceState.isDeafened && "text-destructive"
+        )}
+      >
+        {voiceCtx.voiceState.isDeafened ? <HeadphoneOff className="w-4 h-4" /> : <Headphones className="w-4 h-4 text-muted-foreground" />}
+      </button>
       <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
         <Settings className="w-4 h-4 text-muted-foreground" />
       </button>

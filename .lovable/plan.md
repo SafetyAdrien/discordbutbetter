@@ -1,74 +1,61 @@
 
 
-## Plan: Paramètres audio avancés, volume micro, icônes caméra/stream, boutons mute/casque dans le profil
+# Fix: Duplicated channel hidden by visibility filter
 
-### 1. Panneau de paramètres audio avancés (menu contextuel micro)
+## Root cause
 
-**Nouveau fichier : `src/components/channels/voice/MicrophoneSettingsPopover.tsx`**
-- Popover qui s'ouvre en cliquant sur le ChevronDown du bouton micro (dans VoiceActionBar et VoiceControls)
-- Contenu :
-  - **Volume du micro** : Slider 0-200% qui contrôle le gain node dans AudioProcessor
-  - **Sensibilité VAD** : Sélecteur low/medium/high
-  - **Krisp / Noise Suppression** : Sélecteur off/low/high (déplacé ici depuis le bouton séparé)
-  - **Filtres** : Toggles pour de-esser, low-shelf boost, high-pass
-- Persistance dans localStorage (`voice-mic-volume`, `voice-vad-sensitivity`, etc.)
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 2. Volume du micro fonctionnel (l'utilisateur B entend la différence)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**`src/utils/webrtc/AudioProcessor.ts`**
-- Ajouter méthode `setInputGain(volume: number)` qui modifie `gainNode.gain.value` en temps réel
-- Le gain node existant (ligne 217) sert de contrôle de volume d'entrée
-- Volume 0-200 mappé à gain 0.0-2.0
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**`src/contexts/VoiceContext.tsx`**
-- Exposer `micVolume: number`, `setMicVolume(vol: number)` dans le contexte
-- Persister dans localStorage
-- Appeler `audioProcessor.setInputGain()` quand la valeur change
+## Fix
 
-### 3. Icônes caméra et badge "Direct" dans la liste des participants (sidebar)
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-**`src/components/layout/ChannelList.tsx` (lignes 560-584)**
-- Dans le rendu des participants vocaux, ajouter après le nom :
-  - Icône `Video` (lucide) si `participant.camera === true`
-  - Badge rouge "DIRECT" si `participant.streaming === true`
-- Les données `camera` et `streaming` sont déjà dans `voice_states` et mises à jour en temps réel via `useVoiceParticipants`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**`src/contexts/VoiceContext.tsx`**
-- Dans `toggleCamera`, ajouter un update optimiste de `voice_states.camera` + sync DB
-- Dans `toggleScreenShare`, ajouter un update optimiste de `voice_states.streaming` + sync DB
-- Cache update via `queryClient.setQueryData(['voice-participants', channelId])`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 4. Boutons Mute et Casque dans le UserProfileCard
+### 2. In `onSuccess`: invalidate the permissions cache
 
-**`src/components/profile/UserProfileCard.tsx`**
-- Ajouter 2 boutons d'action (Mic/MicOff et Headphones/HeadphoneOff) à côté du bouton Settings (ligne 260)
-- Importer `useVoice` pour accéder à `toggleMute`, `toggleDeafen`, `voiceState`
-- Les boutons fonctionnent même sans être connecté à un salon (pré-mute/pré-deafen)
-- Icônes destructive quand actif (même style que VoiceControls)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**`src/contexts/VoiceContext.tsx`**
-- Permettre `toggleMute` et `toggleDeafen` même quand `voiceState.channelId === null` (pré-mute)
-- Stocker l'état pré-connexion pour l'appliquer au join
+### 3. Hook needs `useAuth` for the user ID
 
-### 5. Krisp déplacé dans le menu contextuel du micro
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-**`src/components/channels/voice/VoiceActionBar.tsx`**
-- Retirer le bouton Krisp standalone de la barre
-- Le ChevronDown du bouton micro ouvre le `MicrophoneSettingsPopover` qui contient Krisp
+## Detailed changes
 
-**`src/components/layout/VoiceControls.tsx`**
-- Retirer le `NoiseSuppressionIndicator` standalone
-- Ajouter un ChevronDown au bouton micro qui ouvre le même popover
-- Garder un petit indicateur visuel (point vert) sur le bouton micro quand Krisp est actif
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-### Fichiers à créer
-1. `src/components/channels/voice/MicrophoneSettingsPopover.tsx`
+### Code sketch for onMutate addition (after servers cache update)
 
-### Fichiers à modifier
-1. `src/utils/webrtc/AudioProcessor.ts` — méthode `setInputGain()`
-2. `src/contexts/VoiceContext.tsx` — micVolume, pré-mute/deafen, camera/streaming sync DB
-3. `src/components/channels/voice/VoiceActionBar.tsx` — popover micro, retrait Krisp standalone
-4. `src/components/layout/VoiceControls.tsx` — popover micro, retrait NoiseSuppressionIndicator
-5. `src/components/layout/ChannelList.tsx` — icônes caméra + badge DIRECT
-6. `src/components/profile/UserProfileCard.tsx` — boutons Mute + Casque
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

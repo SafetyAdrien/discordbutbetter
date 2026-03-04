@@ -1,11 +1,10 @@
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio } from 'lucide-react';
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoice } from '@/contexts/VoiceContext';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
-import { NoiseSuppressionIndicator } from '@/components/channels/voice/NoiseSuppressionIndicator';
-import type { NoiseSuppressonMode } from '@/utils/webrtc/AudioProcessor';
+import { MicrophoneSettingsPopover } from '@/components/channels/voice/MicrophoneSettingsPopover';
 
 interface VoiceControlsProps {
   channelName: string;
@@ -37,14 +36,13 @@ export function VoiceControls({
     noiseSuppression,
     setNoiseSuppression,
     rnnoiseAvailable,
+    micVolume,
+    setMicVolume,
+    vadSensitivity,
+    setVadSensitivity,
+    audioFilters,
+    setAudioFilter,
   } = useVoice();
-
-  const cycleNoiseSuppression = () => {
-    const modes: NoiseSuppressonMode[] = ['off', 'low', 'high'];
-    const currentIndex = modes.indexOf(noiseSuppression);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    setNoiseSuppression(nextMode);
-  };
 
   return (
     <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
@@ -107,33 +105,59 @@ export function VoiceControls({
       {/* Controls */}
       <div className="flex items-center gap-1">
         <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
+          {/* Mic button with settings popover on chevron */}
+          <div className="flex items-center flex-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isMuted ? 'destructive' : 'ghost'}
+                  className={cn(
+                    'flex-1 h-8 rounded-r-none',
+                    isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
+                    !hasMicrophoneAccess && 'opacity-50'
+                  )}
+                  onClick={onToggleMute}
+                >
+                  {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  {/* Krisp active indicator */}
+                  {noiseSuppression !== 'off' && rnnoiseAvailable && (
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {!hasMicrophoneAccess 
+                  ? 'Microphone non disponible' 
+                  : isMuted 
+                    ? 'Activer le micro' 
+                    : 'Couper le micro'}
+              </TooltipContent>
+            </Tooltip>
+            <MicrophoneSettingsPopover
+              micVolume={micVolume}
+              onMicVolumeChange={setMicVolume}
+              vadSensitivity={vadSensitivity}
+              onVadSensitivityChange={setVadSensitivity}
+              noiseSuppression={noiseSuppression}
+              onNoiseSuppressionChange={setNoiseSuppression}
+              rnnoiseAvailable={rnnoiseAvailable}
+              enableDeEsser={audioFilters.deEsser}
+              onToggleDeEsser={(v) => setAudioFilter('deEsser', v)}
+              enableLowShelf={audioFilters.lowShelf}
+              onToggleLowShelf={(v) => setAudioFilter('lowShelf', v)}
+              enableHighPass={audioFilters.highPass}
+              onToggleHighPass={(v) => setAudioFilter('highPass', v)}
+            >
               <Button
                 size="sm"
-                variant={isMuted ? 'destructive' : 'ghost'}
-                className={cn(
-                  'flex-1 h-8',
-                  isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
-                  !hasMicrophoneAccess && 'opacity-50'
-                )}
-                onClick={onToggleMute}
+                variant="ghost"
+                className="h-8 w-6 px-0 rounded-l-none border-l border-border/30"
               >
-                {isMuted ? (
-                  <MicOff className="w-4 h-4" />
-                ) : (
-                  <Mic className="w-4 h-4" />
-                )}
+                <ChevronDown className="w-3 h-3" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {!hasMicrophoneAccess 
-                ? 'Microphone non disponible' 
-                : isMuted 
-                  ? 'Activer le micro' 
-                  : 'Couper le micro'}
-            </TooltipContent>
-          </Tooltip>
+            </MicrophoneSettingsPopover>
+          </div>
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -173,13 +197,6 @@ export function VoiceControls({
               {isPushToTalkMode ? 'Désactiver Push-to-Talk' : 'Activer Push-to-Talk'}
             </TooltipContent>
           </Tooltip>
-
-          {/* Noise Suppression / Krisp */}
-          <NoiseSuppressionIndicator
-            mode={noiseSuppression}
-            onToggle={cycleNoiseSuppression}
-            available={rnnoiseAvailable}
-          />
 
           <Tooltip>
             <TooltipTrigger asChild>

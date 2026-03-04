@@ -1,61 +1,26 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+## Plan: Corriger le déblocage du micro/casque après pré-mute
 
-## Root cause
+### Problème racine
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Quand l'utilisateur coupe son micro/casque AVANT d'entrer dans un salon, `MediaManager.isMuted` est mis à `true`. Mais quand `tryStartMicrophone()` crée le flux audio en rejoignant le salon, il ne consulte PAS `this.isMuted` pour désactiver les tracks. Les tracks démarrent donc actives (enabled), créant un décalage entre l'état logique (muté) et l'état réel des tracks (non muté). Ensuite, quand l'utilisateur essaie de démuter, `setMuted(false)` met `track.enabled = true` — mais c'était déjà `true`, donc rien ne change visuellement ni fonctionnellement.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Correction
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**`src/utils/webrtc/MediaManager.ts`** — `tryStartMicrophone()` (ligne ~153, avant le `return true`)
+- Après la création du stream, appliquer l'état `isMuted` actuel aux tracks :
+  ```typescript
+  // Apply current mute state to new tracks
+  if (this.isMuted && this.localAudioStream) {
+    this.localAudioStream.getAudioTracks().forEach(track => {
+      track.enabled = false;
+    });
+  }
+  ```
 
-## Fix
+C'est la seule modification nécessaire. Le reste de la logique (toggleMute, toggleDeafen, DB sync) fonctionne déjà correctement — le problème est uniquement que les tracks audio ne reflètent pas l'état muté au moment de leur création.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichier modifié
+1. `src/utils/webrtc/MediaManager.ts` — 3 lignes ajoutées dans `tryStartMicrophone()`
 

@@ -86,8 +86,41 @@ export function useVoiceParticipants(channelId: string | null) {
               old?.filter(p => p.user_id !== payload.old.user_id && p.id !== payload.old.id)
             );
           } else if (payload.eventType === 'INSERT') {
-            // Need profile data via JOIN — refetch
-            queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
+            // Fetch only the new participant with profile data, then append to cache
+            // This avoids invalidateQueries which would refetch ALL participants and potentially revive ghosts
+            const newUserId = payload.new.user_id;
+            supabase
+              .from('voice_states')
+              .select(`
+                *,
+                profile:profiles!voice_states_user_id_fkey (
+                  id,
+                  username,
+                  display_name,
+                  avatar_url
+                )
+              `)
+              .eq('user_id', newUserId)
+              .eq('channel_id', channelId)
+              .maybeSingle()
+              .then(({ data }) => {
+                if (data) {
+                  queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
+                    // Don't add if already in cache
+                    if (old?.some(p => p.user_id === newUserId)) return old;
+                    const participant: VoiceParticipant = {
+                      ...data,
+                      muted: data.muted || false,
+                      deafened: data.deafened || false,
+                      camera: data.camera || false,
+                      streaming: data.streaming || false,
+                      joined_at: data.joined_at || new Date().toISOString(),
+                      profile: data.profile as VoiceParticipant['profile'],
+                    };
+                    return [...(old || []), participant];
+                  });
+                }
+              });
           }
         }
       )

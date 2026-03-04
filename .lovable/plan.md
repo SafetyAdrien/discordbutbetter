@@ -1,32 +1,61 @@
 
 
-# Fix: Participants fantômes persistants après départ vocal
+# Fix: Duplicated channel hidden by visibility filter
 
-## Cause racine
+## Root cause
 
-Deux problèmes distincts :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 1. INSERT refetch annule le retrait optimiste
-Dans `useVoiceParticipants.ts` ligne 88-90, quand un événement INSERT arrive (quelqu'un rejoint), le code fait `invalidateQueries` qui **refetch tous les participants depuis la DB**. Si le DELETE de l'utilisateur qui vient de partir n'a pas encore été propagé (latence DB ~200-500ms), ce refetch ramène le participant fantôme.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**Fix** : Remplacer `invalidateQueries` par un fetch ciblé du nouveau participant uniquement, puis l'ajouter au cache. Cela n'écrase pas les suppressions optimistes existantes.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 2. Pas de nettoyage à la fermeture du navigateur
-`usePresence.ts` gère le statut utilisateur sur `beforeunload`, mais **aucun nettoyage de `voice_states`** n'est fait. Si l'utilisateur ferme l'onglet sans cliquer "Déconnecter", sa ligne `voice_states` reste en DB indéfiniment → participant fantôme permanent.
+## Fix
 
-**Fix** : Ajouter un `beforeunload` handler dans `VoiceContext.tsx` qui supprime la ligne `voice_states` via `fetch` avec `keepalive: true` (seule méthode fiable sur fermeture d'onglet).
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-## Modifications
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### 1. `src/hooks/useVoiceParticipants.ts`
-- Ligne 88-90 : Remplacer `invalidateQueries` par un fetch ciblé du nouveau participant (par `payload.new.user_id`) et l'insérer dans le cache via `setQueryData` sans écraser les suppressions existantes
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 2. `src/contexts/VoiceContext.tsx`  
-- Ajouter un `useEffect` avec `beforeunload` listener qui, si `voiceState.channelId` est actif, envoie un `DELETE` via `fetch(..., { keepalive: true })` vers la REST API Supabase pour supprimer la ligne `voice_states` de l'utilisateur
-- Ajouter un cleanup dans le `useEffect` return pour le même scénario (démontage du composant)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-| Fichier | Modification |
-|---|---|
-| `useVoiceParticipants.ts` | INSERT : fetch ciblé au lieu de invalidateQueries |
-| `VoiceContext.tsx` | beforeunload : nettoyage voice_states sur fermeture onglet |
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

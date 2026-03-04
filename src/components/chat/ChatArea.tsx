@@ -423,6 +423,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const deleteMessage = useDeleteMessage();
   const deletePoll = useDeletePoll();
 
+  // Channel details (for slowmode)
+  const { data: channelDetails } = useChannelDetails(channel.id);
+
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
   const { data: channelsData } = useChannels(channel.server_id);

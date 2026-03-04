@@ -902,13 +902,18 @@ export function AnnouncementChannel({
                     <Link className="w-4 h-4 mr-2" />
                     Copier le lien du message
                   </ContextMenuItem>
-                  {isOwnMessage && (
+                  {(isOwnMessage || canEditAnnouncements || canManageAnnouncements) && (
                     <>
                       <ContextMenuSeparator />
                       <ContextMenuItem onClick={() => handleStartEdit(message)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Modifier
                       </ContextMenuItem>
+                    </>
+                  )}
+                  {(isOwnMessage || canDeleteAnnouncements || canModerateAnnouncements || canManageAnnouncements) && (
+                    <>
+                      {!(isOwnMessage || canEditAnnouncements || canManageAnnouncements) && <ContextMenuSeparator />}
                       <ContextMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => handleDelete(message.id)}

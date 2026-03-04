@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
-import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { useMemo } from 'react';
 
 
 export function ProfileSettingsTab() {
@@ -68,6 +69,12 @@ export function ProfileSettingsTab() {
   };
 
   const bioLength = formData.bio.length;
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const hasBioMarkdown = useMemo(() => {
+    if (!formData.bio) return false;
+    const lines = parseLines(formData.bio);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(formData.bio);
+  }, [formData.bio]);
 
   return (
     <div className="space-y-6">
@@ -190,19 +197,27 @@ export function ProfileSettingsTab() {
               </span>
             </div>
             <div className="relative">
+              {hasBioMarkdown && (
+                <InputMarkdownOverlay
+                  ref={overlayRef}
+                  content={formData.bio}
+                  className="py-2 px-3 min-h-[80px] border border-transparent"
+                />
+              )}
               <textarea
                 ref={bioTextareaRef}
                 id="bio"
                 value={formData.bio}
                 onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                 onInput={autoResizeBio}
+                onScroll={() => { if (overlayRef.current && bioTextareaRef.current) overlayRef.current.scrollTop = bioTextareaRef.current.scrollTop; }}
                 placeholder="Parlez de vous..."
                 rows={3}
                 maxLength={200}
-                className="flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words text-foreground"
+                className={`flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words ${hasBioMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'}`}
+                style={hasBioMarkdown ? { fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 } : undefined}
               />
             </div>
-            <MarkdownPreview content={formData.bio} />
           </div>
 
           <div className="space-y-2">

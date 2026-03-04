@@ -241,8 +241,8 @@ export function AnnouncementChannel({
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
-  // Only show permission denied if not admin/owner AND permissions loaded AND no send_messages
-  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
+  // Permission denied: sessionStorage cache provides instant state on reload
+  const permissionDeniedMessage = (!isAdminOrOwner && !canSendMessages) 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
 

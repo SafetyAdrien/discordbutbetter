@@ -62,6 +62,9 @@ export interface UserChannelPermissions {
 export function useHasChannelPermission(channelId: string | null, permission: ServerPermission) {
   const { user } = useAuth();
 
+  const cacheKey = `${channelId}:${permission}`;
+  const cached = getPermissionCache(cacheKey);
+
   const query = useQuery({
     queryKey: ['channel-permission', channelId, permission, user?.id],
     queryFn: async (): Promise<boolean> => {
@@ -78,19 +81,21 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
         return false;
       }
 
-      return data ?? false;
+      const result = data ?? false;
+      setPermissionCache(cacheKey, result);
+      return result;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 30000, // Cache 30s — realtime handles invalidation
+    staleTime: 30000,
     gcTime: 300000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 
-  // OPTIMISTIC: default to true while data hasn't arrived (isPending covers loading + disabled states)
+  // Use sessionStorage cache as fallback during loading; only fall back to true if no cache exists
   return {
     ...query,
-    data: query.data ?? (query.isPending ? true : false),
+    data: query.data ?? (query.isPending ? (cached ?? true) : false),
   };
 }
 
@@ -115,10 +120,12 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
           return { permission, granted: false };
         }
 
-        return { permission, granted: data ?? false };
+        const granted = data ?? false;
+        if (channelId) setPermissionCache(`${channelId}:${permission}`, granted);
+        return { permission, granted };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 30000, // Cache 30s — realtime handles invalidation
+      staleTime: 30000,
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,
@@ -130,18 +137,22 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   const isError = queries.some(q => q.isError);
 
   // Build a map of permission -> granted
-  // OPTIMISTIC: default to TRUE while data hasn't arrived yet (isPending covers both loading AND disabled states)
+  // Use sessionStorage cache during loading; fall back to true only if no cache
   const permissionsMap = new Map<ServerPermission, boolean>();
   queries.forEach((query, index) => {
-    permissionsMap.set(permissions[index], query.data?.granted ?? (isPending ? true : false));
+    const perm = permissions[index];
+    const cached = channelId ? getPermissionCache(`${channelId}:${perm}`) : null;
+    permissionsMap.set(perm, query.data?.granted ?? (isPending ? (cached ?? true) : false));
   });
 
   return {
     permissions: permissionsMap,
     isLoading,
     isError,
-    // Helper function to check a specific permission
-    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isPending ? true : false),
+    can: (permission: ServerPermission) => {
+      const cached = channelId ? getPermissionCache(`${channelId}:${permission}`) : null;
+      return permissionsMap.get(permission) ?? (isPending ? (cached ?? true) : false);
+    },
   };
 }
 
@@ -218,6 +229,8 @@ function defaultPermissions(value: boolean): UserChannelPermissions {
 export function useUserChannelPermissions(channelId: string | null) {
   const { user } = useAuth();
 
+  const cachedPerms = channelId ? getPermissionsObjectCache(channelId) : null;
+
   return useQuery({
     queryKey: ['user-channel-permissions', channelId, user?.id],
     queryFn: async (): Promise<UserChannelPermissions> => {
@@ -235,13 +248,12 @@ export function useUserChannelPermissions(channelId: string | null) {
         return defaultPermissions(false);
       }
 
-      // Convertir le résultat en objet de permissions
       const permMap = new Map<ServerPermission, boolean>();
       (data || []).forEach((row: { permission: ServerPermission; granted: boolean }) => {
         permMap.set(row.permission, row.granted);
       });
 
-      return {
+      const result: UserChannelPermissions = {
         canReadMessages: permMap.get('read_messages') ?? false,
         canSendMessages: permMap.get('send_messages') ?? false,
         canManageMessages: permMap.get('manage_messages') ?? false,
@@ -252,10 +264,13 @@ export function useUserChannelPermissions(channelId: string | null) {
         canManageRoles: permMap.get('manage_roles') ?? false,
         isAdmin: permMap.get('administrator') ?? false,
       };
+
+      setPermissionsObjectCache(channelId, result);
+      return result;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 30000, // Cache 30s — realtime handles invalidation
-    // OPTIMISTIC: default to all-true during loading to prevent flash of disabled UI
-    placeholderData: defaultPermissions(true),
+    staleTime: 30000,
+    // Use cached value from sessionStorage; fall back to all-true only on first-ever visit
+    placeholderData: cachedPerms ?? defaultPermissions(true),
   });
 }

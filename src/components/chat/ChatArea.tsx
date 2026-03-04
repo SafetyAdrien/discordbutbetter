@@ -500,11 +500,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
-  // Only show permission denied if:
-  // 1. Not an admin/owner AND
-  // 2. Permissions have finished loading AND  
-  // 3. User doesn't have send_messages permission
-  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
+  // Permission denied: sessionStorage cache provides instant state on reload
+  const permissionDeniedMessage = (!isAdminOrOwner && !canSendMessages) 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
 

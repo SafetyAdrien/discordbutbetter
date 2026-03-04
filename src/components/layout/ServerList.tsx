@@ -69,6 +69,7 @@ function SortableServerIcon({
   onCopyId: () => void;
   onLeave: () => void;
 }) {
+  const { data: voiceParticipants } = useServerVoiceParticipants(server.id);
   const {
     attributes,
     listeners,

@@ -144,7 +144,7 @@ function SortableServerIcon({
 
                 {/* Voice activity badge - top right */}
                 {voiceParticipants && voiceParticipants.length > 0 && mentionCount === 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-sidebar">
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-muted-foreground rounded-full flex items-center justify-center border-2 border-sidebar">
                     <Volume2 className="w-2.5 h-2.5 text-white" />
                   </div>
                 )}

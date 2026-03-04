@@ -31,7 +31,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
-import LoadingScreen, { type LoadingSteps } from '@/components/LoadingScreen';
+import LoadingScreen from '@/components/LoadingScreen';
 import type { Server, Message, User } from '@/types/app';
 
 // Main application component
@@ -180,9 +180,9 @@ const Index = () => {
     };
   }, [activeServerId, servers]);
   
-  const { data: channelsData, isPending: channelsPending } = useChannels(activeServerId, initialChannelsData);
-  const { data: messages = [], isPending: messagesPending } = useMessages(activeChannelId);
-  const { data: members = [], isPending: membersPending } = useMembers(activeServerId);
+  const { data: channelsData } = useChannels(activeServerId, initialChannelsData);
+  const { data: messages = [] } = useMessages(activeChannelId);
+  const { data: members = [] } = useMembers(activeServerId);
   // Realtime profiles updates (DB -> postgres_changes)
   useProfilesRealtime();
   
@@ -386,31 +386,9 @@ const Index = () => {
     setShowMembers(!showMembers);
   };
 
-  // Minimum loading duration so users can read the phrase & tip
-  const [minLoadingDone, setMinLoadingDone] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setMinLoadingDone(true), 1500);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Loading state — wait for all critical data
-  const dataStillLoading = user && (
-    serversPending ||
-    (activeServerId && channelsPending) ||
-    (activeServerId && membersPending) ||
-    (activeChannelId && messagesPending)
-  );
-
-  const loadingSteps: LoadingSteps = {
-    auth: !authLoading,
-    servers: !serversPending,
-    channels: !activeServerId || !channelsPending,
-    members: !activeServerId || !membersPending,
-    messages: !activeChannelId || !messagesPending,
-  };
-
-  if (!minLoadingDone || authLoading || dataStillLoading) {
-    return <LoadingScreen steps={loadingSteps} />;
+  // Loading state
+  if (authLoading || (user && serversPending)) {
+    return <LoadingScreen />;
   }
 
   // Transform data for components - full Server type

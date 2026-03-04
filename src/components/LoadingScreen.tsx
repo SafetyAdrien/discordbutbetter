@@ -31,59 +31,17 @@ const tips = [
   "Utilisez les webhooks pour intégrer des services externes.",
 ];
 
-const stepLabels: Record<string, string> = {
-  auth: 'Authentification',
-  servers: 'Serveurs',
-  channels: 'Salons',
-  members: 'Membres',
-  messages: 'Messages',
-};
-
-export interface LoadingSteps {
-  auth: boolean;
-  servers: boolean;
-  channels: boolean;
-  members: boolean;
-  messages: boolean;
-}
-
-interface LoadingScreenProps {
-  steps?: LoadingSteps;
-}
-
-export default function LoadingScreen({ steps }: LoadingScreenProps) {
+export default function LoadingScreen() {
   const phrase = useMemo(() => motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)], []);
   const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
   const [dots, setDots] = useState('');
-  const [elapsed, setElapsed] = useState(0);
-  const [mountTime] = useState(() => Date.now());
 
   useEffect(() => {
     const interval = setInterval(() => {
       setDots(d => d.length >= 3 ? '' : d + '.');
-      setElapsed(Date.now() - mountTime);
     }, 500);
     return () => clearInterval(interval);
-  }, [mountTime]);
-
-  // Calculate progress from steps
-  const completedCount = steps
-    ? Object.values(steps).filter(Boolean).length
-    : 0;
-  const totalSteps = steps ? Object.keys(steps).length : 5;
-  const progress = steps ? Math.round((completedCount / totalSteps) * 100) : 0;
-
-  // Find the current loading step label
-  const currentStepLabel = useMemo(() => {
-    if (!steps) return 'Chargement';
-    const order: (keyof LoadingSteps)[] = ['auth', 'servers', 'channels', 'members', 'messages'];
-    for (const key of order) {
-      if (!steps[key]) return stepLabels[key];
-    }
-    return 'Finalisation';
-  }, [steps]);
-
-  const isSlowConnection = elapsed > 5000;
+  }, []);
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-8 select-none">
@@ -102,44 +60,23 @@ export default function LoadingScreen({ steps }: LoadingScreenProps) {
       {/* Loading text */}
       <div className="flex flex-col items-center gap-2">
         <p className="text-lg font-semibold text-foreground tracking-wide">
-          {currentStepLabel}{dots}
+          Chargement{dots}
         </p>
         <p className="text-sm text-muted-foreground italic max-w-xs text-center">
           {phrase}
         </p>
       </div>
 
-      {/* Progress bar */}
-      <div className="flex flex-col items-center gap-2 w-56">
-        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-          {steps ? (
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${Math.max(progress, 8)}%` }}
-            />
-          ) : (
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{
-                width: '40%',
-                animation: 'loading-bar 1.5s ease-in-out infinite',
-              }}
-            />
-          )}
-        </div>
-        {steps && (
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {completedCount}/{totalSteps}
-          </p>
-        )}
+      {/* Animated bar */}
+      <div className="w-48 h-1 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full"
+          style={{
+            width: '40%',
+            animation: 'loading-bar 1.5s ease-in-out infinite',
+          }}
+        />
       </div>
-
-      {/* Slow connection warning */}
-      {isSlowConnection && (
-        <p className="text-xs text-muted-foreground animate-pulse">
-          Connexion lente détectée — veuillez patienter…
-        </p>
-      )}
 
       {/* Tip */}
       <div className="absolute bottom-8 px-6 max-w-md text-center">

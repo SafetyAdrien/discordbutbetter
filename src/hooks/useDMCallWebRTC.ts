@@ -296,7 +296,13 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     mediaManager.setMuted(newMuted);
-  }, [isMuted]);
+    // Broadcast to remote participant
+    broadcastChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'mute-state',
+      payload: { userId: user?.id, isMuted: newMuted },
+    });
+  }, [isMuted, user?.id]);
 
   // Toggle video
   const toggleVideo = useCallback(async () => {
@@ -308,7 +314,11 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
         const stream = await mediaManager.startCamera();
         setLocalVideoStream(stream);
         setIsVideoOff(false);
-
+        broadcastChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'video-state',
+          payload: { userId: user?.id, isVideoOff: false },
+        });
         if (pc) {
           pc.addVideoStream(stream, 'camera');
           await pc.renegotiate();
@@ -321,6 +331,11 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
       mediaManager.stopCamera();
       setLocalVideoStream(null);
       setIsVideoOff(true);
+      broadcastChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'video-state',
+        payload: { userId: user?.id, isVideoOff: true },
+      });
 
       if (pc) {
         pc.removeVideoStream('camera');

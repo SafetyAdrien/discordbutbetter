@@ -21,12 +21,10 @@ export interface UserChannelPermissions {
 export function useHasChannelPermission(channelId: string | null, permission: ServerPermission) {
   const { user } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['channel-permission', channelId, permission, user?.id],
     queryFn: async (): Promise<boolean> => {
       if (!channelId || !user?.id) return false;
-
-      console.log(`[useHasChannelPermission] 🔍 Checking ${permission} for channel ${channelId}`);
 
       const { data, error } = await supabase.rpc('has_channel_permission', {
         _user_id: user.id,
@@ -39,15 +37,20 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
         return false;
       }
 
-      console.log(`[useHasChannelPermission] ✅ ${permission} = ${data} for channel ${channelId}`);
       return data ?? false;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 0,
-    gcTime: 300000, // Keep in cache 5 min to allow refetch
+    staleTime: 30000, // Cache 30s — realtime handles invalidation
+    gcTime: 300000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
+
+  // OPTIMISTIC: default to true during loading to prevent flash of disabled UI
+  return {
+    ...query,
+    data: query.data ?? (query.isLoading ? true : false),
+  };
 }
 
 // Hook pour vérifier PLUSIEURS permissions en parallèle (optimisé)
@@ -74,7 +77,7 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
         return { permission, granted: data ?? false };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 0,
+      staleTime: 30000, // Cache 30s — realtime handles invalidation
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,

@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MicOff, HeadphoneOff } from 'lucide-react';
+import { MicOff, HeadphoneOff, ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
 import { VoiceVideoTile } from './VoiceVideoTile';
 import { VoiceParticipantPopover } from './VoiceParticipantPopover';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useVoice } from '@/contexts/VoiceContext';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Array of gradient backgrounds for participants
 const PARTICIPANT_GRADIENTS = [
@@ -48,6 +50,11 @@ interface VoiceParticipantGridProps {
   canModerate?: boolean;
 }
 
+type FocusTarget = 
+  | { type: 'participant'; userId: string }
+  | { type: 'screen'; userId: string }
+  | null;
+
 export function VoiceParticipantGrid({ 
   participants, 
   speakingUsers,
@@ -62,93 +69,189 @@ export function VoiceParticipantGrid({
   const { user } = useAuth();
   const { getUserVolume, setUserVolume, serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
   
-  // Check if anyone is screen sharing (for focus mode)
-  const screenShareUser = participants.find(p => p.streaming);
-  const hasScreenShare = !!screenShareUser || !!localScreenStream;
+  const [screensOpen, setScreensOpen] = useState(true);
+  const [participantsOpen, setParticipantsOpen] = useState(true);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget>(null);
 
-  // Determine grid layout based on participant count and screen share
-  const getGridClass = () => {
-    if (hasScreenShare) {
-      // Focus layout: screen share takes most space
-      return 'grid-cols-1';
+  // Collect all screen shares
+  const screenShares: { userId: string; stream: MediaStream; ownerName: string; isLocal: boolean }[] = [];
+  
+  if (localScreenStream && user) {
+    const localParticipant = participants.find(p => p.user_id === user.id);
+    screenShares.push({
+      userId: user.id,
+      stream: localScreenStream,
+      ownerName: localParticipant?.profile.display_name || 'Vous',
+      isLocal: true,
+    });
+  }
+  
+  participants.forEach(p => {
+    if (p.streaming && p.user_id !== user?.id) {
+      const stream = remoteScreenStreams.get(p.user_id);
+      if (stream) {
+        screenShares.push({
+          userId: p.user_id,
+          stream,
+          ownerName: p.profile.display_name,
+          isLocal: false,
+        });
+      }
     }
-    
+  });
+
+  const hasScreenShares = screenShares.length > 0;
+
+  // Grid class for participants
+  const getParticipantGridClass = () => {
     const count = participants.length;
-    if (count === 1) return 'grid-cols-1 max-w-md';
-    if (count === 2) return 'grid-cols-2 max-w-2xl';
-    if (count <= 4) return 'grid-cols-2 max-w-3xl';
-    if (count <= 6) return 'grid-cols-3 max-w-4xl';
-    return 'grid-cols-4 max-w-5xl';
+    if (count === 1) return 'grid-cols-1 max-w-[200px]';
+    if (count === 2) return 'grid-cols-2 max-w-md';
+    if (count <= 4) return 'grid-cols-2 sm:grid-cols-4 max-w-2xl';
+    if (count <= 6) return 'grid-cols-3 sm:grid-cols-6 max-w-3xl';
+    return 'grid-cols-4 sm:grid-cols-8 max-w-4xl';
   };
 
-  // Render screen share in focus mode
-  if (hasScreenShare) {
-    const screenStream = localScreenStream || (screenShareUser ? remoteScreenStreams.get(screenShareUser.user_id) : null);
-    const screenOwner = localScreenStream 
-      ? participants.find(p => p.user_id === user?.id)
-      : screenShareUser;
+  // Grid class for screen shares
+  const getScreenGridClass = () => {
+    const count = screenShares.length;
+    if (count === 1) return 'grid-cols-1';
+    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
+    return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+  };
+
+  const handleFocus = (target: FocusTarget) => {
+    setFocusTarget(prev => {
+      if (prev && prev.type === target?.type && prev.userId === target?.userId) return null;
+      return target;
+    });
+  };
+
+  // Render focused view
+  if (focusTarget) {
+    const isScreenFocus = focusTarget.type === 'screen';
+    const participant = participants.find(p => p.user_id === focusTarget.userId);
+
+    let focusStream: MediaStream | null = null;
+    let focusName = '';
+    let isLocal = false;
+
+    if (isScreenFocus) {
+      const share = screenShares.find(s => s.userId === focusTarget.userId);
+      focusStream = share?.stream || null;
+      focusName = share?.ownerName || '';
+      isLocal = share?.isLocal || false;
+    } else {
+      isLocal = focusTarget.userId === user?.id;
+      const cameraStream = isLocal ? localCameraStream : remoteVideoStreams.get(focusTarget.userId);
+      focusStream = cameraStream || null;
+      focusName = participant?.profile.display_name || '';
+    }
 
     return (
-      <div className="flex-1 flex flex-col gap-4 p-4">
-        {/* Main screen share */}
-        <div className="flex-1 min-h-0">
-          {screenStream && screenOwner && (
+      <div className="flex-1 flex flex-col gap-2 p-3 overflow-hidden">
+        {/* Focused content */}
+        <div className="flex-1 min-h-0 relative rounded-xl overflow-hidden bg-[hsl(var(--surface-elevated))]">
+          {/* Close button */}
+          <button
+            onClick={() => setFocusTarget(null)}
+            className="absolute top-3 right-3 z-20 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {isScreenFocus && focusStream ? (
             <VoiceVideoTile
-              stream={screenStream}
+              stream={focusStream}
               type="screen"
-              participantName={screenOwner.profile.display_name}
-              isSpeaking={speakingUsers.has(screenOwner.user_id)}
-              isMuted={screenOwner.muted}
-              isLocal={screenOwner.user_id === user?.id}
-              className="h-full"
+              participantName={focusName}
+              isSpeaking={speakingUsers.has(focusTarget.userId)}
+              isMuted={participant?.muted || false}
+              isLocal={isLocal}
+              className="w-full h-full"
             />
-          )}
+          ) : focusStream ? (
+            <VoiceVideoTile
+              stream={focusStream}
+              type="camera"
+              participantName={focusName}
+              isSpeaking={speakingUsers.has(focusTarget.userId)}
+              isMuted={participant?.muted || false}
+              isLocal={isLocal}
+              className="w-full h-full"
+            />
+          ) : participant ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <VoiceParticipantCard
+                participant={participant}
+                isSpeaking={speakingUsers.has(participant.user_id)}
+                audioLevel={audioLevels.get(participant.user_id) || 0}
+                gradientIndex={participants.indexOf(participant) % PARTICIPANT_GRADIENTS.length}
+              />
+            </div>
+          ) : null}
         </div>
 
-        {/* Participant strip at bottom */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        {/* Bottom strip: other participants */}
+        <div className="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
+          {screenShares.map(share => (
+            <button
+              key={`screen-${share.userId}`}
+              onClick={() => handleFocus({ type: 'screen', userId: share.userId })}
+              className={cn(
+                'flex-shrink-0 w-28 sm:w-36 rounded-lg overflow-hidden border-2 transition-all',
+                focusTarget.type === 'screen' && focusTarget.userId === share.userId
+                  ? 'border-primary'
+                  : 'border-transparent hover:border-white/20'
+              )}
+            >
+              <VoiceVideoTile
+                stream={share.stream}
+                type="screen"
+                participantName={share.ownerName}
+                isSpeaking={false}
+                isMuted={false}
+                isLocal={share.isLocal}
+                className="aspect-video pointer-events-none"
+              />
+            </button>
+          ))}
           {participants.map((participant, index) => {
-            const isLocal = participant.user_id === user?.id;
-            const hasCameraStream = isLocal 
-              ? !!localCameraStream 
-              : remoteVideoStreams.has(participant.user_id);
-            const cameraStream = isLocal 
-              ? localCameraStream 
-              : remoteVideoStreams.get(participant.user_id);
+            const isLocalP = participant.user_id === user?.id;
+            const cameraStream = isLocalP ? localCameraStream : remoteVideoStreams.get(participant.user_id);
+            const hasCam = !!cameraStream;
 
             return (
-              <div key={participant.user_id} className="flex-shrink-0 w-40">
-                {hasCameraStream && cameraStream ? (
+              <button
+                key={participant.user_id}
+                onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
+                className={cn(
+                  'flex-shrink-0 w-28 sm:w-36 rounded-lg overflow-hidden border-2 transition-all',
+                  focusTarget.type === 'participant' && focusTarget.userId === participant.user_id
+                    ? 'border-primary'
+                    : 'border-transparent hover:border-white/20'
+                )}
+              >
+                {hasCam && cameraStream ? (
                   <VoiceVideoTile
                     stream={cameraStream}
                     type="camera"
                     participantName={participant.profile.display_name}
                     isSpeaking={speakingUsers.has(participant.user_id)}
                     isMuted={participant.muted}
-                    isLocal={isLocal}
-                    className="aspect-video"
+                    isLocal={isLocalP}
+                    className="aspect-video pointer-events-none"
                   />
                 ) : (
-                  <VoiceParticipantPopover
+                  <VoiceParticipantCard
                     participant={participant}
-                    canModerate={canModerate && !isLocal}
-                    volume={getUserVolume(participant.user_id)}
-                    onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
-                    onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
-                    onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
-                  >
-                    <div className="cursor-pointer">
-                      <VoiceParticipantCard
-                        participant={participant}
-                        isSpeaking={speakingUsers.has(participant.user_id)}
-                        audioLevel={audioLevels.get(participant.user_id) || 0}
-                        gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-                        compact
-                      />
-                    </div>
-                  </VoiceParticipantPopover>
+                    isSpeaking={speakingUsers.has(participant.user_id)}
+                    audioLevel={audioLevels.get(participant.user_id) || 0}
+                    gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                    compact
+                  />
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -156,59 +259,139 @@ export function VoiceParticipantGrid({
     );
   }
 
-  // Normal grid layout (no screen share)
+  // Normal view with collapsible sections
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
-      <div className={cn('grid gap-4 w-full mx-auto', getGridClass())}>
-        {participants.map((participant, index) => {
-          const isLocal = participant.user_id === user?.id;
-          const hasCameraStream = isLocal 
-            ? !!localCameraStream 
-            : remoteVideoStreams.has(participant.user_id);
-          const cameraStream = isLocal 
-            ? localCameraStream 
-            : remoteVideoStreams.get(participant.user_id);
+    <div className="flex-1 flex flex-col overflow-y-auto p-3 gap-2">
+      {/* Screen Shares Section */}
+      {hasScreenShares && (
+        <Collapsible open={screensOpen} onOpenChange={setScreensOpen}>
+          <CollapsibleTrigger className="flex items-center gap-2 px-2 py-1.5 w-full text-left hover:bg-white/5 rounded-md transition-colors group">
+            {screensOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            <Monitor className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Partages d'écran — {screenShares.length}
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className={cn('grid gap-3 mt-2', getScreenGridClass())}>
+              {screenShares.map(share => {
+                const participant = participants.find(p => p.user_id === share.userId);
+                return (
+                  <div
+                    key={`screen-${share.userId}`}
+                    className="relative group cursor-pointer rounded-xl overflow-hidden"
+                    onClick={() => handleFocus({ type: 'screen', userId: share.userId })}
+                  >
+                    <VoiceVideoTile
+                      stream={share.stream}
+                      type="screen"
+                      participantName={share.ownerName}
+                      isSpeaking={speakingUsers.has(share.userId)}
+                      isMuted={participant?.muted || false}
+                      isLocal={share.isLocal}
+                      className="aspect-video"
+                    />
+                    {/* Expand overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Maximize2 className="w-8 h-8 text-white drop-shadow-lg" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
-          // Show video tile if camera is on
-          if (hasCameraStream && cameraStream) {
-            return (
-              <VoiceVideoTile
-                key={participant.user_id}
-                stream={cameraStream}
-                type="camera"
-                participantName={participant.profile.display_name}
-                isSpeaking={speakingUsers.has(participant.user_id)}
-                isMuted={participant.muted}
-                isLocal={isLocal}
-              />
-            );
-          }
+      {/* Participants Section */}
+      <Collapsible open={participantsOpen} onOpenChange={setParticipantsOpen} className="flex-1 flex flex-col">
+        <CollapsibleTrigger className="flex items-center gap-2 px-2 py-1.5 w-full text-left hover:bg-white/5 rounded-md transition-colors group">
+          {participantsOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Participants — {participants.length}
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="flex-1">
+          <div className={cn(
+            'grid gap-3 mt-2 mx-auto',
+            hasScreenShares ? getParticipantGridClass() : getFullGridClass(participants.length)
+          )}>
+            {participants.map((participant, index) => {
+              const isLocal = participant.user_id === user?.id;
+              const hasCameraStream = isLocal 
+                ? !!localCameraStream 
+                : remoteVideoStreams.has(participant.user_id);
+              const cameraStream = isLocal 
+                ? localCameraStream 
+                : remoteVideoStreams.get(participant.user_id);
 
-          // Show avatar card if no camera
-          return (
-            <VoiceParticipantPopover
-              key={participant.user_id}
-              participant={participant}
-              canModerate={canModerate && !isLocal}
-              volume={getUserVolume(participant.user_id)}
-              onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
-              onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
-              onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
-            >
-              <div className="cursor-pointer">
-                <VoiceParticipantCard
+              if (hasCameraStream && cameraStream) {
+                return (
+                  <div
+                    key={participant.user_id}
+                    className="relative group cursor-pointer rounded-xl overflow-hidden"
+                    onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
+                  >
+                    <VoiceVideoTile
+                      stream={cameraStream}
+                      type="camera"
+                      participantName={participant.profile.display_name}
+                      isSpeaking={speakingUsers.has(participant.user_id)}
+                      isMuted={participant.muted}
+                      isLocal={isLocal}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <VoiceParticipantPopover
+                  key={participant.user_id}
                   participant={participant}
-                  isSpeaking={speakingUsers.has(participant.user_id)}
-                  audioLevel={audioLevels.get(participant.user_id) || 0}
-                  gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-                />
-              </div>
-            </VoiceParticipantPopover>
-          );
-        })}
-      </div>
+                  canModerate={canModerate && !isLocal}
+                  volume={getUserVolume(participant.user_id)}
+                  onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
+                  onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
+                  onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
+                >
+                  <div 
+                    className="cursor-pointer group relative"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFocus({ type: 'participant', userId: participant.user_id });
+                    }}
+                  >
+                    <VoiceParticipantCard
+                      participant={participant}
+                      isSpeaking={speakingUsers.has(participant.user_id)}
+                      audioLevel={audioLevels.get(participant.user_id) || 0}
+                      gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                      compact={hasScreenShares}
+                    />
+                    <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
+                    </div>
+                  </div>
+                </VoiceParticipantPopover>
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
+}
+
+// Full grid class when no screen shares
+function getFullGridClass(count: number) {
+  if (count === 1) return 'grid-cols-1 max-w-md';
+  if (count === 2) return 'grid-cols-2 max-w-2xl';
+  if (count <= 4) return 'grid-cols-2 max-w-3xl';
+  if (count <= 6) return 'grid-cols-3 max-w-4xl';
+  return 'grid-cols-4 max-w-5xl';
 }
 
 interface VoiceParticipantCardProps {

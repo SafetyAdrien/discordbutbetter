@@ -32,6 +32,7 @@ import { useVoiceState } from '@/hooks/useVoiceState';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import LoadingScreen from '@/components/LoadingScreen';
+import { usePreloader } from '@/hooks/usePreloader';
 import type { Server, Message, User } from '@/types/app';
 
 // Main application component

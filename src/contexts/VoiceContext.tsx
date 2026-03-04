@@ -198,9 +198,39 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     soundEffects.playJoin();
     toast.success(`Connecté à ${channelName}`);
 
-    // 2. Background: DB + WebRTC in parallel
+    // 2. Optimistic: remove self from ALL voice-participants caches (cross-channel cleanup)
+    queryClient.setQueriesData(
+      { queryKey: ['voice-participants'] },
+      (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
+    );
+
+    // 3. Optimistic: add self to target channel cache immediately (with profile fetch)
+    const profilePromise = supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url')
+      .eq('id', user.id)
+      .single();
+
+    // Add with fallback profile first for instant render
+    queryClient.setQueryData(['voice-participants', channelId], (old: any) => {
+      const existing = old || [];
+      if (existing.some((p: any) => p.user_id === user.id)) return existing;
+      return [...existing, {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        channel_id: channelId,
+        muted: prevState.isMuted,
+        deafened: prevState.isDeafened,
+        camera: false,
+        streaming: false,
+        joined_at: new Date().toISOString(),
+        profile: { id: user.id, username: 'me', display_name: 'Moi', avatar_url: null },
+      }];
+    });
+
+    // 4. Background: DB + WebRTC + profile hydration in parallel
     try {
-      const [dbResult] = await Promise.all([
+      const [dbResult, , profileResult] = await Promise.all([
         supabase
           .from('voice_states')
           .delete()
@@ -216,6 +246,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               })
           ),
         webrtc.connect(channelId),
+        profilePromise,
       ]);
 
       if (dbResult.error) {
@@ -229,29 +260,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
 
-      // Optimistically add self to participants cache immediately
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        queryClient.setQueryData(['voice-participants', channelId], (old: any) => {
-          const existing = old || [];
-          if (existing.some((p: any) => p.user_id === user.id)) return existing;
-          return [...existing, {
-            id: crypto.randomUUID(),
-            user_id: user.id,
-            channel_id: channelId,
-            muted: prevState.isMuted,
-            deafened: prevState.isDeafened,
-            camera: false,
-            streaming: false,
-            joined_at: new Date().toISOString(),
-            profile,
-          }];
-        });
+      // Hydrate profile in cache
+      if (profileResult.data) {
+        queryClient.setQueryData(['voice-participants', channelId], (old: any) =>
+          old?.map((p: any) => p.user_id === user.id ? { ...p, profile: profileResult.data } : p)
+        );
       }
     } catch (error) {
       // 3. Rollback on failure

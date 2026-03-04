@@ -1,56 +1,61 @@
 
-Objectif: corriger définitivement le cas “aucune mise à jour connect/déconnect sans CTRL+F5” en combinant optimistic update + realtime fiable partout sur les participants vocaux.
 
-1) Diagnostic confirmé (cause principale)
-- Le hook `useVoiceParticipants` est monté à plusieurs endroits (sidebar `ChannelList` + vue vocale).
-- Il utilise un nom de canal realtime déterministe: `voice-participants:${channelId}`.
-- Le client realtime réutilise un canal existant si le topic est identique; quand un composant se démonte et fait `removeChannel`, il coupe la subscription partagée des autres composants.
-- Résultat: plus d’événements INSERT/DELETE reçus jusqu’au refresh complet.
+# Fix: Duplicated channel hidden by visibility filter
 
-2) Correctifs à implémenter
+## Root cause
 
-A. Isoler les subscriptions realtime par instance de hook (critique)
-- Fichier: `src/hooks/useVoiceParticipants.ts`
-- Générer un `instanceId` stable par hook (`useRef`).
-- Utiliser un topic unique, ex: `voice-participants:${channelId}:${instanceId}`.
-- Ainsi, chaque composant gère son propre canal; un unmount n’éteint plus les autres abonnements.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-B. INSERT 100% optimiste d’abord, hydratation profil ensuite
-- Fichier: `src/hooks/useVoiceParticipants.ts`
-- Sur `INSERT`, ajouter immédiatement le participant au cache avec `payload.new` (sans dépendre d’un fetch immédiat).
-- Fournir un profil fallback minimal (display_name non vide) pour rendu instantané.
-- Lancer ensuite un fetch profil ciblé, puis patcher l’entrée.
-- En cas d’échec fetch/hydratation: refetch ciblé du seul query key `['voice-participants', channelId]` (léger, non global).
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-C. Robustesse realtime: gestion d’état de subscription + fallback actif
-- Fichier: `src/hooks/useVoiceParticipants.ts`
-- Utiliser callback de `.subscribe((status) => ...)`.
-- Si `CHANNEL_ERROR` / `TIMED_OUT` / `CLOSED`: activer un fallback `refetchInterval` court (ex. 3–5s) uniquement pour ce channel.
-- Quand `SUBSCRIBED`: désactiver fallback et faire un refetch de resync unique.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-D. Optimistic cross-cache lors du move/join pour éliminer les résidus locaux
-- Fichier: `src/contexts/VoiceContext.tsx`
-- Avant d’ajouter l’utilisateur au nouveau channel, retirer optimistiquement cet utilisateur de tous les caches `voice-participants` connus.
-- Puis ajouter au cache du channel cible.
-- Garder les updates realtime pour les autres utilisateurs.
+## Fix
 
-3) Détails techniques (implémentation)
-- `useVoiceParticipants`:
-  - conserver `staleTime` + `refetchOnWindowFocus: false`.
-  - conserver `DELETE` immédiat par `user_id` + `id`.
-  - dédupliquer strictement à l’ajout (`user_id` prioritaire).
-- `VoiceContext`:
-  - conserver leave optimiste immédiat.
-  - éviter toute invalidation globale `['voice-participants']`; uniquement ciblée si nécessaire.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-4) Validation E2E (obligatoire)
-- Test A/B (2 sessions):
-  1. A rejoint vocal → B voit A en &lt;1s sans refresh (sidebar + vue vocale).
-  2. A quitte vocal → B voit disparition en &lt;1s sans refresh.
-  3. B rejoint/quitte rapidement plusieurs fois (stress test) → aucun “ghost”.
-  4. Fermer onglet A brutalement → nettoyage visible côté B.
-  5. Simuler perte/reprise réseau → resync automatique sans CTRL+F5.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-5) Fichiers à modifier
-- `src/hooks/useVoiceParticipants.ts` (principal: isolation channel, optimistic INSERT, fallback realtime)
-- `src/contexts/VoiceContext.tsx` (optimistic cross-cache move/join)
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+

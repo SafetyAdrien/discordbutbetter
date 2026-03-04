@@ -1,9 +1,18 @@
 import { useMemo, forwardRef, ReactNode } from 'react';
+import { snowflakeToUuid } from '@/lib/snowflake';
+import { MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
+
+export interface MentionLookupData {
+  members?: MentionMember[];
+  roles?: MentionRole[];
+  channels?: MentionChannel[];
+}
 
 interface InputMarkdownOverlayProps {
   content: string;
   compact?: boolean;
   className?: string;
+  mentionData?: MentionLookupData;
 }
 
 interface OverlayLine {
@@ -69,6 +78,11 @@ export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif'
 export function hasInlineMarkdown(content: string): boolean {
   if (!content) return false;
   return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
+}
+
+export function hasInlineMentions(content: string): boolean {
+  if (!content) return false;
+  return /<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content);
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {

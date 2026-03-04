@@ -1,33 +1,61 @@
 
 
-# Aperçu des mentions dans le champ de saisie (InputMarkdownOverlay)
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problème
+## Root cause
 
-Quand une mention est insérée dans l'input (`<@123456789012345678>`, `<@&ID>`, `<#ID>`), elle s'affiche en texte brut. L'overlay Markdown ne détecte pas ces patterns et ne les rend pas visuellement.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Corrections
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. `src/components/chat/InputMarkdownOverlay.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-- Ajouter une nouvelle fonction `renderMentionsInline` qui détecte les patterns de mention (`<@ID>`, `<@&ID>`, `<#ID>`, `@everyone`, `@here`) dans le texte
-- Résoudre les Snowflake IDs via des maps de lookup (members, roles, channels) passées en props
-- Rendre les mentions avec un style coloré inline (span avec background/couleur comme les composants `UserMention`, `RoleMention`, `ChannelMention`) — mais en version simplifiée (pas de tooltip, juste le visuel)
-- Intégrer ce rendu dans `renderInlineMarkdown` existant, ou l'appliquer en pré-traitement avant le rendu markdown
-- Ajouter `hasInlineMentions(content)` exporté, pour détecter la présence de mentions
-- Nouvelles props : `members`, `roles`, `channels` (même types que `MentionAutocomplete`)
+## Fix
 
-### 2. `src/components/chat/MessageInput.tsx`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-- Modifier `hasMarkdown` pour inclure aussi `hasInlineMentions(value)` — l'overlay s'active dès qu'une mention est présente même sans markdown
-- Passer `members`, `roles`, `channels` en props à `<InputMarkdownOverlay>`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### Style des mentions dans l'overlay
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- **User** : `bg-primary/30 text-[#dee0fc]` avec `@pseudo`
-- **Role** : background `rgba(couleur, 0.3)` + couleur du rôle avec `@nom`
-- **Channel** : `bg-[rgba(79,84,92,0.48)] text-[#c4c9ce]` avec icône `#` + nom
-- **@everyone/@here** : `bg-[rgba(250,166,26,0.3)] text-[#faa61a]`
+### 2. In `onSuccess`: invalidate the permissions cache
 
-Le texte brut de la mention (`<@123...>`) est masqué et remplacé par le badge coloré, mais la longueur visuelle peut différer du texte réel — ce qui est acceptable car le caret reste géré par le textarea sous-jacent (même principe que les blocs de code dans l'overlay actuel).
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

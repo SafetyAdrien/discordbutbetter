@@ -1,9 +1,18 @@
 import { useMemo, forwardRef, ReactNode } from 'react';
+import { snowflakeToUuid } from '@/lib/snowflake';
+import { MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
+
+export interface MentionLookupData {
+  members?: MentionMember[];
+  roles?: MentionRole[];
+  channels?: MentionChannel[];
+}
 
 interface InputMarkdownOverlayProps {
   content: string;
   compact?: boolean;
   className?: string;
+  mentionData?: MentionLookupData;
 }
 
 interface OverlayLine {
@@ -71,6 +80,11 @@ export function hasInlineMarkdown(content: string): boolean {
   return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
 }
 
+export function hasInlineMentions(content: string): boolean {
+  if (!content) return false;
+  return /<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content);
+}
+
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
   if (!content) return 'normal';
   const textBefore = content.slice(0, cursorPos);
@@ -96,10 +110,112 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   return 'normal';
 }
 
+// Render mention badges inline - resolves Snowflake IDs to display names
+function renderMentionsInline(text: string, mentionData?: MentionLookupData): string | ReactNode[] {
+  if (!text || !mentionData) return text;
+  
+  const mentionRegex = /(<@&(\d{18})>|<@(\d{18})>|<#(\d{18})>|@everyone|@here)/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  let found = false;
+
+  while ((match = mentionRegex.exec(text)) !== null) {
+    found = true;
+    if (match.index > lastIndex) {
+      parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+    }
+
+    const full = match[0];
+
+    if (full === '@everyone' || full === '@here') {
+      parts.push(
+        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: 'rgba(250,166,26,0.3)', color: '#faa61a' }}>
+          {full}
+        </span>
+      );
+    } else if (match[3] !== undefined) {
+      // User mention <@SNOWFLAKE>
+      const uuid = snowflakeToUuid(match[3]);
+      const member = uuid ? mentionData.members?.find(m => m.id === uuid) : undefined;
+      const displayName = member ? `@${member.displayName}` : full;
+      parts.push(
+        <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
+          {displayName}
+        </span>
+      );
+    } else if (match[2] !== undefined) {
+      // Role mention <@&SNOWFLAKE>
+      const uuid = snowflakeToUuid(match[2]);
+      const role = uuid ? mentionData.roles?.find(r => r.id === uuid) : undefined;
+      const roleColor = role?.color || '#99aab5';
+      const displayName = role ? `@${role.name}` : full;
+      parts.push(
+        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>
+          {displayName}
+        </span>
+      );
+    } else if (match[4] !== undefined) {
+      // Channel mention <#SNOWFLAKE>
+      const uuid = snowflakeToUuid(match[4]);
+      const channel = uuid ? mentionData.channels?.find(c => c.id === uuid) : undefined;
+      const displayName = channel ? `#${channel.name}` : full;
+      parts.push(
+        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: 'rgba(79,84,92,0.48)', color: '#c4c9ce' }}>
+          {displayName}
+        </span>
+      );
+    } else {
+      parts.push(<span key={key++}>{full}</span>);
+    }
+
+    lastIndex = match.index + full.length;
+  }
+
+  if (!found) return text;
+
+  if (lastIndex < text.length) {
+    parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+  }
+
+  return parts;
+}
+
 // Inline markdown rendering - uses ONLY color/decoration, never font metrics
-function renderInlineMarkdown(text: string): ReactNode {
+function renderInlineMarkdown(text: string, mentionData?: MentionLookupData): ReactNode {
   if (!text) return '\u200B';
   
+  // First pass: render mentions
+  const mentionRendered = renderMentionsInline(text, mentionData);
+  
+  // If mentions were found and returned as ReactNode[], we skip further inline markdown on those parts
+  // For simplicity, if mentions are present, return mention-rendered result
+  if (Array.isArray(mentionRendered)) {
+    // Process each text span for inline markdown
+    return mentionRendered.map((part, i) => {
+      if (typeof part === 'object' && part !== null && 'props' in part) {
+        const props = (part as any).props;
+        // If it's a mention badge (has className with rounded), pass through
+        if (props.className && props.className.includes('rounded')) return part;
+        // If it's a plain text span, process for inline markdown
+        if (props.children && typeof props.children === 'string') {
+          const inlineResult = renderInlineMarkdownOnly(props.children);
+          if (inlineResult !== props.children) {
+            return <span key={`im-${i}`}>{inlineResult}</span>;
+          }
+        }
+      }
+      return part;
+    });
+  }
+  
+  return renderInlineMarkdownOnly(text);
+}
+
+function renderInlineMarkdownOnly(text: string): ReactNode {
+  if (!text) return '\u200B';
+
   // Regex to match inline patterns - order matters (longest/most specific first)
   const inlineRegex = /(\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`(.+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
   
@@ -109,7 +225,6 @@ function renderInlineMarkdown(text: string): ReactNode {
   let key = 0;
   
   while ((match = inlineRegex.exec(text)) !== null) {
-    // Add text before match
     if (match.index > lastIndex) {
       parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
     }
@@ -117,7 +232,6 @@ function renderInlineMarkdown(text: string): ReactNode {
     const full = match[0];
     
     if (match[2] !== undefined) {
-      // **bold**
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">**</span>
@@ -126,7 +240,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[3] !== undefined) {
-      // __underline__
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">__</span>
@@ -135,7 +248,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[4] !== undefined) {
-      // ~~strikethrough~~
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">~~</span>
@@ -144,7 +256,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[5] !== undefined) {
-      // ||spoiler||
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">||</span>
@@ -153,7 +264,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[6] !== undefined) {
-      // `code`
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">`</span>
@@ -162,7 +272,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[7] !== undefined && match[8] !== undefined) {
-      // [text](url)
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">[</span>
@@ -173,7 +282,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[9] !== undefined) {
-      // *italic*
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">*</span>
@@ -182,7 +290,6 @@ function renderInlineMarkdown(text: string): ReactNode {
         </span>
       );
     } else if (match[10] !== undefined) {
-      // _italic_
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">_</span>
@@ -197,7 +304,6 @@ function renderInlineMarkdown(text: string): ReactNode {
     lastIndex = match.index + full.length;
   }
   
-  // Add remaining text
   if (lastIndex < text.length) {
     parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
   }
@@ -206,10 +312,10 @@ function renderInlineMarkdown(text: string): ReactNode {
 }
 
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
-  ({ content, compact = false, className }, ref) => {
+  ({ content, compact = false, className, mentionData }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
     const hasMarkdown = useMemo(() => 
-      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content),
+      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content),
       [lines, content]
     );
 
@@ -234,7 +340,7 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
           >
             {line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter'
               ? (line.text || '\u200B')
-              : renderInlineMarkdown(line.text)
+              : renderInlineMarkdown(line.text, mentionData)
             }
           </div>
         ))}

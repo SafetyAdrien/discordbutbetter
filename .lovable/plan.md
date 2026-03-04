@@ -1,61 +1,42 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: Participants fantômes après départ du salon vocal
 
-## Root cause
+## Cause racine
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le problème n'est **ni** le realtime ni le retrait optimiste (ces deux mécanismes fonctionnent). Le vrai problème est que React Query **refetch automatiquement** et annule le retrait optimiste :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+1. `useVoiceParticipants` a `staleTime: 0` — les données sont immédiatement périmées
+2. Tout re-render, focus de fenêtre, ou remontage du composant déclenche un **refetch automatique** vers la DB
+3. Ce refetch ramène le participant supprimé car la propagation DB prend ~200-500ms
+4. Résultat : le participant "revient" dans la liste pendant quelques secondes
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+De plus, `joinChannel` (ligne 231) fait `invalidateQueries({ queryKey: ['voice-participants'] })` qui invalide **tous** les caches participants de tous les salons, déclenchant des refetch inutiles.
 
-## Fix
+## Corrections
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 1. `src/hooks/useVoiceParticipants.ts`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Empêcher React Query de refetch automatiquement et écraser les mises à jour optimistes/realtime :
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+- `staleTime: 30_000` (30 secondes) — la fraîcheur est gérée par les subscriptions realtime, pas par le polling
+- `refetchOnWindowFocus: false` — empêche un refetch au retour sur l'onglet
+- `refetchOnMount: 'always'` uniquement si pas de cache existant (pour le premier chargement)
+- Sur DELETE : ajouter `payload.old.id` comme fallback de filtrage (ceinture + bretelles)
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### 2. `src/contexts/VoiceContext.tsx`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+- `joinChannel` ligne 231 : remplacer l'invalidation large `['voice-participants']` par l'invalidation ciblée `['voice-participants', channelId]` — ne refetch que le salon rejoint
+- Supprimer la ligne 231 entièrement et utiliser seulement le realtime pour mettre à jour les participants côté observateur
 
-### 3. Hook needs `useAuth` for the user ID
+### 3. `src/components/layout/ChannelList.tsx`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+Le composant `SortableChannel` instancie `useVoiceParticipants` pour chaque salon vocal listé dans la sidebar. Chaque remontage de ce composant (ex: changement de catégorie, drag & drop) déclenche un refetch qui peut ramener un participant fantôme. Les mêmes options `staleTime` et `refetchOnWindowFocus: false` s'appliquent via le fix global dans le hook.
 
-## Detailed changes
+## Résumé des changements
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Modification |
+|---|---|
+| `useVoiceParticipants.ts` | `staleTime: 30_000`, `refetchOnWindowFocus: false`, fallback filtre DELETE par `id` |
+| `VoiceContext.tsx` | Invalidation ciblée par channelId au lieu de globale |
 

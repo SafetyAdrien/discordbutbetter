@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN slowmode_seconds integer NOT NULL DEFAULT 0;

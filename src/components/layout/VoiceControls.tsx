@@ -45,7 +45,7 @@ export function VoiceControls({
   } = useVoice();
 
   return (
-    <div className="px-2 py-2 bg-[#e0e0e3] border-t border-[#c8c8cb]">
+    <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
       {/* Connection Info */}
       <div className="flex items-center gap-2 mb-2 px-1">
         <VoiceConnectionIndicator stats={connectionStats} connected />

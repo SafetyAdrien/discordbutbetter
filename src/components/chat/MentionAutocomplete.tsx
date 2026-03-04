@@ -14,6 +14,22 @@ import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uuidToSnowflake } from "@/lib/snowflake";
 
+const channelTypeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  text: StreamlineHash,
+  voice: StreamlineVoice,
+  forum: StreamlineForum,
+  announcement: StreamlineMegaphone,
+  media: StreamlineMedia,
+  calendar: StreamlineCalendar,
+  tasks: StreamlineTasks,
+  stage: StreamlineStage,
+  link: StreamlineLink,
+};
+
+function getChannelIcon(type: string): React.ComponentType<{ className?: string }> {
+  return channelTypeIconMap[type] || StreamlineHash;
+}
+
 export interface MentionMember {
   id: string;
   displayName: string;

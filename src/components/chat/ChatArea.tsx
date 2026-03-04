@@ -77,6 +77,7 @@ import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
+import { DeleteMessageDialog } from "./DeleteMessageDialog";
 import { toast } from "sonner";
 import { useSummaries } from "@/hooks/useSummaries";
 import { SummariesBar } from "@/components/summaries/SummariesBar";
@@ -376,6 +377,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
+  const [pendingContextDeleteMessageId, setPendingContextDeleteMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -760,6 +762,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       channelId: channel.id,
     });
   };
+
+  const handleContextDeleteSelect = (messageId: string) => {
+    if (isShiftPressed) {
+      handleDelete(messageId);
+      return;
+    }
+
+    requestAnimationFrame(() => setPendingContextDeleteMessageId(messageId));
+  };
+
   const handleCopyMessageLink = (messageId: string) => {
     const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/${messageId}`;
     copyToClipboard(link, "Lien du message copié");
@@ -1523,7 +1535,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       </ContextMenuItem>
                       <ContextMenuItem
                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                        onClick={() => handleDelete(message.id)}
+                        onSelect={() => handleContextDeleteSelect(message.id)}
                       >
                         <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                         Supprimer le message
@@ -1535,7 +1547,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       {canManageMessages && (
                         <ContextMenuItem
                           className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                          onClick={() => handleDelete(message.id)}
+                          onSelect={() => handleContextDeleteSelect(message.id)}
                         >
                           <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                           Supprimer le message
@@ -1638,6 +1650,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           });
           toast.success("Signalement envoyé. Merci !");
           setReportingMessage(null);
+        }}
+      />
+
+      <DeleteMessageDialog
+        open={!!pendingContextDeleteMessageId}
+        onOpenChange={(open) => {
+          if (!open) setPendingContextDeleteMessageId(null);
+        }}
+        onConfirm={() => {
+          if (pendingContextDeleteMessageId) {
+            handleDelete(pendingContextDeleteMessageId);
+            setPendingContextDeleteMessageId(null);
+          }
         }}
       />
 

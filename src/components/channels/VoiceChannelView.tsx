@@ -68,6 +68,10 @@ export function VoiceChannelView({
     toggleScreenShare,
     remoteVideoStreams,
     remoteScreenStreams,
+    // Noise suppression
+    noiseSuppression,
+    setNoiseSuppression,
+    rnnoiseAvailable,
   } = useVoice();
   
   const { data: participants = [] } = useVoiceParticipants(channel.id);

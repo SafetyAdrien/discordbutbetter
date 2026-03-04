@@ -1,61 +1,51 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Slowmode: remplacer le rate limiting par un paramètre de salon
 
-## Root cause
+## Résumé
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Supprimer le rate limiting client-side fixe (500ms cooldown) sur l'envoi de messages et le remplacer par une fonctionnalité "slowmode" configurable par salon, comme sur Discord. Les administrateurs pourront définir un délai entre les messages via un slider dans les paramètres du salon.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Migration SQL — ajouter `slowmode_seconds` à la table `channels`
 
-## Fix
+Ajouter une colonne `slowmode_seconds integer NOT NULL DEFAULT 0` à la table `channels`. La valeur 0 signifie "pas de slowmode". Valeurs typiques : 0, 5, 10, 15, 30, 60, 120, 300, 600.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 2. `src/components/chat/MessageInput.tsx` — supprimer le rate limiting fixe
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+- Supprimer l'import de `checkCooldown` de `@/lib/rate-limiter`
+- Supprimer le bloc `checkCooldown('message-send', 500)` dans `handleSendMessage`
+- Ajouter une prop `slowmodeSeconds?: number` et un state `lastSentAt` pour gérer le cooldown côté salon
+- Si `slowmodeSeconds > 0`, vérifier que `Date.now() - lastSentAt >= slowmodeSeconds * 1000` avant d'envoyer. Si non, afficher un toast avec le temps restant
+- Afficher un compteur visuel sous l'input quand le cooldown est actif
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 3. `src/components/channel-settings/ChannelOverview.tsx` — ajouter le slider slowmode
 
-### 2. In `onSuccess`: invalidate the permissions cache
+- Ajouter un state local `slowmode` synchronisé avec `channel.slowmode_seconds`
+- Afficher un bloc "Mode lent" avec un slider horizontal (composant `Slider` existant) permettant de choisir le délai
+- Valeurs du slider : 0s, 5s, 10s, 15s, 30s, 1m, 2m, 5m, 10m (pas linéaire, paliers prédéfinis)
+- Afficher le temps sélectionné à côté du slider (ex: "30s", "2m", "Désactivé")
+- Visible uniquement pour les salons text, voice, forum
+- Inclure la valeur dans `handleSave` et `useUpdateChannel`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 4. `src/hooks/useChannelSettings.ts` — étendre le hook
 
-### 3. Hook needs `useAuth` for the user ID
+- Ajouter `slowmode_seconds` au type `ChannelDetails`
+- Ajouter `slowmode_seconds` au SELECT de `useChannelDetails`
+- Accepter `slowmode_seconds` dans `useUpdateChannel`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+### 5. `src/components/chat/ChatArea.tsx` — passer le slowmode au MessageInput
 
-## Detailed changes
+- Lire `slowmode_seconds` depuis les données du canal et le passer en prop à `MessageInput`
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
+## Valeurs du slider (paliers)
 
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+Index:  0   1   2    3    4    5    6     7     8
+Secs:   0   5   10   15   30   60   120   300   600
+Label:  Off 5s  10s  15s  30s  1m   2m    5m    10m
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Le slider utilise les index 0-8, mappés aux valeurs en secondes.
 

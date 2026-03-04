@@ -353,6 +353,8 @@ export function MessageInput({
     }
   }, [value, attachments, disabled, onSend, onClearAttachments]);
 
+  handleSendMessageRef.current = handleSendMessage;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage();

@@ -1,59 +1,61 @@
 
 
-# Fix: Backslash escaping renders entire line as plain text
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problem
+## Root cause
 
-From the Discord reference screenshots:
-- `**Test**` → renders bold **Test**
-- `\**Test**` → renders plain text `**Test**`
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Currently, when a line starts with `\`, the code strips just the `\` and first character (`line.replace(/^\\(.)/, '$1')`) but still runs `tokenizeInline` on the result. This means `\**Test**` becomes `**Test**` which is then parsed as bold — the exact opposite of what should happen.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-The user previously chose **"Texte brut de ligne"**: a `\` at the start of a line forces the entire line to be plain text with no markdown processing.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
 ## Fix
 
-Two locations need the same change:
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 1. `src/lib/markdown.tsx` — inline-only path (lines 761-769)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-When a line starts with `\`, strip the `\` and render the rest as **literal plain text** (no `tokenizeInline`):
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-```tsx
-if (line.startsWith('\\')) {
-  const plainText = line.slice(1);
-  return <React.Fragment key={i}>{plainText}{i < lines.length - 1 && <br />}</React.Fragment>;
-}
-```
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### 2. `src/lib/markdown.tsx` — `parseBlocks` (lines 395-400)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-The escaped paragraph block currently pushes `line.slice(1)` as a `paragraph` type, which still gets inline-parsed by `renderBlockToken`. Change to a new `escapedParagraph` type:
+### 3. Hook needs `useAuth` for the user ID
 
-```tsx
-if (/^\\/.test(line)) {
-  blocks.push({ type: 'escapedParagraph', content: line.slice(1) });
-  continue;
-}
-```
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### 3. `src/lib/markdown.tsx` — `renderBlockToken`
-
-Add a case for `escapedParagraph` that renders content as plain text without `renderInlineContent`:
-
-```tsx
-case 'escapedParagraph':
-  return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
-```
-
-### 4. `BlockToken` type
-
-Add `'escapedParagraph'` to the type union.
-
-## Files changed
+## Detailed changes
 
 | File | Change |
 |------|--------|
-| `src/lib/markdown.tsx` | Add `escapedParagraph` block type; skip inline parsing for `\`-prefixed lines in both code paths |
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

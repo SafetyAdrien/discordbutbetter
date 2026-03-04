@@ -31,7 +31,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoiceState } from '@/hooks/useVoiceState';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
-import { Loader2 } from 'lucide-react';
+import LoadingScreen from '@/components/LoadingScreen';
 import type { Server, Message, User } from '@/types/app';
 
 // Main application component

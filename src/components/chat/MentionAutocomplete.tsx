@@ -1,9 +1,34 @@
 import { useRef, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Hash, AtSign } from "lucide-react";
+import { AtSign } from "lucide-react";
+import { StreamlineHash } from "@/components/icons/StreamlineHash";
+import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
+import { StreamlineForum } from "@/components/icons/StreamlineForum";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
+import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
+import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
+import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
+import { StreamlineStage } from "@/components/icons/StreamlineStage";
+import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uuidToSnowflake } from "@/lib/snowflake";
+
+const channelTypeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  text: StreamlineHash,
+  voice: StreamlineVoice,
+  forum: StreamlineForum,
+  announcement: StreamlineMegaphone,
+  media: StreamlineMedia,
+  calendar: StreamlineCalendar,
+  tasks: StreamlineTasks,
+  stage: StreamlineStage,
+  link: StreamlineLink,
+};
+
+function getChannelIcon(type: string): React.ComponentType<{ className?: string }> {
+  return channelTypeIconMap[type] || StreamlineHash;
+}
 
 export interface MentionMember {
   id: string;
@@ -177,21 +202,24 @@ export function MentionAutocomplete({
           {type === "channel" && (
             <>
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Salons</div>
-              {(suggestions as MentionChannel[]).map((channel, index) => (
-                <button
-                  key={channel.id}
-                  data-mention-item
-                  onClick={() => handleSelect(channel)}
-                  onMouseEnter={() => onIndexChange(index)}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                    index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
-                  )}
-                >
-                  <Hash className="w-4 h-4 text-muted-foreground" />
-                  <span>{channel.name}</span>
-                </button>
-              ))}
+              {(suggestions as MentionChannel[]).map((channel, index) => {
+                const ChannelIcon = getChannelIcon(channel.type);
+                return (
+                  <button
+                    key={channel.id}
+                    data-mention-item
+                    onClick={() => handleSelect(channel)}
+                    onMouseEnter={() => onIndexChange(index)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
+                      index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                    )}
+                  >
+                    <ChannelIcon className="w-4 h-4 text-muted-foreground" />
+                    <span>{channel.name}</span>
+                  </button>
+                );
+              })}
             </>
           )}
         </div>

@@ -33,8 +33,6 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
     remoteVideoStream,
     localVideoStream,
     connectionStats,
-    remoteMuted,
-    remoteVideoOff,
     connect,
     disconnect,
     toggleMute,
@@ -152,7 +150,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
             <div className="relative">
               <Avatar className={cn(
                 "w-32 h-32 mx-auto mb-6 ring-4 transition-all duration-200",
-                remoteMuted ? "ring-muted-foreground/30" : audioLevel > 0.05 ? "ring-[hsl(var(--online))]" : "ring-primary/20"
+                audioLevel > 0.05 ? "ring-[hsl(var(--online))]" : "ring-primary/20"
               )}>
                 <AvatarImage src={participant?.avatar_url || undefined} />
                 <AvatarFallback className="text-4xl bg-primary/20 text-primary">
@@ -161,11 +159,6 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
               </Avatar>
               {isConnected && (
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[hsl(var(--online))] border-2 border-background" />
-              )}
-              {remoteMuted && isConnected && (
-                <div className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-destructive border-2 border-background flex items-center justify-center">
-                  <MicOff className="w-3.5 h-3.5 text-destructive-foreground" />
-                </div>
               )}
             </div>
             <h2 className="text-xl font-semibold mb-2">{displayName}</h2>

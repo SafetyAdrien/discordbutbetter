@@ -1,8 +1,6 @@
 import { Server } from '@/types/app';
 import { cn } from '@/lib/utils';
-import { Compass, Plus, MessageCircle, Settings, UserPlus, Hash, LogOut, CheckCircle, Volume2 } from 'lucide-react';
-import { useServerVoiceParticipants } from '@/hooks/useServerVoiceParticipants';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Compass, Plus, MessageCircle, Settings, UserPlus, Hash, LogOut, CheckCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ContextMenu,
@@ -69,7 +67,6 @@ function SortableServerIcon({
   onCopyId: () => void;
   onLeave: () => void;
 }) {
-  const { data: voiceParticipants } = useServerVoiceParticipants(server.id);
   const {
     attributes,
     listeners,
@@ -142,13 +139,6 @@ function SortableServerIcon({
                   </span>
                 )}
 
-                {/* Voice activity badge - top right */}
-                {voiceParticipants && voiceParticipants.length > 0 && mentionCount === 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-sidebar">
-                    <Volume2 className="w-2.5 h-2.5 text-white" />
-                  </div>
-                )}
-
                 {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
                 {mentionCount > 0 && (
                   <div className={cn(
@@ -161,32 +151,8 @@ function SortableServerIcon({
               </button>
             </TooltipTrigger>
           </ContextMenuTrigger>
-          <TooltipContent side="right" className="max-w-[200px]">
-            <p className="font-semibold">{server.name}</p>
-            {voiceParticipants && voiceParticipants.length > 0 && (
-              <div className="mt-1.5 pt-1.5 border-t border-border/50">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-muted-foreground/80 flex items-center justify-center shrink-0">
-                    <Volume2 className="w-3 h-3 text-white" />
-                  </div>
-                  <div className="flex items-center -space-x-1.5">
-                    {voiceParticipants.slice(0, 3).map((p) => (
-                      <Avatar key={p.user_id} className="w-4 h-4 border border-popover">
-                        {p.avatar_url && <AvatarImage src={p.avatar_url} />}
-                        <AvatarFallback className="text-[7px] bg-muted">
-                          {p.display_name.slice(0, 1).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))}
-                  </div>
-                  {voiceParticipants.length > 3 && (
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                      +{voiceParticipants.length - 3}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+          <TooltipContent side="right">
+            <p>{server.name}</p>
           </TooltipContent>
         </Tooltip>
         <ContextMenuContent className="w-48">

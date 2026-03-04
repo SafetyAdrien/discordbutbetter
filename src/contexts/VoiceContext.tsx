@@ -111,10 +111,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     isDeafened: false,
   });
   const wasMutedBeforeDeafenRef = useRef(false);
-  // Track whether we have an active local voice session (to prevent DB overwrites)
-  const hasActiveLocalSessionRef = useRef(false);
-  // Track whether initial hydration from DB has happened
-  const hasHydratedRef = useRef(false);
 
   // Fetch current user's voice state from DB
   const { data: dbVoiceState } = useQuery({
@@ -143,20 +139,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     enabled: !!user,
   });
 
-  // Sync local state with DB state ONLY on initial mount / hydration
-  // During active sessions, local state is the source of truth for muted/deafened
+  // Sync local state with DB state on mount
   useEffect(() => {
-    if (!dbVoiceState) return;
-    
-    if (hasActiveLocalSessionRef.current) {
-      // During active session, only sync channel info, NOT muted/deafened
-      // (those are controlled locally via optimistic updates)
-      return;
-    }
-
-    // Initial hydration only
-    if (!hasHydratedRef.current) {
-      hasHydratedRef.current = true;
+    if (dbVoiceState) {
       setVoiceState({
         channelId: dbVoiceState.channel_id,
         channelName: dbVoiceState.channel?.name || null,
@@ -167,9 +152,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
       // Reconnect WebRTC if we were in a channel
       if (dbVoiceState.channel_id && !webrtc.isConnected) {
-        hasActiveLocalSessionRef.current = true;
-        webrtc.setMuted(dbVoiceState.muted || false);
-        webrtc.setDeafened(dbVoiceState.deafened || false);
         webrtc.connect(dbVoiceState.channel_id);
       }
     }
@@ -251,9 +233,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const prevState = { ...voiceState };
 
     // 1. Instant UI update + sound
-    // Mark active session
-    hasActiveLocalSessionRef.current = true;
-
     setVoiceState(prev => ({
       ...prev,
       channelId,
@@ -268,13 +247,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       { queryKey: ['voice-participants'] },
       (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
     );
-    // Also remove from ALL server-voice-participants caches (cross-server cleanup)
-    queryClient.setQueriesData(
-      { queryKey: ['server-voice-participants'] },
-      (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
-    );
-    // Invalidate server-voice-participants so new server picks up the join
-    queryClient.invalidateQueries({ queryKey: ['server-voice-participants'] });
 
     // 3. Optimistic: add self to target channel cache immediately (with profile fetch)
     const profilePromise = supabase
@@ -358,10 +330,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const prevChannelId = voiceState.channelId;
 
     // 1. Instant UI update + sound
-    // Clear active session flag
-    hasActiveLocalSessionRef.current = false;
-    hasHydratedRef.current = false;
-
     setVoiceState({
       channelId: null,
       channelName: null,
@@ -379,12 +347,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
-    // 2b. Optimistic removal from ALL server-voice-participants caches
-    queryClient.setQueriesData(
-      { queryKey: ['server-voice-participants'] },
-      (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
-    );
-
     // 3. Background cleanup
     webrtc.disconnect();
     await supabase
@@ -397,73 +359,53 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
   const toggleMute = useCallback(async () => {
     if (!user) return;
-    
     // Allow pre-mute when not connected
     if (!voiceState.channelId) {
-      setVoiceState(prev => {
-        const newMuted = !prev.isMuted;
-        newMuted ? soundEffects.playMute() : soundEffects.playUnmute();
-        webrtc.setMuted(newMuted); // Keep WebRTC aligned even before connect
-        return { ...prev, isMuted: newMuted };
-      });
+      setVoiceState(prev => ({ ...prev, isMuted: !prev.isMuted }));
+      !voiceState.isMuted ? soundEffects.playMute() : soundEffects.playUnmute();
       return;
     }
 
-    // Use functional update to avoid stale closure
-    let newMuted: boolean;
-    setVoiceState(prev => {
-      newMuted = !prev.isMuted;
-      return { ...prev, isMuted: newMuted };
-    });
-    // We need the value outside setState too
-    newMuted = !voiceState.isMuted;
-    
-    // Instant audio feedback
+    const newMuted = !voiceState.isMuted;
+
+    // 1. Instant UI + audio
+    setVoiceState(prev => ({ ...prev, isMuted: newMuted }));
     webrtc.setMuted(newMuted);
     newMuted ? soundEffects.playMute() : soundEffects.playUnmute();
 
-    // Optimistic cache update for participants list
-    const channelId = voiceState.channelId;
-    queryClient.setQueryData(['voice-participants', channelId], (old: any) =>
+    // 2. Optimistic cache update for participants list
+    queryClient.setQueryData(['voice-participants', voiceState.channelId], (old: any) =>
       old?.map((p: any) => p.user_id === user.id ? { ...p, muted: newMuted } : p)
     );
 
-    // Background DB sync — NO rollback on failure (local state is truth)
+    // 3. Background DB sync with rollback
     const { error } = await supabase
       .from('voice_states')
       .update({ muted: newMuted })
       .eq('user_id', user.id);
 
     if (error) {
-      console.warn('[VoiceContext] toggleMute DB sync failed (local state preserved):', error.message);
-      // Silently retry once after short delay
-      setTimeout(async () => {
-        await supabase.from('voice_states').update({ muted: newMuted }).eq('user_id', user.id);
-      }, 1000);
+      console.error('[VoiceContext] toggleMute rollback:', error);
+      setVoiceState(prev => ({ ...prev, isMuted: !newMuted }));
+      webrtc.setMuted(!newMuted);
+      queryClient.setQueryData(['voice-participants', voiceState.channelId], (old: any) =>
+        old?.map((p: any) => p.user_id === user.id ? { ...p, muted: !newMuted } : p)
+      );
     }
   }, [user, voiceState.channelId, voiceState.isMuted, webrtc, queryClient]);
 
   const toggleDeafen = useCallback(async () => {
     if (!user) return;
-    
     // Allow pre-deafen when not connected
     if (!voiceState.channelId) {
-      setVoiceState(prev => {
-        const newDeafened = !prev.isDeafened;
-        if (newDeafened) {
-          wasMutedBeforeDeafenRef.current = prev.isMuted;
-          webrtc.setDeafened(true);
-          webrtc.setMuted(true);
-          soundEffects.playDeafen();
-          return { ...prev, isDeafened: true, isMuted: true };
-        } else {
-          const restoreMuted = wasMutedBeforeDeafenRef.current;
-          webrtc.setDeafened(false);
-          webrtc.setMuted(restoreMuted);
-          soundEffects.playUndeafen();
-          return { ...prev, isDeafened: false, isMuted: restoreMuted };
-        }
-      });
+      const newDeafened = !voiceState.isDeafened;
+      if (newDeafened) {
+        wasMutedBeforeDeafenRef.current = voiceState.isMuted;
+        setVoiceState(prev => ({ ...prev, isDeafened: true, isMuted: true }));
+      } else {
+        setVoiceState(prev => ({ ...prev, isDeafened: false, isMuted: wasMutedBeforeDeafenRef.current }));
+      }
+      newDeafened ? soundEffects.playDeafen() : soundEffects.playUndeafen();
       return;
     }
 
@@ -472,17 +414,19 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     let finalMuted = voiceState.isMuted;
 
     if (newDeafened) {
+      // Deafening: remember if user was already muted, then force mute
       wasMutedBeforeDeafenRef.current = voiceState.isMuted;
       if (!voiceState.isMuted) {
         updates.muted = true;
         finalMuted = true;
       }
     } else {
+      // Un-deafening: restore mute to pre-deafen state
       updates.muted = wasMutedBeforeDeafenRef.current;
       finalMuted = wasMutedBeforeDeafenRef.current;
     }
 
-    // Instant UI + audio
+    // 1. Instant UI + audio
     setVoiceState(prev => ({
       ...prev,
       isDeafened: newDeafened,
@@ -492,26 +436,37 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     webrtc.setMuted(finalMuted);
     newDeafened ? soundEffects.playDeafen() : soundEffects.playUndeafen();
 
-    // Optimistic cache
-    const channelId = voiceState.channelId;
-    queryClient.setQueryData(['voice-participants', channelId], (old: any) =>
+    // 2. Optimistic cache
+    queryClient.setQueryData(['voice-participants', voiceState.channelId], (old: any) =>
       old?.map((p: any) => p.user_id === user.id
         ? { ...p, deafened: newDeafened, muted: finalMuted }
         : p
       )
     );
 
-    // Background DB sync — NO rollback (local state is truth)
+    // 3. Background DB sync with rollback
     const { error } = await supabase
       .from('voice_states')
       .update(updates)
       .eq('user_id', user.id);
 
     if (error) {
-      console.warn('[VoiceContext] toggleDeafen DB sync failed (local state preserved):', error.message);
-      setTimeout(async () => {
-        await supabase.from('voice_states').update(updates).eq('user_id', user.id);
-      }, 1000);
+      console.error('[VoiceContext] toggleDeafen rollback:', error);
+      const prevMuted = voiceState.isMuted;
+      const prevDeafened = voiceState.isDeafened;
+      setVoiceState(prev => ({
+        ...prev,
+        isDeafened: prevDeafened,
+        isMuted: prevMuted,
+      }));
+      webrtc.setDeafened(prevDeafened);
+      webrtc.setMuted(prevMuted);
+      queryClient.setQueryData(['voice-participants', voiceState.channelId], (old: any) =>
+        old?.map((p: any) => p.user_id === user.id
+          ? { ...p, deafened: prevDeafened, muted: prevMuted }
+          : p
+        )
+      );
     }
   }, [user, voiceState.channelId, voiceState.isDeafened, voiceState.isMuted, webrtc, queryClient]);
 

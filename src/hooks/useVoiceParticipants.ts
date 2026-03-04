@@ -58,8 +58,8 @@ export function useVoiceParticipants(channelId: string | null) {
     enabled: !!channelId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
-    // Always poll as backup: fast when realtime is down, slow otherwise
-    refetchInterval: isRealtimeActive ? 10_000 : 3_000,
+    // Fallback polling when realtime is down
+    refetchInterval: isRealtimeActive ? false : 3000,
   });
 
   // Real-time subscription with ISOLATED channel name per instance

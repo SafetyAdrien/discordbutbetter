@@ -114,7 +114,7 @@ export function VoiceControls({
                   variant={isMuted ? 'destructive' : 'ghost'}
                   className={cn(
                     'flex-1 h-8 rounded-r-none',
-                    isMuted ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive' : 'bg-[hsl(240,5%,88%)] hover:bg-[hsl(240,5%,82%)] text-foreground',
+                    isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
                     !hasMicrophoneAccess && 'opacity-50'
                   )}
                   onClick={onToggleMute}
@@ -152,7 +152,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-6 px-0 rounded-l-none border-l border-border/30 bg-[hsl(240,5%,88%)] hover:bg-[hsl(240,5%,82%)] text-foreground"
+                className="h-8 w-6 px-0 rounded-l-none border-l border-border/30"
               >
                 <ChevronDown className="w-3 h-3" />
               </Button>
@@ -166,7 +166,7 @@ export function VoiceControls({
                 variant={isDeafened ? 'destructive' : 'ghost'}
                 className={cn(
                   'flex-1 h-8',
-                  isDeafened ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive' : 'bg-[hsl(240,5%,88%)] hover:bg-[hsl(240,5%,82%)] text-foreground'
+                  isDeafened && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
                 )}
                 onClick={onToggleDeafen}
               >
@@ -187,7 +187,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant={isPushToTalkMode ? 'secondary' : 'ghost'}
-                className={cn('flex-1 h-8', !isPushToTalkMode && 'bg-[hsl(240,5%,88%)] hover:bg-[hsl(240,5%,82%)] text-foreground')}
+                className="flex-1 h-8"
                 onClick={togglePushToTalkMode}
               >
                 <Radio className="w-4 h-4" />
@@ -203,7 +203,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant="ghost"
-                className="flex-1 h-8 bg-[hsl(240,5%,88%)] hover:bg-destructive/20 hover:text-destructive text-foreground"
+                className="flex-1 h-8 hover:bg-destructive/20 hover:text-destructive"
                 onClick={onDisconnect}
               >
                 <PhoneOff className="w-4 h-4" />

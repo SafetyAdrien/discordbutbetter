@@ -14,8 +14,6 @@ interface UseDMCallWebRTCReturn {
   remoteVideoStream: MediaStream | null;
   localVideoStream: MediaStream | null;
   connectionStats: ConnectionStats | null;
-  remoteMuted: boolean;
-  remoteVideoOff: boolean;
   connect: (callId: string, remoteUserId: string, isInitiator: boolean) => Promise<void>;
   disconnect: () => Promise<void>;
   toggleMute: () => void;
@@ -34,14 +32,11 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [connectionStats, setConnectionStats] = useState<ConnectionStats | null>(null);
-  const [remoteMuted, setRemoteMuted] = useState(false);
-  const [remoteVideoOff, setRemoteVideoOff] = useState(true);
 
   const peerConnectionRef = useRef<PeerConnection | null>(null);
   const callIdRef = useRef<string | null>(null);
   const remoteUserIdRef = useRef<string | null>(null);
   const signalSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSignalsRef = useRef<SignalData[]>([]);
@@ -159,22 +154,6 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
         )
         .subscribe();
 
-
-      // Set up broadcast channel for mute/video state sync
-      broadcastChannelRef.current = supabase
-        .channel(`dm-call-state:${callId}`)
-        .on('broadcast', { event: 'mute-state' }, (payload) => {
-          if (payload.payload?.userId !== user.id) {
-            setRemoteMuted(!!payload.payload?.isMuted);
-          }
-        })
-        .on('broadcast', { event: 'video-state' }, (payload) => {
-          if (payload.payload?.userId !== user.id) {
-            setRemoteVideoOff(!!payload.payload?.isVideoOff);
-          }
-        })
-        .subscribe();
-
       // Parallelize: microphone init runs alongside signal subscription setup
       const micSuccess = await mediaManager.tryStartMicrophone();
       if (!micSuccess) {
@@ -254,12 +233,6 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
       signalSubscriptionRef.current = null;
     }
 
-    // Remove broadcast channel
-    if (broadcastChannelRef.current) {
-      await supabase.removeChannel(broadcastChannelRef.current);
-      broadcastChannelRef.current = null;
-    }
-
     // Remove audio element
     const remoteUserId = remoteUserIdRef.current;
     if (remoteUserId) {
@@ -293,8 +266,6 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
     setAudioLevel(0);
     setIsMuted(false);
     setIsVideoOff(true);
-    setRemoteMuted(false);
-    setRemoteVideoOff(true);
 
     console.log('[DMCallWebRTC] Disconnected');
   }, [user?.id]);
@@ -304,13 +275,7 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     mediaManager.setMuted(newMuted);
-    // Broadcast to remote participant
-    broadcastChannelRef.current?.send({
-      type: 'broadcast',
-      event: 'mute-state',
-      payload: { userId: user?.id, isMuted: newMuted },
-    });
-  }, [isMuted, user?.id]);
+  }, [isMuted]);
 
   // Toggle video
   const toggleVideo = useCallback(async () => {
@@ -322,11 +287,7 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
         const stream = await mediaManager.startCamera();
         setLocalVideoStream(stream);
         setIsVideoOff(false);
-        broadcastChannelRef.current?.send({
-          type: 'broadcast',
-          event: 'video-state',
-          payload: { userId: user?.id, isVideoOff: false },
-        });
+
         if (pc) {
           pc.addVideoStream(stream, 'camera');
           await pc.renegotiate();
@@ -339,11 +300,6 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
       mediaManager.stopCamera();
       setLocalVideoStream(null);
       setIsVideoOff(true);
-      broadcastChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'video-state',
-        payload: { userId: user?.id, isVideoOff: true },
-      });
 
       if (pc) {
         pc.removeVideoStream('camera');
@@ -369,8 +325,6 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
     remoteVideoStream,
     localVideoStream,
     connectionStats,
-    remoteMuted,
-    remoteVideoOff,
     connect,
     disconnect,
     toggleMute,

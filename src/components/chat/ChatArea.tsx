@@ -911,6 +911,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </PopoverContent>
           </Popover>
 
+  // Channel details (for slowmode)
+  const { data: channelDetails } = useChannelDetails(channel.id);
 
           {/* Members Toggle / Thread Close */}
           <Tooltip>

@@ -1,75 +1,61 @@
 
 
-# Écran de chargement intelligent avec attente des données critiques
+# Fix: Duplicated channel hidden by visibility filter
 
-## Objectif
+## Root cause
 
-Remplacer le chargement minimal actuel (auth + serveurs) par un chargement complet qui attend toutes les données critiques avant d'afficher l'app, avec adaptation à la vitesse de connexion.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Approche
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. Modifier `Index.tsx` — Attendre les données critiques
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Actuellement, le loading gate est :
-```
-if (authLoading || (user && serversPending)) → LoadingScreen
-```
+## Fix
 
-Il faut étendre ce gate pour attendre aussi :
-- `channels` (isPending)
-- `members` (isPending)  
-- `messages` du canal actif (isPending)
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-On extrait `isPending` de chaque hook déjà utilisé (`useChannels`, `useMembers`, `useMessages`) et on combine :
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-```typescript
-const { data: channelsData, isPending: channelsPending } = useChannels(activeServerId, initialChannelsData);
-const { data: messages = [], isPending: messagesPending } = useMessages(activeChannelId);
-const { data: members = [], isPending: membersPending } = useMembers(activeServerId);
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-const dataStillLoading = user && (
-  serversPending || 
-  (activeServerId && channelsPending) ||
-  (activeServerId && membersPending) ||
-  (activeChannelId && messagesPending)
-);
+### 2. In `onSuccess`: invalidate the permissions cache
 
-if (authLoading || dataStillLoading) {
-  return <LoadingScreen />;
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
 ```
 
-**Problème** : les hooks `useChannels`, `useMembers`, `useMessages` sont appelés APRÈS le gate actuel (ligne 183-185), donc ils ne sont jamais exécutés pendant le loading. Il faut déplacer ces hooks AVANT le gate, ce qui est possible car les hooks React doivent toujours être appelés (pas de retour conditionnel avant eux).
+### Code for onSuccess addition
 
-### 2. Modifier `LoadingScreen` — Étapes de progression + adaptation connexion
-
-Transformer le composant pour accepter des props indiquant l'état de chaque étape :
-
-```typescript
-interface LoadingScreenProps {
-  steps?: {
-    auth: boolean;      // true = done
-    servers: boolean;
-    channels: boolean;
-    members: boolean;
-    messages: boolean;
-  };
-}
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-Afficher une progression visuelle basée sur les étapes complétées (ex: 0/5 → 5/5).
-
-**Adaptation à la vitesse de connexion** : mesurer le temps écoulé depuis le mount. Si > 3s, afficher un message supplémentaire type "Connexion lente détectée..." pour informer l'utilisateur.
-
-### 3. Durée minimum garantie
-
-Ajouter un `minLoadingDone` state avec un timer de 1.5s pour que l'écran reste visible assez longtemps pour lire la phrase et l'astuce.
-
-## Fichiers modifiés
-
-| Fichier | Modification |
-|---|---|
-| `src/pages/Index.tsx` | Déplacer hooks data avant le gate, étendre le gate avec isPending de channels/members/messages, passer les steps au LoadingScreen, ajouter minLoadingDone |
-| `src/components/LoadingScreen.tsx` | Accepter props `steps`, afficher barre de progression réelle (étapes), détecter connexion lente (>3s) |
-| `src/components/mobile/MobileLayout.tsx` | Même pattern si un loading gate existe là-bas |
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

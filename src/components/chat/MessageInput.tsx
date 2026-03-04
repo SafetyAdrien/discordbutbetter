@@ -307,6 +307,8 @@ export function MessageInput({
         // If Enter, flag to send after mention insertion
         if (e.key === 'Enter') {
           sendAfterMentionRef.current = true;
+        } else {
+          sendAfterMentionRef.current = false;
         }
         // Trigger selection of current item - handled by MentionAutocomplete
         const autocompleteContainer = document.querySelector('[data-mention-item]');

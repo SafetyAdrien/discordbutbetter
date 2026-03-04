@@ -372,6 +372,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
+    // 2b. Optimistic removal from ALL server-voice-participants caches
+    queryClient.setQueriesData(
+      { queryKey: ['server-voice-participants'] },
+      (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
+    );
+
     // 3. Background cleanup
     webrtc.disconnect();
     await supabase

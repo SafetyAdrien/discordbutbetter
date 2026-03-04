@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseMarkdown } from '@/lib/markdown';
+import { MarkdownPreview } from '@/components/chat/MarkdownPreview';
 
 
 export function ProfileSettingsTab() {
@@ -201,7 +202,7 @@ export function ProfileSettingsTab() {
                 className="flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words text-foreground"
               />
             </div>
-            
+            <MarkdownPreview content={formData.bio} />
           </div>
 
           <div className="space-y-2">

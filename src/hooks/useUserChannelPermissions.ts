@@ -122,34 +122,38 @@ export function useChannelsVisibility(channelIds: string[]) {
 
         if (error) {
           console.error(`Error checking view_channel for ${channelId}:`, error);
-          // Default to visible on error to not lock users out
           return { channelId, visible: true };
         }
 
         return { channelId, visible: data ?? true };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 0,
+      staleTime: 30000,
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,
     })),
   });
 
-  // Build a set of visible channel IDs
-  const visibleChannelIds = new Set<string>();
-  queries.forEach((query) => {
-    if (query.data?.visible) {
-      visibleChannelIds.add(query.data.channelId);
-    }
-  });
-
   const isLoading = queries.some(q => q.isLoading);
+
+  // Build a set of visible channel IDs
+  // OPTIMISTIC: during loading, assume ALL channels visible to prevent flash
+  const visibleChannelIds = new Set<string>();
+  if (isLoading) {
+    channelIds.forEach(id => visibleChannelIds.add(id));
+  } else {
+    queries.forEach((query) => {
+      if (query.data?.visible) {
+        visibleChannelIds.add(query.data.channelId);
+      }
+    });
+  }
 
   return {
     visibleChannelIds,
     isLoading,
-    isVisible: (channelId: string) => visibleChannelIds.has(channelId),
+    isVisible: (channelId: string) => isLoading ? true : visibleChannelIds.has(channelId),
   };
 }
 
@@ -161,17 +165,7 @@ export function useUserChannelPermissions(channelId: string | null) {
     queryKey: ['user-channel-permissions', channelId, user?.id],
     queryFn: async (): Promise<UserChannelPermissions> => {
       if (!channelId || !user?.id) {
-        return {
-          canReadMessages: false,
-          canSendMessages: false,
-          canManageMessages: false,
-          canConnectVoice: false,
-          canSpeakVoice: false,
-          canMentionEveryone: false,
-          canManageChannels: false,
-          canManageRoles: false,
-          isAdmin: false,
-        };
+        return defaultPermissions(false);
       }
 
       const { data, error } = await supabase.rpc('get_user_channel_permissions', {
@@ -181,17 +175,7 @@ export function useUserChannelPermissions(channelId: string | null) {
 
       if (error) {
         console.error('Error fetching user channel permissions:', error);
-        return {
-          canReadMessages: false,
-          canSendMessages: false,
-          canManageMessages: false,
-          canConnectVoice: false,
-          canSpeakVoice: false,
-          canMentionEveryone: false,
-          canManageChannels: false,
-          canManageRoles: false,
-          isAdmin: false,
-        };
+        return defaultPermissions(false);
       }
 
       // Convertir le résultat en objet de permissions
@@ -213,6 +197,8 @@ export function useUserChannelPermissions(channelId: string | null) {
       };
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 0, // Always refetch on invalidation for realtime updates
+    staleTime: 30000, // Cache 30s — realtime handles invalidation
+    // OPTIMISTIC: default to all-true during loading to prevent flash of disabled UI
+    placeholderData: defaultPermissions(true),
   });
 }

@@ -1,61 +1,29 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Supprimer le système d'overlay Markdown du champ de saisie
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le système actuel rend le texte du textarea transparent et superpose une couche avec coloration syntaxique (marqueurs `**`, `~~`, etc. atténués, contenu coloré). Le GIF Discord montre que le champ de saisie affiche simplement du texte brut sans aucun rendu Markdown en temps réel. Le Markdown n'est interprété qu'après l'envoi du message.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Correction
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### `src/components/chat/MessageInput.tsx`
+- Supprimer l'import de `InputMarkdownOverlay`, `parseLines`, `hasInlineMarkdown`, et les constantes de font associées
+- Supprimer le `useMemo` pour `hasMarkdown` et la ref `overlayRef`
+- Supprimer le composant `<InputMarkdownOverlay>` du JSX
+- Supprimer la logique `text-transparent caret-foreground` conditionnelle du textarea — le texte sera toujours `text-foreground`
+- Supprimer la synchronisation du scroll de l'overlay dans `adjustTextareaHeight`
+- Garder les constantes de style (`OVERLAY_FONT_SIZE`, etc.) si elles sont utilisées pour le textarea lui-même, sinon les remplacer par des valeurs directes
 
-## Fix
+### `src/components/account-settings/ProfileSettingsTab.tsx`
+- Supprimer l'import et l'utilisation de `InputMarkdownOverlay` dans l'éditeur de bio
+- Supprimer la logique `text-transparent` conditionnelle du textarea de bio
+- Le texte brut s'affiche normalement, le Markdown est rendu uniquement dans l'aperçu
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### `src/components/profile/ServerProfileEditModal.tsx`
+- Même traitement : supprimer l'overlay et la transparence du textarea de bio serveur
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### `src/components/chat/InputMarkdownOverlay.tsx`
+- Conserver le fichier car `parseLines` et `hasInlineMarkdown` pourraient être utilisés ailleurs, mais le composant `InputMarkdownOverlay` ne sera plus utilisé dans les inputs
 

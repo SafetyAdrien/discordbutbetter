@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2, RotateCcw, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 
 
 interface ServerProfileEditModalProps {
@@ -29,23 +28,13 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const uploadBanner = useUploadServerBanner();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
-  const bioOverlayRef = useRef<HTMLDivElement>(null);
   const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const syncBioScroll = useCallback(() => {
-    if (bioOverlayRef.current && bioTextareaRef.current) {
-      bioOverlayRef.current.scrollTop = bioTextareaRef.current.scrollTop;
-    }
-  }, []);
 
   const autoResizeBio = useCallback(() => {
     const el = bioTextareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-    if (bioOverlayRef.current) {
-      bioOverlayRef.current.style.height = el.style.height;
-    }
   }, []);
 
   const { data: serverProfile, isLoading } = useServerProfile(profile?.id || null, selectedServerId || null);
@@ -122,7 +111,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const displayBanner = formData.banner_url || profile?.banner_url;
   const displayName = formData.display_name || profile?.display_name || '';
 
-  const hasBioMarkdown = useMemo(() => parseLines(formData.bio).some(l => l.type !== 'normal') || hasInlineMarkdown(formData.bio), [formData.bio]);
+  
 
   useEffect(() => {
     autoResizeBio();
@@ -244,22 +233,16 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                   </span>
                 </div>
                 <div className="relative">
-                  <InputMarkdownOverlay ref={bioOverlayRef} content={formData.bio} className="px-3 py-2 min-h-[80px] max-h-[200px] overflow-y-auto" />
                   <textarea
                     ref={bioTextareaRef}
                     id="sp_bio"
                     value={formData.bio}
                     onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                     onInput={autoResizeBio}
-                    onScroll={syncBioScroll}
                     placeholder={profile?.bio || 'Bio spécifique à ce serveur...'}
                     rows={3}
                     maxLength={maxBio}
-                    className={cn(
-                      "flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words",
-                      hasBioMarkdown && "text-transparent caret-foreground"
-                    )}
-                    style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY }}
+                    className="flex min-h-[80px] max-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words text-foreground"
                   />
                 </div>
                 

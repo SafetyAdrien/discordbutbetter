@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, parseLines, hasInlineMarkdown } from './InputMarkdownOverlay';
+
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
@@ -93,8 +93,6 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const hasMarkdown = useMemo(() => parseLines(value).some(l => l.type !== 'normal') || hasInlineMarkdown(value), [value]);
 
   // Adjust textarea height and reset overlay scroll position
   const adjustTextareaHeight = useCallback(() => {
@@ -109,10 +107,6 @@ export function MessageInput({
     // For desktop single-line: clamp to baseline if scrollHeight is within tolerance (handles 43-46px browser variance)
     const height = (!compact && sh <= DESKTOP_MIN_HEIGHT + DESKTOP_SINGLE_LINE_TOLERANCE) ? DESKTOP_MIN_HEIGHT : Math.max(sh, minH);
     textarea.style.height = height + 'px';
-    // Reset overlay scroll sync when content changes
-    if (overlayRef.current) {
-      overlayRef.current.style.transform = `translateY(-${textarea.scrollTop}px)`;
-    }
   }, [compact]);
 
   useEffect(() => {
@@ -479,26 +473,17 @@ export function MessageInput({
             </PopoverContent>
           </Popover>
           
-          {/* Textarea container with markdown overlay */}
+          {/* Textarea container */}
           <div className={`relative flex-1 min-w-0 overflow-hidden flex items-center`}>
-            <InputMarkdownOverlay ref={overlayRef} content={value} compact={compact} />
             <textarea
               ref={textareaRef}
               value={value}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              onScroll={() => {
-                if (overlayRef.current && textareaRef.current) {
-                  overlayRef.current.style.transform = `translateY(-${textareaRef.current.scrollTop}px)`;
-                }
-              }}
               placeholder={placeholder}
               disabled={disabled}
-              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
-              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
-                hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
-              } ${
+              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-foreground ${
               compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
                   : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`

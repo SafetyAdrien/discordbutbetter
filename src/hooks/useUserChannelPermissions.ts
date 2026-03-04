@@ -85,14 +85,14 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   });
 
   const isLoading = queries.some(q => q.isLoading);
+  const isPending = queries.some(q => q.isPending);
   const isError = queries.some(q => q.isError);
 
   // Build a map of permission -> granted
-  // OPTIMISTIC: default to TRUE during loading to prevent flash of disabled UI on refresh
+  // OPTIMISTIC: default to TRUE while data hasn't arrived yet (isPending covers both loading AND disabled states)
   const permissionsMap = new Map<ServerPermission, boolean>();
   queries.forEach((query, index) => {
-    const optimisticDefault = isLoading ? true : false;
-    permissionsMap.set(permissions[index], query.data?.granted ?? optimisticDefault);
+    permissionsMap.set(permissions[index], query.data?.granted ?? (isPending ? true : false));
   });
 
   return {
@@ -100,7 +100,7 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
     isLoading,
     isError,
     // Helper function to check a specific permission
-    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isLoading ? true : false),
+    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isPending ? true : false),
   };
 }
 

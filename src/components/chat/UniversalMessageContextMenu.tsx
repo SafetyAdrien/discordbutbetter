@@ -257,12 +257,11 @@ export function UniversalMessageContextMenu({
               {onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onSelect={(e) => {
-                    e.preventDefault();
+                  onSelect={() => {
                     if (isShiftPressed) {
                       onDelete?.();
                     } else {
-                      setTimeout(() => setDeleteOpen(true), 100);
+                      requestAnimationFrame(() => setDeleteOpen(true));
                     }
                   }}
                 >
@@ -276,12 +275,11 @@ export function UniversalMessageContextMenu({
               {canManageMessages && onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onSelect={(e) => {
-                    e.preventDefault();
+                  onSelect={() => {
                     if (isShiftPressed) {
                       onDelete?.();
                     } else {
-                      setTimeout(() => setDeleteOpen(true), 100);
+                      requestAnimationFrame(() => setDeleteOpen(true));
                     }
                   }}
                 >

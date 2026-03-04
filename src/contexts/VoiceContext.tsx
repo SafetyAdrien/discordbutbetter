@@ -111,6 +111,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     isDeafened: false,
   });
   const wasMutedBeforeDeafenRef = useRef(false);
+  // Track whether we have an active local voice session (to prevent DB overwrites)
+  const hasActiveLocalSessionRef = useRef(false);
+  // Track whether initial hydration from DB has happened
+  const hasHydratedRef = useRef(false);
 
   // Fetch current user's voice state from DB
   const { data: dbVoiceState } = useQuery({
@@ -139,9 +143,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     enabled: !!user,
   });
 
-  // Sync local state with DB state on mount
+  // Sync local state with DB state ONLY on initial mount / hydration
+  // During active sessions, local state is the source of truth for muted/deafened
   useEffect(() => {
-    if (dbVoiceState) {
+    if (!dbVoiceState) return;
+    
+    if (hasActiveLocalSessionRef.current) {
+      // During active session, only sync channel info, NOT muted/deafened
+      // (those are controlled locally via optimistic updates)
+      return;
+    }
+
+    // Initial hydration only
+    if (!hasHydratedRef.current) {
+      hasHydratedRef.current = true;
       setVoiceState({
         channelId: dbVoiceState.channel_id,
         channelName: dbVoiceState.channel?.name || null,
@@ -152,6 +167,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
       // Reconnect WebRTC if we were in a channel
       if (dbVoiceState.channel_id && !webrtc.isConnected) {
+        hasActiveLocalSessionRef.current = true;
+        webrtc.setMuted(dbVoiceState.muted || false);
+        webrtc.setDeafened(dbVoiceState.deafened || false);
         webrtc.connect(dbVoiceState.channel_id);
       }
     }

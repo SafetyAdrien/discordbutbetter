@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
+import { MarkdownPreview } from './MarkdownPreview';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
@@ -533,6 +534,8 @@ export function MessageInput({
           </div>
         </div>
       </form>
+
+      <MarkdownPreview content={value} className="mx-1 mt-1" />
       
       {(channelId || threadId) && (
         <CreatePollModal

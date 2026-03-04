@@ -272,7 +272,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       }];
     });
 
-    // 4. Background: DB + WebRTC + profile hydration in parallel
+    // 4. Sync pre-mute/deafen state to WebRTC before connecting
+    if (prevState.isMuted) webrtc.setMuted(true);
+    if (prevState.isDeafened) webrtc.setDeafened(true);
+
+    // 5. Background: DB + WebRTC + profile hydration in parallel
     try {
       const [dbResult, , profileResult] = await Promise.all([
         supabase

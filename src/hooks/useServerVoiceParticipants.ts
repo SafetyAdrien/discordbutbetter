@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ServerVoiceParticipant {
+  id: string;
   user_id: string;
   display_name: string;
   avatar_url: string | null;
@@ -21,6 +22,7 @@ export function useServerVoiceParticipants(serverId: string | null) {
       const { data, error } = await supabase
         .from('voice_states')
         .select(`
+          id,
           user_id,
           channel:channels!voice_states_channel_id_fkey (
             server_id
@@ -37,6 +39,7 @@ export function useServerVoiceParticipants(serverId: string | null) {
       return (data || [])
         .filter((vs: any) => vs.channel !== null)
         .map((vs: any) => ({
+          id: vs.id,
           user_id: vs.user_id,
           display_name: vs.profile?.display_name || 'Utilisateur',
           avatar_url: vs.profile?.avatar_url || null,
@@ -48,7 +51,6 @@ export function useServerVoiceParticipants(serverId: string | null) {
     refetchOnWindowFocus: false,
   });
 
-  // Realtime subscription for instant updates
   useEffect(() => {
     if (!serverId) return;
 
@@ -64,7 +66,6 @@ export function useServerVoiceParticipants(serverId: string | null) {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newRow = payload.new as any;
-            // Fetch channel to check if it belongs to this server, then hydrate
             supabase
               .from('channels')
               .select('server_id')
@@ -72,7 +73,6 @@ export function useServerVoiceParticipants(serverId: string | null) {
               .single()
               .then(({ data: ch }) => {
                 if (ch?.server_id === serverId) {
-                  // Fetch profile and add to cache
                   supabase
                     .from('profiles')
                     .select('display_name, avatar_url')
@@ -86,6 +86,7 @@ export function useServerVoiceParticipants(serverId: string | null) {
                           return [
                             ...(old || []),
                             {
+                              id: newRow.id,
                               user_id: newRow.user_id,
                               display_name: profile?.display_name || 'Utilisateur',
                               avatar_url: profile?.avatar_url || null,
@@ -98,11 +99,30 @@ export function useServerVoiceParticipants(serverId: string | null) {
               });
           } else if (payload.eventType === 'DELETE') {
             const oldRow = payload.old as any;
+            const oldId = oldRow?.id;
+            const oldUserId = oldRow?.user_id;
+
+            if (!oldId && !oldUserId) {
+              // Payload completely empty — force refetch
+              queryClient.invalidateQueries({ queryKey: ['server-voice-participants', serverId] });
+              return;
+            }
+
             queryClient.setQueryData(
               ['server-voice-participants', serverId],
-              (old: ServerVoiceParticipant[] | undefined) =>
-                old?.filter(p => p.user_id !== oldRow.user_id) || []
+              (old: ServerVoiceParticipant[] | undefined) => {
+                if (!old) return [];
+                const filtered = old.filter(p => {
+                  if (oldUserId && p.user_id === oldUserId) return false;
+                  if (oldId && p.id === oldId) return false;
+                  return true;
+                });
+                return filtered;
+              }
             );
+          } else {
+            // UPDATE or unknown — resync
+            queryClient.invalidateQueries({ queryKey: ['server-voice-participants', serverId] });
           }
         }
       )

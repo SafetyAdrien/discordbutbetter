@@ -11,12 +11,15 @@ export type OnAudioStreamCallback = (stream: MediaStream) => void;
 export type OnVideoStreamCallback = (stream: MediaStream, type: 'camera' | 'screen') => void;
 export type OnDisconnectCallback = () => void;
 
+export interface ScreenShareEncodingOptions {
+  maxBitrate: number;
+  maxFramerate: number;
+}
+
 const ICE_SERVERS: RTCIceServer[] = [
-  // STUN servers
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
-  // TURN servers (OpenRelay - free public relay for NAT traversal)
   {
     urls: 'turn:openrelay.metered.ca:80',
     username: 'openrelayproject',
@@ -46,6 +49,7 @@ export class PeerConnection {
   private audioSenders: Map<string, RTCRtpSender> = new Map();
   private videoSenders: Map<string, RTCRtpSender> = new Map();
   private isRestarting = false;
+  private screenEncodingOptions: ScreenShareEncodingOptions | null = null;
 
   constructor(
     peerId: string,
@@ -88,7 +92,6 @@ export class PeerConnection {
         if (event.track.kind === 'audio') {
           this.onAudioStream(stream);
         } else if (event.track.kind === 'video') {
-          // Determine if this is camera or screen based on track label/settings
           const isScreen = event.track.label.toLowerCase().includes('screen') ||
                           event.track.label.toLowerCase().includes('window') ||
                           event.track.label.toLowerCase().includes('display');
@@ -119,10 +122,26 @@ export class PeerConnection {
     console.log('[PeerConnection] Added audio stream to peer:', this.peerId);
   }
 
+  setScreenShareEncoding(options: ScreenShareEncodingOptions): void {
+    this.screenEncodingOptions = options;
+  }
+
   addVideoStream(stream: MediaStream, type: 'camera' | 'screen'): void {
     stream.getVideoTracks().forEach(track => {
+      // Set content hint for screen share to optimize for text/detail
+      if (type === 'screen') {
+        try {
+          (track as any).contentHint = 'detail';
+        } catch (_) {}
+      }
+
       const sender = this.pc.addTrack(track, stream);
       this.videoSenders.set(`${type}-${track.id}`, sender);
+
+      // Apply encoding parameters for screen share
+      if (type === 'screen' && this.screenEncodingOptions) {
+        this.applyScreenShareEncoding(sender);
+      }
     });
     // Also add audio tracks if present (for screen share with audio)
     stream.getAudioTracks().forEach(track => {
@@ -130,6 +149,25 @@ export class PeerConnection {
       this.audioSenders.set(`${type}-audio-${track.id}`, sender);
     });
     console.log(`[PeerConnection] Added ${type} stream to peer:`, this.peerId);
+  }
+
+  private async applyScreenShareEncoding(sender: RTCRtpSender): Promise<void> {
+    if (!this.screenEncodingOptions) return;
+
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      params.encodings[0].maxBitrate = this.screenEncodingOptions.maxBitrate;
+      params.encodings[0].maxFramerate = this.screenEncodingOptions.maxFramerate;
+      // @ts-ignore - degradationPreference exists on params
+      params.degradationPreference = 'maintain-resolution';
+      await sender.setParameters(params);
+      console.log('[PeerConnection] Applied screen share encoding:', this.screenEncodingOptions);
+    } catch (error) {
+      console.warn('[PeerConnection] Failed to apply screen share encoding:', error);
+    }
   }
 
   removeVideoStream(type: 'camera' | 'screen'): void {
@@ -142,7 +180,6 @@ export class PeerConnection {
     });
     toRemove.forEach(key => this.videoSenders.delete(key));
     
-    // Also remove associated audio tracks (for screen share)
     const audioToRemove: string[] = [];
     this.audioSenders.forEach((sender, key) => {
       if (key.startsWith(`${type}-audio`)) {
@@ -155,7 +192,6 @@ export class PeerConnection {
     console.log(`[PeerConnection] Removed ${type} stream from peer:`, this.peerId);
   }
 
-  // Legacy method for backward compatibility
   addStream(stream: MediaStream): void {
     this.addAudioStream(stream);
   }
@@ -163,7 +199,6 @@ export class PeerConnection {
   async createOffer(options?: RTCOfferOptions): Promise<void> {
     try {
       const offer = await this.pc.createOffer(options);
-      // Optimize SDP for Opus codec
       const optimizedSdp = this.optimizeSdpForOpus(offer.sdp || '');
       const optimizedOffer = { ...offer, sdp: optimizedSdp };
       await this.pc.setLocalDescription(optimizedOffer);
@@ -179,32 +214,36 @@ export class PeerConnection {
   }
 
   /**
-   * Optimize SDP for Opus codec with Discord-like parameters
-   * - Force mono (voice doesn't need stereo)
-   * - Set optimal bitrate for voice
-   * - Enable in-band FEC for packet loss recovery
-   * - Enable DTX for bandwidth saving during silence
+   * Optimize SDP for Opus codec with high-quality parameters
+   * - 96kbps bitrate for excellent voice fidelity
+   * - 48kHz full spectrum capture & playback
+   * - FEC for packet loss recovery
+   * - DTX for bandwidth saving during silence
+   * - Stereo for screen share audio
    */
   private optimizeSdpForOpus(sdp: string): string {
-    // Find Opus codec line and add optimized parameters
     return sdp.replace(
       /a=fmtp:111 (.+)/g,
       (match, params) => {
-        // Parse existing params
         const existingParams = params.split(';').map((p: string) => p.trim());
         
-        // Add our optimizations if not present
         const optimizations = [
-          'stereo=0',              // Mono for voice
-          'maxaveragebitrate=64000', // 64kbps - good quality for voice
-          'useinbandfec=1',        // Enable FEC for packet loss recovery
-          'usedtx=1',              // Enable DTX for silence detection
+          'stereo=0',                        // Mono for voice
+          'maxaveragebitrate=96000',          // 96kbps - high quality voice
+          'maxplaybackrate=48000',            // Full 48kHz playback spectrum
+          'sprop-maxcapturerate=48000',       // Full 48kHz capture spectrum
+          'useinbandfec=1',                   // FEC for packet loss recovery
+          'usedtx=1',                         // DTX for silence detection
         ];
         
         const newParams = [...existingParams];
         for (const opt of optimizations) {
           const key = opt.split('=')[0];
-          if (!newParams.some(p => p.startsWith(key))) {
+          // Replace existing or add new
+          const existingIdx = newParams.findIndex(p => p.startsWith(key));
+          if (existingIdx >= 0) {
+            newParams[existingIdx] = opt;
+          } else {
             newParams.push(opt);
           }
         }
@@ -216,7 +255,6 @@ export class PeerConnection {
 
   /**
    * Restart ICE connection without full reconnection
-   * Useful for recovering from failed/disconnected states
    */
   async restartIce(): Promise<void> {
     if (this.isRestarting) {
@@ -228,11 +266,9 @@ export class PeerConnection {
       this.isRestarting = true;
       console.log('[PeerConnection] Initiating ICE restart for:', this.peerId);
       
-      // Reset state for new ICE gathering
       this.hasRemoteDescription = false;
       this.pendingCandidates = [];
       
-      // Create offer with ICE restart flag
       await this.createOffer({ iceRestart: true });
     } catch (error) {
       console.error('[PeerConnection] ICE restart failed:', error);
@@ -251,7 +287,6 @@ export class PeerConnection {
           this.hasRemoteDescription = true;
           await this.processPendingCandidates();
           const answer = await this.pc.createAnswer();
-          // Optimize answer SDP too
           const optimizedAnswer = { 
             ...answer, 
             sdp: this.optimizeSdpForOpus(answer.sdp || '') 
@@ -304,7 +339,6 @@ export class PeerConnection {
     await this.createOffer();
   }
 
-  // Get WebRTC connection statistics
   async getStats(): Promise<ConnectionStats> {
     const stats = await this.pc.getStats();
     let latency = 0;
@@ -316,27 +350,23 @@ export class PeerConnection {
     let packetsLost = 0;
 
     stats.forEach((report) => {
-      // Get RTT from candidate-pair
       if (report.type === 'candidate-pair' && report.state === 'succeeded') {
         latency = report.currentRoundTripTime 
           ? Math.round(report.currentRoundTripTime * 1000) 
           : 0;
       }
       
-      // Get packet loss from inbound-rtp
       if (report.type === 'inbound-rtp' && report.kind === 'audio') {
         packetsReceived = report.packetsReceived || 0;
         packetsLost = report.packetsLost || 0;
         jitter = report.jitter ? Math.round(report.jitter * 1000) : 0;
       }
       
-      // Get connection type from local candidate
       if (report.type === 'local-candidate') {
         connectionType = report.candidateType || 'unknown';
       }
     });
 
-    // Calculate packet loss percentage
     if (packetsReceived + packetsLost > 0) {
       packetLoss = Math.round((packetsLost / (packetsReceived + packetsLost)) * 1000) / 10;
     }

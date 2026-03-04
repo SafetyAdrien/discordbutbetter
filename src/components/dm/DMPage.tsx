@@ -8,7 +8,7 @@ import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { InboxPanel } from '@/components/inbox/InboxPanel';
 import { VoiceControls } from '@/components/layout/VoiceControls';
 import { UserProfileCard } from '@/components/profile/UserProfileCard';
-import { useVoiceState } from '@/hooks/useVoiceState';
+import { useVoice } from '@/contexts/VoiceContext';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +36,7 @@ export function DMPage({
     toggleMute,
     toggleDeafen,
     isConnected
-  } = useVoiceState();
+  } = useVoice();
   
   const getCurrentView = (): DMView => {
     if (showInbox) return 'inbox';
@@ -137,9 +137,9 @@ export function DMPage({
             serverName={voiceState.serverName} 
             isMuted={voiceState.isMuted} 
             isDeafened={voiceState.isDeafened} 
-            onToggleMute={() => toggleMute.mutate()} 
-            onToggleDeafen={() => toggleDeafen.mutate()} 
-            onDisconnect={() => leaveChannel.mutate()} 
+            onToggleMute={() => toggleMute()} 
+            onToggleDeafen={() => toggleDeafen()} 
+            onDisconnect={() => leaveChannel()} 
           />
         )}
 

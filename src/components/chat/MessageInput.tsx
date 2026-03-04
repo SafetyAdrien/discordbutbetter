@@ -264,11 +264,11 @@ export function MessageInput({
         textareaRef.current.focus();
       }
       if (shouldSend) {
-        sendAfterMentionRef.current = false;
-        onSend();
+        // Use handleSendMessage via ref to avoid circular dependency
+        handleSendMessageRef.current?.();
       }
     }, 0);
-  }, [mentionState, value, onChange, onSend]);
+  }, [mentionState, value, onChange]);
 
   // Get filtered suggestions count for keyboard navigation
   const getSuggestionsCount = useCallback(() => {

@@ -166,7 +166,9 @@ function SortableServerIcon({
             {voiceParticipants && voiceParticipants.length > 0 && (
               <div className="mt-1.5 pt-1.5 border-t border-border/50">
                 <div className="flex items-center gap-1.5">
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <div className="w-5 h-5 rounded-full bg-muted-foreground/30 flex items-center justify-center shrink-0">
+                    <Volume2 className="w-3 h-3 text-white" />
+                  </div>
                   <div className="flex items-center -space-x-1.5">
                     {voiceParticipants.slice(0, 3).map((p) => (
                       <Avatar key={p.user_id} className="w-4 h-4 border border-popover">

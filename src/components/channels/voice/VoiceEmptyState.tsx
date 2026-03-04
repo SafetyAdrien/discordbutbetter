@@ -37,7 +37,7 @@ export function VoiceEmptyState({ channelName, onJoin, isConnecting, permissionD
           <Button
             onClick={onJoin}
             disabled={isConnecting || !onJoin}
-            className="bg-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/90 text-white px-8 py-6 text-lg rounded-full"
+            className="bg-[hsl(240,4%,89%)] hover:bg-[hsl(240,4%,84%)] text-black px-8 py-6 text-lg rounded-full"
           >
             {isConnecting ? (
               <>

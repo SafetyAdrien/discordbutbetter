@@ -49,6 +49,8 @@ export function usePreloader(
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [dmsLoaded, setDmsLoaded] = useState(false);
+  const [serverOrderLoaded, setServerOrderLoaded] = useState(false);
+  const [channelPermsLoaded, setChannelPermsLoaded] = useState(false);
   const [minTimePassed, setMinTimePassed] = useState(false);
 
   const hasStarted = useRef(false);
@@ -75,7 +77,7 @@ export function usePreloader(
     const preload = async () => {
       const serverIds = servers.map(s => s.id);
 
-      // 1. Preload profile
+      // 1. Preload profile + server order
       try {
         const { data: profile } = await supabase
           .from('profiles')
@@ -84,9 +86,12 @@ export function usePreloader(
           .single();
         if (profile) {
           queryClient.setQueryData(['profile', user.id], profile);
+          // Seed server order cache from profile
+          queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
         }
       } catch {}
       setProfileLoaded(true);
+      setServerOrderLoaded(true);
 
       // 2. Preload channels for ALL servers
       try {
@@ -199,6 +204,25 @@ export function usePreloader(
         }
       } catch {}
       setDmsLoaded(true);
+
+      // 6. Preload channel permissions for ALL servers
+      try {
+        const chPermPromises = serverIds.map(async (sid) => {
+          const { data } = await supabase.rpc('get_server_channel_permissions', {
+            _user_id: user.id,
+            _server_id: sid,
+          });
+          const viewable = new Set<string>();
+          const connectable = new Set<string>();
+          (data || []).forEach((row: { channel_id: string; can_view: boolean; can_connect: boolean }) => {
+            if (row.can_view) viewable.add(row.channel_id);
+            if (row.can_connect) connectable.add(row.channel_id);
+          });
+          queryClient.setQueryData(['server-channel-permissions', sid, user.id], { viewable, connectable });
+        });
+        await Promise.all(chPermPromises);
+      } catch {}
+      setChannelPermsLoaded(true);
     };
 
     preload();
@@ -208,11 +232,13 @@ export function usePreloader(
     { label: 'Authentification', key: 'auth', loaded: !authLoading },
     { label: 'Serveurs', key: 'servers', loaded: serversLoaded },
     { label: 'Profil', key: 'profile', loaded: profileLoaded },
+    { label: 'Organisation', key: 'serverOrder', loaded: serverOrderLoaded },
     { label: 'Salons', key: 'channels', loaded: channelsLoaded },
     { label: 'Membres', key: 'members', loaded: membersLoaded },
     { label: 'Permissions', key: 'permissions', loaded: permissionsLoaded },
+    { label: 'Permissions salons', key: 'channelPerms', loaded: channelPermsLoaded },
     { label: 'Messages privés', key: 'dms', loaded: dmsLoaded },
-  ], [authLoading, serversLoaded, profileLoaded, channelsLoaded, membersLoaded, permissionsLoaded, dmsLoaded]);
+  ], [authLoading, serversLoaded, profileLoaded, serverOrderLoaded, channelsLoaded, membersLoaded, permissionsLoaded, channelPermsLoaded, dmsLoaded]);
 
   const loadedCount = steps.filter(s => s.loaded).length;
   const progress = Math.round((loadedCount / steps.length) * 100);

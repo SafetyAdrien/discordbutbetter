@@ -38,7 +38,7 @@ interface MarkdownToken {
 }
 
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty' | 'separator';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
   content: string;
   language?: string;
   indentLevel?: number;
@@ -394,8 +394,8 @@ function parseBlocks(content: string): BlockToken[] {
 
       // Backslash escape for block-level formatting: \# \> \- \* \_ \-# \>>> etc.
       // If line starts with \ followed by a block marker, treat as plain text
-      if (/^\\([#>\-*_])/.test(line)) {
-        blocks.push({ type: 'paragraph', content: line.slice(1) });
+      if (/^\\/.test(line)) {
+        blocks.push({ type: 'escapedParagraph', content: line.slice(1) });
         continue;
       }
 
@@ -759,11 +759,13 @@ export function parseMarkdown(content: string): React.ReactNode {
     // Simple inline-only parsing with line break support
     const lines = content.split('\n');
     return lines.map((line, i) => {
-      // Handle backslash at start of line: treat entire line as plain text
-      const processedLine = line.replace(/^\\(.)/,  '$1');
+      if (line.startsWith('\\')) {
+        const plainText = line.slice(1);
+        return <React.Fragment key={i}>{plainText}{i < lines.length - 1 && <br />}</React.Fragment>;
+      }
       return (
         <React.Fragment key={i}>
-          {tokenizeInline(processedLine).map((token, j) => renderInlineToken(token, j))}
+          {tokenizeInline(line).map((token, j) => renderInlineToken(token, j))}
           {i < lines.length - 1 && <br />}
         </React.Fragment>
       );

@@ -83,30 +83,45 @@ export function useUrlMetadata(url: string | null) {
 
 // Utility to extract URLs from message content
 export function extractUrls(content: string): string[] {
-  const maskedLinkRegex = /\[([^\]]*)\]\(([^)]+)\)/g;
+  const maskedLinkRegex = /\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/g;
   const messageLinkRegex = /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\//;
-  
-  // Collect masked link URLs to exclude
-  const maskedUrls = new Set<string>();
-  let maskedMatch;
+
+  const urls: string[] = [];
+
+  // 1) Include URLs from masked links: [text](url)
+  let maskedMatch: RegExpExecArray | null;
   while ((maskedMatch = maskedLinkRegex.exec(content)) !== null) {
-    maskedUrls.add(maskedMatch[2]);
+    urls.push(maskedMatch[1]);
   }
 
-  // Strip masked links from content before extracting bare URLs
-  const strippedContent = content.replace(maskedLinkRegex, '');
+  // 2) Remove markdown link wrappers, keep the raw URL if present in text
+  const strippedContent = content.replace(maskedLinkRegex, '$1');
 
-  const urlRegex = /(https?:\/\/[^\s<>\])"',]+)/g;
-  const urls: string[] = [];
-  let match;
+  // 3) Extract bare URLs
+  const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
+  let match: RegExpExecArray | null;
   while ((match = urlRegex.exec(strippedContent)) !== null) {
     let url = match[1];
-    // Remove trailing punctuation that's not part of URL
-    url = url.replace(/[.)]+$/, '');
-    // Skip masked link URLs and Discord message links
-    if (!maskedUrls.has(url) && !messageLinkRegex.test(url)) {
+
+    // Trim trailing punctuation commonly added in sentences
+    url = url.replace(/[.,!?;:]+$/, '');
+
+    // Trim unmatched closing parenthesis
+    while (url.endsWith(')')) {
+      const opens = (url.match(/\(/g) || []).length;
+      const closes = (url.match(/\)/g) || []).length;
+      if (closes > opens) {
+        url = url.slice(0, -1);
+      } else {
+        break;
+      }
+    }
+
+    // Skip internal Discord message links for external rich embeds
+    if (!messageLinkRegex.test(url)) {
       urls.push(url);
     }
   }
+
   return [...new Set(urls)].slice(0, 5);
 }

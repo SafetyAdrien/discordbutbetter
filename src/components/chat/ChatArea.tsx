@@ -598,8 +598,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           });
         }
       },
-      onChannelNavigate: (channelId) => {
-        navigate(`/channels/${channel.server_id}/${channelId}`);
+      onChannelNavigate: (channelId, targetServerId) => {
+        const serverId = targetServerId || channel.server_id;
+        if (serverId) navigate(`/channels/${serverId}/${channelId}`);
       },
       onMessageJump: (serverId, channelId, messageId) => {
         // If same channel, just scroll

@@ -107,13 +107,13 @@ interface ChannelMentionProps {
   channelId: string;
   channelName: string;
   serverId?: string;
-  onNavigate?: (channelId: string) => void;
+  onNavigate?: (channelId: string, serverId?: string) => void;
 }
 
 export function ChannelMention({ channelId, channelName, serverId, onNavigate }: ChannelMentionProps) {
   return (
     <span
-      onClick={() => onNavigate?.(channelId)}
+      onClick={() => onNavigate?.(channelId, serverId)}
       className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
         bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white
         transition-colors duration-100"

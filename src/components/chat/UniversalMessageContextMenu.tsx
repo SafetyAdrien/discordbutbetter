@@ -71,9 +71,13 @@ export function UniversalMessageContextMenu({
     onLongPress: () => setSheetOpen(true),
   });
 
-  const handleDeleteClick = (onAction?: () => void) => {
+  const handleDeleteClick = (e: React.MouseEvent, onAction?: () => void) => {
     onAction?.();
-    setDeleteOpen(true);
+    if (e.shiftKey) {
+      onDelete?.();
+    } else {
+      setDeleteOpen(true);
+    }
   };
 
   // Shared action items renderer
@@ -125,7 +129,7 @@ export function UniversalMessageContextMenu({
             </button>
           )}
           {onDelete && (
-            <button onClick={() => handleDeleteClick(onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+            <button onClick={(e) => handleDeleteClick(e, onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
               <Trash2 className="w-4 h-4" /> Supprimer
             </button>
           )}
@@ -133,7 +137,7 @@ export function UniversalMessageContextMenu({
       ) : (
         <>
           {canManageMessages && onDelete && (
-            <button onClick={() => handleDeleteClick(onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+            <button onClick={(e) => handleDeleteClick(e, onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
               <Trash2 className="w-4 h-4" /> Supprimer
             </button>
           )}
@@ -251,7 +255,7 @@ export function UniversalMessageContextMenu({
               {onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onClick={() => setDeleteOpen(true)}
+                  onClick={(e) => e.shiftKey ? onDelete?.() : setDeleteOpen(true)}
                 >
                   <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                   Supprimer
@@ -263,7 +267,7 @@ export function UniversalMessageContextMenu({
               {canManageMessages && onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onClick={() => setDeleteOpen(true)}
+                  onClick={(e) => e.shiftKey ? onDelete?.() : setDeleteOpen(true)}
                 >
                   <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                   Supprimer

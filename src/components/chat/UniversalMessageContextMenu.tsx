@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { useShiftKey } from '@/hooks/useShiftKey';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -63,6 +64,7 @@ export function UniversalMessageContextMenu({
   onReport,
 }: UniversalMessageContextMenuProps) {
   const { isMobile } = useBreakpoint();
+  const isShiftPressed = useShiftKey();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const canDeleteMessage = isOwnMessage || canManageMessages;
@@ -255,7 +257,7 @@ export function UniversalMessageContextMenu({
               {onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onClick={(e) => e.shiftKey ? onDelete?.() : setDeleteOpen(true)}
+                  onClick={() => isShiftPressed ? onDelete?.() : setDeleteOpen(true)}
                 >
                   <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                   Supprimer
@@ -267,7 +269,7 @@ export function UniversalMessageContextMenu({
               {canManageMessages && onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 
-                  onClick={(e) => e.shiftKey ? onDelete?.() : setDeleteOpen(true)}
+                  onClick={() => isShiftPressed ? onDelete?.() : setDeleteOpen(true)}
                 >
                   <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                   Supprimer

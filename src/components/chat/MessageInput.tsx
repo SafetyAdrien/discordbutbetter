@@ -307,6 +307,8 @@ export function MessageInput({
         // If Enter, flag to send after mention insertion
         if (e.key === 'Enter') {
           sendAfterMentionRef.current = true;
+        } else {
+          sendAfterMentionRef.current = false;
         }
         // Trigger selection of current item - handled by MentionAutocomplete
         const autocompleteContainer = document.querySelector('[data-mention-item]');
@@ -318,6 +320,7 @@ export function MessageInput({
       }
       if (e.key === 'Escape') {
         e.preventDefault();
+        sendAfterMentionRef.current = false;
         setMentionState(null);
         return;
       }

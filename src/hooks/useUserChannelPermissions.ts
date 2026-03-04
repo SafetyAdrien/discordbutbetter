@@ -46,10 +46,10 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
     refetchOnWindowFocus: false,
   });
 
-  // OPTIMISTIC: default to true during loading to prevent flash of disabled UI
+  // OPTIMISTIC: default to true while data hasn't arrived (isPending covers loading + disabled states)
   return {
     ...query,
-    data: query.data ?? (query.isLoading ? true : false),
+    data: query.data ?? (query.isPending ? true : false),
   };
 }
 
@@ -85,14 +85,14 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   });
 
   const isLoading = queries.some(q => q.isLoading);
+  const isPending = queries.some(q => q.isPending);
   const isError = queries.some(q => q.isError);
 
   // Build a map of permission -> granted
-  // OPTIMISTIC: default to TRUE during loading to prevent flash of disabled UI on refresh
+  // OPTIMISTIC: default to TRUE while data hasn't arrived yet (isPending covers both loading AND disabled states)
   const permissionsMap = new Map<ServerPermission, boolean>();
   queries.forEach((query, index) => {
-    const optimisticDefault = isLoading ? true : false;
-    permissionsMap.set(permissions[index], query.data?.granted ?? optimisticDefault);
+    permissionsMap.set(permissions[index], query.data?.granted ?? (isPending ? true : false));
   });
 
   return {
@@ -100,7 +100,7 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
     isLoading,
     isError,
     // Helper function to check a specific permission
-    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isLoading ? true : false),
+    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isPending ? true : false),
   };
 }
 
@@ -136,11 +136,12 @@ export function useChannelsVisibility(channelIds: string[]) {
   });
 
   const isLoading = queries.some(q => q.isLoading);
+  const isPending = queries.some(q => q.isPending);
 
   // Build a set of visible channel IDs
-  // OPTIMISTIC: during loading, assume ALL channels visible to prevent flash
+  // OPTIMISTIC: while data hasn't arrived, assume ALL channels visible to prevent flash
   const visibleChannelIds = new Set<string>();
-  if (isLoading) {
+  if (isPending) {
     channelIds.forEach(id => visibleChannelIds.add(id));
   } else {
     queries.forEach((query) => {
@@ -153,7 +154,7 @@ export function useChannelsVisibility(channelIds: string[]) {
   return {
     visibleChannelIds,
     isLoading,
-    isVisible: (channelId: string) => isLoading ? true : visibleChannelIds.has(channelId),
+    isVisible: (channelId: string) => isPending ? true : visibleChannelIds.has(channelId),
   };
 }
 

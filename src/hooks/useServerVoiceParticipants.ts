@@ -44,6 +44,7 @@ export function useServerVoiceParticipants(serverId: string | null) {
     },
     enabled: !!serverId,
     staleTime: 30_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });
 

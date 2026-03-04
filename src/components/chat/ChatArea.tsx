@@ -89,6 +89,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { LinkEmbeds } from "@/components/chat/LinkEmbed";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
+import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {

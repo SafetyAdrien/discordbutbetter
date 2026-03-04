@@ -51,7 +51,7 @@ export interface MarkdownContext {
   roles?: Map<string, { name: string; color: string }>;
   channels?: Map<string, { name: string; serverId?: string }>;
   onUserClick?: (userId: string) => void;
-  onChannelNavigate?: (channelId: string) => void;
+  onChannelNavigate?: (channelId: string, serverId?: string) => void;
   onMessageJump?: (serverId: string, channelId: string, messageId: string) => void;
 }
 
@@ -101,8 +101,8 @@ const MENTION_PATTERNS = {
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
   
-  // Handle escape characters first
-  let processedText = text.replace(/\\([*_~|`#\->\[\]\\<@])/g, '___ESC_$1___');
+  // Handle escape characters first with sentinels that won't collide with markdown patterns
+  let processedText = text.replace(/\\([*_~|`#\->\[\]\\<@])/g, '\uE000$1\uE001');
   let remaining = processedText;
   
   while (remaining.length > 0) {
@@ -455,7 +455,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
   switch (token.type) {
     case 'text':
       // Restore escaped characters
-      const textContent = (token.content as string).replace(/___ESC_(.+?)___/g, '$1');
+      const textContent = (token.content as string).replace(/\uE000(.?)\uE001/g, '$1');
       return <React.Fragment key={key}>{textContent}</React.Fragment>;
     
     case 'bold':

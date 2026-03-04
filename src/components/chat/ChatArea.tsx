@@ -532,13 +532,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // Set up Markdown Context with real data
   useEffect(() => {
     // Build users map from messages authors
-    const usersMap = new Map<string, { displayName: string; avatarUrl?: string }>();
+    const usersMap = new Map<string, { displayName: string; avatarUrl?: string; bio?: string }>();
     const userIds: string[] = [];
     
     messages.forEach((m) => {
       usersMap.set(m.author.id, {
         displayName: m.author.displayName,
         avatarUrl: m.author.avatar,
+        bio: m.author.bio,
       });
       userIds.push(m.author.id);
     });
@@ -547,6 +548,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       usersMap.set(m.id, {
         displayName: m.displayName,
         avatarUrl: m.avatar,
+        bio: m.bio,
       });
       userIds.push(m.id);
     });
@@ -588,6 +590,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               username: userData.displayName.toLowerCase(),
               displayName: userData.displayName,
               avatar: userData.avatarUrl,
+              bio: userData.bio,
               status: "online",
             },
             roles,

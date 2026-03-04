@@ -294,12 +294,11 @@ export function MobileChatView({
       </div>
 
       {/* Global Search Modal */}
-      {showSearch && (
-        <GlobalSearchModal
-          onClose={() => setShowSearch(false)}
-          serverId={serverId}
-        />
-      )}
+      <GlobalSearchModal
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        serverId={serverId}
+      />
     </div>
   );
 }

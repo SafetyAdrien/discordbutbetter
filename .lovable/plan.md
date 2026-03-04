@@ -1,53 +1,61 @@
 
 
-## Plan: Permissions instantanées au rechargement via cache sessionStorage
+# Fix: Duplicated channel hidden by visibility filter
 
-### Problème
-Actuellement, les permissions sont optimistiquement `true` pendant le chargement (isPending). Résultat : sur CTRL+F5, un salon où l'utilisateur n'a PAS `send_messages` affiche brièvement l'input actif avant de le bloquer. L'utilisateur veut l'inverse : l'input doit être bloqué instantanément.
+## Root cause
 
-### Solution
-Persister les résultats de permissions dans `sessionStorage` et les utiliser comme `placeholderData` / valeur initiale au lieu du défaut `true`. Ainsi, au rechargement, l'état précédent est restauré immédiatement.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**1. `src/hooks/useUserChannelPermissions.ts`**
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Ajouter un système de cache sessionStorage dans les hooks principaux :
+## Fix
 
-- **Cache helpers** (en haut du fichier) :
-  - `getPermissionCache(key: string)` : lit depuis `sessionStorage`
-  - `setPermissionCache(key: string, value: any)` : écrit dans `sessionStorage`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-- **`useHasChannelPermission`** :
-  - Après fetch réussi, persister le résultat dans sessionStorage (`perm:${channelId}:${permission}`)
-  - Au lieu de `query.data ?? (isPending ? true : false)`, utiliser `query.data ?? cachedValue ?? true`
-  - Le cache donne la vraie dernière valeur connue ; `true` ne sert que si aucun cache n'existe (premier accès)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- **`useMultipleChannelPermissions`** :
-  - Même pattern : chaque permission individuelle est cachée après fetch
-  - Le `can()` helper et la map utilisent le cache sessionStorage comme fallback pendant isPending
-  - Persister après chaque fetch réussi
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- **`useUserChannelPermissions`** :
-  - Le `placeholderData` utilise le cache sessionStorage au lieu de `defaultPermissions(true)`
-  - Persister le résultat complet après fetch
+### 2. In `onSuccess`: invalidate the permissions cache
 
-**2. `src/components/chat/ChatArea.tsx`** (ligne 507)
-- Retirer la condition `!permissionsLoading` du `permissionDeniedMessage`
-- La logique devient : `(!isAdminOrOwner && !canSendMessages)` directement
-- Puisque le cache fournit la bonne valeur dès le départ, pas besoin d'attendre la fin du chargement
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-**3. `src/components/channels/AnnouncementChannel.tsx`** (ligne 245)
-- Même correction : retirer `!permissionsLoading` de la condition
+### 3. Hook needs `useAuth` for the user ID
 
-**4. `src/components/threads/ThreadView.tsx`** (ligne 163)
-- Déjà correct (pas de guard `permissionsLoading`), mais bénéficiera du cache automatiquement
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### Détails techniques
+## Detailed changes
 
-Le cache sessionStorage est choisi car :
-- Survit au CTRL+F5 (contrairement au state React)
-- Se vide à la fermeture du navigateur (pas de stale data persistante)
-- Clé format : `perm:${channelId}:${permission}` pour granularité fine
-- Écriture uniquement après fetch réussi (jamais de valeur optimiste en cache)
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

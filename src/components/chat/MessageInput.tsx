@@ -242,7 +242,7 @@ export function MessageInput({
   }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
 
   const sendAfterMentionRef = useRef(false);
-
+  const handleSendMessageRef = useRef<(() => void) | null>(null);
   const handleMentionSelect = useCallback((mention: string, _displayText: string) => {
     if (!mentionState || !textareaRef.current) return;
     

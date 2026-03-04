@@ -1,61 +1,22 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger le "Entrée = Sélection + Envoi" pour les mentions
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le mécanisme actuel a un bug de timing : `handleMentionSelect` appelle `onChange(newValue)` puis dans un `setTimeout(0)` appelle `handleSendMessageRef.current()`. Mais cette ref pointe vers un `handleSendMessage` qui capture l'ancienne valeur `value` dans sa closure — React n'a pas encore re-rendu avec la nouvelle valeur au moment de l'appel. Résultat : le message envoyé peut être vide ou contenir l'ancien texte sans la mention.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Correction
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### `src/components/chat/MessageInput.tsx` — `handleMentionSelect`
 
-## Fix
+- Au lieu de `setTimeout(0)`, utiliser un **double `setTimeout`** ou un **`requestAnimationFrame` + `setTimeout`** pour garantir que React a re-rendu avec le nouveau `value` avant d'appeler le send.
+- Plus fiable : stocker le flag `sendAfterMentionRef` et le consommer dans un `useEffect` qui se déclenche quand `value` change (après le re-rendu).
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Approche choisie — `useEffect` :
+1. Garder `sendAfterMentionRef.current = true` dans `handleKeyDown` (Enter)
+2. Ajouter un `useEffect` qui observe `value` : si `sendAfterMentionRef.current` est `true`, appeler `handleSendMessage()` et remettre le flag à `false`
+3. Supprimer le `if (shouldSend)` du `setTimeout` dans `handleMentionSelect` — le `useEffect` s'en charge après le re-rendu
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Cela garantit que le `handleSendMessage` est appelé **après** que React ait mis à jour `value` avec la mention insérée.
 

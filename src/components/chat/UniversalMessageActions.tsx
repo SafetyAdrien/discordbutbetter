@@ -96,14 +96,13 @@ export function UniversalMessageActions({
         
         {canDeleteMessage && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={() => setDeleteOpen(true)} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
+              <button onClick={() => onDelete?.()} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
                 <Trash2 className="w-4 h-4 text-destructive" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Supprimer</TooltipContent>
           </Tooltip>}
       </div>
-      <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />
     </>;
   }
 

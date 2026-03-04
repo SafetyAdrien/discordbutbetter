@@ -28,7 +28,7 @@ export function LinkEmbed({ url }: LinkEmbedProps) {
     );
   }
 
-  if (!data) return null;
+  if (!data || (!data.title && !data.description && !data.siteName)) return null;
 
   const borderColor = data.themeColor || '#202225';
 

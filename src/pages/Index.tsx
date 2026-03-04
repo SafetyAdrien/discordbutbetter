@@ -654,6 +654,14 @@ const Index = () => {
                       setThreadChannelId(null);
                     }}
                     members={searchMembers}
+                    onChannelSelect={(channelId) => {
+                      setActiveChannelId(channelId);
+                      if (activeServerId) {
+                        setChannelForServer(activeServerId, channelId);
+                      }
+                      setActiveThreadId(null);
+                      setThreadChannelId(null);
+                    }}
                   />
                 )}
               </div>

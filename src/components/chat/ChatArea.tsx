@@ -321,6 +321,7 @@ interface ChatAreaProps {
   activeThreadId?: string | null;
   onCloseThread?: () => void;
   members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
+  onChannelSelect?: (channelId: string) => void;
 }
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("fr-FR", {
@@ -598,17 +599,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           });
         }
       },
-      onChannelNavigate: (channelId, targetServerId) => {
-        const serverId = targetServerId || channel.server_id;
-        if (serverId) navigate(`/channels/${serverId}/${channelId}`);
+      onChannelNavigate: (channelId, _targetServerId) => {
+        // Use internal state navigation instead of URL routing
+        if (props.onChannelSelect) {
+          props.onChannelSelect(channelId);
+        }
       },
-      onMessageJump: (serverId, channelId, messageId) => {
+      onMessageJump: (_serverId, channelId, messageId) => {
         // If same channel, just scroll
         if (channelId === channel.id) {
           scrollToMessage(messageId);
-        } else {
-          // Navigate to channel first
-          navigate(`/channels/${serverId}/${channelId}?messageId=${messageId}`);
+        } else if (props.onChannelSelect) {
+          props.onChannelSelect(channelId);
         }
       },
     });

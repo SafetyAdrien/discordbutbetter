@@ -388,11 +388,7 @@ const Index = () => {
 
   // Loading state
   if (authLoading || (user && serversPending)) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Transform data for components - full Server type

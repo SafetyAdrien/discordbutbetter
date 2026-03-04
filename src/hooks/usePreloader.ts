@@ -145,39 +145,79 @@ export function usePreloader(
       } catch {}
       setChannelsLoaded(true);
 
-      // 3. Preload members for ALL servers
+      // 3. Preload members for ALL servers (with roles + server profiles)
       try {
         const memberPromises = serverIds.map(async (sid) => {
           const { data } = await supabase
             .from('server_members')
             .select(`
-              id, nickname, joined_at, user_id,
-              profiles!server_members_user_id_fkey (
+              id, nickname, joined_at,
+              user:profiles!server_members_user_id_fkey (
                 id, username, display_name, avatar_url, banner_url,
                 status, custom_status, bio, pronouns,
                 activity_type, activity_text
+              ),
+              member_roles (
+                role:roles (
+                  id, name, color, icon_url, position, description
+                )
               )
             `)
             .eq('server_id', sid);
           if (data) {
-            // Don't set full cache here, just prefetch
-            queryClient.setQueryData(['members', sid, 'prefetched'], data);
+            // Fetch server profiles
+            const userIds = data.map((m: any) => m.user?.id).filter(Boolean);
+            const { data: serverProfiles } = userIds.length > 0
+              ? await supabase
+                  .from('server_profiles')
+                  .select('id, user_id, server_id, display_name, avatar_url, banner_url, bio, pronouns')
+                  .eq('server_id', sid)
+                  .in('user_id', userIds)
+              : { data: [] as any[] };
+
+            const profileMap = new Map<string, any>();
+            serverProfiles?.forEach((sp: any) => profileMap.set(sp.user_id, sp));
+
+            // Transform to MemberWithProfile format
+            const members = data.map((member: any) => ({
+              id: member.id,
+              nickname: member.nickname,
+              joined_at: member.joined_at,
+              user: member.user,
+              roles: (member.member_roles || [])
+                .map((mr: any) => mr.role)
+                .filter((r: any) => r !== null)
+                .sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0)),
+              serverProfile: profileMap.get(member.user?.id) ?? null,
+            }));
+            queryClient.setQueryData(['members', sid], members);
           }
         });
         await Promise.all(memberPromises);
       } catch {}
       setMembersLoaded(true);
 
-      // 4. Preload permissions for all servers
+      // 4. Preload roles + permissions for all servers
       try {
         const permPromises = serverIds.map(async (sid) => {
           const { data: roles } = await supabase
             .from('roles')
-            .select('*, role_permissions(*)')
+            .select('id, name, color, icon_url, position, is_default, hoist, server_id, description')
             .eq('server_id', sid)
             .order('position', { ascending: false });
           if (roles) {
-            queryClient.setQueryData(['server-roles', sid], roles);
+            const roleIds = roles.map(r => r.id);
+            const { data: permissions } = await supabase
+              .from('role_permissions')
+              .select('role_id, permission')
+              .in('role_id', roleIds);
+            const rolesWithPerms = roles.map(role => ({
+              ...role,
+              permissions: (permissions || [])
+                .filter(p => p.role_id === role.id)
+                .map(p => p.permission),
+            }));
+            queryClient.setQueryData(['roles', sid], rolesWithPerms);
           }
         });
         await Promise.all(permPromises);

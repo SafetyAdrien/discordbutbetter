@@ -66,6 +66,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     isMuted: false,
     isDeafened: false,
   });
+  const [wasMutedBeforeDeafen, setWasMutedBeforeDeafen] = useState(false);
 
   // Fetch current user's voice state from DB
   const { data: dbVoiceState } = useQuery({
@@ -241,6 +242,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('Not authenticated');
 
     const prevChannelName = voiceState.channelName;
+    const prevChannelId = voiceState.channelId;
 
     // 1. Instant UI update + sound
     setVoiceState({
@@ -253,7 +255,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     soundEffects.playLeave();
     toast.success(`Déconnecté de ${prevChannelName}`);
 
-    // 2. Background cleanup
+    // 2. Optimistic removal from participants cache (prevents ghost)
+    if (prevChannelId) {
+      queryClient.setQueryData(['voice-participants', prevChannelId], (old: any) =>
+        old?.filter((p: any) => p.user_id !== user.id) ?? []
+      );
+    }
+
+    // 3. Background cleanup
     webrtc.disconnect();
     await supabase
       .from('voice_states')
@@ -262,7 +271,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     queryClient.invalidateQueries({ queryKey: ['voice-state'] });
     queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
-  }, [user, voiceState.channelName, webrtc, queryClient]);
+  }, [user, voiceState.channelName, voiceState.channelId, webrtc, queryClient]);
 
   const toggleMute = useCallback(async () => {
     if (!user || !voiceState.channelId) throw new Error('Not in a voice channel');
@@ -299,24 +308,36 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!user || !voiceState.channelId) throw new Error('Not in a voice channel');
 
     const newDeafened = !voiceState.isDeafened;
-    const newMuted = newDeafened && !voiceState.isMuted ? true : undefined;
     const updates: { deafened: boolean; muted?: boolean } = { deafened: newDeafened };
-    if (newMuted !== undefined) updates.muted = newMuted;
+    let finalMuted = voiceState.isMuted;
+
+    if (newDeafened) {
+      // Deafening: remember if user was already muted, then force mute
+      setWasMutedBeforeDeafen(voiceState.isMuted);
+      if (!voiceState.isMuted) {
+        updates.muted = true;
+        finalMuted = true;
+      }
+    } else {
+      // Un-deafening: restore mute to pre-deafen state
+      updates.muted = wasMutedBeforeDeafen;
+      finalMuted = wasMutedBeforeDeafen;
+    }
 
     // 1. Instant UI + audio
     setVoiceState(prev => ({
       ...prev,
       isDeafened: newDeafened,
-      isMuted: newMuted ?? prev.isMuted,
+      isMuted: finalMuted,
     }));
     webrtc.setDeafened(newDeafened);
-    if (newMuted !== undefined) webrtc.setMuted(newMuted);
+    webrtc.setMuted(finalMuted);
     newDeafened ? soundEffects.playDeafen() : soundEffects.playUndeafen();
 
     // 2. Optimistic cache
     queryClient.setQueryData(['voice-participants', voiceState.channelId], (old: any) =>
       old?.map((p: any) => p.user_id === user.id
-        ? { ...p, deafened: newDeafened, ...(newMuted !== undefined ? { muted: newMuted } : {}) }
+        ? { ...p, deafened: newDeafened, muted: finalMuted }
         : p
       )
     );
@@ -329,21 +350,23 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       console.error('[VoiceContext] toggleDeafen rollback:', error);
+      const prevMuted = voiceState.isMuted;
+      const prevDeafened = voiceState.isDeafened;
       setVoiceState(prev => ({
         ...prev,
-        isDeafened: !newDeafened,
-        isMuted: newMuted !== undefined ? !newMuted : prev.isMuted,
+        isDeafened: prevDeafened,
+        isMuted: prevMuted,
       }));
-      webrtc.setDeafened(!newDeafened);
-      if (newMuted !== undefined) webrtc.setMuted(!newMuted);
+      webrtc.setDeafened(prevDeafened);
+      webrtc.setMuted(prevMuted);
       queryClient.setQueryData(['voice-participants', voiceState.channelId], (old: any) =>
         old?.map((p: any) => p.user_id === user.id
-          ? { ...p, deafened: !newDeafened, ...(newMuted !== undefined ? { muted: !newMuted } : {}) }
+          ? { ...p, deafened: prevDeafened, muted: prevMuted }
           : p
         )
       );
     }
-  }, [user, voiceState.channelId, voiceState.isDeafened, voiceState.isMuted, webrtc, queryClient]);
+  }, [user, voiceState.channelId, voiceState.isDeafened, voiceState.isMuted, wasMutedBeforeDeafen, webrtc, queryClient]);
 
   const togglePushToTalkMode = useCallback(() => {
     webrtc.setPushToTalkMode(!webrtc.isPushToTalkMode);

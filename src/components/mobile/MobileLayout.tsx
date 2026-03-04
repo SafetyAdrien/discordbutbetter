@@ -17,7 +17,7 @@ import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { VoiceControls } from '@/components/layout/VoiceControls';
-import { useVoiceState } from '@/hooks/useVoiceState';
+import { useVoice } from '@/contexts/VoiceContext';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
@@ -161,7 +161,7 @@ export function MobileLayout({
     prevViewRef.current = key;
   }, [mobileView, activeTab, pushView, buildHistoryState]);
 
-  const { voiceState, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoiceState();
+  const { voiceState, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoice();
 
   // Data for current server view
   const currentServerId = mobileView.type === 'channels' || mobileView.type === 'chat' || mobileView.type === 'thread'
@@ -486,9 +486,9 @@ export function MobileLayout({
             serverName={voiceState.serverName}
             isMuted={voiceState.isMuted}
             isDeafened={voiceState.isDeafened}
-            onToggleMute={() => toggleMute.mutate()}
-            onToggleDeafen={() => toggleDeafen.mutate()}
-            onDisconnect={() => leaveChannel.mutate()}
+            onToggleMute={() => toggleMute()}
+            onToggleDeafen={() => toggleDeafen()}
+            onDisconnect={() => leaveChannel()}
           />
         </div>
       )}

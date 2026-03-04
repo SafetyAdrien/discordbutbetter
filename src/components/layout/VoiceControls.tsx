@@ -106,7 +106,6 @@ export function VoiceControls({
                   !hasMicrophoneAccess && 'opacity-50'
                 )}
                 onClick={onToggleMute}
-                disabled={!hasMicrophoneAccess}
               >
                 {isMuted ? (
                   <MicOff className="w-4 h-4" />

@@ -212,7 +212,7 @@ export function AnnouncementChannel({
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
   const isAdminOrOwner = isGod || hasServerPermission('administrator');
 
-  // Check permissions
+  // Check permissions — announcement-specific + text for chat
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
     'send_messages',
     'attach_files',
@@ -220,8 +220,17 @@ export function AnnouncementChannel({
     'create_polls',
     'mention_everyone',
     'create_public_threads',
-    'manage_messages',
     'manage_channels',
+    // Announcement-specific permissions
+    'create_announcements',
+    'edit_announcements',
+    'delete_announcements',
+    'publish_messages',
+    'follow_announcements',
+    'pin_announcements',
+    'feature_announcements',
+    'manage_announcements',
+    'moderate_announcements',
   ]);
 
   // Short-circuit for owners/admins - they always have permissions
@@ -229,8 +238,17 @@ export function AnnouncementChannel({
   const canAttachFiles = isAdminOrOwner || canPerm('attach_files');
   const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
   const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
-  const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
   const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
+  // Announcement-specific
+  const canCreateAnnouncements = isAdminOrOwner || canPerm('create_announcements');
+  const canEditAnnouncements = isAdminOrOwner || canPerm('edit_announcements');
+  const canDeleteAnnouncements = isAdminOrOwner || canPerm('delete_announcements');
+  const canPublishMessages = isAdminOrOwner || canPerm('publish_messages');
+  const canFollowAnnouncements = isAdminOrOwner || canPerm('follow_announcements');
+  const canPinAnnouncements = isAdminOrOwner || canPerm('pin_announcements');
+  const canModerateAnnouncements = isAdminOrOwner || canPerm('moderate_announcements');
+  // manage_announcements = full admin (edit + delete + pin + moderate)
+  const canManageAnnouncements = isAdminOrOwner || canPerm('manage_announcements');
   
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);

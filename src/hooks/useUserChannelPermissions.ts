@@ -157,6 +157,21 @@ export function useChannelsVisibility(channelIds: string[]) {
   };
 }
 
+// Helper to create default permissions object
+function defaultPermissions(value: boolean): UserChannelPermissions {
+  return {
+    canReadMessages: value,
+    canSendMessages: value,
+    canManageMessages: value,
+    canConnectVoice: value,
+    canSpeakVoice: value,
+    canMentionEveryone: value,
+    canManageChannels: value,
+    canManageRoles: value,
+    isAdmin: value,
+  };
+}
+
 // Hook pour récupérer toutes les permissions d'un utilisateur sur un salon
 export function useUserChannelPermissions(channelId: string | null) {
   const { user } = useAuth();

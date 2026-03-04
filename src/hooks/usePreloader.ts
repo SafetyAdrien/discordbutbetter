@@ -197,16 +197,27 @@ export function usePreloader(
       } catch {}
       setMembersLoaded(true);
 
-      // 4. Preload permissions for all servers
+      // 4. Preload roles + permissions for all servers
       try {
         const permPromises = serverIds.map(async (sid) => {
           const { data: roles } = await supabase
             .from('roles')
-            .select('*, role_permissions(*)')
+            .select('id, name, color, icon_url, position, is_default, hoist, server_id, description')
             .eq('server_id', sid)
             .order('position', { ascending: false });
           if (roles) {
-            queryClient.setQueryData(['server-roles', sid], roles);
+            const roleIds = roles.map(r => r.id);
+            const { data: permissions } = await supabase
+              .from('role_permissions')
+              .select('role_id, permission')
+              .in('role_id', roleIds);
+            const rolesWithPerms = roles.map(role => ({
+              ...role,
+              permissions: (permissions || [])
+                .filter(p => p.role_id === role.id)
+                .map(p => p.permission),
+            }));
+            queryClient.setQueryData(['roles', sid], rolesWithPerms);
           }
         });
         await Promise.all(permPromises);

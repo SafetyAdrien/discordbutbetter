@@ -250,22 +250,15 @@ export function MessageInput({
     const after = value.slice(textareaRef.current.selectionStart);
     const newValue = before + mention + ' ' + after;
     
-    const shouldSend = sendAfterMentionRef.current;
-    sendAfterMentionRef.current = false;
-    
     onChange(newValue);
     setMentionState(null);
     
-    // Set cursor position after the mention, then send if Enter was pressed
+    // Set cursor position after the mention
     setTimeout(() => {
       if (textareaRef.current) {
         const newPos = mentionState.startIndex + mention.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
-      }
-      if (shouldSend) {
-        // Use handleSendMessage via ref to avoid circular dependency
-        handleSendMessageRef.current?.();
       }
     }, 0);
   }, [mentionState, value, onChange]);
@@ -354,6 +347,14 @@ export function MessageInput({
   }, [value, attachments, disabled, onSend, onClearAttachments]);
 
   handleSendMessageRef.current = handleSendMessage;
+
+  // After mention insertion + React re-render with new value, send if Enter was pressed
+  useEffect(() => {
+    if (sendAfterMentionRef.current) {
+      sendAfterMentionRef.current = false;
+      handleSendMessageRef.current?.();
+    }
+  }, [value]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

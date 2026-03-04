@@ -228,7 +228,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       }
 
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
-      queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
+      queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
     } catch (error) {
       // 3. Rollback on failure
       console.error('[VoiceContext] Join failed, rolling back:', error);

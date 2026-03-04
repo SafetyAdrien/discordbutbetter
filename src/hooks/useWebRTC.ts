@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PeerConnection, SignalData, ConnectionStats } from '@/utils/webrtc/PeerConnection';
 import { SignalingService } from '@/utils/webrtc/SignalingService';
-import { mediaManager } from '@/utils/webrtc/MediaManager';
+import { mediaManager, ScreenShareOptions } from '@/utils/webrtc/MediaManager';
 
 interface PeerInfo {
   peerId: string;
@@ -40,7 +40,7 @@ export interface UseWebRTCReturn {
   // Screen Share
   isScreenSharing: boolean;
   localScreenStream: MediaStream | null;
-  startScreenShare: () => Promise<void>;
+  startScreenShare: (options?: ScreenShareOptions) => Promise<void>;
   stopScreenShare: () => void;
   // Remote video/screen streams
   remoteVideoStreams: Map<string, MediaStream>;
@@ -543,9 +543,9 @@ export function useWebRTC(): UseWebRTCReturn {
   }, [user?.id]);
 
   // Start screen share
-  const startScreenShare = useCallback(async () => {
+  const startScreenShare = useCallback(async (options?: ScreenShareOptions) => {
     try {
-      const stream = await mediaManager.startScreenShare();
+      const stream = await mediaManager.startScreenShare(options);
       setLocalScreenStream(stream);
       setIsScreenSharing(true);
 
@@ -554,8 +554,14 @@ export function useWebRTC(): UseWebRTCReturn {
         stopScreenShare();
       };
 
-      // Add to all peer connections
+      // Get encoding options based on quality preset
+      const encodingOpts = mediaManager.getScreenShareEncodingOptions();
+
+      // Add to all peer connections with encoding params
       for (const [, pc] of peersRef.current.entries()) {
+        if (encodingOpts) {
+          pc.setScreenShareEncoding(encodingOpts);
+        }
         pc.addVideoStream(stream, 'screen');
         await pc.createOffer();
       }

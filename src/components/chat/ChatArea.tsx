@@ -87,6 +87,7 @@ import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { LinkEmbeds } from "@/components/chat/LinkEmbed";
+import { useChannelDetails } from "@/hooks/useChannelSettings";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -421,6 +422,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
   const deletePoll = useDeletePoll();
+
+  // Channel details (for slowmode)
+  const { data: channelDetails } = useChannelDetails(channel.id);
 
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
@@ -909,7 +913,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </ScrollArea>
             </PopoverContent>
           </Popover>
-
 
           {/* Members Toggle / Thread Close */}
           <Tooltip>
@@ -1589,6 +1592,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           canAttachFiles={canAttachFiles}
           canCreatePolls={canCreatePolls}
           canMentionEveryone={canMentionEveryone}
+          slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
         />
       </div>
 

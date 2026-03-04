@@ -13,6 +13,7 @@ export interface ChannelDetails {
   server_id: string;
   category_id: string | null;
   position: number | null;
+  slowmode_seconds: number;
 }
 
 export function useChannelDetails(channelId: string | null) {
@@ -50,7 +51,7 @@ export function useChannelDetails(channelId: string | null) {
 
       const { data, error } = await supabase
         .from('channels')
-        .select('id, name, description, type, server_id, category_id, position')
+        .select('id, name, description, type, server_id, category_id, position, slowmode_seconds')
         .eq('id', channelId)
         .single();
 
@@ -65,16 +66,18 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, serverId, name, description, type }: { 
+    mutationFn: async ({ channelId, serverId, name, description, type, slowmode_seconds }: { 
       channelId: string; 
       serverId: string; 
       name: string; 
       description?: string | null;
       type?: 'text' | 'announcement';
+      slowmode_seconds?: number;
     }) => {
-      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement' } = { name };
+      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number } = { name };
       if (description !== undefined) updateData.description = description;
       if (type) updateData.type = type;
+      if (slowmode_seconds !== undefined) updateData.slowmode_seconds = slowmode_seconds;
 
       const { error } = await supabase
         .from('channels')
@@ -82,7 +85,7 @@ export function useUpdateChannel() {
         .eq('id', channelId);
 
       if (error) throw error;
-      return { channelId, serverId, name, description, type };
+      return { channelId, serverId, name, description, type, slowmode_seconds };
     },
     onMutate: async ({ channelId, serverId, name, description, type }) => {
       await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });

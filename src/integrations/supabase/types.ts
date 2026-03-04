@@ -528,6 +528,7 @@ export type Database = {
           name: string
           position: number | null
           server_id: string
+          slowmode_seconds: number
           type: Database["public"]["Enums"]["channel_type"] | null
         }
         Insert: {
@@ -539,6 +540,7 @@ export type Database = {
           name: string
           position?: number | null
           server_id: string
+          slowmode_seconds?: number
           type?: Database["public"]["Enums"]["channel_type"] | null
         }
         Update: {
@@ -550,6 +552,7 @@ export type Database = {
           name?: string
           position?: number | null
           server_id?: string
+          slowmode_seconds?: number
           type?: Database["public"]["Enums"]["channel_type"] | null
         }
         Relationships: [

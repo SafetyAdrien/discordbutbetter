@@ -241,22 +241,31 @@ export function MessageInput({
     }
   }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
 
-  const handleMentionSelect = useCallback((mention: string, displayText: string) => {
+  const sendAfterMentionRef = useRef(false);
+  const handleSendMessageRef = useRef<(() => void) | null>(null);
+  const handleMentionSelect = useCallback((mention: string, _displayText: string) => {
     if (!mentionState || !textareaRef.current) return;
     
     const before = value.slice(0, mentionState.startIndex);
     const after = value.slice(textareaRef.current.selectionStart);
     const newValue = before + mention + ' ' + after;
     
+    const shouldSend = sendAfterMentionRef.current;
+    sendAfterMentionRef.current = false;
+    
     onChange(newValue);
     setMentionState(null);
     
-    // Set cursor position after the mention
+    // Set cursor position after the mention, then send if Enter was pressed
     setTimeout(() => {
       if (textareaRef.current) {
         const newPos = mentionState.startIndex + mention.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
+      }
+      if (shouldSend) {
+        // Use handleSendMessage via ref to avoid circular dependency
+        handleSendMessageRef.current?.();
       }
     }, 0);
   }, [mentionState, value, onChange]);
@@ -302,6 +311,10 @@ export function MessageInput({
       }
       if (e.key === 'Tab' || (e.key === 'Enter' && count > 0)) {
         e.preventDefault();
+        // If Enter, flag to send after mention insertion
+        if (e.key === 'Enter') {
+          sendAfterMentionRef.current = true;
+        }
         // Trigger selection of current item - handled by MentionAutocomplete
         const autocompleteContainer = document.querySelector('[data-mention-item]');
         if (autocompleteContainer) {
@@ -339,6 +352,8 @@ export function MessageInput({
       onClearAttachments?.();
     }
   }, [value, attachments, disabled, onSend, onClearAttachments]);
+
+  handleSendMessageRef.current = handleSendMessage;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

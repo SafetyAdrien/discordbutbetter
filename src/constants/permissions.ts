@@ -23,10 +23,8 @@ export type ServerPermission = DBPermission |
   // Forum
   'create_forum_posts' | 'manage_forum_posts' | 'pin_forum_posts' | 'archive_forum_posts' |
   'lock_forum_posts' | 'add_forum_tags' | 'manage_forum_tags' | 'moderate_forum' |
-  // Announcement
-  'publish_messages' | 'manage_announcements' | 'follow_announcements' | 'create_announcements' |
-  'edit_announcements' | 'delete_announcements' | 'pin_announcements' | 'feature_announcements' |
-  'moderate_announcements' | 'view_announcement_analytics' |
+  // Announcement (only extras beyond text)
+  'publish_messages' | 'follow_announcements' |
   // Media
   'upload_media' | 'download_media' | 'manage_media' | 'create_albums' | 'delete_albums' |
   'organize_media' | 'tag_media' | 'share_media' | 'moderate_media' | 'view_media_analytics' |
@@ -172,16 +170,8 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     id: 'announcement',
     label: 'Annonces',
     permissions: [
-      { key: 'create_announcements', label: 'Créer des annonces', description: 'Publier de nouvelles annonces' },
-      { key: 'edit_announcements', label: 'Modifier les annonces', description: 'Éditer les annonces existantes' },
-      { key: 'delete_announcements', label: 'Supprimer les annonces', description: 'Supprimer des annonces' },
       { key: 'publish_messages', label: 'Publier vers d\'autres serveurs', description: 'Diffuser vers les serveurs suiveurs' },
       { key: 'follow_announcements', label: 'Suivre les annonces', description: 'Configurer le suivi des annonces' },
-      { key: 'pin_announcements', label: 'Épingler des annonces', description: 'Mettre en avant des annonces' },
-      { key: 'feature_announcements', label: 'Mettre en vedette', description: 'Afficher en évidence' },
-      { key: 'moderate_announcements', label: 'Modérer les annonces', description: 'Modération complète' },
-      { key: 'view_announcement_analytics', label: 'Voir les statistiques', description: 'Accéder aux analytics' },
-      { key: 'manage_announcements', label: 'Gérer les annonces', description: 'Administration complète des annonces' },
     ],
   },
   {
@@ -255,7 +245,7 @@ export const CHANNEL_TYPE_CATEGORIES: Record<ChannelType, string[]> = {
   text: ['general', 'text', 'threads', 'polls'],
   voice: ['general', 'voice', 'text'],
   forum: ['general', 'forum', 'threads'],
-  announcement: ['general', 'announcement', 'text', 'threads', 'polls'],
+  announcement: ['general', 'text', 'announcement', 'threads', 'polls'],
   media: ['general', 'media'],
   calendar: ['general', 'calendar'],
   tasks: ['general', 'tasks'],

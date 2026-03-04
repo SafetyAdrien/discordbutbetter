@@ -1,47 +1,61 @@
 
 
-## Plan: Aligner les permissions du salon Annonces sur celles du salon Texte
+# Fix: Duplicated channel hidden by visibility filter
 
-Le salon Annonces est fonctionnellement identique au salon Texte (avec le suivi/publication en plus). Les permissions announcement-specific (`create_announcements`, `edit_announcements`, `delete_announcements`, `moderate_announcements`, etc.) sont obsoletes et doivent etre remplacees par les permissions textuelles standard.
+## Root cause
 
-### Changements
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-**1. `src/components/channels/AnnouncementChannel.tsx`**
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Remplacer le bloc de permissions (lignes 216-251) pour utiliser exactement les memes permissions que `ChatArea.tsx` + `publish_messages` et `follow_announcements` (les 2 seules specificites annonces conservees):
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-```typescript
-const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
-  'send_messages',
-  'attach_files',
-  'add_reactions',
-  'create_polls',
-  'mention_everyone',
-  'create_public_threads',
-  'manage_messages',
-  'manage_channels',
-  // Announcement-only extras
-  'publish_messages',
-  'follow_announcements',
-]);
+## Fix
 
-const canSendMessages = isAdminOrOwner || canPerm('send_messages');
-const canAttachFiles = isAdminOrOwner || canPerm('attach_files');
-const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
-const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
-const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
-const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
-// Announcement extras
-const canPublishMessages = isAdminOrOwner || canPerm('publish_messages');
-const canFollowAnnouncements = isAdminOrOwner || canPerm('follow_announcements');
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-Remove all references to `canCreateAnnouncements`, `canEditAnnouncements`, `canDeleteAnnouncements`, `canPinAnnouncements`, `canModerateAnnouncements`, `canManageAnnouncements`. Replace their usages in the template with standard equivalents (`canManageMessages` for edit/delete/pin of others' messages, `canSendMessages` for creating content).
+### Code for onSuccess addition
 
-**2. `src/constants/permissions.ts`**
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-- Remove the entire `announcement` permission category (lines 172-186) since those permissions are now covered by `text` + `general` + `moderation`.
-- Update `CHANNEL_TYPE_CATEGORIES.announcement` from `['general', 'announcement', 'text', 'threads', 'polls']` to `['general', 'text', 'threads', 'polls']` (same as text channels).
-- Remove `'announcement'` from `ROLE_PERMISSION_CATEGORIES`.
-- Clean up the `ServerPermission` type to remove the announcement-specific union members (keep only `publish_messages` and `follow_announcements`).
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

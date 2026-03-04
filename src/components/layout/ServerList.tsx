@@ -142,6 +142,13 @@ function SortableServerIcon({
                   </span>
                 )}
 
+                {/* Voice activity badge - top right */}
+                {voiceParticipants && voiceParticipants.length > 0 && mentionCount === 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-sidebar">
+                    <Volume2 className="w-2.5 h-2.5 text-white" />
+                  </div>
+                )}
+
                 {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
                 {mentionCount > 0 && (
                   <div className={cn(
@@ -158,25 +165,21 @@ function SortableServerIcon({
             <p className="font-semibold">{server.name}</p>
             {voiceParticipants && voiceParticipants.length > 0 && (
               <div className="mt-1.5 pt-1.5 border-t border-border/50">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                  <Volume2 className="w-3 h-3" />
-                  <span>En vocal</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {voiceParticipants.slice(0, 3).map((p) => (
-                    <div key={p.user_id} className="flex items-center gap-1.5">
-                      <Avatar className="w-4 h-4">
+                <div className="flex items-center gap-1.5">
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <div className="flex items-center -space-x-1.5">
+                    {voiceParticipants.slice(0, 3).map((p) => (
+                      <Avatar key={p.user_id} className="w-4 h-4 border border-popover">
                         {p.avatar_url && <AvatarImage src={p.avatar_url} />}
-                        <AvatarFallback className="text-[8px]">
+                        <AvatarFallback className="text-[7px] bg-muted">
                           {p.display_name.slice(0, 1).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs truncate">{p.display_name}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                   {voiceParticipants.length > 3 && (
-                    <span className="text-xs text-muted-foreground ml-5">
-                      +{voiceParticipants.length - 3} en vocal
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      +{voiceParticipants.length - 3}
                     </span>
                   )}
                 </div>

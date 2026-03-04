@@ -5,6 +5,47 @@ import type { Database } from '@/integrations/supabase/types';
 
 type ServerPermission = Database['public']['Enums']['server_permission'];
 
+// ── sessionStorage permission cache helpers ──
+// Persists permission results so that on hard refresh (CTRL+F5),
+// the last-known value is used instead of optimistic `true`.
+const PERM_CACHE_PREFIX = 'perm:';
+
+function getPermissionCache(key: string): boolean | null {
+  try {
+    const raw = sessionStorage.getItem(PERM_CACHE_PREFIX + key);
+    if (raw === null) return null;
+    return raw === '1';
+  } catch {
+    return null;
+  }
+}
+
+function setPermissionCache(key: string, value: boolean): void {
+  try {
+    sessionStorage.setItem(PERM_CACHE_PREFIX + key, value ? '1' : '0');
+  } catch {
+    // quota exceeded or private browsing – ignore
+  }
+}
+
+function getPermissionsObjectCache(channelId: string): UserChannelPermissions | null {
+  try {
+    const raw = sessionStorage.getItem(PERM_CACHE_PREFIX + 'obj:' + channelId);
+    if (!raw) return null;
+    return JSON.parse(raw) as UserChannelPermissions;
+  } catch {
+    return null;
+  }
+}
+
+function setPermissionsObjectCache(channelId: string, perms: UserChannelPermissions): void {
+  try {
+    sessionStorage.setItem(PERM_CACHE_PREFIX + 'obj:' + channelId, JSON.stringify(perms));
+  } catch {
+    // ignore
+  }
+}
+
 export interface UserChannelPermissions {
   canReadMessages: boolean;
   canSendMessages: boolean;

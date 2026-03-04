@@ -5,10 +5,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { 
   Mic, MicOff, Video, VideoOff, MonitorUp, 
   PhoneOff, MessageSquare, Users, MoreHorizontal,
-  ChevronDown, ShieldCheck
+  ChevronDown
 } from 'lucide-react';
 import { ScreenShareQualityModal } from './ScreenShareQualityModal';
+import { MicrophoneSettingsPopover } from './MicrophoneSettingsPopover';
 import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
+import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 
 interface VoiceActionBarProps {
   isMuted: boolean;
@@ -25,14 +27,19 @@ interface VoiceActionBarProps {
   onToggleMembers: () => void;
   onDisconnect: () => void;
   hasMicrophoneAccess: boolean;
-  // Permission props
   canSpeak?: boolean;
   canVideo?: boolean;
   canStream?: boolean;
-  // Noise suppression
-  noiseSuppression?: string;
-  onToggleNoiseSuppression?: () => void;
-  rnnoiseAvailable?: boolean;
+  // Mic settings
+  micVolume: number;
+  onMicVolumeChange: (v: number) => void;
+  vadSensitivity: VADSensitivity;
+  onVadSensitivityChange: (s: VADSensitivity) => void;
+  noiseSuppression: NoiseSuppressonMode;
+  onNoiseSuppressionChange: (m: NoiseSuppressonMode) => void;
+  rnnoiseAvailable: boolean;
+  audioFilters: { deEsser: boolean; lowShelf: boolean; highPass: boolean };
+  onAudioFilterChange: (filter: 'deEsser' | 'lowShelf' | 'highPass', enabled: boolean) => void;
 }
 
 export function VoiceActionBar({
@@ -53,17 +60,23 @@ export function VoiceActionBar({
   canSpeak = true,
   canVideo = true,
   canStream = true,
+  micVolume,
+  onMicVolumeChange,
+  vadSensitivity,
+  onVadSensitivityChange,
   noiseSuppression,
-  onToggleNoiseSuppression,
-  rnnoiseAvailable = false,
+  onNoiseSuppressionChange,
+  rnnoiseAvailable,
+  audioFilters,
+  onAudioFilterChange,
 }: VoiceActionBarProps) {
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
 
   const handleScreenShareClick = () => {
     if (isScreenSharing) {
-      onToggleScreenShare(); // Stop
+      onToggleScreenShare();
     } else {
-      setShowScreenShareModal(true); // Open quality modal
+      setShowScreenShareModal(true);
     }
   };
 
@@ -76,7 +89,7 @@ export function VoiceActionBar({
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
         <div className="flex items-center justify-center gap-2">
           <TooltipProvider>
-            {/* Group 1: Mic & Camera with dropdowns */}
+            {/* Group 1: Mic & Camera */}
             <div className="flex items-center bg-[hsl(var(--surface-elevated))] rounded-lg overflow-hidden">
               {/* Mute Button */}
               <Tooltip>
@@ -92,7 +105,6 @@ export function VoiceActionBar({
                     disabled={!canSpeak}
                   >
                     {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -100,7 +112,30 @@ export function VoiceActionBar({
                 </TooltipContent>
               </Tooltip>
 
-              {/* Divider */}
+              {/* Mic Settings Chevron */}
+              <MicrophoneSettingsPopover
+                micVolume={micVolume}
+                onMicVolumeChange={onMicVolumeChange}
+                vadSensitivity={vadSensitivity}
+                onVadSensitivityChange={onVadSensitivityChange}
+                noiseSuppression={noiseSuppression}
+                onNoiseSuppressionChange={onNoiseSuppressionChange}
+                rnnoiseAvailable={rnnoiseAvailable}
+                enableDeEsser={audioFilters.deEsser}
+                onToggleDeEsser={(v) => onAudioFilterChange('deEsser', v)}
+                enableLowShelf={audioFilters.lowShelf}
+                onToggleLowShelf={(v) => onAudioFilterChange('lowShelf', v)}
+                enableHighPass={audioFilters.highPass}
+                onToggleHighPass={(v) => onAudioFilterChange('highPass', v)}
+              >
+                <Button
+                  variant="ghost"
+                  className="h-11 w-6 px-0 rounded-none hover:bg-white/10 border-l border-white/10"
+                >
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </Button>
+              </MicrophoneSettingsPopover>
+
               <div className="w-px h-6 bg-white/10" />
 
               {/* Camera Button */}
@@ -117,7 +152,6 @@ export function VoiceActionBar({
                     disabled={!canVideo}
                   >
                     {isCameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-                    <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -126,9 +160,8 @@ export function VoiceActionBar({
               </Tooltip>
             </div>
 
-            {/* Group 2: Chat, Members, Screen Share, Krisp, More */}
+            {/* Group 2: Chat, Members, Screen Share, More */}
             <div className="flex items-center bg-[hsl(var(--surface-elevated))] rounded-lg overflow-hidden">
-              {/* Chat Toggle */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -145,7 +178,6 @@ export function VoiceActionBar({
                 <TooltipContent>Chat textuel</TooltipContent>
               </Tooltip>
 
-              {/* Members Toggle */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -162,7 +194,6 @@ export function VoiceActionBar({
                 <TooltipContent>Membres</TooltipContent>
               </Tooltip>
 
-              {/* Screen Share */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -183,28 +214,6 @@ export function VoiceActionBar({
                 </TooltipContent>
               </Tooltip>
 
-              {/* Krisp / Noise Suppression */}
-              {rnnoiseAvailable && onToggleNoiseSuppression && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        'h-11 px-3 rounded-none hover:bg-white/10 active:bg-white/20 transition-colors duration-150',
-                        noiseSuppression !== 'off' && 'text-[hsl(var(--online))]'
-                      )}
-                      onClick={onToggleNoiseSuppression}
-                    >
-                      <ShieldCheck className="w-5 h-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Krisp {noiseSuppression === 'off' ? '(désactivé)' : noiseSuppression === 'low' ? '(faible)' : '(fort)'}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* More Options */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -218,7 +227,7 @@ export function VoiceActionBar({
               </Tooltip>
             </div>
 
-            {/* Disconnect Button */}
+            {/* Disconnect */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

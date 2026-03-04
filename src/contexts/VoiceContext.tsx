@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { soundEffects } from '@/utils/audio/SoundEffects';
-import { audioProcessor, type NoiseSuppressonMode } from '@/utils/webrtc/AudioProcessor';
+import { audioProcessor, type NoiseSuppressonMode, type VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
 
 // Re-export useVoiceParticipants from dedicated hook file
@@ -53,6 +53,15 @@ interface VoiceContextType {
   noiseSuppression: NoiseSuppressonMode;
   setNoiseSuppression: (mode: NoiseSuppressonMode) => void;
   rnnoiseAvailable: boolean;
+  // Mic volume
+  micVolume: number;
+  setMicVolume: (vol: number) => void;
+  // VAD sensitivity
+  vadSensitivity: import('@/utils/webrtc/AudioProcessor').VADSensitivity;
+  setVadSensitivity: (s: import('@/utils/webrtc/AudioProcessor').VADSensitivity) => void;
+  // Audio filters
+  audioFilters: { deEsser: boolean; lowShelf: boolean; highPass: boolean };
+  setAudioFilter: (filter: 'deEsser' | 'lowShelf' | 'highPass', enabled: boolean) => void;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -70,6 +79,28 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try {
       return (localStorage.getItem('voice-noise-suppression') as NoiseSuppressonMode) || 'high';
     } catch { return 'high'; }
+  });
+
+  // Mic volume (persisted)
+  const [micVolume, setMicVolumeState] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('voice-mic-volume') || '100', 10);
+    } catch { return 100; }
+  });
+
+  // VAD sensitivity (persisted)
+  const [vadSensitivity, setVadSensitivityState] = useState<VADSensitivity>(() => {
+    try {
+      return (localStorage.getItem('voice-vad-sensitivity') as VADSensitivity) || 'high';
+    } catch { return 'high'; }
+  });
+
+  // Audio filters (persisted)
+  const [audioFilters, setAudioFilters] = useState(() => {
+    try {
+      const stored = localStorage.getItem('voice-audio-filters');
+      return stored ? JSON.parse(stored) : { deEsser: true, lowShelf: true, highPass: true };
+    } catch { return { deEsser: true, lowShelf: true, highPass: true }; }
   });
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
@@ -323,7 +354,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, [user, voiceState.channelName, voiceState.channelId, webrtc, queryClient]);
 
   const toggleMute = useCallback(async () => {
-    if (!user || !voiceState.channelId) return;
+    if (!user) return;
+    // Allow pre-mute when not connected
+    if (!voiceState.channelId) {
+      setVoiceState(prev => ({ ...prev, isMuted: !prev.isMuted }));
+      !voiceState.isMuted ? soundEffects.playMute() : soundEffects.playUnmute();
+      return;
+    }
 
     const newMuted = !voiceState.isMuted;
 
@@ -354,7 +391,19 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, [user, voiceState.channelId, voiceState.isMuted, webrtc, queryClient]);
 
   const toggleDeafen = useCallback(async () => {
-    if (!user || !voiceState.channelId) return;
+    if (!user) return;
+    // Allow pre-deafen when not connected
+    if (!voiceState.channelId) {
+      const newDeafened = !voiceState.isDeafened;
+      if (newDeafened) {
+        wasMutedBeforeDeafenRef.current = voiceState.isMuted;
+        setVoiceState(prev => ({ ...prev, isDeafened: true, isMuted: true }));
+      } else {
+        setVoiceState(prev => ({ ...prev, isDeafened: false, isMuted: wasMutedBeforeDeafenRef.current }));
+      }
+      newDeafened ? soundEffects.playDeafen() : soundEffects.playUndeafen();
+      return;
+    }
 
     const newDeafened = !voiceState.isDeafened;
     const updates: { deafened: boolean; muted?: boolean } = { deafened: newDeafened };
@@ -513,6 +562,29 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem('voice-noise-suppression', mode); } catch {}
   }, []);
 
+  const setMicVolume = useCallback((vol: number) => {
+    setMicVolumeState(vol);
+    audioProcessor.setInputGain(vol);
+    try { localStorage.setItem('voice-mic-volume', String(vol)); } catch {}
+  }, []);
+
+  const setVadSensitivity = useCallback((s: VADSensitivity) => {
+    setVadSensitivityState(s);
+    audioProcessor.setVADSensitivity(s);
+    try { localStorage.setItem('voice-vad-sensitivity', s); } catch {}
+  }, []);
+
+  const setAudioFilter = useCallback((filter: 'deEsser' | 'lowShelf' | 'highPass', enabled: boolean) => {
+    setAudioFilters((prev: any) => {
+      const next = { ...prev, [filter]: enabled };
+      try { localStorage.setItem('voice-audio-filters', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    if (filter === 'deEsser') audioProcessor.setDeEsserEnabled(enabled);
+    if (filter === 'lowShelf') audioProcessor.setLowShelfEnabled(enabled);
+    if (filter === 'highPass') audioProcessor.setHighPassEnabled(enabled);
+  }, []);
+
   return (
     <VoiceContext.Provider
       value={{
@@ -548,6 +620,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         noiseSuppression,
         setNoiseSuppression,
         rnnoiseAvailable: audioProcessor.rnnoiseAvailable,
+        // Mic volume
+        micVolume,
+        setMicVolume,
+        // VAD
+        vadSensitivity,
+        setVadSensitivity,
+        // Audio filters
+        audioFilters,
+        setAudioFilter,
       }}
     >
       {children}
@@ -583,6 +664,12 @@ const defaultVoiceContext: VoiceContextType = {
   noiseSuppression: 'high',
   setNoiseSuppression: () => {},
   rnnoiseAvailable: false,
+  micVolume: 100,
+  setMicVolume: () => {},
+  vadSensitivity: 'high',
+  setVadSensitivity: () => {},
+  audioFilters: { deEsser: true, lowShelf: true, highPass: true },
+  setAudioFilter: () => {},
 };
 
 export function useVoice() {

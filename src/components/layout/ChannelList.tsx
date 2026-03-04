@@ -17,7 +17,8 @@ import {
   LogOut,
   Copy,
   Headphones,
-  MessageSquare } from
+  MessageSquare,
+  Video as VideoIcon } from
 "lucide-react";
 import { ServerSettingsQuickMenu } from "@/components/server-settings/ServerSettingsQuickMenu";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
@@ -575,6 +576,10 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                       </AvatarFallback>
                     </Avatar>
                     <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
+                    {participant.camera && <VideoIcon className="w-3 h-3 text-muted-foreground" />}
+                    {participant.streaming && (
+                      <span className="px-1 py-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground rounded">DIRECT</span>
+                    )}
                     {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
                     {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
                   </div>);

@@ -14,6 +14,8 @@ interface UseDMCallWebRTCReturn {
   remoteVideoStream: MediaStream | null;
   localVideoStream: MediaStream | null;
   connectionStats: ConnectionStats | null;
+  remoteMuted: boolean;
+  remoteVideoOff: boolean;
   connect: (callId: string, remoteUserId: string, isInitiator: boolean) => Promise<void>;
   disconnect: () => Promise<void>;
   toggleMute: () => void;

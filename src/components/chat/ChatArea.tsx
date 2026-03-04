@@ -87,6 +87,7 @@ import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { LinkEmbeds } from "@/components/chat/LinkEmbed";
+import { useChannelDetails } from "@/hooks/useChannelSettings";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -1589,6 +1590,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           canAttachFiles={canAttachFiles}
           canCreatePolls={canCreatePolls}
           canMentionEveryone={canMentionEveryone}
+          slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
         />
       </div>
 

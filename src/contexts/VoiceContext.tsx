@@ -382,6 +382,36 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, [webrtc]);
 
   // Toggle camera
+  // Cleanup voice_states on tab close / component unmount
+  const voiceStateRef = useRef(voiceState);
+  const userRef = useRef(user);
+  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const currentUser = userRef.current;
+      const currentChannelId = voiceStateRef.current.channelId;
+      if (!currentUser || !currentChannelId) return;
+
+      // Use fetch with keepalive to ensure the request completes even as the page closes
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/voice_states?user_id=eq.${currentUser.id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const toggleCamera = useCallback(async () => {
     try {
       if (webrtc.isCameraActive) {

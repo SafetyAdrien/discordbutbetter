@@ -49,6 +49,8 @@ export function usePreloader(
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [dmsLoaded, setDmsLoaded] = useState(false);
+  const [serverOrderLoaded, setServerOrderLoaded] = useState(false);
+  const [channelPermsLoaded, setChannelPermsLoaded] = useState(false);
   const [minTimePassed, setMinTimePassed] = useState(false);
 
   const hasStarted = useRef(false);

@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { soundEffects } from '@/utils/audio/SoundEffects';
+import { audioProcessor, type NoiseSuppressonMode } from '@/utils/webrtc/AudioProcessor';
+import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
 
 // Re-export useVoiceParticipants from dedicated hook file
 export { useVoiceParticipants } from '@/hooks/useVoiceParticipants';
@@ -41,12 +43,16 @@ interface VoiceContextType {
   // Screen Share
   isScreenSharing: boolean;
   localScreenStream: MediaStream | null;
-  toggleScreenShare: () => Promise<void>;
+  toggleScreenShare: (options?: ScreenShareOptions) => Promise<void>;
   // Remote streams
   remoteVideoStreams: Map<string, MediaStream>;
   remoteScreenStreams: Map<string, MediaStream>;
   // Connection stats
   connectionStats: import('@/utils/webrtc/PeerConnection').ConnectionStats | null;
+  // Noise suppression
+  noiseSuppression: NoiseSuppressonMode;
+  setNoiseSuppression: (mode: NoiseSuppressonMode) => void;
+  rnnoiseAvailable: boolean;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -58,6 +64,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
   const [audioLevels, setAudioLevels] = useState<Map<string, number>>(new Map());
   const [localAudioLevel, setLocalAudioLevel] = useState(0);
+  
+  // Noise suppression state (persisted in localStorage)
+  const [noiseSuppression, setNoiseSuppressionState] = useState<NoiseSuppressonMode>(() => {
+    try {
+      return (localStorage.getItem('voice-noise-suppression') as NoiseSuppressonMode) || 'high';
+    } catch { return 'high'; }
+  });
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
     channelId: null,
@@ -480,20 +493,25 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, [webrtc]);
 
   // Toggle screen share
-  const toggleScreenShare = useCallback(async () => {
+  const toggleScreenShare = useCallback(async (options?: ScreenShareOptions) => {
     try {
       if (webrtc.isScreenSharing) {
         webrtc.stopScreenShare();
         toast.success('Partage d\'écran arrêté');
       } else {
-        await webrtc.startScreenShare();
+        await webrtc.startScreenShare(options);
         toast.success('Partage d\'écran démarré');
       }
     } catch (error) {
-      // User cancelled the screen share dialog
       console.log('[VoiceContext] Screen share cancelled or failed');
     }
   }, [webrtc]);
+
+  const setNoiseSuppression = useCallback((mode: NoiseSuppressonMode) => {
+    setNoiseSuppressionState(mode);
+    audioProcessor.setNoiseSuppression(mode);
+    try { localStorage.setItem('voice-noise-suppression', mode); } catch {}
+  }, []);
 
   return (
     <VoiceContext.Provider
@@ -526,6 +544,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         remoteScreenStreams: webrtc.remoteScreenStreams,
         // Connection stats
         connectionStats: webrtc.connectionStats,
+        // Noise suppression
+        noiseSuppression,
+        setNoiseSuppression,
+        rnnoiseAvailable: audioProcessor.rnnoiseAvailable,
       }}
     >
       {children}
@@ -558,6 +580,9 @@ const defaultVoiceContext: VoiceContextType = {
   remoteVideoStreams: new Map(),
   remoteScreenStreams: new Map(),
   connectionStats: null,
+  noiseSuppression: 'high',
+  setNoiseSuppression: () => {},
+  rnnoiseAvailable: false,
 };
 
 export function useVoice() {

@@ -1,10 +1,17 @@
-import { audioProcessor, AudioProcessor } from './AudioProcessor';
+import { audioProcessor } from './AudioProcessor';
 
 export type StreamType = 'audio' | 'camera' | 'screen';
 
 export interface StreamInfo {
   stream: MediaStream;
   type: StreamType;
+}
+
+export interface ScreenShareOptions {
+  quality: 'low' | 'medium' | 'high';
+  frameRate: number;
+  audio: boolean;
+  cursor: 'always' | 'motion' | 'never';
 }
 
 interface RemoteAudioContext {
@@ -26,7 +33,14 @@ const VOICE_FREQ_HIGH = 300;
 const FORMANT_FREQ_LOW = 300;
 const FORMANT_FREQ_HIGH = 3400;
 const SPECTRAL_HISTORY_SIZE = 4;
-const SPEAKING_HOLD_MS = 200;
+const SPEAKING_HOLD_MS = 150; // More responsive for remote peers
+
+// Screen share quality presets
+const SCREEN_SHARE_PRESETS: Record<ScreenShareOptions['quality'], { width: number; height: number; defaultFps: number; maxBitrate: number }> = {
+  low:    { width: 1280, height: 720,  defaultFps: 15, maxBitrate: 1_500_000 },
+  medium: { width: 1920, height: 1080, defaultFps: 30, maxBitrate: 3_000_000 },
+  high:   { width: 2560, height: 1440, defaultFps: 60, maxBitrate: 5_000_000 },
+};
 
 export class MediaManager {
   private audioContext: AudioContext | null = null;
@@ -49,12 +63,16 @@ export class MediaManager {
   private isPushToTalkMode = false;
   private isPushToTalkActive = false;
 
+  // Last screen share options for encoding params
+  private _lastScreenShareOptions: ScreenShareOptions | null = null;
+
   // AudioProcessor handles RNNoise + spectral VAD for local mic
   private _audioProcessorActive = false;
 
   // Callbacks for stream updates
   private onRemoteVideoChange: ((peerId: string, stream: MediaStream | null) => void) | null = null;
   private onRemoteScreenChange: ((peerId: string, stream: MediaStream | null) => void) | null = null;
+  private onScreenShareEnded: (() => void) | null = null;
 
   get hasMicrophoneAccess(): boolean {
     return this._hasMicrophoneAccess;
@@ -72,12 +90,20 @@ export class MediaManager {
     return this._audioProcessorActive;
   }
 
+  get lastScreenShareOptions(): ScreenShareOptions | null {
+    return this._lastScreenShareOptions;
+  }
+
   setRemoteStreamCallbacks(
     onVideo: (peerId: string, stream: MediaStream | null) => void,
     onScreen: (peerId: string, stream: MediaStream | null) => void
   ): void {
     this.onRemoteVideoChange = onVideo;
     this.onRemoteScreenChange = onScreen;
+  }
+
+  setScreenShareEndedCallback(cb: () => void): void {
+    this.onScreenShareEnded = cb;
   }
 
   async initialize(): Promise<void> {
@@ -108,19 +134,17 @@ export class MediaManager {
         this._audioProcessorActive = true;
         console.log('[MediaManager] Microphone started with RNNoise processing');
       } catch (processingError) {
-        // Fallback to raw stream if AudioProcessor fails
         console.warn('[MediaManager] AudioProcessor failed, using raw stream:', processingError);
         this.localAudioStream = rawStream;
         this._audioProcessorActive = false;
       }
 
-      // The analyser is now inside AudioProcessor; no need for a separate one
-      // But keep a local reference for backward compat
+      // Local analyser for backward compat
       await this.initialize();
       if (this.audioContext && this.localAudioStream) {
         const source = this.audioContext.createMediaStreamSource(this.localAudioStream);
         this.analyser = this.audioContext.createAnalyser();
-        this.analyser.fftSize = 2048;
+        this.analyser.fftSize = 4096; // Better frequency resolution
         this.analyser.smoothingTimeConstant = 0.3;
         source.connect(this.analyser);
       }
@@ -234,23 +258,38 @@ export class MediaManager {
 
   // ==================== SCREEN SHARE ====================
 
-  async startScreenShare(): Promise<MediaStream> {
-    try {
-      this.localScreenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 },
-        },
-        audio: true,
-      });
+  async startScreenShare(options?: ScreenShareOptions): Promise<MediaStream> {
+    const opts = options || { quality: 'medium', frameRate: 30, audio: true, cursor: 'always' };
+    this._lastScreenShareOptions = opts;
 
-      this.localScreenStream.getVideoTracks()[0].onended = () => {
-        this.stopScreenShare();
+    const preset = SCREEN_SHARE_PRESETS[opts.quality];
+
+    try {
+      const displayMediaOptions: DisplayMediaStreamOptions = {
+        video: {
+          width: { ideal: preset.width },
+          height: { ideal: preset.height },
+          frameRate: { ideal: opts.frameRate || preset.defaultFps },
+        } as MediaTrackConstraints,
+        audio: opts.audio,
       };
+      this.localScreenStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+
+      // Set content hint for text/detail optimization
+      const videoTrack = this.localScreenStream.getVideoTracks()[0];
+      if (videoTrack) {
+        try {
+          (videoTrack as any).contentHint = 'detail';
+        } catch { /* contentHint not supported */ }
+
+        videoTrack.onended = () => {
+          this.stopScreenShare();
+          this.onScreenShareEnded?.();
+        };
+      }
 
       this._isScreenSharing = true;
-      console.log('[MediaManager] Screen share started successfully');
+      console.log('[MediaManager] Screen share started with quality:', opts.quality, 'fps:', opts.frameRate);
       return this.localScreenStream;
     } catch (error) {
       console.error('[MediaManager] Failed to start screen share:', error);
@@ -258,11 +297,24 @@ export class MediaManager {
     }
   }
 
+  /**
+   * Get encoding options for screen share based on last used options
+   */
+  getScreenShareEncodingOptions(): { maxBitrate: number; maxFramerate: number } | null {
+    if (!this._lastScreenShareOptions) return null;
+    const preset = SCREEN_SHARE_PRESETS[this._lastScreenShareOptions.quality];
+    return {
+      maxBitrate: preset.maxBitrate,
+      maxFramerate: this._lastScreenShareOptions.frameRate || preset.defaultFps,
+    };
+  }
+
   stopScreenShare(): void {
     if (this.localScreenStream) {
       this.localScreenStream.getTracks().forEach(track => track.stop());
       this.localScreenStream = null;
       this._isScreenSharing = false;
+      this._lastScreenShareOptions = null;
     }
   }
 
@@ -296,7 +348,7 @@ export class MediaManager {
       const context = new AudioContext();
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
-      analyser.fftSize = 1024; // 512 bins, ~47Hz resolution at 48kHz — good balance for remote VAD
+      analyser.fftSize = 2048; // 1024 bins — better resolution for remote VAD
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
       
@@ -330,9 +382,6 @@ export class MediaManager {
     this.remoteVADStates.delete(peerId);
   }
 
-  /**
-   * Get raw audio level for a remote peer (0-1)
-   */
   getRemoteAudioLevel(peerId: string): number {
     const entry = this.remoteAudioContexts.get(peerId);
     if (!entry) return 0;
@@ -340,7 +389,6 @@ export class MediaManager {
     const dataArray = new Uint8Array(entry.analyser.frequencyBinCount);
     entry.analyser.getByteFrequencyData(dataArray);
     
-    // RMS instead of simple average for better dynamic range
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
       const v = dataArray[i] / 255;
@@ -349,10 +397,6 @@ export class MediaManager {
     return Math.sqrt(sum / dataArray.length);
   }
 
-  /**
-   * Compute spectral voice score for a remote peer (0-1)
-   * Uses FFT to detect energy in vocal frequency bands vs total energy
-   */
   getRemoteSpectralVoiceScore(peerId: string): number {
     const entry = this.remoteAudioContexts.get(peerId);
     if (!entry) return 0;
@@ -388,7 +432,7 @@ export class MediaManager {
     const normalizedFormant = Math.min(1, formantRatio / 0.6);
     const rawScore = normalizedFundamental * 0.4 + normalizedFormant * 0.6;
 
-    // Smooth with history
+    // Exponential weighted smoothing
     let vad = this.remoteVADStates.get(peerId);
     if (!vad) {
       vad = { spectralHistory: [], speakingState: false, holdTimer: null };
@@ -399,13 +443,17 @@ export class MediaManager {
       vad.spectralHistory.shift();
     }
 
-    return vad.spectralHistory.reduce((a, b) => a + b, 0) / vad.spectralHistory.length;
+    let weightedSum = 0;
+    let weightTotal = 0;
+    for (let i = 0; i < vad.spectralHistory.length; i++) {
+      const weight = Math.pow(1.5, i);
+      weightedSum += vad.spectralHistory[i] * weight;
+      weightTotal += weight;
+    }
+
+    return Math.min(1, weightedSum / weightTotal);
   }
 
-  /**
-   * Combined VAD for remote peer: level + spectral analysis
-   * Returns { isSpeaking, level, spectralScore }
-   */
   getRemoteVADState(peerId: string, currentSpeaking: boolean, ambientLevel: number): { isSpeaking: boolean; level: number; spectralScore: number } {
     const level = this.getRemoteAudioLevel(peerId);
     const spectralScore = this.getRemoteSpectralVoiceScore(peerId);
@@ -416,8 +464,8 @@ export class MediaManager {
 
     const levelAboveStart = level > speakStartThreshold;
     const levelAboveStop = level >= speakStopThreshold;
-    const spectralIsVoice = spectralScore > 0.3;
-    const spectralStillVoice = spectralScore > 0.15;
+    const spectralIsVoice = spectralScore > 0.25;  // More sensitive
+    const spectralStillVoice = spectralScore > 0.12;
 
     let vad = this.remoteVADStates.get(peerId);
     if (!vad) {
@@ -441,7 +489,7 @@ export class MediaManager {
           vad!.holdTimer = null;
         }, SPEAKING_HOLD_MS);
       }
-      isSpeaking = vad.speakingState; // Still speaking during hold period
+      isSpeaking = vad.speakingState;
     } else if (vad.speakingState && levelAboveStop && spectralStillVoice) {
       if (vad.holdTimer) {
         clearTimeout(vad.holdTimer);
@@ -452,14 +500,10 @@ export class MediaManager {
     return { isSpeaking, level, spectralScore };
   }
 
-  /**
-   * Get local VAD state from AudioProcessor (uses spectral analysis + RNNoise)
-   */
   getLocalVADState() {
     if (this._audioProcessorActive) {
       return audioProcessor.getVADState();
     }
-    // Fallback: simple level-based
     const level = this.getAudioLevel();
     return { isSpeaking: level > 0.05, level, adaptiveThreshold: 0.05, spectralVoiceScore: 0 };
   }
@@ -543,7 +587,6 @@ export class MediaManager {
     });
     this.remoteAudioContexts.clear();
 
-    // Clean up VAD timers
     this.remoteVADStates.forEach(vad => {
       if (vad.holdTimer) clearTimeout(vad.holdTimer);
     });
@@ -562,6 +605,7 @@ export class MediaManager {
     this._isCameraActive = false;
     this._isScreenSharing = false;
     this._audioProcessorActive = false;
+    this._lastScreenShareOptions = null;
     console.log('[MediaManager] Cleaned up');
   }
 }

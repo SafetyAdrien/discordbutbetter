@@ -77,7 +77,7 @@ export function usePreloader(
     const preload = async () => {
       const serverIds = servers.map(s => s.id);
 
-      // 1. Preload profile
+      // 1. Preload profile + server order
       try {
         const { data: profile } = await supabase
           .from('profiles')
@@ -86,9 +86,12 @@ export function usePreloader(
           .single();
         if (profile) {
           queryClient.setQueryData(['profile', user.id], profile);
+          // Seed server order cache from profile
+          queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
         }
       } catch {}
       setProfileLoaded(true);
+      setServerOrderLoaded(true);
 
       // 2. Preload channels for ALL servers
       try {

@@ -409,18 +409,30 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   // Cleanup voice_states on tab close / component unmount
   const voiceStateRef = useRef(voiceState);
   const userRef = useRef(user);
+  const sessionTokenRef = useRef<string | null>(null);
   useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
   useEffect(() => { userRef.current = user; }, [user]);
 
+  // Keep session token cached for beforeunload (can't await in sync handler)
   useEffect(() => {
-    const handleBeforeUnload = async () => {
+    const updateToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      sessionTokenRef.current = session?.access_token || null;
+    };
+    updateToken();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      sessionTokenRef.current = session?.access_token || null;
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
       const currentUser = userRef.current;
       const currentChannelId = voiceStateRef.current.channelId;
       if (!currentUser || !currentChannelId) return;
 
-      // Get the actual user session token for RLS auth
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const token = sessionTokenRef.current || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       // Use fetch with keepalive to ensure the request completes even as the page closes
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/voice_states?user_id=eq.${currentUser.id}`, {

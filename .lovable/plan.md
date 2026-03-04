@@ -1,43 +1,61 @@
 
 
-## Plan: Synchroniser l'état mute/deafen entre participants (vocal + appel DM)
+# Fix: Duplicated channel hidden by visibility filter
 
-### Analyse du problème
+## Root cause
 
-Deux problèmes distincts :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-**1. Salons vocaux** : L'état mute/deafen est écrit en DB (`voice_states`) et propagé via Realtime. Mais la policy UPDATE utilise une sous-requête auto-référencée soumise au RLS SELECT, ce qui peut provoquer des échecs silencieux. De plus, aucun mécanisme de secours n'existe si le Realtime ne délivre pas l'événement.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**2. Appels DM** : Le `toggleMute` dans `useDMCallWebRTC` (ligne 274) ne fait que `setIsMuted(newMuted)` + `mediaManager.setMuted(newMuted)` localement. **Aucune synchronisation** avec le participant distant. L'autre personne ne peut jamais voir l'icône micro coupé.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Corrections
+## Fix
 
-#### 1. Simplifier la policy UPDATE de `voice_states` (migration SQL)
-- Remplacer la policy WITH CHECK auto-référencée par une policy simple : `USING (auth.uid() = user_id)` / `WITH CHECK (auth.uid() = user_id)`
-- Ajouter un **trigger BEFORE UPDATE** qui empêche la modification de `server_muted`, `server_deafened`, `muted_by` par le propriétaire du row (seuls les admins via service role peuvent les modifier)
-- Cela élimine le risque d'échec silencieux du subquery RLS
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-#### 2. Ajouter un polling de secours dans `useVoiceParticipants`
-- Fichier : `src/hooks/useVoiceParticipants.ts`
-- Changer `refetchInterval` pour toujours rafraîchir lentement (ex: `10000` ms) même quand Realtime fonctionne
-- Cela garantit que si un événement Realtime est raté, l'état se corrige en quelques secondes
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-#### 3. Synchroniser mute/video dans les appels DM via broadcast
-- Fichier : `src/hooks/useDMCallWebRTC.ts`
-- Utiliser un canal Supabase broadcast (`dm-call-state:${callId}`) pour émettre les changements d'état mute/video
-- Dans `toggleMute` : broadcaster `{ type: 'mute-state', userId, isMuted }` après le changement local
-- Dans `toggleVideo` : broadcaster `{ type: 'video-state', userId, isVideoOff }` après le changement
-- Ajouter un listener broadcast qui met à jour un nouvel état `remoteMuted` et `remoteVideoOff`
-- Exposer `remoteMuted` et `remoteVideoOff` dans le return du hook
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-#### 4. Afficher l'état distant dans `DMCallView`
-- Fichier : `src/components/dm/DMCallView.tsx`
-- Utiliser `remoteMuted` et `remoteVideoOff` du hook pour afficher une icône micro barré / caméra barrée sur la tuile du participant distant
-- Ajouter un indicateur visuel (badge MicOff sur l'avatar distant)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### Fichiers modifiés
-1. Migration SQL (policy + trigger `voice_states`)
-2. `src/hooks/useVoiceParticipants.ts` (polling backup)
-3. `src/hooks/useDMCallWebRTC.ts` (broadcast mute/video)
-4. `src/components/dm/DMCallView.tsx` (affichage état distant)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

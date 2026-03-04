@@ -171,21 +171,28 @@ export function MessageInput({
     }
     
     // Check for channel mention (# prefix) - explicit logic for full browser compatibility
-    // Using lastIndexOf instead of regex to avoid alternation issues
     const hashIndex = beforeCursor.lastIndexOf('#');
     if (hashIndex !== -1) {
       const charBefore = hashIndex === 0 ? '' : beforeCursor[hashIndex - 1];
       // Only trigger if # is at start or after whitespace
       if (hashIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {
         const afterHash = beforeCursor.slice(hashIndex + 1);
-        // Accept any characters after # - MentionAutocomplete handles filtering with normalizeForSearch
-        // This supports channel names with spaces, emojis, and special characters
-        return {
-          type: 'channel' as const,
-          query: afterHash,
-          startIndex: hashIndex,
-          triggerLength: 1,
-        };
+        // If space right after #, it's a Markdown heading — don't trigger channel autocomplete
+        if (afterHash.length > 0 && afterHash[0] === ' ') {
+          // Fall through to user mention check
+        } else {
+          // Quick check: ensure at least one channel matches the query
+          const normalizedQuery = normalizeForSearch(afterHash);
+          const hasMatch = afterHash.length === 0 || channels.some(c => normalizeForSearch(c.name).includes(normalizedQuery));
+          if (hasMatch) {
+            return {
+              type: 'channel' as const,
+              query: afterHash,
+              startIndex: hashIndex,
+              triggerLength: 1,
+            };
+          }
+        }
       }
     }
     
@@ -204,7 +211,7 @@ export function MessageInput({
     }
     
     return null;
-  }, []);
+  }, [channels]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;

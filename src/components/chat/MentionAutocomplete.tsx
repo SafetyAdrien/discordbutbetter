@@ -186,21 +186,24 @@ export function MentionAutocomplete({
           {type === "channel" && (
             <>
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Salons</div>
-              {(suggestions as MentionChannel[]).map((channel, index) => (
-                <button
-                  key={channel.id}
-                  data-mention-item
-                  onClick={() => handleSelect(channel)}
-                  onMouseEnter={() => onIndexChange(index)}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                    index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
-                  )}
-                >
-                  <Hash className="w-4 h-4 text-muted-foreground" />
-                  <span>{channel.name}</span>
-                </button>
-              ))}
+              {(suggestions as MentionChannel[]).map((channel, index) => {
+                const ChannelIcon = getChannelIcon(channel.type);
+                return (
+                  <button
+                    key={channel.id}
+                    data-mention-item
+                    onClick={() => handleSelect(channel)}
+                    onMouseEnter={() => onIndexChange(index)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
+                      index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                    )}
+                  >
+                    <ChannelIcon className="w-4 h-4 text-muted-foreground" />
+                    <span>{channel.name}</span>
+                  </button>
+                );
+              })}
             </>
           )}
         </div>

@@ -1,5 +1,5 @@
 /* @refresh reset */
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -22,6 +22,9 @@ export interface VoiceParticipant {
 
 export function useVoiceParticipants(channelId: string | null) {
   const queryClient = useQueryClient();
+  // Unique instance ID so each mount gets its own Realtime channel
+  const instanceId = useRef(crypto.randomUUID()).current;
+  const [isRealtimeActive, setIsRealtimeActive] = useState(true);
 
   const query = useQuery({
     queryKey: ['voice-participants', channelId],
@@ -55,14 +58,16 @@ export function useVoiceParticipants(channelId: string | null) {
     enabled: !!channelId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
+    // Fallback polling when realtime is down
+    refetchInterval: isRealtimeActive ? false : 3000,
   });
 
-  // Real-time subscription with direct cache manipulation
+  // Real-time subscription with ISOLATED channel name per instance
   useEffect(() => {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`voice-participants:${channelId}`)
+      .channel(`voice-p:${channelId}:${instanceId}`)
       .on(
         'postgres_changes',
         {
@@ -86,50 +91,61 @@ export function useVoiceParticipants(channelId: string | null) {
               old?.filter(p => p.user_id !== payload.old.user_id && p.id !== payload.old.id)
             );
           } else if (payload.eventType === 'INSERT') {
-            // Fetch only the new participant with profile data, then append to cache
-            // This avoids invalidateQueries which would refetch ALL participants and potentially revive ghosts
-            const newUserId = payload.new.user_id;
+            const newRow = payload.new as any;
+            const newUserId = newRow.user_id;
+
+            // 1. Optimistic instant add with fallback profile
+            queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
+              if (old?.some(p => p.user_id === newUserId)) return old;
+              const participant: VoiceParticipant = {
+                id: newRow.id || crypto.randomUUID(),
+                user_id: newUserId,
+                channel_id: channelId,
+                muted: newRow.muted || false,
+                deafened: newRow.deafened || false,
+                camera: newRow.camera || false,
+                streaming: newRow.streaming || false,
+                joined_at: newRow.joined_at || new Date().toISOString(),
+                profile: {
+                  id: newUserId,
+                  username: 'user',
+                  display_name: 'Utilisateur',
+                  avatar_url: null,
+                },
+              };
+              return [...(old || []), participant];
+            });
+
+            // 2. Hydrate with real profile data
             supabase
-              .from('voice_states')
-              .select(`
-                *,
-                profile:profiles!voice_states_user_id_fkey (
-                  id,
-                  username,
-                  display_name,
-                  avatar_url
-                )
-              `)
-              .eq('user_id', newUserId)
-              .eq('channel_id', channelId)
-              .maybeSingle()
-              .then(({ data }) => {
-                if (data) {
-                  queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
-                    // Don't add if already in cache
-                    if (old?.some(p => p.user_id === newUserId)) return old;
-                    const participant: VoiceParticipant = {
-                      ...data,
-                      muted: data.muted || false,
-                      deafened: data.deafened || false,
-                      camera: data.camera || false,
-                      streaming: data.streaming || false,
-                      joined_at: data.joined_at || new Date().toISOString(),
-                      profile: data.profile as VoiceParticipant['profile'],
-                    };
-                    return [...(old || []), participant];
-                  });
+              .from('profiles')
+              .select('id, username, display_name, avatar_url')
+              .eq('id', newUserId)
+              .single()
+              .then(({ data: profile }) => {
+                if (profile) {
+                  queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
+                    old?.map(p => p.user_id === newUserId ? { ...p, profile } : p)
+                  );
                 }
               });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsRealtimeActive(true);
+          // Resync once on subscribe to catch anything missed
+          queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setIsRealtimeActive(false);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [channelId, queryClient]);
+  }, [channelId, instanceId, queryClient]);
 
   return query;
 }

@@ -21,12 +21,10 @@ export interface UserChannelPermissions {
 export function useHasChannelPermission(channelId: string | null, permission: ServerPermission) {
   const { user } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['channel-permission', channelId, permission, user?.id],
     queryFn: async (): Promise<boolean> => {
       if (!channelId || !user?.id) return false;
-
-      console.log(`[useHasChannelPermission] 🔍 Checking ${permission} for channel ${channelId}`);
 
       const { data, error } = await supabase.rpc('has_channel_permission', {
         _user_id: user.id,
@@ -39,15 +37,20 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
         return false;
       }
 
-      console.log(`[useHasChannelPermission] ✅ ${permission} = ${data} for channel ${channelId}`);
       return data ?? false;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 0,
-    gcTime: 300000, // Keep in cache 5 min to allow refetch
+    staleTime: 30000, // Cache 30s — realtime handles invalidation
+    gcTime: 300000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
+
+  // OPTIMISTIC: default to true during loading to prevent flash of disabled UI
+  return {
+    ...query,
+    data: query.data ?? (query.isLoading ? true : false),
+  };
 }
 
 // Hook pour vérifier PLUSIEURS permissions en parallèle (optimisé)
@@ -74,28 +77,30 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
         return { permission, granted: data ?? false };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 0,
+      staleTime: 30000, // Cache 30s — realtime handles invalidation
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,
     })),
   });
 
-  // Build a map of permission -> granted
-  const permissionsMap = new Map<ServerPermission, boolean>();
-  queries.forEach((query, index) => {
-    permissionsMap.set(permissions[index], query.data?.granted ?? false);
-  });
-
   const isLoading = queries.some(q => q.isLoading);
   const isError = queries.some(q => q.isError);
+
+  // Build a map of permission -> granted
+  // OPTIMISTIC: default to TRUE during loading to prevent flash of disabled UI on refresh
+  const permissionsMap = new Map<ServerPermission, boolean>();
+  queries.forEach((query, index) => {
+    const optimisticDefault = isLoading ? true : false;
+    permissionsMap.set(permissions[index], query.data?.granted ?? optimisticDefault);
+  });
 
   return {
     permissions: permissionsMap,
     isLoading,
     isError,
     // Helper function to check a specific permission
-    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? false,
+    can: (permission: ServerPermission) => permissionsMap.get(permission) ?? (isLoading ? true : false),
   };
 }
 
@@ -117,34 +122,53 @@ export function useChannelsVisibility(channelIds: string[]) {
 
         if (error) {
           console.error(`Error checking view_channel for ${channelId}:`, error);
-          // Default to visible on error to not lock users out
           return { channelId, visible: true };
         }
 
         return { channelId, visible: data ?? true };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 0,
+      staleTime: 30000,
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,
     })),
   });
 
-  // Build a set of visible channel IDs
-  const visibleChannelIds = new Set<string>();
-  queries.forEach((query) => {
-    if (query.data?.visible) {
-      visibleChannelIds.add(query.data.channelId);
-    }
-  });
-
   const isLoading = queries.some(q => q.isLoading);
+
+  // Build a set of visible channel IDs
+  // OPTIMISTIC: during loading, assume ALL channels visible to prevent flash
+  const visibleChannelIds = new Set<string>();
+  if (isLoading) {
+    channelIds.forEach(id => visibleChannelIds.add(id));
+  } else {
+    queries.forEach((query) => {
+      if (query.data?.visible) {
+        visibleChannelIds.add(query.data.channelId);
+      }
+    });
+  }
 
   return {
     visibleChannelIds,
     isLoading,
-    isVisible: (channelId: string) => visibleChannelIds.has(channelId),
+    isVisible: (channelId: string) => isLoading ? true : visibleChannelIds.has(channelId),
+  };
+}
+
+// Helper to create default permissions object
+function defaultPermissions(value: boolean): UserChannelPermissions {
+  return {
+    canReadMessages: value,
+    canSendMessages: value,
+    canManageMessages: value,
+    canConnectVoice: value,
+    canSpeakVoice: value,
+    canMentionEveryone: value,
+    canManageChannels: value,
+    canManageRoles: value,
+    isAdmin: value,
   };
 }
 
@@ -156,17 +180,7 @@ export function useUserChannelPermissions(channelId: string | null) {
     queryKey: ['user-channel-permissions', channelId, user?.id],
     queryFn: async (): Promise<UserChannelPermissions> => {
       if (!channelId || !user?.id) {
-        return {
-          canReadMessages: false,
-          canSendMessages: false,
-          canManageMessages: false,
-          canConnectVoice: false,
-          canSpeakVoice: false,
-          canMentionEveryone: false,
-          canManageChannels: false,
-          canManageRoles: false,
-          isAdmin: false,
-        };
+        return defaultPermissions(false);
       }
 
       const { data, error } = await supabase.rpc('get_user_channel_permissions', {
@@ -176,17 +190,7 @@ export function useUserChannelPermissions(channelId: string | null) {
 
       if (error) {
         console.error('Error fetching user channel permissions:', error);
-        return {
-          canReadMessages: false,
-          canSendMessages: false,
-          canManageMessages: false,
-          canConnectVoice: false,
-          canSpeakVoice: false,
-          canMentionEveryone: false,
-          canManageChannels: false,
-          canManageRoles: false,
-          isAdmin: false,
-        };
+        return defaultPermissions(false);
       }
 
       // Convertir le résultat en objet de permissions
@@ -208,6 +212,8 @@ export function useUserChannelPermissions(channelId: string | null) {
       };
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 0, // Always refetch on invalidation for realtime updates
+    staleTime: 30000, // Cache 30s — realtime handles invalidation
+    // OPTIMISTIC: default to all-true during loading to prevent flash of disabled UI
+    placeholderData: defaultPermissions(true),
   });
 }

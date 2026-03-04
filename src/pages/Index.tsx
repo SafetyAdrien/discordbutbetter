@@ -28,7 +28,7 @@ import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
 import { usePermissionsRealtime, useGlobalPermissionsRealtime } from '@/hooks/usePermissionsRealtime';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useVoiceState } from '@/hooks/useVoiceState';
+import { useVoice } from '@/contexts/VoiceContext';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -192,7 +192,7 @@ const Index = () => {
   useGlobalPermissionsRealtime();
 
   // Voice state
-  const { voiceState, toggleMute } = useVoiceState();
+  const { voiceState, toggleMute } = useVoice();
 
   // Mutations
   const createServer = useCreateServer();
@@ -214,7 +214,7 @@ const Index = () => {
     onShortcutsHelp: () => setShowShortcutsHelp(true),
     onToggleMute: () => {
       if (voiceState.channelId) {
-        toggleMute.mutate();
+        toggleMute();
       }
     },
   });

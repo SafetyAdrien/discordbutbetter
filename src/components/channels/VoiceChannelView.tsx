@@ -203,7 +203,7 @@ export function VoiceChannelView({
               onToggleChat={handleToggleChat}
               onToggleMembers={handleToggleMembers}
               onDisconnect={leaveChannel}
-              hasMicrophoneAccess={hasMicrophoneAccess && canSpeak}
+              hasMicrophoneAccess={hasMicrophoneAccess}
             />
           )}
 

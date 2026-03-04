@@ -1,58 +1,61 @@
 
 
-# Correction des bugs vocaux (Mute, Deafen, Participant fantôme)
+# Fix: Duplicated channel hidden by visibility filter
 
-## Analyse du code actuel
+## Root cause
 
-Après inspection complète, voici les problèmes réels :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Bug 1 : Bouton Mute désactivé dans VoiceActionBar
-**Fichier** : `src/components/channels/voice/VoiceActionBar.tsx` ligne 67
-**Cause** : `disabled={!hasMicrophoneAccess || !canSpeak}`. Si le micro n'est pas encore accordé, le bouton est grisé. De plus, `VoiceChannelView.tsx` ligne 206 passe `hasMicrophoneAccess={hasMicrophoneAccess && canSpeak}`, doublant la restriction.
-**Fix** : Retirer `!hasMicrophoneAccess` du `disabled` dans VoiceActionBar (garder seulement `!canSpeak` comme restriction de permission). L'utilisateur doit pouvoir se mute même sans accès micro.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Bug 2 : toggleMute/toggleDeafen lancent une exception si channelId est null
-**Fichier** : `src/contexts/VoiceContext.tsx` lignes 277 et 308
-**Cause** : `if (!user || !voiceState.channelId) throw new Error(...)`. Si le state a un léger délai de synchronisation, le throw empêche le toggle. Comme ce sont des `async` functions, l'exception est silencieuse (unhandled promise rejection).
-**Fix** : Remplacer `throw` par un `return` silencieux pour éviter le crash.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Bug 3 : Deafen — undeafen ne restaure pas le micro
-**Fichier** : `src/contexts/VoiceContext.tsx`
-**Analyse** : Le code avec `wasMutedBeforeDeafen` semble correct en théorie. MAIS `wasMutedBeforeDeafen` est un `useState` — quand `toggleDeafen` lit sa valeur dans le callback, c'est la valeur au moment du render, pas la valeur actuelle (stale closure). Si `toggleDeafen` est appelé rapidement ou si le composant n'a pas re-rendu, la valeur peut être stale.
-**Fix** : Utiliser un `useRef` au lieu de `useState` pour `wasMutedBeforeDeafen`, garantissant une lecture toujours à jour.
+## Fix
 
-### Bug 4 : Participant fantôme après départ
-**Fichier** : `src/contexts/VoiceContext.tsx` + `src/hooks/useVoiceParticipants.ts`
-**Analyse** : Le retrait optimiste du cache (lignes 259-262) est correct. Cependant, `useVoiceParticipants` a un realtime subscription qui fait un `invalidateQueries` sur INSERT (ligne 89), ce qui re-fetch depuis la DB. Si le DELETE n'est pas encore propagé côté DB quand un autre événement INSERT/UPDATE arrive, le participant "fantôme" réapparaît dans le cache.
-**Fix** : Dans `useVoiceParticipants`, sur événement DELETE, vérifier aussi le retrait local immédiat (déjà fait ligne 84). Le vrai problème est que `leaveChannel` dans VoiceContext appelle `queryClient.invalidateQueries` (ligne 273) APRÈS le delete DB, ce qui re-fetch et pourrait réinsérer le participant si le timing est mauvais. Supprimer le `invalidateQueries` pour `voice-participants` dans `leaveChannel` puisque le retrait optimiste + realtime suffisent.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Bug 5 (bonus) : Index.tsx utilise `useVoiceState()` standalone
-**Fichier** : `src/pages/Index.tsx` ligne 195
-**Cause** : Le raccourci clavier mute (ligne 216-219) appelle `toggleMute.mutate()` du hook standalone, qui fait un update DB sans toucher au WebRTC. Résultat : le toggle DB est effectué mais le micro n'est pas réellement coupé/réactivé.
-**Fix** : Importer `useVoice()` du contexte à la place et utiliser `toggleMute()` du contexte.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Modifications par fichier
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 1. `src/components/channels/voice/VoiceActionBar.tsx`
-- Ligne 67 : Changer `disabled={!hasMicrophoneAccess || !canSpeak}` → `disabled={!canSpeak}` pour le bouton mute
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### 2. `src/contexts/VoiceContext.tsx`
-- Ligne 69 : Remplacer `useState` par `useRef` pour `wasMutedBeforeDeafen`
-- Lignes 277, 308 : Remplacer `throw new Error(...)` par `return` silencieux
-- Ligne 273 : Supprimer `queryClient.invalidateQueries({ queryKey: ['voice-participants'] })` dans `leaveChannel` (le retrait optimiste + realtime gèrent tout)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-### 3. `src/components/channels/VoiceChannelView.tsx`
-- Ligne 206 : Changer `hasMicrophoneAccess={hasMicrophoneAccess && canSpeak}` → `hasMicrophoneAccess={hasMicrophoneAccess}` (la permission `canSpeak` est déjà gérée par le prop `canSpeak`)
+### 3. Hook needs `useAuth` for the user ID
 
-### 4. `src/pages/Index.tsx`
-- Ligne 31 : Remplacer `import { useVoiceState }` par `import { useVoice }` du contexte
-- Ligne 195 : Utiliser `const { voiceState, toggleMute } = useVoice()` 
-- Lignes 216-219 : Appeler `toggleMute()` directement (pas `.mutate()`)
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-| Fichier | Modification |
-|---|---|
-| `VoiceActionBar.tsx` | Mute button : retirer `disabled` lié au micro |
-| `VoiceContext.tsx` | `wasMutedBeforeDeafen` → useRef ; throw → return ; supprimer invalidate inutile |
-| `VoiceChannelView.tsx` | Séparer `hasMicrophoneAccess` et `canSpeak` props |
-| `Index.tsx` | Utiliser `useVoice()` au lieu de `useVoiceState()` |
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

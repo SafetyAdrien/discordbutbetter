@@ -41,6 +41,7 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
   const callIdRef = useRef<string | null>(null);
   const remoteUserIdRef = useRef<string | null>(null);
   const signalSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSignalsRef = useRef<SignalData[]>([]);
@@ -156,6 +157,22 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
               .eq('id', (payload.new as { id: string }).id);
           }
         )
+        .subscribe();
+
+
+      // Set up broadcast channel for mute/video state sync
+      broadcastChannelRef.current = supabase
+        .channel(`dm-call-state:${callId}`)
+        .on('broadcast', { event: 'mute-state' }, (payload) => {
+          if (payload.payload?.userId !== user.id) {
+            setRemoteMuted(!!payload.payload?.isMuted);
+          }
+        })
+        .on('broadcast', { event: 'video-state' }, (payload) => {
+          if (payload.payload?.userId !== user.id) {
+            setRemoteVideoOff(!!payload.payload?.isVideoOff);
+          }
+        })
         .subscribe();
 
       // Parallelize: microphone init runs alongside signal subscription setup

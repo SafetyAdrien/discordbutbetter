@@ -1,61 +1,54 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Uniformiser le background de l'icône de bienvenue des salons texte
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Deux fichiers affichent le message de bienvenue avec des styles d'icône incohérents :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+- **`ChatArea.tsx`** (ligne 1030-1031) : L'icône `StreamlineHash` est affichée sans aucun background, juste en `text-muted-foreground`
+- **`AnnouncementChannel.tsx`** (ligne 572-573) : L'icône `Hash` est dans un cercle `bg-gradient-gaming` coloré — style différent
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Correction
 
-## Fix
+Uniformiser les deux en ajoutant un **cercle gris légèrement plus foncé** que le fond actuel autour de l'icône, sans changer l'icône elle-même.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### `ChatArea.tsx` (lignes 1030-1031)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Remplacer le `<div>` simple par un conteneur circulaire avec fond gris :
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+```tsx
+// Avant
+<div className="mb-4">
+  <StreamlineHash size={64} className="text-muted-foreground" />
+</div>
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Après
+<div className="w-[68px] h-[68px] rounded-full bg-muted flex items-center justify-center mb-4">
+  <StreamlineHash size={42} className="text-muted-foreground" />
+</div>
 ```
 
-### Code for onSuccess addition
+### `AnnouncementChannel.tsx` (lignes 572-574)
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+Remplacer le `bg-gradient-gaming` par le même style gris uniforme, et utiliser `StreamlineMegaphone` (l'icône du type announcement) au lieu de `Hash` :
+
+```tsx
+// Avant
+<div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
+  <Hash className="w-8 h-8 text-primary-foreground" />
+</div>
+
+// Après
+<div className="w-[68px] h-[68px] rounded-full bg-muted flex items-center justify-center mb-4">
+  <StreamlineMegaphone className="w-10 h-10 text-muted-foreground" />
+</div>
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `src/components/chat/ChatArea.tsx` | Ajouter cercle `bg-muted` autour de `StreamlineHash`, réduire la taille de l'icône |
+| `src/components/channels/AnnouncementChannel.tsx` | Remplacer `bg-gradient-gaming` + `Hash` par `bg-muted` + `StreamlineMegaphone` |
 

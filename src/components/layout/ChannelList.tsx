@@ -283,6 +283,9 @@ function SortableCategory({
         </ContextMenu>
       </div>
 
+      {/* Inline drop indicator - after */}
+      {dropIndicator === "after" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mt-0.5" />}
+
       {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
       {!isCollapsed && <div className="mb-2">{children}</div>}
 
@@ -348,8 +351,7 @@ interface SortableChannelProps {
   onCreateInvite: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  showDropIndicator?: boolean;
-  dropPosition?: "before" | "after";
+  dropIndicator?: "before" | "after" | null;
   threads?: ThreadWithUnread[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
@@ -376,8 +378,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     onCreateInvite,
     onDelete,
     onDuplicate,
-    showDropIndicator = false,
-    dropPosition = "after",
+    dropIndicator = null,
     threads = [],
     activeThreadId,
     onThreadSelect,
@@ -398,7 +399,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     });
     const style = {
       transform: CSS.Transform.toString(transform),
-      transition: undefined // Let Tailwind handle transitions
+      transition: isDragging ? "opacity 100ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1)",
     };
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
@@ -412,18 +413,18 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     const isLiveStage = stageData?.isLive;
     return (
       <>
+        {/* Inline drop indicator - before */}
+        {dropIndicator === "before" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mb-0.5" />}
+
         <div
           ref={setNodeRef}
           style={style}
           {...attributes}
           {...listeners}
           className={cn(
-            "relative hover:cursor-grab rounded-md dnd-item",
-            isDragging && "dnd-item-dragging"
+            "hover:cursor-grab rounded-md dnd-item",
+            isDragging && "opacity-40"
           )}>
-
-          {/* Drop Indicator - Absolute positioned */}
-          {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
           <ContextMenu>
             <ContextMenuTrigger asChild>
@@ -543,6 +544,9 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
             </div>
           }
         </div>
+
+        {/* Inline drop indicator - after */}
+        {dropIndicator === "after" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mt-0.5" />}
 
         {/* Threads for text channels - OUTSIDE draggable div */}
         {channel.type === "text" && threads.length > 0 &&
@@ -766,8 +770,12 @@ export function ChannelList({
 
 
       // Error already handled by the hook
-    }}; // DnD sensors - optimized with touch support
-  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
+    }}; // DnD sensors - PointerSensor only (like ServerList pattern)
+  const wasDraggingRef = useRef(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
   };
   const handleSignOut = async () => {
     await signOut();

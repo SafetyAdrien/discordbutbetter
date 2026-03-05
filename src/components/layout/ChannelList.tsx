@@ -70,6 +70,9 @@ import { UserProfileCard } from "@/components/profile/UserProfileCard";
 import { copyToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { useVoice, useVoiceParticipants } from "@/contexts/VoiceContext";
+import { VoiceParticipantContextMenu } from "@/components/channels/voice/VoiceParticipantContextMenu";
+import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
+import { User } from "@/types/app";
 import { useUpdateCategory } from "@/hooks/useCategories";
 import { useServerEmojis } from "@/hooks/useServerAssets";
 import { useMembers } from "@/hooks/useMembers";
@@ -559,33 +562,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
           {/* Voice Participants */}
           {isVoice && participants.length > 0 &&
-          <div className="ml-6 mt-1 space-y-1">
-              {participants.map((participant) => {
-              const isSpeaking = speakingUsers.has(participant.user_id);
-              return (
-                <div key={participant.id} className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
-                    <Avatar
-                    className={cn(
-                      "w-5 h-5 transition-all",
-                      isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border"
-                    )}>
-
-                      <AvatarImage src={participant.profile.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                        {participant.profile.display_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
-                    {participant.camera && <VideoIcon className="w-3 h-3 text-muted-foreground" />}
-                    {participant.streaming && (
-                      <span className="px-1 py-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground rounded">DIRECT</span>
-                    )}
-                    {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
-                    {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
-                  </div>);
-
-            })}
-            </div>
+          <VoiceParticipantsSidebar participants={participants} speakingUsers={speakingUsers} serverId={serverId} />
           }
 
           {/* Stage Audience Indicator */}

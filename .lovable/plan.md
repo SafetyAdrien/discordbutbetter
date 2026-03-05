@@ -1,61 +1,112 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Plan de corrections multi-points
 
-## Root cause
+## 1. Double-clic pour le mode Focus (grille vocale)
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Fichier**: `src/components/channels/voice/VoiceParticipantGrid.tsx`
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Les screen shares (lignes 306-324) utilisent encore `onClick` pour le focus. Passer en `onDoubleClick`. Les participants avec caméra et sans caméra utilisent déjà `onDoubleClick` (OK). Seule la section screen shares dans la vue normale doit être corrigée.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Aussi, dans la bande de vignettes en mode focus (lignes 222-282), les boutons utilisent `onClick` pour changer le focus -- c'est correct car on est déjà en mode focus.
 
-## Fix
+---
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+## 2. Layout grille responsive pour streams + participants
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+**Fichier**: `src/components/channels/voice/VoiceParticipantGrid.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Actuellement `getScreenGridClass` est basique. Améliorer :
+- 1 stream : pleine largeur, aspect-video
+- 2 streams : `grid-cols-2`
+- 3+ streams : `grid-cols-2 lg:grid-cols-3`
+- Participants : quand il y a des streams, utiliser une grille compacte en bas. Quand il n'y a pas de streams, centrer en grille responsive adaptée.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Affiner `getFullGridClass` et `getParticipantGridClass` pour un meilleur rendu à toutes tailles.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+---
 
-### 3. Hook needs `useAuth` for the user ID
+## 3. Corriger l'écoute entre membres (WebRTC audio)
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+**Fichier**: `src/utils/webrtc/PeerConnection.ts`
 
-## Detailed changes
+Le problème probable : `ontrack` ne distingue pas correctement les streams audio des streams vidéo. Vérifier :
+- `setupEventHandlers` -- comment `ontrack` identifie le type de track
+- Si l'audio est bien ajouté au PeerConnection avant l'offre
+- Si `addAudioStream` ajoute les tracks correctement
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+**Fichier**: `src/utils/webrtc/MediaManager.ts`
+- Vérifier que `addRemoteAudioStream` crée et joue bien l'`<audio>` element
+- Vérifier l'interaction avec `AudioContext` (autoplay policy)
 
-### Code sketch for onMutate addition (after servers cache update)
+Besoin de lire plus de `PeerConnection.ts` pour diagnostiquer, mais le flux semble correct : `audio.autoplay = true` + `audio.play()`. Le problème pourrait être lié à l'autoplay policy du navigateur (Chrome/Firefox bloquent l'autoplay sans interaction utilisateur). Solution : ajouter un `resume()` sur l'AudioContext après un geste utilisateur, et retenter `audio.play()` en cas d'échec.
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+---
 
-### Code for onSuccess addition
+## 4. Flash du chatInput (permissions au reload)
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+**Fichiers**: `src/hooks/useUserChannelPermissions.ts`, `src/components/chat/ChatArea.tsx`, `src/components/channels/AnnouncementChannel.tsx`
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Le problème : `useMultipleChannelPermissions` retourne `cached ?? true` pendant `isPending`. Si c'est le premier chargement (pas de sessionStorage), la permission est `true` par défaut, puis bascule à `false` quand la RPC répond.
+
+**Solution** : Au lieu de `cached ?? true`, utiliser `cached ?? undefined` et traiter `undefined` comme "en chargement" dans le composant. Côté composant, ne pas afficher le chatInput tant que la permission n'est pas résolue (afficher un skeleton ou un placeholder neutre). Alternativement, exposer `isLoading` depuis le hook et montrer un état indéterminé.
+
+Changements :
+- `useMultipleChannelPermissions` : ajouter `isLoading` (déjà exposé). Le composant doit l'utiliser.
+- `ChatArea.tsx` et `AnnouncementChannel.tsx` : quand `isLoading && !isAdminOrOwner`, afficher un placeholder "Chargement..." au lieu de l'input complet. L'admin/owner bypasse toujours.
+
+---
+
+## 5. Mobile : chatInput Announcement au même niveau que TEXT
+
+**Fichier**: `src/components/channels/AnnouncementChannel.tsx` (lignes 923-959)
+
+Le conteneur d'input utilise `<div className="flex-shrink-0 bg-background w-full">` sans padding mobile. Le `MessageInput` gère déjà le padding mobile via `isMobile ? "px-1.5 pt-0.5 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]" : "px-4 py-3"`. Vérifier que le composant `AnnouncementChannel` passe bien à `MessageInput` les bons props et que le wrapper externe n'ajoute pas de padding conflictuel.
+
+Le vrai problème est que `AnnouncementChannel` est encapsulé dans `FullScreenWrapper` sur mobile, qui a son propre header. L'input devrait avoir un padding similaire au `MobileChatView`.
+
+**Solution** : Uniformiser le padding du wrapper input dans `AnnouncementChannel` pour le mobile (ajouter `px-2 pb-[env(safe-area-inset-bottom)]` ou similaire).
+
+---
+
+## 6. Mobile : Header Announcement = même que TEXT
+
+**Fichier**: `src/components/mobile/MobileLayout.tsx`
+
+Actuellement l'`AnnouncementChannel` est dans un `FullScreenWrapper` qui n'a qu'un back button + nom. Remplacer par un rendu similaire au `MobileChatView` avec les icônes Notif, Members, Threads dans le header.
+
+**Solution** : Créer un cas `'announcement'` dédié dans `renderChannelContent` qui utilise `MobileChatView` (ou un wrapper similaire avec les bons icônes) au lieu de `FullScreenWrapper + AnnouncementChannel`. Alternativement, passer `AnnouncementChannel` dans un wrapper mobile dédié avec le header correct.
+
+Pour simplifier : le cas `'announcement'` peut rendre le même header que `MobileChatView` avec seulement Notif, Members, Threads, et le contenu `AnnouncementChannel` en dessous.
+
+---
+
+## 7. Mobile : Topic dans la MemberList
+
+**Fichier**: `src/components/mobile/MobileChatView.tsx` (lignes 232-256)
+
+Dans le `SheetContent` des membres, ajouter le topic (`channel.description`) juste après le header, séparé de la liste des membres par un `Separator`.
+
+---
+
+## 8. Mobile : Bouton "Suivre" à côté de "Edit Channel"
+
+**Fichier**: `src/components/channels/AnnouncementChannel.tsx`
+
+Le bouton "Suivre" doit apparaître sur l'interface mobile à côté du bouton "Edit Channel" (s'il existe). Actuellement le bouton est dans le header desktop. Sur mobile (via `FullScreenWrapper`), il n'apparaît pas.
+
+La solution est liée au point 6 : quand on crée le bon header mobile pour Announcement, inclure le bouton "Suivre".
+
+---
+
+## Fichiers à modifier
+
+1. `src/components/channels/voice/VoiceParticipantGrid.tsx` — Double-clic screen shares + layout responsive
+2. `src/utils/webrtc/PeerConnection.ts` — Diagnostic audio (besoin de lire plus)
+3. `src/utils/webrtc/MediaManager.ts` — Autoplay fix pour l'audio
+4. `src/hooks/useUserChannelPermissions.ts` — Exposer mieux l'état loading
+5. `src/components/chat/ChatArea.tsx` — Utiliser isLoading pour le chatInput
+6. `src/components/channels/AnnouncementChannel.tsx` — Utiliser isLoading + padding mobile
+7. `src/components/mobile/MobileLayout.tsx` — Header announcement mobile
+8. `src/components/mobile/MobileChatView.tsx` — Topic dans la MemberList
 

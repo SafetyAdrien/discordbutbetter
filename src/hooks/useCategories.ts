@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CategoryWithChannels, OrphanChannel } from './useChannels';
+import { CategoryWithChannels, OrphanChannel, mutationLockRef } from './useChannels';
 
 export function useUpdateCategory() {
   const queryClient = useQueryClient();
@@ -17,6 +17,7 @@ export function useUpdateCategory() {
       return { categoryId, serverId, name };
     },
     onMutate: async ({ categoryId, serverId, name }) => {
+      mutationLockRef.current = true;
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       
@@ -56,6 +57,7 @@ export function useUpdateCategory() {
       toast.error('Erreur lors de la mise à jour');
     },
     onSettled: (_, __, { serverId }) => {
+      setTimeout(() => { mutationLockRef.current = false; }, 500);
       queryClient.invalidateQueries({ queryKey: ['servers'] });
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
     },

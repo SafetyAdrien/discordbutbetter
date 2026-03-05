@@ -26,7 +26,7 @@ export interface CategoryWithChannels {
 export interface OrphanChannel extends ChannelWithCategory {}
 
 // Shared ref to prevent Realtime conflicts during mutations
-const mutationLockRef = { current: false };
+export const mutationLockRef = { current: false };
 
 export function useChannels(
   serverId: string | null,

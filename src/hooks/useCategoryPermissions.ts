@@ -17,6 +17,16 @@ export interface CategoryPermissionOverride {
 
 /** Refetch all active permission queries for instant UI sync after category overrides change. */
 function refetchPermissionCaches(queryClient: ReturnType<typeof useQueryClient>) {
+  // Clear sessionStorage permission cache so refresh gets fresh data
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith('perm:')) keysToRemove.push(key);
+    }
+    keysToRemove.forEach(k => sessionStorage.removeItem(k));
+  } catch {}
+
   queryClient.refetchQueries({ queryKey: ['user-channel-permissions'], type: 'active' });
   queryClient.refetchQueries({ queryKey: ['channel-permission'], type: 'active' });
   queryClient.refetchQueries({ queryKey: ['server-channel-permissions'], type: 'active' });

@@ -264,8 +264,13 @@ function SortableCategory({
           isDragging && "dnd-item-dragging"
         )}>
 
+        {/* Inside highlight - shows when dragging a channel into this category's middle zone */}
+        {showInsideHighlight && (
+          <div className="absolute inset-0 bg-primary/10 rounded-md border border-primary/30 pointer-events-none z-[5]" />
+        )}
+
         {/* Drop Indicator - Absolute positioned */}
-        {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
+        {showDropIndicator && !showInsideHighlight && <DropIndicator isVisible={true} position={dropPosition} />}
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -1083,17 +1088,28 @@ export function ChannelList({
         }
       }
 
-      // Dropping on a category header - add at end of category
+      // Dropping on a category header
       else if (overIdStr.startsWith("category-")) {
         const targetCategoryId = overIdStr.replace("category-", "");
         const targetCategory = server.categories.find((c) => c.id === targetCategoryId);
         if (targetCategory) {
           const existingIds = targetCategory.channels.filter((ch) => ch.id !== activeChannelId).map((ch) => ch.id);
-          reorderChannels.mutate({
-            serverId: server.id,
-            categoryId: targetCategoryId,
-            orderedIds: [...existingIds, activeChannelId]
-          });
+          
+          if (dropMode === "inside" || dropMode === "after") {
+            // "inside" or "after" category header → add at end of category
+            reorderChannels.mutate({
+              serverId: server.id,
+              categoryId: targetCategoryId,
+              orderedIds: [...existingIds, activeChannelId]
+            });
+          } else {
+            // "before" → add at beginning of category
+            reorderChannels.mutate({
+              serverId: server.id,
+              categoryId: targetCategoryId,
+              orderedIds: [activeChannelId, ...existingIds]
+            });
+          }
         }
       }
     }
@@ -1459,10 +1475,11 @@ export function ChannelList({
                     })
                     }
                     onDelete={() => handleDeleteCategory(category.id)}
-                    showDropIndicator={overId === `category-${category.id}`}
+                    showDropIndicator={overId === `category-${category.id}` && dropMode !== "inside"}
                     dropPosition={dropPosition}
                     canManageChannels={canManageChannels}
-                    serverId={server.id}>
+                    serverId={server.id}
+                    showInsideHighlight={overId === `category-${category.id}` && dropMode === "inside"}>
 
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext

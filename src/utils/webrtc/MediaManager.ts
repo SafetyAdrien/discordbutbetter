@@ -201,8 +201,18 @@ export class MediaManager {
 
   setDeafened(deafened: boolean): void {
     this.isDeafened = deafened;
-    this.remoteAudioElements.forEach(audio => {
-      audio.muted = deafened;
+    this.remoteAudioElements.forEach((audio, peerId) => {
+      const volume = this.peerVolumes.get(peerId) ?? 100;
+      const usesGain = volume > 100;
+      if (usesGain) {
+        // GainNode path: mute/unmute via gain value
+        const ctx = this.remoteAudioContexts.get(peerId);
+        if (ctx?.gainNode) {
+          ctx.gainNode.gain.value = deafened ? 0 : volume / 100;
+        }
+      } else {
+        audio.muted = deafened;
+      }
     });
   }
 

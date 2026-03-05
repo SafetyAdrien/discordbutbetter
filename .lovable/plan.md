@@ -1,61 +1,30 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: Category drag-and-drop freeze
 
 ## Root cause
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+After dropping a category, two things happen simultaneously:
+1. dnd-kit's `dropAnimation` (200ms ease) animates the overlay back to the drop position
+2. The optimistic update in `onMutate` immediately reorders the underlying list
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+The animation targets the **original** DOM position, but the items have already moved due to the optimistic reorder. This creates a visual "freeze" or jump — the overlay animates to a stale position while the list has already changed underneath.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Additionally, `onSettled` immediately calls `invalidateQueries` which triggers a refetch that can briefly flash stale data before the mutation lock releases.
 
-## Fix
+## Fix (2 changes in 1 file)
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### `src/components/layout/ChannelList.tsx`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+1. **Disable `dropAnimation`** on the `DragOverlay` — set it to `null` so the overlay disappears instantly on drop, letting the optimistic reorder render cleanly without animation conflict.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+2. **Wrap `reorderCategories.mutate()` in a `requestAnimationFrame`** — ensures the DnD state (`activeId`, `overId`) is fully cleared and React has committed the cleanup render before the optimistic cache update triggers a re-render with the new order.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### `src/hooks/useChannels.ts`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+3. **Delay `invalidateQueries` in `useReorderCategories.onSettled`** — add a small delay (e.g. 800ms) before invalidating, so the optimistic data stays visible long enough and the refetch doesn't race with the UI settling. This matches the mutation lock timeout.
 
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Files modified
+- `src/components/layout/ChannelList.tsx` — `dropAnimation: null` + `requestAnimationFrame` wrapper
+- `src/hooks/useChannels.ts` — delayed invalidation in `useReorderCategories.onSettled`
 

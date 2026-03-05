@@ -1,54 +1,61 @@
 
 
-# Corrections demandées — 3 points
+# Fix: Duplicated channel hidden by visibility filter
 
-## 1. Police du titre "Bienvenue dans #salon"
+## Root cause
 
-**Problème** : Ligne 1025 de `ChatArea.tsx` utilise `font-display` qui résout vers `Orbitron` (tailwind.config.ts ligne 29).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-**Correctif** : Remplacer `font-display` par `font-ginto` dans le `<h1>` de bienvenue.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-- `src/components/chat/ChatArea.tsx` ligne 1025 : `font-display` → `font-ginto`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
----
+## Fix
 
-## 2. Flash du ChatInput au changement de salon
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-**Problème** : Quand on change de salon, `useMultipleChannelPermissions` reçoit un nouveau `channelId`. React Query considère les nouvelles queries comme "non-pending" brièvement avant de lancer le fetch, donc `permissionsLoading` passe à `false` un instant → l'input affiche l'état "autorisé" ou "refusé" incorrectement pendant une frame.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**Correctif** : Ajouter un `prevChannelIdRef` dans `ChatArea.tsx`. Quand `channel.id` change, forcer `permissionDeniedMessage = undefined` (état neutre/accessible) pendant la transition, jusqu'à ce que `permissionsLoading` se stabilise pour le nouveau channelId. Concrètement :
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-```tsx
-const prevChannelIdRef = useRef(channel.id);
-const isChannelTransitioning = prevChannelIdRef.current !== channel.id;
+### 2. In `onSuccess`: invalidate the permissions cache
 
-useEffect(() => {
-  prevChannelIdRef.current = channel.id;
-}, [channel.id]);
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-const permissionDeniedMessage = (isChannelTransitioning || permissionsLoading || isAdminOrOwner || canSendMessages)
-  ? undefined
-  : "Vous n'avez pas la permission d'envoyer des messages dans ce salon.";
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-- `src/components/chat/ChatArea.tsx` : ajouter ref + modifier le calcul de `permissionDeniedMessage`
+### Code for onSuccess addition
 
----
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-## 3. Tooltip avec date complète au hover du timestamp
-
-**Problème** : Les timestamps (lignes 1243 et 1356) sont de simples `<span>` sans tooltip.
-
-**Correctif** : Envelopper chaque timestamp dans un `<Tooltip>` affichant la date complète.
-
-Deux emplacements dans `ChatArea.tsx` :
-- **Ligne 1243** : timestamp du premier message d'un groupe (à côté du pseudo)
-- **Ligne 1356** : timestamp des messages suivants (hover à gauche)
-
-Format : `toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })`
-
----
-
-### Fichier unique modifié
-- `src/components/chat/ChatArea.tsx` (3 corrections isolées, rien d'autre touché)
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

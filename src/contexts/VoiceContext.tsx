@@ -368,7 +368,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       // 3. Rollback on failure
       console.error('[VoiceContext] Join failed, rolling back:', error);
       setVoiceState(prevState);
-      webrtc.disconnect();
+      await webrtc.disconnect();
       toast.error('Impossible de rejoindre le canal vocal');
     }
   }, [user, profile, voiceState, webrtc, queryClient]);
@@ -407,8 +407,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
     );
 
-    // 3. Background cleanup
-    webrtc.disconnect();
+    // 3. Background cleanup — AWAIT disconnect to ensure WebRTC is fully torn down
+    await webrtc.disconnect();
     await supabase
       .from('voice_states')
       .delete()

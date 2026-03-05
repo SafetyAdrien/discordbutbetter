@@ -1,61 +1,66 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Refonte DnD Catégories/Salons — Alignement sur le pattern ServerList
 
-## Root cause
+## Problèmes actuels du DnD ChannelList
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+1. **Drop indicators absolus** : positionnés en `absolute` dans chaque item, causent des décalages visuels et des chevauchements
+2. **`dropAnimation` avec durée** : crée un délai de 200ms au drop, l'élément "flotte" avant de se placer
+3. **Double sensor (Pointer + Touch)** : `useDndSensors` ajoute un `TouchSensor` qui crée des conflits avec le scroll et les context menus
+4. **Pas de `wasDraggingRef`** : les clics accidentels déclenchent une navigation après un drag
+5. **Transitions CSS manquantes** : `transition: undefined` dans les sortables = pas d'animation fluide pendant le drag
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Pattern cible (ServerList)
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Le ServerList fonctionne parfaitement grâce à :
+- **Indicateurs inline** (dans le flux DOM, pas absolus)
+- **`dropAnimation={null}`** (placement instantané)
+- **`PointerSensor` uniquement** avec `distance: 5`
+- **`wasDraggingRef`** avec timeout de 100ms pour bloquer les clics post-drag
+- **`restrictToVerticalAxis`** pour contraindre le mouvement
 
-## Fix
+## Changements prévus
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### Fichier unique : `src/components/layout/ChannelList.tsx`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+1. **Remplacer les sensors** : supprimer `useDndSensors`, utiliser `PointerSensor` seul avec `distance: 5` (comme ServerList)
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+2. **Drop indicators inline** : remplacer le `DropIndicator` absolu par des `<div>` inline conditionnels dans `SortableCategory` et `SortableChannel`, exactement comme `SortableServerIcon` :
+   ```
+   {dropIndicator === 'before' && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mb-0.5" />}
+   {/* contenu */}
+   {dropIndicator === 'after' && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mt-0.5" />}
+   ```
 
-### 2. In `onSuccess`: invalidate the permissions cache
+3. **`dropAnimation={null}`** : supprimer l'animation au drop pour un placement instantané
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+4. **Ajouter `wasDraggingRef`** : bloquer les clics pendant 100ms après un drag (empêche la sélection accidentelle de salon)
 
-### 3. Hook needs `useAuth` for the user ID
+5. **Simplifier le DragOverlay** : rendu DOM simplifié sans backdrop-blur (cause des bugs de rendu pendant le drag)
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+6. **Supprimer le composant `DropIndicator` local** : plus utilisé, remplacé par les indicateurs inline
 
-## Detailed changes
+### Détail des modifications dans les composants
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+**`SortableCategory`** :
+- Recevoir `dropIndicator: 'before' | 'after' | null` au lieu de `showDropIndicator + dropPosition`
+- Afficher des `<div>` inline avant/après le contenu
+- Supprimer la ref au `DropIndicator` absolu
 
-### Code sketch for onMutate addition (after servers cache update)
+**`SortableChannel`** :
+- Même pattern : `dropIndicator` prop unique
+- Indicateurs inline dans le flux DOM
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+**`handleDragStart`** : ajouter `wasDraggingRef.current = true`
 
-### Code for onSuccess addition
+**`handleDragEnd` / `handleDragCancel`** : ajouter `setTimeout(() => wasDraggingRef.current = false, 100)`
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+**`handleChannelClick`** : ajouter `if (wasDraggingRef.current) return;` en premier
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichiers modifiés
+| Fichier | Nature |
+|---|---|
+| `src/components/layout/ChannelList.tsx` | Refonte DnD sensors, indicators, overlay, wasDraggingRef |
+
+Aucun autre fichier modifié — tout est contenu dans ChannelList.tsx.
 

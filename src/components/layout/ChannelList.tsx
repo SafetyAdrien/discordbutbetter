@@ -226,7 +226,8 @@ function SortableCategory({
   showDropIndicator = false,
   dropPosition = "after",
   canManageChannels = false,
-  serverId
+  serverId,
+  showInsideHighlight = false
 
 
 

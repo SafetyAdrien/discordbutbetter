@@ -1649,3 +1649,97 @@ export function ChannelList({
     </div>);
 
 }
+
+// Voice Participants sidebar sub-component with left-click profile popup & right-click context menu
+function VoiceParticipantsSidebar({
+  participants,
+  speakingUsers,
+  serverId,
+}: {
+  participants: Array<{
+    id: string;
+    user_id: string;
+    muted: boolean;
+    deafened: boolean;
+    camera?: boolean;
+    streaming?: boolean;
+    profile: { id: string; username: string; display_name: string; avatar_url: string | null };
+  }>;
+  speakingUsers: Set<string>;
+  serverId: string;
+}) {
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [cardPosition, setCardPosition] = useState<{ top: number; right: number }>({ top: 100, right: 280 });
+
+  const handleOpenProfile = (participant: typeof participants[0], e?: React.MouseEvent) => {
+    const userObj: User = {
+      id: participant.profile.id,
+      username: participant.profile.username,
+      displayName: participant.profile.display_name,
+      avatar: participant.profile.avatar_url || undefined,
+      status: 'online',
+    };
+    setSelectedUser(userObj);
+
+    if (e) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setCardPosition({
+        top: Math.min(rect.top, window.innerHeight - 400),
+        right: window.innerWidth - rect.right - 320,
+      });
+    }
+
+    setProfileOpen(true);
+  };
+
+  return (
+    <div className="ml-6 mt-1 space-y-0.5">
+      {participants.map((participant) => {
+        const isSpeaking = speakingUsers.has(participant.user_id);
+        return (
+          <VoiceParticipantContextMenu
+            key={participant.id}
+            participantUserId={participant.user_id}
+            participantName={participant.profile.display_name}
+            onViewProfile={() => handleOpenProfile(participant)}
+          >
+            <div
+              className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+              onClick={(e) => handleOpenProfile(participant, e)}
+            >
+              <Avatar
+                className={cn(
+                  "w-5 h-5 transition-all",
+                  isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border"
+                )}
+              >
+                <AvatarImage src={participant.profile.avatar_url || undefined} />
+                <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                  {participant.profile.display_name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
+              {participant.camera && <VideoIcon className="w-3 h-3 text-muted-foreground" />}
+              {participant.streaming && (
+                <span className="px-1 py-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground rounded">DIRECT</span>
+              )}
+              {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
+              {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
+            </div>
+          </VoiceParticipantContextMenu>
+        );
+      })}
+
+      {/* Profile Popup */}
+      <UserProfilePopup
+        user={selectedUser}
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        serverId={serverId}
+        mode="card"
+        cardPosition={cardPosition}
+      />
+    </div>
+  );
+}

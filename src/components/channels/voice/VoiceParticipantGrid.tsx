@@ -75,6 +75,28 @@ export function VoiceParticipantGrid({
   const [screensOpen, setScreensOpen] = useState(true);
   const [participantsOpen, setParticipantsOpen] = useState(true);
   const [focusTarget, setFocusTarget] = useState<FocusTarget>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [cardPosition, setCardPosition] = useState<{ top: number; right: number }>({ top: 100, right: 280 });
+
+  const handleOpenProfile = (participant: Participant, e?: React.MouseEvent) => {
+    const userObj: User = {
+      id: participant.profile.id,
+      username: participant.profile.username,
+      displayName: participant.profile.display_name,
+      avatar: participant.profile.avatar_url || undefined,
+      status: 'online',
+    };
+    setSelectedUser(userObj);
+    if (e) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setCardPosition({
+        top: Math.min(rect.top, window.innerHeight - 400),
+        right: window.innerWidth - rect.right - 340,
+      });
+    }
+    setProfileOpen(true);
+  };
 
   // Collect all screen shares
   const screenShares: { userId: string; stream: MediaStream; ownerName: string; isLocal: boolean }[] = [];

@@ -806,6 +806,8 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
+    // Block clicks right after a drag
+    if (wasDraggingRef.current) return;
     // Link channels open external link warning modal
     if (channel.type === "link") {
       const url = channel.description || '';
@@ -838,6 +840,7 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    wasDraggingRef.current = true;
     setActiveId(event.active.id as string);
   };
 
@@ -909,6 +912,7 @@ export function ChannelList({
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
     if (!over || active.id === over.id) return;
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
@@ -1367,8 +1371,7 @@ export function ChannelList({
                     onCreateInvite={() => handleCreateInvite(channel.id)}
                     onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                     onDuplicate={() => handleDuplicateChannel(channel.id)}
-                    showDropIndicator={overId === `channel-${channel.id}`}
-                    dropPosition={dropPosition}
+                    dropIndicator={overId === `channel-${channel.id}` ? dropPosition : null}
                     threads={activeChannelId === channel.id ? threadsWithUnread : []}
                     activeThreadId={activeThreadId}
                     onThreadSelect={onThreadSelect}
@@ -1407,8 +1410,7 @@ export function ChannelList({
                     })
                     }
                     onDelete={() => handleDeleteCategory(category.id)}
-                    showDropIndicator={overId === `category-${category.id}`}
-                    dropPosition={dropPosition}
+                    dropIndicator={overId === `category-${category.id}` ? dropPosition : null}
                     canManageChannels={canManageChannels}
                     serverId={server.id}>
 
@@ -1434,8 +1436,7 @@ export function ChannelList({
                           onCreateInvite={() => handleCreateInvite(channel.id)}
                           onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                           onDuplicate={() => handleDuplicateChannel(channel.id)}
-                          showDropIndicator={overId === `channel-${channel.id}`}
-                          dropPosition={dropPosition}
+                          dropIndicator={overId === `channel-${channel.id}` ? dropPosition : null}
                           threads={activeChannelId === channel.id ? threadsWithUnread : []}
                           activeThreadId={activeThreadId}
                           onThreadSelect={onThreadSelect}
@@ -1460,11 +1461,7 @@ export function ChannelList({
               </SortableContext>
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
-              <DragOverlay
-                dropAnimation={{
-                  duration: 200,
-                  easing: "cubic-bezier(0.25, 1, 0.5, 1)"
-                }}>
+              <DragOverlay dropAnimation={null}>
 
                 {activeId &&
                 <div

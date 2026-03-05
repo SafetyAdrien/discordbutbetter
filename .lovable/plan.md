@@ -1,61 +1,45 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Optimisation WebRTC : Opus prioritaire + faible latence + adaptabilité bande passante
 
-## Root cause
+## Analyse de l'existant
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+L'implémentation actuelle est déjà solide :
+- **Opus SDP** : optimisé à 96kbps, 48kHz, FEC, DTX dans `optimizeSdpForOpus`
+- **Audio processing** : RNNoise, high-pass, de-esser, compressor, spectral VAD
+- **ICE** : STUN Google + TURN OpenRelay (TCP/UDP)
+- **Chiffrement** : DTLS-SRTP actif par défaut (natif WebRTC)
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Lacunes identifiées
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+1. **Opus n'est pas forcé comme codec prioritaire** — le SDP modifie les paramètres fmtp de payload 111 mais ne réordonne pas la ligne `m=audio` pour placer Opus en premier. Si le navigateur négocie un autre codec, les optimisations sont ignorées.
 
-## Fix
+2. **Aucune adaptation de bande passante** — le bitrate est fixe (96kbps audio, bitrate vidéo statique). Pas de réaction aux variations réseau (perte de paquets, congestion).
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+3. **Pas de préférence codec vidéo** — VP9 est meilleur pour le screen share (texte net), H264 pour la caméra (accélération matérielle). Actuellement aucune préférence n'est exprimée.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+4. **`maxBundlePolicy` et `rtcpMuxPolicy` non configurés** — le bundling réduit la latence en multiplexant audio+vidéo sur un seul transport ICE.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+## Changements prévus
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### `src/utils/webrtc/PeerConnection.ts`
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+1. **RTCPeerConnection config** : ajouter `bundlePolicy: 'max-bundle'` et `rtcpMuxPolicy: 'require'` pour réduire la latence (1 seul canal ICE pour tout).
 
-### 3. Hook needs `useAuth` for the user ID
+2. **Forcer Opus en priorité dans le SDP** : nouvelle méthode `prioritizeOpusCodec(sdp)` qui réordonne les payloads dans la ligne `m=audio` pour mettre 111 (Opus) en premier.
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+3. **Adaptation bande passante** : nouvelle méthode `adaptBitrate()` appelée périodiquement, qui lit `getStats()` (packet loss, RTT) et ajuste dynamiquement les encoding parameters des senders :
+   - Packet loss > 5% → réduire bitrate audio à 64kbps, activer FEC plus agressif
+   - Packet loss > 15% → réduire à 32kbps
+   - Packet loss < 2% → remonter à 96kbps
+   - Pour la vidéo : ajuster `maxBitrate` et `maxFramerate` proportionnellement
 
-## Detailed changes
+4. **Préférence codec vidéo** : dans `addVideoStream`, utiliser `RTCRtpSender.getCapabilities('video')` pour réordonner les codecs via `setCodecPreferences` :
+   - Screen share → VP9 > VP8 > H264
+   - Caméra → H264 > VP9 > VP8
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+5. **Timer d'adaptation** : `startBitrateAdaptation()` / `stopBitrateAdaptation()` avec intervalle de 3s, appelés dans `createOffer`/`close`.
 
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichier unique modifié
+- `src/utils/webrtc/PeerConnection.ts`
 

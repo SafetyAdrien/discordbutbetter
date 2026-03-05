@@ -67,7 +67,7 @@ export function useServers() {
     };
   }, [user, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['servers'],
     queryFn: async (): Promise<ServerWithDetails[]> => {
       if (!user) return [];
@@ -159,7 +159,25 @@ export function useServers() {
       return servers;
     },
     enabled: !!user,
+    // Persist from sessionStorage for instant hydration after refresh
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:servers:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist servers cache to sessionStorage
+  useEffect(() => {
+    if (query.data && user?.id && !query.isPlaceholderData) {
+      try {
+        sessionStorage.setItem(`cache:servers:${user.id}`, JSON.stringify(query.data));
+      } catch { /* quota exceeded */ }
+    }
+  }, [query.data, user?.id, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function usePublicServers() {

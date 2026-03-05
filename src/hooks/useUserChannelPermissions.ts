@@ -132,8 +132,12 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
     })),
   });
 
-  const isLoading = queries.some(q => q.isLoading);
-  const isPending = queries.some(q => q.isPending);
+  // Bypass loading state when all permissions are already cached in sessionStorage
+  const allCached = permissions.every(p =>
+    channelId ? getPermissionCache(`${channelId}:${p}`) !== null : false
+  );
+  const isLoading = allCached ? false : queries.some(q => q.isLoading);
+  const isPending = allCached ? false : queries.some(q => q.isPending);
   const isError = queries.some(q => q.isError);
 
   // Build a map of permission -> granted

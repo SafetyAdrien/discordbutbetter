@@ -89,7 +89,7 @@ export function useChannels(
     };
   }, [serverId, user, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['channels', serverId],
     queryFn: async (): Promise<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }> => {
       if (!serverId) return { categories: [], orphanChannels: [] };
@@ -130,9 +130,28 @@ export function useChannels(
     enabled: !!serverId && !!user,
     // Use initial data from servers cache for instant display
     initialData: initialData,
+    // Persist from sessionStorage for instant hydration after refresh
+    placeholderData: () => {
+      if (initialData) return undefined;
+      try {
+        const cached = sessionStorage.getItem(`cache:channels:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     // Keep staleTime short so Realtime invalidations trigger immediate refetch
     staleTime: 0,
   });
+
+  // Persist channels cache to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try {
+        sessionStorage.setItem(`cache:channels:${serverId}`, JSON.stringify(query.data));
+      } catch { /* quota exceeded */ }
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useCreateCategory() {

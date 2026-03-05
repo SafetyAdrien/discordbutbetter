@@ -46,7 +46,7 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
           <div className="w-60 bg-sidebar border-r border-border p-4 flex flex-col">
             <div className="flex items-center gap-2 mb-6">
               <Compass className="w-6 h-6 text-primary" />
-              <h2 className="font-display font-bold text-lg">Découvrir</h2>
+              <h2 className="font-ginto font-bold text-lg">Découvrir</h2>
             </div>
             <nav className="space-y-1">
               {categories.map((category) => {
@@ -85,7 +85,7 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
                 </div>
               ) : (
                 <div>
-                  <h1 className="text-2xl font-display font-bold glow-text">Découvrir des serveurs</h1>
+                  <h1 className="text-2xl font-ginto font-bold glow-text">Découvrir des serveurs</h1>
                   <p className="text-muted-foreground mt-1">Trouvez votre prochaine communauté</p>
                 </div>
               )}

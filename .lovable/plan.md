@@ -1,34 +1,61 @@
 
 
-# Supprimer toutes les références à `font-display` (Orbitron)
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problème
+## Root cause
 
-La police `Orbitron` (mappée sur la classe `font-display`) est encore utilisée dans 4 fichiers composants et importée dans `src/index.css`. Cette police n'a jamais été demandée — tous les titres doivent utiliser `font-ginto` (gg sans).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. Remplacer `font-display` → `font-ginto` dans 4 fichiers
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-| Fichier | Occurrences |
-|---|---|
-| `src/components/modals/DiscoverModal.tsx` | 2 (`font-display` lignes 49, 88) |
-| `src/components/modals/CreateServerModal.tsx` | 3 (lignes 163, 172, 181) |
-| `src/components/modals/JoinServerModal.tsx` | 1 (ligne 73) |
-| `src/components/channels/AnnouncementChannel.tsx` | 1 (ligne 575) |
+## Fix
 
-Chaque `font-display` → `font-ginto`.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. Nettoyer l'import et la config Orbitron
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- **`src/index.css`** (ligne 1) : Retirer `family=Orbitron:wght@400;500;600;700` de l'import Google Fonts
-- **`tailwind.config.ts`** (ligne 29) : Supprimer la ligne `display: ['Orbitron', 'system-ui', 'sans-serif'],`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-## Fichiers modifiés
-- `src/components/modals/DiscoverModal.tsx`
-- `src/components/modals/CreateServerModal.tsx`
-- `src/components/modals/JoinServerModal.tsx`
-- `src/components/channels/AnnouncementChannel.tsx`
-- `src/index.css`
-- `tailwind.config.ts`
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -7,7 +7,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -21,6 +22,10 @@ import { parseMarkdown } from '@/lib/markdown';
 import { toast } from 'sonner';
 import * as Portal from '@radix-ui/react-portal';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
+import { useVoice } from '@/contexts/VoiceContext';
+import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
+
+
 
 interface Role {
   id: string;
@@ -131,6 +136,9 @@ export function UserProfilePopup({
   const [showRolePanel, setShowRolePanel] = useState(false);
   const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
+  const { voiceState } = useVoice();
+  const { getUserVolume, setUserVolume } = useVoiceUserSettings();
+  const [localVolume, setLocalVolume] = useState<number | null>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
   const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
@@ -148,6 +156,9 @@ export function UserProfilePopup({
   if (!user) return null;
 
   const isOwnProfile = currentUser?.id === user.id;
+  const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;
+  const targetVolume = user ? getUserVolume(user.id) : 100;
+  const displayVolume = localVolume ?? targetVolume;
   
   const isTargetOwner = user.id === ownerId || user.id === secondaryOwnerId;
   
@@ -455,7 +466,36 @@ export function UserProfilePopup({
             )}
           </div>
 
-          {/* Kick/Ban actions */}
+          {/* Volume Slider — shown when in voice with this user */}
+          {isInVoiceWithTarget && (
+            <>
+              <div className="border-t border-border" />
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide flex items-center gap-1.5">
+                    {displayVolume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    Volume utilisateur
+                  </h4>
+                  <span className="text-xs text-muted-foreground">{displayVolume}%</span>
+                </div>
+                <Slider
+                  value={[displayVolume]}
+                  max={200}
+                  step={5}
+                  onValueChange={(v) => setLocalVolume(v[0])}
+                  onValueCommit={(v) => {
+                    setUserVolume.mutate({ targetUserId: user.id, volume: v[0] });
+                    setLocalVolume(null);
+                  }}
+                  className="w-full"
+                />
+                {displayVolume > 100 && (
+                  <p className="text-xs text-orange-400 mt-1">Volume amplifié au-delà de 100%</p>
+                )}
+              </div>
+            </>
+          )}
+
           {showKickBan && (canKick || canBan) && (
             <>
               <div className="border-t border-border" />

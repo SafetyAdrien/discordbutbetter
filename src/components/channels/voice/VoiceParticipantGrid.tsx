@@ -4,11 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MicOff, HeadphoneOff, ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
 import { VoiceVideoTile } from './VoiceVideoTile';
 import { VoiceParticipantPopover } from './VoiceParticipantPopover';
+import { VoiceParticipantContextMenu } from './VoiceParticipantContextMenu';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useVoice } from '@/contexts/VoiceContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
+import { User } from '@/types/app';
 
 // Array of gradient backgrounds for participants
 const PARTICIPANT_GRADIENTS = [
@@ -72,6 +75,28 @@ export function VoiceParticipantGrid({
   const [screensOpen, setScreensOpen] = useState(true);
   const [participantsOpen, setParticipantsOpen] = useState(true);
   const [focusTarget, setFocusTarget] = useState<FocusTarget>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [cardPosition, setCardPosition] = useState<{ top: number; right: number }>({ top: 100, right: 280 });
+
+  const handleOpenProfile = (participant: Participant, e?: React.MouseEvent) => {
+    const userObj: User = {
+      id: participant.profile.id,
+      username: participant.profile.username,
+      displayName: participant.profile.display_name,
+      avatar: participant.profile.avatar_url || undefined,
+      status: 'online',
+    };
+    setSelectedUser(userObj);
+    if (e) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setCardPosition({
+        top: Math.min(rect.top, window.innerHeight - 400),
+        right: window.innerWidth - rect.right - 340,
+      });
+    }
+    setProfileOpen(true);
+  };
 
   // Collect all screen shares
   const screenShares: { userId: string; stream: MediaStream; ownerName: string; isLocal: boolean }[] = [];
@@ -327,60 +352,83 @@ export function VoiceParticipantGrid({
 
               if (hasCameraStream && cameraStream) {
                 return (
-                  <div
+                  <VoiceParticipantContextMenu
                     key={participant.user_id}
-                    className="relative group cursor-pointer rounded-xl overflow-hidden"
-                    onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
+                    participantUserId={participant.user_id}
+                    participantName={participant.profile.display_name}
+                    onViewProfile={() => handleOpenProfile(participant)}
                   >
-                    <VoiceVideoTile
-                      stream={cameraStream}
-                      type="camera"
-                      participantName={participant.profile.display_name}
-                      isSpeaking={speakingUsers.has(participant.user_id)}
-                      isMuted={participant.muted}
-                      isLocal={isLocal}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
+                    <div
+                      className="relative group cursor-pointer rounded-xl overflow-hidden"
+                      onClick={(e) => handleOpenProfile(participant, e)}
+                      onDoubleClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
+                    >
+                      <VoiceVideoTile
+                        stream={cameraStream}
+                        type="camera"
+                        participantName={participant.profile.display_name}
+                        isSpeaking={speakingUsers.has(participant.user_id)}
+                        isMuted={participant.muted}
+                        isLocal={isLocal}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
+                      </div>
                     </div>
-                  </div>
+                  </VoiceParticipantContextMenu>
                 );
               }
 
               return (
-                <VoiceParticipantPopover
+                <VoiceParticipantContextMenu
                   key={participant.user_id}
-                  participant={participant}
-                  canModerate={canModerate && !isLocal}
-                  volume={getUserVolume(participant.user_id)}
-                  onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
-                  onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
-                  onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
+                  participantUserId={participant.user_id}
+                  participantName={participant.profile.display_name}
+                  onViewProfile={() => handleOpenProfile(participant)}
                 >
-                  <div 
-                    className="cursor-pointer group relative"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFocus({ type: 'participant', userId: participant.user_id });
-                    }}
+                  <VoiceParticipantPopover
+                    participant={participant}
+                    canModerate={canModerate && !isLocal}
+                    volume={getUserVolume(participant.user_id)}
+                    onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
+                    onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
+                    onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
                   >
-                    <VoiceParticipantCard
-                      participant={participant}
-                      isSpeaking={speakingUsers.has(participant.user_id)}
-                      audioLevel={audioLevels.get(participant.user_id) || 0}
-                      gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-                      compact={hasScreenShares}
-                    />
-                    <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
+                    <div 
+                      className="cursor-pointer group relative"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenProfile(participant, e);
+                      }}
+                      onDoubleClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
+                    >
+                      <VoiceParticipantCard
+                        participant={participant}
+                        isSpeaking={speakingUsers.has(participant.user_id)}
+                        audioLevel={audioLevels.get(participant.user_id) || 0}
+                        gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                        compact={hasScreenShares}
+                      />
+                      <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
+                      </div>
                     </div>
-                  </div>
-                </VoiceParticipantPopover>
+                  </VoiceParticipantPopover>
+                </VoiceParticipantContextMenu>
               );
             })}
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Profile Popup */}
+      <UserProfilePopup
+        user={selectedUser}
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        mode="card"
+        cardPosition={cardPosition}
+      />
     </div>
   );
 }

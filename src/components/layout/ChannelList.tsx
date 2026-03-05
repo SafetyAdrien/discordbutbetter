@@ -103,7 +103,10 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
-  CollisionDetection } from
+  CollisionDetection,
+  PointerSensor,
+  useSensor,
+  useSensors } from
 "@dnd-kit/core";
 import {
   SortableContext,
@@ -112,39 +115,12 @@ import {
 "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { useDndSensors } from "@/hooks/useDndSensors";
 import React from "react";
 
-// Discord-style Drop Indicator - Blue horizontal line with absolute positioning
-const DropIndicator = React.forwardRef<
-  HTMLDivElement,
-  {
-    isVisible: boolean;
-    position: "before" | "after";
-  }>(
-  ({ isVisible, position }, ref) => {
-    if (!isVisible) return null;
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          // Absolute positioning, full width with overflow for circles
-          "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
-          "bg-[#5865f2]",
-          // Circles at endpoints using pseudo-elements
-          "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-          "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
-          "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-          "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-          // Position based on 'before' or 'after'
-          position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
-          // Smooth appearance animation
-          "animate-fade-in"
-        )} />);
-
-
-  });
-DropIndicator.displayName = "DropIndicator";
+// Inline Drop Indicator - Discord-style blue line (in DOM flow, not absolute)
+const InlineDropIndicator = () => (
+  <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 my-0.5" />
+);
 interface Channel {
   id: string;
   name: string;

@@ -425,6 +425,9 @@ export class MediaManager {
     const audioContext = this.remoteAudioContexts.get(peerId);
     if (audioContext) {
       audioContext.source.disconnect();
+      if (audioContext.gainNode) {
+        try { audioContext.gainNode.disconnect(); } catch { /* already disconnected */ }
+      }
       audioContext.context.close().catch(() => {});
       this.remoteAudioContexts.delete(peerId);
     }

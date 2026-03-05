@@ -127,22 +127,22 @@ export function VoiceParticipantGrid({
 
   const hasScreenShares = screenShares.length > 0;
 
-  // Grid class for participants
+  // Grid class for participants when screen shares are present (compact row)
   const getParticipantGridClass = () => {
     const count = participants.length;
-    if (count === 1) return 'grid-cols-1 max-w-[200px]';
-    if (count === 2) return 'grid-cols-2 max-w-md';
-    if (count <= 4) return 'grid-cols-2 sm:grid-cols-4 max-w-2xl';
-    if (count <= 6) return 'grid-cols-3 sm:grid-cols-6 max-w-3xl';
-    return 'grid-cols-4 sm:grid-cols-8 max-w-4xl';
+    if (count === 1) return 'grid-cols-1 max-w-[180px]';
+    if (count === 2) return 'grid-cols-2 max-w-sm';
+    if (count <= 4) return 'grid-cols-4 max-w-xl';
+    if (count <= 6) return 'grid-cols-6 max-w-3xl';
+    return 'grid-cols-8 max-w-4xl';
   };
 
   // Grid class for screen shares
   const getScreenGridClass = () => {
     const count = screenShares.length;
-    if (count === 1) return 'grid-cols-1';
-    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
-    return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+    if (count === 1) return 'grid-cols-1 max-w-5xl mx-auto';
+    if (count === 2) return 'grid-cols-2 max-w-5xl mx-auto';
+    return 'grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto';
   };
 
   const handleFocus = (target: FocusTarget) => {
@@ -305,7 +305,7 @@ export function VoiceParticipantGrid({
                   <div
                     key={`screen-${share.userId}`}
                     className="relative group cursor-pointer rounded-xl overflow-hidden"
-                    onClick={() => handleFocus({ type: 'screen', userId: share.userId })}
+                    onDoubleClick={() => handleFocus({ type: 'screen', userId: share.userId })}
                   >
                     <VoiceVideoTile
                       stream={share.stream}
@@ -435,11 +435,12 @@ export function VoiceParticipantGrid({
 
 // Full grid class when no screen shares
 function getFullGridClass(count: number) {
-  if (count === 1) return 'grid-cols-1 max-w-md';
-  if (count === 2) return 'grid-cols-2 max-w-2xl';
-  if (count <= 4) return 'grid-cols-2 max-w-3xl';
-  if (count <= 6) return 'grid-cols-3 max-w-4xl';
-  return 'grid-cols-4 max-w-5xl';
+  if (count === 1) return 'grid-cols-1 max-w-lg mx-auto';
+  if (count === 2) return 'grid-cols-2 max-w-3xl mx-auto';
+  if (count <= 4) return 'grid-cols-2 max-w-4xl mx-auto';
+  if (count <= 6) return 'grid-cols-3 max-w-5xl mx-auto';
+  if (count <= 9) return 'grid-cols-3 lg:grid-cols-4 max-w-6xl mx-auto';
+  return 'grid-cols-4 lg:grid-cols-5 max-w-7xl mx-auto';
 }
 
 interface VoiceParticipantCardProps {

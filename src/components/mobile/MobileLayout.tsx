@@ -305,7 +305,32 @@ export function MobileLayout({
       case 'calendar':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} /></FullScreenWrapper>;
       case 'announcement':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><AnnouncementChannel {...commonProps} /></FullScreenWrapper>;
+        return (
+          <MobileChatView
+            channel={channelForChat}
+            messages={messagesData}
+            onSendMessage={handleSendMessage}
+            memberRoles={memberRolesMap}
+            members={searchMembers}
+            memberListData={memberListData}
+            ownerId={currentServer.owner_id || ''}
+            serverId={currentServer.id}
+            onBack={handleBackToChannels}
+            onOpenDM={onOpenDM}
+            onSelectThread={(threadId) => {
+              setMobileView({
+                type: 'thread',
+                serverId: mobileView.serverId,
+                channelId: mobileView.channelId,
+                threadId,
+                channelName: channelForChat.name,
+              });
+            }}
+            renderCustomContent={() => (
+              <AnnouncementChannel {...commonProps} />
+            )}
+          />
+        );
       case 'stage':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><StageChannel {...commonProps} serverId={currentServer.id} /></FullScreenWrapper>;
       default:

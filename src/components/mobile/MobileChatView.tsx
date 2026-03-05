@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import { ChevronLeft, Users, Info, Bell, Pin, BellRing, BellOff, AtSign, Search, X } from 'lucide-react';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -22,6 +22,7 @@ import { SummariesBar } from '@/components/summaries/SummariesBar';
 import { useSummaries } from '@/hooks/useSummaries';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import type { Message, User } from '@/types/app';
 import type { MemberWithProfile } from '@/hooks/useMembers';
 
@@ -56,6 +57,8 @@ interface MobileChatViewProps {
   onSelectThread?: (threadId: string) => void;
   activeThreadId?: string | null;
   onCloseThread?: () => void;
+  /** If provided, renders custom content instead of ChatArea (e.g. AnnouncementChannel) */
+  renderCustomContent?: () => ReactNode;
 }
 
 export function MobileChatView({
@@ -72,6 +75,7 @@ export function MobileChatView({
   onSelectThread,
   activeThreadId,
   onCloseThread,
+  renderCustomContent,
 }: MobileChatViewProps) {
   const ChannelIcon = channelIcons[channel.type] || StreamlineHash;
   const [showSearch, setShowSearch] = useState(false);
@@ -237,7 +241,7 @@ export function MobileChatView({
             </SheetTrigger>
             <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-xl [&>button.absolute]:hidden">
               <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-                <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1">
                   <SheetClose asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <X className="w-4 h-4" />
@@ -246,6 +250,15 @@ export function MobileChatView({
                   <h3 className="text-sm font-semibold text-foreground">Membres</h3>
                 </div>
               </div>
+              {/* Channel topic / description */}
+              {channel.description && (
+                <>
+                  <div className="px-3 py-2">
+                    <p className="text-xs text-muted-foreground">{channel.description}</p>
+                  </div>
+                  <Separator />
+                </>
+              )}
               <MemberList
                 members={memberListData}
                 ownerId={ownerId}
@@ -276,21 +289,23 @@ export function MobileChatView({
         />
       )}
 
-      {/* Chat Area */}
+      {/* Chat Area or Custom Content */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        <ChatArea
-          channel={channel}
-          messages={messages}
-          onSendMessage={onSendMessage}
-          memberRoles={memberRoles}
-          onOpenDM={onOpenDM}
-          onToggleMembers={() => {}}
-          showMembers={false}
-          onSelectThread={onSelectThread}
-          activeThreadId={activeThreadId}
-          onCloseThread={onCloseThread}
-          members={members}
-        />
+        {renderCustomContent ? renderCustomContent() : (
+          <ChatArea
+            channel={channel}
+            messages={messages}
+            onSendMessage={onSendMessage}
+            memberRoles={memberRoles}
+            onOpenDM={onOpenDM}
+            onToggleMembers={() => {}}
+            showMembers={false}
+            onSelectThread={onSelectThread}
+            activeThreadId={activeThreadId}
+            onCloseThread={onCloseThread}
+            members={members}
+          />
+        )}
       </div>
 
       {/* Global Search Modal */}

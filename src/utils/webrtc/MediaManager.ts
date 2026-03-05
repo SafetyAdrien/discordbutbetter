@@ -344,18 +344,43 @@ export class MediaManager {
       audio.volume = Math.max(0, Math.min(2, savedVolume / 100));
     }
 
-    audio.play().catch(error => {
-      console.error('[MediaManager] Failed to play audio for peer:', peerId, error);
-    });
+    // Robust play with retry on autoplay policy block
+    const tryPlay = () => {
+      audio.play().catch(error => {
+        console.warn('[MediaManager] Autoplay blocked for peer:', peerId, error.name);
+        // Listen for any user interaction to retry
+        const resumeOnInteraction = () => {
+          audio.play().catch(e => console.error('[MediaManager] Retry play failed:', e));
+          document.removeEventListener('click', resumeOnInteraction);
+          document.removeEventListener('keydown', resumeOnInteraction);
+          document.removeEventListener('touchstart', resumeOnInteraction);
+        };
+        document.addEventListener('click', resumeOnInteraction, { once: true });
+        document.addEventListener('keydown', resumeOnInteraction, { once: true });
+        document.addEventListener('touchstart', resumeOnInteraction, { once: true });
+      });
+    };
+    tryPlay();
 
     this.remoteAudioElements.set(peerId, audio);
 
     // Create audio context with larger FFT for spectral VAD
     try {
       const context = new AudioContext();
+      // Resume AudioContext if suspended (autoplay policy)
+      if (context.state === 'suspended') {
+        context.resume().catch(() => {});
+        const resumeCtx = () => {
+          context.resume().catch(() => {});
+          document.removeEventListener('click', resumeCtx);
+          document.removeEventListener('keydown', resumeCtx);
+        };
+        document.addEventListener('click', resumeCtx, { once: true });
+        document.addEventListener('keydown', resumeCtx, { once: true });
+      }
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
-      analyser.fftSize = 2048; // 1024 bins — better resolution for remote VAD
+      analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
       

@@ -500,8 +500,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
-  // Permission denied: sessionStorage cache provides instant state on reload
-  const permissionDeniedMessage = (!isAdminOrOwner && !canSendMessages) 
+  // Permission denied: show denied message only when permissions are resolved (not loading)
+  // During loading, show nothing (neutral state) to avoid flash
+  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
 

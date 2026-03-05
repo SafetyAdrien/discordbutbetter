@@ -8,18 +8,20 @@ export class SignalingService {
   private userId: string;
   private onSignalReceived: OnSignalReceivedCallback;
   private subscription: ReturnType<typeof supabase.channel> | null = null;
+  private instanceId: string;
 
   constructor(channelId: string, userId: string, onSignalReceived: OnSignalReceivedCallback) {
     this.channelId = channelId;
     this.userId = userId;
     this.onSignalReceived = onSignalReceived;
+    this.instanceId = crypto.randomUUID();
   }
 
   async start(): Promise<void> {
-    console.log('[SignalingService] Starting for channel:', this.channelId);
+    console.log('[SignalingService] Starting for channel:', this.channelId, 'instance:', this.instanceId);
 
     this.subscription = supabase
-      .channel(`voice-signals-${this.channelId}`)
+      .channel(`voice-signals-${this.channelId}-${this.instanceId}`)
       .on(
         'postgres_changes',
         {

@@ -241,10 +241,18 @@ export function AnnouncementChannel({
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
-  // Permission denied: show denied message only when permissions are resolved
-  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
-    ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
-    : undefined;
+  // Channel transition tracking for anti-flash optimistic updates
+  const prevChannelIdRef = useRef(channel.id);
+  const isChannelTransitioning = prevChannelIdRef.current !== channel.id;
+
+  useEffect(() => {
+    prevChannelIdRef.current = channel.id;
+  }, [channel.id]);
+
+  // Permission denied: announcement-specific message with anti-flash logic
+  const permissionDeniedMessage = (isChannelTransitioning || permissionsLoading || isAdminOrOwner || canSendMessages)
+    ? undefined
+    : "Suivez ce salon pour recevoir ses mises à jour sur votre propre serveur";
 
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
@@ -400,7 +408,7 @@ export function AnnouncementChannel({
               variant="ghost"
               size="sm"
               onClick={() => setFollowModalOpen(true)}
-              className="text-sm font-medium flex-shrink-0"
+              className="text-sm font-medium flex-shrink-0 border border-border/60 bg-muted/40"
             >
               Suivre
             </Button>

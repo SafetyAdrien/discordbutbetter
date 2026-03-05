@@ -103,7 +103,10 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
-  CollisionDetection } from
+  CollisionDetection,
+  PointerSensor,
+  useSensor,
+  useSensors } from
 "@dnd-kit/core";
 import {
   SortableContext,
@@ -112,39 +115,12 @@ import {
 "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { useDndSensors } from "@/hooks/useDndSensors";
 import React from "react";
 
-// Discord-style Drop Indicator - Blue horizontal line with absolute positioning
-const DropIndicator = React.forwardRef<
-  HTMLDivElement,
-  {
-    isVisible: boolean;
-    position: "before" | "after";
-  }>(
-  ({ isVisible, position }, ref) => {
-    if (!isVisible) return null;
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          // Absolute positioning, full width with overflow for circles
-          "absolute -left-2 -right-2 h-[2px] z-50 pointer-events-none",
-          "bg-[#5865f2]",
-          // Circles at endpoints using pseudo-elements
-          "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-          "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
-          "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-          "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-          // Position based on 'before' or 'after'
-          position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
-          // Smooth appearance animation
-          "animate-fade-in"
-        )} />);
-
-
-  });
-DropIndicator.displayName = "DropIndicator";
+// Inline Drop Indicator - Discord-style blue line (in DOM flow, not absolute)
+const InlineDropIndicator = () => (
+  <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 my-0.5" />
+);
 interface Channel {
   id: string;
   name: string;
@@ -223,23 +199,10 @@ function SortableCategory({
   onEdit,
   onCreateChannel,
   onDelete,
-  showDropIndicator = false,
-  dropPosition = "after",
+  dropIndicator = null,
   canManageChannels = false,
   serverId
-
-
-
-
-
-
-
-
-
-
-
-
-}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;}) {
+}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;dropIndicator?: "before" | "after" | null;canManageChannels?: boolean;serverId: string;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `category-${category.id}`,
@@ -250,21 +213,21 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: undefined // Let Tailwind handle transitions
+    transition: isDragging ? "opacity 100ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1)",
   };
   return (
     <>
+      {/* Inline drop indicator - before */}
+      {dropIndicator === "before" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mb-0.5" />}
+
       {/* En-tête de catégorie (zone draggable uniquement) */}
       <div
         ref={setNodeRef}
         style={style}
         className={cn(
-          "relative dnd-item",
-          isDragging && "dnd-item-dragging"
+          "dnd-item",
+          isDragging && "opacity-40"
         )}>
-
-        {/* Drop Indicator - Absolute positioned */}
-        {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -319,6 +282,9 @@ function SortableCategory({
           </ContextMenuContent>
         </ContextMenu>
       </div>
+
+      {/* Inline drop indicator - after */}
+      {dropIndicator === "after" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mt-0.5" />}
 
       {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
       {!isCollapsed && <div className="mb-2">{children}</div>}
@@ -385,8 +351,7 @@ interface SortableChannelProps {
   onCreateInvite: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  showDropIndicator?: boolean;
-  dropPosition?: "before" | "after";
+  dropIndicator?: "before" | "after" | null;
   threads?: ThreadWithUnread[];
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
@@ -413,8 +378,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     onCreateInvite,
     onDelete,
     onDuplicate,
-    showDropIndicator = false,
-    dropPosition = "after",
+    dropIndicator = null,
     threads = [],
     activeThreadId,
     onThreadSelect,
@@ -435,7 +399,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     });
     const style = {
       transform: CSS.Transform.toString(transform),
-      transition: undefined // Let Tailwind handle transitions
+      transition: isDragging ? "opacity 100ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1)",
     };
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
@@ -449,18 +413,18 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     const isLiveStage = stageData?.isLive;
     return (
       <>
+        {/* Inline drop indicator - before */}
+        {dropIndicator === "before" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mb-0.5" />}
+
         <div
           ref={setNodeRef}
           style={style}
           {...attributes}
           {...listeners}
           className={cn(
-            "relative hover:cursor-grab rounded-md dnd-item",
-            isDragging && "dnd-item-dragging"
+            "hover:cursor-grab rounded-md dnd-item",
+            isDragging && "opacity-40"
           )}>
-
-          {/* Drop Indicator - Absolute positioned */}
-          {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
           <ContextMenu>
             <ContextMenuTrigger asChild>
@@ -580,6 +544,9 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
             </div>
           }
         </div>
+
+        {/* Inline drop indicator - after */}
+        {dropIndicator === "after" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mt-0.5" />}
 
         {/* Threads for text channels - OUTSIDE draggable div */}
         {channel.type === "text" && threads.length > 0 &&
@@ -803,8 +770,12 @@ export function ChannelList({
 
 
       // Error already handled by the hook
-    }}; // DnD sensors - optimized with touch support
-  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
+    }}; // DnD sensors - PointerSensor only (like ServerList pattern)
+  const wasDraggingRef = useRef(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
   };
   const handleSignOut = async () => {
     await signOut();
@@ -835,6 +806,8 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
+    // Block clicks right after a drag
+    if (wasDraggingRef.current) return;
     // Link channels open external link warning modal
     if (channel.type === "link") {
       const url = channel.description || '';
@@ -867,6 +840,7 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    wasDraggingRef.current = true;
     setActiveId(event.active.id as string);
   };
 
@@ -938,6 +912,7 @@ export function ChannelList({
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
+    setTimeout(() => { wasDraggingRef.current = false; }, 100);
     if (!over || active.id === over.id) return;
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
@@ -1396,8 +1371,7 @@ export function ChannelList({
                     onCreateInvite={() => handleCreateInvite(channel.id)}
                     onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                     onDuplicate={() => handleDuplicateChannel(channel.id)}
-                    showDropIndicator={overId === `channel-${channel.id}`}
-                    dropPosition={dropPosition}
+                    dropIndicator={overId === `channel-${channel.id}` ? dropPosition : null}
                     threads={activeChannelId === channel.id ? threadsWithUnread : []}
                     activeThreadId={activeThreadId}
                     onThreadSelect={onThreadSelect}
@@ -1436,8 +1410,7 @@ export function ChannelList({
                     })
                     }
                     onDelete={() => handleDeleteCategory(category.id)}
-                    showDropIndicator={overId === `category-${category.id}`}
-                    dropPosition={dropPosition}
+                    dropIndicator={overId === `category-${category.id}` ? dropPosition : null}
                     canManageChannels={canManageChannels}
                     serverId={server.id}>
 
@@ -1463,8 +1436,7 @@ export function ChannelList({
                           onCreateInvite={() => handleCreateInvite(channel.id)}
                           onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                           onDuplicate={() => handleDuplicateChannel(channel.id)}
-                          showDropIndicator={overId === `channel-${channel.id}`}
-                          dropPosition={dropPosition}
+                          dropIndicator={overId === `channel-${channel.id}` ? dropPosition : null}
                           threads={activeChannelId === channel.id ? threadsWithUnread : []}
                           activeThreadId={activeThreadId}
                           onThreadSelect={onThreadSelect}
@@ -1489,11 +1461,7 @@ export function ChannelList({
               </SortableContext>
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
-              <DragOverlay
-                dropAnimation={{
-                  duration: 200,
-                  easing: "cubic-bezier(0.25, 1, 0.5, 1)"
-                }}>
+              <DragOverlay dropAnimation={null}>
 
                 {activeId &&
                 <div

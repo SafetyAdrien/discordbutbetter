@@ -572,7 +572,7 @@ export function AnnouncementChannel({
             <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
               <Hash className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
+            <h1 className="text-3xl font-ginto font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">
               C'est le début du salon #{channel.name}.
             </p>

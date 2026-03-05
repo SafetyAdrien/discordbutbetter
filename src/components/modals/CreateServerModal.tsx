@@ -160,7 +160,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
             
             {step === 'choice' && (
               <>
-                <h2 className="text-2xl font-display font-bold">Créer un serveur</h2>
+                <h2 className="text-2xl font-ginto font-bold">Créer un serveur</h2>
                 <p className="text-muted-foreground mt-2">
                   Votre serveur est l'endroit où vous et vos amis traînez. Créez le vôtre et commencez à discuter.
                 </p>
@@ -169,7 +169,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
             {step === 'type' && (
               <>
-                <h2 className="text-2xl font-display font-bold">Créer votre serveur</h2>
+                <h2 className="text-2xl font-ginto font-bold">Créer votre serveur</h2>
                 <p className="text-muted-foreground mt-2">
                   Votre serveur est l'endroit où vous et vos amis passez du temps. Créez le vôtre et commencez à discuter.
                 </p>
@@ -178,7 +178,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
             {step === 'customize' && (
               <>
-                <h2 className="text-2xl font-display font-bold">Personnaliser votre serveur</h2>
+                <h2 className="text-2xl font-ginto font-bold">Personnaliser votre serveur</h2>
                 <p className="text-muted-foreground mt-2">
                   Donnez une identité à votre nouveau serveur en lui donnant un nom et une icône.
                 </p>

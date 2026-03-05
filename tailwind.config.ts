@@ -26,7 +26,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Orbitron', 'system-ui', 'sans-serif'],
+        
         ginto: ['gg sans', 'Noto Sans', 'Helvetica', 'sans-serif'],
       },
       colors: {

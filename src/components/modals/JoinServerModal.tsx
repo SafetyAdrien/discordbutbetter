@@ -70,7 +70,7 @@ export function JoinServerModal({ onClose, onBack, onJoinSuccess, onDiscoverClic
             <X className="w-5 h-5" />
           </Button>
           
-          <h2 className="text-2xl font-display font-bold">
+          <h2 className="text-2xl font-ginto font-bold">
             Rejoindre un serveur
           </h2>
           <p className="text-muted-foreground mt-2">

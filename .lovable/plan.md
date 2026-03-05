@@ -1,35 +1,61 @@
 
 
-# Fix: Audio vocal ne fonctionne qu'à la première connexion
+# Fix: Duplicated channel hidden by visibility filter
 
-## Causes identifiées
+## Root cause
 
-### Bug 1 — Collision de nom de channel Realtime dans SignalingService
-`SignalingService.start()` crée un channel Supabase nommé `voice-signals-${channelId}`. Quand on quitte puis rejoint le même salon sans recharger, `stop()` appelle `removeChannel()` puis `start()` recrée un channel avec **le même nom**. Supabase Realtime peut ignorer silencieusement la nouvelle souscription si l'ancienne n'est pas encore totalement détruite côté serveur. Résultat : **aucun signal WebRTC reçu → pas de négociation → pas d'audio**.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Bug 2 — AudioProcessor jamais nettoyé entre sessions
-`MediaManager.cleanup()` appelle `stopMicrophone()` qui stoppe les tracks, mais **n'appelle jamais `audioProcessor.cleanup()`**. Au reconnect, `audioProcessor.processStream()` tente de réutiliser des nœuds internes connectés à un `AudioContext` fermé ou dans un état incohérent. Le `processedStream` est soit silencieux soit ne fonctionne plus.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Bug 3 — Channel Realtime des événements vocaux sans isolation
-Dans `VoiceContext.tsx`, le channel `voice-events:${channelId}` pour les sons join/leave souffre du même problème de collision de nom que le Bug 1.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-## Correctifs
+## Fix
 
-### 1. `src/utils/webrtc/SignalingService.ts` — Ajouter un instanceId unique
-- Ajouter un `instanceId` (UUID) dans le constructeur
-- Utiliser `voice-signals-${channelId}-${instanceId}` comme nom de channel Realtime
-- Chaque nouvelle instance de SignalingService aura un nom unique → plus de collision
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. `src/utils/webrtc/MediaManager.ts` — Appeler `audioProcessor.cleanup()` dans `cleanup()`
-- Ajouter `audioProcessor.cleanup()` dans la méthode `cleanup()` avant de fermer l'audioContext local
-- Cela garantit que le processeur audio est complètement réinitialisé entre les sessions
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### 3. `src/contexts/VoiceContext.tsx` — Isoler le channel des événements vocaux
-- Ajouter un `instanceId` au nom du channel `voice-events:${channelId}-${instanceId}`
-- Utiliser un `useRef(crypto.randomUUID())` régénéré à chaque `joinChannel`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### Fichiers modifiés
-- `src/utils/webrtc/SignalingService.ts` — instanceId dans le nom du channel
-- `src/utils/webrtc/MediaManager.ts` — appel `audioProcessor.cleanup()` dans `cleanup()`
-- `src/contexts/VoiceContext.tsx` — isolation du channel d'événements vocaux
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

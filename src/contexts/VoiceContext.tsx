@@ -216,11 +216,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, [webrtc.microphoneError, voiceState.channelId]);
 
   // Subscribe to voice state changes for sound effects only (cache updates handled by useVoiceParticipants)
+  const voiceEventsInstanceRef = useRef<string>('');
   useEffect(() => {
     if (!voiceState.channelId) return;
 
+    // Generate a unique instance ID per subscription to avoid Realtime channel name collisions
+    const instanceId = crypto.randomUUID();
+    voiceEventsInstanceRef.current = instanceId;
+
     const channel = supabase
-      .channel(`voice-events:${voiceState.channelId}`)
+      .channel(`voice-events:${voiceState.channelId}-${instanceId}`)
       .on(
         'postgres_changes',
         {

@@ -1,30 +1,61 @@
 
 
-## Problem
+# Fix: Duplicated channel hidden by visibility filter
 
-When a user joins a voice channel, there's a brief flash showing "Utilisateur" with a default avatar. This happens because:
+## Root cause
 
-1. `useVoiceState.joinChannel` inserts into `voice_states` in the database
-2. The realtime INSERT handler in `useVoiceParticipants` (line 93-131) catches this and creates a placeholder entry with `display_name: 'Utilisateur'` and `avatar_url: null`
-3. Only then does it fetch the real profile asynchronously
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Solution
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Two changes to eliminate the flash:
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 1. `useVoiceState.ts` — Add optimistic update in `joinChannel.onMutate`
+## Fix
 
-Before the DB insert, optimistically add the current user to the `['voice-participants', channelId]` cache with their real profile data (from `useAuth` + `useProfile` or the auth context). This way the participant appears instantly with correct name and avatar.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. `useVoiceParticipants.ts` — Improve INSERT handler (line 93-131)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-In the realtime INSERT handler, before falling back to placeholder profile:
-- Check if the user's profile is already in React Query cache (`['profile', userId]` or `['members', serverId]`)
-- If found, use it directly instead of the placeholder
-- This handles the case where OTHER users join (not just the local user)
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### Files to modify
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- **`src/hooks/useVoiceState.ts`**: Add `onMutate` to `joinChannel` mutation that pre-populates the voice-participants cache with the current user's real profile
-- **`src/hooks/useVoiceParticipants.ts`**: In the INSERT handler, attempt to resolve profile from existing React Query cache before using placeholder fallback
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

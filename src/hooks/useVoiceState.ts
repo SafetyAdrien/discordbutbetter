@@ -93,6 +93,40 @@ export function useVoiceState() {
       if (error) throw error;
       return { channelId, channelName, serverName };
     },
+    onMutate: async ({ channelId }) => {
+      if (!user) return;
+
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['voice-participants', channelId] });
+
+      // Resolve profile from cache — try profile cache, then any members cache
+      const profileCache = queryClient.getQueryData<any>(['profile', user.id]);
+      const profile = profileCache ?? { id: user.id, username: user.email?.split('@')[0] || 'user', display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User', avatar_url: user.user_metadata?.avatar_url || null };
+
+      // Optimistically add current user to voice participants cache
+      queryClient.setQueryData(['voice-participants', channelId], (old: any[] | undefined) => {
+        if (old?.some((p: any) => p.user_id === user.id)) return old;
+        return [
+          ...(old || []),
+          {
+            id: crypto.randomUUID(),
+            user_id: user.id,
+            channel_id: channelId,
+            muted: voiceState.isMuted,
+            deafened: voiceState.isDeafened,
+            camera: false,
+            streaming: false,
+            joined_at: new Date().toISOString(),
+            profile: {
+              id: user.id,
+              username: profile.username || 'user',
+              display_name: profile.display_name || 'User',
+              avatar_url: profile.avatar_url || null,
+            },
+          },
+        ];
+      });
+    },
     onSuccess: ({ channelId, channelName, serverName }) => {
       setVoiceState(prev => ({
         ...prev,
@@ -104,7 +138,9 @@ export function useVoiceState() {
       queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
       toast.success(`Connecté à ${channelName}`);
     },
-    onError: () => {
+    onError: (_err, { channelId }) => {
+      // Rollback optimistic update
+      queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
       toast.error('Impossible de rejoindre le canal vocal');
     },
   });

@@ -94,7 +94,13 @@ export function useVoiceParticipants(channelId: string | null) {
             const newRow = payload.new as any;
             const newUserId = newRow.user_id;
 
-            // 1. Optimistic instant add with fallback profile
+            // Try to resolve profile from React Query cache first (avoids placeholder flash)
+            const cachedProfile = queryClient.getQueryData<any>(['profile', newUserId]);
+            const resolvedProfile = cachedProfile
+              ? { id: cachedProfile.id, username: cachedProfile.username, display_name: cachedProfile.display_name, avatar_url: cachedProfile.avatar_url }
+              : null;
+
+            // 1. Add with cached profile or fallback
             queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
               if (old?.some(p => p.user_id === newUserId)) return old;
               const participant: VoiceParticipant = {
@@ -106,7 +112,7 @@ export function useVoiceParticipants(channelId: string | null) {
                 camera: newRow.camera || false,
                 streaming: newRow.streaming || false,
                 joined_at: newRow.joined_at || new Date().toISOString(),
-                profile: {
+                profile: resolvedProfile || {
                   id: newUserId,
                   username: 'user',
                   display_name: 'Utilisateur',
@@ -116,19 +122,21 @@ export function useVoiceParticipants(channelId: string | null) {
               return [...(old || []), participant];
             });
 
-            // 2. Hydrate with real profile data
-            supabase
-              .from('profiles')
-              .select('id, username, display_name, avatar_url')
-              .eq('id', newUserId)
-              .single()
-              .then(({ data: profile }) => {
-                if (profile) {
-                  queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
-                    old?.map(p => p.user_id === newUserId ? { ...p, profile } : p)
-                  );
-                }
-              });
+            // 2. Hydrate with real profile data only if we used a fallback
+            if (!resolvedProfile) {
+              supabase
+                .from('profiles')
+                .select('id, username, display_name, avatar_url')
+                .eq('id', newUserId)
+                .single()
+                .then(({ data: profile }) => {
+                  if (profile) {
+                    queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
+                      old?.map(p => p.user_id === newUserId ? { ...p, profile } : p)
+                    );
+                  }
+                });
+            }
           }
         }
       )

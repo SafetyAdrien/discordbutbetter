@@ -96,6 +96,13 @@ export function useWebRTC(): UseWebRTCReturn {
   const vadStateRef = useRef<Map<string, AdaptiveVADState>>(new Map());
   const AMBIENT_SAMPLE_SIZE = 60; // ~3 seconds of samples at 50ms
 
+  // === MUTEX for connect/disconnect sequentiality ===
+  const operationPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  const instanceIdRef = useRef(crypto.randomUUID());
+
+  // === Signal queue: buffer signals arriving before peer is ready ===
+  const signalQueueRef = useRef<Map<string, SignalData[]>>(new Map());
+
   // Set up remote stream callbacks
   useEffect(() => {
     mediaManager.setRemoteStreamCallbacks(
@@ -171,7 +178,19 @@ export function useWebRTC(): UseWebRTCReturn {
     return pc;
   }, []);
 
-  // Handle incoming signals
+  // Drain queued signals for a peer after connection is set up
+  const drainSignalQueue = useCallback(async (peerId: string, pc: PeerConnection) => {
+    const queued = signalQueueRef.current.get(peerId);
+    if (queued && queued.length > 0) {
+      console.log('[useWebRTC] Draining', queued.length, 'queued signals for:', peerId);
+      signalQueueRef.current.delete(peerId);
+      for (const signal of queued) {
+        await pc.handleSignal(signal);
+      }
+    }
+  }, []);
+
+  // Handle incoming signals with queue support
   const handleSignalReceived = useCallback(async (fromUserId: string, signal: SignalData) => {
     if (!user?.id || !channelIdRef.current) return;
 
@@ -183,7 +202,6 @@ export function useWebRTC(): UseWebRTCReturn {
       if (localStream) {
         peerConnection.addAudioStream(localStream);
       }
-      // Add camera/screen if active
       const cameraStream = mediaManager.getLocalCameraStream();
       if (cameraStream) {
         peerConnection.addVideoStream(cameraStream, 'camera');
@@ -196,10 +214,18 @@ export function useWebRTC(): UseWebRTCReturn {
 
     if (peerConnection) {
       await peerConnection.handleSignal(signal);
+      // After handling this signal, drain any queued signals
+      await drainSignalQueue(fromUserId, peerConnection);
+    } else {
+      // Queue signals that arrive before peer creation (ICE candidates, answers)
+      console.log('[useWebRTC] Queuing signal', signal.type, 'from', fromUserId);
+      const queue = signalQueueRef.current.get(fromUserId) || [];
+      queue.push(signal);
+      signalQueueRef.current.set(fromUserId, queue);
     }
-  }, [user?.id, createPeerConnection]);
+  }, [user?.id, createPeerConnection, drainSignalQueue]);
 
-  // Connect to existing participants
+  // Connect to existing participants with DETERMINISTIC offer initiation
   const connectToParticipants = useCallback(async (participants: Array<{ user_id: string }>) => {
     if (!user?.id) return;
 
@@ -209,13 +235,16 @@ export function useWebRTC(): UseWebRTCReturn {
       if (participant.user_id === user.id) continue;
       if (peersRef.current.has(participant.user_id)) continue;
 
-      console.log('[useWebRTC] Connecting to participant:', participant.user_id);
+      // Deterministic: only the user with the LOWER id creates the offer
+      // This eliminates "glare" (simultaneous offers from both sides)
+      const shouldOffer = user.id < participant.user_id;
+
+      console.log('[useWebRTC] Setting up peer:', participant.user_id, shouldOffer ? '(will offer)' : '(will wait)');
 
       const pc = createPeerConnection(participant.user_id);
       if (localStream) {
         pc.addAudioStream(localStream);
       }
-      // Add camera/screen if active
       const cameraStream = mediaManager.getLocalCameraStream();
       if (cameraStream) {
         pc.addVideoStream(cameraStream, 'camera');
@@ -224,181 +253,17 @@ export function useWebRTC(): UseWebRTCReturn {
       if (screenStream) {
         pc.addVideoStream(screenStream, 'screen');
       }
-      await pc.createOffer();
+
+      if (shouldOffer) {
+        await pc.createOffer();
+      }
+      // else: wait for the other side to send us an offer via signaling
     }
   }, [user?.id, createPeerConnection]);
 
-  // Connect to voice channel
-  const connect = useCallback(async (channelId: string) => {
-    if (!user?.id || isConnecting || isConnected) return;
-
-    console.log('[useWebRTC] Connecting to channel:', channelId);
-    setIsConnecting(true);
-
-    try {
-      channelIdRef.current = channelId;
-
-      // Start signaling service (created before parallel block so it's ready for signals)
-      signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);
-
-      // Parallelize: microphone init, signaling start, and participant query
-      const [micSuccess, , participantsResult] = await Promise.all([
-        mediaManager.tryStartMicrophone(),
-        signalingServiceRef.current.start(),
-        supabase
-          .from('voice_states')
-          .select('user_id')
-          .eq('channel_id', channelId)
-          .neq('user_id', user.id),
-      ]);
-
-      setHasMicrophoneAccess(micSuccess);
-      setMicrophoneError(!micSuccess);
-      
-      if (micSuccess) {
-        setIsMicrophoneActive(true);
-      } else {
-        console.warn('[useWebRTC] Joining in listen-only mode');
-      }
-
-      // Start audio level monitoring with spectral VAD for all peers
-      audioLevelIntervalRef.current = setInterval(() => {
-        // Local audio level — use AudioProcessor's spectral VAD
-        const localVAD = mediaManager.getLocalVADState();
-        setAudioLevel(localVAD.level);
-
-        // Update speaking status for remote peers with spectral VAD
-        setPeers(prev => {
-          const newPeers = new Map(prev);
-          let hasChanges = false;
-
-          for (const [peerId, peerInfo] of newPeers.entries()) {
-            // Get or create VAD state for ambient tracking
-            let vadState = vadStateRef.current.get(peerId);
-            if (!vadState) {
-              vadState = { ambientLevel: 0.05, samples: [], threshold: 0.08 };
-              vadStateRef.current.set(peerId, vadState);
-            }
-
-            // Update ambient noise tracking
-            const rawLevel = mediaManager.getRemoteAudioLevel(peerId);
-            vadState.samples.push(rawLevel);
-            if (vadState.samples.length > AMBIENT_SAMPLE_SIZE) {
-              vadState.samples.shift();
-            }
-            const sorted = [...vadState.samples].sort((a, b) => a - b);
-            const percentileIndex = Math.floor(sorted.length * 0.2);
-            vadState.ambientLevel = sorted[percentileIndex] || 0.05;
-
-            // Use combined spectral + level VAD
-            const remoteVAD = mediaManager.getRemoteVADState(peerId, peerInfo.isSpeaking, vadState.ambientLevel);
-
-            if (peerInfo.isSpeaking !== remoteVAD.isSpeaking || peerInfo.audioLevel !== remoteVAD.level) {
-              newPeers.set(peerId, { ...peerInfo, isSpeaking: remoteVAD.isSpeaking, audioLevel: remoteVAD.level });
-              hasChanges = true;
-            }
-          }
-
-          return hasChanges ? newPeers : prev;
-        });
-      }, 50); // 50ms for responsive VAD
-
-      // Start connection stats monitoring with reconnection logic
-      statsIntervalRef.current = setInterval(async () => {
-        // Get stats from first connected peer
-        const firstPeer = peersRef.current.values().next().value;
-        if (firstPeer) {
-          try {
-            const stats = await firstPeer.getStats();
-            setConnectionStats(stats);
-            
-            // Check for failed/disconnected state and attempt ICE restart
-            if (stats.iceState === 'failed' || stats.iceState === 'disconnected') {
-              console.log('[useWebRTC] Detected connection issue, attempting ICE restart');
-              
-              // Try ICE restart for all peers
-              for (const [peerId, pc] of peersRef.current.entries()) {
-                try {
-                  await pc.restartIce();
-                  console.log('[useWebRTC] ICE restart initiated for peer:', peerId);
-                } catch (e) {
-                  console.error('[useWebRTC] ICE restart failed for peer:', peerId, e);
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore stats errors
-          }
-        }
-      }, 2000); // Update every 2 seconds
-
-      // Connect to existing participants
-      const existingParticipants = participantsResult.data;
-      if (existingParticipants && existingParticipants.length > 0) {
-        await connectToParticipants(existingParticipants);
-      }
-
-      // Subscribe to new participants
-      participantsSubscriptionRef.current = supabase
-        .channel(`voice-participants-${channelId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'voice_states',
-            filter: `channel_id=eq.${channelId}`,
-          },
-          async (payload) => {
-            const newParticipant = payload.new as { user_id: string };
-            if (newParticipant.user_id !== user.id) {
-              await connectToParticipants([newParticipant]);
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'voice_states',
-            filter: `channel_id=eq.${channelId}`,
-          },
-          (payload) => {
-            const leftParticipant = payload.old as { user_id: string };
-            if (leftParticipant.user_id !== user.id) {
-              const pc = peersRef.current.get(leftParticipant.user_id);
-              if (pc) {
-                pc.close();
-                peersRef.current.delete(leftParticipant.user_id);
-                mediaManager.removeRemoteAudioStream(leftParticipant.user_id);
-                mediaManager.removeRemoteVideoStream(leftParticipant.user_id, 'camera');
-                mediaManager.removeRemoteVideoStream(leftParticipant.user_id, 'screen');
-                setPeers(prev => {
-                  const newPeers = new Map(prev);
-                  newPeers.delete(leftParticipant.user_id);
-                  return newPeers;
-                });
-              }
-            }
-          }
-        )
-        .subscribe();
-
-      setIsConnected(true);
-      console.log('[useWebRTC] Connected successfully');
-    } catch (error) {
-      console.error('[useWebRTC] Failed to connect:', error);
-      await disconnect();
-      throw error;
-    } finally {
-      setIsConnecting(false);
-    }
-  }, [user?.id, isConnecting, isConnected, handleSignalReceived, connectToParticipants]);
-
-  // Disconnect from voice channel
-  const disconnect = useCallback(async () => {
-    console.log('[useWebRTC] Disconnecting');
+  // Internal disconnect (no mutex, called within mutex)
+  const disconnectInternal = useCallback(async () => {
+    console.log('[useWebRTC] Disconnecting (internal)');
 
     if (audioLevelIntervalRef.current) {
       clearInterval(audioLevelIntervalRef.current);
@@ -411,6 +276,11 @@ export function useWebRTC(): UseWebRTCReturn {
     }
     setConnectionStats(null);
 
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     peersRef.current.forEach((pc, peerId) => {
       pc.close();
       mediaManager.removeRemoteAudioStream(peerId);
@@ -419,6 +289,9 @@ export function useWebRTC(): UseWebRTCReturn {
     });
     peersRef.current.clear();
     setPeers(new Map());
+
+    // Clear signal queues
+    signalQueueRef.current.clear();
 
     if (signalingServiceRef.current) {
       await signalingServiceRef.current.stop();
@@ -444,9 +317,210 @@ export function useWebRTC(): UseWebRTCReturn {
 
     channelIdRef.current = null;
     setIsConnected(false);
+    setIsConnecting(false);
+    setIsReconnecting(false);
+    setReconnectAttempts(0);
 
-    console.log('[useWebRTC] Disconnected');
+    console.log('[useWebRTC] Disconnected (internal)');
   }, []);
+
+  // Connect to voice channel — uses mutex to prevent races
+  const connect = useCallback(async (channelId: string) => {
+    if (!user?.id) return;
+
+    const op = operationPromiseRef.current.then(async () => {
+      // If already connected to the same channel, skip
+      if (channelIdRef.current === channelId && peersRef.current.size > 0) {
+        console.log('[useWebRTC] Already connected to', channelId);
+        return;
+      }
+
+      // If connected to a different channel, disconnect first
+      if (channelIdRef.current) {
+        console.log('[useWebRTC] Disconnecting from previous channel before reconnecting');
+        await disconnectInternal();
+      }
+
+      console.log('[useWebRTC] Connecting to channel:', channelId);
+      setIsConnecting(true);
+
+      try {
+        channelIdRef.current = channelId;
+        const currentInstanceId = instanceIdRef.current;
+
+        // Start signaling service
+        signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);
+
+        // Parallelize: microphone init, signaling start, and participant query
+        const [micSuccess, , participantsResult] = await Promise.all([
+          mediaManager.tryStartMicrophone(),
+          signalingServiceRef.current.start(),
+          supabase
+            .from('voice_states')
+            .select('user_id')
+            .eq('channel_id', channelId)
+            .neq('user_id', user.id),
+        ]);
+
+        // Abort if instance changed (rapid connect/disconnect)
+        if (instanceIdRef.current !== currentInstanceId || channelIdRef.current !== channelId) {
+          console.log('[useWebRTC] Instance changed during connect, aborting');
+          return;
+        }
+
+        setHasMicrophoneAccess(micSuccess);
+        setMicrophoneError(!micSuccess);
+        
+        if (micSuccess) {
+          setIsMicrophoneActive(true);
+        } else {
+          console.warn('[useWebRTC] Joining in listen-only mode');
+        }
+
+        // Start audio level monitoring with spectral VAD
+        audioLevelIntervalRef.current = setInterval(() => {
+          const localVAD = mediaManager.getLocalVADState();
+          setAudioLevel(localVAD.level);
+
+          setPeers(prev => {
+            const newPeers = new Map(prev);
+            let hasChanges = false;
+
+            for (const [peerId, peerInfo] of newPeers.entries()) {
+              let vadState = vadStateRef.current.get(peerId);
+              if (!vadState) {
+                vadState = { ambientLevel: 0.05, samples: [], threshold: 0.08 };
+                vadStateRef.current.set(peerId, vadState);
+              }
+
+              const rawLevel = mediaManager.getRemoteAudioLevel(peerId);
+              vadState.samples.push(rawLevel);
+              if (vadState.samples.length > AMBIENT_SAMPLE_SIZE) {
+                vadState.samples.shift();
+              }
+              const sorted = [...vadState.samples].sort((a, b) => a - b);
+              const percentileIndex = Math.floor(sorted.length * 0.2);
+              vadState.ambientLevel = sorted[percentileIndex] || 0.05;
+
+              const remoteVAD = mediaManager.getRemoteVADState(peerId, peerInfo.isSpeaking, vadState.ambientLevel);
+
+              if (peerInfo.isSpeaking !== remoteVAD.isSpeaking || peerInfo.audioLevel !== remoteVAD.level) {
+                newPeers.set(peerId, { ...peerInfo, isSpeaking: remoteVAD.isSpeaking, audioLevel: remoteVAD.level });
+                hasChanges = true;
+              }
+            }
+
+            return hasChanges ? newPeers : prev;
+          });
+        }, 50);
+
+        // Start connection stats monitoring
+        statsIntervalRef.current = setInterval(async () => {
+          const firstPeer = peersRef.current.values().next().value;
+          if (firstPeer) {
+            try {
+              const stats = await firstPeer.getStats();
+              setConnectionStats(stats);
+              
+              if (stats.iceState === 'failed' || stats.iceState === 'disconnected') {
+                console.log('[useWebRTC] Detected connection issue, attempting ICE restart');
+                for (const [peerId, pc] of peersRef.current.entries()) {
+                  try {
+                    await pc.restartIce();
+                    console.log('[useWebRTC] ICE restart initiated for peer:', peerId);
+                  } catch (e) {
+                    console.error('[useWebRTC] ICE restart failed for peer:', peerId, e);
+                  }
+                }
+              }
+            } catch (e) {
+              // Ignore stats errors
+            }
+          }
+        }, 2000);
+
+        // Connect to existing participants
+        const existingParticipants = participantsResult.data;
+        if (existingParticipants && existingParticipants.length > 0) {
+          await connectToParticipants(existingParticipants);
+        }
+
+        // Subscribe to new participants with instanceId isolation
+        const subChannelName = `voice-participants-${channelId}-${instanceIdRef.current}`;
+        participantsSubscriptionRef.current = supabase
+          .channel(subChannelName)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'voice_states',
+              filter: `channel_id=eq.${channelId}`,
+            },
+            async (payload) => {
+              const newParticipant = payload.new as { user_id: string };
+              if (newParticipant.user_id !== user.id) {
+                await connectToParticipants([newParticipant]);
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'voice_states',
+              filter: `channel_id=eq.${channelId}`,
+            },
+            (payload) => {
+              const leftParticipant = payload.old as { user_id: string };
+              if (leftParticipant.user_id !== user.id) {
+                const pc = peersRef.current.get(leftParticipant.user_id);
+                if (pc) {
+                  pc.close();
+                  peersRef.current.delete(leftParticipant.user_id);
+                  mediaManager.removeRemoteAudioStream(leftParticipant.user_id);
+                  mediaManager.removeRemoteVideoStream(leftParticipant.user_id, 'camera');
+                  mediaManager.removeRemoteVideoStream(leftParticipant.user_id, 'screen');
+                  setPeers(prev => {
+                    const newPeers = new Map(prev);
+                    newPeers.delete(leftParticipant.user_id);
+                    return newPeers;
+                  });
+                }
+                // Clean up signal queue for departed peer
+                signalQueueRef.current.delete(leftParticipant.user_id);
+              }
+            }
+          )
+          .subscribe();
+
+        setIsConnected(true);
+        console.log('[useWebRTC] Connected successfully');
+      } catch (error) {
+        console.error('[useWebRTC] Failed to connect:', error);
+        await disconnectInternal();
+        throw error;
+      } finally {
+        setIsConnecting(false);
+      }
+    });
+
+    operationPromiseRef.current = op.catch(() => {}); // swallow to keep chain alive
+    return op;
+  }, [user?.id, handleSignalReceived, connectToParticipants, disconnectInternal]);
+
+  // Disconnect — uses mutex
+  const disconnect = useCallback(async () => {
+    const op = operationPromiseRef.current.then(async () => {
+      // Generate new instanceId to invalidate any in-flight operations
+      instanceIdRef.current = crypto.randomUUID();
+      await disconnectInternal();
+    });
+
+    operationPromiseRef.current = op.catch(() => {});
+    return op;
+  }, [disconnectInternal]);
 
   // Retry microphone access
   const retryMicrophone = useCallback(async (): Promise<boolean> => {
@@ -457,7 +531,6 @@ export function useWebRTC(): UseWebRTCReturn {
     if (success) {
       setIsMicrophoneActive(true);
       
-      // Add stream to existing peer connections
       const localStream = mediaManager.getLocalAudioStream();
       if (localStream) {
         for (const [, pc] of peersRef.current.entries()) {
@@ -498,13 +571,11 @@ export function useWebRTC(): UseWebRTCReturn {
       setLocalCameraStream(stream);
       setIsCameraActive(true);
 
-      // Add to all peer connections
       for (const [, pc] of peersRef.current.entries()) {
         pc.addVideoStream(stream, 'camera');
         await pc.createOffer();
       }
 
-      // Update DB
       if (user?.id) {
         await supabase
           .from('voice_states')
@@ -525,13 +596,11 @@ export function useWebRTC(): UseWebRTCReturn {
     setLocalCameraStream(null);
     setIsCameraActive(false);
 
-    // Remove from all peer connections and renegotiate
     for (const [, pc] of peersRef.current.entries()) {
       pc.removeVideoStream('camera');
       await pc.renegotiate();
     }
 
-    // Update DB
     if (user?.id) {
       await supabase
         .from('voice_states')
@@ -549,15 +618,12 @@ export function useWebRTC(): UseWebRTCReturn {
       setLocalScreenStream(stream);
       setIsScreenSharing(true);
 
-      // Handle user stopping via browser UI
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare();
       };
 
-      // Get encoding options based on quality preset
       const encodingOpts = mediaManager.getScreenShareEncodingOptions();
 
-      // Add to all peer connections with encoding params
       for (const [, pc] of peersRef.current.entries()) {
         if (encodingOpts) {
           pc.setScreenShareEncoding(encodingOpts);
@@ -566,7 +632,6 @@ export function useWebRTC(): UseWebRTCReturn {
         await pc.createOffer();
       }
 
-      // Update DB
       if (user?.id) {
         await supabase
           .from('voice_states')
@@ -587,13 +652,11 @@ export function useWebRTC(): UseWebRTCReturn {
     setLocalScreenStream(null);
     setIsScreenSharing(false);
 
-    // Remove from all peer connections and renegotiate
     for (const [, pc] of peersRef.current.entries()) {
       pc.removeVideoStream('screen');
       await pc.renegotiate();
     }
 
-    // Update DB
     if (user?.id) {
       await supabase
         .from('voice_states')
@@ -607,9 +670,9 @@ export function useWebRTC(): UseWebRTCReturn {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      disconnect();
+      disconnectInternal();
     };
-  }, [disconnect]);
+  }, [disconnectInternal]);
 
   return {
     isConnected,

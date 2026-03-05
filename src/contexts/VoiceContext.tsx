@@ -407,8 +407,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       (old: any) => old?.filter((p: any) => p.user_id !== user.id) ?? old
     );
 
-    // 3. Background cleanup
-    webrtc.disconnect();
+    // 3. Background cleanup — AWAIT disconnect to ensure WebRTC is fully torn down
+    await webrtc.disconnect();
     await supabase
       .from('voice_states')
       .delete()

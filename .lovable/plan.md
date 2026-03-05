@@ -1,61 +1,79 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Amélioration de la précision du drag & drop
 
-## Root cause
+## Analyse du comportement actuel
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le positionnement utilise un simple découpage 50/50 (moitié haute = before, moitié basse = after) sur `handleDragOver`. Cela fonctionne mais manque de finesse :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+- **Catégories** : pas de distinction entre "insérer avant/après la catégorie" et "déposer un salon DANS la catégorie"
+- **Salons** : le seuil 50/50 est parfois ambigu quand les éléments sont petits — on ne sait pas toujours si on insère au-dessus ou en-dessous
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Améliorations proposées
 
-## Fix
+### 1. Zones proportionnelles pour les salons (30/70 au lieu de 50/50)
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Remplacer le seuil `middleY` par des zones proportionnelles :
+- **Top 30%** du salon cible → indicateur "before"
+- **Bottom 70%** → indicateur "after"
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Cela favorise l'insertion "après" qui est le comportement le plus naturel (on glisse vers le bas), rendant le drag plus intuitif.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 2. Zones à 3 états pour les catégories (quand on drag un salon sur une catégorie)
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Quand un **salon** est glissé sur un **header de catégorie** :
+- **Top 25%** → indicateur "before" (insérer avant la catégorie = au-dessus)
+- **Middle 50%** → highlight de la catégorie (ajouter le salon à la fin de cette catégorie)
+- **Bottom 25%** → indicateur "after" (insérer après le header = en premier dans la catégorie)
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+Ajouter un état visuel "highlight" sur le header quand on est dans la zone médiane.
 
-### 3. Hook needs `useAuth` for the user ID
+### 3. Feedback visuel amélioré sur les catégories
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+Quand un salon est glissé dans la zone médiane d'une catégorie, afficher un léger highlight bleu sur le header (au lieu d'un indicateur before/after) pour signifier "déposer dans cette catégorie".
 
-## Detailed changes
+## Fichier modifié
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+| Fichier | Changement |
+|---|---|
+| `src/components/layout/ChannelList.tsx` | Modifier `handleDragOver` pour les zones proportionnelles, ajouter état `dropMode` ("before"/"after"/"inside"), adapter `SortableCategory` pour le highlight "inside", adapter `handleDragEnd` pour gérer le mode "inside" |
 
-### Code sketch for onMutate addition (after servers cache update)
+## Détail technique
 
+### `handleDragOver` — zones proportionnelles
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Pour les salons : seuil à 30% du haut
+const threshold = overRect.top + overRect.height * 0.3;
+const position = clientY < threshold ? "before" : "after";
+
+// Pour les catégories quand on drag un salon :
+const topZone = overRect.top + overRect.height * 0.25;
+const bottomZone = overRect.top + overRect.height * 0.75;
+if (clientY < topZone) → "before"
+else if (clientY > bottomZone) → "after" 
+else → "inside" (nouveau mode)
 ```
 
-### Code for onSuccess addition
-
+### Nouvel état `dropMode`
 ```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### `SortableCategory` — highlight pour mode "inside"
+```text
+// Nouveau prop showInsideHighlight
+{showInsideHighlight && (
+  <div className="absolute inset-0 bg-[#5865f2]/10 rounded-md border border-[#5865f2]/30 pointer-events-none z-5" />
+)}
+```
+
+### `handleDragEnd` — gestion du mode "inside"
+```text
+// Quand dropMode === "inside" et qu'on drop un salon sur une catégorie :
+// → ajouter le salon à la fin de la catégorie (comportement existant)
+// Quand dropMode === "before"/"after" :
+// → utiliser l'insertion précise (comportement existant amélioré)
+```
+
+Un seul fichier modifié : `ChannelList.tsx`.
 

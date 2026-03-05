@@ -24,18 +24,8 @@ import * as Portal from '@radix-ui/react-portal';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCreateDMConversation } from '@/hooks/useDMs';
-import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
-import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
-import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { MemberWithProfile } from '@/hooks/useMembers';
-import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { parseMarkdown } from '@/lib/markdown';
-import { toast } from 'sonner';
-import * as Portal from '@radix-ui/react-portal';
-import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
+
+
 
 interface Role {
   id: string;

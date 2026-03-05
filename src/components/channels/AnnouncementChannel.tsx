@@ -241,8 +241,8 @@ export function AnnouncementChannel({
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
-  // Permission denied: sessionStorage cache provides instant state on reload
-  const permissionDeniedMessage = (!isAdminOrOwner && !canSendMessages) 
+  // Permission denied: show denied message only when permissions are resolved
+  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
     : undefined;
 
@@ -921,7 +921,7 @@ export function AnnouncementChannel({
       </ScrollArea>
 
       {/* Input Container */}
-      <div className="flex-shrink-0 bg-background w-full">
+      <div className="flex-shrink-0 bg-background w-full px-2 pb-[env(safe-area-inset-bottom,0px)] sm:px-0 sm:pb-0">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && (
           <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">

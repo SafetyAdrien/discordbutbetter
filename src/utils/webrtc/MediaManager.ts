@@ -18,6 +18,7 @@ interface RemoteAudioContext {
   context: AudioContext;
   analyser: AnalyserNode;
   source: MediaStreamAudioSourceNode;
+  gainNode: GainNode | null;
 }
 
 /** Per-remote-peer spectral VAD state */

@@ -1,61 +1,51 @@
 
+Objectif: fiabiliser définitivement le vocal (reconnexions multiples, latence/pertes audio) tout en conservant les interactions participants (clic gauche profil + clic droit mute/volume) déjà en place.
 
-# Fix: Duplicated channel hidden by visibility filter
+1) Constat rapide
+- Les interactions UI demandées sont déjà implémentées (sidebar + grille + menu contextuel + volume optimiste).
+- Le bug principal vient surtout de la couche WebRTC/signalisation:
+  - Course critique: `leaveChannel()` n’attend pas la fin réelle de `webrtc.disconnect()`, puis `joinChannel()` peut partir trop tôt.
+  - `useWebRTC.handleSignalReceived()` ignore certains signaux arrivant avant la création du peer (ICE/answer).
+  - Négociation double (glare): les 2 côtés peuvent créer des offers en même temps.
+  - Politique DB `voice_signals` trop stricte: le destinataire ne peut pas supprimer les signaux traités.
 
-## Root cause
+2) Correctifs backend (migration SQL)
+- Fichier migration à ajouter:
+  - Remplacer policy DELETE `voice_signals` pour autoriser `from_user_id OR to_user_id`.
+  - (Optionnel recommandé) index `created_at` pour cleanup rapide.
+- Impact: nettoyage réel des signaux consommés, moins de bruit/stale signaling.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+3) Correctifs WebRTC (robustesse reconnexion)
+- `src/hooks/useWebRTC.ts`
+  - Ajouter un verrou d’opération (connect/disconnect mutex) + promesse en cours.
+  - `connect()` attend explicitement une déconnexion active avant de démarrer.
+  - `disconnect()` idempotent et atomique.
+  - File d’attente des signaux par peer (ICE/answer reçus avant offer).
+  - Règle d’initiation déterministe (ex: seul `user.id < peerId` crée l’offer) pour éliminer le glare.
+  - Isoler les noms de channels Realtime avec `instanceId` (comme les autres hooks).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+4) Correctifs orchestration voice state
+- `src/contexts/VoiceContext.tsx`
+  - `joinChannel()`:
+    - si session active: `await webrtc.disconnect()` avant nouvelle connexion.
+    - puis insert DB + `await webrtc.connect(...)` dans un ordre sûr.
+  - `leaveChannel()`:
+    - `await webrtc.disconnect()` (au lieu de fire-and-forget).
+- Résultat: plus de “première connexion OK puis plus rien”.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+5) Interactions participants (validation/finitions)
+- Vérifier et verrouiller les chemins UI existants:
+  - Sidebar (`ChannelList`) et grille (`VoiceParticipantGrid`): clic gauche profil, clic droit menu volume/mute.
+  - Conserver optimistic updates via `useVoiceUserSettings` et synchro temps réel déjà en place.
+- Ajuster les conflits click/popover si besoin (éviter double ouverture profil+popover sur carte audio-only).
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+6) Validation E2E stricte (2 comptes, plusieurs cycles)
+- Scénarios:
+  - Join/leave x10 rapidement sur les 2 comptes.
+  - Mute/unmute local pendant reconnections.
+  - Réglage volume (0/100/200) + retour audio immédiat.
+  - Vérifier absence de signaux bloqués (table `voice_signals` se vide bien après traitement).
+- Critère de succès:
+  - Audio toujours rétabli après reconnexion.
+  - Aucun délai anormal perçu après cycles.
+  - UI (profil/menu contextuel) instantanée et cohérente.

@@ -204,13 +204,7 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: "gg-sans", sans-serif;
-  }
-
-  h1,
-  h2,
-  h3 {
-    font-family: "Orbitron", sans-serif;
+    font-family: "gg sans", sans-serif;
   }
 
   /* Respect user preference for reduced motion */

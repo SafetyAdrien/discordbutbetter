@@ -601,12 +601,12 @@ export function useReorderCategories() {
       toast.error('Erreur lors du réordonnancement');
     },
     onSettled: (_, __, { serverId }) => {
-      // Unlock Realtime after a delay to let optimistic update settle
+      // Unlock Realtime and invalidate after a delay to let optimistic update settle
       setTimeout(() => {
         mutationLockRef.current = false;
-      }, 500);
-      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
+        queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
+        queryClient.invalidateQueries({ queryKey: ['servers'] });
+      }, 800);
     },
   });
 }

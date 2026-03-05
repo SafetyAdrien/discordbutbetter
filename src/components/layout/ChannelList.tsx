@@ -959,9 +959,12 @@ export function ChannelList({
         }
         insertIndex = Math.max(0, Math.min(insertIndex, newCategories.length));
         newCategories.splice(insertIndex, 0, activeCategory);
-        reorderCategories.mutate({
-          serverId: server.id,
-          orderedIds: newCategories.map((cat) => cat.id)
+        const orderedIds = newCategories.map((cat) => cat.id);
+        requestAnimationFrame(() => {
+          reorderCategories.mutate({
+            serverId: server.id,
+            orderedIds
+          });
         });
       }
     }
@@ -1489,11 +1492,7 @@ export function ChannelList({
               </SortableContext>
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
-              <DragOverlay
-                dropAnimation={{
-                  duration: 200,
-                  easing: "cubic-bezier(0.25, 1, 0.5, 1)"
-                }}>
+              <DragOverlay dropAnimation={null}>
 
                 {activeId &&
                 <div

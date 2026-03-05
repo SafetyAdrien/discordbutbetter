@@ -902,6 +902,7 @@ export function ChannelList({
     const { active, over, delta } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
+      setDropMode("after");
       return;
     }
     const activeIdStr = active.id.toString();

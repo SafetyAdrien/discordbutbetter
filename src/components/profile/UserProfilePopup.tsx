@@ -136,6 +136,9 @@ export function UserProfilePopup({
   const [showRolePanel, setShowRolePanel] = useState(false);
   const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
   const rolesSectionRef = useRef<HTMLDivElement>(null);
+  const { voiceState } = useVoice();
+  const { getUserVolume, setUserVolume } = useVoiceUserSettings();
+  const [localVolume, setLocalVolume] = useState<number | null>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
   const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
@@ -153,6 +156,9 @@ export function UserProfilePopup({
   if (!user) return null;
 
   const isOwnProfile = currentUser?.id === user.id;
+  const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;
+  const targetVolume = user ? getUserVolume(user.id) : 100;
+  const displayVolume = localVolume ?? targetVolume;
   
   const isTargetOwner = user.id === ownerId || user.id === secondaryOwnerId;
   

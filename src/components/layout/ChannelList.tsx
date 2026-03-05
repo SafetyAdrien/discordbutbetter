@@ -199,23 +199,10 @@ function SortableCategory({
   onEdit,
   onCreateChannel,
   onDelete,
-  showDropIndicator = false,
-  dropPosition = "after",
+  dropIndicator = null,
   canManageChannels = false,
   serverId
-
-
-
-
-
-
-
-
-
-
-
-
-}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;}) {
+}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;dropIndicator?: "before" | "after" | null;canManageChannels?: boolean;serverId: string;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `category-${category.id}`,
@@ -226,21 +213,21 @@ function SortableCategory({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: undefined // Let Tailwind handle transitions
+    transition: isDragging ? "opacity 100ms ease" : "transform 200ms cubic-bezier(0.25, 1, 0.5, 1)",
   };
   return (
     <>
+      {/* Inline drop indicator - before */}
+      {dropIndicator === "before" && <div className="h-[2px] bg-[#5865f2] rounded-full mx-1 mb-0.5" />}
+
       {/* En-tête de catégorie (zone draggable uniquement) */}
       <div
         ref={setNodeRef}
         style={style}
         className={cn(
-          "relative dnd-item",
-          isDragging && "dnd-item-dragging"
+          "dnd-item",
+          isDragging && "opacity-40"
         )}>
-
-        {/* Drop Indicator - Absolute positioned */}
-        {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
 
         <ContextMenu>
           <ContextMenuTrigger asChild>

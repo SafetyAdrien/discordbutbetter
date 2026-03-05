@@ -937,9 +937,9 @@ export function ChannelList({
       const isOverCategoryHeader = overIdStr.startsWith("category-");
 
       if (isActiveChannel && isOverCategoryHeader) {
-        // 3-state zones for channel → category: top 25% = before, middle 50% = inside, bottom 25% = after
-        const topZone = overRect.top + overRect.height * 0.25;
-        const bottomZone = overRect.top + overRect.height * 0.75;
+        // 3-state zones for channel → category: top 15% = before, middle 70% = inside, bottom 15% = after
+        const topZone = overRect.top + overRect.height * 0.15;
+        const bottomZone = overRect.top + overRect.height * 0.85;
         if (clientY < topZone) {
           setDropPosition("before");
           setDropMode("before");
@@ -951,9 +951,9 @@ export function ChannelList({
           setDropPosition("after"); // fallback, not used visually
         }
       } else {
-        // Proportional zones for channels: top 30% = before, bottom 70% = after
-        const threshold = overRect.top + overRect.height * 0.3;
-        const position: "before" | "after" = clientY < threshold ? "before" : "after";
+        // Symmetric 50/50 zones for channels: works equally well dragging up or down
+        const middleY = overRect.top + overRect.height * 0.5;
+        const position: "before" | "after" = clientY < middleY ? "before" : "after";
         setDropPosition(position);
         setDropMode(position);
       }

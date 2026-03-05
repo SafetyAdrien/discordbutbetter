@@ -1,42 +1,61 @@
 
 
-# Fix: Zones de drag & drop trop larges + direction bidirectionnelle
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problème
+## Root cause
 
-Les seuils actuels (30/70 pour les salons, 25/50/25 pour les catégories) créent des zones trop grandes. Le comportement n'est pas symétrique — il favorise le "after" ce qui rend le drag vers le haut moins réactif.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Correctif
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Revenir à un **seuil 50/50 classique** pour tous les cas, ce qui :
-- Rend le drag aussi précis vers le haut que vers le bas
-- Réduit la taille de chaque zone (chacune fait exactement la moitié)
-- Simplifie la logique
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Pour les catégories avec le mode "inside", utiliser un découpage plus serré : **15/70/15** (top 15% = before, middle 70% = inside, bottom 15% = after) pour que les zones before/after soient étroites et précises.
+## Fix
 
-## Changements dans `src/components/layout/ChannelList.tsx`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Salons (lignes 954-958)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
 ```text
-// Avant : seuil à 30% (asymétrique)
-const threshold = overRect.top + overRect.height * 0.3;
-
-// Après : seuil à 50% (symétrique, précis dans les deux sens)
-const middleY = overRect.top + overRect.height * 0.5;
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### Catégories — channel → category (lignes 940-952)
-```text
-// Avant : 25/50/25
-const topZone = overRect.top + overRect.height * 0.25;
-const bottomZone = overRect.top + overRect.height * 0.75;
+### Code for onSuccess addition
 
-// Après : 15/70/15 — zones before/after étroites, "inside" large
-const topZone = overRect.top + overRect.height * 0.15;
-const bottomZone = overRect.top + overRect.height * 0.85;
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-## Fichier modifié
-- `src/components/layout/ChannelList.tsx` — 3 lignes modifiées
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

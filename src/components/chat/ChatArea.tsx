@@ -500,11 +500,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   
+  // Track channel transitions to prevent permission flash
+  const prevChannelIdRef = useRef(channel.id);
+  const isChannelTransitioning = prevChannelIdRef.current !== channel.id;
+  
+  useEffect(() => {
+    prevChannelIdRef.current = channel.id;
+  }, [channel.id]);
+  
   // Permission denied: show denied message only when permissions are resolved (not loading)
-  // During loading, show nothing (neutral state) to avoid flash
-  const permissionDeniedMessage = (!isAdminOrOwner && !permissionsLoading && !canSendMessages) 
-    ? "Vous n'avez pas la permission d'envoyer des messages dans ce salon." 
-    : undefined;
+  // During loading or channel transition, show nothing (neutral state) to avoid flash
+  const permissionDeniedMessage = (isChannelTransitioning || permissionsLoading || isAdminOrOwner || canSendMessages) 
+    ? undefined
+    : "Vous n'avez pas la permission d'envoyer des messages dans ce salon.";
 
   // Scroll to message function for "Jump to Message"
   const scrollToMessage = useCallback((messageId: string) => {
@@ -1022,7 +1030,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             <div className="mb-4">
               <StreamlineHash size={64} className="text-muted-foreground" />
             </div>
-            <h1 className="text-3xl font-display font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
+            <h1 className="text-3xl font-ginto font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
             {canManageChannels && (
               <Button 
@@ -1240,9 +1248,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 memberRoles.get(message.author.id)![0].icon_url && (
                                   <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
                                 )}
-                              <span className="text-xs text-muted-foreground flex-shrink-0">
-                                {formatTime(message.timestamp)}
-                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0 cursor-default">
+                                    {formatTime(message.timestamp)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  {new Date(message.timestamp).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </TooltipContent>
+                              </Tooltip>
                             </div>
                             {isEditing ? (
                               <div className="mt-1 space-y-2">
@@ -1353,9 +1368,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         )}
 
                         <div className="flex gap-3 items-start">
-                          <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5">
-                            {formatTime(message.timestamp)}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5 cursor-default">
+                                {formatTime(message.timestamp)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              {new Date(message.timestamp).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex-1 min-w-0">
                             {isEditing ? (
                               <div className="space-y-2">

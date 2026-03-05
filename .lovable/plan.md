@@ -1,61 +1,91 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Optimistic Updates — Catégories après refresh
 
-## Root cause
+## Analyse de l'existant
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Après analyse complète, voici l'état actuel :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+| Fonctionnalité | Optimistic `onMutate` | Persistance sessionStorage | Status |
+|---|---|---|---|
+| Catégorie renommée (`useUpdateCategory`) | Oui (channels + servers) | Oui (via cache channels) | **Manque mutationLock** |
+| Catégorie réordonnée (`useReorderCategories`) | Oui (channels + servers) | Oui (via cache channels) | OK |
+| Salon dupliqué (`useDuplicateChannel`) | Oui | Oui | OK |
+| Salon renommé (`useUpdateChannel`) | Oui | Oui | OK |
+| ChatInput permissions | Oui (sessionStorage bypass) | Oui | OK |
+| Sync permissions catégorie → salons | Refetch après mutation | **Pas de clear sessionStorage perm cache** | **Bug** |
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Problèmes identifiés
 
-## Fix
+### 1. `useUpdateCategory` n'utilise pas `mutationLockRef`
+Quand on renomme une catégorie, le Realtime listener détecte le changement et re-fetch les données **en parallèle** de l'optimistic update, ce qui peut causer un flash de l'ancien nom. Tous les autres hooks (create, delete, reorder) utilisent `mutationLockRef` sauf celui-ci.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Correctif** : Migrer `useUpdateCategory` de `useCategories.ts` vers `useChannels.ts` (où `mutationLockRef` est défini), ou importer la ref partagée. Le plus simple : ajouter le lock dans `useCategories.ts` en important `mutationLockRef` depuis `useChannels.ts` — mais c'est un ref locale non exportée. Solution : l'exporter ou dupliquer le pattern dans `useCategories.ts`.
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+→ Exporter `mutationLockRef` depuis `useChannels.ts` et l'utiliser dans `useUpdateCategory`.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 2. Permissions catégorie → sessionStorage permission cache désynchronisé
+Quand on modifie les permissions d'une catégorie (via `useCategoryPermissions.ts`), les hooks font `refetchPermissionCaches()` qui refetch les queries actives. Mais le **sessionStorage** cache des permissions (`perm:channelId:permission`) n'est PAS nettoyé. Après un F5, l'ancien cache sessionStorage est servi comme vérité, masquant le changement de permission de la catégorie.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Correctif** : Dans `refetchPermissionCaches()`, ajouter un nettoyage des entrées `perm:*` du sessionStorage pour forcer un refetch propre au prochain chargement. Alternativement, nettoyer uniquement les clés liées aux salons de la catégorie concernée — mais c'est complexe. Le plus fiable : vider toutes les entrées `perm:` du sessionStorage quand une permission de catégorie change.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 3. `useUpdateCategory` ne persiste pas le sessionStorage channels
+L'optimistic update met à jour le React Query cache, mais le `useEffect` qui persiste dans sessionStorage (dans `useChannels.ts`) ne se déclenche que sur `query.data` change. Comme `useUpdateCategory` modifie le cache via `setQueryData`, le `useEffect` devrait se déclencher automatiquement. → Pas de bug ici, déjà couvert.
 
-### 3. Hook needs `useAuth` for the user ID
+## Correctifs proposés
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+### Fichier 1 : `src/hooks/useChannels.ts`
+- Exporter `mutationLockRef` pour réutilisation dans `useCategories.ts`
 
-## Detailed changes
+### Fichier 2 : `src/hooks/useCategories.ts`
+- Importer `mutationLockRef` depuis `useChannels.ts`
+- Ajouter `mutationLockRef.current = true` dans `onMutate` et `setTimeout(() => mutationLockRef.current = false, 500)` dans `onSettled`
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+### Fichier 3 : `src/hooks/useCategoryPermissions.ts`
+- Modifier `refetchPermissionCaches()` pour vider les entrées sessionStorage `perm:` avant de refetch, garantissant que le cache persisté reflète les nouvelles permissions de catégorie après un refresh
 
-### Code sketch for onMutate addition (after servers cache update)
+## Détail technique
 
+### `useChannels.ts` (1 ligne)
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
+// Ligne 29 : changer de const locale à export
+export const mutationLockRef = { current: false };
+```
+
+### `useCategories.ts`
+```text
+import { mutationLockRef } from './useChannels';
+
+// Dans onMutate :
+mutationLockRef.current = true;
+
+// Dans onSettled :
+setTimeout(() => { mutationLockRef.current = false; }, 500);
+```
+
+### `useCategoryPermissions.ts`
+```text
+function refetchPermissionCaches(queryClient) {
+  // Clear sessionStorage permission cache so refresh gets fresh data
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith('perm:')) keysToRemove.push(key);
+    }
+    keysToRemove.forEach(k => sessionStorage.removeItem(k));
+  } catch {}
+  
+  // existing refetch logic...
 }
 ```
 
-### Code for onSuccess addition
+### Fichiers modifiés
+| Fichier | Changement |
+|---|---|
+| `src/hooks/useChannels.ts` | Export `mutationLockRef` |
+| `src/hooks/useCategories.ts` | Import + utiliser `mutationLockRef` dans `useUpdateCategory` |
+| `src/hooks/useCategoryPermissions.ts` | Vider sessionStorage `perm:*` dans `refetchPermissionCaches` |
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Aucun autre fichier ne sera modifié.
 

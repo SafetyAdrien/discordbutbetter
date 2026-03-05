@@ -1,63 +1,61 @@
 
 
-## Problème
+# Fix: Duplicated channel hidden by visibility filter
 
-Le flash persiste malgré les optimistic updates car **`onSuccess` dans `joinChannel` invalide toutes les queries `voice-participants`** (ligne 138), ce qui déclenche un refetch complet depuis la DB. Ce refetch **écrase momentanément le cache optimiste**. De plus, le callback `subscribe` du realtime (ligne 147 dans `useVoiceParticipants`) fait aussi un `invalidateQueries` au moment de la connexion, créant un second refetch parasite.
+## Root cause
 
-Séquence actuelle problématique :
-1. `onMutate` → ajoute le participant avec le vrai profil ✓
-2. DB insert réussit
-3. `onSuccess` → `invalidateQueries(['voice-participants'])` → **refetch** → le cache optimiste est remplacé pendant la transition
-4. Realtime INSERT → le handler voit que l'user existe déjà → skip ✓, mais le refetch du point 3 peut arriver entre-temps avec un résultat incomplet
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Solution
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. `useVoiceState.ts` — Supprimer l'invalidation des participants dans `onSuccess`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Le cache optimiste (posé dans `onMutate`) + le realtime handler suffisent. L'invalidation large `['voice-participants']` est contre-productive. Ne garder que `['voice-state']`.
+## Fix
 
-```ts
-// onSuccess: ne plus invalider voice-participants
-onSuccess: ({ channelId, channelName, serverName }) => {
-  setVoiceState(prev => ({ ...prev, channelId, channelName, serverName }));
-  queryClient.invalidateQueries({ queryKey: ['voice-state'] });
-  // PAS de invalidateQueries(['voice-participants']) 
-  toast.success(`Connecté à ${channelName}`);
-},
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### 2. `useVoiceParticipants.ts` — Supprimer l'invalidation dans le callback `subscribe`
+### Code for onSuccess addition
 
-Le `invalidateQueries` à la ligne 147 déclenche un refetch qui écrase le cache optimiste si la souscription se connecte juste après le join. Le retirer.
-
-```ts
-.subscribe((status) => {
-  if (status === 'SUBSCRIBED') {
-    setIsRealtimeActive(true);
-    // Plus de invalidateQueries ici
-  }
-  ...
-});
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-### 3. `useVoiceParticipants.ts` — Merger le realtime INSERT au lieu de skip
-
-Quand l'INSERT arrive pour un user déjà en cache (ajouté par optimistic), mettre à jour son `id` avec le vrai ID DB au lieu de simplement ignorer :
-
-```ts
-queryClient.setQueryData(['voice-participants', channelId], (old) => {
-  const existing = old?.find(p => p.user_id === newUserId);
-  if (existing) {
-    // Merge real DB id into optimistic entry
-    return old.map(p => p.user_id === newUserId 
-      ? { ...p, id: newRow.id, profile: resolvedProfile || p.profile } 
-      : p);
-  }
-  // ... add new participant as before
-});
-```
-
-### Fichiers à modifier
-- **`src/hooks/useVoiceState.ts`** — Retirer `invalidateQueries(['voice-participants'])` de `onSuccess`
-- **`src/hooks/useVoiceParticipants.ts`** — Retirer `invalidateQueries` du subscribe callback + merger INSERT au lieu de skip
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

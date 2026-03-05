@@ -67,7 +67,7 @@ interface VoiceContextType {
 const VoiceContext = createContext<VoiceContextType | null>(null);
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const webrtc = useWebRTC();
   const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
@@ -276,14 +276,31 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     // Invalidate server-voice-participants so new server picks up the join
     queryClient.invalidateQueries({ queryKey: ['server-voice-participants'] });
 
-    // 3. Optimistic: add self to target channel cache immediately (with profile fetch)
+    // 3. Build a real optimistic profile immediately (no generic fallback flash)
+    const optimisticProfile = {
+      id: user.id,
+      username: profile?.username || user.email?.split('@')[0] || 'user',
+      display_name:
+        profile?.display_name ||
+        user.user_metadata?.display_name ||
+        user.email?.split('@')[0] ||
+        'Moi',
+      avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || null,
+    };
+
+    // Seed profile cache so realtime INSERT resolver can use it instantly
+    queryClient.setQueryData(['profile', user.id], (old: any) => ({
+      ...(old || {}),
+      ...optimisticProfile,
+    }));
+
     const profilePromise = supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url')
       .eq('id', user.id)
       .single();
 
-    // Add with fallback profile first for instant render
+    // Add self immediately with actual profile data
     queryClient.setQueryData(['voice-participants', channelId], (old: any) => {
       const existing = old || [];
       if (existing.some((p: any) => p.user_id === user.id)) return existing;
@@ -296,7 +313,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         camera: false,
         streaming: false,
         joined_at: new Date().toISOString(),
-        profile: { id: user.id, username: 'me', display_name: 'Moi', avatar_url: null },
+        profile: optimisticProfile,
       }];
     });
 
@@ -336,8 +353,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
 
-      // Hydrate profile in cache
+      // Hydrate profile caches with server truth
       if (profileResult.data) {
+        queryClient.setQueryData(['profile', user.id], (old: any) => ({
+          ...(old || {}),
+          ...profileResult.data,
+        }));
+
         queryClient.setQueryData(['voice-participants', channelId], (old: any) =>
           old?.map((p: any) => p.user_id === user.id ? { ...p, profile: profileResult.data } : p)
         );
@@ -349,7 +371,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       webrtc.disconnect();
       toast.error('Impossible de rejoindre le canal vocal');
     }
-  }, [user, voiceState, webrtc, queryClient]);
+  }, [user, profile, voiceState, webrtc, queryClient]);
 
   const leaveChannel = useCallback(async () => {
     if (!user) throw new Error('Not authenticated');

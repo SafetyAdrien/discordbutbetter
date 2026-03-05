@@ -1,7 +1,8 @@
 /* @refresh reset */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface VoiceParticipant {
   id: string;
@@ -21,10 +22,55 @@ export interface VoiceParticipant {
 }
 
 export function useVoiceParticipants(channelId: string | null) {
+  const { user, profile: authProfile } = useAuth();
   const queryClient = useQueryClient();
   // Unique instance ID so each mount gets its own Realtime channel
   const instanceId = useRef(crypto.randomUUID()).current;
   const [isRealtimeActive, setIsRealtimeActive] = useState(true);
+
+  const resolveProfileFromCaches = useCallback((targetUserId: string): VoiceParticipant['profile'] | null => {
+    const cachedProfile = queryClient.getQueryData<any>(['profile', targetUserId]);
+    if (cachedProfile?.id) {
+      return {
+        id: cachedProfile.id,
+        username: cachedProfile.username || 'user',
+        display_name: cachedProfile.display_name || cachedProfile.username || 'User',
+        avatar_url: cachedProfile.avatar_url ?? null,
+      };
+    }
+
+    if (user?.id === targetUserId) {
+      return {
+        id: user.id,
+        username: authProfile?.username || user.email?.split('@')[0] || 'user',
+        display_name:
+          authProfile?.display_name ||
+          user.user_metadata?.display_name ||
+          user.email?.split('@')[0] ||
+          'Moi',
+        avatar_url: authProfile?.avatar_url || user.user_metadata?.avatar_url || null,
+      };
+    }
+
+    const membersCaches = queryClient.getQueriesData<any[]>({ queryKey: ['members'] });
+    for (const [, members] of membersCaches) {
+      if (!Array.isArray(members)) continue;
+      const found = members.find((m: any) => m?.user?.id === targetUserId);
+      if (!found?.user?.id) continue;
+
+      const displayName = found.serverProfile?.display_name || found.user.display_name;
+      if (!displayName) continue;
+
+      return {
+        id: found.user.id,
+        username: found.user.username || 'user',
+        display_name: displayName,
+        avatar_url: found.serverProfile?.avatar_url ?? found.user.avatar_url ?? null,
+      };
+    }
+
+    return null;
+  }, [authProfile?.avatar_url, authProfile?.display_name, authProfile?.username, queryClient, user?.email, user?.id, user?.user_metadata]);
 
   const query = useQuery({
     queryKey: ['voice-participants', channelId],
@@ -45,15 +91,31 @@ export function useVoiceParticipants(channelId: string | null) {
         .eq('channel_id', channelId);
 
       if (error) throw error;
-      return (data || []).map(vs => ({
-        ...vs,
-        muted: vs.muted || false,
-        deafened: vs.deafened || false,
-        camera: vs.camera || false,
-        streaming: vs.streaming || false,
-        joined_at: vs.joined_at || new Date().toISOString(),
-        profile: vs.profile as VoiceParticipant['profile'],
-      }));
+      return (data || []).map(vs => {
+        const fallbackProfile =
+          resolveProfileFromCaches(vs.user_id) || {
+            id: vs.user_id,
+            username: `user-${vs.user_id.slice(0, 6)}`,
+            display_name:
+              user?.id === vs.user_id
+                ? authProfile?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'Moi'
+                : `user-${vs.user_id.slice(0, 6)}`,
+            avatar_url:
+              user?.id === vs.user_id
+                ? authProfile?.avatar_url || user.user_metadata?.avatar_url || null
+                : null,
+          };
+
+        return {
+          ...vs,
+          muted: vs.muted || false,
+          deafened: vs.deafened || false,
+          camera: vs.camera || false,
+          streaming: vs.streaming || false,
+          joined_at: vs.joined_at || new Date().toISOString(),
+          profile: (vs.profile as VoiceParticipant['profile'] | null) || fallbackProfile,
+        };
+      });
     },
     enabled: !!channelId,
     staleTime: 30_000,
@@ -94,56 +156,61 @@ export function useVoiceParticipants(channelId: string | null) {
             const newRow = payload.new as any;
             const newUserId = newRow.user_id;
 
-            // Try to resolve profile from React Query cache first (avoids placeholder flash)
-            const cachedProfile = queryClient.getQueryData<any>(['profile', newUserId]);
-            const resolvedProfile = cachedProfile
-              ? { id: cachedProfile.id, username: cachedProfile.username, display_name: cachedProfile.display_name, avatar_url: cachedProfile.avatar_url }
-              : null;
+            const upsertParticipant = (profileData: VoiceParticipant['profile']) => {
+              queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
+                const existing = old?.find(p => p.user_id === newUserId);
+                if (existing) {
+                  // Merge real DB id into optimistic entry, keep existing profile if already richer
+                  return old!.map(p => p.user_id === newUserId
+                    ? { ...p, id: newRow.id || p.id, profile: p.profile || profileData }
+                    : p
+                  );
+                }
 
-            // 1. Merge into existing optimistic entry OR add new
-            queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
-              const existing = old?.find(p => p.user_id === newUserId);
-              if (existing) {
-                // Merge real DB id into optimistic entry, keep existing profile
-                return old!.map(p => p.user_id === newUserId
-                  ? { ...p, id: newRow.id || p.id, profile: resolvedProfile || p.profile }
-                  : p
-                );
-              }
-              const participant: VoiceParticipant = {
-                id: newRow.id || crypto.randomUUID(),
-                user_id: newUserId,
-                channel_id: channelId,
-                muted: newRow.muted || false,
-                deafened: newRow.deafened || false,
-                camera: newRow.camera || false,
-                streaming: newRow.streaming || false,
-                joined_at: newRow.joined_at || new Date().toISOString(),
-                profile: resolvedProfile || {
-                  id: newUserId,
-                  username: 'user',
-                  display_name: 'Utilisateur',
-                  avatar_url: null,
-                },
-              };
-              return [...(old || []), participant];
-            });
+                const participant: VoiceParticipant = {
+                  id: newRow.id || crypto.randomUUID(),
+                  user_id: newUserId,
+                  channel_id: channelId,
+                  muted: newRow.muted || false,
+                  deafened: newRow.deafened || false,
+                  camera: newRow.camera || false,
+                  streaming: newRow.streaming || false,
+                  joined_at: newRow.joined_at || new Date().toISOString(),
+                  profile: profileData,
+                };
+                return [...(old || []), participant];
+              });
+            };
 
-            // 2. Hydrate with real profile data only if we used a fallback
-            if (!resolvedProfile) {
-              supabase
-                .from('profiles')
-                .select('id, username, display_name, avatar_url')
-                .eq('id', newUserId)
-                .single()
-                .then(({ data: profile }) => {
-                  if (profile) {
-                    queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) =>
-                      old?.map(p => p.user_id === newUserId ? { ...p, profile } : p)
-                    );
-                  }
-                });
+            const resolvedProfile = resolveProfileFromCaches(newUserId);
+            if (resolvedProfile) {
+              upsertParticipant(resolvedProfile);
+              return;
             }
+
+            // No placeholder flash: fetch profile first, then insert/merge participant
+            supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url')
+              .eq('id', newUserId)
+              .single()
+              .then(({ data: profile }) => {
+                const fetchedProfile: VoiceParticipant['profile'] = profile
+                  ? {
+                      id: profile.id,
+                      username: profile.username,
+                      display_name: profile.display_name,
+                      avatar_url: profile.avatar_url,
+                    }
+                  : {
+                      id: newUserId,
+                      username: `user-${newUserId.slice(0, 6)}`,
+                      display_name: `user-${newUserId.slice(0, 6)}`,
+                      avatar_url: null,
+                    };
+
+                upsertParticipant(fetchedProfile);
+              });
           }
         }
       )
@@ -158,7 +225,7 @@ export function useVoiceParticipants(channelId: string | null) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [channelId, instanceId, queryClient]);
+  }, [channelId, instanceId, queryClient, resolveProfileFromCaches]);
 
   return query;
 }

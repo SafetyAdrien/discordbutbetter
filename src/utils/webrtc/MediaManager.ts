@@ -18,6 +18,7 @@ interface RemoteAudioContext {
   context: AudioContext;
   analyser: AnalyserNode;
   source: MediaStreamAudioSourceNode;
+  gainNode: GainNode | null;
 }
 
 /** Per-remote-peer spectral VAD state */
@@ -200,8 +201,18 @@ export class MediaManager {
 
   setDeafened(deafened: boolean): void {
     this.isDeafened = deafened;
-    this.remoteAudioElements.forEach(audio => {
-      audio.muted = deafened;
+    this.remoteAudioElements.forEach((audio, peerId) => {
+      const volume = this.peerVolumes.get(peerId) ?? 100;
+      const usesGain = volume > 100;
+      if (usesGain) {
+        // GainNode path: mute/unmute via gain value
+        const ctx = this.remoteAudioContexts.get(peerId);
+        if (ctx?.gainNode) {
+          ctx.gainNode.gain.value = deafened ? 0 : volume / 100;
+        }
+      } else {
+        audio.muted = deafened;
+      }
     });
   }
 
@@ -334,40 +345,37 @@ export class MediaManager {
   addRemoteAudioStream(peerId: string, stream: MediaStream): void {
     this.removeRemoteAudioStream(peerId);
 
-    const audio = document.createElement('audio');
-    audio.srcObject = stream;
-    audio.autoplay = true;
-    audio.muted = this.isDeafened;
-    
-    const savedVolume = this.peerVolumes.get(peerId);
-    if (savedVolume !== undefined) {
-      audio.volume = Math.max(0, Math.min(2, savedVolume / 100));
-    }
-
-    // Robust play with retry on autoplay policy block
-    const tryPlay = () => {
-      audio.play().catch(error => {
-        console.warn('[MediaManager] Autoplay blocked for peer:', peerId, error.name);
-        // Listen for any user interaction to retry
-        const resumeOnInteraction = () => {
-          audio.play().catch(e => console.error('[MediaManager] Retry play failed:', e));
-          document.removeEventListener('click', resumeOnInteraction);
-          document.removeEventListener('keydown', resumeOnInteraction);
-          document.removeEventListener('touchstart', resumeOnInteraction);
-        };
-        document.addEventListener('click', resumeOnInteraction, { once: true });
-        document.addEventListener('keydown', resumeOnInteraction, { once: true });
-        document.addEventListener('touchstart', resumeOnInteraction, { once: true });
-      });
-    };
-    tryPlay();
-
-    this.remoteAudioElements.set(peerId, audio);
-
-    // Create audio context with larger FFT for spectral VAD
     try {
+      const audio = document.createElement('audio');
+      audio.srcObject = stream;
+      audio.autoplay = true;
+      audio.muted = this.isDeafened;
+      
+      // Apply saved volume — clamp native volume to [0,1]
+      const savedVolume = this.peerVolumes.get(peerId) ?? 100;
+      audio.volume = Math.max(0, Math.min(1, savedVolume / 100));
+
+      // Robust play with retry on autoplay policy block
+      const tryPlay = () => {
+        audio.play().catch(error => {
+          console.warn('[MediaManager] Autoplay blocked for peer:', peerId, error.name);
+          const resumeOnInteraction = () => {
+            audio.play().catch(e => console.error('[MediaManager] Retry play failed:', e));
+            document.removeEventListener('click', resumeOnInteraction);
+            document.removeEventListener('keydown', resumeOnInteraction);
+            document.removeEventListener('touchstart', resumeOnInteraction);
+          };
+          document.addEventListener('click', resumeOnInteraction, { once: true });
+          document.addEventListener('keydown', resumeOnInteraction, { once: true });
+          document.addEventListener('touchstart', resumeOnInteraction, { once: true });
+        });
+      };
+      tryPlay();
+
+      this.remoteAudioElements.set(peerId, audio);
+
+      // Create audio context with GainNode for amplification > 100%
       const context = new AudioContext();
-      // Resume AudioContext if suspended (autoplay policy)
       if (context.state === 'suspended') {
         context.resume().catch(() => {});
         const resumeCtx = () => {
@@ -378,17 +386,31 @@ export class MediaManager {
         document.addEventListener('click', resumeCtx, { once: true });
         document.addEventListener('keydown', resumeCtx, { once: true });
       }
+
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
       analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
-      
-      this.remoteAudioContexts.set(peerId, { context, analyser, source });
+
+      // GainNode for amplification beyond 100%
+      let gainNode: GainNode | null = null;
+      if (savedVolume > 100) {
+        gainNode = context.createGain();
+        gainNode.gain.value = savedVolume / 100;
+        source.connect(gainNode);
+        gainNode.connect(context.destination);
+        // When using GainNode for amplification, mute the native element
+        // and let Web Audio API handle playback
+        audio.volume = 0;
+        audio.muted = true;
+      }
+
+      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode });
       this.remoteVADStates.set(peerId, { spectralHistory: [], speakingState: false, holdTimer: null });
-      console.log('[MediaManager] Added remote audio with spectral VAD for peer:', peerId);
+      console.log('[MediaManager] Added remote audio for peer:', peerId, 'volume:', savedVolume);
     } catch (error) {
-      console.warn('[MediaManager] Failed to create audio analyser for peer:', peerId, error);
+      console.error('[MediaManager] Failed to set up remote audio for peer:', peerId, error);
     }
   }
 
@@ -403,6 +425,9 @@ export class MediaManager {
     const audioContext = this.remoteAudioContexts.get(peerId);
     if (audioContext) {
       audioContext.source.disconnect();
+      if (audioContext.gainNode) {
+        try { audioContext.gainNode.disconnect(); } catch { /* already disconnected */ }
+      }
       audioContext.context.close().catch(() => {});
       this.remoteAudioContexts.delete(peerId);
     }
@@ -587,12 +612,39 @@ export class MediaManager {
   // ==================== VOLUME CONTROL ====================
 
   setRemoteAudioVolume(peerId: string, volume: number): void {
-    const normalizedVolume = Math.max(0, Math.min(2, volume / 100));
     this.peerVolumes.set(peerId, volume);
     
     const audio = this.remoteAudioElements.get(peerId);
-    if (audio) {
-      audio.volume = normalizedVolume;
+    const remoteCtx = this.remoteAudioContexts.get(peerId);
+
+    if (volume <= 100) {
+      // Use native audio.volume for 0-100%
+      if (audio) {
+        audio.volume = Math.max(0, Math.min(1, volume / 100));
+        audio.muted = this.isDeafened || volume === 0;
+      }
+      // Disconnect any existing GainNode amplification
+      if (remoteCtx?.gainNode) {
+        try {
+          remoteCtx.gainNode.disconnect();
+        } catch { /* already disconnected */ }
+        remoteCtx.gainNode = null;
+      }
+    } else {
+      // For > 100%, use GainNode for amplification
+      if (audio) {
+        // Mute native element, let Web Audio API handle output
+        audio.volume = 0;
+        audio.muted = true;
+      }
+      if (remoteCtx) {
+        if (!remoteCtx.gainNode) {
+          remoteCtx.gainNode = remoteCtx.context.createGain();
+          remoteCtx.source.connect(remoteCtx.gainNode);
+          remoteCtx.gainNode.connect(remoteCtx.context.destination);
+        }
+        remoteCtx.gainNode.gain.value = volume / 100;
+      }
     }
   }
 

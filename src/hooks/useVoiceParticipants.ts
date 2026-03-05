@@ -100,9 +100,16 @@ export function useVoiceParticipants(channelId: string | null) {
               ? { id: cachedProfile.id, username: cachedProfile.username, display_name: cachedProfile.display_name, avatar_url: cachedProfile.avatar_url }
               : null;
 
-            // 1. Add with cached profile or fallback
+            // 1. Merge into existing optimistic entry OR add new
             queryClient.setQueryData(['voice-participants', channelId], (old: VoiceParticipant[] | undefined) => {
-              if (old?.some(p => p.user_id === newUserId)) return old;
+              const existing = old?.find(p => p.user_id === newUserId);
+              if (existing) {
+                // Merge real DB id into optimistic entry, keep existing profile
+                return old!.map(p => p.user_id === newUserId
+                  ? { ...p, id: newRow.id || p.id, profile: resolvedProfile || p.profile }
+                  : p
+                );
+              }
               const participant: VoiceParticipant = {
                 id: newRow.id || crypto.randomUUID(),
                 user_id: newUserId,
@@ -143,8 +150,6 @@ export function useVoiceParticipants(channelId: string | null) {
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           setIsRealtimeActive(true);
-          // Resync once on subscribe to catch anything missed
-          queryClient.invalidateQueries({ queryKey: ['voice-participants', channelId] });
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setIsRealtimeActive(false);
         }

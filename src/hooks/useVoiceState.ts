@@ -135,7 +135,6 @@ export function useVoiceState() {
         serverName,
       }));
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
-      queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
       toast.success(`Connecté à ${channelName}`);
     },
     onError: (_err, { channelId }) => {

@@ -569,8 +569,8 @@ export function AnnouncementChannel({
           
           {/* Welcome message - anchored at bottom like Discord */}
           <div className="mb-8 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-gradient-gaming flex items-center justify-center mb-4">
-              <Hash className="w-8 h-8 text-primary-foreground" />
+            <div className="w-[68px] h-[68px] rounded-full bg-muted flex items-center justify-center mb-4">
+              <StreamlineMegaphone className="w-10 h-10 text-muted-foreground" />
             </div>
             <h1 className="text-3xl font-ginto font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">

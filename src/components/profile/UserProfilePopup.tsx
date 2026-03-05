@@ -466,7 +466,36 @@ export function UserProfilePopup({
             )}
           </div>
 
-          {/* Kick/Ban actions */}
+          {/* Volume Slider — shown when in voice with this user */}
+          {isInVoiceWithTarget && (
+            <>
+              <div className="border-t border-border" />
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide flex items-center gap-1.5">
+                    {displayVolume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    Volume utilisateur
+                  </h4>
+                  <span className="text-xs text-muted-foreground">{displayVolume}%</span>
+                </div>
+                <Slider
+                  value={[displayVolume]}
+                  max={200}
+                  step={5}
+                  onValueChange={(v) => setLocalVolume(v[0])}
+                  onValueCommit={(v) => {
+                    setUserVolume.mutate({ targetUserId: user.id, volume: v[0] });
+                    setLocalVolume(null);
+                  }}
+                  className="w-full"
+                />
+                {displayVolume > 100 && (
+                  <p className="text-xs text-orange-400 mt-1">Volume amplifié au-delà de 100%</p>
+                )}
+              </div>
+            </>
+          )}
+
           {showKickBan && (canKick || canBan) && (
             <>
               <div className="border-t border-border" />

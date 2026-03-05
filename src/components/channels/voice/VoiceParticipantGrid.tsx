@@ -4,11 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MicOff, HeadphoneOff, ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
 import { VoiceVideoTile } from './VoiceVideoTile';
 import { VoiceParticipantPopover } from './VoiceParticipantPopover';
+import { VoiceParticipantContextMenu } from './VoiceParticipantContextMenu';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useVoice } from '@/contexts/VoiceContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
+import { User } from '@/types/app';
 
 // Array of gradient backgrounds for participants
 const PARTICIPANT_GRADIENTS = [

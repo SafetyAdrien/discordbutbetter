@@ -239,7 +239,7 @@ function SortableCategory({
 
 
 
-}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;}) {
+}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `category-${category.id}`,
@@ -679,6 +679,7 @@ export function ChannelList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
+  const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();
@@ -925,12 +926,30 @@ export function ChannelList({
         }
       }
 
-      // Calculate the middle of the target element
-      const middleY = overRect.top + overRect.height / 2;
+      const isActiveChannel = activeIdStr.startsWith("channel-");
+      const isOverCategoryHeader = overIdStr.startsWith("category-");
 
-      // If cursor is in upper half → insert BEFORE, lower half → insert AFTER
-      const position: "before" | "after" = clientY < middleY ? "before" : "after";
-      setDropPosition(position);
+      if (isActiveChannel && isOverCategoryHeader) {
+        // 3-state zones for channel → category: top 25% = before, middle 50% = inside, bottom 25% = after
+        const topZone = overRect.top + overRect.height * 0.25;
+        const bottomZone = overRect.top + overRect.height * 0.75;
+        if (clientY < topZone) {
+          setDropPosition("before");
+          setDropMode("before");
+        } else if (clientY > bottomZone) {
+          setDropPosition("after");
+          setDropMode("after");
+        } else {
+          setDropMode("inside");
+          setDropPosition("after"); // fallback, not used visually
+        }
+      } else {
+        // Proportional zones for channels: top 30% = before, bottom 70% = after
+        const threshold = overRect.top + overRect.height * 0.3;
+        const position: "before" | "after" = clientY < threshold ? "before" : "after";
+        setDropPosition(position);
+        setDropMode(position);
+      }
     }
     setOverId(overIdStr);
   };

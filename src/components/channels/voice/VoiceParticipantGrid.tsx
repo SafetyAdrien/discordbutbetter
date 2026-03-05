@@ -305,7 +305,7 @@ export function VoiceParticipantGrid({
                   <div
                     key={`screen-${share.userId}`}
                     className="relative group cursor-pointer rounded-xl overflow-hidden"
-                    onClick={() => handleFocus({ type: 'screen', userId: share.userId })}
+                    onDoubleClick={() => handleFocus({ type: 'screen', userId: share.userId })}
                   >
                     <VoiceVideoTile
                       stream={share.stream}

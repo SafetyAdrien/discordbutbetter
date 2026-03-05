@@ -1,83 +1,61 @@
 
 
-# Optimistic Updates — Salons après refresh
+# Fix: Duplicated channel hidden by visibility filter
 
-## Analyse de l'existant
+## Root cause
 
-Après analyse complète du code, **les optimistic updates sont déjà implémentés** pour toutes les mutations demandées :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-| Fonctionnalité | Hook | Optimistic `onMutate` | Status |
-|---|---|---|---|
-| Duplication salon | `useDuplicateChannel` | Oui (channels + servers + permissions) | Déjà fait |
-| Renommage salon | `useUpdateChannel` | Oui (channel-details + channels + servers) | Déjà fait |
-| Réordonnancement | `useReorderChannels` / `useReorderCategories` | Oui (channels + servers) | Déjà fait |
-| ChatInput permissions | `useMultipleChannelPermissions` + `prevChannelIdRef` | Oui (sessionStorage cache + transition guard) | Déjà fait |
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Problème réel : après un F5 (refresh), le cache React Query est vide
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Les optimistic updates fonctionnent pendant une session active, mais **au refresh**, React Query perd tout son cache en mémoire. Le temps que les queries `servers`, `channels`, et `channel-permission` se rechargent, l'UI affiche un état vide ou incohérent pendant ~200-500ms.
+## Fix
 
-## Correctifs proposés
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 1. Persister le cache `channels` dans `sessionStorage` (`useChannels.ts`)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Ajouter un `initialData` alimenté par `sessionStorage` pour que le cache channels soit disponible **dès le premier rendu** après un refresh, avant même que le fetch Supabase ne réponde.
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-- Dans `useChannels` : sauver le résultat dans `sessionStorage` à chaque fetch réussi (via un `useEffect` sur `data`)
-- Lire ce cache comme `initialData` / `placeholderData` au démarrage
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### 2. Persister le cache `servers` dans `sessionStorage` (`useServers.ts`)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-Même logique : le cache `servers` (qui contient les catégories et canaux pour le `ChannelList`) doit survivre au refresh.
+### 3. Hook needs `useAuth` for the user ID
 
-- Dans `useServers` : sauver dans `sessionStorage` après chaque fetch
-- Utiliser comme `placeholderData` au démarrage
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-### 3. Améliorer la transition ChatInput avec cache de permissions persisté
+## Detailed changes
 
-Le cache `sessionStorage` des permissions (`perm:${channelId}:${permission}`) existe déjà (ligne 124 de `useUserChannelPermissions.ts`). Mais le hook `useMultipleChannelPermissions` retourne `isLoading: true` pendant le premier fetch, ce qui déclenche le guard de transition.
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
 
-- Changer la logique : quand un cache `sessionStorage` existe pour TOUTES les permissions du salon, ne pas considérer `isLoading` comme bloquant → l'UI affiche directement l'état correct sans flash.
+### Code sketch for onMutate addition (after servers cache update)
 
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `src/hooks/useChannels.ts` | Ajouter persistance sessionStorage du cache channels + lecture au mount comme `placeholderData` |
-| `src/hooks/useServers.ts` | Ajouter persistance sessionStorage du cache servers + lecture au mount comme `placeholderData` |
-| `src/hooks/useUserChannelPermissions.ts` | Utiliser le cache sessionStorage existant pour bypasser `isLoading` quand toutes les permissions sont cached |
-
-## Détail technique
-
-### `useChannels.ts`
 ```text
-// Après le queryFn, ajouter un useEffect :
-useEffect(() => {
-  if (data && serverId) {
-    sessionStorage.setItem(`cache:channels:${serverId}`, JSON.stringify(data));
-  }
-}, [data, serverId]);
-
-// Dans useQuery, ajouter :
-placeholderData: () => {
-  const cached = sessionStorage.getItem(`cache:channels:${serverId}`);
-  return cached ? JSON.parse(cached) : undefined;
-},
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### `useServers.ts`
+### Code for onSuccess addition
+
 ```text
-// Même pattern avec clé `cache:servers:${user.id}`
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-### `useUserChannelPermissions.ts`
-```text
-// Dans useMultipleChannelPermissions, modifier isLoading :
-const allCached = permissions.every(p => 
-  channelId ? getPermissionCache(`${channelId}:${p}`) !== null : false
-);
-const isLoading = allCached ? false : queries.some(q => q.isLoading);
-```
-
-Aucun autre fichier ne sera modifié.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

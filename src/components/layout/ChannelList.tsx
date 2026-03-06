@@ -691,7 +691,8 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
-  const [externalLinkModal, setExternalLinkModal] = useState<{url: string;} | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{url: string; trusted?: boolean;} | null>(null);
+  const [duplicateModal, setDuplicateModal] = useState<{id: string; name: string; type: ChannelType} | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");

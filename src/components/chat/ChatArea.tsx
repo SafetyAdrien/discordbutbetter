@@ -1261,6 +1261,38 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
             // Render Message
             const message = item.data as Message;
+            
+            // Render system message for thread creation
+            if (message.is_system && message.content.startsWith('[SYSTEM:THREAD_CREATED:')) {
+              const match = message.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):(.+)\]/);
+              if (match) {
+                const [, threadId, threadName] = match;
+                return (
+                  <div key={`msg-${message.id}`}>
+                    {DateSeparator}
+                    <div className="flex items-center justify-center gap-2 py-1.5 px-4 my-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <StreamlineThreads className="w-3.5 h-3.5" />
+                        <span>
+                          <span className="font-semibold text-foreground">{message.author.displayName}</span>
+                          {' '}a créé un thread :{' '}
+                          <button
+                            onClick={() => onSelectThread?.(threadId)}
+                            className="font-semibold text-primary hover:underline cursor-pointer"
+                          >
+                            {threadName}
+                          </button>
+                        </span>
+                        <span className="text-muted-foreground/60 ml-1">
+                          {formatTime(message.timestamp)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+            }
+            
             const showAuthor =
               !prevItem ||
               prevItem.type !== "message" ||

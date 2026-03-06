@@ -85,6 +85,7 @@ export function PollDisplay({
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
+  const endPoll = useEndPoll();
 
   // Check vote permission
   const { data: canVoteInPolls = true } = useHasChannelPermission(channelId, 'vote_in_polls');
@@ -357,6 +358,20 @@ export function PollDisplay({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* End poll button for author */}
+            {!isExpired && poll.author_id === user?.id && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => endPoll.mutate({ pollId: poll.id, channelId, threadId })}
+                disabled={endPoll.isPending}
+                className="text-xs h-8 text-destructive hover:text-destructive"
+              >
+                <StopCircle className="w-3.5 h-3.5 mr-1" />
+                Terminer
+              </Button>
+            )}
+
             {!shouldShowResults && !hasVoted && canVote && (
               <Button
                 variant="ghost"

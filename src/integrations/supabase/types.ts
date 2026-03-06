@@ -1045,6 +1045,7 @@ export type Database = {
           edited_at: string | null
           id: string
           is_published_message: boolean | null
+          is_system: boolean
           original_message_id: string | null
           publish_dismissed: boolean | null
           source_channel_name: string | null
@@ -1062,6 +1063,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           is_published_message?: boolean | null
+          is_system?: boolean
           original_message_id?: string | null
           publish_dismissed?: boolean | null
           source_channel_name?: string | null
@@ -1079,6 +1081,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           is_published_message?: boolean | null
+          is_system?: boolean
           original_message_id?: string | null
           publish_dismissed?: boolean | null
           source_channel_name?: string | null
@@ -2254,6 +2257,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_private: boolean
           last_message_at: string | null
           message_id: string | null
           name: string
@@ -2265,6 +2269,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_private?: boolean
           last_message_at?: string | null
           message_id?: string | null
           name: string
@@ -2276,6 +2281,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_private?: boolean
           last_message_at?: string | null
           message_id?: string | null
           name?: string

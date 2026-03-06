@@ -201,9 +201,10 @@ export function MobileServersView({
 
   const handleDMClick = useCallback(() => {
     if (wasDraggingRef.current) return;
+    onShowFriends();
     setShowDMs(true);
     setSelectedServerId(null);
-  }, []);
+  }, [onShowFriends]);
 
   const handleServerTap = useCallback((serverId: string) => {
     if (wasDraggingRef.current) return;

@@ -366,9 +366,12 @@ const Index = () => {
 
   const handleServerSelect = (serverId: string | null) => {
     if (serverId === null) {
-      // Home button clicked - show DM page
+      // Home button clicked - show DM page, reset everything
       setActiveServerId(null);
       setActiveChannelId(null);
+      setActiveDMId(null);
+      setActiveThreadId(null);
+      setThreadChannelId(null);
     } else {
       setActiveServerId(serverId);
       setActiveDMId(null);

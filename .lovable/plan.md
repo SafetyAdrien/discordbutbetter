@@ -1,61 +1,43 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Corriger le spine complet dans la liste des salons
 
-## Root cause
+## Probleme actuel
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le spine actuel dans `ChannelList.tsx` ne montre que la courbe en L (`h-1/2`), sans la ligne verticale qui descend depuis le salon parent. Dans `ChatArea.tsx`, ca fonctionne car le conteneur a la hauteur du thread embed entier. Dans la liste des salons, le conteneur est trop petit (une seule ligne de texte), donc le spine est incomplet.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+De plus, quand il y a **plusieurs threads** sous un salon, il faut une ligne verticale continue qui relie tous les threads, avec la courbe pour chacun.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Solution — `src/components/layout/ChannelList.tsx` (lignes 596-599)
 
-## Fix
+Reproduire un spine complet avec :
+- **Ligne verticale** descendant sur toute la hauteur pour les threads non-derniers
+- **Ligne verticale tronquee** s'arretant au milieu pour le dernier thread
+- **Courbe en L** (`border-l-2 border-b-2 rounded-bl-lg`) a chaque thread
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```tsx
+// Pour chaque thread
+<div key={thread.id} className="flex items-center w-full px-2">
+  <div className="flex-shrink-0 w-8 relative mr-1.5 self-stretch">
+    {/* Ligne verticale - pleine hauteur sauf dernier */}
+    <div 
+      className="absolute left-[6px] top-0 w-0.5 bg-muted-foreground/30" 
+      style={{ height: isLast ? '50%' : '100%' }} 
+    />
+    {/* Courbe en L */}
+    <div className="absolute left-[6px] top-1/2 -translate-y-1/2 w-[20px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+  </div>
+  {/* Thread button */}
+</div>
 ```
 
-### Code for onSuccess addition
+La variable `isLast` sera determinee via l'index du thread dans le tableau filtre.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+| Element | Detail |
+|---|---|
+| Ligne verticale | `w-0.5 bg-muted-foreground/30`, hauteur 100% ou 50% selon position |
+| Courbe | `w-[20px] h-[12px] border-l-2 border-b-2 rounded-bl-lg`, centree verticalement |
+| Conteneur | `self-stretch` pour prendre la hauteur complete de la ligne |
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Un seul fichier modifie : `src/components/layout/ChannelList.tsx`
 

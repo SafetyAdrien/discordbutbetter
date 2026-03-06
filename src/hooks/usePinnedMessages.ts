@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -53,7 +53,7 @@ export function usePinnedMessages(channelId: string) {
     };
   }, [channelId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['pinned-messages', channelId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -72,7 +72,22 @@ export function usePinnedMessages(channelId: string) {
       return data as unknown as PinnedMessage[];
     },
     enabled: !!channelId,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:pinned-messages:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:pinned-messages:${channelId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function usePinMessage() {

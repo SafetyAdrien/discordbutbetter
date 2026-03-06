@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Thread } from '@/types/thread';
@@ -6,12 +7,11 @@ import { Thread } from '@/types/thread';
 export const useFollowedThreads = (channelId: string | undefined) => {
   const { user } = useAuth();
   
-  return useQuery({
+  const query = useQuery({
     queryKey: ['followed-threads', channelId, user?.id],
     queryFn: async () => {
       if (!channelId || !user) return [];
       
-      // Récupérer les threads suivis par l'utilisateur pour ce canal
       const { data, error } = await supabase
         .from('thread_followers')
         .select(`
@@ -27,13 +27,11 @@ export const useFollowedThreads = (channelId: string | undefined) => {
 
       if (error) throw error;
       
-      // Extraire les threads des résultats
       const threads = (data || []).map(item => {
         const thread = item.threads as unknown as Thread;
         return thread;
       });
       
-      // Récupérer les compteurs de messages pour chaque thread
       const threadsWithCounts = await Promise.all(
         threads.map(async (thread) => {
           const { count } = await supabase
@@ -48,7 +46,22 @@ export const useFollowedThreads = (channelId: string | undefined) => {
       return threadsWithCounts;
     },
     enabled: !!channelId && !!user,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:followed-threads:${channelId}:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:followed-threads:${channelId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, user?.id, query.isPlaceholderData]);
+
+  return query;
 };
 
 export const useAllFollowedThreadsForServer = (serverId: string | undefined) => {

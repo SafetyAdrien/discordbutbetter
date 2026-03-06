@@ -87,6 +87,7 @@ interface AnnouncementChannelProps {
   channel: Channel;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  hideHeader?: boolean;
 }
 
 // Quick reactions
@@ -119,6 +120,7 @@ export function AnnouncementChannel({
   channel,
   onToggleMembers,
   showMembers = true,
+  hideHeader = false,
 }: AnnouncementChannelProps) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
@@ -399,7 +401,7 @@ export function AnnouncementChannel({
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
       {/* Channel Header */}
-      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
+      {!hideHeader && <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
            <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
@@ -567,7 +569,7 @@ export function AnnouncementChannel({
             <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
           </Tooltip>
         </div>
-      </div>
+      </div>}
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">

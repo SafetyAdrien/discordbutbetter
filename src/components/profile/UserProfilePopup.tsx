@@ -18,7 +18,7 @@ import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
 import { MemberWithProfile } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { parseMarkdown } from '@/lib/markdown';
+import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { toast } from 'sonner';
 import * as Portal from '@radix-ui/react-portal';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
@@ -457,7 +457,13 @@ export function UserProfilePopup({
             </h4>
             {user.bio ? (
               <div className="text-sm text-foreground/90 prose prose-invert prose-sm max-w-none">
-                {parseMarkdown(user.bio)}
+                {(() => {
+                  const prevCtx = getMarkdownContext();
+                  setMarkdownContext({ ...prevCtx, variant: 'bio' });
+                  const result = parseMarkdown(user.bio);
+                  setMarkdownContext(prevCtx);
+                  return result;
+                })()}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground/50">

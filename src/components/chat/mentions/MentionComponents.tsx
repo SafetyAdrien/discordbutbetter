@@ -11,11 +11,23 @@ interface UserMentionProps {
   userId: string;
   displayName: string;
   avatarUrl?: string;
+  variant?: 'chat' | 'bio';
   isSelf?: boolean;
   onClick?: () => void;
 }
 
-export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick }: UserMentionProps) {
+export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, variant = 'chat' }: UserMentionProps) {
+  if (variant === 'bio') {
+    return (
+      <span
+        onClick={onClick}
+        className="inline-flex items-center gap-0.5 px-0.5 cursor-pointer font-medium text-[#00AFF4] hover:underline transition-colors duration-100"
+      >
+        @{displayName}
+      </span>
+    );
+  }
+
   return (
     <TooltipProvider>
       <Tooltip>

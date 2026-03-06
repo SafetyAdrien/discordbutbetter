@@ -84,6 +84,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState<ThreadMessage | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
@@ -272,11 +273,22 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     if (!messageContent.trim()) return;
     
     try {
+      let content = messageContent;
+      // Prepend reply citation if replying
+      if (replyingTo) {
+        const replyAuthor = replyingTo.author?.display_name || 'Inconnu';
+        const replyPreview = replyingTo.content.length > 50 
+          ? replyingTo.content.slice(0, 50) + '...' 
+          : replyingTo.content;
+        content = `> **${replyAuthor}** : ${replyPreview}\n${content}`;
+      }
+      
       await sendMessage.mutateAsync({
         threadId,
-        content: messageContent,
+        content,
       });
       setMessageContent('');
+      setReplyingTo(null);
     } catch (error) {
       // Error handled by mutation
     }
@@ -705,7 +717,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       key={message.id}
                       isOwnMessage={isOwnMessage}
                       messageId={message.id}
-                      onReply={() => console.log('Reply to', message.id)}
+                      onReply={() => setReplyingTo(message)}
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                       onCopyText={() => copyToClipboard(message.content, 'Message copié')}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
@@ -740,7 +752,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           isVisible={(hoveredMessageId === message.id || openDropdownMessageId === message.id) && editingMessageId !== message.id}
                           isShiftPressed={isShiftPressed}
                           isOwnMessage={isOwnMessage}
-                          onReply={() => console.log('Reply to', message.id)}
+                          onReply={() => setReplyingTo(message)}
                           onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                           onCopyLink={() => handleCopyMessageLink(message.id)}
                           onCopyId={() => handleCopyId(message.id)}
@@ -857,12 +869,36 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       {/* Typing Indicator */}
       <TypingIndicator threadId={threadId} />
 
+      {/* Reply indicator */}
+      {replyingTo && (
+        <div className="px-4 py-2 bg-muted/50 border-t border-border flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-muted-foreground">
+              Répondre à{' '}
+              <span className="font-semibold text-foreground">
+                {replyingTo.author?.display_name || 'Inconnu'}
+              </span>
+            </span>
+            <p className="text-xs text-muted-foreground truncate">
+              {replyingTo.content}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="iconSm"
+            onClick={() => setReplyingTo(null)}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Input */}
       <MessageInput
         value={messageContent}
         onChange={setMessageContent}
         onSend={handleSend}
-        placeholder={`Envoyer un message dans ${thread?.name || 'le thread'}`}
+        placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}` : `Envoyer un message dans ${thread?.name || 'le thread'}`}
         disabled={sendMessage.isPending}
         isSending={sendMessage.isPending}
         onTypingStart={startTyping}

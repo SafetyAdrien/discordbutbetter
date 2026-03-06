@@ -621,7 +621,7 @@ export function usePreloader(
         } catch {}
       })();
 
-      await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise, threadsPromise, pollsPromise]);
+      await Promise.all([detailedPermsPromise, serverMsgPromise, dmMsgPromise, threadMsgPromise, threadsPromise, pollsPromise]);
 
       // Prefetch all image attachments into browser cache (fire-and-forget)
       try {

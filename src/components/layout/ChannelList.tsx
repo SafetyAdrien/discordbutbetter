@@ -593,9 +593,9 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
             {threads.
           filter((thread) => showArchivedThreads || !thread.archived).
           map((thread) =>
-          <div key={thread.id} className="flex items-start w-full px-2">
-                  <div className="flex-shrink-0 w-4 h-5 relative mt-0.5">
-                    <div className="absolute left-[6px] top-0 w-[10px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+          <div key={thread.id} className="flex items-center w-full px-2">
+                  <div className="flex-shrink-0 w-8 relative mr-1.5">
+                    <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                   </div>
                   <button
               onClick={(e) => {

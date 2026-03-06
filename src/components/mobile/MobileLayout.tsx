@@ -327,7 +327,7 @@ export function MobileLayout({
               });
             }}
             renderCustomContent={() => (
-              <AnnouncementChannel {...commonProps} />
+              <AnnouncementChannel {...commonProps} hideHeader />
             )}
           />
         );

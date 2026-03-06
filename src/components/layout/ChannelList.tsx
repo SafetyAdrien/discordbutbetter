@@ -801,11 +801,8 @@ export function ChannelList({
       toast.error("Erreur lors de la suppression");
     }
   };
-  const handleDuplicateChannel = (channelId: string) => {
-    duplicateChannel.mutate({
-      channelId,
-      serverId: server.id
-    });
+  const handleDuplicateChannel = (channel: Channel) => {
+    setDuplicateModal({ id: channel.id, name: channel.name, type: channel.type });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {
@@ -1652,8 +1649,16 @@ threads={threadsByChannel[channel.id] || []}
       {externalLinkModal &&
       <ExternalLinkWarningModal
         url={externalLinkModal.url}
+        trusted={externalLinkModal.trusted}
         onClose={() => setExternalLinkModal(null)} />
+      }
 
+      {duplicateModal &&
+      <DuplicateChannelModal
+        open={!!duplicateModal}
+        onClose={() => setDuplicateModal(null)}
+        channel={duplicateModal}
+        serverId={server.id} />
       }
 
       {inviteChannelId &&

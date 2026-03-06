@@ -72,8 +72,15 @@ export function useUnreadCounts() {
       return unreadCounts;
     },
     enabled: !!user,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:unread-counts:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, user?.id, query.isPlaceholderData]);
 
   const markAsRead = useMutation({
     mutationFn: async (conversationId: string) => {

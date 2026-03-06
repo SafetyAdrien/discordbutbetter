@@ -131,6 +131,13 @@ export function useMembers(serverId: string | null) {
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:members:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
   const membersChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const rolesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 

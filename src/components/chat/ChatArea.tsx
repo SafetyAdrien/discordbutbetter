@@ -1088,6 +1088,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 (prevItem.data as Poll).author?.id !== poll.author?.id ||
                 item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
               const isOwnPoll = user?.id === poll.author_id;
+              const isPollExpired = poll.expires_at ? new Date(poll.expires_at) <= new Date() : false;
               return (
                 <div key={`poll-${poll.id}`}>
                   {DateSeparator}
@@ -1108,6 +1109,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         onReply={() => handleReplyToPoll(poll)}
                         onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                         isOwnPoll={isOwnPoll}
+                        isPollExpired={isPollExpired}
+                        onEndPoll={() => handleEndPoll(poll)}
                         onDropdownOpenChange={(open) => {
                           setOpenDropdownPollId(open ? poll.id : null);
                           if (!open) setHoveredPollId(null);
@@ -1161,6 +1164,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     {isOwnPoll && (
                       <>
                         <ContextMenuSeparator />
+                        {!isPollExpired && (
+                          <ContextMenuItem onClick={() => handleEndPoll(poll)}>
+                            <StopCircle className="w-4 h-4 mr-2" />
+                            Terminer le sondage
+                          </ContextMenuItem>
+                        )}
                         <ContextMenuItem onClick={() => setEditingPoll(poll)}>
                           <Pencil className="w-4 h-4 mr-2" />
                           Modifier le sondage

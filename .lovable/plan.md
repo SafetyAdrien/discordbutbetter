@@ -1,41 +1,61 @@
 
 
-# Déplacer l'icône X à droite dans le Sheet Membres mobile
+# Fix: Duplicated channel hidden by visibility filter
 
-## Changement
+## Root cause
 
-Dans `src/components/mobile/MobileChatView.tsx` (lignes 273-281), réorganiser le header du Sheet :
-- "Membres" à gauche
-- Bouton X à droite avec un espacement minimum
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Le `justify-between` est déjà en place, il suffit de sortir le bouton X du groupe gauche et le placer comme élément indépendant à droite.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Modification
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-```tsx
-// Avant
-<div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-  <div className="flex items-center gap-1">
-    <SheetClose asChild>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
-        <X className="w-4 h-4" />
-      </Button>
-    </SheetClose>
-    <h3 className="text-sm font-semibold text-foreground">Membres</h3>
-  </div>
-</div>
+## Fix
 
-// Après
-<div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-  <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
-  <SheetClose asChild>
-    <Button variant="ghost" size="icon" className="h-8 w-8 mr-0.5">
-      <X className="w-4 h-4" />
-    </Button>
-  </SheetClose>
-</div>
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-## Fichier modifié (1)
-- `src/components/mobile/MobileChatView.tsx`
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

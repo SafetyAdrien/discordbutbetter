@@ -271,14 +271,12 @@ export function MobileChatView({
             </SheetTrigger>
             <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-xl [&>button.absolute]:hidden">
               <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-              <div className="flex items-center gap-1">
-                  <SheetClose asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </SheetClose>
-                  <h3 className="text-sm font-semibold text-foreground">Membres</h3>
-                </div>
+                <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 mr-0.5">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </SheetClose>
               </div>
               {/* Channel topic / description */}
               {channel.description && (

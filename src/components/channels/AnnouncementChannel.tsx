@@ -569,7 +569,7 @@ export function AnnouncementChannel({
             <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
           </Tooltip>
         </div>
-      </div>
+      </div>}
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">

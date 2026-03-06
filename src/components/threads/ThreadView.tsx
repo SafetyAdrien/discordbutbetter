@@ -256,7 +256,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     }
     lastMessageCountRef.current = messages.length;
   }, [messages.length, isAtBottom]);
+import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 
+const MOBILE_BREAKPOINT = 768;
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current && channelId) {

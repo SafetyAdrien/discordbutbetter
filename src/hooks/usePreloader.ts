@@ -51,6 +51,9 @@ export function usePreloader(
   const [dmsLoaded, setDmsLoaded] = useState(false);
   const [serverOrderLoaded, setServerOrderLoaded] = useState(false);
   const [channelPermsLoaded, setChannelPermsLoaded] = useState(false);
+  const [serverMessagesLoaded, setServerMessagesLoaded] = useState(false);
+  const [dmMessagesLoaded, setDmMessagesLoaded] = useState(false);
+  const [threadMessagesLoaded, setThreadMessagesLoaded] = useState(false);
   const [minTimePassed, setMinTimePassed] = useState(false);
 
   const hasStarted = useRef(false);

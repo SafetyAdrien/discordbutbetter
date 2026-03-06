@@ -705,6 +705,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       channelId: channel.id,
     });
   };
+  const handleEndPoll = (poll: Poll) => {
+    endPollMutation.mutate({
+      pollId: poll.id,
+      channelId: channel.id,
+    });
+  };
   const handleSubmit = () => {
     if (messageInput.trim() || attachments.length > 0) {
       // Trigger send animation

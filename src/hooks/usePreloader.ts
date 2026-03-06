@@ -11,30 +11,24 @@ interface PreloadStep {
 
 interface PreloaderResult {
   ready: boolean;
-  progress: number; // 0-100
+  progress: number;
   currentStep: string;
   steps: PreloadStep[];
 }
 
-/**
- * Détecte la qualité de connexion et retourne un délai minimum adapté
- */
-function getMinLoadingMs(): number {
-  const nav = navigator as any;
-  if (nav.connection) {
-    const effectiveType = nav.connection.effectiveType;
-    // slow-2g, 2g → 4s min ; 3g → 2.5s ; 4g → 1.5s
-    if (effectiveType === 'slow-2g' || effectiveType === '2g') return 4000;
-    if (effectiveType === '3g') return 2500;
-    return 1500;
-  }
-  return 1800; // fallback
+/** Try to read from sessionStorage, return parsed data or null */
+function readCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
-/**
- * Précharge toutes les données critiques de l'app :
- * auth, serveurs, salons, membres, permissions, DMs, profil
- */
+/** Write to sessionStorage, silently ignore quota errors */
+function writeCache(key: string, data: unknown): void {
+  try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
+
 export function usePreloader(
   authLoading: boolean,
   serversPending: boolean,
@@ -58,10 +52,14 @@ export function usePreloader(
 
   const hasStarted = useRef(false);
 
-  // Min loading timer (adapté à la connexion)
+  // Adaptive min loading: instant if cache exists, otherwise short delay
   useEffect(() => {
-    const ms = getMinLoadingMs();
-    const timer = setTimeout(() => setMinTimePassed(true), ms);
+    const hasPreviousLoad = sessionStorage.getItem('cache:preloader-done');
+    if (hasPreviousLoad) {
+      setMinTimePassed(true);
+      return;
+    }
+    const timer = setTimeout(() => setMinTimePassed(true), 800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -72,85 +70,81 @@ export function usePreloader(
     }
   }, [serversPending, authLoading, user]);
 
-  // Preload all data once servers are loaded
+  // Preload all data once servers are loaded — PARALLELIZED
   useEffect(() => {
     if (!serversLoaded || !user || hasStarted.current) return;
     hasStarted.current = true;
 
-    const preload = async () => {
-      const serverIds = servers.map(s => s.id);
+    const serverIds = servers.map(s => s.id);
 
-      // 1. Preload profile + server order
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (profile) {
-          queryClient.setQueryData(['profile', user.id], profile);
-          // Seed server order cache from profile
-          queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
-        }
-      } catch {}
+    // GROUP 1: Profile + server order
+    const profilePromise = (async () => {
+      const cached = readCache<any>(`cache:profile:${user.id}`);
+      if (cached) {
+        queryClient.setQueryData(['profile', user.id], cached);
+        queryClient.setQueryData(['server-order', user.id], cached.server_order || []);
+      } else {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (profile) {
+            queryClient.setQueryData(['profile', user.id], profile);
+            queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
+            writeCache(`cache:profile:${user.id}`, profile);
+          }
+        } catch {}
+      }
       setProfileLoaded(true);
       setServerOrderLoaded(true);
+    })();
 
-      // 2. Preload channels for ALL servers
-      try {
-        const channelPromises = serverIds.map(async (sid) => {
-          const { data: categories } = await supabase
-            .from('categories')
-            .select('*')
-            .eq('server_id', sid)
-            .order('position');
-          const { data: channels } = await supabase
-            .from('channels')
-            .select('*')
-            .eq('server_id', sid)
-            .order('position');
-          // Seed the cache
+    // GROUP 2: Channels for all servers
+    const channelsPromise = (async () => {
+      await Promise.all(serverIds.map(async (sid) => {
+        const cached = readCache<any>(`cache:channels:${sid}`);
+        if (cached) {
+          queryClient.setQueryData(['channels', sid], cached);
+          return;
+        }
+        try {
+          const [{ data: categories }, { data: channels }] = await Promise.all([
+            supabase.from('categories').select('*').eq('server_id', sid).order('position'),
+            supabase.from('channels').select('*').eq('server_id', sid).order('position'),
+          ]);
           if (categories && channels) {
-            const categorized = (categories || []).map(cat => ({
-              id: cat.id,
-              name: cat.name,
-              position: cat.position,
-              channels: (channels || [])
-                .filter(ch => ch.category_id === cat.id)
-                .map(ch => ({
-                  id: ch.id,
-                  name: ch.name,
-                  type: ch.type,
-                  description: ch.description,
-                  position: ch.position,
-                  category_id: ch.category_id,
-                  server_id: ch.server_id,
+            const result = {
+              categories: categories.map(cat => ({
+                id: cat.id, name: cat.name, position: cat.position,
+                channels: channels.filter(ch => ch.category_id === cat.id).map(ch => ({
+                  id: ch.id, name: ch.name, type: ch.type, description: ch.description,
+                  position: ch.position, category_id: ch.category_id, server_id: ch.server_id,
                 })),
-            }));
-            const orphans = (channels || [])
-              .filter(ch => !ch.category_id)
-              .map(ch => ({
-                id: ch.id,
-                name: ch.name,
-                type: ch.type,
-                description: ch.description,
-                position: ch.position,
-                category_id: null,
-                server_id: ch.server_id,
-              }));
-            queryClient.setQueryData(['channels', sid], {
-              categories: categorized,
-              orphanChannels: orphans,
-            });
+              })),
+              orphanChannels: channels.filter(ch => !ch.category_id).map(ch => ({
+                id: ch.id, name: ch.name, type: ch.type, description: ch.description,
+                position: ch.position, category_id: null, server_id: ch.server_id,
+              })),
+            };
+            queryClient.setQueryData(['channels', sid], result);
+            writeCache(`cache:channels:${sid}`, result);
           }
-        });
-        await Promise.all(channelPromises);
-      } catch {}
+        } catch {}
+      }));
       setChannelsLoaded(true);
+    })();
 
-      // 3. Preload members for ALL servers (with roles + server profiles)
-      try {
-        const memberPromises = serverIds.map(async (sid) => {
+    // GROUP 3: Members for all servers
+    const membersPromise = (async () => {
+      await Promise.all(serverIds.map(async (sid) => {
+        const cached = readCache<any>(`cache:members:${sid}`);
+        if (cached) {
+          queryClient.setQueryData(['members', sid], cached);
+          return;
+        }
+        try {
           const { data } = await supabase
             .from('server_members')
             .select(`
@@ -168,7 +162,6 @@ export function usePreloader(
             `)
             .eq('server_id', sid);
           if (data) {
-            // Fetch server profiles
             const userIds = data.map((m: any) => m.user?.id).filter(Boolean);
             const { data: serverProfiles } = userIds.length > 0
               ? await supabase
@@ -177,32 +170,32 @@ export function usePreloader(
                   .eq('server_id', sid)
                   .in('user_id', userIds)
               : { data: [] as any[] };
-
             const profileMap = new Map<string, any>();
             serverProfiles?.forEach((sp: any) => profileMap.set(sp.user_id, sp));
-
-            // Transform to MemberWithProfile format
             const members = data.map((member: any) => ({
-              id: member.id,
-              nickname: member.nickname,
-              joined_at: member.joined_at,
+              id: member.id, nickname: member.nickname, joined_at: member.joined_at,
               user: member.user,
-              roles: (member.member_roles || [])
-                .map((mr: any) => mr.role)
-                .filter((r: any) => r !== null)
+              roles: (member.member_roles || []).map((mr: any) => mr.role).filter((r: any) => r !== null)
                 .sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0)),
               serverProfile: profileMap.get(member.user?.id) ?? null,
             }));
             queryClient.setQueryData(['members', sid], members);
+            writeCache(`cache:members:${sid}`, members);
           }
-        });
-        await Promise.all(memberPromises);
-      } catch {}
+        } catch {}
+      }));
       setMembersLoaded(true);
+    })();
 
-      // 4. Preload roles + permissions for all servers
-      try {
-        const permPromises = serverIds.map(async (sid) => {
+    // GROUP 4: Roles + permissions for all servers
+    const permissionsPromise = (async () => {
+      await Promise.all(serverIds.map(async (sid) => {
+        const cached = readCache<any>(`cache:roles:${sid}`);
+        if (cached) {
+          queryClient.setQueryData(['roles', sid], cached);
+          return;
+        }
+        try {
           const { data: roles } = await supabase
             .from('roles')
             .select('id, name, color, icon_url, position, is_default, hoist, server_id, description')
@@ -216,41 +209,58 @@ export function usePreloader(
               .in('role_id', roleIds);
             const rolesWithPerms = roles.map(role => ({
               ...role,
-              permissions: (permissions || [])
-                .filter(p => p.role_id === role.id)
-                .map(p => p.permission),
+              permissions: (permissions || []).filter(p => p.role_id === role.id).map(p => p.permission),
             }));
             queryClient.setQueryData(['roles', sid], rolesWithPerms);
+            writeCache(`cache:roles:${sid}`, rolesWithPerms);
           }
-        });
-        await Promise.all(permPromises);
-      } catch {}
+        } catch {}
+      }));
       setPermissionsLoaded(true);
+    })();
 
-      // 5. Preload DM conversations
-      try {
-        const { data: participants } = await supabase
-          .from('dm_participants')
-          .select('conversation_id')
-          .eq('user_id', user.id);
-        if (participants) {
-          const convIds = participants.map(p => p.conversation_id);
-          if (convIds.length > 0) {
-            const { data: conversations } = await supabase
-              .from('dm_conversations')
-              .select('*')
-              .in('id', convIds);
-            if (conversations) {
-              queryClient.setQueryData(['dm-conversations'], conversations);
+    // GROUP 5: DM conversations
+    const dmsPromise = (async () => {
+      const cached = readCache<any>(`cache:dm-conversations:${user.id}`);
+      if (cached) {
+        queryClient.setQueryData(['dm-conversations'], cached);
+      } else {
+        try {
+          const { data: participants } = await supabase
+            .from('dm_participants')
+            .select('conversation_id')
+            .eq('user_id', user.id);
+          if (participants) {
+            const convIds = participants.map(p => p.conversation_id);
+            if (convIds.length > 0) {
+              const { data: conversations } = await supabase
+                .from('dm_conversations')
+                .select('*')
+                .in('id', convIds);
+              if (conversations) {
+                queryClient.setQueryData(['dm-conversations'], conversations);
+                writeCache(`cache:dm-conversations:${user.id}`, conversations);
+              }
             }
           }
-        }
-      } catch {}
+        } catch {}
+      }
       setDmsLoaded(true);
+    })();
 
-      // 6. Preload channel permissions for ALL servers
-      try {
-        const chPermPromises = serverIds.map(async (sid) => {
+    // GROUP 6: Channel permissions for all servers
+    const channelPermsPromise = (async () => {
+      await Promise.all(serverIds.map(async (sid) => {
+        const cacheKey = `cache:channel-perms:${sid}:${user.id}`;
+        const cached = readCache<any>(cacheKey);
+        if (cached) {
+          queryClient.setQueryData(['server-channel-permissions', sid, user.id], {
+            viewable: new Set<string>(cached.viewable),
+            connectable: new Set<string>(cached.connectable),
+          });
+          return;
+        }
+        try {
           const { data } = await supabase.rpc('get_server_channel_permissions', {
             _user_id: user.id,
             _server_id: sid,
@@ -262,31 +272,54 @@ export function usePreloader(
             if (row.can_connect) connectable.add(row.channel_id);
           });
           queryClient.setQueryData(['server-channel-permissions', sid, user.id], { viewable, connectable });
-        });
-        await Promise.all(chPermPromises);
-      } catch {}
+          writeCache(cacheKey, { viewable: [...viewable], connectable: [...connectable] });
+        } catch {}
+      }));
       setChannelPermsLoaded(true);
+    })();
 
-      // 7-9. Preload all messages in parallel (server, DM, thread)
+    // PHASE 2: After channels + DMs resolved, preload messages (limited scope)
+    const messagesPhase = Promise.all([channelsPromise, dmsPromise]).then(async () => {
+      // 7. Server messages — only active channel + last 5 visited per server
       const serverMsgPromise = (async () => {
         try {
-          const serverIds = servers.map(s => s.id);
-          const allChannelIds: string[] = [];
+          const recentChannels = readCache<string[]>('cache:recent-channels') || [];
+          const channelIdsToLoad = new Set<string>(recentChannels.slice(0, 30));
+
+          // Also add first text channel per server as fallback
           for (const sid of serverIds) {
-            const cached = queryClient.getQueryData(['channels', sid]) as any;
-            if (cached) {
+            const channelData = queryClient.getQueryData(['channels', sid]) as any;
+            if (channelData) {
               const textTypes = ['text', 'announcement'];
-              cached.categories?.forEach((cat: any) => {
-                cat.channels?.forEach((ch: any) => {
-                  if (textTypes.includes(ch.type)) allChannelIds.push(ch.id);
-                });
-              });
-              cached.orphanChannels?.forEach((ch: any) => {
-                if (textTypes.includes(ch.type)) allChannelIds.push(ch.id);
-              });
+              let found = false;
+              for (const cat of (channelData.categories || [])) {
+                for (const ch of (cat.channels || [])) {
+                  if (textTypes.includes(ch.type)) {
+                    channelIdsToLoad.add(ch.id);
+                    found = true;
+                    break;
+                  }
+                }
+                if (found) break;
+              }
+              if (!found) {
+                for (const ch of (channelData.orphanChannels || [])) {
+                  if (textTypes.includes(ch.type)) {
+                    channelIdsToLoad.add(ch.id);
+                    break;
+                  }
+                }
+              }
             }
           }
-          await Promise.all(allChannelIds.map(async (chId) => {
+
+          await Promise.all([...channelIdsToLoad].map(async (chId) => {
+            // Skip if already in sessionStorage
+            const cached = readCache<any>(`cache:messages:${chId}`);
+            if (cached) {
+              queryClient.setQueryData(['messages', chId], cached);
+              return;
+            }
             const { data } = await supabase
               .from('messages')
               .select(`
@@ -306,18 +339,24 @@ export function usePreloader(
                 attachments: Array.isArray(msg.attachments) ? msg.attachments : []
               }));
               queryClient.setQueryData(['messages', chId], messages);
-              try { sessionStorage.setItem(`cache:messages:${chId}`, JSON.stringify(messages)); } catch {}
+              writeCache(`cache:messages:${chId}`, messages);
             }
           }));
         } catch {}
         setServerMessagesLoaded(true);
       })();
 
+      // 8. DM messages
       const dmMsgPromise = (async () => {
         try {
           const conversations = queryClient.getQueryData(['dm-conversations']) as any[] | undefined;
           if (conversations && conversations.length > 0) {
             await Promise.all(conversations.map(async (conv: any) => {
+              const cached = readCache<any>(`cache:dm-messages:${conv.id}`);
+              if (cached) {
+                queryClient.setQueryData(['dm-messages', conv.id], cached);
+                return;
+              }
               const { data } = await supabase
                 .from('dm_messages')
                 .select(`
@@ -335,7 +374,7 @@ export function usePreloader(
                   attachments: Array.isArray(msg.attachments) ? msg.attachments : []
                 }));
                 queryClient.setQueryData(['dm-messages', conv.id], messages);
-                try { sessionStorage.setItem(`cache:dm-messages:${conv.id}`, JSON.stringify(messages)); } catch {}
+                writeCache(`cache:dm-messages:${conv.id}`, messages);
               }
             }));
           }
@@ -343,17 +382,15 @@ export function usePreloader(
         setDmMessagesLoaded(true);
       })();
 
+      // 9. Thread messages (only followed)
       const threadMsgPromise = (async () => {
         try {
-          const serverIds = servers.map(s => s.id);
-          // Get all followed thread IDs
           const { data: followed } = await supabase
             .from('thread_followers')
             .select('thread_id')
             .eq('user_id', user.id);
           if (followed && followed.length > 0) {
             const threadIds = followed.map(f => f.thread_id);
-            // Fetch threads to filter by server
             const { data: threads } = await supabase
               .from('threads')
               .select('id, channel_id, channels!threads_channel_id_fkey(server_id)')
@@ -363,6 +400,11 @@ export function usePreloader(
               .filter((t: any) => serverIds.includes(t.channels?.server_id))
               .map((t: any) => t.id);
             await Promise.all(validThreadIds.map(async (tid: string) => {
+              const cached = readCache<any>(`cache:thread-messages:${tid}`);
+              if (cached) {
+                queryClient.setQueryData(['thread-messages', tid], cached);
+                return;
+              }
               const { data } = await supabase
                 .from('thread_messages')
                 .select(`
@@ -372,7 +414,7 @@ export function usePreloader(
                 .order('created_at', { ascending: true });
               if (data) {
                 queryClient.setQueryData(['thread-messages', tid], data);
-                try { sessionStorage.setItem(`cache:thread-messages:${tid}`, JSON.stringify(data)); } catch {}
+                writeCache(`cache:thread-messages:${tid}`, data);
               }
             }));
           }
@@ -381,9 +423,13 @@ export function usePreloader(
       })();
 
       await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise]);
-    };
+    });
 
-    preload();
+    // Run all groups in parallel, messages phase waits for channels+DMs
+    Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase])
+      .then(() => {
+        writeCache('cache:preloader-done', '1');
+      });
   }, [serversLoaded, user, servers, queryClient]);
 
   const steps: PreloadStep[] = useMemo(() => [

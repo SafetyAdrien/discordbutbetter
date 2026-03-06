@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Thread } from '@/types/thread';
 import { toast } from 'sonner';
@@ -33,7 +33,7 @@ export const useThreads = (channelId: string | undefined) => {
     };
   }, [channelId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['threads', channelId],
     queryFn: async () => {
       if (!channelId) return [];
@@ -114,7 +114,22 @@ export const useThreads = (channelId: string | undefined) => {
       return threadsWithData;
     },
     enabled: !!channelId,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:threads:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:threads:${channelId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
+
+  return query;
 };
 
 export const useThread = (threadId: string | undefined) => {

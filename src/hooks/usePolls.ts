@@ -102,8 +102,21 @@ export function usePolls(channelId: string | null) {
 
       return pollsWithDetails as Poll[];
     },
-    enabled: !!channelId && !!user
+    enabled: !!channelId && !!user,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:polls:channel:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:polls:channel:${channelId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
 
   // Real-time subscription for polls (creation, update, deletion)
   useEffect(() => {
@@ -258,8 +271,21 @@ export function useThreadPolls(threadId: string | null) {
 
       return pollsWithDetails as Poll[];
     },
-    enabled: !!threadId && !!user
+    enabled: !!threadId && !!user,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:polls:thread:${threadId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && threadId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:polls:thread:${threadId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, threadId, query.isPlaceholderData]);
 
   // Real-time subscription for polls
   useEffect(() => {

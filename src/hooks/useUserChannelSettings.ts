@@ -57,7 +57,20 @@ export function useUserChannelSettings(serverId: string | null) {
       }));
     },
     enabled: !!user && !!serverId,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:user-channel-settings:${serverId}:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:user-channel-settings:${serverId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, user?.id, query.isPlaceholderData]);
 
   // Realtime subscription
   useEffect(() => {

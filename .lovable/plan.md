@@ -1,48 +1,61 @@
 
 
-# Persistance sessionStorage pour tous les types de données restants
+# Fix: Duplicated channel hidden by visibility filter
 
-## Constat
+## Root cause
 
-En regardant le GIF de référence, les données visibles au chargement incluent les **threads** (avec compteurs, derniers messages, participants) et les **sondages** (avec options et votes). Ces données ne sont pas encore persistées en sessionStorage, ce qui cause un délai visible après F5.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Hooks déjà persistés (14)
-`useServers`, `useChannels`, `useMessages`, `useDMMessages`, `useThreadMessages`, `useMembers`, `useRoles`, `useDMs`, `useNotifications`, `useFriends`, `useUnreadCounts`, `useChannelUnreadCounts`, `useServerUnreadCounts`, `useUserChannelPermissions`
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### Hooks à persister (7 fichiers)
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-| Hook | Cache key | Fichier |
-|------|-----------|---------|
-| `useThreads` | `cache:threads:{channelId}` | `src/hooks/useThreads.ts` |
-| `usePolls` | `cache:polls:channel:{channelId}` | `src/hooks/usePolls.ts` |
-| `useThreadPolls` | `cache:polls:thread:{threadId}` | `src/hooks/usePolls.ts` |
-| `usePinnedMessages` | `cache:pinned-messages:{channelId}` | `src/hooks/usePinnedMessages.ts` |
-| `useDMPinnedMessages` | `cache:dm-pinned-messages:{conversationId}` | `src/hooks/useDMPinnedMessages.ts` |
-| `useFollowedThreads` | `cache:followed-threads:{channelId}:{userId}` | `src/hooks/useFollowedThreads.ts` |
-| `useUserChannelSettings` | `cache:user-channel-settings:{serverId}:{userId}` | `src/hooks/useUserChannelSettings.ts` |
+## Fix
 
-## Pattern appliqué (identique aux hooks existants)
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-Chaque `useQuery` reçoit :
-1. `placeholderData` qui lit le `sessionStorage`
-2. Un `useEffect` qui persiste `query.data` quand ce n'est pas du placeholder
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-## Preloader — ajout threads + polls
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-Dans `src/hooks/usePreloader.ts`, après le chargement des messages (phase 2), ajouter en parallèle :
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- **Threads** : Pour chaque channel texte chargé, fetch les threads et persister dans sessionStorage
-- **Polls** : Pour chaque channel texte chargé, fetch les polls avec options/votes et persister
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-Ces deux étapes s'exécutent en parallèle avec les messages existants, sans ajouter de loading step visible.
+### 3. Hook needs `useAuth` for the user ID
 
-## Fichiers modifiés (7)
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-1. `src/hooks/useThreads.ts` — `useThreads` + `useThread`
-2. `src/hooks/usePolls.ts` — `usePolls` + `useThreadPolls`
-3. `src/hooks/usePinnedMessages.ts` — `usePinnedMessages`
-4. `src/hooks/useDMPinnedMessages.ts` — `useDMPinnedMessages`
-5. `src/hooks/useFollowedThreads.ts` — `useFollowedThreads`
-6. `src/hooks/useUserChannelSettings.ts` — `useUserChannelSettings`
-7. `src/hooks/usePreloader.ts` — ajout preload threads + polls en background
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

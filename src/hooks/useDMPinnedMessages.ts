@@ -50,7 +50,7 @@ export function useDMPinnedMessages(conversationId: string | null) {
     };
   }, [conversationId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['dm-pinned-messages', conversationId],
     enabled: !!conversationId,
     queryFn: async () => {
@@ -85,7 +85,22 @@ export function useDMPinnedMessages(conversationId: string | null) {
         message: item.message,
       })) as DMPinnedMessage[];
     },
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:dm-pinned-messages:${conversationId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && conversationId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:dm-pinned-messages:${conversationId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, conversationId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function usePinDMMessage() {

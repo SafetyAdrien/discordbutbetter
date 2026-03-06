@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { ChevronLeft, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -53,19 +53,6 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     { id: 'integrations', label: 'Intégrations' },
   ];
 
-  const renderTabContent = () => {
-    if (!channel) return null;
-    switch (activeTab) {
-      case 'overview':
-        return <ChannelOverview channel={channel} />;
-      case 'permissions':
-        return <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />;
-      case 'integrations':
-        return <ChannelWebhooks channelId={channelId} />;
-      default:
-        return null;
-    }
-  };
 
   // Mobile: direct layout with Overview + tabs
   if (isMobile) {

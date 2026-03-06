@@ -1,61 +1,84 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correctifs et ajouts — Annonces, Modal Salon, Chaîne de liaison, Duplication
 
-## Root cause
+## 1. Threads dans le salon d'Annonces
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Problème** : `AnnouncementChannel.tsx` ne gère pas les messages système `[SYSTEM:THREAD_CREATED:...]`, ne rend pas `ThreadSpine`/`ThreadSystemMessage`, et ne permet pas de créer des threads depuis un message.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+**Fichier** : `src/components/channels/AnnouncementChannel.tsx`
+- Importer `ThreadSystemMessage`, `CreateThreadModal`, `useThreads`, `Thread` (comme dans ChatArea)
+- Dans la boucle de rendu des messages, détecter `[SYSTEM:THREAD_CREATED:...]` et rendre le spine + embed (copier le pattern de ChatArea lignes 1275-1331)
+- Ajouter l'état `createThreadForMessageId` et l'action "Créer un thread" dans le context menu / actions
+- Pour les messages non-system, afficher `ThreadSystemMessage` sous le message si un thread y est rattaché (via `threadsByMessageId`)
+- Ajouter la prop `onSelectThread` qui navigue ou ouvre le thread panel
+- Ajouter `CreateThreadModal` en bas du composant
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## 2. Modal Salon — Bouton Supprimer fixe + pas de re-centrage
 
-## Fix
+**Problème** : Le bouton "Supprimer le salon" bouge quand on scroll, et le modal se repositionne lors du changement d'onglet.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Fichier** : `src/components/channel-settings/ChannelSettingsModal.tsx`
+- Desktop : Sortir `ChannelDangerZone` du `TabsContent[overview]` et le placer en `sticky bottom-0` dans le conteneur scrollable, ou mieux, en dehors du `overflow-y-auto` comme footer fixe
+- Ajouter une hauteur minimale fixe au conteneur des `TabsContent` (ex: `min-h-[400px]`) pour éviter que le dialog se redimensionne et se re-centre à chaque changement d'onglet
+- Mobile : Même logique — `ChannelDangerZone` en bas fixe
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+## 3. Chaîne de liaison — Retirer badge type + renommer Description + checkbox confiance
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### 3a. Retirer le badge "Type de salon" pour TOUS les types non-toggleable
+**Fichier** : `src/components/channel-settings/ChannelOverview.tsx`
+- Supprimer le bloc `{!canToggleType && (...)}` (lignes 211-222) qui affiche le badge "Type de salon" avec "(non modifiable)"
 
-### 2. In `onSuccess`: invalidate the permissions cache
+### 3b. Renommer "Description" en "URL de destination" pour les link channels
+**Fichier** : `src/components/channel-settings/ChannelOverview.tsx`
+- Conditionner le label : `channel.type === 'link' ? "URL de destination" : "Description"`
+- Adapter le placeholder en conséquence
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 3c. Checkbox "Faire confiance à cette URL"
+**Fichier** : `src/components/channel-settings/ChannelOverview.tsx`
+- Ajouter un `Checkbox` sous le champ URL pour les link channels : "Les membres peuvent ouvrir ce lien sans avertissement"
+- Stocker cette valeur dans un champ existant ou nouveau. Puisqu'il n'y a pas de colonne dédiée, on peut encoder cette info dans la description (préfixe `[TRUSTED]`) ou ajouter une colonne `is_trusted` à la table channels
 
-### 3. Hook needs `useAuth` for the user ID
+**Fichier** : `src/components/modals/ExternalLinkWarningModal.tsx`
+- Accepter une prop optionnelle `trusted?: boolean` — si `true`, ouvrir directement sans modal
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+**Fichier** : `src/components/layout/ChannelList.tsx`
+- Passer l'info trusted lors du clic sur un lien channel
 
-## Detailed changes
+**Base de données** : Migration pour ajouter une colonne `is_link_trusted boolean default false` à la table `channels`
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+## 4. Accessibilité — ENTER pour enregistrer les modifications
 
-### Code sketch for onMutate addition (after servers cache update)
+**Fichier** : `src/components/channel-settings/ChannelOverview.tsx`
+- Wrapper le formulaire dans un `<form>` avec `onSubmit` qui appelle `handleSave`
+- Ou ajouter un `onKeyDown` sur les inputs : si `Enter` (sans Shift) et `hasChanges`, appeler `handleSave`
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+## 5. Duplication — Modal avec onglets Aperçu/Permissions
 
-### Code for onSuccess addition
+**Problème** : Actuellement la duplication se fait silencieusement. L'utilisateur veut un modal de confirmation/configuration.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+**Nouveau fichier** : `src/components/modals/DuplicateChannelModal.tsx`
+- Modal avec 2 onglets : **Aperçu** (nom éditable pré-rempli, type affiché) et **Permissions** (liste des overrides copiées, possibilité de décocher)
+- Bouton "Dupliquer" qui appelle la mutation existante `useDuplicateChannel` (potentiellement étendue pour accepter un nom custom et un flag `copyPermissions`)
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**Fichier** : `src/components/layout/ChannelList.tsx`
+- Remplacer l'appel direct à `handleDuplicateChannel` par l'ouverture du `DuplicateChannelModal`
+
+**Fichier** : `src/hooks/useChannels.ts`
+- Étendre `useDuplicateChannel` pour accepter un `name` optionnel et un `copyPermissions` boolean
+
+---
+
+### Fichiers modifiés (7) + 1 nouveau + 1 migration
+
+| Fichier | Changement |
+|---|---|
+| `src/components/channels/AnnouncementChannel.tsx` | Intégrer threads (system messages, spine, create, embed) |
+| `src/components/channel-settings/ChannelSettingsModal.tsx` | DangerZone fixe + min-height pour éviter re-centrage |
+| `src/components/channel-settings/ChannelOverview.tsx` | Retirer badge type, renommer label link, checkbox trusted, ENTER save |
+| `src/components/modals/ExternalLinkWarningModal.tsx` | Supporter bypass trusted |
+| `src/components/layout/ChannelList.tsx` | Trusted link bypass + DuplicateChannelModal |
+| `src/hooks/useChannels.ts` | Étendre useDuplicateChannel (nom, permissions) |
+| `src/components/modals/DuplicateChannelModal.tsx` | **Nouveau** — Modal duplication avec onglets |
+| Migration SQL | Ajouter `is_link_trusted` à channels |
 

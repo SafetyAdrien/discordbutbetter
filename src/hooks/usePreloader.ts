@@ -513,6 +513,38 @@ export function usePreloader(
       })();
 
       await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise, threadsPromise, pollsPromise]);
+
+      // Prefetch all image attachments into browser cache (fire-and-forget)
+      try {
+        const imageUrls = new Set<string>();
+
+        // From server messages
+        for (const chId of channelIdsToLoad) {
+          const msgs = queryClient.getQueryData(['messages', chId]) as any[];
+          msgs?.forEach(msg => {
+            (msg.attachments || []).forEach((a: any) => {
+              if (a.type === 'image' && a.url) imageUrls.add(a.url);
+            });
+          });
+        }
+
+        // From DM messages
+        const convos = queryClient.getQueryData(['dm-conversations']) as any[];
+        convos?.forEach(conv => {
+          const msgs = queryClient.getQueryData(['dm-messages', conv.id]) as any[];
+          msgs?.forEach(msg => {
+            (msg.attachments || []).forEach((a: any) => {
+              if (a.type === 'image' && a.url) imageUrls.add(a.url);
+            });
+          });
+        });
+
+        // Fire-and-forget prefetch
+        imageUrls.forEach(url => {
+          const img = new Image();
+          img.src = url;
+        });
+      } catch {}
     });
 
     // GROUP 7: Friends (background, no loading step)

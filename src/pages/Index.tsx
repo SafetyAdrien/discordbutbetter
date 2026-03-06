@@ -366,12 +366,9 @@ const Index = () => {
 
   const handleServerSelect = (serverId: string | null) => {
     if (serverId === null) {
-      // Home button clicked - show DM page, reset everything
+      // Home button clicked - show DM page
       setActiveServerId(null);
       setActiveChannelId(null);
-      setActiveDMId(null);
-      setActiveThreadId(null);
-      setThreadChannelId(null);
     } else {
       setActiveServerId(serverId);
       setActiveDMId(null);
@@ -698,10 +695,6 @@ const Index = () => {
             />
           )}
         </>
-      ) : activeServerId ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-        </div>
       ) : null}
 
       {/* Modals */}

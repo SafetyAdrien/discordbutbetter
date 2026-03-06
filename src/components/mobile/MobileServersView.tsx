@@ -164,7 +164,7 @@ export function MobileServersView({
   const { unreadInfo } = useServerUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
-  const [showDMs, setShowDMs] = useState(!!activeDMId);
+  const [showDMs, setShowDMs] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -192,19 +192,11 @@ export function MobileServersView({
     }
   }, [sortedServers, selectedServerId, showDMs]);
 
-  useEffect(() => {
-    if (activeDMId) {
-      setShowDMs(true);
-      setSelectedServerId(null);
-    }
-  }, [activeDMId]);
-
   const handleDMClick = useCallback(() => {
     if (wasDraggingRef.current) return;
-    onShowFriends();
     setShowDMs(true);
     setSelectedServerId(null);
-  }, [onShowFriends]);
+  }, []);
 
   const handleServerTap = useCallback((serverId: string) => {
     if (wasDraggingRef.current) return;

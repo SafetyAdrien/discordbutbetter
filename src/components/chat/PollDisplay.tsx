@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Poll, PollVote, useVotePoll, useRemoveVote } from '@/hooks/usePolls';
+import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll } from '@/hooks/usePolls';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { isPast } from 'date-fns';
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock, StopCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';

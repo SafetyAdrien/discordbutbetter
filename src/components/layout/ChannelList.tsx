@@ -64,6 +64,7 @@ import { AccountSettingsModal } from "@/components/account-settings/AccountSetti
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
+import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
@@ -691,7 +692,8 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
-  const [externalLinkModal, setExternalLinkModal] = useState<{url: string;} | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{url: string; trusted?: boolean;} | null>(null);
+  const [duplicateModal, setDuplicateModal] = useState<{id: string; name: string; type: ChannelType} | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
@@ -800,11 +802,8 @@ export function ChannelList({
       toast.error("Erreur lors de la suppression");
     }
   };
-  const handleDuplicateChannel = (channelId: string) => {
-    duplicateChannel.mutate({
-      channelId,
-      serverId: server.id
-    });
+  const handleDuplicateChannel = (channel: Channel) => {
+    setDuplicateModal({ id: channel.id, name: channel.name, type: channel.type });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {
@@ -1446,7 +1445,7 @@ export function ChannelList({
                     onOpenSettings={() => setSelectedChannelId(channel.id)}
                     onCreateInvite={() => handleCreateInvite(channel.id)}
                     onDelete={() => handleDeleteChannel(channel.id, channel.name)}
-                    onDuplicate={() => handleDuplicateChannel(channel.id)}
+                    onDuplicate={() => handleDuplicateChannel(channel)}
                     showDropIndicator={overId === `channel-${channel.id}`}
                     dropPosition={dropPosition}
 threads={threadsByChannel[channel.id] || []}
@@ -1514,7 +1513,7 @@ threads={threadsByChannel[channel.id] || []}
                           onOpenSettings={() => setSelectedChannelId(channel.id)}
                           onCreateInvite={() => handleCreateInvite(channel.id)}
                           onDelete={() => handleDeleteChannel(channel.id, channel.name)}
-                          onDuplicate={() => handleDuplicateChannel(channel.id)}
+                          onDuplicate={() => handleDuplicateChannel(channel)}
                           showDropIndicator={overId === `channel-${channel.id}`}
                           dropPosition={dropPosition}
                           threads={threadsByChannel[channel.id] || []}
@@ -1651,8 +1650,16 @@ threads={threadsByChannel[channel.id] || []}
       {externalLinkModal &&
       <ExternalLinkWarningModal
         url={externalLinkModal.url}
+        trusted={externalLinkModal.trusted}
         onClose={() => setExternalLinkModal(null)} />
+      }
 
+      {duplicateModal &&
+      <DuplicateChannelModal
+        open={!!duplicateModal}
+        onClose={() => setDuplicateModal(null)}
+        channel={duplicateModal}
+        serverId={server.id} />
       }
 
       {inviteChannelId &&

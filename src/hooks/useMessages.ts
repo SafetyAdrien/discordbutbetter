@@ -95,7 +95,22 @@ export function useMessages(channelId: string | null) {
       })) as MessageWithAuthor[];
     },
     enabled: !!channelId && !!user,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:messages:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try {
+        sessionStorage.setItem(`cache:messages:${channelId}`, JSON.stringify(query.data));
+      } catch { /* quota exceeded */ }
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
 
   // Real-time subscription for new messages
   useEffect(() => {

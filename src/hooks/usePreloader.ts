@@ -51,6 +51,9 @@ export function usePreloader(
   const [dmsLoaded, setDmsLoaded] = useState(false);
   const [serverOrderLoaded, setServerOrderLoaded] = useState(false);
   const [channelPermsLoaded, setChannelPermsLoaded] = useState(false);
+  const [serverMessagesLoaded, setServerMessagesLoaded] = useState(false);
+  const [dmMessagesLoaded, setDmMessagesLoaded] = useState(false);
+  const [threadMessagesLoaded, setThreadMessagesLoaded] = useState(false);
   const [minTimePassed, setMinTimePassed] = useState(false);
 
   const hasStarted = useRef(false);
@@ -263,6 +266,118 @@ export function usePreloader(
         await Promise.all(chPermPromises);
       } catch {}
       setChannelPermsLoaded(true);
+
+      // 7-9. Preload all messages in parallel (server, DM, thread)
+      const serverMsgPromise = (async () => {
+        try {
+          const serverIds = servers.map(s => s.id);
+          const allChannelIds: string[] = [];
+          for (const sid of serverIds) {
+            const cached = queryClient.getQueryData(['channels', sid]) as any;
+            if (cached) {
+              const textTypes = ['text', 'announcement'];
+              cached.categories?.forEach((cat: any) => {
+                cat.channels?.forEach((ch: any) => {
+                  if (textTypes.includes(ch.type)) allChannelIds.push(ch.id);
+                });
+              });
+              cached.orphanChannels?.forEach((ch: any) => {
+                if (textTypes.includes(ch.type)) allChannelIds.push(ch.id);
+              });
+            }
+          }
+          await Promise.all(allChannelIds.map(async (chId) => {
+            const { data } = await supabase
+              .from('messages')
+              .select(`
+                id, content, created_at, edited_at, attachments, channel_id,
+                source_server_id, source_server_name, source_server_icon,
+                source_channel_name, is_published_message, publish_dismissed, is_system,
+                author:profiles!messages_author_id_fkey (
+                  id, username, display_name, avatar_url, status, custom_status
+                )
+              `)
+              .eq('channel_id', chId)
+              .order('created_at', { ascending: true })
+              .limit(100);
+            if (data) {
+              const messages = (data as any[]).map(msg => ({
+                ...msg,
+                attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+              }));
+              queryClient.setQueryData(['messages', chId], messages);
+            }
+          }));
+        } catch {}
+        setServerMessagesLoaded(true);
+      })();
+
+      const dmMsgPromise = (async () => {
+        try {
+          const conversations = queryClient.getQueryData(['dm-conversations']) as any[] | undefined;
+          if (conversations && conversations.length > 0) {
+            await Promise.all(conversations.map(async (conv: any) => {
+              const { data } = await supabase
+                .from('dm_messages')
+                .select(`
+                  id, content, created_at, edited_at, attachments, conversation_id,
+                  author:profiles!dm_messages_author_id_fkey (
+                    id, username, display_name, avatar_url
+                  )
+                `)
+                .eq('conversation_id', conv.id)
+                .order('created_at', { ascending: true })
+                .limit(100);
+              if (data) {
+                const messages = (data as any[]).map(msg => ({
+                  ...msg,
+                  attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+                }));
+                queryClient.setQueryData(['dm-messages', conv.id], messages);
+              }
+            }));
+          }
+        } catch {}
+        setDmMessagesLoaded(true);
+      })();
+
+      const threadMsgPromise = (async () => {
+        try {
+          const serverIds = servers.map(s => s.id);
+          // Get all followed thread IDs
+          const { data: followed } = await supabase
+            .from('thread_followers')
+            .select('thread_id')
+            .eq('user_id', user.id);
+          if (followed && followed.length > 0) {
+            const threadIds = followed.map(f => f.thread_id);
+            // Fetch threads to filter by server
+            const { data: threads } = await supabase
+              .from('threads')
+              .select('id, channel_id, channels!threads_channel_id_fkey(server_id)')
+              .in('id', threadIds)
+              .eq('archived', false);
+            const validThreadIds = (threads || [])
+              .filter((t: any) => serverIds.includes(t.channels?.server_id))
+              .map((t: any) => t.id);
+            await Promise.all(validThreadIds.map(async (tid: string) => {
+              const { data } = await supabase
+                .from('thread_messages')
+                .select(`
+                  *, author:profiles!thread_messages_author_id_fkey(id, username, display_name, avatar_url)
+                `)
+                .eq('thread_id', tid)
+                .order('created_at', { ascending: true });
+              if (data) {
+                queryClient.setQueryData(['thread-messages', tid], data);
+              }
+            }));
+          }
+        } catch {}
+        setThreadMessagesLoaded(true);
+      })();
+
+      await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise]);
     };
 
     preload();
@@ -278,7 +393,10 @@ export function usePreloader(
     { label: 'Permissions', key: 'permissions', loaded: permissionsLoaded },
     { label: 'Permissions salons', key: 'channelPerms', loaded: channelPermsLoaded },
     { label: 'Messages privés', key: 'dms', loaded: dmsLoaded },
-  ], [authLoading, serversLoaded, profileLoaded, serverOrderLoaded, channelsLoaded, membersLoaded, permissionsLoaded, channelPermsLoaded, dmsLoaded]);
+    { label: 'Messages serveur', key: 'serverMessages', loaded: serverMessagesLoaded },
+    { label: 'Messages DM', key: 'dmMessages', loaded: dmMessagesLoaded },
+    { label: 'Messages threads', key: 'threadMessages', loaded: threadMessagesLoaded },
+  ], [authLoading, serversLoaded, profileLoaded, serverOrderLoaded, channelsLoaded, membersLoaded, permissionsLoaded, channelPermsLoaded, dmsLoaded, serverMessagesLoaded, dmMessagesLoaded, threadMessagesLoaded]);
 
   const loadedCount = steps.filter(s => s.loaded).length;
   const progress = Math.round((loadedCount / steps.length) * 100);

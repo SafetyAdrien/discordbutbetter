@@ -1,39 +1,61 @@
 
 
-# Reproduire le spine identique dans la liste des salons
+# Fix: Duplicated channel hidden by visibility filter
 
-## Probleme
+## Root cause
 
-Le spine dans `ChannelList.tsx` a ete reduit et modifie par rapport a l'original dans `ChatArea.tsx` :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-| | ChatArea (original) | ChannelList (actuel) |
-|---|---|---|
-| Conteneur | `w-8` | `w-4` |
-| Courbe | `w-[20px]` | `w-[10px]` |
-| Margin | `mr-1.5` | aucun |
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-La courbe est trop petite et trop arrondie, et le spine n'est pas centre verticalement par rapport au lien du thread.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-## Correction — `src/components/layout/ChannelList.tsx` (lignes 596-599)
+## Fix
 
-Reprendre exactement les memes classes que dans `ChatArea.tsx` (lignes 1305-1307) :
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-```tsx
-// Avant
-<div key={thread.id} className="flex items-start w-full px-2">
-  <div className="flex-shrink-0 w-4 h-5 relative mt-0.5">
-    <div className="absolute left-[6px] top-0 w-[10px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-  </div>
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-// Apres — identique au spine de ChatArea
-<div key={thread.id} className="flex items-center w-full px-2">
-  <div className="flex-shrink-0 w-8 relative mr-1.5">
-    <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-  </div>
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-Changements :
-- `items-start` → `items-center` pour centrer verticalement le spine par rapport au lien
-- Conteneur : `w-4 h-5 mt-0.5` → `w-8 mr-1.5` (identique a ChatArea)
-- Courbe : `w-[10px]` → `w-[20px]` (identique a ChatArea)
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

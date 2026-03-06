@@ -1,61 +1,77 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Émettre un message système lors de la création d'un thread public
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Quand un thread est créé (via un message ou via la liste des threads), aucun message système n'est inséré dans le salon. Le composant `ThreadSystemMessage` ne s'affiche que sous un message parent qui a un thread attaché (via `message_id`), mais il n'y a pas de vrai message en base de données signalant la création.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Le user veut :
+- Thread public → message système visible dans le salon
+- Thread privé → rien de publié
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Analyse
 
-## Fix
+- La table `messages` n'a pas de colonne `is_system` ou `type` pour distinguer les messages système
+- La table `threads` n'a pas de colonne `is_private` pour différencier public/privé
+- Il faut ajouter les deux
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+## Plan
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 1. Migration SQL
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+**Ajouter `is_system` à `messages`** :
+```sql
+ALTER TABLE public.messages ADD COLUMN is_system boolean NOT NULL DEFAULT false;
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+**Ajouter `is_private` à `threads`** :
+```sql
+ALTER TABLE public.threads ADD COLUMN is_private boolean NOT NULL DEFAULT false;
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+RLS : les messages système sont insérés par l'auteur du thread (déjà autorisé par la policy `send_messages`), donc pas de changement RLS nécessaire.
+
+### 2. `src/hooks/useThreads.ts` — `useCreateThread`
+
+Dans `onSuccess` (après insertion réussie du thread), si le thread n'est **pas privé** :
+- Insérer un message système dans `messages` avec :
+  - `channel_id` = le channel du thread
+  - `author_id` = l'utilisateur courant
+  - `content` = `[SYSTEM:THREAD_CREATED]` + thread id + thread name (format parsable)
+  - `is_system` = `true`
+- Invalider le cache `['messages', channelId]`
+
+### 3. `src/components/chat/ChatArea.tsx` — Rendu des messages système
+
+- Ajouter `is_system` au select des messages dans `useMessages.ts`
+- Dans `ChatArea.tsx`, détecter les messages avec `is_system === true` et le contenu `[SYSTEM:THREAD_CREATED]`
+- Rendre un composant dédié (icône thread + "**Nom** a créé un thread : **Thread Name**") au lieu du rendu message normal
+- Style : centré, texte gris, petite taille, comme Discord
+
+### 4. `src/hooks/useMessages.ts` — Select `is_system`
+
+- Ajouter `is_system` dans le select de `queryFn`
+- Ajouter `is_system` dans le type `MessageWithAuthor`
+
+### 5. `src/components/threads/CreateThreadModal.tsx`
+
+- Ajouter une option/checkbox "Thread privé" dans le modal de création
+- Passer `isPrivate` au hook `useCreateThread`
+
+### 6. Type updates
+
+- `src/types/thread.ts` : ajouter `is_private?: boolean` à `Thread`
+- `src/types/app.ts` ou inline : ajouter `is_system?: boolean` à `MessageWithAuthor`
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| Migration SQL | `is_system` sur messages, `is_private` sur threads |
+| `src/hooks/useThreads.ts` | Insérer message système après création (si public) |
+| `src/hooks/useMessages.ts` | Ajouter `is_system` au select et au type |
+| `src/components/chat/ChatArea.tsx` | Rendu spécial pour messages système thread |
+| `src/components/threads/CreateThreadModal.tsx` | Option thread privé |
+| `src/types/thread.ts` | `is_private` |
 

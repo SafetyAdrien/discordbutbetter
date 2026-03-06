@@ -1,79 +1,61 @@
 
 
-# Optimisation du temps de chargement
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problèmes identifiés
+## Root cause
 
-1. **Exécution séquentielle** : Les étapes 1-6 s'exécutent les unes après les autres (profil → channels → members → permissions → DMs → channel perms), alors que la plupart peuvent tourner en parallèle dès que les serveurs sont chargés.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-2. **Délai minimum artificiel** : `getMinLoadingMs()` impose 1.5-4s d'attente même quand tout est déjà en cache sessionStorage. Inutile après le premier chargement.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-3. **Trop de requêtes messages** : Le preloader charge les messages de TOUS les channels texte de TOUS les serveurs. Sur un utilisateur avec 5 serveurs × 20 channels = 100 requêtes réseau simultanées.
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-4. **Pas de court-circuit sessionStorage** : Le preloader refait toutes les requêtes même si les données sont déjà en sessionStorage depuis le dernier F5.
+## Fix
 
-## Plan d'optimisation
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Fichier : `src/hooks/usePreloader.ts`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-**A. Paralléliser les étapes indépendantes**
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-Actuellement : profil → channels → members → permissions → DMs → channelPerms → messages (séquentiel)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-Nouveau : après `serversLoaded`, lancer en parallèle :
-- Groupe 1 : profil + serverOrder
-- Groupe 2 : channels (tous serveurs)
-- Groupe 3 : members (tous serveurs)  
-- Groupe 4 : roles/permissions (tous serveurs)
-- Groupe 5 : DMs
-- Groupe 6 : channelPerms
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-Puis après channels+DMs résolus → messages en parallèle.
+### 3. Hook needs `useAuth` for the user ID
 
-**B. Court-circuit sessionStorage**
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-Avant chaque requête réseau, vérifier si sessionStorage a déjà les données. Si oui, seeder le queryClient directement et skip la requête. Cela rend le preloader quasi-instantané après un F5.
+## Detailed changes
 
-```ts
-// Pattern pour chaque étape
-const cached = sessionStorage.getItem(`cache:channels:${sid}`);
-if (cached) {
-  queryClient.setQueryData(['channels', sid], JSON.parse(cached));
-  // skip fetch
-} else {
-  // fetch from supabase
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
 ```
 
-**C. Supprimer le délai minimum artificiel**
+### Code for onSuccess addition
 
-Remplacer `getMinLoadingMs()` par une détection : si toutes les données viennent du sessionStorage, `minTimePassed = true` immédiatement. Sinon, garder un délai réduit (800ms) juste pour éviter un flash.
-
-```ts
-const [minTimePassed, setMinTimePassed] = useState(false);
-// Si cache hit → immédiat, sinon 800ms
-useEffect(() => {
-  const hasCache = sessionStorage.getItem('cache:preloader-done');
-  if (hasCache) { setMinTimePassed(true); return; }
-  const timer = setTimeout(() => setMinTimePassed(true), 800);
-  return () => clearTimeout(timer);
-}, []);
-// Marquer le cache à la fin du preload
-// sessionStorage.setItem('cache:preloader-done', '1');
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-**D. Limiter le preload messages aux channels récents**
-
-Au lieu de charger les 100 messages de TOUS les channels, ne precharger que :
-- Le channel actuellement actif (depuis navigationState)
-- Les 5 derniers channels visités par serveur (stockés en sessionStorage)
-- Tous les DM conversations (généralement peu nombreux)
-
-Les autres channels auront leurs messages en sessionStorage s'ils ont été visités, ou se chargeront à la demande.
-
-## Résumé des gains attendus
-
-- **F5 avec cache** : quasi-instantané (< 200ms) au lieu de 1.5-4s
-- **Premier chargement** : ~40% plus rapide grâce à la parallélisation
-- **Moins de requêtes** : ~10-15 requêtes messages au lieu de 50-100+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -47,6 +47,7 @@ export interface Message {
   attachments?: Attachment[];
   reactions?: Reaction[];
   isSystemMessage?: boolean;
+  is_system?: boolean;
 }
 
 export interface Attachment {

@@ -36,6 +36,7 @@ export interface MessageWithAuthor {
   source_channel_name?: string | null;
   is_published_message?: boolean | null;
   publish_dismissed?: boolean | null;
+  is_system?: boolean;
   author: {
     id: string;
     username: string;
@@ -71,6 +72,7 @@ export function useMessages(channelId: string | null) {
           source_channel_name,
           is_published_message,
           publish_dismissed,
+          is_system,
           author:profiles!messages_author_id_fkey (
             id,
             username,

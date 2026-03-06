@@ -144,7 +144,7 @@ export const useCreateThread = () => {
   const { user, profile } = useAuth();
   
   return useMutation({
-    mutationFn: async ({ channelId, name, messageId }: { channelId: string; name: string; messageId?: string }) => {
+    mutationFn: async ({ channelId, name, messageId, isPrivate = false }: { channelId: string; name: string; messageId?: string; isPrivate?: boolean }) => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error('Not authenticated');
       
@@ -155,6 +155,7 @@ export const useCreateThread = () => {
           name,
           created_by: authUser.id,
           message_id: messageId || null,
+          is_private: isPrivate,
         })
         .select()
         .single();
@@ -169,9 +170,21 @@ export const useCreateThread = () => {
           user_id: authUser.id,
         });
       
+      // Insert system message in channel if NOT private
+      if (!isPrivate) {
+        await supabase
+          .from('messages')
+          .insert({
+            channel_id: channelId,
+            author_id: authUser.id,
+            content: `[SYSTEM:THREAD_CREATED:${data.id}:${name}]`,
+            is_system: true,
+          });
+      }
+      
       return data;
     },
-    onMutate: async ({ channelId, name }) => {
+    onMutate: async ({ channelId, name, isPrivate = false }) => {
       if (!user) return;
       
       await queryClient.cancelQueries({ queryKey: ['threads', channelId] });
@@ -188,6 +201,7 @@ export const useCreateThread = () => {
         archived_at: null,
         message_id: null,
         message_count: 0,
+        is_private: isPrivate,
         creator: profile ? {
           id: user.id,
           username: profile.username,
@@ -214,6 +228,7 @@ export const useCreateThread = () => {
     onSettled: (data) => {
       if (data?.channel_id) {
         queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+        queryClient.invalidateQueries({ queryKey: ['messages', data.channel_id] });
       }
     },
   });

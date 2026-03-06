@@ -458,14 +458,15 @@ const Index = () => {
   });
 
   const messagesData: Message[] = messages.map((m) => {
-    const isSystemMessage = m.author === null;
+    const isSystemMessage = m.author === null || m.is_system === true;
     return {
       id: m.id,
       content: m.content,
       attachments: (m as any).attachments || [],
       isSystemMessage,
+      is_system: m.is_system,
       edited_at: m.edited_at,
-      author: isSystemMessage ? {
+      author: m.author === null ? {
         id: 'system',
         username: 'system',
         displayName: 'Système',

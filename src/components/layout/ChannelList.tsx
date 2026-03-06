@@ -1444,7 +1444,7 @@ export function ChannelList({
                     onOpenSettings={() => setSelectedChannelId(channel.id)}
                     onCreateInvite={() => handleCreateInvite(channel.id)}
                     onDelete={() => handleDeleteChannel(channel.id, channel.name)}
-                    onDuplicate={() => handleDuplicateChannel(channel.id)}
+                    onDuplicate={() => handleDuplicateChannel(channel)}
                     showDropIndicator={overId === `channel-${channel.id}`}
                     dropPosition={dropPosition}
 threads={threadsByChannel[channel.id] || []}
@@ -1512,7 +1512,7 @@ threads={threadsByChannel[channel.id] || []}
                           onOpenSettings={() => setSelectedChannelId(channel.id)}
                           onCreateInvite={() => handleCreateInvite(channel.id)}
                           onDelete={() => handleDeleteChannel(channel.id, channel.name)}
-                          onDuplicate={() => handleDuplicateChannel(channel.id)}
+                          onDuplicate={() => handleDuplicateChannel(channel)}
                           showDropIndicator={overId === `channel-${channel.id}`}
                           dropPosition={dropPosition}
                           threads={threadsByChannel[channel.id] || []}

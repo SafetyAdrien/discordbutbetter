@@ -126,6 +126,7 @@ export function useMessages(channelId: string | null) {
               edited_at,
               attachments,
               channel_id,
+              is_system,
               author:profiles!messages_author_id_fkey (
                 id,
                 username,

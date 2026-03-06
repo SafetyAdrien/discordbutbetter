@@ -1,61 +1,56 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Préchargement des images des messages
 
-## Root cause
+## Constat
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Les messages sont déjà préchargés dans le `queryClient` et `sessionStorage`, mais les **images attachées** aux messages ne sont pas préchargées dans le cache du navigateur. Résultat : après le loading screen, les images affichent un placeholder animé (`animate-pulse`) le temps du téléchargement réseau.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Ajouter une étape de **prefetch des images** dans le preloader. Après le chargement des messages (serveur + DM + threads), extraire toutes les URLs d'images des `attachments` et les précharger via `new Image().src` pour les mettre en cache navigateur.
 
-## Fix
+## Fichier modifié : `src/hooks/usePreloader.ts`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Après `Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise, threadsPromise, pollsPromise])` (ligne 515), ajouter une phase de prefetch images :
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+```ts
+// Extract image URLs from all loaded messages
+const imageUrls = new Set<string>();
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
+// From server messages
+for (const chId of channelIdsToLoad) {
+  const msgs = queryClient.getQueryData(['messages', chId]) as any[];
+  msgs?.forEach(msg => {
+    (msg.attachments || []).forEach((a: any) => {
+      if (a.type === 'image' && a.url) imageUrls.add(a.url);
+    });
   });
 }
+
+// From DM messages
+const conversations = queryClient.getQueryData(['dm-conversations']) as any[];
+conversations?.forEach(conv => {
+  const msgs = queryClient.getQueryData(['dm-messages', conv.id]) as any[];
+  msgs?.forEach(msg => {
+    (msg.attachments || []).forEach((a: any) => {
+      if (a.type === 'image' && a.url) imageUrls.add(a.url);
+    });
+  });
+});
+
+// Prefetch all images into browser cache (fire-and-forget)
+imageUrls.forEach(url => {
+  const img = new Image();
+  img.src = url;
+});
 ```
 
-### Code for onSuccess addition
+Ce prefetch est **fire-and-forget** — il ne bloque pas le loading screen. Les images commencent à se télécharger en arrière-plan et seront déjà dans le cache HTTP du navigateur quand l'utilisateur naviguera vers un salon contenant des images.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+## Impact
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+- Les images des 30 derniers salons visités + premiers salons de chaque serveur + tous les DMs apparaîtront **instantanément** sans placeholder
+- Aucun impact sur le temps de chargement initial (non-bloquant)
+- Les avatars des auteurs de messages sont déjà gérés par le prefetch des membres
 

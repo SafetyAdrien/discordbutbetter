@@ -63,6 +63,10 @@ export function setMarkdownContext(ctx: MarkdownContext) {
   markdownContext = ctx;
 }
 
+export function getMarkdownContext(): MarkdownContext {
+  return markdownContext;
+}
+
 // ============================================
 // INLINE PATTERNS
 // ============================================

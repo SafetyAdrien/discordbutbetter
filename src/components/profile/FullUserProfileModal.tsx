@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MessageCircle, UserPlus, UserMinus, Check, X } from 'lucide-react';
-import { parseMarkdown, setMarkdownContext } from '@/lib/markdown';
+import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
@@ -244,10 +244,10 @@ export function FullUserProfileModal({
                   {user.bio ? (
                     <div className="text-sm markdown-preview prose prose-invert prose-sm max-w-none">
                       {(() => {
-                        const prevCtx = { ...(globalThis as any).__mdCtx };
-                        setMarkdownContext({ variant: 'bio' } as any);
+                        const prevCtx = getMarkdownContext();
+                        setMarkdownContext({ ...prevCtx, variant: 'bio' });
                         const result = parseMarkdown(user.bio);
-                        setMarkdownContext(prevCtx as any);
+                        setMarkdownContext(prevCtx);
                         return result;
                       })()}
                     </div>

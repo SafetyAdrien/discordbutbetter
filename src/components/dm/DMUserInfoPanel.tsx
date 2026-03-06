@@ -8,7 +8,7 @@ import { ChevronRight } from 'lucide-react';
 import { useMutualServers } from '@/hooks/useMutualServers';
 import { useUserNote } from '@/hooks/useUserNotes';
 import { format } from 'date-fns';
-import { parseMarkdown, setMarkdownContext } from '@/lib/markdown';
+import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { fr } from 'date-fns/locale';
 
 const NoteAddIcon = ({ className }: { className?: string }) => (
@@ -115,10 +115,10 @@ export function DMUserInfoPanel({
           </h4>
           <div className="text-sm text-foreground">
             {participant.bio ? (() => {
-              const prevCtx = { ...(globalThis as any).__mdCtx };
-              setMarkdownContext({ variant: 'bio' } as any);
+              const prevCtx = getMarkdownContext();
+              setMarkdownContext({ ...prevCtx, variant: 'bio' });
               const result = parseMarkdown(participant.bio);
-              setMarkdownContext(prevCtx as any);
+              setMarkdownContext(prevCtx);
               return result;
             })() : "Aucune biographie définie."}
           </div>

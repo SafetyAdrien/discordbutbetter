@@ -132,7 +132,8 @@ function DMConversationItem({
   unreadCount: number;
   onClick: () => void;
 }) {
-  const participant = conversation.participants[0];
+  const participants = conversation.participants || [];
+  const participant = participants[0];
   const displayName = conversation.is_group
     ? conversation.name || 'Groupe'
     : participant?.display_name || 'Utilisateur';

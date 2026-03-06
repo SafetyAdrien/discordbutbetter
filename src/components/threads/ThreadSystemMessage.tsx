@@ -26,7 +26,7 @@ export function ThreadSystemMessage({
     addSuffix: false,
     locale: fr
   }) : null;
-  return <button onClick={onClick} className="group/thread flex items-start gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded transition-colors bg-surface-elevated">
+  return <button onClick={onClick} className="group/thread flex items-start gap-2 w-full text-left py-1.5 px-2 -mx-2 rounded transition-colors bg-surface-elevated hover:bg-surface-hover/70">
       {/* Thread icon */}
       <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
       

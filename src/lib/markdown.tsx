@@ -53,6 +53,7 @@ export interface MarkdownContext {
   onUserClick?: (userId: string) => void;
   onChannelNavigate?: (channelId: string, serverId?: string) => void;
   onMessageJump?: (serverId: string, channelId: string, messageId: string) => void;
+  variant?: 'chat' | 'bio';
 }
 
 // Default context
@@ -533,6 +534,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
           avatarUrl={userData?.avatarUrl}
           isSelf={isSelf}
           onClick={() => markdownContext.onUserClick?.(userId)}
+          variant={markdownContext.variant}
         />
       );
     }

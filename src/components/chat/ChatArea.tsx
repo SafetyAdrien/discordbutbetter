@@ -336,6 +336,48 @@ interface ChatAreaProps {
   members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
   onChannelSelect?: (channelId: string) => void;
 }
+// Long-press wrapper for polls on mobile
+function PollLongPressWrapper({
+  isMobile,
+  onLongPress,
+  className,
+  children,
+  ...divProps
+}: {
+  isMobile: boolean;
+  onLongPress: () => void;
+  className?: string;
+  children: React.ReactNode;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>) {
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTouchStart = () => {
+    if (!isMobile) return;
+    timerRef.current = setTimeout(() => {
+      onLongPress();
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  return (
+    <div
+      className={className}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
+      {...divProps}
+    >
+      {children}
+    </div>
+  );
+}
+
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("fr-FR", {
     hour: "2-digit",

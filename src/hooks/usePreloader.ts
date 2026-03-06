@@ -219,27 +219,58 @@ export function usePreloader(
       setPermissionsLoaded(true);
     })();
 
-    // GROUP 5: DM conversations
+    // GROUP 5: DM conversations (read from sessionStorage written by useDMs hook, or fetch full data)
     const dmsPromise = (async () => {
       const cached = readCache<any>(`cache:dm-conversations:${user.id}`);
-      if (cached) {
-        queryClient.setQueryData(['dm-conversations'], cached);
+      if (cached && Array.isArray(cached) && cached.length > 0 && cached[0].participants) {
+        // Only use cache if it has full data (with participants)
+        queryClient.setQueryData(['dm-conversations', user.id], cached);
       } else {
         try {
-          const { data: participants } = await supabase
+          const { data: participations } = await supabase
             .from('dm_participants')
             .select('conversation_id')
             .eq('user_id', user.id);
-          if (participants) {
-            const convIds = participants.map(p => p.conversation_id);
+          if (participations) {
+            const convIds = participations.map(p => p.conversation_id);
             if (convIds.length > 0) {
-              const { data: conversations } = await supabase
-                .from('dm_conversations')
-                .select('*')
-                .in('id', convIds);
+              const [{ data: conversations }, { data: allParticipants }, { data: lastMessages }] = await Promise.all([
+                supabase.from('dm_conversations').select('*').in('id', convIds),
+                supabase.from('dm_participants').select(`
+                  conversation_id,
+                  user:profiles!dm_participants_user_id_fkey (
+                    id, username, display_name, avatar_url, status, bio, banner_url
+                  )
+                `).in('conversation_id', convIds),
+                supabase.from('dm_messages').select(`
+                  conversation_id, content, created_at, author_id,
+                  author:profiles!dm_messages_author_id_fkey (display_name)
+                `).in('conversation_id', convIds).order('created_at', { ascending: false }),
+              ]);
               if (conversations) {
-                queryClient.setQueryData(['dm-conversations'], conversations);
-                writeCache(`cache:dm-conversations:${user.id}`, conversations);
+                const fullConversations = conversations.map(conv => {
+                  const participants = (allParticipants || [])
+                    .filter(p => p.conversation_id === conv.id && p.user)
+                    .map(p => p.user)
+                    .filter(p => p && (p as any).id !== user.id);
+                  const lastMsg = (lastMessages || []).find(m => m.conversation_id === conv.id);
+                  return {
+                    ...conv,
+                    participants,
+                    lastMessage: lastMsg ? {
+                      content: lastMsg.content,
+                      created_at: lastMsg.created_at,
+                      author_id: lastMsg.author_id,
+                      author_display_name: (lastMsg.author as any)?.display_name || null,
+                    } : undefined,
+                  };
+                }).sort((a: any, b: any) => {
+                  const aMs = a.lastMessage?.created_at ? Date.parse(a.lastMessage.created_at) : a.created_at ? Date.parse(a.created_at) : 0;
+                  const bMs = b.lastMessage?.created_at ? Date.parse(b.lastMessage.created_at) : b.created_at ? Date.parse(b.created_at) : 0;
+                  return bMs - aMs;
+                });
+                queryClient.setQueryData(['dm-conversations', user.id], fullConversations);
+                writeCache(`cache:dm-conversations:${user.id}`, fullConversations);
               }
             }
           }

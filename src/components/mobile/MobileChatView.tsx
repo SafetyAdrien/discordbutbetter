@@ -167,13 +167,6 @@ export function MobileChatView({
             </Popover>
           )}
 
-          {/* Search */}
-          <button
-            onClick={() => setShowSearch(true)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          >
-            <Search className="w-4 h-4" />
-          </button>
 
           {/* Pinned messages */}
           <Popover>

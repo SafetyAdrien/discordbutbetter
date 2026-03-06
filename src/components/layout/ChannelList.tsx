@@ -89,7 +89,7 @@ import {
 import { Thread } from "@/types/thread";
 import { useThreadUnreadCounts } from "@/hooks/useThreadUnreadCounts";
 import { useChannelUnreadCounts } from "@/hooks/useChannelUnreadCounts";
-import { useFollowedThreads } from "@/hooks/useFollowedThreads";
+import { useAllFollowedThreadsForServer } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";
 import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
@@ -767,17 +767,18 @@ export function ChannelList({
     return ids;
   }, [server.categories, orphanChannels]);
 
-  // Fetch ONLY followed threads for the active channel
-  const { data: followedThreads = [] } = useFollowedThreads(activeChannelId || undefined);
-  const { data: unreadCounts = {} } = useThreadUnreadCounts(activeChannelId || undefined);
+  // Fetch ALL followed threads for the entire server
+  const { data: allFollowedThreads = [] } = useAllFollowedThreadsForServer(server.id || undefined);
 
-  // Create a map of followed threads with unread counts
-  const threadsWithUnread = useMemo((): ThreadWithUnread[] => {
-    return followedThreads.map((thread) => ({
-      ...thread,
-      unreadCount: unreadCounts[thread.id] || 0
-    }));
-  }, [followedThreads, unreadCounts]);
+  // Group followed threads by channel_id
+  const threadsByChannel = useMemo((): Record<string, ThreadWithUnread[]> => {
+    const map: Record<string, ThreadWithUnread[]> = {};
+    allFollowedThreads.forEach((thread) => {
+      if (!map[thread.channel_id]) map[thread.channel_id] = [];
+      map[thread.channel_id].push({ ...thread, unreadCount: 0 });
+    });
+    return map;
+  }, [allFollowedThreads]);
   const ownerProfile = membersData?.find((m) => m.user.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
@@ -1448,7 +1449,7 @@ export function ChannelList({
                     onDuplicate={() => handleDuplicateChannel(channel.id)}
                     showDropIndicator={overId === `channel-${channel.id}`}
                     dropPosition={dropPosition}
-                    threads={activeChannelId === channel.id ? threadsWithUnread : []}
+threads={threadsByChannel[channel.id] || []}
                     activeThreadId={activeThreadId}
                     onThreadSelect={onThreadSelect}
                     showArchivedThreads={showArchivedThreads}
@@ -1516,7 +1517,7 @@ export function ChannelList({
                           onDuplicate={() => handleDuplicateChannel(channel.id)}
                           showDropIndicator={overId === `channel-${channel.id}`}
                           dropPosition={dropPosition}
-                          threads={activeChannelId === channel.id ? threadsWithUnread : []}
+                          threads={threadsByChannel[channel.id] || []}
                           activeThreadId={activeThreadId}
                           onThreadSelect={onThreadSelect}
                           showArchivedThreads={showArchivedThreads}

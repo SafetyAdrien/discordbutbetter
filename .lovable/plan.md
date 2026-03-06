@@ -1,61 +1,46 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Remplacer le message système thread par un embed riche avec spine
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Le message système `[SYSTEM:THREAD_CREATED]` est actuellement rendu comme une simple ligne de texte centrée. L'utilisateur veut retrouver le composant riche `ThreadSystemMessage` (nom du thread, nombre de messages, aperçu du dernier message, avatars des participants) connecté au message système par une ligne visuelle (spine), comme montré dans la capture Discord.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Plan
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### `src/components/chat/ChatArea.tsx` — Bloc de rendu du message système thread (lignes 1266-1293)
 
-## Fix
+Remplacer le rendu actuel (ligne de texte centrée) par :
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+1. **Ligne texte système** : garder `"Adrien_Sama a créé un thread : Test"` avec l'icône thread et le timestamp
+2. **Embed ThreadSystemMessage** : sous cette ligne, afficher le composant `ThreadSystemMessage` existant (qui montre nom, nombre de messages, avatar participants, aperçu du dernier message)
+3. **Spine visuelle** : utiliser une ligne verticale + courbe reliant le texte système au conteneur embed, similaire au `ThreadSpine` existant
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Pour obtenir les données du thread (message_count, participants, last_message), il faut :
+- Chercher le thread dans `threadsByMessageId` ou dans la liste `threads` via le `threadId` extrait du message système
+- Si le thread n'est pas encore chargé (juste créé), afficher un état minimal (nom + "0 Messages")
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+### Structure du rendu
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```
+┌─ [icône thread] Adrien_Sama a créé un thread : Test.    timestamp
+│
+└── ┌──────────────────────────────────────────────┐
+    │ Test  1 Message ›                            │
+    │ 🟣 Adrien_Sama  ⚔ HYTL  Test  1m ago       │
+    └──────────────────────────────────────────────┘
 ```
 
-### Code for onSuccess addition
+- La spine : une ligne verticale partant du niveau de l'icône thread, descendant puis tournant (border-bottom-left-radius) vers le conteneur embed
+- Le conteneur embed = `ThreadSystemMessage` avec `bg-surface-elevated`, cliquable pour ouvrir le thread
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+### Données thread
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Créer un `Map<string, Thread>` indexé par `thread.id` (en plus du `threadsByMessageId` existant) pour pouvoir retrouver le thread par son ID extrait du message système. Ce map existe déjà implicitement via le tableau `threads` — il suffit de créer `threadsById` à partir de `threads`.
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `src/components/chat/ChatArea.tsx` | Remplacer le rendu texte par embed `ThreadSystemMessage` + spine, créer `threadsById` map |
 

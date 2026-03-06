@@ -17,6 +17,19 @@ interface UserMentionProps {
 }
 
 export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, variant = 'chat' }: UserMentionProps) {
+  if (variant === 'bio') {
+    return (
+      <span
+        onClick={onClick}
+        className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
+          bg-[rgba(88,101,242,0.3)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:underline
+          transition-colors duration-100"
+      >
+        @{displayName}
+      </span>
+    );
+  }
+
   return (
     <TooltipProvider>
       <Tooltip>

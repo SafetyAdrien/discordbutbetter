@@ -393,7 +393,10 @@ export function usePreloader(
     { label: 'Permissions', key: 'permissions', loaded: permissionsLoaded },
     { label: 'Permissions salons', key: 'channelPerms', loaded: channelPermsLoaded },
     { label: 'Messages privés', key: 'dms', loaded: dmsLoaded },
-  ], [authLoading, serversLoaded, profileLoaded, serverOrderLoaded, channelsLoaded, membersLoaded, permissionsLoaded, channelPermsLoaded, dmsLoaded]);
+    { label: 'Messages serveur', key: 'serverMessages', loaded: serverMessagesLoaded },
+    { label: 'Messages DM', key: 'dmMessages', loaded: dmMessagesLoaded },
+    { label: 'Messages threads', key: 'threadMessages', loaded: threadMessagesLoaded },
+  ], [authLoading, serversLoaded, profileLoaded, serverOrderLoaded, channelsLoaded, membersLoaded, permissionsLoaded, channelPermsLoaded, dmsLoaded, serverMessagesLoaded, dmMessagesLoaded, threadMessagesLoaded]);
 
   const loadedCount = steps.filter(s => s.loaded).length;
   const progress = Math.round((loadedCount / steps.length) * 100);

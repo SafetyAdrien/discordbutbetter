@@ -33,7 +33,7 @@ import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
 import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
-import StreamlineThreadBranch from "@/components/icons/StreamlineThreadBranch";
+
 import { useState, useCallback, useMemo, useRef, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -594,7 +594,9 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           filter((thread) => showArchivedThreads || !thread.archived).
           map((thread) =>
           <div key={thread.id} className="flex items-start w-full px-2">
-                  <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
+                  <div className="flex-shrink-0 w-4 h-5 relative mt-0.5">
+                    <div className="absolute left-[6px] top-0 w-[10px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                  </div>
                   <button
               onClick={(e) => {
                 e.stopPropagation();

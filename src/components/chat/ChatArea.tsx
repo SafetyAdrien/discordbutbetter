@@ -1,4 +1,4 @@
-import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
@@ -91,6 +91,8 @@ import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSetti
 import { LinkEmbeds } from "@/components/chat/LinkEmbed";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
+import { MobilePollActions } from "@/components/mobile/MobilePollActions";
+
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -334,6 +336,48 @@ interface ChatAreaProps {
   members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
   onChannelSelect?: (channelId: string) => void;
 }
+// Long-press wrapper for polls on mobile
+function PollLongPressWrapper({
+  isMobile,
+  onLongPress,
+  className,
+  children,
+  ...divProps
+}: {
+  isMobile: boolean;
+  onLongPress: () => void;
+  className?: string;
+  children: React.ReactNode;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>) {
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTouchStart = () => {
+    if (!isMobile) return;
+    timerRef.current = setTimeout(() => {
+      onLongPress();
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  return (
+    <div
+      className={className}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
+      {...divProps}
+    >
+      {children}
+    </div>
+  );
+}
+
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("fr-FR", {
     hour: "2-digit",
@@ -390,6 +434,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
+  const [mobilePollSheetId, setMobilePollSheetId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [pendingContextDeleteMessageId, setPendingContextDeleteMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1094,27 +1139,43 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   {DateSeparator}
                   <ContextMenu>
                     <ContextMenuTrigger asChild>
-                    <div
+                    <PollLongPressWrapper
+                      isMobile={isMobile}
+                      onLongPress={() => setMobilePollSheetId(poll.id)}
                       className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")}
-                      onMouseEnter={() => setHoveredPollId(poll.id)}
+                      onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
                       onMouseLeave={() => {
                         if (openDropdownPollId !== poll.id) setHoveredPollId(null);
                       }}
                     >
-                      <PollActions
-                        isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
-                        onCopyLink={() => handleCopyPollLink(poll.id)}
-                        onEdit={() => setEditingPoll(poll)}
-                        onDelete={() => handleDeletePoll(poll)}
-                        onReply={() => handleReplyToPoll(poll)}
-                        onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
+                      {!isMobile && (
+                        <PollActions
+                          isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
+                          onCopyLink={() => handleCopyPollLink(poll.id)}
+                          onEdit={() => setEditingPoll(poll)}
+                          onDelete={() => handleDeletePoll(poll)}
+                          onReply={() => handleReplyToPoll(poll)}
+                          onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
+                          isOwnPoll={isOwnPoll}
+                          isPollExpired={isPollExpired}
+                          onEndPoll={() => handleEndPoll(poll)}
+                          onDropdownOpenChange={(open) => {
+                            setOpenDropdownPollId(open ? poll.id : null);
+                            if (!open) setHoveredPollId(null);
+                          }}
+                        />
+                      )}
+                      <MobilePollActions
+                        open={mobilePollSheetId === poll.id}
+                        onOpenChange={(open) => setMobilePollSheetId(open ? poll.id : null)}
                         isOwnPoll={isOwnPoll}
                         isPollExpired={isPollExpired}
+                        onCopyLink={() => handleCopyPollLink(poll.id)}
+                        onCopyId={() => handleCopyId(poll.id)}
+                        onEdit={() => setEditingPoll(poll)}
+                        onDelete={() => handleDeletePoll(poll)}
                         onEndPoll={() => handleEndPoll(poll)}
-                        onDropdownOpenChange={(open) => {
-                          setOpenDropdownPollId(open ? poll.id : null);
-                          if (!open) setHoveredPollId(null);
-                        }}
+                        onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                       />
                       {showAuthor ? (
                         <div className="flex gap-3 my-0 py-[5px]">
@@ -1159,7 +1220,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         </div>
                       )}
-                    </div>
+                    </PollLongPressWrapper>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="w-48">
                     <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>

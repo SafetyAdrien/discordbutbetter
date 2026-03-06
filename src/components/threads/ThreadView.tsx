@@ -56,7 +56,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
 import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
+import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 
+const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
   threadId: string;
   channelName: string;
@@ -71,6 +73,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
   const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
+  const [mobilePollSheetId, setMobilePollSheetId] = useState<string | null>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT;
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -526,12 +530,29 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               'group rounded-md px-2 hover:bg-muted/50 relative',
                               showAuthor ? 'pt-2' : 'py-0'
                             )}
-                            onMouseEnter={() => setHoveredPollId(poll.id)}
+                            onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
                             onMouseLeave={() => {
                               if (openDropdownPollId !== poll.id) setHoveredPollId(null);
                             }}
+                            onTouchStart={() => {
+                              if (!isMobile) return;
+                              const timer = setTimeout(() => setMobilePollSheetId(poll.id), 500);
+                              (window as any).__pollLongPressTimer = timer;
+                            }}
+                            onTouchEnd={() => {
+                              if ((window as any).__pollLongPressTimer) {
+                                clearTimeout((window as any).__pollLongPressTimer);
+                                (window as any).__pollLongPressTimer = null;
+                              }
+                            }}
+                            onTouchMove={() => {
+                              if ((window as any).__pollLongPressTimer) {
+                                clearTimeout((window as any).__pollLongPressTimer);
+                                (window as any).__pollLongPressTimer = null;
+                              }
+                            }}
                           >
-                            {(hoveredPollId === poll.id || openDropdownPollId === poll.id) && (
+                            {!isMobile && (hoveredPollId === poll.id || openDropdownPollId === poll.id) && (
                               <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -577,6 +598,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                 )}
                               </div>
                             )}
+                            <MobilePollActions
+                              open={mobilePollSheetId === poll.id}
+                              onOpenChange={(open) => setMobilePollSheetId(open ? poll.id : null)}
+                              isOwnPoll={isOwnPoll}
+                              isPollExpired={isPollExpired}
+                              onCopyLink={() => handleCopyPollLink(poll.id)}
+                              onCopyId={() => handleCopyId(poll.id)}
+                              onEdit={() => setEditingPoll(poll)}
+                              onDelete={() => handleDeletePoll(poll)}
+                              onEndPoll={() => handleEndPoll(poll)}
+                            />
                             {showAuthor ? (
                               <div className="flex gap-3">
                                 <Avatar className="w-8 h-8 mt-0.5 shrink-0">

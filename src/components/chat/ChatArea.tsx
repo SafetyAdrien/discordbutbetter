@@ -708,6 +708,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     });
     return map;
   }, [threads]);
+
+  // Build a map of thread.id -> thread for system message lookups
+  const threadsById = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach((thread) => {
+      map.set(thread.id, thread);
+    });
+    return map;
+  }, [threads]);
   const pinnedMessageIds = useMemo(() => new Set(pinnedMessages?.map((pm) => pm.message_id) || []), [pinnedMessages]);
 
   // Create unified timeline of messages and polls

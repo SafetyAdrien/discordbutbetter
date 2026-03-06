@@ -68,6 +68,12 @@ export function useChannelUnreadCounts(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['channel-unread-counts', serverId, user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:channel-unread:${serverId}:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<Record<string, ChannelUnreadInfo>> => {
       if (!user || !serverId) return {};
 
@@ -127,8 +133,15 @@ export function useChannelUnreadCounts(serverId: string | null) {
       return result;
     },
     enabled: !!user && !!serverId,
-    refetchInterval: 60000, // Reduced from 30s — Realtime handles updates
+    refetchInterval: 60000,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:channel-unread:${serverId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, user?.id, query.isPlaceholderData]);
 
   return {
     channelUnreadInfo: query.data || {},

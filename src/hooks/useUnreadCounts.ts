@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,6 +14,12 @@ export function useUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['unread-counts', user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:unread-counts:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<Record<string, number>> => {
       if (!user) return {};
 

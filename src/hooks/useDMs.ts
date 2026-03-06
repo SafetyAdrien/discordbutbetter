@@ -37,6 +37,12 @@ export function useDMConversations() {
 
   const query = useQuery({
     queryKey: ['dm-conversations', user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:dm-conversations:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<DMConversation[]> => {
       if (!user) return [];
 
@@ -126,6 +132,13 @@ export function useDMConversations() {
     },
     enabled: !!user,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:dm-conversations:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, user?.id, query.isPlaceholderData]);
 
   // Real-time subscription for new messages
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -38,8 +39,14 @@ export interface RoleWithPermissions {
 export function useServerRoles(serverId: string | null) {
   const { user } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['roles', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:roles:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<RoleWithPermissions[]> => {
       if (!serverId) return [];
 
@@ -70,6 +77,15 @@ export function useServerRoles(serverId: string | null) {
     enabled: !!serverId && !!user,
     staleTime: 0,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:roles:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useCreateRole() {

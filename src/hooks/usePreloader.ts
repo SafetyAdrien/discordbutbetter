@@ -518,10 +518,30 @@ export function usePreloader(
       try {
         const imageUrls = new Set<string>();
 
-        // From server messages
-        for (const chId of channelIdsToLoad) {
-          const msgs = queryClient.getQueryData(['messages', chId]) as any[];
-          msgs?.forEach(msg => {
+        // Collect all message channel IDs from queryClient
+        for (const sid of serverIds) {
+          const channelData = queryClient.getQueryData(['channels', sid]) as any;
+          if (channelData) {
+            for (const cat of (channelData.categories || [])) {
+              for (const ch of (cat.channels || [])) {
+                const msgs = queryClient.getQueryData(['messages', ch.id]) as any[];
+                msgs?.forEach(msg => {
+                  (msg.attachments || []).forEach((a: any) => {
+                    if (a.type === 'image' && a.url) imageUrls.add(a.url);
+                  });
+                });
+              }
+            }
+            for (const ch of (channelData.orphanChannels || [])) {
+              const msgs = queryClient.getQueryData(['messages', ch.id]) as any[];
+              msgs?.forEach(msg => {
+                (msg.attachments || []).forEach((a: any) => {
+                  if (a.type === 'image' && a.url) imageUrls.add(a.url);
+                });
+              });
+            }
+          }
+        }
             (msg.attachments || []).forEach((a: any) => {
               if (a.type === 'image' && a.url) imageUrls.add(a.url);
             });

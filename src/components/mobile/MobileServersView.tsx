@@ -164,7 +164,7 @@ export function MobileServersView({
   const { unreadInfo } = useServerUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
-  const [showDMs, setShowDMs] = useState(false);
+  const [showDMs, setShowDMs] = useState(!!activeDMId);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -191,6 +191,13 @@ export function MobileServersView({
       setSelectedServerId(sortedServers[0].id);
     }
   }, [sortedServers, selectedServerId, showDMs]);
+
+  useEffect(() => {
+    if (activeDMId) {
+      setShowDMs(true);
+      setSelectedServerId(null);
+    }
+  }, [activeDMId]);
 
   const handleDMClick = useCallback(() => {
     if (wasDraggingRef.current) return;

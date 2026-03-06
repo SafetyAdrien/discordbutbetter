@@ -695,6 +695,10 @@ const Index = () => {
             />
           )}
         </>
+      ) : activeServerId ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+        </div>
       ) : null}
 
       {/* Modals */}

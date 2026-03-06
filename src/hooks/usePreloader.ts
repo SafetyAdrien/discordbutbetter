@@ -278,8 +278,117 @@ export function usePreloader(
       setChannelPermsLoaded(true);
     })();
 
-    // PHASE 2: After channels + DMs resolved, preload messages (limited scope)
-    const messagesPhase = Promise.all([channelsPromise, dmsPromise]).then(async () => {
+    // PHASE 2: After channels + DMs + channel perms resolved, preload messages + detailed perms
+    const messagesPhase = Promise.all([channelsPromise, dmsPromise, channelPermsPromise]).then(async () => {
+      // 6b. Detailed channel permissions (send_messages, manage_messages, etc.)
+      const detailedPermsPromise = (async () => {
+        try {
+          const recentChannels = readCache<string[]>('cache:recent-channels') || [];
+          const channelIdsForPerms = new Set<string>(recentChannels.slice(0, 30));
+
+          // Also add first text channel per server
+          for (const sid of serverIds) {
+            const channelData = queryClient.getQueryData(['channels', sid]) as any;
+            if (channelData) {
+              const textTypes = ['text', 'announcement'];
+              let found = false;
+              for (const cat of (channelData.categories || [])) {
+                for (const ch of (cat.channels || [])) {
+                  if (textTypes.includes(ch.type)) {
+                    channelIdsForPerms.add(ch.id);
+                    found = true;
+                    break;
+                  }
+                }
+                if (found) break;
+              }
+              if (!found) {
+                for (const ch of (channelData.orphanChannels || [])) {
+                  if (textTypes.includes(ch.type)) {
+                    channelIdsForPerms.add(ch.id);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          await Promise.all([...channelIdsForPerms].map(async (chId) => {
+            // Check if already cached in sessionStorage
+            const PERM_CACHE_PREFIX = 'perm:';
+            const testKey = `${chId}:send_messages`;
+            try {
+              if (sessionStorage.getItem(PERM_CACHE_PREFIX + testKey) !== null) {
+                // Already cached — inject into queryClient from sessionStorage
+                const allPerms = [
+                  'read_messages', 'send_messages', 'manage_messages',
+                  'connect_voice', 'speak_voice', 'mention_everyone',
+                  'manage_channels', 'manage_roles', 'kick_members',
+                  'ban_members', 'manage_server', 'administrator',
+                  'mute_members', 'move_members', 'create_invites'
+                ];
+                for (const perm of allPerms) {
+                  const raw = sessionStorage.getItem(PERM_CACHE_PREFIX + `${chId}:${perm}`);
+                  if (raw !== null) {
+                    queryClient.setQueryData(
+                      ['channel-permission', chId, perm, user.id],
+                      { permission: perm, granted: raw === '1' }
+                    );
+                  }
+                }
+                // Also inject the permissions object cache
+                const objRaw = sessionStorage.getItem(PERM_CACHE_PREFIX + 'obj:' + chId);
+                if (objRaw) {
+                  try {
+                    queryClient.setQueryData(['user-channel-permissions', chId, user.id], JSON.parse(objRaw));
+                  } catch {}
+                }
+                return;
+              }
+            } catch {}
+
+            // Fetch from DB
+            try {
+              const { data } = await supabase.rpc('get_user_channel_permissions', {
+                _user_id: user.id,
+                _channel_id: chId,
+              });
+              if (data) {
+                const permMap: Record<string, boolean> = {};
+                (data as { permission: string; granted: boolean }[]).forEach(row => {
+                  // Inject into queryClient
+                  queryClient.setQueryData(
+                    ['channel-permission', chId, row.permission, user.id],
+                    { permission: row.permission, granted: row.granted }
+                  );
+                  // Write to sessionStorage
+                  try {
+                    sessionStorage.setItem(PERM_CACHE_PREFIX + `${chId}:${row.permission}`, row.granted ? '1' : '0');
+                  } catch {}
+                  permMap[row.permission] = row.granted;
+                });
+                // Also build and cache the permissions object
+                const permsObj = {
+                  canReadMessages: permMap['read_messages'] ?? false,
+                  canSendMessages: permMap['send_messages'] ?? false,
+                  canManageMessages: permMap['manage_messages'] ?? false,
+                  canConnectVoice: permMap['connect_voice'] ?? false,
+                  canSpeakVoice: permMap['speak_voice'] ?? false,
+                  canMentionEveryone: permMap['mention_everyone'] ?? false,
+                  canManageChannels: permMap['manage_channels'] ?? false,
+                  canManageRoles: permMap['manage_roles'] ?? false,
+                  isAdmin: permMap['administrator'] ?? false,
+                };
+                queryClient.setQueryData(['user-channel-permissions', chId, user.id], permsObj);
+                try {
+                  sessionStorage.setItem(PERM_CACHE_PREFIX + 'obj:' + chId, JSON.stringify(permsObj));
+                } catch {}
+              }
+            } catch {}
+          }));
+        } catch {}
+      })();
+
       // 7. Server messages — only active channel + last 5 visited per server
       const serverMsgPromise = (async () => {
         try {

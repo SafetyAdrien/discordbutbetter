@@ -422,7 +422,97 @@ export function usePreloader(
         setThreadMessagesLoaded(true);
       })();
 
-      await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise]);
+      // 10. Threads for loaded channels (background)
+      const threadsPromise = (async () => {
+        try {
+          const channelIdsToLoad = new Set<string>();
+          for (const sid of serverIds) {
+            const channelData = queryClient.getQueryData(['channels', sid]) as any;
+            if (channelData) {
+              for (const cat of (channelData.categories || [])) {
+                for (const ch of (cat.channels || [])) {
+                  if (ch.type === 'text') channelIdsToLoad.add(ch.id);
+                }
+              }
+              for (const ch of (channelData.orphanChannels || [])) {
+                if (ch.type === 'text') channelIdsToLoad.add(ch.id);
+              }
+            }
+          }
+          await Promise.all([...channelIdsToLoad].map(async (chId) => {
+            const cached = readCache<any>(`cache:threads:${chId}`);
+            if (cached) {
+              queryClient.setQueryData(['threads', chId], cached);
+              return;
+            }
+            try {
+              const { data } = await supabase
+                .from('threads')
+                .select('*, creator:profiles!threads_created_by_fkey(id, username, display_name, avatar_url)')
+                .eq('channel_id', chId)
+                .eq('archived', false)
+                .order('last_message_at', { ascending: false });
+              if (data) {
+                queryClient.setQueryData(['threads', chId], data);
+                writeCache(`cache:threads:${chId}`, data);
+              }
+            } catch {}
+          }));
+        } catch {}
+      })();
+
+      // 11. Polls for loaded channels (background)
+      const pollsPromise = (async () => {
+        try {
+          const channelIdsToLoad = new Set<string>();
+          for (const sid of serverIds) {
+            const channelData = queryClient.getQueryData(['channels', sid]) as any;
+            if (channelData) {
+              for (const cat of (channelData.categories || [])) {
+                for (const ch of (cat.channels || [])) {
+                  if (ch.type === 'text') channelIdsToLoad.add(ch.id);
+                }
+              }
+              for (const ch of (channelData.orphanChannels || [])) {
+                if (ch.type === 'text') channelIdsToLoad.add(ch.id);
+              }
+            }
+          }
+          await Promise.all([...channelIdsToLoad].map(async (chId) => {
+            const cached = readCache<any>(`cache:polls:channel:${chId}`);
+            if (cached) {
+              queryClient.setQueryData(['polls', 'channel', chId], cached);
+              return;
+            }
+            try {
+              const { data: polls } = await supabase
+                .from('polls')
+                .select('*, author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)')
+                .eq('channel_id', chId)
+                .is('thread_id', null)
+                .order('created_at', { ascending: true });
+              if (polls && polls.length > 0) {
+                const pollsWithDetails = await Promise.all(
+                  polls.map(async (poll) => {
+                    const [optionsRes, votesRes] = await Promise.all([
+                      supabase.from('poll_options').select('*').eq('poll_id', poll.id).order('position'),
+                      supabase.from('poll_votes').select('*, user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)').eq('poll_id', poll.id)
+                    ]);
+                    return { ...poll, options: optionsRes.data || [], votes: votesRes.data || [] };
+                  })
+                );
+                queryClient.setQueryData(['polls', 'channel', chId], pollsWithDetails);
+                writeCache(`cache:polls:channel:${chId}`, pollsWithDetails);
+              } else if (polls) {
+                queryClient.setQueryData(['polls', 'channel', chId], []);
+                writeCache(`cache:polls:channel:${chId}`, []);
+              }
+            } catch {}
+          }));
+        } catch {}
+      })();
+
+      await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise, threadsPromise, pollsPromise]);
     });
 
     // GROUP 7: Friends (background, no loading step)

@@ -1,61 +1,34 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Ajouter `vote_in_polls` par défaut au rôle @everyone
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+La permission `vote_in_polls` existe dans l'enum mais n'est pas attribuée au rôle par défaut `@everyone`. Les membres ne peuvent donc pas voter sans configuration manuelle.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Plan
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. Migration SQL
 
-## Fix
+Deux actions :
+- **Serveurs existants** : insérer `vote_in_polls` dans `role_permissions` pour tous les rôles `@everyone` existants (avec `ON CONFLICT DO NOTHING`)
+- **Futurs serveurs** : modifier la fonction `handle_new_server` pour inclure `vote_in_polls` dans les permissions par défaut
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+```sql
+-- Ajouter aux rôles @everyone existants
+INSERT INTO role_permissions (role_id, permission)
+SELECT r.id, 'vote_in_polls'::server_permission
+FROM roles r WHERE r.is_default = true
+ON CONFLICT DO NOTHING;
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+-- Mettre à jour handle_new_server pour inclure vote_in_polls
 ```
 
-### Code for onSuccess addition
+### Fichiers modifiés
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+| Fichier | Changement |
+|---|---|
+| Migration SQL | Insert + update function `handle_new_server` |
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**1 migration, aucun fichier code modifié**
 

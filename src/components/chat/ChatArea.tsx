@@ -1,4 +1,4 @@
-import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
@@ -92,7 +92,7 @@ import { LinkEmbeds } from "@/components/chat/LinkEmbed";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
-import { useLongPress } from "@/hooks/useLongPress";
+
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {

@@ -1,61 +1,45 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Prefetch des permissions de salon pour éliminer le flash des boutons/inputs
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Au chargement, les composants dépendant des permissions (ChatInput, bouton Suivre, barre de permission denied) flashent car :
+1. `useMultipleChannelPermissions` utilise un fallback optimiste `true` quand il n'y a pas de cache sessionStorage
+2. Le preloader charge uniquement `server-channel-permissions` (view/connect) mais PAS les permissions individuelles par salon (`send_messages`, `attach_files`, etc.)
+3. Résultat : l'input de chat s'affiche en mode éditable puis bascule en "permission refusée", ou le bouton "Suivre" apparaît/disparaît
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Étendre le preloader pour pré-charger les permissions détaillées des salons actifs via `get_user_channel_permissions`, puis injecter les résultats dans :
+- Le cache React Query (`channel-permission` par permission individuelle)
+- Le sessionStorage (`perm:channelId:permission`)
 
-## Fix
+Cela garantit que `useMultipleChannelPermissions` trouve immédiatement les valeurs en cache au lieu de tomber sur le fallback optimiste `true`.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+## Fichiers modifiés (1)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
+### `src/hooks/usePreloader.ts`
+- Après le chargement des canaux (GROUP 6), ajouter un GROUP 6b qui :
+  1. Identifie les salons à pré-charger (salons récents + premier salon texte par serveur — même ensemble que les messages)
+  2. Pour chaque salon, appelle `get_user_channel_permissions` (ou lit le cache sessionStorage)
+  3. Injecte chaque permission dans le queryClient avec la clé `['channel-permission', channelId, permission, userId]`
+  4. Écrit dans sessionStorage avec le préfixe `perm:channelId:permission` (format compatible avec le hook existant)
 
 ```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+Flux :
+channelsPromise.then →
+  channelIdsToLoad (récents + premier par serveur)
+  → Promise.all(channelIds.map(chId =>
+      get_user_channel_permissions(_user_id, _channel_id)
+      → forEach permission:
+          setQueryData(['channel-permission', chId, perm, userId], { permission, granted })
+          sessionStorage.setItem('perm:chId:perm', granted ? '1' : '0')
+    ))
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Détail technique
+- Le cache sessionStorage utilise le préfixe `perm:` déjà défini dans `useUserChannelPermissions.ts` — les valeurs écrites par le preloader seront lues immédiatement par les hooks
+- Le hook `useMultipleChannelPermissions` détecte déjà `allCached` pour bypasser l'état loading — les permissions pré-remplies activeront ce court-circuit
+- Scope limité aux ~30 salons récents pour ne pas surcharger le chargement initial
 

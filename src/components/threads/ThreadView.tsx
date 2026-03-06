@@ -56,7 +56,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
 import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
+import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 
+const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
   threadId: string;
   channelName: string;
@@ -256,9 +258,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     }
     lastMessageCountRef.current = messages.length;
   }, [messages.length, isAtBottom]);
-import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 
-const MOBILE_BREAKPOINT = 768;
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current && channelId) {

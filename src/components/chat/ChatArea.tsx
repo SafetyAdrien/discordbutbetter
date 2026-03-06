@@ -25,6 +25,7 @@ import {
   MoreHorizontal,
   Smile,
   Flag,
+  StopCircle,
 } from "lucide-react";
 import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
@@ -62,7 +63,7 @@ import { registerSnowflakeMappings } from "@/lib/snowflake";
 import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
-import { usePolls, useDeletePoll, Poll } from "@/hooks/usePolls";
+import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
 import { useThreads } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
 import { useChannels } from "@/hooks/useChannels";
@@ -427,6 +428,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
   const deletePoll = useDeletePoll();
+  const endPollMutation = useEndPoll();
 
   // Channel details (for slowmode)
   const { data: channelDetails } = useChannelDetails(channel.id);

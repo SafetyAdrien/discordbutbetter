@@ -708,6 +708,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     });
     return map;
   }, [threads]);
+
+  // Build a map of thread.id -> thread for system message lookups
+  const threadsById = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach((thread) => {
+      map.set(thread.id, thread);
+    });
+    return map;
+  }, [threads]);
   const pinnedMessageIds = useMemo(() => new Set(pinnedMessages?.map((pm) => pm.message_id) || []), [pinnedMessages]);
 
   // Create unified timeline of messages and polls
@@ -1267,12 +1276,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               const match = message.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):(.+)\]/);
               if (match) {
                 const [, threadId, threadName] = match;
+                const thread = threadsById.get(threadId);
                 return (
                   <div key={`msg-${message.id}`}>
                     {DateSeparator}
-                    <div className="flex items-center justify-center gap-2 py-1.5 px-4 my-0.5">
+                    <div className="py-1 px-4 my-0.5">
+                      {/* System text line */}
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <StreamlineThreads className="w-3.5 h-3.5" />
+                        <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
                         <span>
                           <span className="font-semibold text-foreground">{message.author.displayName}</span>
                           {' '}a créé un thread :{' '}
@@ -1286,6 +1297,35 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         <span className="text-muted-foreground/60 ml-1">
                           {formatTime(message.timestamp)}
                         </span>
+                      </div>
+
+                      {/* Spine + Thread embed */}
+                      <div className="flex mt-0.5">
+                        {/* Spine: vertical line + curve */}
+                        <div className="flex-shrink-0 w-8 relative">
+                          <div className="absolute left-[7px] top-0 w-0.5 h-[calc(50%+2px)] bg-muted-foreground/30" />
+                          <div className="absolute left-[7px] top-[calc(50%+2px)] w-[18px] h-[calc(50%-2px)] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-xl" />
+                        </div>
+                        {/* Thread embed card */}
+                        <div className="flex-1 min-w-0">
+                          {thread ? (
+                            <ThreadSystemMessage
+                              thread={thread}
+                              onClick={() => onSelectThread?.(threadId)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => onSelectThread?.(threadId)}
+                              className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
+                            >
+                              <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
+                                <span className="text-xs text-foreground">0 Messages</span>
+                              </div>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

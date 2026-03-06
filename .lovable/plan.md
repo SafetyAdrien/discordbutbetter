@@ -1,30 +1,61 @@
 
 
-# Remplacer l'icône ThreadBranch par le spine CSS dans la liste des salons
+# Fix: Duplicated channel hidden by visibility filter
 
-## Contexte
+## Root cause
 
-Dans la liste des salons (`ChannelList.tsx`, ligne 597), les threads utilisent l'icône SVG `StreamlineThreadBranch`. L'utilisateur veut la remplacer par un élément CSS identique au spine du message système thread dans `ChatArea.tsx` : une courbe en L avec `border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg`.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changement — `src/components/layout/ChannelList.tsx` (ligne 596-597)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Remplacer le `<StreamlineThreadBranch>` par un `div` reproduisant exactement le spine :
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-```tsx
-// Avant
-<div key={thread.id} className="flex items-start w-full px-2">
-  <StreamlineThreadBranch className="w-4 h-4 text-muted-foreground shrink-0 mt-1.5" />
+## Fix
 
-// Après
-<div key={thread.id} className="flex items-start w-full px-2">
-  <div className="flex-shrink-0 w-4 h-5 relative mt-0.5">
-    <div className="absolute left-[6px] top-0 w-[10px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-  </div>
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-L'import `StreamlineThreadBranch` (ligne 36) peut être supprimé s'il n'est plus utilisé ailleurs dans le fichier.
+### Code for onSuccess addition
 
-| Fichier | Changement |
-|---|---|
-| `src/components/layout/ChannelList.tsx` | Remplacer l'icône SVG par le spine CSS |
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

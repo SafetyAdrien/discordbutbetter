@@ -542,11 +542,6 @@ export function usePreloader(
             }
           }
         }
-            (msg.attachments || []).forEach((a: any) => {
-              if (a.type === 'image' && a.url) imageUrls.add(a.url);
-            });
-          });
-        }
 
         // From DM messages
         const convos = queryClient.getQueryData(['dm-conversations']) as any[];

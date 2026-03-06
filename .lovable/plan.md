@@ -1,61 +1,51 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Sondages Realtime + Timestamps visibles partout
 
-## Root cause
+## 1. Sondages en temps réel complet
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### Problème actuel
+- Seul `poll_votes` a un abonnement realtime, et il fait un `invalidateQueries` (re-fetch complet) au lieu d'une mise à jour ciblée
+- Aucun abonnement sur `polls` (création, modification question, fin/expiration) ni `poll_options` (modification options)
+- Les autres utilisateurs ne voient pas les nouveaux sondages, modifications ou fins en temps réel
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Plan
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
-
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+**Migration SQL** : Ajouter `poll_options` à la publication realtime
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_options;
 ```
 
-### Code for onSuccess addition
+**`src/hooks/usePolls.ts`** : Remplacer les abonnements actuels par 3 channels isolés (pattern existant du projet) dans `usePolls` et `useThreadPolls` :
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+1. **Channel `polls`** : écouter INSERT (nouveau sondage), UPDATE (modification question, `expires_at` pour fin), DELETE (suppression)
+   - INSERT : fetcher le poll complet avec options/votes et l'ajouter au cache
+   - UPDATE : mettre à jour `question`, `expires_at` dans le cache
+   - DELETE : retirer du cache
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+2. **Channel `poll_options`** : écouter `*` → `invalidateQueries` (la structure des options a changé)
+
+3. **Channel `poll_votes`** : écouter INSERT/DELETE avec mise à jour ciblée du cache (pas de re-fetch)
+   - INSERT : ajouter le vote au poll correspondant (fetcher le profil votant)
+   - DELETE : retirer le vote du cache
+
+## 2. Timestamps visibles sur tous les messages
+
+### Problème actuel
+- Sur les messages groupés (même auteur, < 5 min), le timestamp n'apparaît qu'au hover (`opacity-0 group-hover:opacity-100`)
+- Sur les sondages groupés, aucun timestamp n'est affiché
+
+### Plan
+
+**`src/components/chat/ChatArea.tsx`** :
+- Messages groupés (ligne ~1400) : retirer `opacity-0 group-hover:opacity-100` du `<span>` du timestamp pour qu'il soit toujours visible
+- Sondages groupés (lignes 1146-1151) : ajouter un timestamp visible dans la zone `w-10` à gauche, comme pour les messages groupés
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| Migration SQL | `poll_options` → realtime publication |
+| `src/hooks/usePolls.ts` | 3 channels realtime isolés avec cache updates ciblés |
+| `src/components/chat/ChatArea.tsx` | Timestamps toujours visibles + timestamp sur sondages groupés |
 

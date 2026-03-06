@@ -110,8 +110,9 @@ function SortableRole({
               : 'cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors'
           )}
           onPointerDown={(e) => {
-            // Prevent the row onClick from firing when starting a drag
             e.stopPropagation();
+            const sensorHandler = isDisabled ? undefined : (listeners as any)?.onPointerDown;
+            sensorHandler?.(e);
           }}
         >
           <GripVertical className="w-3.5 h-3.5" />

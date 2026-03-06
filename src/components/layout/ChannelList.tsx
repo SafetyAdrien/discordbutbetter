@@ -618,8 +618,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                       {thread.archived && " (archivé)"}
                     </span>
                   </button>
-                </div>
-          )}
+                </div>;
+          })}
           </div>
         }
 

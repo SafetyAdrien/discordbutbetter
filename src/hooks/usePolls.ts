@@ -105,28 +105,106 @@ export function usePolls(channelId: string | null) {
     enabled: !!channelId && !!user
   });
 
-  // Real-time subscription for votes
+  // Real-time subscription for polls (creation, update, deletion)
   useEffect(() => {
     if (!channelId) return;
 
-    const channel = supabase
-      .channel(`poll-votes-${channelId}`)
+    const pollsChannel = supabase
+      .channel(`polls-realtime-${channelId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'poll_votes'
-        },
+        { event: '*', schema: 'public', table: 'polls' },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newPoll = payload.new as any;
+            if (newPoll.channel_id !== channelId || newPoll.thread_id !== null) return;
+            // Fetch complete poll with author, options, votes
+            const [pollRes, optionsRes, votesRes] = await Promise.all([
+              supabase.from('polls').select('*, author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)').eq('id', newPoll.id).single(),
+              supabase.from('poll_options').select('*').eq('poll_id', newPoll.id).order('position'),
+              supabase.from('poll_votes').select('*, user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)').eq('poll_id', newPoll.id)
+            ]);
+            if (pollRes.data) {
+              const fullPoll = { ...pollRes.data, options: optionsRes.data || [], votes: votesRes.data || [] };
+              queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old => {
+                if (!old) return [fullPoll as Poll];
+                if (old.some(p => p.id === fullPoll.id)) return old;
+                return [...old, fullPoll as Poll];
+              });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as any;
+            queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old =>
+              old?.map(p => p.id === updated.id ? { ...p, question: updated.question, expires_at: updated.expires_at, allow_multiple: updated.allow_multiple } : p)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deleted = payload.old as any;
+            queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old =>
+              old?.filter(p => p.id !== deleted.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(pollsChannel); };
+  }, [channelId, queryClient]);
+
+  // Real-time subscription for poll options changes
+  useEffect(() => {
+    if (!channelId) return;
+
+    const optionsChannel = supabase
+      .channel(`poll-options-realtime-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'poll_options' },
         () => {
           queryClient.invalidateQueries({ queryKey: ['polls', 'channel', channelId] });
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(optionsChannel); };
+  }, [channelId, queryClient]);
+
+  // Real-time subscription for votes with targeted cache updates
+  useEffect(() => {
+    if (!channelId) return;
+
+    const votesChannel = supabase
+      .channel(`poll-votes-realtime-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'poll_votes' },
+        async (payload) => {
+          const newVote = payload.new as any;
+          // Fetch voter profile
+          const { data: profile } = await supabase.from('profiles').select('id, display_name, avatar_url').eq('id', newVote.user_id).single();
+          queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old =>
+            old?.map(p => p.id === newVote.poll_id ? {
+              ...p,
+              votes: p.votes.some(v => v.id === newVote.id) ? p.votes : [...p.votes, { ...newVote, user: profile || undefined }]
+            } : p)
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'poll_votes' },
+        (payload) => {
+          const deleted = payload.old as any;
+          queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old =>
+            old?.map(p => p.id === deleted.poll_id ? {
+              ...p,
+              votes: p.votes.filter(v => v.id !== deleted.id)
+            } : p)
+          );
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(votesChannel); };
   }, [channelId, queryClient]);
 
   return query;
@@ -183,28 +261,104 @@ export function useThreadPolls(threadId: string | null) {
     enabled: !!threadId && !!user
   });
 
-  // Real-time subscription for votes
+  // Real-time subscription for polls
   useEffect(() => {
     if (!threadId) return;
 
-    const channel = supabase
-      .channel(`poll-votes-thread-${threadId}`)
+    const pollsChannel = supabase
+      .channel(`polls-realtime-thread-${threadId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'poll_votes'
-        },
+        { event: '*', schema: 'public', table: 'polls' },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newPoll = payload.new as any;
+            if (newPoll.thread_id !== threadId) return;
+            const [pollRes, optionsRes, votesRes] = await Promise.all([
+              supabase.from('polls').select('*, author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)').eq('id', newPoll.id).single(),
+              supabase.from('poll_options').select('*').eq('poll_id', newPoll.id).order('position'),
+              supabase.from('poll_votes').select('*, user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)').eq('poll_id', newPoll.id)
+            ]);
+            if (pollRes.data) {
+              const fullPoll = { ...pollRes.data, options: optionsRes.data || [], votes: votesRes.data || [] };
+              queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old => {
+                if (!old) return [fullPoll as Poll];
+                if (old.some(p => p.id === fullPoll.id)) return old;
+                return [...old, fullPoll as Poll];
+              });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as any;
+            queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old =>
+              old?.map(p => p.id === updated.id ? { ...p, question: updated.question, expires_at: updated.expires_at, allow_multiple: updated.allow_multiple } : p)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deleted = payload.old as any;
+            queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old =>
+              old?.filter(p => p.id !== deleted.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(pollsChannel); };
+  }, [threadId, queryClient]);
+
+  // Real-time subscription for poll options
+  useEffect(() => {
+    if (!threadId) return;
+
+    const optionsChannel = supabase
+      .channel(`poll-options-realtime-thread-${threadId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'poll_options' },
         () => {
           queryClient.invalidateQueries({ queryKey: ['polls', 'thread', threadId] });
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(optionsChannel); };
+  }, [threadId, queryClient]);
+
+  // Real-time subscription for votes
+  useEffect(() => {
+    if (!threadId) return;
+
+    const votesChannel = supabase
+      .channel(`poll-votes-realtime-thread-${threadId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'poll_votes' },
+        async (payload) => {
+          const newVote = payload.new as any;
+          const { data: profile } = await supabase.from('profiles').select('id, display_name, avatar_url').eq('id', newVote.user_id).single();
+          queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old =>
+            old?.map(p => p.id === newVote.poll_id ? {
+              ...p,
+              votes: p.votes.some(v => v.id === newVote.id) ? p.votes : [...p.votes, { ...newVote, user: profile || undefined }]
+            } : p)
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'poll_votes' },
+        (payload) => {
+          const deleted = payload.old as any;
+          queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old =>
+            old?.map(p => p.id === deleted.poll_id ? {
+              ...p,
+              votes: p.votes.filter(v => v.id !== deleted.id)
+            } : p)
+          );
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(votesChannel); };
   }, [threadId, queryClient]);
 
   return query;

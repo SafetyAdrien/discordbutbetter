@@ -71,6 +71,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
   const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
+  const [mobilePollSheetId, setMobilePollSheetId] = useState<string | null>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT;
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');

@@ -589,7 +589,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
         {/* Threads for text channels - OUTSIDE draggable div */}
         {channel.type === "text" && threads.length > 0 &&
-        <div className="mt-1 space-y-0.5">
+        <div className="mt-1">
           {threads.
           filter((thread) => showArchivedThreads || !thread.archived).
           map((thread, index, filteredArr) => {
@@ -599,11 +599,11 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   <div className="flex-shrink-0 w-6 relative self-stretch">
                     {!isSingle && (
                       <div 
-                        className="absolute left-[6px] top-0 w-0.5 bg-muted-foreground/30"
+                        className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
                         style={{ height: isLast ? '50%' : '100%' }}
                       />
                     )}
-                    <div className="absolute left-[6px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                    <div className="absolute left-[5px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                   </div>
                   <button
               onClick={(e) => {

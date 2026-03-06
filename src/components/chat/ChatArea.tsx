@@ -178,6 +178,8 @@ function PollActions({
   onReply,
   onAddReaction,
   isOwnPoll,
+  isPollExpired,
+  onEndPoll,
   onDropdownOpenChange,
 }: {
   isVisible: boolean;
@@ -187,6 +189,8 @@ function PollActions({
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   isOwnPoll: boolean;
+  isPollExpired?: boolean;
+  onEndPoll?: () => void;
   onDropdownOpenChange?: (open: boolean) => void;
 }) {
   if (!isVisible) return null;
@@ -287,6 +291,12 @@ function PollActions({
           {isOwnPoll && (
             <>
               <DropdownMenuSeparator />
+              {!isPollExpired && onEndPoll && (
+                <DropdownMenuItem onClick={onEndPoll}>
+                  <StopCircle className="w-4 h-4 mr-2" />
+                  Terminer le sondage
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="w-4 h-4 mr-2" />
                 Modifier

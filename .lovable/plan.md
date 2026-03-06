@@ -1,61 +1,50 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Persistance des messages en sessionStorage
 
-## Root cause
+## Objectif
+Après un F5, les messages (serveur, DM, threads) s'affichent instantanément depuis le sessionStorage avant même que les requêtes réseau ne soient terminées, exactement comme c'est déjà fait pour les serveurs et les salons.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Approche
+Reproduire le pattern existant (`placeholderData` + `useEffect` de persistance) dans les 3 hooks de messages.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Fichiers à modifier
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 1. `src/hooks/useMessages.ts`
+- Ajouter `placeholderData` au `useQuery` qui lit `sessionStorage.getItem('cache:messages:{channelId}')` et parse le JSON
+- Ajouter un `useEffect` qui persiste `query.data` dans `sessionStorage.setItem('cache:messages:{channelId}')` quand les données ne sont pas du placeholder
 
-## Fix
+### 2. `src/hooks/useDMMessages.ts`
+- Même pattern avec la clé `cache:dm-messages:{conversationId}`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 3. `src/hooks/useThreadMessages.ts`
+- Même pattern avec la clé `cache:thread-messages:{threadId}`
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 4. `src/hooks/usePreloader.ts`
+- Après chaque batch de messages préchargé (steps 7-9), persister aussi dans sessionStorage pour que le prochain F5 ait les données immédiatement sans attendre le preloader
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+## Pattern exact (appliqué à chaque hook)
+```ts
+// Dans useQuery config :
+placeholderData: () => {
+  try {
+    const cached = sessionStorage.getItem(`cache:messages:${channelId}`);
+    return cached ? JSON.parse(cached) : undefined;
+  } catch { return undefined; }
+},
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Après useQuery :
+useEffect(() => {
+  if (query.data && channelId && !query.isPlaceholderData) {
+    try {
+      sessionStorage.setItem(`cache:messages:${channelId}`, JSON.stringify(query.data));
+    } catch { /* quota */ }
+  }
+}, [query.data, channelId, query.isPlaceholderData]);
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+Et dans le preloader, après chaque `queryClient.setQueryData(...)` :
+```ts
+try { sessionStorage.setItem(`cache:messages:${chId}`, JSON.stringify(messages)); } catch {}
 ```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

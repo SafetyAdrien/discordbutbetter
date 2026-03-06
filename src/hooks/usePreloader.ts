@@ -513,6 +513,53 @@ export function usePreloader(
       })();
 
       await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise, threadsPromise, pollsPromise]);
+
+      // Prefetch all image attachments into browser cache (fire-and-forget)
+      try {
+        const imageUrls = new Set<string>();
+
+        // Collect all message channel IDs from queryClient
+        for (const sid of serverIds) {
+          const channelData = queryClient.getQueryData(['channels', sid]) as any;
+          if (channelData) {
+            for (const cat of (channelData.categories || [])) {
+              for (const ch of (cat.channels || [])) {
+                const msgs = queryClient.getQueryData(['messages', ch.id]) as any[];
+                msgs?.forEach(msg => {
+                  (msg.attachments || []).forEach((a: any) => {
+                    if (a.type === 'image' && a.url) imageUrls.add(a.url);
+                  });
+                });
+              }
+            }
+            for (const ch of (channelData.orphanChannels || [])) {
+              const msgs = queryClient.getQueryData(['messages', ch.id]) as any[];
+              msgs?.forEach(msg => {
+                (msg.attachments || []).forEach((a: any) => {
+                  if (a.type === 'image' && a.url) imageUrls.add(a.url);
+                });
+              });
+            }
+          }
+        }
+
+        // From DM messages
+        const convos = queryClient.getQueryData(['dm-conversations']) as any[];
+        convos?.forEach(conv => {
+          const msgs = queryClient.getQueryData(['dm-messages', conv.id]) as any[];
+          msgs?.forEach(msg => {
+            (msg.attachments || []).forEach((a: any) => {
+              if (a.type === 'image' && a.url) imageUrls.add(a.url);
+            });
+          });
+        });
+
+        // Fire-and-forget prefetch
+        imageUrls.forEach(url => {
+          const img = new Image();
+          img.src = url;
+        });
+      } catch {}
     });
 
     // GROUP 7: Friends (background, no loading step)

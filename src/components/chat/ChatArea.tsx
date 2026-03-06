@@ -1143,8 +1143,17 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         </div>
                       ) : (
-                        <div className="flex gap-3">
-                          <span className="w-10 flex-shrink-0" />
+                        <div className="flex gap-3 items-start">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
+                                {formatTime(new Date(poll.created_at))}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              {new Date(poll.created_at).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex-1">
                             <PollDisplay poll={poll} channelId={channel.id} />
                           </div>
@@ -1397,7 +1406,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         <div className="flex gap-3 items-start">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="w-10 flex-shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 text-right pt-0.5 cursor-default">
+                              <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
                                 {formatTime(message.timestamp)}
                               </span>
                             </TooltipTrigger>

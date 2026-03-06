@@ -1301,10 +1301,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                       {/* Spine + Thread embed */}
                       <div className="flex mt-0.5">
-                        {/* Spine: vertical line + curve (matches ThreadSpine style) */}
+                        {/* Spine: curve only (L shape connecting to thread embed) */}
                         <div className="flex-shrink-0 w-[52px] relative">
-                          <div className="absolute left-5 top-0 w-0.5 bg-muted-foreground/30" style={{ height: 'calc(100% - 10px)' }} />
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 w-[18px] h-[10px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                          <div className="absolute left-5 top-0 w-[18px] h-full border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                         </div>
                         {/* Thread embed card */}
                         <div className="flex-1 min-w-0">

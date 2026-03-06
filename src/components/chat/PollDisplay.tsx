@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Poll, PollVote, useVotePoll, useRemoveVote } from '@/hooks/usePolls';
+import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll } from '@/hooks/usePolls';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { isPast } from 'date-fns';
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock, StopCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
@@ -85,6 +85,7 @@ export function PollDisplay({
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
+  const endPoll = useEndPoll();
 
   // Check vote permission
   const { data: canVoteInPolls = true } = useHasChannelPermission(channelId, 'vote_in_polls');
@@ -357,6 +358,20 @@ export function PollDisplay({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* End poll button for author */}
+            {!isExpired && poll.author_id === user?.id && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => endPoll.mutate({ pollId: poll.id, channelId, threadId })}
+                disabled={endPoll.isPending}
+                className="text-xs h-8 text-destructive hover:text-destructive"
+              >
+                <StopCircle className="w-3.5 h-3.5 mr-1" />
+                Terminer
+              </Button>
+            )}
+
             {!shouldShowResults && !hasVoted && canVote && (
               <Button
                 variant="ghost"

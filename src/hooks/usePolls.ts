@@ -419,6 +419,52 @@ export function useRemoveVote() {
   });
 }
 
+export function useEndPoll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ pollId, channelId, threadId }: { pollId: string; channelId: string; threadId?: string | null }) => {
+      const { error } = await supabase
+        .from('polls')
+        .update({ expires_at: new Date().toISOString() })
+        .eq('id', pollId);
+
+      if (error) throw error;
+    },
+    onMutate: async ({ pollId, channelId, threadId }) => {
+      const queryKey = threadId ? ['polls', 'thread', threadId] : ['polls', 'channel', channelId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
+
+      queryClient.setQueryData<Poll[]>(queryKey, old =>
+        old?.map(poll =>
+          poll.id === pollId
+            ? { ...poll, expires_at: new Date().toISOString() }
+            : poll
+        )
+      );
+
+      return { previousPolls, queryKey };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousPolls && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousPolls);
+      }
+      toast.error('Erreur lors de la clôture du sondage');
+    },
+    onSuccess: () => {
+      toast.success('Sondage terminé');
+    },
+    onSettled: (_, __, variables) => {
+      if (variables.threadId) {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
+      }
+    }
+  });
+}
+
 export function useDeletePoll() {
   const queryClient = useQueryClient();
 

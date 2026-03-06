@@ -1,51 +1,61 @@
 
 
-# Permettre aux auteurs de mettre fin à leurs sondages
+# Fix: Duplicated channel hidden by visibility filter
 
-## Approche
+## Root cause
 
-L'auteur d'un sondage peut le terminer à tout moment en mettant `expires_at` à `now()`. Deux points d'accès :
-1. **Bouton dans PollDisplay** : visible uniquement pour l'auteur, à l'opposé du temps restant (dans le footer du sondage)
-2. **Menu clic-droit et hover** : option "Terminer le sondage" dans les menus contextuels et dropdown des sondages (ChatArea + ThreadView)
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Migration SQL
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-Ajouter une policy UPDATE sur la table `polls` pour que les auteurs puissent mettre à jour `expires_at` :
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-```sql
-CREATE POLICY "Authors can update their polls"
-ON public.polls FOR UPDATE
-USING (auth.uid() = author_id);
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-## Changements dans `usePolls.ts`
+### Code for onSuccess addition
 
-Ajouter un hook `useEndPoll` :
-- Mutation : `supabase.from('polls').update({ expires_at: new Date().toISOString() }).eq('id', pollId)`
-- Optimistic update : mettre `expires_at` dans le passé immédiatement dans le cache
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-## Changements dans `PollDisplay.tsx`
-
-- Ajouter un bouton "Terminer" dans la zone footer, à droite, visible uniquement si `poll.author_id === user.id` et que le sondage n'est pas expiré
-- Utiliser le hook `useEndPoll`
-
-## Changements dans `ChatArea.tsx`
-
-- Dans `PollActions` (hover toolbar) : ajouter un prop `onEndPoll` et l'afficher dans le dropdown quand `isOwnPoll && !isExpired`
-- Dans le context menu du sondage : ajouter "Terminer le sondage" avec icône `StopCircle`, avant "Modifier"
-- Passer `onEndPoll` depuis le rendu des sondages
-
-## Changements dans `ThreadView.tsx`
-
-- Même ajout dans le hover toolbar et le context menu des sondages
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| Migration SQL | Policy UPDATE pour auteurs |
-| `src/hooks/usePolls.ts` | Nouveau hook `useEndPoll` |
-| `src/components/chat/PollDisplay.tsx` | Bouton "Terminer" dans le footer |
-| `src/components/chat/ChatArea.tsx` | Option dans hover + context menu |
-| `src/components/threads/ThreadView.tsx` | Option dans hover + context menu |
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

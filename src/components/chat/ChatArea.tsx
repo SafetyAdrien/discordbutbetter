@@ -25,6 +25,7 @@ import {
   MoreHorizontal,
   Smile,
   Flag,
+  StopCircle,
 } from "lucide-react";
 import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
@@ -62,7 +63,7 @@ import { registerSnowflakeMappings } from "@/lib/snowflake";
 import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
-import { usePolls, useDeletePoll, Poll } from "@/hooks/usePolls";
+import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
 import { useThreads } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
 import { useChannels } from "@/hooks/useChannels";
@@ -177,6 +178,8 @@ function PollActions({
   onReply,
   onAddReaction,
   isOwnPoll,
+  isPollExpired,
+  onEndPoll,
   onDropdownOpenChange,
 }: {
   isVisible: boolean;
@@ -186,6 +189,8 @@ function PollActions({
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   isOwnPoll: boolean;
+  isPollExpired?: boolean;
+  onEndPoll?: () => void;
   onDropdownOpenChange?: (open: boolean) => void;
 }) {
   if (!isVisible) return null;
@@ -286,6 +291,12 @@ function PollActions({
           {isOwnPoll && (
             <>
               <DropdownMenuSeparator />
+              {!isPollExpired && onEndPoll && (
+                <DropdownMenuItem onClick={onEndPoll}>
+                  <StopCircle className="w-4 h-4 mr-2" />
+                  Terminer le sondage
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="w-4 h-4 mr-2" />
                 Modifier
@@ -427,6 +438,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
   const deletePoll = useDeletePoll();
+  const endPollMutation = useEndPoll();
 
   // Channel details (for slowmode)
   const { data: channelDetails } = useChannelDetails(channel.id);
@@ -689,6 +701,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   const handleDeletePoll = (poll: Poll) => {
     deletePoll.mutate({
+      pollId: poll.id,
+      channelId: channel.id,
+    });
+  };
+  const handleEndPoll = (poll: Poll) => {
+    endPollMutation.mutate({
       pollId: poll.id,
       channelId: channel.id,
     });
@@ -1070,6 +1088,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 (prevItem.data as Poll).author?.id !== poll.author?.id ||
                 item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
               const isOwnPoll = user?.id === poll.author_id;
+              const isPollExpired = poll.expires_at ? new Date(poll.expires_at) <= new Date() : false;
               return (
                 <div key={`poll-${poll.id}`}>
                   {DateSeparator}
@@ -1090,6 +1109,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         onReply={() => handleReplyToPoll(poll)}
                         onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                         isOwnPoll={isOwnPoll}
+                        isPollExpired={isPollExpired}
+                        onEndPoll={() => handleEndPoll(poll)}
                         onDropdownOpenChange={(open) => {
                           setOpenDropdownPollId(open ? poll.id : null);
                           if (!open) setHoveredPollId(null);
@@ -1143,6 +1164,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     {isOwnPoll && (
                       <>
                         <ContextMenuSeparator />
+                        {!isPollExpired && (
+                          <ContextMenuItem onClick={() => handleEndPoll(poll)}>
+                            <StopCircle className="w-4 h-4 mr-2" />
+                            Terminer le sondage
+                          </ContextMenuItem>
+                        )}
                         <ContextMenuItem onClick={() => setEditingPoll(poll)}>
                           <Pencil className="w-4 h-4 mr-2" />
                           Modifier le sondage

@@ -306,6 +306,7 @@ export function usePreloader(
                 attachments: Array.isArray(msg.attachments) ? msg.attachments : []
               }));
               queryClient.setQueryData(['messages', chId], messages);
+              try { sessionStorage.setItem(`cache:messages:${chId}`, JSON.stringify(messages)); } catch {}
             }
           }));
         } catch {}
@@ -334,6 +335,7 @@ export function usePreloader(
                   attachments: Array.isArray(msg.attachments) ? msg.attachments : []
                 }));
                 queryClient.setQueryData(['dm-messages', conv.id], messages);
+                try { sessionStorage.setItem(`cache:dm-messages:${conv.id}`, JSON.stringify(messages)); } catch {}
               }
             }));
           }
@@ -370,6 +372,7 @@ export function usePreloader(
                 .order('created_at', { ascending: true });
               if (data) {
                 queryClient.setQueryData(['thread-messages', tid], data);
+                try { sessionStorage.setItem(`cache:thread-messages:${tid}`, JSON.stringify(data)); } catch {}
               }
             }));
           }

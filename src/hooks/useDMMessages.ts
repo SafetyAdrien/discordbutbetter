@@ -76,7 +76,22 @@ export function useDMMessages(conversationId: string | null) {
       })) as DMMessage[];
     },
     enabled: !!conversationId && !!user,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:dm-messages:${conversationId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && conversationId && !query.isPlaceholderData) {
+      try {
+        sessionStorage.setItem(`cache:dm-messages:${conversationId}`, JSON.stringify(query.data));
+      } catch { /* quota exceeded */ }
+    }
+  }, [query.data, conversationId, query.isPlaceholderData]);
 
   // Real-time subscription
   useEffect(() => {

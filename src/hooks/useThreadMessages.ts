@@ -43,7 +43,7 @@ export const useThreadMessages = (threadId: string | undefined) => {
     };
   }, [threadId, user?.id, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['thread-messages', threadId],
     queryFn: async () => {
       if (!threadId) return [];
@@ -61,7 +61,24 @@ export const useThreadMessages = (threadId: string | undefined) => {
       return data as ThreadMessage[];
     },
     enabled: !!threadId,
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:thread-messages:${threadId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && threadId && !query.isPlaceholderData) {
+      try {
+        sessionStorage.setItem(`cache:thread-messages:${threadId}`, JSON.stringify(query.data));
+      } catch { /* quota exceeded */ }
+    }
+  }, [query.data, threadId, query.isPlaceholderData]);
+
+  return query;
 };
 
 export const useSendThreadMessage = () => {

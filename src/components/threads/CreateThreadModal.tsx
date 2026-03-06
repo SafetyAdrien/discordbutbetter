@@ -8,6 +8,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Lock } from 'lucide-react';
 import { useCreateThread } from '@/hooks/useThreads';
 
 interface CreateThreadModalProps {
@@ -26,6 +28,7 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
   onThreadCreated,
 }) => {
   const [name, setName] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const createThread = useCreateThread();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,8 +40,10 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
         channelId,
         name: name.trim(),
         messageId,
+        isPrivate,
       });
       setName('');
+      setIsPrivate(false);
       onOpenChange(false);
       onThreadCreated?.(thread.id);
     } catch (error) {
@@ -62,6 +67,19 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
               placeholder="Nouveau thread..."
               maxLength={100}
               autoFocus
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Thread privé</p>
+                <p className="text-xs text-muted-foreground">Seuls les membres invités pourront voir ce thread</p>
+              </div>
+            </div>
+            <Switch
+              checked={isPrivate}
+              onCheckedChange={setIsPrivate}
             />
           </div>
           <div className="flex justify-end gap-2">

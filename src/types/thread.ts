@@ -24,6 +24,7 @@ export interface Thread {
   archived: boolean;
   archived_at: string | null;
   last_message_at: string | null;
+  is_private?: boolean;
   creator?: {
     id: string;
     username: string;

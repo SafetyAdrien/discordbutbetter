@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,7 @@ import {
 import { useThread, useDeleteThread, useUpdateThread } from '@/hooks/useThreads';
 import { useThreadMessages, useSendThreadMessage, useEditThreadMessage, useDeleteThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
-import { useThreadPolls, useDeletePoll, Poll } from '@/hooks/usePolls';
+import { useThreadPolls, useDeletePoll, useEndPoll, Poll } from '@/hooks/usePolls';
 import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
 import { useChannels } from '@/hooks/useChannels';
 import { useServerRoles } from '@/hooks/useRoles';
@@ -99,6 +99,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const deleteMessage = useDeleteThreadMessage();
   const markAsRead = useMarkThreadAsRead();
   const deletePoll = useDeletePoll();
+  const endPollMutation = useEndPoll();
   
   // Fetch channels, roles and members for mention autocomplete
   const { data: channelsData } = useChannels(serverId || null);
@@ -217,6 +218,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
   const handleDeletePoll = (poll: Poll) => {
     deletePoll.mutate({ pollId: poll.id, channelId: channelId || thread?.channel_id || '', threadId });
+  };
+
+  const handleEndPoll = (poll: Poll) => {
+    endPollMutation.mutate({ pollId: poll.id, channelId: channelId || thread?.channel_id || '', threadId });
   };
 
   // Mark thread as read when opened

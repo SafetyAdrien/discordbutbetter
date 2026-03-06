@@ -21,7 +21,7 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, v
     return (
       <span
         onClick={onClick}
-        className="inline-flex items-center gap-0.5 px-0.5 cursor-pointer font-medium text-[#00AFF4] hover:underline transition-colors duration-100"
+        className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium bg-[rgba(63,67,105,0.3)] text-[#dee0fc] hover:bg-[rgba(63,67,105,0.6)] hover:text-white transition-colors duration-100"
       >
         @{displayName}
       </span>

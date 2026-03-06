@@ -87,7 +87,7 @@ import {
   OrphanChannel } from
 "@/hooks/useChannels";
 import { Thread } from "@/types/thread";
-import { useThreadUnreadCounts } from "@/hooks/useThreadUnreadCounts";
+
 import { useChannelUnreadCounts } from "@/hooks/useChannelUnreadCounts";
 import { useAllFollowedThreadsForServer } from "@/hooks/useFollowedThreads";
 import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissions";

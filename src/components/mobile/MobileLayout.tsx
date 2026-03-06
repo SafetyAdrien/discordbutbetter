@@ -274,7 +274,21 @@ export function MobileLayout({
 
   // Render chat content based on channel type
   const renderChannelContent = () => {
-    if (mobileView.type !== 'chat' || !channelForChat || !currentServer) return null;
+    if (mobileView.type !== 'chat') return null;
+    if (!channelForChat || !currentServer) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="h-12 px-2 flex items-center gap-2 border-b border-border">
+            <button onClick={handleBackToChannels} className="p-1.5 rounded-lg hover:bg-muted">
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        </div>
+      );
+    }
 
     const commonProps = {
       key: channelForChat.id,
@@ -559,7 +573,7 @@ export function MobileLayout({
 }
 
 // Helper components
-import { ChevronLeft as ChevronLeftIcon } from 'lucide-react';
+import { ChevronLeft as ChevronLeftIcon, Loader2 } from 'lucide-react';
 import { ReactNode } from 'react';
 
 function FullScreenWrapper({ name, onBack, children }: { name: string; onBack: () => void; children: ReactNode }) {

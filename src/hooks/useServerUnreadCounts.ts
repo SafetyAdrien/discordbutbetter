@@ -77,6 +77,12 @@ export function useServerUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['server-unread-counts', user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:server-unread:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<Record<string, ServerUnreadInfo>> => {
       if (!user) return {};
 
@@ -166,8 +172,15 @@ export function useServerUnreadCounts() {
       return result;
     },
     enabled: !!user,
-    refetchInterval: 60000, // Reduced from 30s to 60s — Realtime handles updates
+    refetchInterval: 60000,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:server-unread:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, user?.id, query.isPlaceholderData]);
 
   const markAsRead = useMutation({
     mutationFn: async (serverId: string) => {

@@ -54,6 +54,12 @@ export function useMembers(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['members', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:members:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<MemberWithProfile[]> => {
       if (!serverId) return [];
 
@@ -124,6 +130,13 @@ export function useMembers(serverId: string | null) {
     // Polling fallback if realtime fails
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:members:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
 
   const membersChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const rolesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);

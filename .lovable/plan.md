@@ -1,72 +1,61 @@
 
 
-# Persistance sessionStorage universelle — tout préchargé instantanément
+# Fix: Duplicated channel hidden by visibility filter
 
-## Constat
+## Root cause
 
-Le preloader charge déjà toutes les données dans le `queryClient`, mais les hooks individuels (`useMembers`, `useRoles`, `useDMs`, `useNotifications`, `useFriends`, etc.) ne lisent pas le `sessionStorage` au démarrage. Résultat : après un F5, chaque hook refait sa requête réseau et affiche un état de chargement le temps que la réponse arrive, même si le preloader va la remplir juste après.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Seuls 6 hooks ont déjà le pattern `placeholderData` + persistance : `useServers`, `useChannels`, `useMessages`, `useDMMessages`, `useThreadMessages`, `useUserChannelPermissions`.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Plan
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Appliquer le même pattern `placeholderData` + `useEffect` persistance à **tous les hooks critiques** qui sont préchargés :
+## Fix
 
-### Hooks à modifier (8 fichiers)
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-| Hook | Cache key | Fichier |
-|------|-----------|---------|
-| `useMembers` | `cache:members:{serverId}` | `src/hooks/useMembers.ts` |
-| `useServerRoles` | `cache:roles:{serverId}` | `src/hooks/useRoles.ts` |
-| `useDMConversations` | `cache:dm-conversations:{userId}` | `src/hooks/useDMs.ts` |
-| `useNotifications` | `cache:notifications:{userId}` | `src/hooks/useNotifications.ts` |
-| `useFriends` | `cache:friends:{userId}` | `src/hooks/useFriends.ts` |
-| `useUnreadCounts` | `cache:unread-counts:{userId}` | `src/hooks/useUnreadCounts.ts` |
-| `useChannelUnreadCounts` | `cache:channel-unread:{serverId}:{userId}` | `src/hooks/useChannelUnreadCounts.ts` |
-| `useServerUnreadCounts` | `cache:server-unread:{userId}` | `src/hooks/useServerUnreadCounts.ts` |
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### Pattern appliqué à chaque hook
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-```ts
-// 1. Dans useQuery config, ajouter :
-placeholderData: () => {
-  try {
-    const cached = sessionStorage.getItem(`cache:KEY`);
-    return cached ? JSON.parse(cached) : undefined;
-  } catch { return undefined; }
-},
+### 2. In `onSuccess`: invalidate the permissions cache
 
-// 2. Après useQuery, ajouter :
-useEffect(() => {
-  if (query.data && id && !query.isPlaceholderData) {
-    try {
-      sessionStorage.setItem(`cache:KEY`, JSON.stringify(query.data));
-    } catch {}
-  }
-}, [query.data, id, query.isPlaceholderData]);
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### Preloader — persistance des données manquantes
+### Code for onSuccess addition
 
-Le preloader écrit déjà dans sessionStorage pour channels, messages, et profile. Ajouter `writeCache()` pour les groupes qui ne le font pas encore :
-- Notifications (nouveau preload step)
-- Friends (nouveau preload step)  
-- Unread counts (nouveau preload step)
-- Server unread counts (nouveau preload step)
-- Channel unread counts (nouveau preload step)
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-Ces 5 nouveaux preloads s'exécuteront en parallèle avec les groupes existants.
-
-### Fichier `src/hooks/usePreloader.ts`
-
-Ajouter dans le bloc parallèle existant :
-- **Friends** : `supabase.from('friendships').select(...)` → seed `['friends', userId]` + `writeCache`
-- **Notifications** : `supabase.from('server_notifications').select(...)` → seed `['notifications']` + `writeCache`
-- **Unread counts** (DM + server + channel) : Requêtes correspondantes avec `writeCache`
-
-Pas de nouveaux states/steps UI nécessaires — ces données secondaires se chargent silencieusement en arrière-plan.
-
-## Impact
-
-Après F5, **aucun** hook ne déclenchera de loading spinner car tous auront des données instantanées depuis sessionStorage via `placeholderData`. Les données fraîches remplaceront silencieusement le cache en arrière-plan.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

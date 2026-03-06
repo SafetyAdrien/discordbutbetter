@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,6 +14,12 @@ export function useUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['unread-counts', user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:unread-counts:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<Record<string, number>> => {
       if (!user) return {};
 
@@ -65,8 +72,15 @@ export function useUnreadCounts() {
       return unreadCounts;
     },
     enabled: !!user,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:unread-counts:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, user?.id, query.isPlaceholderData]);
 
   const markAsRead = useMutation({
     mutationFn: async (conversationId: string) => {

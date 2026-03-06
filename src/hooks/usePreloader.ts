@@ -425,8 +425,71 @@ export function usePreloader(
       await Promise.all([serverMsgPromise, dmMsgPromise, threadMsgPromise]);
     });
 
+    // GROUP 7: Friends (background, no loading step)
+    const friendsPromise = (async () => {
+      const cached = readCache<any>(`cache:friends:${user.id}`);
+      if (cached) {
+        queryClient.setQueryData(['friends', user.id], cached);
+      } else {
+        try {
+          const { data } = await supabase
+            .from('friendships')
+            .select('id, status, created_at, user_id, friend_id')
+            .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+          if (data && data.length > 0) {
+            const friendIds = data.map(f => f.user_id === user.id ? f.friend_id : f.user_id);
+            const { data: profiles } = await supabase
+              .rpc('get_friendship_profiles', { friendship_user_ids: friendIds });
+            const friends = data.map(f => {
+              const friendId = f.user_id === user.id ? f.friend_id : f.user_id;
+              const profile = profiles?.find((p: any) => p.id === friendId);
+              return { ...f, profile, isIncoming: f.friend_id === user.id };
+            }).filter(f => f.profile);
+            queryClient.setQueryData(['friends', user.id], friends);
+            writeCache(`cache:friends:${user.id}`, friends);
+          }
+        } catch {}
+      }
+    })();
+
+    // GROUP 8: Notifications (background)
+    const notificationsPromise = (async () => {
+      const cached = readCache<any>(`cache:notifications:${user.id}`);
+      if (cached) {
+        queryClient.setQueryData(['notifications'], cached);
+      } else {
+        try {
+          const { data } = await supabase
+            .from('server_notifications')
+            .select(`
+              *,
+              server:servers!server_notifications_server_id_fkey (name, icon_url),
+              sender:profiles!server_notifications_sender_id_fkey (display_name, avatar_url)
+            `)
+            .eq('recipient_id', user.id)
+            .order('created_at', { ascending: false });
+          if (data) {
+            queryClient.setQueryData(['notifications'], data);
+            writeCache(`cache:notifications:${user.id}`, data);
+          }
+        } catch {}
+      }
+    })();
+
+    // GROUP 9: Unread counts (background)
+    const unreadCountsPromise = (async () => {
+      const cached = readCache<any>(`cache:unread-counts:${user.id}`);
+      if (cached) {
+        queryClient.setQueryData(['unread-counts', user.id], cached);
+      }
+      const serverCached = readCache<any>(`cache:server-unread:${user.id}`);
+      if (serverCached) {
+        queryClient.setQueryData(['server-unread-counts', user.id], serverCached);
+      }
+    })();
+
     // Run all groups in parallel, messages phase waits for channels+DMs
-    Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase])
+    Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase, friendsPromise, notificationsPromise, unreadCountsPromise])
       .then(() => {
         writeCache('cache:preloader-done', '1');
       });

@@ -27,6 +27,12 @@ export function useFriends() {
 
   const query = useQuery({
     queryKey: ['friends', user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:friends:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<FriendWithProfile[]> => {
       if (!user) return [];
 
@@ -67,6 +73,13 @@ export function useFriends() {
     },
     enabled: !!user,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:friends:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, user?.id, query.isPlaceholderData]);
 
   // Real-time subscription
   useEffect(() => {

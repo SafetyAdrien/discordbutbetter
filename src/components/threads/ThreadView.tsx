@@ -516,6 +516,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       (prevItem.data as Poll).author?.id !== poll.author?.id ||
                       (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
                     const isOwnPoll = user?.id === poll.author_id;
+                    const isPollExpired = poll.expires_at ? new Date(poll.expires_at) <= new Date() : false;
 
                     return (
                       <ContextMenu key={`poll-${poll.id}`}>
@@ -560,6 +561,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
+                                        {!isPollExpired && (
+                                          <DropdownMenuItem onClick={() => handleEndPoll(poll)}>
+                                            <StopCircle className="w-4 h-4 mr-2" />
+                                            Terminer
+                                          </DropdownMenuItem>
+                                        )}
                                         <DropdownMenuItem onClick={() => handleDeletePoll(poll)} className="text-destructive focus:text-destructive">
                                           <Trash2 className="w-4 h-4 mr-2" />
                                           Supprimer
@@ -626,6 +633,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           {isOwnPoll && (
                             <>
                               <ContextMenuSeparator />
+                              {!isPollExpired && (
+                                <ContextMenuItem onClick={() => handleEndPoll(poll)}>
+                                  <StopCircle className="w-4 h-4 mr-2" />
+                                  Terminer le sondage
+                                </ContextMenuItem>
+                              )}
                               <ContextMenuItem onClick={() => setEditingPoll(poll)}>
                                 <Pencil className="w-4 h-4 mr-2" />
                                 Modifier

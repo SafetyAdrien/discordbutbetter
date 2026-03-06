@@ -23,6 +23,11 @@ import { useSummaries } from '@/hooks/useSummaries';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { FollowChannelModal } from '@/components/channels/announcement/FollowChannelModal';
+import { FollowSuccessModal } from '@/components/channels/announcement/FollowSuccessModal';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
+import { useServers } from '@/hooks/useServers';
 import type { Message, User } from '@/types/app';
 import type { MemberWithProfile } from '@/hooks/useMembers';
 
@@ -80,6 +85,21 @@ export function MobileChatView({
   const ChannelIcon = channelIcons[channel.type] || StreamlineHash;
   const [showSearch, setShowSearch] = useState(false);
   const [showSummaries, setShowSummaries] = useState(false);
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [followSuccessOpen, setFollowSuccessOpen] = useState(false);
+
+  // Announcement follow permission
+  const isAnnouncement = channel.type === 'announcement';
+  const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
+  const isAdminOrOwner = isGod || hasServerPermission('administrator');
+  const { can: canPerm } = useMultipleChannelPermissions(channel.id, isAnnouncement ? ['follow_announcements'] : []);
+  const canFollowAnnouncements = isAnnouncement && (isAdminOrOwner || canPerm('follow_announcements'));
+
+  // Server info for follow modal
+  const { data: servers = [] } = useServers();
+  const currentServer = servers.find(s => s.id === serverId);
+  const serverName = currentServer?.name || '';
+  const serverIcon = currentServer?.icon_url || undefined;
 
   // Pinned messages
   const { data: pinnedMessages = [] } = usePinnedMessages(channel.id);

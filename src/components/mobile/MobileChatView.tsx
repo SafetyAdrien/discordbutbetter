@@ -131,8 +131,18 @@ export function MobileChatView({
 
         <ChannelIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <h2 className="font-semibold text-sm truncate">{channel.name}</h2>
+          {canFollowAnnouncements && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFollowModalOpen(true)}
+              className="text-xs font-medium flex-shrink-0 border border-border/60 bg-muted/40 h-6 px-2"
+            >
+              Suivre
+            </Button>
+          )}
         </div>
 
         {/* Action icons - compact */}
@@ -334,6 +344,28 @@ export function MobileChatView({
         onClose={() => setShowSearch(false)}
         serverId={serverId}
       />
+
+      {/* Follow Channel Modal (announcement only) */}
+      {isAnnouncement && (
+        <>
+          <FollowChannelModal
+            open={followModalOpen}
+            onClose={() => setFollowModalOpen(false)}
+            sourceChannelId={channel.id}
+            sourceChannelName={channel.name}
+            sourceServerName={serverName}
+            sourceServerIcon={serverIcon}
+            onSuccess={() => {
+              setFollowModalOpen(false);
+              setFollowSuccessOpen(true);
+            }}
+          />
+          <FollowSuccessModal
+            open={followSuccessOpen}
+            onClose={() => setFollowSuccessOpen(false)}
+          />
+        </>
+      )}
     </div>
   );
 }

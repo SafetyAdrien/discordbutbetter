@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN is_link_trusted boolean NOT NULL DEFAULT false;

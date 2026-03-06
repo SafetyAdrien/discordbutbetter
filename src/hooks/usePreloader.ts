@@ -489,7 +489,7 @@ export function usePreloader(
       // 8. DM messages
       const dmMsgPromise = (async () => {
         try {
-          const conversations = queryClient.getQueryData(['dm-conversations']) as any[] | undefined;
+          const conversations = queryClient.getQueryData(['dm-conversations', user.id]) as any[] | undefined;
           if (conversations && conversations.length > 0) {
             await Promise.all(conversations.map(async (conv: any) => {
               const cached = readCache<any>(`cache:dm-messages:${conv.id}`);
@@ -684,7 +684,7 @@ export function usePreloader(
         }
 
         // From DM messages
-        const convos = queryClient.getQueryData(['dm-conversations']) as any[];
+        const convos = queryClient.getQueryData(['dm-conversations', user.id]) as any[];
         convos?.forEach(conv => {
           const msgs = queryClient.getQueryData(['dm-messages', conv.id]) as any[];
           msgs?.forEach(msg => {

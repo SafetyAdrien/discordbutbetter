@@ -117,7 +117,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
   // Desktop
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon className="w-5 h-5 text-muted-foreground" />

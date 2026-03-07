@@ -1403,10 +1403,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       canManageMessages={canManageMessages}
                     />
                     {showAuthor ? (
-                      <div className="relative">
-                        {threadsByMessageId.has(message.id) && (
-                          <ThreadSpine startY={44} />
-                        )}
+                       <div>
                         <div className="flex gap-3 items-start">
                           <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                             <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
@@ -1533,20 +1530,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         </div>
 
                         {/* Thread System Message */}
-                        {threadsByMessageId.has(message.id) && (
-                          <div className="pt-1.5 pl-[42px]">
-                            <ThreadSystemMessage
-                              thread={threadsByMessageId.get(message.id)!}
-                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                            />
+                         {threadsByMessageId.has(message.id) && (
+                          <div className="flex mt-1.5">
+                            <div className="flex-shrink-0 w-8 relative mr-1.5">
+                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ThreadSystemMessage
+                                thread={threadsByMessageId.get(message.id)!}
+                                onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="relative">
-                        {threadsByMessageId.has(message.id) && (
-                          <ThreadSpine startY={0} />
-                        )}
+                      <div>
                         <div className="flex gap-3 items-start">
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1647,11 +1646,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                         {/* Thread System Message for grouped messages */}
                         {threadsByMessageId.has(message.id) && (
-                          <div className="pt-1.5 pl-[42px]">
-                            <ThreadSystemMessage
-                              thread={threadsByMessageId.get(message.id)!}
-                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                            />
+                          <div className="flex mt-1.5">
+                            <div className="flex-shrink-0 w-8 relative mr-1.5">
+                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ThreadSystemMessage
+                                thread={threadsByMessageId.get(message.id)!}
+                                onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>

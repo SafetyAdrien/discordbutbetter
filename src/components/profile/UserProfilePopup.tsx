@@ -547,7 +547,7 @@ export function UserProfilePopup({
     
     return (
       <div 
-        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
+        className="absolute right-full mr-2 w-64 glass-elevated border border-border/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in-left"
         style={{ top: topOffset }}
         onClick={(e) => e.stopPropagation()}
       >

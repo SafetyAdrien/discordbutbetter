@@ -1,45 +1,61 @@
 
 
-# Context menu pour gérer les Threads depuis les messages système
+# Fix: Duplicated channel hidden by visibility filter
 
-## Résumé
+## Root cause
 
-Ajouter deux context menus distincts sur les messages système de type `[SYSTEM:THREAD_CREATED]` :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-1. **Clic-droit sur le `ThreadSystemMessage` (embed)** → "Modifier le nom" (modal Dialog) + "Supprimer le Thread"  
-2. **Clic-droit sur le conteneur global du message système** (la ligne texte + spine) → "Supprimer le message" (supprime uniquement le message système, pas le thread)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Fichiers modifiés
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 1. `src/components/threads/ThreadSystemMessage.tsx`
+## Fix
 
-- Wrapper le `<button>` dans un `<ContextMenu>` avec deux options (conditionnées par `canManage`)
-  - `Pencil` — "Modifier le nom" → ouvre un `Dialog` local avec un `Input` pré-rempli du nom actuel, boutons Annuler/Enregistrer
-  - `Trash2` — "Supprimer le Thread" → ouvre un `AlertDialog` de confirmation, appelle `onDelete`
-- Nouveaux props : `onRename?: (newName: string) => void`, `onDelete?: () => void`, `canManage?: boolean`
-- États locaux : `renameOpen`, `deleteOpen`, `newName`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 2. `src/components/chat/ChatArea.tsx`
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-- Importer `useDeleteThread`, `useUpdateThread` depuis `useThreads.ts`
-- Importer `useDeleteMessage` (déjà importé)
-- Sur le bloc du message système thread (lignes ~1280-1331) :
-  - Wrapper le conteneur global dans un `<ContextMenu>` avec une seule option : "Supprimer le message" (`Trash2`, destructive) → appelle `deleteMessage.mutate` sur le `message.id`
-  - Passer à `<ThreadSystemMessage>` les nouveaux props :
-    - `onRename` → `updateThread.mutate({ threadId, name })`
-    - `onDelete` → `deleteThread.mutate({ threadId, channelId })` (+ supprime aussi le message système associé)
-    - `canManage` → `thread?.created_by === user?.id || canManageChannels`
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 3. `src/components/channels/AnnouncementChannel.tsx`
+### 2. In `onSuccess`: invalidate the permissions cache
 
-- Même traitement : passer `onRename`, `onDelete`, `canManage` aux instances de `ThreadSystemMessage`
-- Wrapper les messages système thread dans un `ContextMenu` pour "Supprimer le message"
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-## Détail technique
+### 3. Hook needs `useAuth` for the user ID
 
-- Les hooks `useDeleteThread` et `useUpdateThread` existent déjà dans `useThreads.ts` avec gestion optimiste
-- Le `ContextMenu` sur le `ThreadSystemMessage` (embed) ne propagera pas au `ContextMenu` parent (conteneur) grâce à `stopPropagation` sur le trigger
-- La modal de renommage suit le pattern existant : `Dialog` + `Input` + `DialogFooter`
-- La suppression du message système utilise le même `deleteMessage` déjà disponible dans ChatArea
-- L'`AlertDialog` de suppression de thread utilise `requestAnimationFrame` pour l'ouverture (pattern existant pour éviter les conflits Radix)
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -1404,15 +1404,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     />
                     {showAuthor ? (
                       <div className="relative">
-                        {/* Thread Spine - positioned from avatar center */}
-                        {threadsByMessageId.has(message.id) && (
-                          <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
-                            {/* Vertical line descending from avatar */}
-                            <div className="absolute left-0 top-0 border-l-2 border-muted-foreground/30 h-[calc(100%-14px)]" />
-                            {/* L-shaped curve */}
-                            <div className="absolute left-0 bottom-[6px] w-[33px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                          </div>
-                        )}
 
                         <div className="flex gap-3 items-start">
                           <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
@@ -1539,27 +1530,23 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         </div>
 
-                        {/* Thread System Message - indented to align with spine curve */}
+                        {/* Thread System Message */}
                         {threadsByMessageId.has(message.id) && (
-                          <div className="mt-1 ml-[52px]">
-                            <ThreadSystemMessage
-                              thread={threadsByMessageId.get(message.id)!}
-                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                            />
+                          <div className="flex mt-1.5">
+                            <div className="flex-shrink-0 w-8 relative mr-1.5">
+                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ThreadSystemMessage
+                                thread={threadsByMessageId.get(message.id)!}
+                                onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
                     ) : (
                       <div className="relative">
-                        {/* Thread Spine for grouped messages */}
-                        {threadsByMessageId.has(message.id) && (
-                          <div className="absolute left-[19px] top-0 bottom-0 pointer-events-none">
-                            {/* Vertical line */}
-                            <div className="absolute left-0 top-0 border-l-2 border-muted-foreground/30 h-[calc(100%-14px)]" />
-                            {/* L-shaped curve */}
-                            <div className="absolute left-0 bottom-[6px] w-[33px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                          </div>
-                        )}
 
                         <div className="flex gap-3 items-start">
                           <Tooltip>
@@ -1661,11 +1648,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                         {/* Thread System Message for grouped messages */}
                         {threadsByMessageId.has(message.id) && (
-                          <div className="mt-1 ml-[52px]">
-                            <ThreadSystemMessage
-                              thread={threadsByMessageId.get(message.id)!}
-                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                            />
+                          <div className="flex mt-1.5">
+                            <div className="flex-shrink-0 w-8 relative mr-1.5">
+                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ThreadSystemMessage
+                                thread={threadsByMessageId.get(message.id)!}
+                                onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>

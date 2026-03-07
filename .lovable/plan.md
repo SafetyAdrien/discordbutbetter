@@ -1,33 +1,61 @@
 
 
-# Fix Thread Spine — Match New Thread Layout
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problem
-The existing thread spine uses absolute positioning (`left-[19px]`) with `w-[33px]` L-curve and a separate `ml-[52px]` embed. The horizontal line overshoots into the thread container. The newly created threads (system message at line 1312) use a clean flex-based layout that works correctly.
+## Root cause
 
-## Solution
-Replace the absolute-positioned spine + `ml-[52px]` embed with the same flex-based approach used by new threads (line 1312-1315):
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-```tsx
-<div className="flex mt-1.5">
-  <div className="flex-shrink-0 w-8 relative mr-1.5">
-    <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-  </div>
-  <div className="flex-1 min-w-0">
-    <ThreadSystemMessage ... />
-  </div>
-</div>
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-## Changes in `src/components/chat/ChatArea.tsx`
+### Code for onSuccess addition
 
-### 1. First message with author (lines 1408-1414 + 1542-1550)
-- **Remove** the absolute spine overlay (lines 1408-1414)
-- **Replace** the `ml-[52px]` thread embed (lines 1542-1550) with the flex-based spine+embed layout identical to line 1312
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
 
-### 2. Grouped message (lines 1555-1561 + 1662-1670)
-- **Remove** the absolute spine overlay (lines 1555-1561)
-- **Replace** the `ml-[52px]` thread embed (lines 1662-1670) with the same flex-based spine+embed layout
-
-This ensures all thread spines — new and existing — render identically.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -177,6 +177,7 @@ const Index = () => {
         position: ch.position ?? 0,
         category_id: null,
         server_id: activeServerId,
+        is_link_trusted: false,
       })),
     };
   }, [activeServerId, servers]);

@@ -733,9 +733,13 @@ export function useDuplicateChannel() {
     mutationFn: async ({
       channelId,
       serverId,
+      customName,
+      copyPermissions = true,
     }: {
       channelId: string;
       serverId: string;
+      customName?: string;
+      copyPermissions?: boolean;
     }) => {
       // Fetch the original channel
       const { data: original, error: fetchError } = await supabase

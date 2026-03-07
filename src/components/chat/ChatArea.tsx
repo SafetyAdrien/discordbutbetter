@@ -1812,7 +1812,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 bg-[hsl(var(--surface-2)/0.5)] w-full border-t border-border/20 pt-1">
+      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
         <MessageInput

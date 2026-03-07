@@ -30,7 +30,7 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
       animate={{ y: 0 }}
       exit={{ y: 80 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/50 shadow-lg pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-50 glass-elevated pb-safe"
     >
       <div className="flex items-center justify-around h-14">
         {tabs.map(({ id, label, icon: Icon }) => {
@@ -56,9 +56,9 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
               </div>
               <span className="text-[10px] font-medium">{label}</span>
               {isActive && (
-                <motion.div
+              <motion.div
                   layoutId="mobile-tab-indicator"
-                  className="absolute -bottom-1 w-5 h-0.5 rounded-full bg-primary"
+                  className="absolute -bottom-0.5 w-6 h-[3px] rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)]"
                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                 />
               )}

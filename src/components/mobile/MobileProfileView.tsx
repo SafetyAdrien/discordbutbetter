@@ -42,7 +42,7 @@ export function MobileProfileView() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-12 px-4 flex items-center border-b border-border">
+      <div className="h-12 px-4 flex items-center border-b border-border/30 bg-card">
         <h2 className="font-semibold text-sm">Profil</h2>
       </div>
 

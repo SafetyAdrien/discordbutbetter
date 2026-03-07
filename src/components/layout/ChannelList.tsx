@@ -151,6 +151,7 @@ interface Channel {
   type: ChannelType;
   description?: string;
   unreadCount?: number;
+  is_link_trusted?: boolean;
 }
 interface Category {
   id: string;
@@ -852,10 +853,15 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
-    // Link channels open external link warning modal
+    // Link channels: trusted links open directly, others show warning modal
     if (channel.type === "link") {
       const url = channel.description || '';
-      if (url) setExternalLinkModal({ url });
+      if (!url) return;
+      if (channel.is_link_trusted) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        setExternalLinkModal({ url });
+      }
       return;
     }
 

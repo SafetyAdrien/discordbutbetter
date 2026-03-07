@@ -3,10 +3,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2, Clock, Trash2 } from 'lucide-react';
+import { useDeleteChannel } from '@/hooks/useChannels';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -41,6 +41,10 @@ function secondsToIndex(seconds: number): number {
 
 interface ChannelOverviewProps {
   channel: ChannelDetails;
+  channelId?: string;
+  channelName?: string;
+  serverId?: string;
+  onDeleted?: () => void;
 }
 
 const channelTypeLabels = {
@@ -53,7 +57,7 @@ const channelTypeLabels = {
   tasks: { label: 'Tâches', icon: StreamlineTasks },
 };
 
-export function ChannelOverview({ channel }: ChannelOverviewProps) {
+export function ChannelOverview({ channel, channelId, channelName, serverId, onDeleted }: ChannelOverviewProps) {
   const [name, setName] = useState(channel.name);
   const [description, setDescription] = useState(channel.description || '');
   const [channelType, setChannelType] = useState<'text' | 'announcement'>(
@@ -208,7 +212,21 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
       )}
 
 
-      <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-end">
+      <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-between items-center">
+        {channelId && channelName && serverId && onDeleted ? (
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (confirm(`Tu es sûr(e) de vouloir supprimer #${channelName} ? Cette action est irréversible.`)) {
+                const deleteChannel = document.dispatchEvent(new CustomEvent('channel-delete', { detail: { channelId, serverId } }));
+              }
+            }}
+            className="hidden"
+          />
+        ) : null}
+        {channelId && serverId && onDeleted ? (
+          <DeleteChannelButton channelId={channelId} channelName={channelName || ''} serverId={serverId} onDeleted={onDeleted} />
+        ) : <div />}
         <Button onClick={handleSave} disabled={updateChannel.isPending || !hasChanges}>
           {updateChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Enregistrer

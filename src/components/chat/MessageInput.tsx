@@ -484,7 +484,7 @@ export function MessageInput({
         onUpdate={(id, updates) => onUpdateAttachment?.(id, updates)}
       />
 
-      <form onSubmit={handleSubmit} className="relative w-full min-w-0 shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
+      <form onSubmit={handleSubmit} className="relative w-full min-w-0">
         {/* Mention Autocomplete */}
         {mentionState && (
           <MentionAutocomplete
@@ -501,12 +501,12 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-stretch gap-2 ${isMobile ? 'rounded-2xl' : 'rounded-lg'} transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
+        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--surface-2))]`} style={{ boxShadow: 'var(--shadow-elevation-1)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`self-center text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
+                className={`self-center text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
               >
                 <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
               </button>
@@ -576,7 +576,7 @@ export function MessageInput({
             />
           </div>
           
-          <div className={`self-center flex items-center gap-1 ${compact ? 'pr-1' : 'pr-2'}`}>
+          <div className={`self-center flex items-center gap-0.5 ${compact ? 'pr-1' : 'pr-1.5'}`}>
             {!isMobile && (
               <EmojiStickerPicker
                 serverId={serverId}
@@ -585,7 +585,7 @@ export function MessageInput({
                 trigger={
                   <button
                     type="button"
-                    className={`text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-10 w-10 p-0 min-h-0'}`}
+                    className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
                   >
                     <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
@@ -599,7 +599,7 @@ export function MessageInput({
               trigger={
                 <button
                   type="button"
-                  className={`text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-10 w-10 p-0 min-h-0'}`}
+                  className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
                 >
                   <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
                 </button>
@@ -609,9 +609,9 @@ export function MessageInput({
               <button 
                 type="submit" 
                 disabled={disabled || (!value.trim() && attachments.length === 0)}
-                className={`ml-1 p-1.5 rounded transition-colors hover:bg-muted send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : ''}`}
+                className={`ml-0.5 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]'}`}
               >
-                <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} style={{ color: '#5865f2' }} />
+                <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
               </button>
             )}
           </div>

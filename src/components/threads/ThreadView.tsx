@@ -166,7 +166,16 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const canMentionEveryone = canPerm('mention_everyone');
   const canManageThreads = canPerm('manage_threads');
   
-  const permissionDeniedMessage = !canSendMessages 
+  // Thread locked/closed state
+  const isThreadLocked = thread?.locked && !canManageThreads;
+  const isThreadClosed = thread?.closed && !canManageThreads;
+  const isReadOnly = isThreadLocked || isThreadClosed;
+  
+  const permissionDeniedMessage = isThreadClosed
+    ? "Ce fil est fermé. L'écriture n'est plus possible."
+    : isThreadLocked
+    ? "Ce fil est verrouillé. Seuls les modérateurs peuvent envoyer des messages."
+    : !canSendMessages 
     ? "Vous n'avez pas la permission d'envoyer des messages dans ce fil." 
     : undefined;
 

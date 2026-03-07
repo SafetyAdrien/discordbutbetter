@@ -98,7 +98,7 @@ import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissio
 import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
-import { Search, Lock, XCircle, Eye } from "lucide-react";
+import { Search } from "lucide-react";
 // DnD Kit imports
 import {
   DndContext,

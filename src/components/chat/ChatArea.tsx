@@ -1289,7 +1289,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     {DateSeparator}
                     <ContextMenu>
                       <ContextMenuTrigger asChild>
-                        <div className="py-1 px-3 -mx-2 my-0.5">
+                        <div className="py-1 px-4 my-0.5">
                           {/* System text line */}
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1370,7 +1370,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
                     }}
-                    className={cn("group message-hover rounded-xl px-3 -mx-2 mb-1 relative", showAuthor ? "pt-2" : "py-0.5")}
+                    className={cn("group message-hover rounded-xl px-4 mb-1 relative", showAuthor ? "pt-2" : "py-0.5")}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {
                       if (openDropdownMessageId !== message.id) setHoveredMessageId(null);

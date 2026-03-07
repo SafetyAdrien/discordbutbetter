@@ -705,7 +705,7 @@ export function ChannelList({
   const reorderChannels = useReorderChannels();
   const deleteChannel = useDeleteChannel();
   const deleteCategory = useDeleteCategory();
-  const duplicateChannel = useDuplicateChannel();
+  const _duplicateChannel = useDuplicateChannel();
   const leaveServer = useLeaveServer();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const { data: serverEmojis = [] } = useServerEmojis(server.id);
@@ -1654,6 +1654,16 @@ threads={threadsByChannel[channel.id] || []}
         onClose={() => setExternalLinkModal(null)} />
 
       }
+
+      {duplicatingChannel && (
+        <DuplicateChannelModal
+          channelId={duplicatingChannel.id}
+          channelName={duplicatingChannel.name}
+          serverId={server.id}
+          open={!!duplicatingChannel}
+          onClose={() => setDuplicatingChannel(null)}
+        />
+      )}
 
       {inviteChannelId &&
       <CreateInviteModal

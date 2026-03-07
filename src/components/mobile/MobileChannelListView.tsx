@@ -436,7 +436,7 @@ export function MobileChannelListView({
               <UserPlus className="w-4 h-4 text-white" />
             </button>
             {onOpenSettings && (
-              <button <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
+              <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
                 <Settings className="w-4 h-4 text-white/80" />
               </button>
             )}
@@ -460,7 +460,7 @@ export function MobileChannelListView({
             <UserPlus className="w-4 h-4" />
           </button>
           {onOpenSettings && (
-            <button onClick={() => onOpenSettings('')} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Settings className="w-4 h-4" />
             </button>
           )}
@@ -478,7 +478,7 @@ export function MobileChannelListView({
             <UserPlus className="w-4 h-4" />
           </button>
           {onOpenSettings && (
-            <button onClick={() => onOpenSettings('')} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Settings className="w-4 h-4" />
             </button>
           )}

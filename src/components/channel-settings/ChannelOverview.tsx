@@ -3,9 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Clock } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
@@ -60,14 +60,12 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     channel.type === 'announcement' ? 'announcement' : 'text'
   );
   const [slowmodeIndex, setSlowmodeIndex] = useState(secondsToIndex(channel.slowmode_seconds ?? 0));
-  const [isLinkTrusted, setIsLinkTrusted] = useState((channel as any).is_link_trusted ?? false);
   const updateChannel = useUpdateChannel();
   const { data: serverSettings } = useServerSettings(channel.server_id);
 
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
   const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
-  const isLinkChannel = channel.type === 'link';
 
   // Re-sync local state when channel prop changes
   useEffect(() => {
@@ -75,8 +73,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     setDescription(channel.description || '');
     setChannelType(channel.type === 'announcement' ? 'announcement' : 'text');
     setSlowmodeIndex(secondsToIndex(channel.slowmode_seconds ?? 0));
-    setIsLinkTrusted((channel as any).is_link_trusted ?? false);
-  }, [channel.id, channel.name, channel.description, channel.type, channel.slowmode_seconds, (channel as any).is_link_trusted]);
+  }, [channel.id, channel.name, channel.description, channel.type, channel.slowmode_seconds]);
 
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
@@ -91,8 +88,7 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
     effectiveName !== channel.name || 
     description !== (channel.description || '') ||
     (canToggleType && channelType !== channel.type) ||
-    (supportsSlowmode && currentSlowmodeSeconds !== (channel.slowmode_seconds ?? 0)) ||
-    (isLinkChannel && isLinkTrusted !== ((channel as any).is_link_trusted ?? false));
+    (supportsSlowmode && currentSlowmodeSeconds !== (channel.slowmode_seconds ?? 0));
 
   const handleTypeToggle = (isAnnouncement: boolean) => {
     setChannelType(isAnnouncement ? 'announcement' : 'text');
@@ -119,18 +115,10 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         description: description.trim() || null,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
         slowmode_seconds: supportsSlowmode ? currentSlowmodeSeconds : undefined,
-        ...(isLinkChannel ? { is_link_trusted: isLinkTrusted } : {}),
       });
     } catch (error) {
       console.error('Save error:', error);
       toast.error('Erreur lors de la mise à jour');
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && hasChanges) {
-      e.preventDefault();
-      handleSave();
     }
   };
 
@@ -146,7 +134,6 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
             id="channel-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder={shouldFormatStrict ? "nom-du-salon" : "Nom du salon"}
             maxLength={100}
             className="flex-1"
@@ -158,50 +145,17 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="channel-description">
-          {isLinkChannel ? 'URL de destination' : 'Description'}
-        </Label>
-        {isLinkChannel ? (
-          <Input
-            id="channel-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="https://example.com"
-            maxLength={1024}
-          />
-        ) : (
-          <Textarea
-            id="channel-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Décrivez le but de ce salon..."
-            rows={3}
-            maxLength={1024}
-          />
-        )}
+        <Label htmlFor="channel-description">Description</Label>
+        <Textarea
+          id="channel-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Décrivez le but de ce salon..."
+          rows={3}
+          maxLength={1024}
+        />
         <p className="text-xs text-muted-foreground">{description.length}/1024</p>
       </div>
-
-      {/* Trusted URL checkbox for link channels */}
-      {isLinkChannel && (
-        <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-          <Checkbox
-            id="link-trusted"
-            checked={isLinkTrusted}
-            onCheckedChange={(checked) => setIsLinkTrusted(checked === true)}
-          />
-          <div className="space-y-1">
-            <Label htmlFor="link-trusted" className="text-sm font-medium cursor-pointer">
-              Lien de confiance
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Les membres peuvent ouvrir ce lien sans avertissement de sécurité.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Slowmode slider for text/voice/forum */}
       {supportsSlowmode && (
@@ -249,6 +203,20 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
               checked={channelType === 'announcement'}
               onCheckedChange={handleTypeToggle}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Show type badge for non-toggleable channels */}
+      {!canToggleType && (
+        <div className="space-y-2">
+          <Label>Type de salon</Label>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <TypeIcon className="w-3 h-3" />
+              {typeInfo.label}
+            </Badge>
+            <span className="text-xs text-muted-foreground">(non modifiable)</span>
           </div>
         </div>
       )}

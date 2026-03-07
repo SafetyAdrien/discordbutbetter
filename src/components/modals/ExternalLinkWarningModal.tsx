@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,20 +7,9 @@ import { copyToClipboard } from '@/lib/clipboard';
 interface ExternalLinkWarningModalProps {
   url: string;
   onClose: () => void;
-  trusted?: boolean;
 }
 
-export function ExternalLinkWarningModal({ url, onClose, trusted }: ExternalLinkWarningModalProps) {
-  // If trusted, open directly without showing modal
-  useEffect(() => {
-    if (trusted) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-      onClose();
-    }
-  }, [trusted, url, onClose]);
-
-  if (trusted) return null;
-
+export function ExternalLinkWarningModal({ url, onClose }: ExternalLinkWarningModalProps) {
   return (
     <ResponsiveModal open={true} onOpenChange={(open) => !open && onClose()} title="Lien externe">
       <div className="space-y-4">

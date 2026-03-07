@@ -484,7 +484,7 @@ export function MessageInput({
         onUpdate={(id, updates) => onUpdateAttachment?.(id, updates)}
       />
 
-      <form onSubmit={handleSubmit} className="relative w-full min-w-0 shadow-[0_-8px_15px_-10px_hsl(var(--background)/0.5)]">
+      <form onSubmit={handleSubmit} className="relative w-full min-w-0">
         {/* Mention Autocomplete */}
         {mentionState && (
           <MentionAutocomplete
@@ -501,12 +501,12 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-stretch gap-2 ${isMobile ? 'rounded-2xl' : 'rounded-lg'} transition-colors w-full min-w-0 bg-[hsl(var(--input))]`}>
+        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--surface-2))]`} style={{ boxShadow: 'var(--shadow-elevation-1)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`self-center text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
+                className={`self-center text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
               >
                 <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
               </button>

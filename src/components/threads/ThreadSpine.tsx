@@ -27,7 +27,7 @@ export function ThreadSpine({ startY = 44 }: ThreadSpineProps) {
       // Find the thread embed — last element child that is not the SVG itself
       const children = Array.from(parent.children);
       const embed = children[children.length - 1] as HTMLElement;
-      if (!embed || embed === svg) return;
+      if (!embed || embed === (svg as unknown as HTMLElement)) return;
 
       const embedRect = embed.getBoundingClientRect();
       const turnY = embedRect.top - parentRect.top + embedRect.height / 2;

@@ -585,7 +585,7 @@ const Index = () => {
           {/* Main Content Area - flex container for 60/40 split when thread is open */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
             {channelForChat && (
-              <div className={`${activeThreadId && channelForChat.type === 'text' ? 'flex-[6] min-w-0' : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}>
+              <div className={`${activeThreadId && channelForChat.type === 'text' ? (threadFullscreen ? 'hidden' : 'flex-[6] min-w-0') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}>
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
                     key={channelForChat.id}
@@ -676,7 +676,7 @@ const Index = () => {
 
             {/* Thread View - 60/40 split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
-              <div className="flex-[4] min-w-0">
+              <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0`}>
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}
@@ -685,7 +685,10 @@ const Index = () => {
                   onBack={() => {
                     setActiveThreadId(null);
                     setThreadChannelId(null);
+                    setThreadFullscreen(false);
                   }}
+                  isFullscreen={threadFullscreen}
+                  onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
                 />
               </div>
             )}

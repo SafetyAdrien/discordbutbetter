@@ -1,27 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, Mail, Lock, Trash2, ShieldCheck, Loader2, LogOut } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Mail, Lock, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { checkPasswordPwned } from "@/lib/password-security";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { TwoFactorSettings } from "./TwoFactorSettings";
+import { z } from "zod";
+
+const changePasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(8, 'Mot de passe trop court (min 8 caractères)')
+    .regex(/[A-Z]/, 'Doit contenir au moins une majuscule')
+    .regex(/[a-z]/, 'Doit contenir au moins une minuscule')
+    .regex(/[0-9]/, 'Doit contenir au moins un chiffre'),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: 'Les mots de passe ne correspondent pas',
+  path: ['confirmPassword'],
+});
 
 export function AccountSettings() {
-  const { profile, user, signOut, updateProfile } = useAuth();
+  const { profile, user, updateProfile } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isChangingUsername, setIsChangingUsername] = useState(false);
@@ -33,7 +40,47 @@ export function AccountSettings() {
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+
+  // HIBP real-time check for password change
+  const [checkingPasswordRealtime, setCheckingPasswordRealtime] = useState(false);
+  const [passwordPwnedCount, setPasswordPwnedCount] = useState<number | null>(null);
+  const pwnedCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced HIBP check
+  useEffect(() => {
+    if (pwnedCheckTimeoutRef.current) {
+      clearTimeout(pwnedCheckTimeoutRef.current);
+    }
+
+    if (!passwordData.newPassword || passwordData.newPassword.length < 8) {
+      setPasswordPwnedCount(null);
+      setCheckingPasswordRealtime(false);
+      return;
+    }
+
+    const checkingTimeout = setTimeout(() => {
+      setCheckingPasswordRealtime(true);
+    }, 100);
+
+    pwnedCheckTimeoutRef.current = setTimeout(async () => {
+      try {
+        const count = await checkPasswordPwned(passwordData.newPassword);
+        setPasswordPwnedCount(count);
+      } catch {
+        setPasswordPwnedCount(null);
+      } finally {
+        setCheckingPasswordRealtime(false);
+      }
+    }, 800);
+
+    return () => {
+      clearTimeout(checkingTimeout);
+      if (pwnedCheckTimeoutRef.current) {
+        clearTimeout(pwnedCheckTimeoutRef.current);
+      }
+    };
+  }, [passwordData.newPassword]);
 
   const handleChangeUsername = async () => {
     const trimmed = newUsername.trim().toLowerCase();
@@ -64,13 +111,29 @@ export function AccountSettings() {
   };
 
   const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
+    setPasswordErrors({});
+
+    const result = changePasswordSchema.safeParse({
+      newPassword: passwordData.newPassword,
+      confirmPassword: passwordData.confirmPassword,
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0].toString()] = err.message;
+        }
+      });
+      setPasswordErrors(fieldErrors);
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Le mot de passe doit contenir au moins 6 caractères");
+    // Block if password is compromised
+    if (passwordPwnedCount && passwordPwnedCount > 0) {
+      setPasswordErrors({
+        newPassword: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.`,
+      });
       return;
     }
 
@@ -85,6 +148,8 @@ export function AccountSettings() {
       toast.success("Mot de passe mis à jour avec succès");
       setIsChangingPassword(false);
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordPwnedCount(null);
+      setPasswordErrors({});
     } catch (error: any) {
       toast.error(error.message || "Erreur lors du changement de mot de passe");
     } finally {
@@ -135,13 +200,11 @@ export function AccountSettings() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    toast.success("Déconnexion réussie");
-  };
-
-  const handleDeleteAccount = async () => {
-    toast.info("La suppression de compte sera bientôt disponible");
+  const handleCancelPasswordChange = () => {
+    setIsChangingPassword(false);
+    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setPasswordPwnedCount(null);
+    setPasswordErrors({});
   };
 
   return (
@@ -275,35 +338,44 @@ export function AccountSettings() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                <Input
+                <PasswordInput
                   id="newPassword"
-                  type="password"
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
                   placeholder="••••••••"
                 />
+                <PasswordStrengthIndicator
+                  password={passwordData.newPassword}
+                  pwnedCount={passwordPwnedCount}
+                  checkingPwned={checkingPasswordRealtime}
+                />
+                {passwordErrors.newPassword && (
+                  <div className="flex items-start gap-2 text-sm text-destructive">
+                    <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                    <p>{passwordErrors.newPassword}</p>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="••••••••"
                 />
+                {passwordErrors.confirmPassword && (
+                  <p className="text-sm text-destructive">{passwordErrors.confirmPassword}</p>
+                )}
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsChangingPassword(false);
-                    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                  }}
-                >
+                <Button variant="outline" onClick={handleCancelPasswordChange}>
                   Annuler
                 </Button>
-                <Button onClick={handleChangePassword} disabled={isLoading}>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={isLoading || checkingPasswordRealtime || (passwordPwnedCount !== null && passwordPwnedCount > 0)}
+                >
                   {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Enregistrer
                 </Button>
@@ -314,27 +386,7 @@ export function AccountSettings() {
       </Card>
 
       {/* 2FA */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5" />
-            Authentification à deux facteurs
-          </CardTitle>
-          <CardDescription>Ajoutez une couche de sécurité supplémentaire à votre compte</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">
-                L'authentification à deux facteurs sera disponible prochainement
-              </p>
-            </div>
-            <Button variant="outline" disabled>
-              Configurer
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <TwoFactorSettings />
     </div>
   );
 }

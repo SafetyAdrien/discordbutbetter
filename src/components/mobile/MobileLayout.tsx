@@ -383,11 +383,14 @@ export function MobileLayout({
       name: ch.name,
       type: ch.type || 'text',
       description: ch.description,
+      server_id: ch.server_id || currentServer?.id,
+      is_link_trusted: ch.is_link_trusted ?? false,
     })),
   })) || [];
 
   const orphanChannelsForList = (currentServer?.orphanChannels || channelsData?.orphanChannels || []).map((ch: any) => ({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
+    server_id: ch.server_id || currentServer?.id, is_link_trusted: ch.is_link_trusted ?? false,
   }));
 
   // Swipe-back handlers for overlays

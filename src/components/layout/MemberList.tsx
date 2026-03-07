@@ -500,7 +500,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 memberId,
               })
             }
-            className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
+            className="flex items-center gap-3 w-full px-2.5 py-2 rounded-2xl hover:bg-surface-hover/40 group"
+            style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}
           >
             <div className="relative flex-shrink-0">
               <Avatar className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}>
@@ -650,9 +651,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-full sm:w-60 bg-card flex flex-col sm:border-l sm:border-border/50 sm:rounded-tr-xl">
+      <div ref={ref} className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30">
         {/* Search input and Inbox */}
-        <div className="px-3 pt-3 border-border bg-card">
+        <div className="px-3 pt-3 bg-surface-1">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
@@ -694,7 +695,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
           {groupedMembers.map((group, index) => (
             <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-4">
-              <h3 className="px-2 py-1 text-xs font-semibold capitalize tracking-wide flex items-center gap-1.5 text-muted-foreground">
+              <h3 className="px-3 py-1.5 text-xs font-semibold capitalize tracking-wider flex items-center gap-1.5 text-muted-foreground">
                 {group.role?.icon_url && (
                   <Tooltip>
                     <TooltipTrigger asChild>

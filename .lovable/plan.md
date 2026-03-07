@@ -1,61 +1,44 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Unify Thread Embed Container Size
 
-## Root cause
+## Problem
+Two different thread embed layouts exist:
+1. **On regular messages** (line 1537): `pl-[42px]` padding, uses `ThreadSpine` SVG component
+2. **On system "a créé un thread" messages** (line 1312): `flex` with `w-8` spine column + `mr-1.5`, uses CSS L-curve
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+The system message version produces a slightly more compact result. The user wants the system message's layout to be the universal model.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Solution
+Make the regular message thread embed use the same layout as the system message one — a `flex` container with the `w-8` spine column and `mr-1.5` gap, with the CSS L-curve (`left-[6px] w-[20px] h-1/2 border-l-2 border-b-2 rounded-bl-lg`).
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Changes in `src/components/chat/ChatArea.tsx`
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+### 1. Regular message with avatar (lines ~1536-1543)
+Replace:
+```tsx
+<div className="pt-1.5 pl-[42px]">
+  <ThreadSystemMessage ... />
+</div>
+```
+With the same flex layout used in the system message block:
+```tsx
+<div className="flex mt-1.5">
+  <div className="flex-shrink-0 w-8 relative mr-1.5">
+    <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+  </div>
+  <div className="flex-1 min-w-0">
+    <ThreadSystemMessage ... />
+  </div>
+</div>
 ```
 
-### Code for onSuccess addition
+### 2. Grouped message thread embed (around line ~1655)
+Apply the same flex layout pattern.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+### 3. Remove ThreadSpine SVG usage
+- Remove `<ThreadSpine startY={44} />` and `<ThreadSpine startY={0} />` from both message blocks since the spine is now handled by the CSS L-curve inside the flex layout.
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Files
+- `src/components/chat/ChatArea.tsx` — 2 locations (showAuthor + grouped message thread embeds)
 

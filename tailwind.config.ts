@@ -70,6 +70,9 @@ export default {
           secondary: "hsl(var(--glow-secondary))",
         },
         surface: {
+          1: "hsl(var(--surface-1))",
+          2: "hsl(var(--surface-2))",
+          3: "hsl(var(--surface-3))",
           elevated: "hsl(var(--surface-elevated))",
           hover: "hsl(var(--surface-hover))",
         },

@@ -631,6 +631,8 @@ const Index = () => {
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
+                    onSelectThread={(threadId) => setActiveThreadId(threadId)}
+                    activeThreadId={activeThreadId}
                   />
                 ) : channelForChat.type === 'stage' ? (
                   <StageChannel 

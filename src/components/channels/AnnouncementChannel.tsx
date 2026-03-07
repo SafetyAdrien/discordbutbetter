@@ -497,7 +497,7 @@ export function AnnouncementChannel({
               </Button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
-              <ThreadsPopover channelId={channel.id} onSelectThread={() => {}} />
+              <ThreadsPopover channelId={channel.id} onSelectThread={(id) => onSelectThread?.(id)} />
             </PopoverContent>
           </Popover>
 

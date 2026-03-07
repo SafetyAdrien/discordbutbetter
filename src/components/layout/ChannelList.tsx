@@ -426,14 +426,12 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
           const canManage = canManageChannels || thread.created_by === user?.id;
 
           return (
-            <div key={thread.id} className="flex items-center w-full px-2">
-              <div className="flex-shrink-0 w-6 relative self-stretch">
-                {!isSingle && (
-                  <div
-                    className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
-                    style={{ height: isLast ? '50%' : '100%' }}
-                  />
-                )}
+            <div key={thread.id} className="flex items-stretch w-full px-2">
+              <div className="flex-shrink-0 w-6 relative">
+                <div
+                  className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
+                  style={{ height: isLast || isSingle ? '50%' : '100%' }}
+                />
                 <div className="absolute left-[5px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
               </div>
               <ContextMenu>

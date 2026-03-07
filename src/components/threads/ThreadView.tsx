@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -65,9 +65,11 @@ interface ThreadViewProps {
   channelId?: string;
   serverId?: string | null;
   onBack: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
-const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelId, serverId, onBack }) => {
+const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelId, serverId, onBack, isFullscreen, onToggleFullscreen }) => {
   const [messageContent, setMessageContent] = useState('');
   const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -466,6 +468,21 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              {onToggleFullscreen && (
+                <DropdownMenuItem onClick={onToggleFullscreen}>
+                  {isFullscreen ? (
+                    <>
+                      <Minimize2 className="w-4 h-4 mr-2" />
+                      Vue partagée
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-4 h-4 mr-2" />
+                      Plein écran
+                    </>
+                  )}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem 
                 className="text-destructive focus:text-destructive"
                 onClick={() => setShowDeleteDialog(true)}

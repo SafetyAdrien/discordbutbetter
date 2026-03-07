@@ -21,6 +21,7 @@ interface NavigationState {
     channelName?: string;
     fromTab?: boolean;
   } | null;
+  threadFullscreen: boolean;
 }
 
 const defaultState: NavigationState = {
@@ -32,6 +33,7 @@ const defaultState: NavigationState = {
   threadChannelId: null,
   mobileActiveTab: null,
   mobileView: null,
+  threadFullscreen: false,
 };
 
 export function useNavigationState() {
@@ -105,6 +107,10 @@ export function useNavigationState() {
     setState(prev => ({ ...prev, mobileView: view }));
   }, []);
 
+  const setThreadFullscreen = useCallback((fullscreen: boolean) => {
+    setState(prev => ({ ...prev, threadFullscreen: fullscreen }));
+  }, []);
+
   return {
     activeServerId: state.activeServerId,
     activeDMId: state.activeDMId,
@@ -113,6 +119,7 @@ export function useNavigationState() {
     threadChannelId: state.threadChannelId,
     mobileActiveTab: state.mobileActiveTab,
     mobileView: state.mobileView,
+    threadFullscreen: state.threadFullscreen,
     channelsByServer: state.channelsByServer,
     setActiveServerId,
     setActiveDMId,
@@ -123,5 +130,6 @@ export function useNavigationState() {
     setThreadChannelId,
     setMobileActiveTab,
     setMobileView,
+    setThreadFullscreen,
   };
 }

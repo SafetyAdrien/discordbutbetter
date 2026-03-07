@@ -1,27 +1,61 @@
 
 
-# Toggle Plein écran / Split view pour le ThreadView
+# Fix: Duplicated channel hidden by visibility filter
 
-## Résumé
+## Root cause
 
-Ajouter une option dans le menu "..." (DropdownMenu) du header du ThreadView pour basculer entre le mode "Split view" (actuel, 60/40) et "Plein écran" (le thread prend toute la largeur, le chat est masqué).
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. `src/hooks/useNavigationState.ts`
-- Ajouter `threadFullscreen: boolean` au state persisté (défaut `false`)
-- Ajouter `setThreadFullscreen` setter
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 2. `src/components/threads/ThreadView.tsx`
-- Nouveau prop : `isFullscreen?: boolean`, `onToggleFullscreen?: () => void`
-- Dans le `DropdownMenuContent` (lignes 468-476), ajouter un item avant "Supprimer" :
-  - Icône `Maximize2` / `Minimize2` selon l'état
-  - Texte "Plein écran" ou "Vue partagée"
-  - Appelle `onToggleFullscreen`
+## Fix
 
-### 3. `src/pages/Index.tsx`
-- Lire `threadFullscreen` / `setThreadFullscreen` depuis `useNavigationState`
-- Ligne ~674 : quand `threadFullscreen` est `true`, masquer le `<div>` contenant le chat (ajouter `hidden`)
-- Ligne ~679 : changer `flex-[4]` en `flex-1` quand fullscreen
-- Passer `isFullscreen` et `onToggleFullscreen` au composant `<ThreadView>`
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

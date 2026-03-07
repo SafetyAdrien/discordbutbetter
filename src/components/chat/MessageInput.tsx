@@ -431,7 +431,7 @@ export function MessageInput({
   if (permissionDeniedMessage && showFollowBar) {
     return (
       <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
-        <div className="flex items-center justify-between rounded-lg bg-[hsl(var(--input))] px-4 py-3">
+        <div className="flex items-center justify-between rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
           <span className="text-muted-foreground text-sm">
             Suivez ce salon pour recevoir ses mises à jour sur votre propre serveur.
           </span>
@@ -452,7 +452,7 @@ export function MessageInput({
   if (permissionDeniedMessage) {
     return (
       <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
-        <div className="flex items-center rounded-lg bg-[hsl(var(--input))] px-4 py-3">
+        <div className="flex items-center rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
           <span className="text-muted-foreground/50 text-sm">
             {permissionDeniedMessage}
           </span>
@@ -501,7 +501,7 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--surface-2))]`} style={{ boxShadow: 'var(--shadow-elevation-1)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--input))] border border-border/50 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10`} style={{ boxShadow: 'var(--shadow-elevation-2)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button

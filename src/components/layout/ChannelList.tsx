@@ -152,6 +152,8 @@ interface Channel {
   type: ChannelType;
   description?: string;
   unreadCount?: number;
+  server_id?: string;
+  is_link_trusted?: boolean;
 }
 interface Category {
   id: string;
@@ -692,7 +694,7 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
-  const [externalLinkModal, setExternalLinkModal] = useState<{url: string;} | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{url: string; channelId?: string; serverId?: string; isLinkTrusted?: boolean} | null>(null);
   const [duplicatingChannel, setDuplicatingChannel] = useState<{id: string; name: string} | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -856,7 +858,12 @@ export function ChannelList({
     // Link channels open external link warning modal
     if (channel.type === "link") {
       const url = channel.description || '';
-      if (url) setExternalLinkModal({ url });
+      if (!url) return;
+      if (channel.is_link_trusted) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        setExternalLinkModal({ url, channelId: channel.id, serverId: channel.server_id, isLinkTrusted: channel.is_link_trusted });
+      }
       return;
     }
 
@@ -1651,8 +1658,10 @@ threads={threadsByChannel[channel.id] || []}
       {externalLinkModal &&
       <ExternalLinkWarningModal
         url={externalLinkModal.url}
+        channelId={externalLinkModal.channelId}
+        serverId={externalLinkModal.serverId}
+        isLinkTrusted={externalLinkModal.isLinkTrusted}
         onClose={() => setExternalLinkModal(null)} />
-
       }
 
       {duplicatingChannel && (

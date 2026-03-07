@@ -62,6 +62,8 @@ interface Channel {
   name: string;
   type: string;
   description?: string;
+  server_id?: string;
+  is_link_trusted?: boolean;
 }
 
 interface Category {
@@ -347,7 +349,7 @@ export function MobileChannelListView({
   const [longPressPosition, setLongPressPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
-  const [externalLinkModal, setExternalLinkModal] = useState<{ url: string } | null>(null);
+  const [externalLinkModal, setExternalLinkModal] = useState<{ url: string; channelId?: string; serverId?: string; isLinkTrusted?: boolean } | null>(null);
   const emptyLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
@@ -561,7 +563,12 @@ export function MobileChannelListView({
                   onClick={() => {
                     if (ch.type === 'link') {
                       const url = ch.description || '';
-                      if (url) setExternalLinkModal({ url });
+                      if (!url) return;
+                      if (ch.is_link_trusted) {
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      } else {
+                        setExternalLinkModal({ url, channelId: ch.id, serverId: ch.server_id || serverId, isLinkTrusted: ch.is_link_trusted });
+                      }
                       return;
                     }
                     setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
@@ -694,7 +701,12 @@ export function MobileChannelListView({
                         onClick={() => {
                           if (ch.type === 'link') {
                             const url = ch.description || '';
-                            if (url) setExternalLinkModal({ url });
+                            if (!url) return;
+                            if (ch.is_link_trusted) {
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            } else {
+                              setExternalLinkModal({ url, channelId: ch.id, serverId: ch.server_id || serverId, isLinkTrusted: ch.is_link_trusted });
+                            }
                             return;
                           }
                           setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
@@ -885,6 +897,9 @@ export function MobileChannelListView({
       {externalLinkModal && (
         <ExternalLinkWarningModal
           url={externalLinkModal.url}
+          channelId={externalLinkModal.channelId}
+          serverId={externalLinkModal.serverId}
+          isLinkTrusted={externalLinkModal.isLinkTrusted}
           onClose={() => setExternalLinkModal(null)}
         />
       )}

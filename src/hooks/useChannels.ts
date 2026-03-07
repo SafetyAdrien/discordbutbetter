@@ -14,6 +14,7 @@ export interface ChannelWithCategory {
   position: number | null;
   category_id: string | null;
   server_id: string;
+  is_link_trusted: boolean;
 }
 
 export interface CategoryWithChannels {
@@ -106,7 +107,7 @@ export function useChannels(
       // Fetch channels
       const { data: channels, error: chanError } = await supabase
         .from('channels')
-        .select('id, name, type, description, position, category_id, server_id')
+        .select('id, name, type, description, position, category_id, server_id, is_link_trusted')
         .eq('server_id', serverId)
         .order('position', { ascending: true });
 
@@ -312,7 +313,8 @@ export function useCreateChannel() {
         description: null,
         position: 0,
         category_id: categoryId,
-        server_id: serverId
+        server_id: serverId,
+        is_link_trusted: false,
       };
       
       if (previousChannels) {

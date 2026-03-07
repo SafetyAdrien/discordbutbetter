@@ -70,13 +70,14 @@ export function useUpdateChannel() {
     mutationFn: async ({ channelId, serverId, name, description, type, slowmode_seconds, is_link_trusted }: { 
       channelId: string; 
       serverId: string; 
-      name: string; 
+      name?: string; 
       description?: string | null;
       type?: 'text' | 'announcement';
       slowmode_seconds?: number;
       is_link_trusted?: boolean;
     }) => {
-      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number; is_link_trusted?: boolean } = { name };
+      const updateData: { name?: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number; is_link_trusted?: boolean } = {};
+      if (name !== undefined) updateData.name = name;
       if (description !== undefined) updateData.description = description;
       if (type) updateData.type = type;
       if (slowmode_seconds !== undefined) updateData.slowmode_seconds = slowmode_seconds;

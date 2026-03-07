@@ -25,8 +25,7 @@ export default {
         'snap': 'cubic-bezier(0.25, 1, 0.5, 1)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        
+        sans: ['gg sans', 'system-ui', 'sans-serif'],
         ginto: ['gg sans', 'Noto Sans', 'Helvetica', 'sans-serif'],
       },
       colors: {
@@ -64,7 +63,6 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         toolbar: "hsl(var(--toolbar))",
-        // Custom gaming colors
         glow: {
           primary: "hsl(var(--glow-primary))",
           secondary: "hsl(var(--glow-secondary))",
@@ -137,6 +135,22 @@ export default {
           "0%": { opacity: "0", transform: "scale(0.95)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-in-right-sm": {
+          "0%": { opacity: "0", transform: "translateX(12px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { opacity: "0.4" },
+          "50%": { opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -147,6 +161,10 @@ export default {
         "badge-shake": "badge-shake 0.5s ease-in-out",
         "press": "press 150ms ease-out",
         "appear": "appear 200ms ease-out",
+        "fade-up": "fade-up 0.25s ease-out",
+        "slide-in-right-sm": "slide-in-right-sm 0.2s ease-out",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "scale-in": "scale-in 0.2s ease-out",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

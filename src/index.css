@@ -23,9 +23,9 @@
   left: 8px;
   right: 8px;
   height: 2px;
-  background: #5865f2;
+  background: hsl(var(--primary));
   border-radius: 1px;
-  box-shadow: 0 0 8px rgba(88, 101, 242, 0.6);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
   z-index: 50;
 }
 
@@ -48,7 +48,7 @@
   cursor: grabbing !important;
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(88, 101, 242, 0.3);
+    0 0 0 1px hsl(var(--primary) / 0.3);
 }
 
 /* Sortable transition */
@@ -107,91 +107,96 @@
 
 @layer base {
   :root {
-    /* Dark Space Theme - Gris Bleuté Moderne */
-    /* Main Chat + Member List */
-    --background: 218 18% 12%;
-    /* Primary text - légèrement plus lumineux */
-    --foreground: 218 10% 90%;
+    /* ============================
+       MODERN SLATE THEME
+       Inspired by Slack/Teams
+       Warm dark with vibrant accents
+       ============================ */
 
-    /* Sidebar Channels */
-    --card: 218 20% 10%;
-    --card-foreground: 218 10% 90%;
+    /* Main background — deep warm slate */
+    --background: 222 16% 9%;
+    /* Primary text — high contrast cream white */
+    --foreground: 220 13% 93%;
 
-    /* Popovers/Menus - plus sombre */
-    --popover: 218 20% 15%;
-    --popover-foreground: 218 10% 90%;
+    /* Sidebar channels panel */
+    --card: 222 18% 7%;
+    --card-foreground: 220 13% 93%;
+
+    /* Popovers/Menus — elevated surface */
+    --popover: 222 16% 12%;
+    --popover-foreground: 220 13% 93%;
 
     /* Toolbar background */
-    --toolbar: 218 20% 18%;
+    --toolbar: 222 16% 14%;
 
-    /* Primary reste inchangé (bleu d'accent) */
-    --primary: 225 85% 53%;
-    --primary-foreground: 218 25% 8%;
+    /* Primary accent — vibrant blue */
+    --primary: 225 90% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary reste inchangé */
+    /* Secondary — soft purple */
     --secondary: 270 60% 60%;
-    --secondary-foreground: 218 10% 90%;
+    --secondary-foreground: 220 13% 93%;
 
     /* Muted surfaces */
-    --muted: 218 15% 20%;
-    --muted-foreground: 218 12% 70%;
+    --muted: 222 14% 16%;
+    --muted-foreground: 220 10% 58%;
 
-    /* Accent reste inchangé */
+    /* Accent — teal */
     --accent: 186 80% 40%;
-    --accent-foreground: 218 10% 90%;
+    --accent-foreground: 220 13% 93%;
 
-    /* Destructive reste inchangé */
+    /* Destructive */
     --destructive: 0 72% 51%;
-    --destructive-foreground: 218 10% 90%;
+    --destructive-foreground: 220 13% 93%;
 
     /* Borders & Inputs */
-    --border: 218 15% 18%;
-    --input: 218 18% 15%;
-    --ring: 225 85% 53%;
+    --border: 222 12% 14%;
+    --input: 222 16% 12%;
+    --ring: 225 90% 60%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
-    /* Custom gaming colors */
-    --glow-primary: 225 85% 53%;
+    /* Custom colors */
+    --glow-primary: 225 90% 60%;
     --glow-secondary: 270 60% 60%;
-    --surface-elevated: 218 18% 14%;
-    --surface-header: 216 22% 9%;
-    --surface-hover: 218 18% 22%;
+    --surface-elevated: 222 16% 11%;
+    --surface-header: 222 20% 6%;
+    --surface-hover: 222 14% 18%;
     --online: 142 76% 46%;
     --idle: 38 92% 50%;
     --dnd: 0 72% 51%;
-    --offline: 218 15% 45%;
+    --offline: 220 10% 40%;
     --voice-active: 142 76% 46%;
-    --poll-background: 218 20% 10%;
+    --poll-background: 222 18% 7%;
 
-    /* Gradients - ajustés */
-    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 60% 60%));
-    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 60% 60% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(218 18% 14%), hsl(218 20% 10%));
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(225 90% 60%), hsl(270 60% 60%));
+    --gradient-glow: linear-gradient(135deg, hsl(225 90% 60% / 0.3), hsl(270 60% 60% / 0.3));
+    --gradient-surface: linear-gradient(180deg, hsl(222 16% 11%), hsl(222 18% 7%));
 
     /* Shadows */
-    --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
-    --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
-    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 20px hsl(225 90% 60% / 0.2);
+    --shadow-glow-lg: 0 0 40px hsl(225 90% 60% / 0.3);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
+    --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.5);
 
-    /* Server List Sidebar */
-    --sidebar-background: 218 25% 7%;
-    --sidebar-foreground: 218 10% 90%;
-    --sidebar-primary: 225 85% 53%;
-    --sidebar-primary-foreground: 218 25% 8%;
-    --sidebar-accent: 218 18% 20%;
-    --sidebar-accent-foreground: 218 10% 90%;
-    --sidebar-border: 218 15% 16%;
-    --sidebar-ring: 225 85% 53%;
+    /* Server List Sidebar — darkest layer */
+    --sidebar-background: 222 22% 5%;
+    --sidebar-foreground: 220 13% 93%;
+    --sidebar-primary: 225 90% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 16% 16%;
+    --sidebar-accent-foreground: 220 13% 93%;
+    --sidebar-border: 222 14% 12%;
+    --sidebar-ring: 225 90% 60%;
 
     /* User Profile Panel */
-    --user-panel: 218 22% 9%;
+    --user-panel: 222 22% 6%;
   }
 
   .dark {
-    /* Identique à root - toujours sombre */
-    --background: 218 18% 12%;
-    --foreground: 218 10% 90%;
+    --background: 222 16% 9%;
+    --foreground: 220 13% 93%;
   }
 }
 
@@ -227,12 +232,26 @@
 }
 
 @layer components {
+  /* === GLASSMORPHISM PANELS === */
   .glass {
     @apply bg-card/80 backdrop-blur-sm border border-border/50;
   }
 
   .glass-hover {
     @apply hover:bg-surface-hover/80 transition-colors duration-200;
+  }
+
+  .glass-panel {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  .glass-elevated {
+    background: hsl(var(--surface-elevated) / 0.8);
+    backdrop-filter: blur(20px) saturate(1.3);
+    border: 1px solid hsl(var(--border) / 0.2);
+    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
   }
 
   /* Optimized backdrop blur with performance fallback */
@@ -263,9 +282,10 @@
     background-image: var(--gradient-primary);
   }
 
+  /* === SERVER ICON === */
   .server-icon {
     @apply w-12 h-12 rounded-[24px] flex items-center justify-center cursor-pointer
-           transition-all duration-300 ease-out;
+           transition-all duration-200 ease-out;
   }
 
   .server-icon:hover {
@@ -276,27 +296,33 @@
     @apply rounded-[16px];
   }
 
+  /* === CHANNEL ITEM === */
   .channel-item {
-    @apply flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
-           text-muted-foreground hover:text-foreground hover:bg-surface-hover/30
-           transition-all duration-200;
+    @apply flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer
+           text-muted-foreground hover:text-foreground hover:bg-surface-hover/40
+           transition-all duration-150;
   }
 
   .channel-item.active {
-    @apply bg-muted text-foreground;
+    @apply bg-muted/80 text-foreground;
   }
 
   .message-hover {
-    @apply hover:bg-surface-hover/50 transition-colors duration-150;
+    @apply hover:bg-surface-hover/30 transition-colors duration-100;
   }
 
+  /* === SCROLLBAR — thin with hover reveal === */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted) / 0.2) transparent;
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-thin:hover {
+    scrollbar-color: hsl(var(--muted) / 0.3) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -304,25 +330,28 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted) / 0.2);
-    border-radius: 3px;
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.3);
+    background: hsl(var(--muted-foreground) / 0.35);
   }
 }
 
 @layer utilities {
   /* === GPU ACCELERATION HINTS === */
   
-  /* Force GPU layer for smooth animations */
   .gpu-accelerated {
     transform: translateZ(0);
     backface-visibility: hidden;
   }
   
-  /* Containment to isolate repaints */
   .contain-paint {
     contain: paint;
   }
@@ -335,7 +364,6 @@
     contain: strict;
   }
   
-  /* Will-change for predictable animations - use sparingly */
   .will-change-transform {
     will-change: transform;
   }
@@ -344,9 +372,8 @@
     will-change: opacity;
   }
   
-  /* === STANDARD INTERACTION STATES === */
+  /* === INTERACTION STATES === */
   
-  /* Hover: subtle brightness change */
   .interactive-hover {
     @apply transition-colors duration-200;
   }
@@ -354,7 +381,6 @@
     opacity: 0.85;
   }
   
-  /* Scale hover for icons and small elements */
   .hover-lift {
     @apply transition-transform duration-100 ease-out;
   }
@@ -362,7 +388,6 @@
     @apply scale-105;
   }
   
-  /* Active press feedback */
   .press-feedback {
     @apply transition-transform duration-100;
   }
@@ -370,7 +395,6 @@
     @apply scale-95;
   }
   
-  /* Combined hover + active for interactive buttons */
   .btn-interactive {
     @apply transition-[transform,filter] duration-200;
   }
@@ -382,7 +406,6 @@
     filter: brightness(0.95);
   }
   
-  /* Improved focus ring */
   .focus-ring {
     @apply focus-visible:ring-2 focus-visible:ring-primary/50 
            focus-visible:ring-offset-2 focus-visible:ring-offset-background
@@ -448,6 +471,17 @@
     }
   }
 
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .animate-slide-in-left {
     animation: slide-in-left 0.15s ease-out;
   }
@@ -458,6 +492,10 @@
 
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.25s ease-out;
   }
 
   @keyframes slide-down {
@@ -509,7 +547,6 @@
     background: radial-gradient(ellipse at 50% 30%, #1e3a8a 0%, #312e81 40%, #1e1b4b 70%, #0f0f23 100%);
   }
 
-  /* Voice speaking glow effect - green pulsing ring */
   @keyframes voice-speaking-pulse {
     0%,
     100% {
@@ -528,7 +565,6 @@
     animation: voice-speaking-pulse 0.8s ease-in-out infinite;
   }
 
-  /* Legacy glow effect */
   @keyframes electric-pulse {
     0%,
     100% {
@@ -547,9 +583,9 @@
     animation: electric-pulse 1.5s ease-in-out infinite;
   }
 
-  /* Spoiler style Discord */
+  /* Spoiler style */
   .spoiler {
-    background-color: #1a1a1d;
+    background-color: hsl(var(--muted));
     color: transparent;
     border-radius: 4px;
     padding: 0 2px;
@@ -561,11 +597,11 @@
   }
 
   .spoiler:hover:not(.revealed) {
-    background-color: #232428;
+    background-color: hsl(var(--muted) / 0.8);
   }
 
   .spoiler.revealed {
-    background-color: rgba(79, 84, 92, 0.48);
+    background-color: hsl(var(--muted) / 0.48);
     color: inherit;
     user-select: text;
   }
@@ -634,7 +670,7 @@
     color: #e06c75;
   }
 
-  /* Monospace font for code elements - Consolas stack */
+  /* Monospace font for code elements */
   .font-mono,
   code,
   pre,
@@ -653,14 +689,12 @@
     opacity: 0.4;
   }
 
-  /* Drop indicator line - Discord style */
   .drop-indicator {
     height: 3.5px;
-    background-color: #5865f2;
+    background-color: hsl(var(--primary));
     border-radius: 1px;
   }
 
-  /* Smooth channel transition animation */
   .channel-transition {
     transition:
       transform 250ms cubic-bezier(0.25, 1, 0.5, 1),
@@ -668,7 +702,6 @@
       background-color 200ms ease;
   }
 
-  /* Animation when channel enters a new category */
   @keyframes slide-into-place {
     from {
       opacity: 0.5;
@@ -689,7 +722,6 @@
     backdrop-filter: blur(4px);
   }
 
-  /* Remove focus outline on drag-and-drop elements */
   [data-dnd-kit-draggable]:focus,
   [data-dnd-kit-draggable]:focus-visible {
     outline: none;
@@ -709,11 +741,10 @@
     }
   }
 
-  /* Message highlight animation for Jump to Message */
   @keyframes message-highlight {
     0%,
     30% {
-      background-color: rgba(88, 101, 242, 0.3);
+      background-color: hsl(var(--primary) / 0.15);
     }
     100% {
       background-color: transparent;
@@ -771,35 +802,29 @@
     @apply hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0;
   }
 
-  /* Hide elements on mobile */
   .hide-mobile {
     @apply hidden sm:flex;
   }
 
-  /* Compact buttons on mobile */
   .responsive-btn-text {
     @apply hidden sm:inline;
   }
 
   /* === DND OPTIMIZED UTILITIES === */
-  
-  /* DnD optimized item - GPU-accelerated transitions */
   .dnd-item {
     @apply transition-[transform,opacity] duration-200 ease-out will-change-transform;
   }
   
-  /* Dragging state - reduced opacity and slight scale */
   .dnd-item-dragging {
     @apply opacity-30 scale-[0.98] bg-muted/20 rounded-md;
   }
   
-  /* Resize handle utility */
   .resize-handle {
     @apply transition-[width,background-color] duration-100 cursor-col-resize;
   }
 }
 
-/* Markdown overlay decorations - no padding shift, visual only */
+/* Markdown overlay decorations */
 .discord-overlay-code {
   position: relative;
 }
@@ -830,24 +855,20 @@
 
 /* Mobile touch optimizations */
 @media (max-width: 640px) {
-  /* Disable hover effects on mobile for better touch experience */
   .message-hover:hover {
     background: transparent;
   }
   
-  /* Larger touch targets */
   .channel-item {
     padding-top: 0.625rem;
     padding-bottom: 0.625rem;
     min-height: 44px;
   }
   
-  /* Minimum touch target for all interactive elements */
   button, a, [role="button"] {
     min-height: 36px;
   }
   
-  /* Hide scrollbars on mobile */
   .scrollbar-thin {
     scrollbar-width: none;
   }
@@ -855,13 +876,11 @@
     display: none;
   }
 
-  /* Prevent double-tap zoom on interactive elements */
   button, a, input, select, textarea {
     touch-action: manipulation;
   }
 }
 
-/* Very small screens (320px - Galaxy A series, iPhone SE) */
 @media (max-width: 374px) {
   .channel-item {
     padding-left: 0.375rem;
@@ -870,7 +889,6 @@
   }
 }
 
-/* Large mobile screens (iPhone Pro Max, Galaxy S Ultra) */
 @media (min-width: 428px) and (max-width: 640px) {
   .channel-item {
     padding-top: 0.75rem;

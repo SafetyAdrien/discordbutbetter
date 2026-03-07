@@ -1,61 +1,64 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Sécurité maximale des comptes
 
-## Root cause
+## 3 axes d'amélioration
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### 1. Durcir le changement de mot de passe (`AccountSettings.tsx`)
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Le formulaire actuel n'a que 6 caractères minimum, pas de HIBP, pas d'indicateur de force.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Corrections :**
+- Remplacer `<Input type="password">` par `<PasswordInput>` (composant existant)
+- Ajouter `<PasswordStrengthIndicator>` avec vérification HIBP en temps réel (même logique debounced que dans `Auth.tsx`)
+- Appliquer la même validation Zod que l'inscription : 8 chars min, majuscule, minuscule, chiffre
+- Bloquer la soumission si le mot de passe est compromis (HIBP > 0)
 
-## Fix
+**Fichier :** `src/components/account-settings/AccountSettings.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+### 2. Authentification à deux facteurs (TOTP)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+Utiliser l'API MFA native de Supabase (`supabase.auth.mfa`). Pas de table custom nécessaire.
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**Flux d'activation :**
+1. `supabase.auth.mfa.enroll({ factorType: 'totp' })` → retourne un QR code (URI + SVG)
+2. L'utilisateur scanne avec Google Authenticator / Authy
+3. L'utilisateur entre un code de vérification
+4. `supabase.auth.mfa.challengeAndVerify({ factorId, code })` → confirme l'activation
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**Flux de connexion (si 2FA activé) :**
+1. Login email/password normal
+2. Détection `session.user.factors` avec facteur vérifié
+3. Affichage d'un écran de saisie du code TOTP
+4. `supabase.auth.mfa.challengeAndVerify()` → accès accordé
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+**Flux de désactivation :**
+1. Saisie du code TOTP actuel pour confirmer
+2. `supabase.auth.mfa.unenroll({ factorId })`
 
-### 3. Hook needs `useAuth` for the user ID
+**Fichiers :**
+- `src/components/account-settings/TwoFactorSettings.tsx` (nouveau) — UI activation/désactivation QR + vérification
+- `src/components/account-settings/AccountSettings.tsx` — remplacer le placeholder 2FA par `<TwoFactorSettings />`
+- `src/components/auth/TwoFactorChallenge.tsx` (nouveau) — écran de saisie du code TOTP au login
+- `src/pages/Auth.tsx` — après login réussi, vérifier si MFA est requis et afficher `<TwoFactorChallenge>`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+### 3. Sessions actives réelles
 
-## Detailed changes
+Supabase ne fournit pas de liste de sessions multi-appareils via l'API client. On peut cependant :
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+- Afficher la session actuelle avec des détails réels (User-Agent parsé, date de connexion via `session.expires_at`)
+- Implémenter "Se déconnecter partout" via `supabase.auth.signOut({ scope: 'global' })` (déconnecte toutes les sessions)
+- Afficher le statut MFA actif/inactif dans la carte de session
 
-### Code sketch for onMutate addition (after servers cache update)
+**Fichier :** `src/components/account-settings/SessionsSettings.tsx` — remplacer le contenu mock par des données réelles
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+### Fichiers modifiés/créés
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+| Fichier | Action |
+|---------|--------|
+| `src/components/account-settings/AccountSettings.tsx` | Durcir mot de passe + intégrer 2FA |
+| `src/components/account-settings/TwoFactorSettings.tsx` | Nouveau — activation/désactivation TOTP |
+| `src/components/auth/TwoFactorChallenge.tsx` | Nouveau — saisie code TOTP au login |
+| `src/pages/Auth.tsx` | Ajouter vérification MFA post-login |
+| `src/components/account-settings/SessionsSettings.tsx` | Sessions réelles + logout global |
 

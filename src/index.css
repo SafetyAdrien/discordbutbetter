@@ -244,12 +244,14 @@
   .surface-card {
     background: hsl(var(--surface-2));
     border-radius: var(--radius-2xl);
+    border: 1px solid hsl(var(--border) / 0.5);
     box-shadow: var(--shadow-elevation-1);
   }
 
   .surface-card-elevated {
     background: hsl(var(--surface-3));
     border-radius: var(--radius-2xl);
+    border: 1px solid hsl(var(--border) / 0.4);
     box-shadow: var(--shadow-elevation-2);
   }
 

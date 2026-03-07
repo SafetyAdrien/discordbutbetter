@@ -172,10 +172,10 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
           </p>
           <Slider
             value={[slowmodeIndex]}
-            onValueChange={([v]) => setSlowmodeIndex(v)}
+            onValueChange={([v]) => setSlowmodeIndex(Math.round(v))}
             min={0}
             max={SLOWMODE_STEPS.length - 1}
-            step={1}
+            step={0.01}
             className="w-full"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground px-0.5">
@@ -221,14 +221,12 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         </div>
       )}
 
-      {hasChanges && (
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={updateChannel.isPending}>
-            {updateChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Enregistrer
-          </Button>
-        </div>
-      )}
+      <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-end">
+        <Button onClick={handleSave} disabled={updateChannel.isPending || !hasChanges}>
+          {updateChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Enregistrer
+        </Button>
+      </div>
     </div>
   );
 }

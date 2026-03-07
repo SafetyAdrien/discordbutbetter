@@ -315,30 +315,23 @@ export function usePreloader(
       const detailedPermsPromise = (async () => {
         try {
           const recentChannels = readCache<string[]>('cache:recent-channels') || [];
-          const channelIdsForPerms = new Set<string>(recentChannels.slice(0, 30));
+          const channelIdsForPerms = new Set<string>(recentChannels.slice(0, 50));
 
-          // Also add first text channel per server
+          // Add ALL text/announcement channels per server (not just the first one)
+          const permTypes = ['text', 'announcement'];
           for (const sid of serverIds) {
             const channelData = queryClient.getQueryData(['channels', sid]) as any;
             if (channelData) {
-              const textTypes = ['text', 'announcement'];
-              let found = false;
               for (const cat of (channelData.categories || [])) {
                 for (const ch of (cat.channels || [])) {
-                  if (textTypes.includes(ch.type)) {
+                  if (permTypes.includes(ch.type)) {
                     channelIdsForPerms.add(ch.id);
-                    found = true;
-                    break;
                   }
                 }
-                if (found) break;
               }
-              if (!found) {
-                for (const ch of (channelData.orphanChannels || [])) {
-                  if (textTypes.includes(ch.type)) {
-                    channelIdsForPerms.add(ch.id);
-                    break;
-                  }
+              for (const ch of (channelData.orphanChannels || [])) {
+                if (permTypes.includes(ch.type)) {
+                  channelIdsForPerms.add(ch.id);
                 }
               }
             }
@@ -562,20 +555,21 @@ export function usePreloader(
         setThreadMessagesLoaded(true);
       })();
 
-      // 10. Threads for loaded channels (background)
+      // 10. Threads for loaded channels (background) - text + announcement
       const threadsPromise = (async () => {
         try {
           const channelIdsToLoad = new Set<string>();
+          const threadTypes = ['text', 'announcement'];
           for (const sid of serverIds) {
             const channelData = queryClient.getQueryData(['channels', sid]) as any;
             if (channelData) {
               for (const cat of (channelData.categories || [])) {
                 for (const ch of (cat.channels || [])) {
-                  if (ch.type === 'text') channelIdsToLoad.add(ch.id);
+                  if (threadTypes.includes(ch.type)) channelIdsToLoad.add(ch.id);
                 }
               }
               for (const ch of (channelData.orphanChannels || [])) {
-                if (ch.type === 'text') channelIdsToLoad.add(ch.id);
+                if (threadTypes.includes(ch.type)) channelIdsToLoad.add(ch.id);
               }
             }
           }

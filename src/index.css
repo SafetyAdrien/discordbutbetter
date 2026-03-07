@@ -108,19 +108,19 @@
 @layer base {
   :root {
     /* Material You — Dark Surface Palette */
-    --background: 220 16% 12%;
+    --background: 225 18% 11%;
     --foreground: 220 10% 93%;
 
     /* Card / Channel sidebar */
-    --card: 220 18% 10%;
+    --card: 225 20% 15%;
     --card-foreground: 220 10% 93%;
 
     /* Popovers */
-    --popover: 220 18% 14%;
+    --popover: 225 18% 17%;
     --popover-foreground: 220 10% 93%;
 
     /* Toolbar */
-    --toolbar: 220 18% 16%;
+    --toolbar: 225 16% 20%;
 
     /* Primary — vibrant blue */
     --primary: 225 85% 58%;
@@ -131,8 +131,8 @@
     --secondary-foreground: 220 10% 93%;
 
     /* Muted */
-    --muted: 220 14% 18%;
-    --muted-foreground: 220 10% 64%;
+    --muted: 225 14% 20%;
+    --muted-foreground: 220 10% 60%;
 
     /* Accent */
     --accent: 186 70% 42%;
@@ -143,8 +143,8 @@
     --destructive-foreground: 220 10% 93%;
 
     /* Borders & Inputs */
-    --border: 220 12% 16%;
-    --input: 220 16% 14%;
+    --border: 225 14% 22%;
+    --input: 225 20% 18%;
     --ring: 225 85% 58%;
 
     /* Material You radius tokens */
@@ -153,13 +153,13 @@
     --radius-2xl: 1.5rem;
     --radius-3xl: 1.75rem;
 
-    /* Material surfaces with elevation */
-    --surface-1: 220 18% 10%;
-    --surface-2: 220 16% 13%;
-    --surface-3: 220 14% 16%;
-    --surface-elevated: 220 16% 14%;
-    --surface-header: 220 20% 8%;
-    --surface-hover: 220 14% 20%;
+    /* Material surfaces with elevation — wider spread for distinction */
+    --surface-1: 225 20% 8%;
+    --surface-2: 225 18% 14%;
+    --surface-3: 225 16% 20%;
+    --surface-elevated: 225 18% 17%;
+    --surface-header: 225 22% 6%;
+    --surface-hover: 225 14% 24%;
 
     /* Material elevation shadows */
     --shadow-elevation-1: 0 1px 3px 0 hsl(0 0% 0% / 0.15), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
@@ -189,21 +189,21 @@
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
 
     /* Server List Sidebar */
-    --sidebar-background: 220 22% 7%;
+    --sidebar-background: 225 22% 6%;
     --sidebar-foreground: 220 10% 93%;
     --sidebar-primary: 225 85% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 16% 18%;
+    --sidebar-accent: 225 16% 20%;
     --sidebar-accent-foreground: 220 10% 93%;
-    --sidebar-border: 220 14% 14%;
+    --sidebar-border: 225 14% 16%;
     --sidebar-ring: 225 85% 58%;
 
     /* User Profile Panel */
-    --user-panel: 220 20% 8%;
+    --user-panel: 225 22% 6%;
   }
 
   .dark {
-    --background: 220 16% 12%;
+    --background: 225 18% 11%;
     --foreground: 220 10% 93%;
   }
 }
@@ -244,17 +244,20 @@
   .surface-card {
     background: hsl(var(--surface-2));
     border-radius: var(--radius-2xl);
+    border: 1px solid hsl(var(--border) / 0.5);
     box-shadow: var(--shadow-elevation-1);
   }
 
   .surface-card-elevated {
     background: hsl(var(--surface-3));
     border-radius: var(--radius-2xl);
+    border: 1px solid hsl(var(--border) / 0.4);
     box-shadow: var(--shadow-elevation-2);
   }
 
   .glass {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+    @apply bg-card/90 backdrop-blur-sm border border-border/60;
+    box-shadow: var(--shadow-elevation-2);
   }
 
   .glass-hover {

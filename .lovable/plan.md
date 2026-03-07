@@ -1,61 +1,70 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Context menu pour les Threads dans la liste des salons + correction sélection
 
-## Root cause
+## Résumé
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Ajouter un context menu complet (clic-droit) sur chaque thread affiché dans la sidebar, avec 8 options inspirées de la référence Discord. Corriger la sélection visuelle pour qu'elle ne highlight que le thread (pas le salon parent).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Migration DB
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Ajouter deux colonnes à la table `threads` :
+- `locked boolean default false` — bloque l'écriture sauf admins/modérateurs
+- `closed boolean default false` — ferme le thread (bloque l'écriture + ferme le panneau)
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```sql
+ALTER TABLE public.threads ADD COLUMN locked boolean NOT NULL DEFAULT false;
+ALTER TABLE public.threads ADD COLUMN closed boolean NOT NULL DEFAULT false;
 ```
 
-### Code for onSuccess addition
+## Fichiers modifiés
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+### 1. `src/types/thread.ts`
+- Ajouter `locked?: boolean` et `closed?: boolean` à l'interface `Thread`
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### 2. `src/hooks/useThreads.ts`
+- Ajouter `useLockThread` et `useCloseThread` mutations (update `locked`/`closed` sur la table threads, avec gestion optimiste)
+
+### 3. `src/components/layout/ChannelList.tsx`
+
+**Context menu sur chaque thread** (dans `SortableChannel`, zone threads lines ~598-624) :
+Wrapper le `<button>` thread dans un `<ContextMenu>` avec :
+1. **Marquer comme lu** — appelle `useMarkThreadAsRead`
+2. **Quitter le fil** — appelle `useUnfollowThread` (supprime du sidebar)
+3. *Separator*
+4. **Fermer le fil** — `useCloseThread` (met `closed=true`, ferme le panneau droit si ouvert)
+5. **Verrouiller le fil** — `useLockThread` (met `locked=true`)
+6. **Modifier le fil** — ouvre une modal d'édition (voir point 4)
+7. **Copier le lien** — copie `{origin}/channels/{channelId}/{threadId}`
+8. *Separator*
+9. **Supprimer le fil** — `AlertDialog` confirmation + `useDeleteThread`
+10. *Separator*
+11. **Copier l'identifiant du fil** — copie `thread.id`
+
+Options 4, 5, 6, 9 conditionnées par `canManage` (créateur du thread ou `manage_threads`/`manage_channels`).
+
+**Correction sélection** :
+- Quand `activeThreadId` est défini et correspond à un thread sous un salon, le salon parent ne doit plus avoir la classe `active`. Modifier la prop `isActive` dans les deux endroits où `SortableChannel` est utilisé :  
+  `isActive={activeChannelId === channel.id && !activeThreadId}`
+
+### 4. Nouveau : `src/components/threads/EditThreadModal.tsx`
+
+Modal avec 2 tabs (`Tabs` Radix) :
+- **Aperçu** : champ nom du thread (Input), toggle privé/public, toggle verrouillé, toggle fermé
+- **Permissions** : réutiliser le pattern de `ChannelPermissions` adapté aux permissions thread (`send_messages_in_threads`, `manage_threads`, etc.)
+
+Utilise `useUpdateThread` existant + les nouvelles mutations `useLockThread`/`useCloseThread`.
+
+### 5. `src/components/threads/ThreadView.tsx`
+- Vérifier `thread.locked` et `thread.closed` : si `true`, désactiver l'input de message (afficher un message "Ce fil est verrouillé/fermé") sauf pour les utilisateurs avec `manage_threads`
+
+### 6. `src/pages/Index.tsx`
+- Passer `activeThreadId` dans la prop `isActive` des `SortableChannel` (déjà fait via ChannelList, juste s'assurer que la logique `isActive={activeChannelId === channel.id && !activeThreadId}` est respectée)
+
+## Détail technique
+
+- Les hooks `useDeleteThread`, `useUpdateThread`, `useUnfollowThread`, `useMarkThreadAsRead` existent déjà
+- Le `ContextMenu` thread utilise `onContextMenu stopPropagation` pour ne pas déclencher le menu du salon parent
+- La modal d'édition suit le pattern existant de `ChannelSettingsModal` (Dialog + Tabs)
+- Les permissions thread sont un sous-ensemble des permissions canal : `send_messages_in_threads`, `manage_threads`, `create_public_threads`, `create_private_threads`
 

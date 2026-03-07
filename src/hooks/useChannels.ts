@@ -14,7 +14,6 @@ export interface ChannelWithCategory {
   position: number | null;
   category_id: string | null;
   server_id: string;
-  is_link_trusted?: boolean;
 }
 
 export interface CategoryWithChannels {
@@ -107,7 +106,7 @@ export function useChannels(
       // Fetch channels
       const { data: channels, error: chanError } = await supabase
         .from('channels')
-        .select('id, name, type, description, position, category_id, server_id, is_link_trusted')
+        .select('id, name, type, description, position, category_id, server_id')
         .eq('server_id', serverId)
         .order('position', { ascending: true });
 
@@ -734,13 +733,9 @@ export function useDuplicateChannel() {
     mutationFn: async ({
       channelId,
       serverId,
-      name: customName,
-      copyPermissions = true,
     }: {
       channelId: string;
       serverId: string;
-      name?: string;
-      copyPermissions?: boolean;
     }) => {
       // Fetch the original channel
       const { data: original, error: fetchError } = await supabase
@@ -796,7 +791,7 @@ export function useDuplicateChannel() {
         .insert({
           server_id: serverId,
           category_id: original.category_id,
-          name: customName || original.name,
+          name: original.name,
           type: original.type,
           description: original.description,
           icon_url: original.icon_url,
@@ -807,24 +802,22 @@ export function useDuplicateChannel() {
 
       if (error) throw error;
 
-      // Copy channel permission overrides if requested
-      if (copyPermissions) {
-        const { data: permissions } = await supabase
-          .from('channel_permission_overrides')
-          .select('*')
-          .eq('channel_id', channelId);
+      // Copy channel permission overrides if any
+      const { data: permissions } = await supabase
+        .from('channel_permission_overrides')
+        .select('*')
+        .eq('channel_id', channelId);
 
-        if (permissions && permissions.length > 0) {
-          await supabase.from('channel_permission_overrides').insert(
-            permissions.map((p) => ({
-              channel_id: data.id,
-              role_id: p.role_id,
-              permission: p.permission,
-              type: p.type,
-              sync_with_category: p.sync_with_category,
-            }))
-          );
-        }
+      if (permissions && permissions.length > 0) {
+        await supabase.from('channel_permission_overrides').insert(
+          permissions.map((p) => ({
+            channel_id: data.id,
+            role_id: p.role_id,
+            permission: p.permission,
+            type: p.type,
+            sync_with_category: p.sync_with_category,
+          }))
+        );
       }
 
       return { ...data, serverId };

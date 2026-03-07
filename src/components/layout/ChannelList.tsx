@@ -64,7 +64,6 @@ import { AccountSettingsModal } from "@/components/account-settings/AccountSetti
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
-import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
@@ -83,6 +82,7 @@ import {
   useReorderChannels,
   useDeleteChannel,
   useDeleteCategory,
+  useDuplicateChannel,
   ChannelType,
   OrphanChannel } from
 "@/hooks/useChannels";
@@ -151,7 +151,6 @@ interface Channel {
   type: ChannelType;
   description?: string;
   unreadCount?: number;
-  is_link_trusted?: boolean;
 }
 interface Category {
   id: string;
@@ -588,8 +587,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           }
         </div>
 
-        {/* Threads for text and announcement channels - OUTSIDE draggable div */}
-        {(channel.type === "text" || channel.type === "announcement") && threads.length > 0 &&
+        {/* Threads for text channels - OUTSIDE draggable div */}
+        {channel.type === "text" && threads.length > 0 &&
         <div className="mt-1">
           {threads.
           filter((thread) => showArchivedThreads || !thread.archived).
@@ -704,7 +703,7 @@ export function ChannelList({
   const reorderChannels = useReorderChannels();
   const deleteChannel = useDeleteChannel();
   const deleteCategory = useDeleteCategory();
-  
+  const duplicateChannel = useDuplicateChannel();
   const leaveServer = useLeaveServer();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const { data: serverEmojis = [] } = useServerEmojis(server.id);
@@ -759,11 +758,11 @@ export function ChannelList({
     const ids: string[] = [];
     server.categories.forEach((cat) => {
       cat.channels.forEach((ch) => {
-        if (ch.type === "text" || ch.type === "announcement") ids.push(ch.id);
+        if (ch.type === "text") ids.push(ch.id);
       });
     });
     orphanChannels.forEach((ch) => {
-      if (ch.type === "text" || ch.type === "announcement") ids.push(ch.id);
+      if (ch.type === "text") ids.push(ch.id);
     });
     return ids;
   }, [server.categories, orphanChannels]);
@@ -801,10 +800,11 @@ export function ChannelList({
       toast.error("Erreur lors de la suppression");
     }
   };
-  const [duplicateModalChannel, setDuplicateModalChannel] = useState<{ id: string; name: string } | null>(null);
   const handleDuplicateChannel = (channelId: string) => {
-    const channelName = getChannelName(channelId);
-    setDuplicateModalChannel({ id: channelId, name: channelName });
+    duplicateChannel.mutate({
+      channelId,
+      serverId: server.id
+    });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {
@@ -853,15 +853,10 @@ export function ChannelList({
     return orphan?.name || "";
   };
   const handleChannelClick = async (channel: Channel) => {
-    // Link channels: trusted links open directly, others show warning modal
+    // Link channels open external link warning modal
     if (channel.type === "link") {
       const url = channel.description || '';
-      if (!url) return;
-      if (channel.is_link_trusted) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } else {
-        setExternalLinkModal({ url });
-      }
+      if (url) setExternalLinkModal({ url });
       return;
     }
 
@@ -1657,14 +1652,7 @@ threads={threadsByChannel[channel.id] || []}
       <ExternalLinkWarningModal
         url={externalLinkModal.url}
         onClose={() => setExternalLinkModal(null)} />
-      }
 
-      {duplicateModalChannel &&
-      <DuplicateChannelModal
-        channelId={duplicateModalChannel.id}
-        channelName={duplicateModalChannel.name}
-        serverId={server.id}
-        onClose={() => setDuplicateModalChannel(null)} />
       }
 
       {inviteChannelId &&

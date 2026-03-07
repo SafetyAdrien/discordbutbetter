@@ -19,7 +19,7 @@ import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
-import { ChannelDangerZone } from './ChannelDangerZone';
+
 import { useChannelDetails } from '@/hooks/useChannelSettings';
 import { ChannelType } from '@/constants/permissions';
 
@@ -58,10 +58,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     switch (activeTab) {
       case 'overview':
         return (
-          <div className="space-y-6">
-            <ChannelOverview channel={channel} />
-            <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-          </div>
+          <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
         );
       case 'permissions':
         return <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />;
@@ -95,9 +92,8 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
                 <TabsTrigger value="permissions">Permissions</TabsTrigger>
                 <TabsTrigger value="integrations">Intégrations</TabsTrigger>
               </TabsList>
-              <TabsContent value="overview" className="mt-4 space-y-6">
-                <ChannelOverview channel={channel} />
-                <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+              <TabsContent value="overview" className="mt-4">
+                <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
               </TabsContent>
               <TabsContent value="permissions" className="mt-4">
                 <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
@@ -138,9 +134,8 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
             </TabsList>
 
             <div className="flex-1 overflow-y-auto mt-4 pb-2">
-              <TabsContent value="overview" className="mt-0 space-y-6" forceMount={activeTab === 'overview' ? undefined : true} hidden={activeTab !== 'overview'}>
-                <ChannelOverview channel={channel} />
-                <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+              <TabsContent value="overview" className="mt-0" forceMount={activeTab === 'overview' ? undefined : true} hidden={activeTab !== 'overview'}>
+                <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
               </TabsContent>
               <TabsContent value="permissions" className="mt-0" forceMount={activeTab === 'permissions' ? undefined : true} hidden={activeTab !== 'permissions'}>
                 <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />

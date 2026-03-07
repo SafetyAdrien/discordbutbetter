@@ -459,12 +459,6 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          >
-            <UserPlus className="w-4 h-4" />
-          </button>
           {onOpenSettings && (
             <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Settings className="w-4 h-4" />
@@ -473,17 +467,23 @@ export function MobileChannelListView({
         </div>
       )}
 
-      {/* Search bar - always visible */}
-      <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-header))]">
-        <div className="relative">
+      {/* Search bar + Invite - always visible */}
+      <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-1))] flex items-center gap-1.5">
+        <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
           <Input
-            placeholder="Rechercher messages, membres, salons..."
+            placeholder="Rechercher..."
             value={mobileSearchQuery}
             onChange={(e) => setMobileSearchQuery(e.target.value)}
             className="h-9 pl-8 text-sm bg-input rounded-xl"
           />
         </div>
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground transition-colors flex-shrink-0"
+        >
+          <UserPlus className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Separator before channel list */}

@@ -24,7 +24,7 @@ import {
   XCircle,
   CircleDot } from
 "lucide-react";
-import { ServerSettingsQuickMenu } from "@/components/server-settings/ServerSettingsQuickMenu";
+
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
@@ -1524,23 +1524,16 @@ export function ChannelList({
             </Tooltip>
 
             {canAccessSettings &&
-            <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                  className={cn(
-                    "p-1.5 rounded-lg transition-colors",
-                    showBanner && server.bannerUrl ?
-                    "hover:bg-background/30 text-white" :
-                    "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}>
-
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="end" className="w-56 p-1.5">
-                  <ServerSettingsQuickMenu onSelect={(tabId) => onOpenServerSettings?.(tabId)} />
-                </PopoverContent>
-              </Popover>
+              <button
+                onClick={() => onOpenServerSettings?.()}
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors",
+                  showBanner && server.bannerUrl ?
+                  "hover:bg-background/30 text-white" :
+                  "hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}>
+                <Settings className="w-4 h-4" />
+              </button>
             }
           </div>
         </div>

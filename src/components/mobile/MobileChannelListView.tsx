@@ -2,7 +2,6 @@ import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ServerSettingsQuickMenu } from '@/components/server-settings/ServerSettingsQuickMenu';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { useDeleteChannel, useDeleteCategory } from '@/hooks/useChannels';
@@ -355,7 +354,7 @@ export function MobileChannelListView({
   const deleteCategoryMut = useDeleteCategory();
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
   const [bannerProgress, setBannerProgress] = useState(1);
-  const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
+  
   const { data: servers } = useServers();
   const currentServer = servers?.find(s => s.id === serverId);
 
@@ -437,16 +436,9 @@ export function MobileChannelListView({
               <UserPlus className="w-4 h-4 text-white" />
             </button>
             {onOpenSettings && (
-              <Popover open={settingsPopoverOpen} onOpenChange={setSettingsPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
-                    <ChevronDown className="w-4 h-4 text-white/80" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="end" className="w-52 p-1.5 max-h-[60vh] overflow-y-auto">
-                  <ServerSettingsQuickMenu onSelect={(tabId) => { setSettingsPopoverOpen(false); onOpenSettings(tabId); }} />
-                </PopoverContent>
-              </Popover>
+              <button onClick={() => onOpenSettings('')} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
+                <Settings className="w-4 h-4 text-white/80" />
+              </button>
             )}
           </div>
         </div>
@@ -468,16 +460,9 @@ export function MobileChannelListView({
             <UserPlus className="w-4 h-4" />
           </button>
           {onOpenSettings && (
-            <Popover open={settingsPopoverOpen} onOpenChange={setSettingsPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" className="w-52 p-1.5 max-h-[60vh] overflow-y-auto">
-                <ServerSettingsQuickMenu onSelect={(tabId) => { setSettingsPopoverOpen(false); onOpenSettings(tabId); }} />
-              </PopoverContent>
-            </Popover>
+            <button onClick={() => onOpenSettings('')} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <Settings className="w-4 h-4" />
+            </button>
           )}
         </div>
       )}
@@ -493,16 +478,9 @@ export function MobileChannelListView({
             <UserPlus className="w-4 h-4" />
           </button>
           {onOpenSettings && (
-            <Popover open={settingsPopoverOpen} onOpenChange={setSettingsPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" className="w-52 p-1.5 max-h-[60vh] overflow-y-auto">
-                <ServerSettingsQuickMenu onSelect={(tabId) => { setSettingsPopoverOpen(false); onOpenSettings(tabId); }} />
-              </PopoverContent>
-            </Popover>
+            <button onClick={() => onOpenSettings('')} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <Settings className="w-4 h-4" />
+            </button>
           )}
         </div>
       )}

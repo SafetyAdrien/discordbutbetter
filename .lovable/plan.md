@@ -1,50 +1,61 @@
 
 
-# Ajustement des marges du layout desktop des paramètres serveur
+# Fix: Duplicated channel hidden by visibility filter
 
-## Changement
+## Root cause
 
-Modifier le layout desktop dans `ServerSettingsModal.tsx` (lignes 221-246) :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-1. **Sidebar (liste des paramètres)** : Ajouter du padding vertical et une légère marge à gauche pour décoller du bord gauche de l'écran
-2. **Zone de contenu** : Retirer le `max-w-2xl` pour que le contenu occupe toute la largeur disponible, avec un padding raisonnable. Ajouter une marge à droite pour respirer du bord droit
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### `src/components/server-settings/ServerSettingsModal.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Remplacer le bloc desktop (lignes 221-246) :
+## Fix
 
-```tsx
-// Desktop: full-page sidebar + content
-return (
-  <div className="fixed inset-0 z-50 flex bg-background">
-    {/* Sidebar avec marge gauche */}
-    <div className="w-56 bg-card flex flex-col border-r border-border ml-4 my-4 rounded-lg">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-semibold truncate">{serverName}</h2>
-        <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {renderNavList((tab) => setActiveTab(tab))}
-      </div>
-    </div>
-    {/* Contenu principal — occupe le reste avec marges */}
-    <div className="flex-1 flex flex-col overflow-hidden my-4 mr-4">
-      <div className="h-14 px-6 flex items-center justify-between border-b border-border flex-shrink-0">
-        <h1 className={cn("text-lg font-semibold", activeTab === 'delete' && "text-destructive")}>
-          {getCurrentTabLabel()}
-        </h1>
-        <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        {renderContent()}
-      </div>
-    </div>
-  </div>
-);
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### Fichier modifié
-- `src/components/server-settings/ServerSettingsModal.tsx`
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

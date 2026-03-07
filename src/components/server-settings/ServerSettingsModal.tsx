@@ -220,7 +220,7 @@ export function ServerSettingsModal({
   // Desktop: full-page sidebar + content
   return (
     <div className="fixed inset-0 z-50 flex bg-background">
-      <div className="w-56 bg-card flex flex-col border-r border-border">
+      <div className="w-56 bg-card flex flex-col border-r border-border ml-4 my-4 rounded-lg">
         <div className="p-4 border-b border-border">
           <h2 className="text-lg font-semibold truncate">{serverName}</h2>
           <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
@@ -229,7 +229,7 @@ export function ServerSettingsModal({
           {renderNavList((tab) => setActiveTab(tab))}
         </div>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden my-4 mr-4">
         <div className="h-14 px-6 flex items-center justify-between border-b border-border flex-shrink-0">
           <h1 className={cn("text-lg font-semibold", activeTab === 'delete' && "text-destructive")}>
             {getCurrentTabLabel()}
@@ -239,7 +239,7 @@ export function ServerSettingsModal({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-2xl">{renderContent()}</div>
+          {renderContent()}
         </div>
       </div>
     </div>

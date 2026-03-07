@@ -1410,7 +1410,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             {/* Vertical line descending from avatar */}
                             <div className="absolute left-0 top-0 border-l-2 border-muted-foreground/30 h-[calc(100%-14px)]" />
                             {/* L-shaped curve */}
-                            <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            <div className="absolute left-0 bottom-[6px] w-[33px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                           </div>
                         )}
 
@@ -1557,7 +1557,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             {/* Vertical line */}
                             <div className="absolute left-0 top-0 border-l-2 border-muted-foreground/30 h-[calc(100%-14px)]" />
                             {/* L-shaped curve */}
-                            <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            <div className="absolute left-0 bottom-[6px] w-[33px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                           </div>
                         )}
 

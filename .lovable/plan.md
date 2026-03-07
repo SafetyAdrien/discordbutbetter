@@ -1,25 +1,61 @@
 
 
-# Fix Thread Spine for Messages in Chat Area
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problem
-The thread spine (vertical line + L-curve) for threads attached to regular messages in the chat area is visually broken. Two issues:
+## Root cause
 
-1. **L-curve doesn't reach the ThreadSystemMessage** — The spine container starts at `left-[19px]` and the L-curve is `w-[22px]`, ending at 41px. But ThreadSystemMessage starts at `ml-[52px]`. There's an 11px gap.
-2. **Vertical/horizontal connection may have a gap** depending on exact pixel alignment.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changes
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### `src/components/chat/ChatArea.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**First message with author (lines 1408-1415):**
-- Widen the L-curve from `w-[22px]` to `w-[33px]` so it reaches the ThreadSystemMessage at 52px
-- Adjust vertical line height to connect seamlessly with the curve
+## Fix
 
-**Grouped message (lines 1555-1561):**
-- Same L-curve width fix: `w-[22px]` → `w-[33px]`
-- Same vertical line height adjustment
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Files modified
-- `src/components/chat/ChatArea.tsx` (lines 1408-1415, 1555-1561)
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

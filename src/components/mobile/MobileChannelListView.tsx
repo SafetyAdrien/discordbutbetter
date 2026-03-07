@@ -62,6 +62,8 @@ interface Channel {
   name: string;
   type: string;
   description?: string;
+  server_id?: string;
+  is_link_trusted?: boolean;
 }
 
 interface Category {
@@ -561,7 +563,12 @@ export function MobileChannelListView({
                   onClick={() => {
                     if (ch.type === 'link') {
                       const url = ch.description || '';
-                      if (url) setExternalLinkModal({ url });
+                      if (!url) return;
+                      if (ch.is_link_trusted) {
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      } else {
+                        setExternalLinkModal({ url, channelId: ch.id, serverId: ch.server_id || serverId, isLinkTrusted: ch.is_link_trusted });
+                      }
                       return;
                     }
                     setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
@@ -694,7 +701,12 @@ export function MobileChannelListView({
                         onClick={() => {
                           if (ch.type === 'link') {
                             const url = ch.description || '';
-                            if (url) setExternalLinkModal({ url });
+                            if (!url) return;
+                            if (ch.is_link_trusted) {
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            } else {
+                              setExternalLinkModal({ url, channelId: ch.id, serverId: ch.server_id || serverId, isLinkTrusted: ch.is_link_trusted });
+                            }
                             return;
                           }
                           setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
@@ -885,6 +897,9 @@ export function MobileChannelListView({
       {externalLinkModal && (
         <ExternalLinkWarningModal
           url={externalLinkModal.url}
+          channelId={externalLinkModal.channelId}
+          serverId={externalLinkModal.serverId}
+          isLinkTrusted={externalLinkModal.isLinkTrusted}
           onClose={() => setExternalLinkModal(null)}
         />
       )}

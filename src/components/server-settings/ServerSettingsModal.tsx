@@ -217,29 +217,36 @@ export function ServerSettingsModal({
     );
   }
 
-  // Desktop: full-page sidebar + content
+  // Desktop: full-page sidebar + content (Discord-like centered layout)
   return (
     <div className="fixed inset-0 z-50 flex bg-background">
-      <div className="w-56 bg-card flex flex-col border-r border-border">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-lg font-semibold truncate">{serverName}</h2>
-          <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {renderNavList((tab) => setActiveTab(tab))}
+      {/* Left zone: bg-card with nav pushed to the right */}
+      <div className="flex-1 flex bg-card">
+        <div className="flex-1" />
+        <div className="w-56 flex flex-col py-4">
+          <div className="px-3 mb-2">
+            <h2 className="text-lg font-semibold truncate">{serverName}</h2>
+            <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {renderNavList((tab) => setActiveTab(tab))}
+          </div>
         </div>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="h-14 px-6 flex items-center justify-between border-b border-border flex-shrink-0">
-          <h1 className={cn("text-lg font-semibold", activeTab === 'delete' && "text-destructive")}>
-            {getCurrentTabLabel()}
-          </h1>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-2xl">{renderContent()}</div>
+      {/* Right zone: content aligned left */}
+      <div className="flex-1 flex">
+        <div className="w-full max-w-2xl flex flex-col pl-8 pr-4 py-4">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className={cn("text-lg font-semibold", activeTab === 'delete' && "text-destructive")}>
+              {getCurrentTabLabel()}
+            </h1>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {renderContent()}
+          </div>
         </div>
       </div>
     </div>

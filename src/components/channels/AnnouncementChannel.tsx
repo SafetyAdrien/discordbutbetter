@@ -775,9 +775,17 @@ export function AnnouncementChannel({
                     />
 
                     {showAuthor ? (
-                      <div className="flex gap-3 items-start">
+                      <div className="relative">
+                        {/* Thread Spine - positioned from avatar center */}
+                        {threadsByMessageId.has(message.id) && (
+                          <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
+                            <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
+                            <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                          </div>
+                        )}
+
+                        <div className="flex gap-3 items-start">
                         {isPublishedFromOther ? (
-                          // Published message from another server - show server icon
                           <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                             {(message as any).source_server_icon ? (
                               <AvatarImage
@@ -875,7 +883,6 @@ export function AnnouncementChannel({
                               {message.edited_at && (
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
-                              {/* Publish Prompt */}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -901,6 +908,17 @@ export function AnnouncementChannel({
                             </>
                           )}
                         </div>
+                        </div>
+
+                        {/* Thread System Message under message with thread */}
+                        {threadsByMessageId.has(message.id) && (
+                          <div className="mt-1 ml-[52px]">
+                            <ThreadSystemMessage
+                              thread={threadsByMessageId.get(message.id)!}
+                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex gap-3">

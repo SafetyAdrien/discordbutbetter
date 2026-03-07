@@ -1350,7 +1350,8 @@ export function ChannelList({
   return (
     <div
       className={cn(
-        "bg-card flex flex-col relative select-none",
+        "bg-card flex flex-col border-r border-border relative select-none",
+        // Smooth width transition only when not actively resizing
         !isResizing.current && "transition-[width] duration-300 ease-out"
       )}
       style={{
@@ -1381,7 +1382,7 @@ export function ChannelList({
         )} />
       </div>
       {/* Server Header - styled like User Panel */}
-      <div className="bg-card">
+      <div className="bg-[hsl(var(--surface-header))]">
         <div className="flex items-center rounded-t-xl relative overflow-hidden"
         style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}>
 
@@ -1538,10 +1539,10 @@ export function ChannelList({
         </div>
 
         {/* Search bar */}
-        <div className="px-2 py-2 bg-card">
+        <div className="px-2 py-2 bg-[#12161c]">
           <button
             onClick={() => onOpenGlobalSearch?.()}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground text-sm transition-colors bg-input/60 hover:bg-input">
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground text-sm transition-colors bg-[#1b2127]">
 
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Rechercher</span>
@@ -1550,7 +1551,7 @@ export function ChannelList({
       </div>
 
       {/* Separator between header area and channel list */}
-      <div className="h-px bg-border/20" />
+      <Separator className="bg-border/30" />
 
       {/* Channels with DnD */}
       <ContextMenu>

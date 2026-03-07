@@ -528,7 +528,7 @@ const Index = () => {
   }
 
   return (
-    <div className="h-screen flex bg-background overflow-hidden animate-fade-in">
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Server List */}
       <ServerList
         servers={serverListData}

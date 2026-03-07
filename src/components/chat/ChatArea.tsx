@@ -906,7 +906,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         )}
       </AnimatePresence>
       {/* Channel Header - hidden on mobile where MobileChatView provides its own */}
-      {!isMobile && <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/30 flex-shrink-0 bg-background/80 backdrop-blur-sm w-full">
+      {!isMobile && <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full rounded-t-xl">
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>

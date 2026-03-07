@@ -38,7 +38,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   if (view === 'friends') {
     return (
       <div className="flex flex-col h-full">
-        <div className="h-12 px-4 flex items-center border-b border-border/30 bg-card">
+        <div className="h-12 px-4 flex items-center border-b border-border bg-[hsl(var(--surface-header))]">
           <button onClick={() => setView('list')} className="text-sm text-muted-foreground mr-3">←</button>
           <h2 className="font-semibold text-sm">Amis</h2>
         </div>
@@ -52,7 +52,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   if (view === 'inbox') {
     return (
       <div className="flex flex-col h-full">
-        <div className="h-12 px-4 flex items-center border-b border-border/30 bg-card">
+        <div className="h-12 px-4 flex items-center border-b border-border bg-[hsl(var(--surface-header))]">
           <button onClick={() => setView('list')} className="text-sm text-muted-foreground mr-3">←</button>
           <h2 className="font-semibold text-sm">Boîte de réception</h2>
         </div>
@@ -66,7 +66,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-12 px-4 flex items-center border-b border-border/30 bg-card">
+      <div className="h-12 px-4 flex items-center border-b border-border bg-[hsl(var(--surface-header))]">
         <h2 className="font-semibold text-sm flex-1">Messages</h2>
         <div className="flex items-center gap-1">
           <button
@@ -117,7 +117,7 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
       {/* FAB - New Message */}
       <button
         onClick={() => setShowNewMessage(true)}
-        className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-[0_4px_20px_hsl(var(--primary)/0.4)] flex items-center justify-center hover:bg-primary/90 transition-all z-10 active:scale-95"
+        className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

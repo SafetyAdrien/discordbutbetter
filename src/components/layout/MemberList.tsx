@@ -650,9 +650,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-full sm:w-60 bg-background flex flex-col sm:border-l sm:border-border/20">
+      <div ref={ref} className="w-full sm:w-60 bg-card flex flex-col sm:border-l sm:border-border/50 sm:rounded-tr-xl">
         {/* Search input and Inbox */}
-        <div className="px-3 pt-3 border-border bg-background">
+        <div className="px-3 pt-3 border-border bg-card">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />

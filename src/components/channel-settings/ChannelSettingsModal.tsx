@@ -73,12 +73,12 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        <div className="h-13 px-3 flex items-center gap-2 border-b border-border/30 bg-card/40 flex-shrink-0">
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/80 transition-colors">
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
             <X className="w-5 h-5" />
           </button>
           <Icon className="w-4 h-4 text-muted-foreground" />
-          <h2 className="font-bold text-sm flex-1 truncate">Paramètres de {channel?.name || 'salon'}</h2>
+          <h2 className="font-semibold text-sm flex-1 truncate">Paramètres de {channel?.name || 'salon'}</h2>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
@@ -113,7 +113,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
   // Desktop
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col min-h-[400px] glass-elevated border-border/30 shadow-2xl shadow-black/30">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col min-h-[400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon className="w-5 h-5 text-muted-foreground" />

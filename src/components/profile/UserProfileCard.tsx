@@ -114,7 +114,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   return (
-    <div className="h-14 px-2 flex items-center gap-2 glass-panel border-t border-border/30">
+    <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--user-panel))] border-t border-border/50">
       <Popover>
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
@@ -211,7 +211,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                       {/* Invisible bridge to connect popover to this menu */}
                       <div className="absolute top-0 -left-1 w-1 h-full" />
                       {/* Actual menu content */}
-                      <div className="w-44 glass-elevated border border-border/30 rounded-xl shadow-2xl shadow-black/40 p-1.5 animate-slide-in-right">
+                      <div className="w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 animate-slide-in-right">
                         <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
                         {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
                           <button

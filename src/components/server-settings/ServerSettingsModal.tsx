@@ -127,10 +127,10 @@ export function ServerSettingsModal({
   };
 
   const renderNavList = (onSelect: (tab: SettingsTab) => void) => (
-    <nav className="space-y-5 p-3">
+    <nav className="space-y-4 p-2">
       {sections.map(section => (
         <div key={section.id}>
-          <p className="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-wider px-3 mb-1.5">
+          <p className="text-xs font-semibold text-muted-foreground capitalize px-3 mb-1">
             {section.name === 'server' ? serverName : section.name}
           </p>
           <div className="space-y-0.5">
@@ -139,40 +139,40 @@ export function ServerSettingsModal({
                 key={tab.id}
                 onClick={() => onSelect(tab.id)}
                 className={cn(
-                  'w-full flex items-center gap-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200',
-                  isMobile ? 'py-3' : 'py-2',
+                  'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                  isMobile ? 'py-3' : 'py-1.5',
                   activeTab === tab.id
-                    ? 'bg-primary/15 text-primary shadow-[inset_3px_0_0_hsl(var(--primary))]'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
-                <tab.icon className="w-4 h-4 flex-shrink-0" />
+                <tab.icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{tab.label}</span>
-                {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground/50" />}
+                {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
               </button>
             ))}
           </div>
         </div>
       ))}
-      <Separator className="my-2 opacity-50" />
+      <Separator className="my-2" />
       <div className="space-y-0.5">
         {dangerTabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => onSelect(tab.id)}
             className={cn(
-              'w-full flex items-center gap-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200',
-              isMobile ? 'py-3' : 'py-2',
+              'w-full flex items-center gap-2 px-3 rounded-lg text-sm transition-colors',
+              isMobile ? 'py-3' : 'py-1.5',
               activeTab === tab.id
-                ? tab.danger ? 'bg-destructive/15 text-destructive shadow-[inset_3px_0_0_hsl(var(--destructive))]' : 'bg-primary/15 text-primary shadow-[inset_3px_0_0_hsl(var(--primary))]'
+                ? tab.danger ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
                 : tab.danger 
-                  ? 'text-destructive/70 hover:bg-destructive/10 hover:text-destructive'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  ? 'text-destructive/80 hover:bg-destructive/10 hover:text-destructive'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
           >
-            <tab.icon className="w-4 h-4 flex-shrink-0" />
+            <tab.icon className="w-4 h-4" />
             <span className="flex-1 text-left">{tab.label}</span>
-            {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground/50" />}
+            {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           </button>
         ))}
       </div>
@@ -185,11 +185,11 @@ export function ServerSettingsModal({
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
         {activeTab === null ? (
           <>
-            <div className="h-13 px-3 flex items-center gap-2 border-b border-border/30 bg-card/40 flex-shrink-0">
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/80 transition-colors">
+            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
-              <h2 className="font-bold text-sm flex-1 truncate">{serverName}</h2>
+              <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
             </div>
             <div className="flex-1 overflow-y-auto">
               {renderNavList((tab) => setActiveTab(tab))}
@@ -197,14 +197,14 @@ export function ServerSettingsModal({
           </>
         ) : (
           <>
-            <div className="h-13 px-3 flex items-center gap-2 border-b border-border/30 bg-card/40 flex-shrink-0">
-              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-lg hover:bg-muted/80 transition-colors">
+            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-lg hover:bg-muted">
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <h3 className={cn("font-bold text-sm flex-1 truncate", activeTab === 'delete' && "text-destructive")}>
+              <h3 className={cn("font-semibold text-sm flex-1 truncate", activeTab === 'delete' && "text-destructive")}>
                 {getCurrentTabLabel()}
               </h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/80 transition-colors">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -220,23 +220,23 @@ export function ServerSettingsModal({
   // Desktop: sidebar + content
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] glass-elevated rounded-2xl overflow-hidden shadow-2xl shadow-black/30">
-        <div className="w-60 bg-card/40 backdrop-blur-md border-r border-border/30 flex flex-col">
-          <div className="p-4 border-b border-border/30">
-            <h2 className="text-lg font-bold truncate">{serverName}</h2>
-            <p className="text-xs text-muted-foreground/70">Paramètres du serveur</p>
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] glass rounded-xl overflow-hidden">
+        <div className="w-56 bg-card/50 border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
+            <h2 className="text-lg font-semibold truncate">{serverName}</h2>
+            <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
           </div>
           <div className="flex-1 overflow-y-auto">
             {renderNavList((tab) => setActiveTab(tab))}
           </div>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden bg-background/60">
-          <div className="h-14 px-6 flex items-center justify-between border-b border-border/30">
-            <h3 className={cn("font-semibold text-lg", activeTab === 'delete' && "text-destructive")}>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="h-12 px-6 flex items-center justify-between border-b border-border">
+            <h3 className={cn("font-semibold", activeTab === 'delete' && "text-destructive")}>
               {getCurrentTabLabel()}
             </h3>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted/80 transition-all duration-200 hover:rotate-90">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>

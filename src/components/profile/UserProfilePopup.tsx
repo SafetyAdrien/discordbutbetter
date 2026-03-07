@@ -547,11 +547,11 @@ export function UserProfilePopup({
     
     return (
       <div 
-        className="absolute right-full mr-2 w-64 glass-elevated border border-border/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in-left"
+        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
         style={{ top: topOffset }}
         onClick={(e) => e.stopPropagation()}
       >
-      <div className="p-3 border-b border-border/30 flex items-center justify-between">
+      <div className="p-3 border-b border-border flex items-center justify-between">
         <h4 className="font-semibold text-sm">Gérer les rôles</h4>
         <button 
           onClick={() => setShowRolePanel(false)} 
@@ -608,7 +608,7 @@ export function UserProfilePopup({
               )}
               
               {/* Main Profile Card */}
-              <div className="relative w-80 glass-elevated border border-border/30 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden animate-slide-in-right">
+              <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
                 <ProfileContent />
               </div>
             </div>
@@ -624,7 +624,7 @@ export function UserProfilePopup({
     return (
       <>
         <Drawer open={open} onOpenChange={onOpenChange}>
-          <DrawerContent className="p-0 overflow-hidden bg-card border-border/30 max-h-[85vh]">
+          <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
             <div className="overflow-y-auto">
               <ProfileContent />
             </div>
@@ -639,7 +639,7 @@ export function UserProfilePopup({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 overflow-hidden max-w-sm glass-elevated border-border/30 shadow-2xl shadow-black/30">
+        <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
           <ProfileContent />
         </DialogContent>
       </Dialog>

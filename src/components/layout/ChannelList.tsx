@@ -1524,23 +1524,16 @@ export function ChannelList({
             </Tooltip>
 
             {canAccessSettings &&
-            <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                  className={cn(
-                    "p-1.5 rounded-lg transition-colors",
-                    showBanner && server.bannerUrl ?
-                    "hover:bg-background/30 text-white" :
-                    "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}>
-
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="end" className="w-56 p-1.5">
-                  <ServerSettingsQuickMenu onSelect={(tabId) => onOpenServerSettings?.(tabId)} />
-                </PopoverContent>
-              </Popover>
+              <button
+                onClick={() => onOpenServerSettings?.()}
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors",
+                  showBanner && server.bannerUrl ?
+                  "hover:bg-background/30 text-white" :
+                  "hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}>
+                <Settings className="w-4 h-4" />
+              </button>
             }
           </div>
         </div>

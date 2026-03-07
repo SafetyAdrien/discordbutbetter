@@ -154,7 +154,8 @@
     --radius-3xl: 1.75rem;
 
     /* Material surfaces with elevation — wider spread for distinction */
-    --surface-1: 225 20% 8%;
+    --surface-server-list: 225 22% 6%;
+    --surface-1: 225 20% 9%;
     --surface-2: 225 18% 14%;
     --surface-3: 225 16% 20%;
     --surface-elevated: 225 18% 17%;

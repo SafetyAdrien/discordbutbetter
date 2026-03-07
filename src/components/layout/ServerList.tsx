@@ -442,7 +442,7 @@ export function ServerList({
   }, []);
 
   return (
-    <div className="w-[80px] bg-surface-1 flex flex-col items-center py-3 gap-1.5">
+    <div className="w-[80px] bg-[hsl(var(--surface-server-list))] border-r border-border/20 flex flex-col items-center py-3 gap-1.5">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>

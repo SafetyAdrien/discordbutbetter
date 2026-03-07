@@ -1,61 +1,41 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fix: Éviter la duplication des threads dans les messages système
 
-## Root cause
+## Problème
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Quand un thread est créé sur un message, il apparaît **deux fois** dans le chat :
+1. Via le **message système** `[SYSTEM:THREAD_CREATED:...]` → affiche le spine + embed `ThreadSystemMessage`
+2. Via `threadsByMessageId` sous le **message parent** → affiche un second `ThreadSystemMessage`
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Les deux pointent vers le même thread.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## Solution
 
-## Fix
+### `src/components/chat/ChatArea.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Modifier le `useMemo` de `threadsByMessageId` (ligne 702) pour **exclure** les threads qui ont déjà un message système visible dans la liste des messages. Concrètement :
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
+```tsx
+const threadsByMessageId = useMemo(() => {
+  // Collect thread IDs that already have a system message rendered
+  const systemThreadIds = new Set<string>();
+  messages.forEach((msg) => {
+    if (msg.is_system && msg.content.startsWith('[SYSTEM:THREAD_CREATED:')) {
+      const match = msg.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):/);
+      if (match) systemThreadIds.add(match[1]);
+    }
   });
-}
+
+  const map = new Map<string, Thread>();
+  threads.forEach((thread) => {
+    if (thread.message_id && !systemThreadIds.has(thread.id)) {
+      map.set(thread.message_id, thread);
+    }
+  });
+  return map;
+}, [threads, messages]);
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Un seul fichier modifié, ~10 lignes changées.
 

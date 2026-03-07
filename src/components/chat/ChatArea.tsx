@@ -1536,7 +1536,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         {threadsByMessageId.has(message.id) && (
                           <div className="flex mt-1.5">
                             <div className="flex-shrink-0 w-8 relative mr-1.5">
-                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                              <div className="absolute left-[19px] top-0 w-[13px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <ThreadSystemMessage
@@ -1654,7 +1654,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         {threadsByMessageId.has(message.id) && (
                           <div className="flex mt-1.5">
                             <div className="flex-shrink-0 w-8 relative mr-1.5">
-                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                              <div className="absolute left-[19px] top-0 w-[13px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <ThreadSystemMessage

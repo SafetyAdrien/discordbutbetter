@@ -449,11 +449,9 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
                     )}
                   >
                     <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
-                      {thread.name}
-                      {thread.archived && " (archivé)"}
-                      {thread.locked && " 🔒"}
-                      {thread.closed && " 🔴"}
-                    </span>
+                       {thread.name}
+                       {thread.archived && " (archivé)"}
+                     </span>
                   </button>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-52">

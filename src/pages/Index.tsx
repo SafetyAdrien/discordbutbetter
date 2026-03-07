@@ -167,6 +167,7 @@ const Index = () => {
           position: ch.position ?? 0,
           category_id: cat.id,
           server_id: activeServerId,
+          is_link_trusted: false,
         })),
       })),
       orphanChannels: (server.orphanChannels || []).map(ch => ({

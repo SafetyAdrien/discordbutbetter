@@ -9,10 +9,15 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
 
   const query = useQuery({
     queryKey: ['thread-unread-counts', channelId, user?.id],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:thread-unread:${channelId}:${user?.id}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async () => {
       if (!channelId || !user?.id) return {};
 
-      // Get all threads for this channel
       const { data: threads, error: threadsError } = await supabase
         .from('threads')
         .select('id')
@@ -24,7 +29,6 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
 
       const threadIds = threads.map(t => t.id);
 
-      // Get user's read states
       const { data: readStates, error: readStatesError } = await supabase
         .from('thread_read_states')
         .select('thread_id, last_read_at')
@@ -33,13 +37,11 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
 
       if (readStatesError) throw readStatesError;
 
-      // Create map of thread_id -> last_read_at
       const readStatesMap: Record<string, string> = {};
       readStates?.forEach(rs => {
         readStatesMap[rs.thread_id] = rs.last_read_at || '';
       });
 
-      // Count unread messages for each thread
       const unreadCounts: Record<string, number> = {};
       
       await Promise.all(threadIds.map(async (threadId) => {
@@ -49,7 +51,7 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
           .from('thread_messages')
           .select('*', { count: 'exact', head: true })
           .eq('thread_id', threadId)
-          .neq('author_id', user.id); // Don't count own messages
+          .neq('author_id', user.id);
 
         if (lastReadAt) {
           query = query.gt('created_at', lastReadAt);
@@ -65,6 +67,13 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
     },
     enabled: !!channelId && !!user?.id,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && user?.id && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:thread-unread:${channelId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, user?.id, query.isPlaceholderData]);
 
   // Subscribe to real-time thread message updates
   useEffect(() => {

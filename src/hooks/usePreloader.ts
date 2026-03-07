@@ -757,10 +757,31 @@ export function usePreloader(
       if (serverCached) {
         queryClient.setQueryData(['server-unread-counts', user.id], serverCached);
       }
+      // Channel unread counts per server
+      for (const sid of serverIds) {
+        const chUnread = readCache<any>(`cache:channel-unread:${sid}:${user.id}`);
+        if (chUnread) {
+          queryClient.setQueryData(['channel-unread-counts', sid, user.id], chUnread);
+        }
+      }
+    })();
+
+    // GROUP 10: Server assets (emojis + stickers) — background
+    const assetsPromise = (async () => {
+      await Promise.all(serverIds.map(async (sid) => {
+        const emojisCached = readCache<any>(`cache:server-emojis:${sid}`);
+        if (emojisCached) {
+          queryClient.setQueryData(['server-emojis', sid], emojisCached);
+        }
+        const stickersCached = readCache<any>(`cache:server-stickers:${sid}`);
+        if (stickersCached) {
+          queryClient.setQueryData(['server-stickers', sid], stickersCached);
+        }
+      }));
     })();
 
     // Run all groups in parallel, messages phase waits for channels+DMs
-    Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase, friendsPromise, notificationsPromise, unreadCountsPromise])
+    Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase, friendsPromise, notificationsPromise, unreadCountsPromise, assetsPromise])
       .then(() => {
         writeCache('cache:preloader-done', '1');
       });

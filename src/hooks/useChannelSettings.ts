@@ -44,8 +44,14 @@ export function useChannelDetails(channelId: string | null) {
     };
   }, [channelId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['channel-details', channelId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:channel-details:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<ChannelDetails | null> => {
       if (!channelId) return null;
 
@@ -60,6 +66,14 @@ export function useChannelDetails(channelId: string | null) {
     },
     enabled: !!channelId && !!user,
   });
+
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:channel-details:${channelId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useUpdateChannel() {

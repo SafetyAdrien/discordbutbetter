@@ -49,8 +49,14 @@ export function useServerEmojis(serverId: string | null) {
     };
   }, [serverId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['server-emojis', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:server-emojis:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<ServerEmoji[]> => {
       if (!serverId) return [];
 
@@ -65,6 +71,14 @@ export function useServerEmojis(serverId: string | null) {
     },
     enabled: !!serverId && !!user,
   });
+
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:server-emojis:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useUploadEmoji() {
@@ -218,8 +232,14 @@ export function useServerStickers(serverId: string | null) {
     };
   }, [serverId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['server-stickers', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:server-stickers:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<ServerSticker[]> => {
       if (!serverId) return [];
 
@@ -234,6 +254,14 @@ export function useServerStickers(serverId: string | null) {
     },
     enabled: !!serverId && !!user,
   });
+
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:server-stickers:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useUploadSticker() {

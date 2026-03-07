@@ -1,12 +1,40 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useEngagementStats(serverId: string) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  // Realtime subscription for messages INSERT
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`engagement-stats-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['engagement-stats', serverId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
+
+  const query = useQuery({
     queryKey: ['engagement-stats', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:engagement-stats:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async () => {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -14,7 +42,6 @@ export function useEngagementStats(serverId: string) {
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-      // Get all channels for this server
       const { data: channels } = await supabase
         .from('channels')
         .select('id')
@@ -31,14 +58,12 @@ export function useEngagementStats(serverId: string) {
         };
       }
 
-      // Messages this week
       const { count: messagesCount } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
         .in('channel_id', channelIds)
         .gte('created_at', oneWeekAgo.toISOString());
 
-      // Active members (unique authors this week)
       const { data: activeAuthors } = await supabase
         .from('messages')
         .select('author_id')
@@ -47,7 +72,6 @@ export function useEngagementStats(serverId: string) {
 
       const uniqueActiveMembers = new Set(activeAuthors?.map(m => m.author_id) || []);
 
-      // Reactions this week
       const { data: messageIds } = await supabase
         .from('messages')
         .select('id')
@@ -65,7 +89,6 @@ export function useEngagementStats(serverId: string) {
         reactionsCount = count || 0;
       }
 
-      // Growth this month (new members)
       const { count: newMembersCount } = await supabase
         .from('server_members')
         .select('*', { count: 'exact', head: true })
@@ -80,6 +103,15 @@ export function useEngagementStats(serverId: string) {
       };
     },
     enabled: !!serverId && !!user,
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 60000,
   });
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:engagement-stats:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }

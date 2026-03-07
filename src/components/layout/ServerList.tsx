@@ -153,7 +153,7 @@ function SortableServerIcon({
                 {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
                 {mentionCount > 0 && (
                   <div className={cn(
-                    "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-surface-1 animate-badge-pop",
+                    "absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-[11px] font-bold border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop",
                     isShaking && "animate-badge-shake"
                   )}
                   style={{ boxShadow: 'var(--shadow-elevation-1)' }}>

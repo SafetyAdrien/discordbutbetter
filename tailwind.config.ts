@@ -75,6 +75,7 @@ export default {
           3: "hsl(var(--surface-3))",
           elevated: "hsl(var(--surface-elevated))",
           hover: "hsl(var(--surface-hover))",
+          "server-list": "hsl(var(--surface-server-list))",
         },
         status: {
           online: "hsl(var(--online))",

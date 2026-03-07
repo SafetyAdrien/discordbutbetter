@@ -1397,12 +1397,12 @@ export function ChannelList({
           <Popover>
             <PopoverTrigger asChild>
               <button className={cn(
-                "flex items-center gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
+                "flex items-center justify-center gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
                 showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
               )}>
 
                 <div className={cn(
-                  "flex-1 min-w-0 text-left relative z-10 px-3",
+                  "flex-1 min-w-0 text-center relative z-10 px-3",
                   showBanner && server.bannerUrl ? "self-end pb-2" : ""
                 )}>
                   <p className={cn(
@@ -1507,23 +1507,6 @@ export function ChannelList({
             "flex items-center gap-1 pr-2 relative z-10",
             showBanner && server.bannerUrl ? "self-end pb-2" : ""
           )}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setInviteChannelId('server')}
-                  className={cn(
-                    "p-1.5 rounded-lg transition-colors",
-                    showBanner && server.bannerUrl ?
-                    "hover:bg-background/30 text-white" :
-                    "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}>
-
-                  <UserPlus className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent><p>Créer une invitation</p></TooltipContent>
-            </Tooltip>
-
             {canAccessSettings &&
               <button
                 onClick={() => onOpenServerSettings?.()}
@@ -1539,15 +1522,25 @@ export function ChannelList({
           </div>
         </div>
 
-        {/* Search bar */}
-        <div className="px-2.5 py-2">
+        {/* Search bar + Invite */}
+        <div className="px-2.5 py-2 flex items-center gap-1.5">
           <button
             onClick={() => onOpenGlobalSearch?.()}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-muted-foreground text-sm bg-surface-3 hover:bg-surface-hover"
+            className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-full text-muted-foreground text-sm bg-surface-3 hover:bg-surface-hover"
             style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}>
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Rechercher</span>
           </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setInviteChannelId('server')}
+                className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">
+                <UserPlus className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent><p>Créer une invitation</p></TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

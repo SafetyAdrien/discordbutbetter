@@ -23,7 +23,6 @@ interface MessageInputProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   compact?: boolean;
-  tightLayout?: boolean;
   serverId?: string | null;
   channelId?: string | null;
   channelName?: string;
@@ -69,7 +68,6 @@ export function MessageInput({
   onTypingStart,
   onTypingStop,
   compact = false,
-  tightLayout = false,
   serverId = null,
   channelId = null,
   channelName = 'général',
@@ -429,13 +427,9 @@ export function MessageInput({
     }, 0);
   }, [value, onChange]);
 
-  const nonCompactPadding = tightLayout
-    ? (isMobile
-      ? "px-0 pt-0 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
-      : "px-1.5 py-1.5")
-    : (isMobile
-      ? "px-1.5 pt-0.5 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
-      : "px-4 py-3");
+  const nonCompactPadding = isMobile
+    ? "px-0 pt-0 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
+    : "px-0 py-0";
   const nonCompactContainerClass = `${nonCompactPadding} flex-shrink-0 flex flex-col w-full min-w-0 relative`;
 
   // Render follow bar for announcement channels when permission is denied

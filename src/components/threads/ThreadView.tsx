@@ -920,6 +920,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       )}
 
       {/* Input */}
+      <div className="px-4 pb-4 pt-2">
       <MessageInput
         value={messageContent}
         onChange={setMessageContent}
@@ -940,6 +941,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         canCreatePolls={canCreatePolls}
         canMentionEveryone={canMentionEveryone}
       />
+      </div>
       {/* Edit Poll Modal */}
       <CreatePollModal
         channelId={channelId || thread?.channel_id || ''}

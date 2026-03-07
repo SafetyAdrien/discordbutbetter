@@ -545,6 +545,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           <TypingIndicator conversationId={conversationId} />
 
           {/* Input */}
+          <div className="px-4 pb-4 pt-2">
           <MessageInput
             value={messageInput}
             onChange={setMessageInput}
@@ -571,6 +572,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             onToggleSpoiler={toggleSpoiler}
             onClearAttachments={clearAttachments}
           />
+          </div>
         </div>
 
       {/* User Info Panel - Sheet on mobile, panel on desktop */}

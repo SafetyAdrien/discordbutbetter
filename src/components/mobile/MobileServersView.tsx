@@ -116,7 +116,7 @@ function SortableMobileServerIcon({
           </Avatar>
 
           {mentionCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))]">
               {mentionCount > 99 ? '99+' : mentionCount}
             </span>
           )}
@@ -267,7 +267,7 @@ export function MobileServersView({
       <div
         data-swipe-ignore="true"
         className={cn(
-        'w-[72px] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
       )}>
         {/* DM Button */}
         <button
@@ -276,7 +276,7 @@ export function MobileServersView({
             ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
             showDMs
               ? 'bg-primary text-primary-foreground rounded-2xl'
-              : 'bg-muted/50 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
+              : 'bg-surface-3 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
           )}
         >
           <div className={cn(
@@ -331,14 +331,14 @@ export function MobileServersView({
 
         <button
           onClick={onDiscoverClick}
-          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
+          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-surface-3 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
           <Compass className="w-6 h-6" />
         </button>
 
         <button
           onClick={onCreateClick}
-          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-muted/50 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
+          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-surface-3 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
           <Plus className="w-6 h-6" />
         </button>

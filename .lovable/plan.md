@@ -1,61 +1,104 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correctifs et améliorations — Salons, Modal, Duplication, Accessibilité
 
-## Root cause
+## Résumé des changements
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+7 axes de travail couvrant des correctifs d'interface, de l'accessibilité clavier, et une nouvelle fonctionnalité de duplication avec modal.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+---
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+## 1. Threads dans le salon d'Annonces
 
-## Fix
+**Fichier** : `src/components/channels/AnnouncementChannel.tsx`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+Le salon d'annonces ne supporte pas les threads (pas de `useThreads`, pas de `ThreadSystemMessage`, pas de `ThreadSpine`, pas de `CreateThreadModal`). Il faut porter le système complet depuis `ChatArea.tsx` :
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+- Importer `useThreads`, `ThreadSystemMessage`, `ThreadSpine`, `CreateThreadModal`, `Thread`
+- Ajouter le hook `useThreads(channel.id)` et construire `threadsByMessageId` (map message_id → thread)
+- Ajouter les props `onSelectThread` et `activeThreadId` à `AnnouncementChannelProps`
+- Dans le rendu des messages :
+  - Détecter les messages système `[SYSTEM:THREAD_CREATED:id:nom]` et les rendre avec le spine + `ThreadSystemMessage` (même pattern que ChatArea lignes 1280-1331)
+  - Après chaque message normal, si `threadsByMessageId.has(message.id)`, afficher `ThreadSystemMessage` avec le spine (même pattern que ChatArea lignes 1517-1524 et 1528-1536)
+- Ajouter le bouton "Créer un thread" dans le context menu et les actions de message
+- Passer `onSelectThread` depuis `Index.tsx` et `MobileLayout.tsx` lors du rendu de `AnnouncementChannel`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**Fichiers impactés** : `src/pages/Index.tsx`, `src/components/mobile/MobileLayout.tsx` (passage des props thread)
 
-### 2. In `onSuccess`: invalidate the permissions cache
+---
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+## 2. Modal de salon — Bouton supprimer fixe + stabilité du modal
 
-### 3. Hook needs `useAuth` for the user ID
+**Fichier** : `src/components/channel-settings/ChannelSettingsModal.tsx`
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
+- Ajouter `min-h-[400px]` sur le conteneur scrollable (`div.flex-1.overflow-y-auto`) pour empêcher le recentrage du dialog lors du switch de tab
+- Séparer `ChannelDangerZone` du contenu scrollable pour le rendre sticky/fixe en bas. Restructurer le layout desktop :
+  ```
+  <div className="flex-1 overflow-y-auto min-h-[400px]">
+    <TabsContent overview> <ChannelOverview /> </TabsContent>
+    <TabsContent permissions> ... </TabsContent>
+    <TabsContent integrations> ... </TabsContent>
+  </div>
+  {/* Fixed at bottom, outside scroll */}
+  <div className="border-t border-border pt-3 mt-auto">
+    <ChannelDangerZone ... />
+  </div>
+  ```
+- Même traitement sur mobile : sortir `ChannelDangerZone` du `TabsContent` overview et le placer en sticky bottom
 
-## Detailed changes
+---
 
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+## 3. Chaîne de liaison — Nettoyage de l'overview
 
-### Code sketch for onMutate addition (after servers cache update)
+**Fichier** : `src/components/channel-settings/ChannelOverview.tsx`
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
+- Supprimer le bloc "Type de salon" avec badge pour **tous** les types non-toggleables (retirer les lignes 210-222 qui affichent le badge `!canToggleType`)
+- Pour les salons de type `link` :
+  - Renommer le label "Description" en "URL de destination :"
+  - Ajouter une checkbox "Lien de confiance" qui met à jour `is_link_trusted` via `useUpdateChannel`
 
-### Code for onSuccess addition
+**Fichier** : `src/hooks/useChannelSettings.ts`
+- Ajouter `is_link_trusted` au type `ChannelDetails` et à la query select
+- Ajouter `is_link_trusted` comme champ mutable dans `useUpdateChannel`
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+**Migration DB** : Ajouter la colonne `is_link_trusted boolean default false` à la table `channels` (si pas déjà présente — la recherche montre qu'elle n'existe pas encore)
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+---
+
+## 4. Accessibilité — Touche Enter pour enregistrer
+
+**Fichier** : `src/components/channel-settings/ChannelOverview.tsx`
+- Envelopper le formulaire dans un `<form onSubmit>` ou ajouter un `onKeyDown` sur les champs Input/Textarea : quand `Enter` est pressé (sans Shift), appeler `handleSave()` si `hasChanges`
+
+---
+
+## 5. Duplication de salon — Modal avec tabs
+
+**Nouveau fichier** : `src/components/modals/DuplicateChannelModal.tsx`
+
+Modal avec deux onglets :
+- **Aperçu** : Input pour le nom du salon (pré-rempli avec le nom original), aperçu du type
+- **Permissions** : Checkbox "Copier les permissions du salon original" (coché par défaut)
+- Bouton de confirmation + support touche Enter pour confirmer
+- Appelle `useDuplicateChannel` avec les paramètres (nom custom, copyPermissions)
+
+**Fichier** : `src/hooks/useChannels.ts` (`useDuplicateChannel`)
+- Ajouter les paramètres optionnels `customName?: string` et `copyPermissions?: boolean` à la mutation
+- Si `customName` fourni, l'utiliser au lieu de `original.name`
+- Si `copyPermissions` est `false`, ne pas copier les `channel_permission_overrides`
+
+**Fichier** : `src/components/layout/ChannelList.tsx`
+- Remplacer l'appel direct `handleDuplicateChannel` par l'ouverture de `DuplicateChannelModal`
+- Ajouter l'état `duplicatingChannelId` pour gérer l'ouverture/fermeture du modal
+
+---
+
+## Ordre d'implémentation
+
+1. Migration DB (`is_link_trusted`)
+2. `useChannelSettings.ts` (ajout `is_link_trusted`)
+3. `ChannelOverview.tsx` (retrait badge type, renommage label link, checkbox confiance, Enter save)
+4. `ChannelSettingsModal.tsx` (danger zone fixe, min-height)
+5. `DuplicateChannelModal.tsx` (nouveau) + `useChannels.ts` (params) + `ChannelList.tsx` (intégration)
+6. `AnnouncementChannel.tsx` (threads) + `Index.tsx` / `MobileLayout.tsx` (props)
 

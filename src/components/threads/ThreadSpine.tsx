@@ -9,7 +9,7 @@ export function ThreadSpine() {
     <div className="absolute left-0 top-0 bottom-0 w-[52px]">
       {/* Vertical line going down */}
       <div 
-        className="absolute left-5 top-0 w-0.5 bg-muted-foreground/30"
+        className="absolute left-5 top-0 border-l-2 border-muted-foreground/30"
         style={{ height: 'calc(100% - 10px)' }}
       />
       

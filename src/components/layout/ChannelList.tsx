@@ -64,6 +64,7 @@ import { AccountSettingsModal } from "@/components/account-settings/AccountSetti
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
+import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
@@ -692,6 +693,7 @@ export function ChannelList({
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
   const [externalLinkModal, setExternalLinkModal] = useState<{url: string;} | null>(null);
+  const [duplicatingChannel, setDuplicatingChannel] = useState<{id: string; name: string} | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
@@ -801,10 +803,8 @@ export function ChannelList({
     }
   };
   const handleDuplicateChannel = (channelId: string) => {
-    duplicateChannel.mutate({
-      channelId,
-      serverId: server.id
-    });
+    const channelName = getChannelName(channelId);
+    setDuplicatingChannel({ id: channelId, name: channelName });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {

@@ -23,6 +23,7 @@ interface MessageInputProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   compact?: boolean;
+  tightLayout?: boolean;
   serverId?: string | null;
   channelId?: string | null;
   channelName?: string;
@@ -68,6 +69,7 @@ export function MessageInput({
   onTypingStart,
   onTypingStop,
   compact = false,
+  tightLayout = false,
   serverId = null,
   channelId = null,
   channelName = 'général',
@@ -427,10 +429,19 @@ export function MessageInput({
     }, 0);
   }, [value, onChange]);
 
+  const nonCompactPadding = tightLayout
+    ? (isMobile
+      ? "px-0 pt-0 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
+      : "px-1.5 py-1.5")
+    : (isMobile
+      ? "px-1.5 pt-0.5 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
+      : "px-4 py-3");
+  const nonCompactContainerClass = `${nonCompactPadding} flex-shrink-0 flex flex-col w-full min-w-0 relative`;
+
   // Render follow bar for announcement channels when permission is denied
   if (permissionDeniedMessage && showFollowBar) {
     return (
-      <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
+      <div className={compact ? "p-3 border-t border-white/10 w-full relative" : nonCompactContainerClass}>
         <div className="flex items-center justify-between rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
           <span className="text-muted-foreground text-sm">
             Suivez ce salon pour recevoir ses mises à jour sur votre propre serveur.
@@ -451,7 +462,7 @@ export function MessageInput({
   // Render disabled state when permission is denied (without follow bar)
   if (permissionDeniedMessage) {
     return (
-      <div className={compact ? "p-3 border-t border-white/10 w-full relative" : "px-4 py-3 flex-shrink-0 flex flex-col w-full min-w-0 relative"}>
+      <div className={compact ? "p-3 border-t border-white/10 w-full relative" : nonCompactContainerClass}>
         <div className="flex items-center rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
           <span className="text-muted-foreground/50 text-sm">
             {permissionDeniedMessage}
@@ -464,7 +475,7 @@ export function MessageInput({
   return (
     <div 
       ref={containerRef}
-      className={compact ? "p-3 border-t border-white/10 w-full relative" : `${isMobile ? "px-1.5 pt-0.5 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]" : "px-4 py-3"} flex-shrink-0 flex flex-col w-full min-w-0 relative`}
+      className={compact ? "p-3 border-t border-white/10 w-full relative" : nonCompactContainerClass}
     >
       {/* Hidden file input */}
       <input

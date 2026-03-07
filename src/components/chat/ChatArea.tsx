@@ -1158,7 +1158,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     <PollLongPressWrapper
                       isMobile={isMobile}
                       onLongPress={() => setMobilePollSheetId(poll.id)}
-                      className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")}
+                      className={cn("group message-hover rounded-md px-2 -mx-2 mb-1 relative", showAuthor ? "pt-1" : "py-0")}
                       onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
                       onMouseLeave={() => {
                         if (openDropdownPollId !== poll.id) setHoveredPollId(null);
@@ -1374,7 +1374,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
                     }}
-                    className={cn("group message-hover rounded-xl px-3 -mx-2 relative", showAuthor ? "pt-2" : "py-0.5")}
+                    className={cn("group message-hover rounded-xl px-3 -mx-2 mb-1 relative", showAuthor ? "pt-2" : "py-0.5")}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {
                       if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
@@ -1812,7 +1812,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 w-full px-5 pb-5 pt-2">
+      <div className="flex-shrink-0 w-full px-2 pb-2 pt-1">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
         <MessageInput
@@ -1845,6 +1845,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           canCreatePolls={canCreatePolls}
           canMentionEveryone={canMentionEveryone}
           slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
+          tightLayout
         />
       </div>
 

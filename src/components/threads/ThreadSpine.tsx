@@ -36,7 +36,7 @@ export function ThreadSpine({ startY = 44 }: ThreadSpineProps) {
 
       const x = 19;
       const radius = 6;
-      const endX = x + 14;
+      const endX = x + 18;
 
       // Single continuous path: vertical → quadratic curve → horizontal
       const d = [

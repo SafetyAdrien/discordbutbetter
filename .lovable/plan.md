@@ -1,61 +1,120 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Temps réel complet + Prefetch/Cache SessionStorage universel
 
-## Root cause
+## Analyse
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Après audit des 58+ hooks, la majorité ont déjà le temps réel et le prefetch. Voici les lacunes identifiées :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### Hooks manquant le cache SessionStorage (placeholderData + persist)
+| Hook | Temps réel | SessionStorage |
+|------|-----------|----------------|
+| `useServerEmojis` | ✅ | ❌ |
+| `useServerStickers` | ✅ | ❌ |
+| `useMediaPosts` | ✅ | ❌ |
+| `useServerInvites` | ✅ | ❌ |
+| `useChannelWebhooks` | ✅ | ❌ |
+| `useAuditLogs` | ✅ | ❌ |
+| `useChannelUnreadCounts` | ✅ | ❌ |
+| `useServerUnreadCounts` | ✅ | ❌ |
+| `useThreadUnreadCounts` | ✅ (partiel) | ❌ |
+| `useChannelSettings` | ✅ | ❌ |
+| `useServerSettings` | ✅ | ❌ |
+| `useEngagementStats` | ❌ | ❌ |
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
-
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
+### Hooks manquant le temps réel
+| Hook | Impact |
 |------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+| `useEngagementStats` | Stats serveur pas à jour sans refresh |
+| `useThreadUnreadCounts` | Pas de subscription Realtime sur `thread_messages` |
 
-### Code sketch for onMutate addition (after servers cache update)
+### Preloader — données manquantes
+- Émojis et stickers serveur (utilisés dans le picker)
+- Pinned messages (déjà fait)
+- Channel/server unread counts (partiellement fait via sessionStorage seed)
 
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+## Changements
+
+### 1. `src/hooks/useServerAssets.ts`
+- Ajouter `placeholderData` + persist sessionStorage pour `useServerEmojis` et `useServerStickers`
+- Clés : `cache:server-emojis:{serverId}`, `cache:server-stickers:{serverId}`
+
+### 2. `src/hooks/useMediaPosts.ts`
+- Ajouter `placeholderData` + persist sessionStorage
+- Clé : `cache:media-posts:{channelId}`
+
+### 3. `src/hooks/useInvites.ts`
+- Ajouter `placeholderData` + persist pour `useServerInvites`
+- Clé : `cache:invites:{serverId}`
+
+### 4. `src/hooks/useWebhooks.ts`
+- Ajouter `placeholderData` + persist pour `useChannelWebhooks`
+- Clé : `cache:webhooks:{channelId}`
+
+### 5. `src/hooks/useAuditLogs.ts`
+- Ajouter `placeholderData` + persist
+- Clé : `cache:audit-logs:{serverId}`
+
+### 6. `src/hooks/useChannelUnreadCounts.ts`
+- Ajouter `placeholderData` + persist
+- Clé : `cache:channel-unread:{serverId}:{userId}`
+
+### 7. `src/hooks/useServerUnreadCounts.ts`
+- Ajouter `placeholderData` + persist
+- Clé : `cache:server-unread:{userId}`
+
+### 8. `src/hooks/useThreadUnreadCounts.ts`
+- Ajouter `placeholderData` + persist
+- Ajouter subscription Realtime sur `thread_messages` pour invalidation automatique
+- Clé : `cache:thread-unread:{channelId}:{userId}`
+
+### 9. `src/hooks/useChannelSettings.ts`
+- Ajouter `placeholderData` + persist
+- Clé : `cache:channel-details:{channelId}`
+
+### 10. `src/hooks/useServerSettings.ts`
+- Ajouter `placeholderData` + persist
+- Clé : `cache:server-settings:{serverId}`
+
+### 11. `src/hooks/useEngagementStats.ts`
+- Ajouter subscription Realtime sur `messages` (INSERT) pour invalidation
+- Ajouter `placeholderData` + persist
+- Clé : `cache:engagement-stats:{serverId}`
+
+### 12. `src/hooks/usePreloader.ts`
+- Ajouter prefetch des émojis et stickers serveur dans le preloader (GROUP parallèle)
+- Ajouter prefetch des channel unread counts et server unread counts
+
+### Pattern appliqué uniformément
+
+```ts
+// placeholderData from sessionStorage
+placeholderData: () => {
+  try {
+    const cached = sessionStorage.getItem(`cache:KEY`);
+    return cached ? JSON.parse(cached) : undefined;
+  } catch { return undefined; }
+},
+
+// Persist to sessionStorage
+useEffect(() => {
+  if (query.data && !query.isPlaceholderData) {
+    try { sessionStorage.setItem(`cache:KEY`, JSON.stringify(query.data)); } catch {}
+  }
+}, [query.data, query.isPlaceholderData]);
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+### Fichiers modifiés
+- `src/hooks/useServerAssets.ts`
+- `src/hooks/useMediaPosts.ts`
+- `src/hooks/useInvites.ts`
+- `src/hooks/useWebhooks.ts`
+- `src/hooks/useAuditLogs.ts`
+- `src/hooks/useChannelUnreadCounts.ts`
+- `src/hooks/useServerUnreadCounts.ts`
+- `src/hooks/useThreadUnreadCounts.ts`
+- `src/hooks/useChannelSettings.ts`
+- `src/hooks/useServerSettings.ts`
+- `src/hooks/useEngagementStats.ts`
+- `src/hooks/usePreloader.ts`
 

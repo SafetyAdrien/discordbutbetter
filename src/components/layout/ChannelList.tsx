@@ -705,7 +705,7 @@ export function ChannelList({
   const reorderChannels = useReorderChannels();
   const deleteChannel = useDeleteChannel();
   const deleteCategory = useDeleteCategory();
-  const duplicateChannel = useDuplicateChannel();
+  
   const leaveServer = useLeaveServer();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const { data: serverEmojis = [] } = useServerEmojis(server.id);

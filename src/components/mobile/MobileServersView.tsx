@@ -267,7 +267,7 @@ export function MobileServersView({
       <div
         data-swipe-ignore="true"
         className={cn(
-        'w-[72px] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'w-[72px] flex-shrink-0 bg-sidebar flex flex-col items-center py-2 gap-1.5 overflow-y-auto scrollbar-hide'
       )}>
         {/* DM Button */}
         <button

@@ -70,6 +70,10 @@ import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from 
 import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
+import CreateThreadModal from "@/components/threads/CreateThreadModal";
+import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
+import { Thread } from "@/types/thread";
+import { useThreads } from "@/hooks/useThreads";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
@@ -88,6 +92,9 @@ interface AnnouncementChannelProps {
   onToggleMembers?: () => void;
   showMembers?: boolean;
   hideHeader?: boolean;
+  onSelectThread?: (threadId: string) => void;
+  activeThreadId?: string | null;
+  onCloseThread?: () => void;
 }
 
 // Quick reactions
@@ -121,6 +128,9 @@ export function AnnouncementChannel({
   onToggleMembers,
   showMembers = true,
   hideHeader = false,
+  onSelectThread,
+  activeThreadId,
+  onCloseThread,
 }: AnnouncementChannelProps) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
@@ -242,6 +252,25 @@ export function AnnouncementChannel({
   
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
+  const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
+  
+  // Threads
+  const { data: threads = [] } = useThreads(channel.id);
+  
+  // Build maps for thread rendering
+  const threadsByMessageId = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach((thread) => {
+      if (thread.message_id) map.set(thread.message_id, thread);
+    });
+    return map;
+  }, [threads]);
+
+  const threadsById = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach((thread) => map.set(thread.id, thread));
+    return map;
+  }, [threads]);
   
   // Channel transition tracking for anti-flash optimistic updates
   const prevChannelIdRef = useRef(channel.id);
@@ -470,7 +499,7 @@ export function AnnouncementChannel({
               </Button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
-              <ThreadsPopover channelId={channel.id} onSelectThread={() => {}} />
+              <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
             </PopoverContent>
           </Popover>
 
@@ -604,6 +633,72 @@ export function AnnouncementChannel({
             const currentDate = message.timestamp;
             const prevMessage = index > 0 ? messages[index - 1] : null;
             const showDateSeparator = !prevMessage || currentDate.toDateString() !== prevMessage.timestamp.toDateString();
+
+            const DateSeparator = showDateSeparator ? (
+              <div className="flex items-center gap-4 my-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">
+                  {formatDate(currentDate)}
+                </span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            ) : null;
+
+            // Handle system messages for thread creation
+            if ((message as any).is_system && message.content.startsWith('[SYSTEM:THREAD_CREATED:')) {
+              const match = message.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):(.+)\]/);
+              if (match) {
+                const [, threadId, threadName] = match;
+                const thread = threadsById.get(threadId);
+                return (
+                  <div key={message.id}>
+                    {DateSeparator}
+                    <div className="py-1 px-4 my-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          <span className="font-semibold text-foreground">{message.author.displayName}</span>
+                          {' '}a créé un thread :{' '}
+                          <button
+                            onClick={() => onSelectThread?.(threadId)}
+                            className="font-semibold text-primary hover:underline cursor-pointer"
+                          >
+                            {threadName}
+                          </button>
+                        </span>
+                        <span className="text-muted-foreground/60 ml-1">
+                          {formatTime(message.timestamp)}
+                        </span>
+                      </div>
+                      <div className="flex mt-1.5">
+                        <div className="flex-shrink-0 w-8 relative mr-1.5">
+                          <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {thread ? (
+                            <ThreadSystemMessage
+                              thread={thread}
+                              onClick={() => onSelectThread?.(threadId)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => onSelectThread?.(threadId)}
+                              className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
+                            >
+                              <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
+                                <span className="text-xs text-foreground">0 Messages</span>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+            }
             
             const showAuthor =
               !prevMessage ||
@@ -625,16 +720,7 @@ export function AnnouncementChannel({
 
             return (
               <div key={message.id}>
-                {/* Date Separator */}
-                {showDateSeparator && (
-                  <div className="flex items-center gap-4 my-2">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {formatDate(currentDate)}
-                    </span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-                )}
+                {DateSeparator}
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
                   <div
@@ -689,9 +775,17 @@ export function AnnouncementChannel({
                     />
 
                     {showAuthor ? (
-                      <div className="flex gap-3 items-start">
+                      <div className="relative">
+                        {/* Thread Spine - positioned from avatar center */}
+                        {threadsByMessageId.has(message.id) && (
+                          <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
+                            <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
+                            <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                          </div>
+                        )}
+
+                        <div className="flex gap-3 items-start">
                         {isPublishedFromOther ? (
-                          // Published message from another server - show server icon
                           <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                             {(message as any).source_server_icon ? (
                               <AvatarImage
@@ -789,7 +883,6 @@ export function AnnouncementChannel({
                               {message.edited_at && (
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
-                              {/* Publish Prompt */}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -815,6 +908,17 @@ export function AnnouncementChannel({
                             </>
                           )}
                         </div>
+                        </div>
+
+                        {/* Thread System Message under message with thread */}
+                        {threadsByMessageId.has(message.id) && (
+                          <div className="mt-1 ml-[52px]">
+                            <ThreadSystemMessage
+                              thread={threadsByMessageId.get(message.id)!}
+                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex gap-3">
@@ -999,6 +1103,20 @@ export function AnnouncementChannel({
           channelId={channelSettingsId}
           serverId={channel.server_id}
           onClose={() => setChannelSettingsId(null)}
+        />
+      )}
+
+      {/* Create Thread Modal */}
+      {createThreadForMessageId && (
+        <CreateThreadModal
+          channelId={channel.id}
+          messageId={createThreadForMessageId}
+          open={!!createThreadForMessageId}
+          onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
+          onThreadCreated={(threadId) => {
+            setCreateThreadForMessageId(null);
+            onSelectThread?.(threadId);
+          }}
         />
       )}
     </div>

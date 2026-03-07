@@ -117,7 +117,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
   // Desktop
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col min-h-[400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon className="w-5 h-5 text-muted-foreground" />
@@ -137,15 +137,15 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
               ))}
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto mt-4">
-              <TabsContent value="overview" className="mt-0 space-y-6">
+            <div className="flex-1 overflow-y-auto mt-4 pb-2">
+              <TabsContent value="overview" className="mt-0 space-y-6" forceMount={activeTab === 'overview' ? undefined : true} hidden={activeTab !== 'overview'}>
                 <ChannelOverview channel={channel} />
                 <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
               </TabsContent>
-              <TabsContent value="permissions" className="mt-0">
+              <TabsContent value="permissions" className="mt-0" forceMount={activeTab === 'permissions' ? undefined : true} hidden={activeTab !== 'permissions'}>
                 <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
               </TabsContent>
-              <TabsContent value="integrations" className="mt-0">
+              <TabsContent value="integrations" className="mt-0" forceMount={activeTab === 'integrations' ? undefined : true} hidden={activeTab !== 'integrations'}>
                 <ChannelWebhooks channelId={channelId} />
               </TabsContent>
             </div>

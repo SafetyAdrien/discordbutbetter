@@ -698,16 +698,24 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     });
   }, [messages]);
 
-  // Build a map of message_id -> thread for messages that have threads
+  // Build a map of message_id -> thread, excluding threads that already have a system message visible
   const threadsByMessageId = useMemo(() => {
+    const systemThreadIds = new Set<string>();
+    messages.forEach((msg) => {
+      if (msg.is_system && msg.content.startsWith('[SYSTEM:THREAD_CREATED:')) {
+        const match = msg.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):/);
+        if (match) systemThreadIds.add(match[1]);
+      }
+    });
+
     const map = new Map<string, Thread>();
     threads.forEach((thread) => {
-      if (thread.message_id) {
+      if (thread.message_id && !systemThreadIds.has(thread.id)) {
         map.set(thread.message_id, thread);
       }
     });
     return map;
-  }, [threads]);
+  }, [threads, messages]);
 
   // Build a map of thread.id -> thread for system message lookups
   const threadsById = useMemo(() => {

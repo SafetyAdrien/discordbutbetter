@@ -101,29 +101,30 @@ function SortableServerIcon({
         <Tooltip>
           <ContextMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <button
-                {...attributes}
-                {...listeners}
-                onClick={onClick}
-                className={cn(
-                  'server-icon relative group select-none',
-                  isActive
-                    ? 'bg-primary text-white rounded-[16px]'
-                    : 'bg-card hover:bg-primary/80 hover:text-white',
-                  isDragging && 'opacity-30'
-                )}
-              >
-                {/* Active indicator - now shows for hasUnread without mentions too */}
-                <div
+                <button
+                  {...attributes}
+                  {...listeners}
+                  onClick={onClick}
                   className={cn(
-                    'absolute -left-3 w-1 rounded-r-full bg-foreground transition-[height] duration-200',
+                    'server-icon relative group select-none',
                     isActive
-                      ? 'h-10'
-                      : hasUnread || mentionCount > 0
-                        ? 'h-2'
-                        : 'h-0 group-hover:h-5'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-surface-3 hover:bg-primary/80 hover:text-primary-foreground',
+                    isDragging && 'opacity-30'
                   )}
-                />
+                >
+                  {/* Active pill indicator */}
+                  <div
+                    className={cn(
+                      'absolute -left-[6px] w-[4px] rounded-r-full bg-foreground',
+                      isActive
+                        ? 'h-10'
+                        : hasUnread || mentionCount > 0
+                          ? 'h-2'
+                          : 'h-0 group-hover:h-5'
+                    )}
+                    style={{ transition: 'height 300ms cubic-bezier(0.2, 0, 0, 1)' }}
+                  />
                 
               {server.icon ? (
                   server.icon.startsWith('http') ? (
@@ -152,9 +153,10 @@ function SortableServerIcon({
                 {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
                 {mentionCount > 0 && (
                   <div className={cn(
-                    "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                    "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-surface-1 animate-badge-pop",
                     isShaking && "animate-badge-shake"
-                  )}>
+                  )}
+                  style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
                     {mentionCount > 99 ? '99+' : mentionCount}
                   </div>
                 )}
@@ -233,7 +235,8 @@ const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ serv
   return (
     <div
       ref={ref}
-      className="server-icon bg-primary text-white rounded-[16px] scale-110 shadow-2xl opacity-95 cursor-grabbing"
+      className="server-icon bg-primary text-primary-foreground scale-110 opacity-95 cursor-grabbing"
+      style={{ boxShadow: 'var(--shadow-elevation-3)' }}
     >
       {server.icon ? (
         server.icon.startsWith('http') ? (
@@ -439,34 +442,39 @@ export function ServerList({
   }, []);
 
   return (
-    <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2 border-r border-border/50">
+    <div className="w-[80px] bg-surface-1 flex flex-col items-center py-3 gap-1.5">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={() => onServerSelect(null)}
             className={cn(
-              'server-icon bg-card hover:bg-primary hover:text-primary-foreground relative group',
-              activeServerId === null && 'bg-primary text-primary-foreground rounded-[16px]'
+              'server-icon relative group',
+              activeServerId === null 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-surface-3 hover:bg-primary hover:text-primary-foreground'
             )}
           >
-            <div
-              className={cn(
-                'absolute -left-3 w-1 rounded-r-full bg-foreground transition-[height] duration-200',
-                activeServerId === null
-                  ? 'h-10'
-                  : hasUnreadDMs
-                    ? 'h-2'
-                    : 'h-0 group-hover:h-5'
-              )}
-            />
+            {/* Pill highlight behind active icon */}
+            {activeServerId === null && (
+              <div className="absolute -left-[6px] w-[4px] h-10 rounded-r-full bg-foreground" 
+                style={{ transition: 'height 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
+            )}
+            {activeServerId !== null && hasUnreadDMs && (
+              <div className="absolute -left-[6px] w-[4px] h-2 rounded-r-full bg-foreground" />
+            )}
+            {activeServerId !== null && !hasUnreadDMs && (
+              <div className="absolute -left-[6px] w-[4px] h-0 group-hover:h-5 rounded-r-full bg-foreground"
+                style={{ transition: 'height 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
+            )}
             <MessageCircle className="w-6 h-6" />
             
             {totalUnreadDMs > 0 && (
               <div className={cn(
-                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-sidebar animate-badge-pop",
+                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-surface-1 animate-badge-pop",
                 shakingDMs && "animate-badge-shake"
-              )}>
+              )}
+              style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
                 {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
               </div>
             )}
@@ -477,7 +485,7 @@ export function ServerList({
         </TooltipContent>
       </Tooltip>
 
-      <div className="w-8 h-[2px] bg-border rounded-full my-1" />
+      <div className="w-10 h-[3px] bg-surface-3 rounded-full my-1" />
 
       {/* Server Icons with DnD */}
       <DndContext
@@ -520,14 +528,14 @@ export function ServerList({
         </DragOverlay>
       </DndContext>
 
-      <div className="w-8 h-[2px] bg-border rounded-full my-1" />
+      <div className="w-10 h-[3px] bg-surface-3 rounded-full my-1" />
 
       {/* Action Buttons */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={onCreateClick}
-            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
+            className="server-icon bg-surface-3 hover:bg-status-online hover:text-primary-foreground text-status-online"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -541,7 +549,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onDiscoverClick}
-            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
+            className="server-icon bg-surface-3 hover:bg-primary hover:text-primary-foreground text-primary"
           >
             <Compass className="w-6 h-6" />
           </button>

@@ -1,39 +1,61 @@
 
 
-# Fix Thread Spine in Channel List
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problem
-The thread spine (vertical + horizontal L-shaped connector lines) in the channel list sidebar appears broken. The structure at lines 429-437 of `ChannelList.tsx` has a potential conflict: the parent `div` uses `items-center` which can interfere with `self-stretch` on the spine container, preventing the vertical line from reaching its full height.
+## Root cause
 
-Additionally, when there's only a single thread (`isSingle === true`), the vertical line is completely hidden — only the L-curve shows, which can look disconnected.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Changes
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### `src/components/layout/ChannelList.tsx`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Line 429** — Parent container:
-- Change `flex items-center` to `flex items-stretch` so the spine container can properly stretch to the full row height.
+## Fix
 
-**Lines 430-437** — Spine container:
-- Keep `self-stretch` (now effective with `items-stretch` parent).
-- For single threads: show a short vertical line segment (top to 50%) so both lines are always visible, maintaining the L-shape connector.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-```tsx
-// Line 429: items-center → items-stretch
-<div key={thread.id} className="flex items-stretch w-full px-2">
-  <div className="flex-shrink-0 w-6 relative">
-    {/* Vertical line — always show, height depends on position */}
-    <div
-      className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
-      style={{ height: isLast || isSingle ? '50%' : '100%' }}
-    />
-    {/* L-shaped horizontal curve */}
-    <div className="absolute left-[5px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-  </div>
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-Key fix: Always render the vertical line (removing the `!isSingle` condition), and use `items-stretch` on the parent so the spine container fills the row height.
+### Code for onSuccess addition
 
-### Files modified
-- `src/components/layout/ChannelList.tsx` (lines 429-437)
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

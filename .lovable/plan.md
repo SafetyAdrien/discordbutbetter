@@ -1,61 +1,39 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correctifs : Lien de confiance dans le modal externe + Thread system message dupliqué
 
-## Root cause
+## 3 changements
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+### 1. Checkbox "Lien de confiance" dans ExternalLinkWarningModal
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Déplacer la checkbox depuis `ChannelOverview` vers le modal `ExternalLinkWarningModal`. Le modal doit recevoir `channelId` et `serverId` pour pouvoir sauvegarder `is_link_trusted` via `useUpdateChannel`.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**`src/components/modals/ExternalLinkWarningModal.tsx`**
+- Ajouter les props optionnelles `channelId`, `channelName`, `serverId`, `isLinkTrusted`
+- Ajouter un état local `trusted` initialisé à `isLinkTrusted`
+- Afficher une checkbox (comme dans l'image de référence) : "Lien de confiance" + description "Les membres pourront ouvrir ce lien directement sans passer par l'avertissement de lien externe."
+- Au clic sur "Ouvrir le lien", si `trusted` a changé, appeler `useUpdateChannel` pour sauvegarder `is_link_trusted`
 
-## Fix
+**`src/components/layout/ChannelList.tsx`** et **`src/components/mobile/MobileChannelListView.tsx`**
+- Passer `channelId`, `channelName`, `serverId` et `is_link_trusted` au state `externalLinkModal`
+- Transmettre ces props à `ExternalLinkWarningModal`
+- Si `is_link_trusted === true`, bypasser le modal et ouvrir directement le lien
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**`src/components/channel-settings/ChannelOverview.tsx`**
+- Retirer la section checkbox "Lien de confiance" (déplacée dans le modal externe)
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### 2. Pas de message système pour les threads créés sur un message spécifique
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+Quand un thread est créé via clic-droit sur un message (avec `messageId`), le `ThreadSystemMessage` est déjà rendu sous le message parent grâce à `threadsByMessageId`. Le message système `[SYSTEM:THREAD_CREATED:]` crée un doublon.
 
-### 2. In `onSuccess`: invalidate the permissions cache
+**`src/hooks/useThreads.ts`** (dans `useCreateThread`)
+- Modifier la condition d'insertion du message système : ne l'insérer que si `messageId` est absent (`!messageId && !isPrivate`)
+- Si le thread est attaché à un message parent, l'embed `ThreadSystemMessage` sous ce message suffit
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+### 3. Passer `is_link_trusted` depuis les données channels
 
-### 3. Hook needs `useAuth` for the user ID
+Les données des channels sont déjà chargées via `useChannels` — le champ `is_link_trusted` est dans la table. Il faut simplement le lire depuis l'objet channel lors du clic.
 
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**`src/hooks/useChannels.ts`**
+- Vérifier que le select inclut `is_link_trusted` (il est dans la table, le type Supabase le contient déjà)
 

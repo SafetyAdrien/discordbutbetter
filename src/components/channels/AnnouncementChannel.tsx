@@ -92,6 +92,8 @@ interface AnnouncementChannelProps {
   onToggleMembers?: () => void;
   showMembers?: boolean;
   hideHeader?: boolean;
+  onSelectThread?: (threadId: string) => void;
+  activeThreadId?: string | null;
 }
 
 // Quick reactions
@@ -125,6 +127,8 @@ export function AnnouncementChannel({
   onToggleMembers,
   showMembers = true,
   hideHeader = false,
+  onSelectThread,
+  activeThreadId,
 }: AnnouncementChannelProps) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");

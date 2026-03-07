@@ -1397,12 +1397,12 @@ export function ChannelList({
           <Popover>
             <PopoverTrigger asChild>
               <button className={cn(
-                "flex items-center justify-center gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
+                "flex items-center justify-start gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
                 showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
               )}>
 
                 <div className={cn(
-                  "flex-1 min-w-0 text-center relative z-10 px-3",
+                  "flex-1 min-w-0 text-left relative z-10 px-4",
                   showBanner && server.bannerUrl ? "self-end pb-2" : ""
                 )}>
                   <p className={cn(

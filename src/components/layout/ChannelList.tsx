@@ -152,6 +152,8 @@ interface Channel {
   type: ChannelType;
   description?: string;
   unreadCount?: number;
+  server_id?: string;
+  is_link_trusted?: boolean;
 }
 interface Category {
   id: string;

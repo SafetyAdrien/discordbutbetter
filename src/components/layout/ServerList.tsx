@@ -108,8 +108,8 @@ function SortableServerIcon({
                 className={cn(
                   'server-icon relative group select-none',
                   isActive
-                    ? 'bg-primary text-white rounded-[16px]'
-                    : 'bg-card hover:bg-primary/80 hover:text-white',
+                    ? 'bg-primary text-primary-foreground rounded-[16px] shadow-[0_0_12px_hsl(var(--primary)/0.4)]'
+                    : 'bg-muted/60 hover:bg-primary/80 hover:text-primary-foreground hover:shadow-[0_0_8px_hsl(var(--primary)/0.2)]',
                   isDragging && 'opacity-30'
                 )}
               >
@@ -161,7 +161,7 @@ function SortableServerIcon({
               </button>
             </TooltipTrigger>
           </ContextMenuTrigger>
-          <TooltipContent side="right" className="max-w-[200px]">
+              <TooltipContent side="right" className="max-w-[200px] glass-elevated rounded-xl">
             <p className="font-semibold">{server.name}</p>
             {voiceParticipants && voiceParticipants.length > 0 && (
               <div className="mt-1.5 pt-1.5 border-t border-border/50">
@@ -439,15 +439,15 @@ export function ServerList({
   }, []);
 
   return (
-    <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2 border-r border-border/50">
+    <div className="w-[72px] bg-[hsl(var(--sidebar-background))] flex flex-col items-center py-3 gap-2">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={() => onServerSelect(null)}
             className={cn(
-              'server-icon bg-card hover:bg-primary hover:text-primary-foreground relative group',
-              activeServerId === null && 'bg-primary text-primary-foreground rounded-[16px]'
+              'server-icon bg-muted/60 hover:bg-primary hover:text-primary-foreground relative group',
+              activeServerId === null && 'bg-primary text-primary-foreground rounded-[16px] shadow-[0_0_12px_hsl(var(--primary)/0.4)]'
             )}
           >
             <div
@@ -527,7 +527,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onCreateClick}
-            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
+            className="server-icon bg-muted/40 hover:bg-status-online/90 hover:text-primary-foreground text-status-online transition-all duration-200"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -541,7 +541,7 @@ export function ServerList({
         <TooltipTrigger asChild>
           <button
             onClick={onDiscoverClick}
-            className="server-icon bg-card hover:bg-primary hover:text-white text-primary"
+            className="server-icon bg-muted/40 hover:bg-primary hover:text-primary-foreground text-primary transition-all duration-200"
           >
             <Compass className="w-6 h-6" />
           </button>

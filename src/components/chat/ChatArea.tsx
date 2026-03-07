@@ -1405,7 +1405,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     {showAuthor ? (
                       <div className="relative">
                         {threadsByMessageId.has(message.id) && (
-                          <div className="absolute left-[19px] top-[44px] bottom-0 border-l-2 border-muted-foreground/30" />
+                          <div className="absolute left-[19px] top-[44px] bottom-[19px] border-l-2 border-muted-foreground/30" />
                         )}
                         <div className="flex gap-3 items-start">
                           <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
@@ -1550,7 +1550,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     ) : (
                       <div className="relative">
                         {threadsByMessageId.has(message.id) && (
-                          <div className="absolute left-[19px] top-0 bottom-0 border-l-2 border-muted-foreground/30" />
+                          <div className="absolute left-[19px] top-0 bottom-[19px] border-l-2 border-muted-foreground/30" />
                         )}
                         <div className="flex gap-3 items-start">
                           <Tooltip>

@@ -1113,7 +1113,7 @@ export function AnnouncementChannel({
           messageId={createThreadForMessageId}
           open={!!createThreadForMessageId}
           onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
-          onCreated={(threadId) => {
+          onThreadCreated={(threadId) => {
             setCreateThreadForMessageId(null);
             onSelectThread?.(threadId);
           }}

@@ -528,7 +528,7 @@ const Index = () => {
   }
 
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
+    <div className="h-screen flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
       {/* Server List */}
       <ServerList
         servers={serverListData}

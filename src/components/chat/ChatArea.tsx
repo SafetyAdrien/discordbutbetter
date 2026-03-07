@@ -97,7 +97,7 @@ import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
   return (
-    <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+    <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-3 border-primary shadow-sm">
       <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <span className="text-xs text-primary font-medium">Réponse à {replyTo.author.displayName}</span>
@@ -197,14 +197,14 @@ function PollActions({
 }) {
   if (!isVisible) return null;
   return (
-    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
       {/* 1. Réactions rapides - 3 émojis */}
       {QUICK_REACTIONS_HOVER.map((emoji) => (
         <Tooltip key={emoji}>
           <TooltipTrigger asChild>
             <button
               onClick={() => onAddReaction(emoji)}
-              className="p-1 hover:bg-muted rounded transition-colors text-base"
+              className="p-1.5 hover:bg-primary/10 rounded-full transition-colors text-base"
             >
               {emoji}
             </button>
@@ -216,7 +216,7 @@ function PollActions({
       {/* 2. Picker emoji complet */}
       <Popover>
         <PopoverTrigger asChild>
-          <button className="p-1.5 hover:bg-muted rounded transition-colors">
+          <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
             <SmilePlus className="w-4 h-4 text-muted-foreground" />
           </button>
         </PopoverTrigger>
@@ -271,7 +271,7 @@ function PollActions({
       {/* 3. Répondre */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <button onClick={onReply} className="p-1.5 hover:bg-muted rounded transition-colors">
+          <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
             <Reply className="w-4 h-4 text-muted-foreground" />
           </button>
         </TooltipTrigger>
@@ -281,7 +281,7 @@ function PollActions({
       {/* 4. Menu Plus d'options */}
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
-          <button className="p-1.5 hover:bg-muted rounded transition-colors">
+          <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
@@ -893,7 +893,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           ref.current = node;
         }
       }}
-      className="flex-1 flex flex-col bg-background min-w-0 min-h-0 w-full overflow-x-hidden relative"
+      className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 min-h-0 w-full overflow-x-hidden relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -906,7 +906,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         )}
       </AnimatePresence>
       {/* Channel Header - hidden on mobile where MobileChatView provides its own */}
-      {!isMobile && <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border/50 flex-shrink-0 bg-[#151723] w-full rounded-t-xl">
+      {!isMobile && <div className="h-12 px-3 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
+        style={{ 
+          borderBottom: '1px solid hsl(var(--border) / 0.5)',
+          boxShadow: 'var(--shadow-elevation-1)',
+          borderRadius: '0 0 var(--radius-xl) var(--radius-xl)'
+        }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
@@ -1101,7 +1106,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           
           {/* Welcome message - anchored at bottom like Discord */}
           <div className="mb-8 animate-fade-in">
-            <div className="w-[68px] h-[68px] rounded-full bg-muted flex items-center justify-center mb-4">
+            <div className="w-[72px] h-[72px] rounded-3xl bg-[hsl(var(--surface-3))] border border-border/30 flex items-center justify-center mb-4 shadow-[var(--shadow-elevation-1)]">
               <StreamlineHash size={42} className="text-muted-foreground" />
             </div>
             <h1 className="text-3xl font-ginto font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
@@ -1126,12 +1131,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
             
             const DateSeparator = showDateSeparator ? (
-              <div className="flex items-center gap-4 my-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">
+              <div className="flex items-center gap-4 my-3">
+                <div className="flex-1 h-px bg-border/40" />
+                <span className="text-[11px] text-muted-foreground font-semibold bg-[hsl(var(--surface-3))] border border-border/30 px-3 py-1 rounded-full shadow-sm">
                   {formatDate(currentDate)}
                 </span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px bg-border/40" />
               </div>
             ) : null;
             
@@ -1369,7 +1374,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
                     }}
-                    className={cn("group message-hover rounded-md px-2 -mx-2 relative", showAuthor ? "pt-1" : "py-0")}
+                    className={cn("group message-hover rounded-xl px-3 -mx-2 relative", showAuthor ? "pt-2" : "py-0.5")}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {
                       if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
@@ -1667,21 +1672,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     )}
                   </div>
                 </ContextMenuTrigger>
-                <ContextMenuContent className="min-w-[220px] p-1.5 rounded-lg shadow-xl" collisionPadding={8}>
+                <ContextMenuContent className="min-w-[220px] p-1.5 rounded-2xl shadow-[var(--shadow-elevation-3)] border border-border/50" collisionPadding={8}>
                   {/* Haut : Rangée d'émojis favoris */}
-                  <div className="flex items-center gap-1 p-1 pb-2 border-b border-border mb-1">
+                  <div className="flex items-center gap-1 p-1.5 pb-2 border-b border-border/30 mb-1">
                     {CONTEXT_MENU_REACTIONS.map((emoji) => (
                       <button
                         key={emoji}
                         onClick={() => handleAddReaction(message.id, emoji)}
-                        className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
+                        className="p-1.5 hover:bg-primary/10 rounded-full text-lg transition-colors"
                       >
                         {emoji}
                       </button>
                     ))}
                     <Popover>
                       <PopoverTrigger asChild>
-                        <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                        <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
                           <SmilePlus className="w-5 h-5 text-muted-foreground" />
                         </button>
                       </PopoverTrigger>
@@ -1807,7 +1812,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 bg-background w-full">
+      <div className="flex-shrink-0 bg-[hsl(var(--surface-2)/0.5)] w-full border-t border-border/20 pt-1">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
         <MessageInput

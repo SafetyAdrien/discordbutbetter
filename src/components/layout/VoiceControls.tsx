@@ -45,7 +45,7 @@ export function VoiceControls({
   } = useVoice();
 
   return (
-    <div className="px-2 py-2 bg-[hsl(var(--online))]/10 border-t border-[hsl(var(--online))]/20">
+    <div className="px-2.5 py-2.5 bg-[hsl(var(--surface-2))] rounded-2xl mx-1 mb-1" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
       {/* Connection Info */}
       <div className="flex items-center gap-2 mb-2 px-1">
         <VoiceConnectionIndicator stats={connectionStats} connected />
@@ -62,7 +62,7 @@ export function VoiceControls({
       {/* Microphone Error */}
       {microphoneError && (
         <div className="mb-2 px-1">
-          <div className="flex items-center gap-2 p-2 rounded bg-warning/10 border border-warning/20">
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-warning/10 border border-warning/20">
             <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs text-warning font-medium">Mode écoute seule</p>
@@ -71,7 +71,7 @@ export function VoiceControls({
             <Button 
               size="sm" 
               variant="ghost" 
-              className="h-6 px-2 text-xs"
+              className="h-6 px-2 text-xs rounded-full"
               onClick={retryMicrophone}
             >
               Activer
@@ -83,9 +83,9 @@ export function VoiceControls({
       {/* Audio Level Bar */}
       {hasMicrophoneAccess && !isMuted && (
         <div className="mb-2 px-1">
-          <div className="h-1 bg-muted rounded-full overflow-hidden">
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-[hsl(var(--online))] transition-all duration-75"
+              className="h-full bg-[hsl(var(--online))] rounded-full transition-all duration-75"
               style={{ width: `${Math.min(localAudioLevel * 100, 100)}%` }}
             />
           </div>
@@ -95,7 +95,7 @@ export function VoiceControls({
       {/* PTT Indicator */}
       {isPushToTalkMode && (
         <div className="mb-2 px-1">
-          <div className="flex items-center gap-2 p-1.5 rounded bg-primary/10 border border-primary/20">
+          <div className="flex items-center gap-2 p-1.5 rounded-xl bg-primary/10 border border-primary/20">
             <Radio className="w-3 h-3 text-primary" />
             <p className="text-xs text-primary">Push-to-Talk actif (Espace)</p>
           </div>
@@ -103,7 +103,7 @@ export function VoiceControls({
       )}
 
       {/* Controls */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         <TooltipProvider>
           {/* Mic button with settings popover on chevron */}
           <div className="flex items-center flex-1">
@@ -113,14 +113,13 @@ export function VoiceControls({
                   size="sm"
                   variant={isMuted ? 'destructive' : 'ghost'}
                   className={cn(
-                    'flex-1 h-8 rounded-r-none',
-                    isMuted && 'bg-destructive/20 hover:bg-destructive/30 text-destructive',
+                    'flex-1 h-9 rounded-l-xl rounded-r-none',
+                    isMuted && 'bg-destructive/15 hover:bg-destructive/25 text-destructive',
                     !hasMicrophoneAccess && 'opacity-50'
                   )}
                   onClick={onToggleMute}
                 >
                   {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  {/* Krisp active indicator */}
                   {noiseSuppression !== 'off' && rnnoiseAvailable && (
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
                   )}
@@ -152,7 +151,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-6 px-0 rounded-l-none border-l border-border/30"
+                className="h-9 w-6 px-0 rounded-l-none rounded-r-xl border-l border-border/30"
               >
                 <ChevronDown className="w-3 h-3" />
               </Button>
@@ -165,8 +164,8 @@ export function VoiceControls({
                 size="sm"
                 variant={isDeafened ? 'destructive' : 'ghost'}
                 className={cn(
-                  'flex-1 h-8',
-                  isDeafened && 'bg-destructive/20 hover:bg-destructive/30 text-destructive'
+                  'flex-1 h-9 rounded-xl',
+                  isDeafened && 'bg-destructive/15 hover:bg-destructive/25 text-destructive'
                 )}
                 onClick={onToggleDeafen}
               >
@@ -187,7 +186,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant={isPushToTalkMode ? 'secondary' : 'ghost'}
-                className="flex-1 h-8"
+                className="flex-1 h-9 rounded-xl"
                 onClick={togglePushToTalkMode}
               >
                 <Radio className="w-4 h-4" />
@@ -203,7 +202,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant="ghost"
-                className="flex-1 h-8 hover:bg-destructive/20 hover:text-destructive"
+                className="flex-1 h-9 rounded-xl hover:bg-destructive/15 hover:text-destructive"
                 onClick={onDisconnect}
               >
                 <PhoneOff className="w-4 h-4" />

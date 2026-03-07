@@ -73,7 +73,7 @@ import { CreatePollModal } from "./CreatePollModal";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import CreateThreadModal from "@/components/threads/CreateThreadModal";
-import { ThreadSpine } from "@/components/threads/ThreadSpine";
+
 import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";

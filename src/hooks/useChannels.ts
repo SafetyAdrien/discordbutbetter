@@ -14,6 +14,7 @@ export interface ChannelWithCategory {
   position: number | null;
   category_id: string | null;
   server_id: string;
+  is_link_trusted: boolean;
 }
 
 export interface CategoryWithChannels {

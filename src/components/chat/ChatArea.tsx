@@ -1309,8 +1309,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
 
                           {/* Spine + Thread embed */}
-                          <div className="pt-1.5 pl-[42px] relative">
-                            <div className="absolute left-[6px] top-0 w-[30px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                          <div className="pt-1.5 pl-[50px] relative">
+                            <div className="absolute left-[6px] top-0 w-[34px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                               {thread ? (
                                 <ThreadSystemMessage
                                   thread={thread}
@@ -1530,7 +1530,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                         {/* Thread System Message */}
                         {threadsByMessageId.has(message.id) && (
-                          <div className="pt-1.5 pl-[42px]">
+                          <div className="pt-1.5 pl-[50px]">
                             <ThreadSystemMessage
                               thread={threadsByMessageId.get(message.id)!}
                               onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
@@ -1643,7 +1643,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                         {/* Thread System Message for grouped messages */}
                         {threadsByMessageId.has(message.id) && (
-                          <div className="pt-1.5 pl-[42px]">
+                          <div className="pt-1.5 pl-[50px]">
                             <ThreadSystemMessage
                               thread={threadsByMessageId.get(message.id)!}
                               onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}

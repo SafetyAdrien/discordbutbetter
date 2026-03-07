@@ -2257,11 +2257,13 @@ export type Database = {
           archived: boolean
           archived_at: string | null
           channel_id: string
+          closed: boolean
           created_at: string
           created_by: string | null
           id: string
           is_private: boolean
           last_message_at: string | null
+          locked: boolean
           message_id: string | null
           name: string
         }
@@ -2269,11 +2271,13 @@ export type Database = {
           archived?: boolean
           archived_at?: string | null
           channel_id: string
+          closed?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
           is_private?: boolean
           last_message_at?: string | null
+          locked?: boolean
           message_id?: string | null
           name: string
         }
@@ -2281,11 +2285,13 @@ export type Database = {
           archived?: boolean
           archived_at?: string | null
           channel_id?: string
+          closed?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
           is_private?: boolean
           last_message_at?: string | null
+          locked?: boolean
           message_id?: string | null
           name?: string
         }

@@ -508,6 +508,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Threads - fetch all threads for this channel to find message-linked threads
   const { data: threads = [] } = useThreads(channel.id);
+  const updateThreadMut = useUpdateThread();
+  const deleteThreadMut = useDeleteThread();
 
   // AI Summaries
   const {
@@ -1315,7 +1317,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
                                   onDelete={() => {
                                     deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
-                                    deleteMessage.mutate(message.id);
+                                    deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
                                   }}
                                 />
                               ) : (

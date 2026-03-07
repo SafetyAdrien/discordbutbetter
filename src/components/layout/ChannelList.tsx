@@ -588,7 +588,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
         </div>
 
         {/* Threads for text channels - OUTSIDE draggable div */}
-        {channel.type === "text" && threads.length > 0 &&
+        {(channel.type === "text" || channel.type === "announcement") && threads.length > 0 &&
         <div className="mt-1">
           {threads.
           filter((thread) => showArchivedThreads || !thread.archived).
@@ -756,13 +756,14 @@ export function ChannelList({
   // Get all text channel IDs for fetching threads
   const allTextChannelIds = useMemo(() => {
     const ids: string[] = [];
+    const threadTypes = ["text", "announcement"];
     server.categories.forEach((cat) => {
       cat.channels.forEach((ch) => {
-        if (ch.type === "text") ids.push(ch.id);
+        if (threadTypes.includes(ch.type)) ids.push(ch.id);
       });
     });
     orphanChannels.forEach((ch) => {
-      if (ch.type === "text") ids.push(ch.id);
+      if (threadTypes.includes(ch.type)) ids.push(ch.id);
     });
     return ids;
   }, [server.categories, orphanChannels]);

@@ -70,6 +70,10 @@ import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from 
 import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
+import CreateThreadModal from "@/components/threads/CreateThreadModal";
+import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
+import { Thread } from "@/types/thread";
+import { useThreads } from "@/hooks/useThreads";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
@@ -88,6 +92,9 @@ interface AnnouncementChannelProps {
   onToggleMembers?: () => void;
   showMembers?: boolean;
   hideHeader?: boolean;
+  onSelectThread?: (threadId: string) => void;
+  activeThreadId?: string | null;
+  onCloseThread?: () => void;
 }
 
 // Quick reactions
@@ -121,6 +128,9 @@ export function AnnouncementChannel({
   onToggleMembers,
   showMembers = true,
   hideHeader = false,
+  onSelectThread,
+  activeThreadId,
+  onCloseThread,
 }: AnnouncementChannelProps) {
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
@@ -242,6 +252,25 @@ export function AnnouncementChannel({
   
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
+  const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
+  
+  // Threads
+  const { data: threads = [] } = useThreads(channel.id);
+  
+  // Build maps for thread rendering
+  const threadsByMessageId = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach((thread) => {
+      if (thread.message_id) map.set(thread.message_id, thread);
+    });
+    return map;
+  }, [threads]);
+
+  const threadsById = useMemo(() => {
+    const map = new Map<string, Thread>();
+    threads.forEach((thread) => map.set(thread.id, thread));
+    return map;
+  }, [threads]);
   
   // Channel transition tracking for anti-flash optimistic updates
   const prevChannelIdRef = useRef(channel.id);

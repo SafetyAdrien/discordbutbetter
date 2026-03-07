@@ -587,8 +587,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           }
         </div>
 
-        {/* Threads for text channels - OUTSIDE draggable div */}
-        {channel.type === "text" && threads.length > 0 &&
+        {/* Threads for text and announcement channels - OUTSIDE draggable div */}
+        {(channel.type === "text" || channel.type === "announcement") && threads.length > 0 &&
         <div className="mt-1">
           {threads.
           filter((thread) => showArchivedThreads || !thread.archived).

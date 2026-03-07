@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { ChevronLeft, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -52,25 +52,6 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     { id: 'permissions', label: 'Permissions' },
     { id: 'integrations', label: 'Intégrations' },
   ];
-
-  const renderTabContent = () => {
-    if (!channel) return null;
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="space-y-6">
-            <ChannelOverview channel={channel} />
-            <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-          </div>
-        );
-      case 'permissions':
-        return <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />;
-      case 'integrations':
-        return <ChannelWebhooks channelId={channelId} />;
-      default:
-        return null;
-    }
-  };
 
   // Mobile: direct layout with Overview + tabs
   if (isMobile) {
@@ -137,10 +118,12 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
               ))}
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto mt-4">
+            <div className="flex-1 overflow-y-auto mt-4 min-h-[400px]">
               <TabsContent value="overview" className="mt-0 space-y-6">
                 <ChannelOverview channel={channel} />
-                <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+                <div className="sticky bottom-0 pt-4 pb-1 bg-background">
+                  <ChannelDangerZone channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
+                </div>
               </TabsContent>
               <TabsContent value="permissions" className="mt-0">
                 <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />

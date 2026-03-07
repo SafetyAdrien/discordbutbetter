@@ -430,10 +430,12 @@ const Index = () => {
       id: cat.id,
       name: cat.name,
       channels: cat.channels.map(ch => ({
-      id: ch.id,
+        id: ch.id,
         name: ch.name,
         type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link',
         description: ch.description || undefined,
+        server_id: activeServer.id,
+        is_link_trusted: (ch as any).is_link_trusted ?? false,
       })),
     })),
   } : null;

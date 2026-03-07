@@ -18,7 +18,11 @@ import {
   Copy,
   Headphones,
   MessageSquare,
-  Video as VideoIcon } from
+  Video as VideoIcon,
+  Lock,
+  Unlock,
+  XCircle,
+  CircleDot } from
 "lucide-react";
 import { ServerSettingsQuickMenu } from "@/components/server-settings/ServerSettingsQuickMenu";
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
@@ -87,7 +91,7 @@ import {
   OrphanChannel } from
 "@/hooks/useChannels";
 import { Thread } from "@/types/thread";
-import { useDeleteThread } from "@/hooks/useThreads";
+import { useDeleteThread, useCloseThread, useLockThread } from "@/hooks/useThreads";
 import { useUnfollowThread } from "@/hooks/useThreadFollow";
 import { useMarkThreadAsRead } from "@/hooks/useThreadUnreadCounts";
 import { EditThreadModal } from "@/components/threads/EditThreadModal";
@@ -404,6 +408,8 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
   const [editThread, setEditThread] = useState<ThreadWithUnread | null>(null);
   const { user } = useAuth();
   const deleteThread = useDeleteThread();
+  const closeThread = useCloseThread();
+  const lockThread = useLockThread();
   const unfollowThread = useUnfollowThread();
   const markAsRead = useMarkThreadAsRead();
 
@@ -466,6 +472,15 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
                   <ContextMenuSeparator />
                   {canManage && (
                     <>
+                      <ContextMenuItem onClick={() => closeThread.mutate({ threadId: thread.id, closed: !thread.closed })}>
+                        {thread.closed ? <CircleDot className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                        {thread.closed ? "Rouvrir le fil" : "Fermer le fil"}
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => lockThread.mutate({ threadId: thread.id, locked: !thread.locked })}>
+                        {thread.locked ? <Unlock className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
+                        {thread.locked ? "Déverrouiller le fil" : "Verrouiller le fil"}
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
                       <ContextMenuItem onClick={() => setEditThread(thread)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Modifier le fil

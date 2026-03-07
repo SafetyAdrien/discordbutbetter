@@ -327,6 +327,7 @@
   .message-hover {
     @apply transition-all duration-150;
     border-radius: var(--radius-xl);
+    margin-bottom: 2px;
   }
 
   .message-hover:hover {

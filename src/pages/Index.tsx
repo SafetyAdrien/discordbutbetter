@@ -566,7 +566,7 @@ const Index = () => {
               setServerSettingsInitialTab(initialTab);
               setShowServerSettings(true);
             }}
-            orphanChannels={activeServer?.orphanChannels || channelsData?.orphanChannels || []}
+            orphanChannels={channelsData?.orphanChannels || (activeServer?.orphanChannels as OrphanChannel[]) || []}
             activeThreadId={activeThreadId}
             onThreadSelect={(threadId) => {
               setActiveThreadId(threadId);

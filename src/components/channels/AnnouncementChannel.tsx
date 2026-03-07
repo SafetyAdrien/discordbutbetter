@@ -1105,6 +1105,20 @@ export function AnnouncementChannel({
           onClose={() => setChannelSettingsId(null)}
         />
       )}
+
+      {/* Create Thread Modal */}
+      {createThreadForMessageId && (
+        <CreateThreadModal
+          channelId={channel.id}
+          messageId={createThreadForMessageId}
+          open={!!createThreadForMessageId}
+          onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
+          onCreated={(threadId) => {
+            setCreateThreadForMessageId(null);
+            onSelectThread?.(threadId);
+          }}
+        />
+      )}
     </div>
   );
 }

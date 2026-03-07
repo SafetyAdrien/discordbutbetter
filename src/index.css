@@ -324,12 +324,13 @@
   }
 
   .message-hover {
-    @apply transition-colors duration-150;
+    @apply transition-all duration-150;
     border-radius: var(--radius-xl);
   }
 
   .message-hover:hover {
-    background: hsl(var(--surface-hover) / 0.3);
+    background: hsl(var(--surface-hover) / 0.25);
+    box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.15);
   }
 
   /* === MATERIAL YOU SCROLLBAR === */

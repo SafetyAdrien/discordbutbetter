@@ -56,6 +56,8 @@ const Index = () => {
     setThreadChannelId: setPersistedThreadChannelId,
     setChannelForServer,
     getChannelForServer,
+    threadFullscreen,
+    setThreadFullscreen,
   } = useNavigationState();
   
   const [activeServerId, setActiveServerIdLocal] = useState<string | null>(persistedServerId);

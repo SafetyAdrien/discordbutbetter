@@ -589,41 +589,15 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
         {/* Threads for text channels - OUTSIDE draggable div */}
         {(channel.type === "text" || channel.type === "announcement") && threads.length > 0 &&
-        <div className="mt-1">
-          {threads.
-          filter((thread) => showArchivedThreads || !thread.archived).
-          map((thread, index, filteredArr) => {
-            const isLast = index === filteredArr.length - 1;
-            const isSingle = filteredArr.length === 1;
-            return <div key={thread.id} className="flex items-center w-full px-2">
-                  <div className="flex-shrink-0 w-6 relative self-stretch">
-                    {!isSingle && (
-                      <div 
-                        className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
-                        style={{ height: isLast ? '50%' : '100%' }}
-                      />
-                    )}
-                    <div className="absolute left-[5px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                  </div>
-                  <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onThreadSelect?.(thread.id);
-              }}
-              className={cn(
-                "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
-                activeThreadId === thread.id && "bg-muted",
-                thread.archived && "opacity-50"
-              )}>
-
-                    <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
-                      {thread.name}
-                      {thread.archived && " (archivé)"}
-                    </span>
-                  </button>
-                </div>;
-          })}
-          </div>
+        <ThreadContextMenuList
+          threads={threads}
+          showArchivedThreads={showArchivedThreads}
+          activeThreadId={activeThreadId}
+          onThreadSelect={onThreadSelect}
+          channelId={channel.id}
+          serverId={serverId}
+          canManageChannels={canManageChannels}
+        />
         }
 
         {/* Delete Confirmation Dialog */}

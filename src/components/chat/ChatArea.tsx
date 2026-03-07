@@ -1309,11 +1309,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
 
                           {/* Spine + Thread embed */}
-                          <div className="flex mt-1.5">
-                            <div className="flex-shrink-0 w-8 relative mr-1.5">
-                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                            </div>
-                            <div className="flex-1 min-w-0">
+                          <div className="pt-1.5 pl-[42px] relative">
+                            <div className="absolute left-[6px] top-0 w-[30px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                               {thread ? (
                                 <ThreadSystemMessage
                                   thread={thread}
@@ -1328,7 +1325,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               ) : (
                                 <button
                                   onClick={() => onSelectThread?.(threadId)}
-                                  className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
+                                  className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
                                 >
                                   <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                                   <div className="flex items-center gap-2">
@@ -1337,7 +1334,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 </button>
                               )}
-                            </div>
                           </div>
                         </div>
                       </ContextMenuTrigger>

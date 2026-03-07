@@ -297,7 +297,7 @@ function SortableCategory({
 
                 <ChevronDown className={cn("w-3 h-3", isCollapsed && "-rotate-90")}
                   style={{ transition: 'transform 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
-                <span className="tracking-wide font-ginto text-[13px] font-semibold uppercase my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
+                <span className="tracking-wide font-ginto text-[13px] font-semibold my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
                   {category.name}
                 </span>
               </button>
@@ -1711,7 +1711,7 @@ threads={threadsByChannel[channel.id] || []}
                     {activeId.startsWith("category-") &&
                   <div className="flex items-center gap-2">
                         <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                        <span className="text-xs font-semibold text-foreground tracking-wide">
                           {server.categories.find((c) => `category-${c.id}` === activeId)?.name}
                         </span>
                       </div>

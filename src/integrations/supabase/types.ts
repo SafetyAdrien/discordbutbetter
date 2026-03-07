@@ -525,7 +525,6 @@ export type Database = {
           description: string | null
           icon_url: string | null
           id: string
-          is_link_trusted: boolean
           name: string
           position: number | null
           server_id: string
@@ -538,7 +537,6 @@ export type Database = {
           description?: string | null
           icon_url?: string | null
           id?: string
-          is_link_trusted?: boolean
           name: string
           position?: number | null
           server_id: string
@@ -551,7 +549,6 @@ export type Database = {
           description?: string | null
           icon_url?: string | null
           id?: string
-          is_link_trusted?: boolean
           name?: string
           position?: number | null
           server_id?: string

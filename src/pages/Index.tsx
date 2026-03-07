@@ -22,7 +22,7 @@ import { MobileLayout } from '@/components/mobile/MobileLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
-import { useChannels, type OrphanChannel } from '@/hooks/useChannels';
+import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
@@ -167,7 +167,6 @@ const Index = () => {
           position: ch.position ?? 0,
           category_id: cat.id,
           server_id: activeServerId,
-          is_link_trusted: false,
         })),
       })),
       orphanChannels: (server.orphanChannels || []).map(ch => ({
@@ -178,7 +177,6 @@ const Index = () => {
         position: ch.position ?? 0,
         category_id: null,
         server_id: activeServerId,
-        is_link_trusted: false,
       })),
     };
   }, [activeServerId, servers]);
@@ -430,12 +428,10 @@ const Index = () => {
       id: cat.id,
       name: cat.name,
       channels: cat.channels.map(ch => ({
-        id: ch.id,
+      id: ch.id,
         name: ch.name,
         type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link',
         description: ch.description || undefined,
-        server_id: activeServer.id,
-        is_link_trusted: (ch as any).is_link_trusted ?? false,
       })),
     })),
   } : null;
@@ -568,7 +564,7 @@ const Index = () => {
               setServerSettingsInitialTab(initialTab);
               setShowServerSettings(true);
             }}
-            orphanChannels={channelsData?.orphanChannels || (activeServer?.orphanChannels as OrphanChannel[]) || []}
+            orphanChannels={activeServer?.orphanChannels || channelsData?.orphanChannels || []}
             activeThreadId={activeThreadId}
             onThreadSelect={(threadId) => {
               setActiveThreadId(threadId);
@@ -635,8 +631,6 @@ const Index = () => {
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
-                    onSelectThread={(threadId) => setActiveThreadId(threadId)}
-                    activeThreadId={activeThreadId}
                   />
                 ) : channelForChat.type === 'stage' ? (
                   <StageChannel 

@@ -185,8 +185,8 @@ export const useCreateThread = () => {
           user_id: authUser.id,
         });
       
-      // Insert system message in channel if NOT private AND not attached to a specific message
-      if (!isPrivate && !messageId) {
+      // Insert system message in channel if NOT private
+      if (!isPrivate) {
         await supabase
           .from('messages')
           .insert({

@@ -14,7 +14,6 @@ export interface ChannelDetails {
   category_id: string | null;
   position: number | null;
   slowmode_seconds: number;
-  is_link_trusted: boolean;
 }
 
 export function useChannelDetails(channelId: string | null) {
@@ -52,7 +51,7 @@ export function useChannelDetails(channelId: string | null) {
 
       const { data, error } = await supabase
         .from('channels')
-        .select('id, name, description, type, server_id, category_id, position, slowmode_seconds, is_link_trusted')
+        .select('id, name, description, type, server_id, category_id, position, slowmode_seconds')
         .eq('id', channelId)
         .single();
 
@@ -67,21 +66,18 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, serverId, name, description, type, slowmode_seconds, is_link_trusted }: { 
+    mutationFn: async ({ channelId, serverId, name, description, type, slowmode_seconds }: { 
       channelId: string; 
       serverId: string; 
-      name?: string; 
+      name: string; 
       description?: string | null;
       type?: 'text' | 'announcement';
       slowmode_seconds?: number;
-      is_link_trusted?: boolean;
     }) => {
-      const updateData: { name?: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number; is_link_trusted?: boolean } = {};
-      if (name !== undefined) updateData.name = name;
+      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number } = { name };
       if (description !== undefined) updateData.description = description;
       if (type) updateData.type = type;
       if (slowmode_seconds !== undefined) updateData.slowmode_seconds = slowmode_seconds;
-      if (is_link_trusted !== undefined) updateData.is_link_trusted = is_link_trusted;
 
       const { error } = await supabase
         .from('channels')

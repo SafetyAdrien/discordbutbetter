@@ -207,19 +207,6 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         </div>
       )}
 
-      {/* Show type badge for non-toggleable channels */}
-      {!canToggleType && (
-        <div className="space-y-2">
-          <Label>Type de salon</Label>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <TypeIcon className="w-3 h-3" />
-              {typeInfo.label}
-            </Badge>
-            <span className="text-xs text-muted-foreground">(non modifiable)</span>
-          </div>
-        </div>
-      )}
 
       <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-end">
         <Button onClick={handleSave} disabled={updateChannel.isPending || !hasChanges}>

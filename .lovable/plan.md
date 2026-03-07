@@ -1,61 +1,34 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Extend Thread Spine Vertical Line to Avatar
 
-## Root cause
+## Problem
+The thread spine's vertical line currently only exists within the thread embed area (the small `w-8` flex column). It needs to extend upward through the message content to visually connect with the author's profile picture (avatar), like Discord does.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Solution
+For both "first message with author" and "grouped message" thread embeds, add an absolute-positioned vertical line that starts from the bottom of the avatar and runs down through the message content to meet the L-curve.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+The avatar is inside the message's flex layout at the left. The vertical line should be placed on the parent `relative` container, running from the avatar's bottom (~44px from top) down to the thread embed's L-curve.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Changes in `src/components/chat/ChatArea.tsx`
 
-## Fix
+**First message with author (lines 1533-1546):**
+Add an absolute vertical line on the parent `relative` div (line 1406) that goes from the avatar bottom to the thread embed, plus adjust the L-curve to connect:
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```tsx
+{/* When thread exists, add vertical spine from avatar down */}
+{threadsByMessageId.has(message.id) && (
+  <div className="absolute left-[19px] top-[44px] bottom-0 border-l-2 border-muted-foreground/30" />
+)}
 ```
 
-### Code for onSuccess addition
+Place this inside the `relative` div (line 1406), before the flex content. The `left-[19px]` aligns with the avatar center (40px avatar / 2 = 20px, minus 1px for border). `top-[44px]` starts just below the avatar (40px + 4px margin).
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+The L-curve in the thread embed section should then connect: adjust `left-[6px]` to align with the vertical line relative to the embed's flex column.
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**Grouped message (lines 1649-1662):**
+Same approach — add vertical line from the timestamp area down.
+
+### Files modified
+- `src/components/chat/ChatArea.tsx`
 

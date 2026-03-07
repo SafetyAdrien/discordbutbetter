@@ -380,6 +380,175 @@ function SortableCategory({
 
 }
 
+// Thread Context Menu List - renders threads with right-click context menu
+interface ThreadContextMenuListProps {
+  threads: ThreadWithUnread[];
+  showArchivedThreads: boolean;
+  activeThreadId?: string | null;
+  onThreadSelect?: (threadId: string) => void;
+  channelId: string;
+  serverId: string;
+  canManageChannels: boolean;
+}
+
+const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
+  threads,
+  showArchivedThreads,
+  activeThreadId,
+  onThreadSelect,
+  channelId,
+  serverId,
+  canManageChannels,
+}) => {
+  const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null);
+  const [editThread, setEditThread] = useState<ThreadWithUnread | null>(null);
+  const { user } = useAuth();
+  const deleteThread = useDeleteThread();
+  const unfollowThread = useUnfollowThread();
+  const markAsRead = useMarkThreadAsRead();
+
+  const filteredThreads = threads.filter((thread) => showArchivedThreads || !thread.archived);
+
+  return (
+    <>
+      <div className="mt-1">
+        {filteredThreads.map((thread, index) => {
+          const isLast = index === filteredThreads.length - 1;
+          const isSingle = filteredThreads.length === 1;
+          const canManage = canManageChannels || thread.created_by === user?.id;
+
+          return (
+            <div key={thread.id} className="flex items-center w-full px-2">
+              <div className="flex-shrink-0 w-6 relative self-stretch">
+                {!isSingle && (
+                  <div
+                    className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
+                    style={{ height: isLast ? '50%' : '100%' }}
+                  />
+                )}
+                <div className="absolute left-[5px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+              </div>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onThreadSelect?.(thread.id);
+                    }}
+                    onContextMenu={(e) => e.stopPropagation()}
+                    className={cn(
+                      "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
+                      activeThreadId === thread.id && "bg-muted",
+                      thread.archived && "opacity-50"
+                    )}
+                  >
+                    <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
+                      {thread.name}
+                      {thread.archived && " (archivé)"}
+                      {thread.locked && " 🔒"}
+                      {thread.closed && " 🔴"}
+                    </span>
+                  </button>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-52">
+                  <ContextMenuItem
+                    onClick={() => markAsRead.mutate({ threadId: thread.id, channelId })}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Marquer comme lu
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onClick={() => unfollowThread.mutate(thread.id)}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Quitter le fil
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  {canManage && (
+                    <>
+                      <ContextMenuItem onClick={() => setEditThread(thread)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Modifier le fil
+                      </ContextMenuItem>
+                    </>
+                  )}
+                  <ContextMenuItem
+                    onClick={() => {
+                      const link = `${window.location.origin}/channels/${channelId}/${thread.id}`;
+                      copyToClipboard(link, "Lien du fil copié");
+                    }}
+                  >
+                    <Link className="w-4 h-4 mr-2" />
+                    Copier le lien
+                  </ContextMenuItem>
+                  {canManage && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        onClick={() => setDeleteThreadId(thread.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer le fil
+                      </ContextMenuItem>
+                    </>
+                  )}
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={() => copyToClipboard(thread.id, "Identifiant du fil copié")}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copier l'identifiant du fil
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Delete Thread Confirmation */}
+      <AlertDialog open={!!deleteThreadId} onOpenChange={(open) => !open && setDeleteThreadId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Supprimer le fil
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu es sûr(e) de vouloir supprimer ce fil ? Cette action est irréversible et supprimera tous les messages associés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteThreadId) {
+                  deleteThread.mutate({ threadId: deleteThreadId, channelId });
+                  setDeleteThreadId(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Thread Modal */}
+      {editThread && (
+        <EditThreadModal
+          open={!!editThread}
+          onOpenChange={(open) => !open && setEditThread(null)}
+          thread={editThread}
+          serverId={serverId}
+        />
+      )}
+    </>
+  );
+};
+
 interface SortableChannelProps {
   channel: Channel;
   serverId: string;

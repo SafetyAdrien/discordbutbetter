@@ -73,7 +73,7 @@ import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import CreateThreadModal from "@/components/threads/CreateThreadModal";
 import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { Thread } from "@/types/thread";
-import { useThreads } from "@/hooks/useThreads";
+import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
@@ -256,6 +256,8 @@ export function AnnouncementChannel({
   
   // Threads
   const { data: threads = [] } = useThreads(channel.id);
+  const updateThreadMut = useUpdateThread();
+  const deleteThreadMut = useDeleteThread();
   
   // Build maps for thread rendering
   const threadsByMessageId = useMemo(() => {

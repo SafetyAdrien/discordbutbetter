@@ -327,6 +327,52 @@ export const useDeleteThread = () => {
   });
 };
 
+export const useLockThread = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ threadId, locked }: { threadId: string; locked: boolean }) => {
+      const { data, error } = await supabase
+        .from('threads')
+        .update({ locked })
+        .eq('id', threadId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.locked ? 'Fil verrouillé' : 'Fil déverrouillé');
+      queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+    },
+    onError: () => toast.error('Erreur lors du verrouillage'),
+  });
+};
+
+export const useCloseThread = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ threadId, closed }: { threadId: string; closed: boolean }) => {
+      const { data, error } = await supabase
+        .from('threads')
+        .update({ closed })
+        .eq('id', threadId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.closed ? 'Fil fermé' : 'Fil rouvert');
+      queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+    },
+    onError: () => toast.error('Erreur lors de la fermeture'),
+  });
+};
+
 export const useUpdateThread = () => {
   const queryClient = useQueryClient();
   

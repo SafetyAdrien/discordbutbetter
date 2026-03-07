@@ -1429,7 +1429,7 @@ export function ChannelList({
                       description: channel.description || undefined
                     }}
                     serverId={server.id}
-                    isActive={activeChannelId === channel.id}
+                    isActive={activeChannelId === channel.id && !activeThreadId}
                     isVoiceConnected={voiceState.channelId === channel.id}
                     speakingUsers={speakingUsers}
                     hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
@@ -1504,7 +1504,7 @@ threads={threadsByChannel[channel.id] || []}
                           key={channel.id}
                           channel={channel}
                           serverId={server.id}
-                          isActive={activeChannelId === channel.id}
+                          isActive={activeChannelId === channel.id && !activeThreadId}
                           isVoiceConnected={voiceState.channelId === channel.id}
                           speakingUsers={speakingUsers}
                           hasUnread={channelUnreadInfo[channel.id]?.hasUnread}

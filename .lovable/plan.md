@@ -1,34 +1,61 @@
 
 
-# ChatInput universel — marges identiques partout
+# Fix: Duplicated channel hidden by visibility filter
 
-## Constat
-Le ChatInput (wrapper autour de `MessageInput`) a des marges différentes selon le contexte :
-- **ChatArea.tsx** (text) : `px-4 pb-4 pt-2` ✅ — c'est la référence
-- **DMConversation.tsx** : `px-4 pb-4 pt-2` ✅
-- **ThreadView.tsx** : `px-4 pb-4 pt-2` ✅
-- **AnnouncementChannel.tsx** : `bg-background px-2 pb-[env(...)] sm:px-0 sm:pb-0` ❌ — pas de marge
-- **VoiceChannelChat.tsx** : aucun wrapper, `MessageInput` directement posé ❌
+## Root cause
 
-## Changements
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### 1. `src/components/channels/AnnouncementChannel.tsx` (l.1061)
-Remplacer le wrapper :
-```
-bg-background w-full px-2 pb-[env(safe-area-inset-bottom,0px)] sm:px-0 sm:pb-0
-```
-Par le wrapper universel :
-```
-flex-shrink-0 w-full px-4 pb-4 pt-2
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+
+## Fix
+
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-### 2. `src/components/channels/voice/VoiceChannelChat.tsx` (l.339)
-Envelopper le `<MessageInput>` dans un div avec le même padding :
-```tsx
-<div className="px-4 pb-4 pt-2">
-  <MessageInput ... />
-</div>
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-Résultat : toutes les instances de `MessageInput` dans l'app partagent exactement le même espacement `px-4 pb-4 pt-2`.
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -336,26 +336,28 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
         </div>
       </ScrollArea>
 
-      <MessageInput
-        value={messageInput}
-        onChange={setMessageInput}
-        onSend={handleSend}
-        placeholder={`Envoyer un message dans #${channelName}`}
-        disabled={sendMessage.isPending}
-        isSending={sendMessage.isPending}
-        compact
-        serverId={serverId}
-        channelId={channelId}
-        members={mentionMembers}
-        roles={mentionRoles}
-        channels={allChannels}
-        attachments={attachments}
-        onAddFiles={addFiles}
-        onRemoveAttachment={removeAttachment}
-        onUpdateAttachment={updateAttachment}
-        onToggleSpoiler={toggleSpoiler}
-        onClearAttachments={clearAttachments}
-      />
+      <div className="px-4 pb-4 pt-2">
+        <MessageInput
+          value={messageInput}
+          onChange={setMessageInput}
+          onSend={handleSend}
+          placeholder={`Envoyer un message dans #${channelName}`}
+          disabled={sendMessage.isPending}
+          isSending={sendMessage.isPending}
+          compact
+          serverId={serverId}
+          channelId={channelId}
+          members={mentionMembers}
+          roles={mentionRoles}
+          channels={allChannels}
+          attachments={attachments}
+          onAddFiles={addFiles}
+          onRemoveAttachment={removeAttachment}
+          onUpdateAttachment={updateAttachment}
+          onToggleSpoiler={toggleSpoiler}
+          onClearAttachments={clearAttachments}
+        />
+      </div>
     </div>
   );
 }

@@ -173,24 +173,8 @@ export function ChannelOverview({ channel }: ChannelOverviewProps) {
         <p className="text-xs text-muted-foreground">{description.length}/1024</p>
       </div>
 
-      {/* Trusted link checkbox for link channels */}
-      {isLinkChannel && (
-        <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-          <Checkbox
-            id="link-trusted"
-            checked={isLinkTrusted}
-            onCheckedChange={(checked) => setIsLinkTrusted(checked === true)}
-          />
-          <div className="space-y-1">
-            <Label htmlFor="link-trusted" className="font-medium cursor-pointer">
-              Lien de confiance
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Les membres pourront ouvrir ce lien directement sans passer par l'avertissement de lien externe.
-            </p>
-          </div>
-        </div>
-      )}
+
+
 
       {/* Slowmode slider for text/voice/forum */}
       {supportsSlowmode && (

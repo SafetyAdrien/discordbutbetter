@@ -42,8 +42,14 @@ export function useChannelWebhooks(channelId: string | null) {
     };
   }, [channelId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['webhooks', channelId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:webhooks:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<Webhook[]> => {
       if (!channelId) return [];
 
@@ -55,6 +61,14 @@ export function useChannelWebhooks(channelId: string | null) {
     },
     enabled: !!channelId && !!user,
   });
+
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:webhooks:${channelId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useCreateWebhook() {

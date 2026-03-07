@@ -28,6 +28,12 @@ export function useMediaPosts(channelId: string) {
 
   const query = useQuery<MediaPost[]>({
     queryKey: ['media-posts', channelId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:media-posts:${channelId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from('media_posts')
@@ -79,6 +85,13 @@ export function useMediaPosts(channelId: string) {
       supabase.removeChannel(channel);
     };
   }, [channelId, queryClient]);
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:media-posts:${channelId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
 
   return query;
 }

@@ -45,6 +45,12 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
 
   const query = useQuery({
     queryKey: ['audit-logs', serverId, filters],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:audit-logs:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async () => {
       let q = supabase
         .from('audit_logs')
@@ -94,6 +100,13 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
       supabase.removeChannel(channel);
     };
   }, [serverId, queryClient]);
+
+  // Persist to sessionStorage
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:audit-logs:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
 
   return query;
 }

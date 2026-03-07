@@ -54,8 +54,14 @@ export function useServerInvites(serverId: string | null) {
     };
   }, [serverId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['invites', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:invites:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<Invite[]> => {
       if (!serverId) return [];
 
@@ -76,6 +82,14 @@ export function useServerInvites(serverId: string | null) {
     },
     enabled: !!serverId && !!user,
   });
+
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:invites:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useCreateInvite() {

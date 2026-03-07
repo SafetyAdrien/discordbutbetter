@@ -52,8 +52,14 @@ export function useServerSettings(serverId: string) {
     };
   }, [serverId, user, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['server-settings', serverId],
+    placeholderData: () => {
+      try {
+        const cached = sessionStorage.getItem(`cache:server-settings:${serverId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     queryFn: async (): Promise<ServerSettings | null> => {
       const { data, error } = await supabase
         .from('server_settings')
@@ -63,7 +69,6 @@ export function useServerSettings(serverId: string) {
 
       if (error) throw error;
       
-      // Return with defaults for new fields
       if (data) {
         return {
           ...data,
@@ -82,8 +87,16 @@ export function useServerSettings(serverId: string) {
       return data;
     },
     enabled: !!serverId && !!user,
-    staleTime: 30 * 1000, // 30s — Realtime handles immediate invalidation
+    staleTime: 30 * 1000,
   });
+
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      try { sessionStorage.setItem(`cache:server-settings:${serverId}`, JSON.stringify(query.data)); } catch {}
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useUpdateServerSettings() {

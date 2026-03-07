@@ -107,7 +107,7 @@ export function useChannels(
       // Fetch channels
       const { data: channels, error: chanError } = await supabase
         .from('channels')
-        .select('id, name, type, description, position, category_id, server_id')
+        .select('id, name, type, description, position, category_id, server_id, is_link_trusted')
         .eq('server_id', serverId)
         .order('position', { ascending: true });
 

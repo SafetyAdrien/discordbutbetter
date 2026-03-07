@@ -70,6 +70,10 @@ import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from 
 import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
+import { useThreads } from "@/hooks/useThreads";
+import { Thread } from "@/types/thread";
+import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
+import CreateThreadModal from "@/components/threads/CreateThreadModal";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";

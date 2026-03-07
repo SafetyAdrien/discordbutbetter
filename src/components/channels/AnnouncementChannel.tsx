@@ -632,6 +632,55 @@ export function AnnouncementChannel({
             const prevMessage = index > 0 ? messages[index - 1] : null;
             const showDateSeparator = !prevMessage || currentDate.toDateString() !== prevMessage.timestamp.toDateString();
             
+            // Thread system message detection
+            if ((message as any).is_system && message.content.startsWith('[SYSTEM:THREAD_CREATED:')) {
+              const match = message.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):(.+)\]/);
+              if (match) {
+                const [, threadId, threadName] = match;
+                const thread = threadsById.get(threadId);
+                return (
+                  <div key={message.id}>
+                    {showDateSeparator && (
+                      <div className="flex items-center gap-4 my-2">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground font-medium">{formatDate(currentDate)}</span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+                    <div className="py-1 px-4 my-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          <span className="font-semibold text-foreground">{message.author.displayName}</span>
+                          {' '}a créé un thread :{' '}
+                          <button onClick={() => onSelectThread?.(threadId)} className="font-semibold text-primary hover:underline cursor-pointer">{threadName}</button>
+                        </span>
+                        <span className="text-muted-foreground/60 ml-1">{formatTime(message.timestamp)}</span>
+                      </div>
+                      <div className="flex mt-1.5">
+                        <div className="flex-shrink-0 w-8 relative mr-1.5">
+                          <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {thread ? (
+                            <ThreadSystemMessage thread={thread} onClick={() => onSelectThread?.(threadId)} />
+                          ) : (
+                            <button onClick={() => onSelectThread?.(threadId)} className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated">
+                              <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
+                                <span className="text-xs text-foreground">0 Messages</span>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+            }
+
             const showAuthor =
               !prevMessage ||
               prevMessage.author.id !== message.author.id ||

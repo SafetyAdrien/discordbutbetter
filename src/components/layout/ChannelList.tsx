@@ -64,6 +64,7 @@ import { AccountSettingsModal } from "@/components/account-settings/AccountSetti
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
+import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
@@ -1657,7 +1658,14 @@ threads={threadsByChannel[channel.id] || []}
       <ExternalLinkWarningModal
         url={externalLinkModal.url}
         onClose={() => setExternalLinkModal(null)} />
+      }
 
+      {duplicateModalChannel &&
+      <DuplicateChannelModal
+        channelId={duplicateModalChannel.id}
+        channelName={duplicateModalChannel.name}
+        serverId={server.id}
+        onClose={() => setDuplicateModalChannel(null)} />
       }
 
       {inviteChannelId &&

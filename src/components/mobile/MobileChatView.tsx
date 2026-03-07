@@ -123,15 +123,13 @@ export function MobileChatView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header - Material You elevated surface */}
-      <div className="h-13 px-2 flex items-center gap-1.5 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-primary/8 transition-all duration-200 flex-shrink-0" style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+      {/* Header */}
+      <div className="h-12 px-2 flex items-center gap-1 border-b border-border flex-shrink-0 rounded-t-xl">
+        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        <div className="w-8 h-8 rounded-full bg-primary/8 flex items-center justify-center flex-shrink-0">
-          <ChannelIcon className="w-4 h-4 text-primary" />
-        </div>
+        <ChannelIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
 
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <h2 className="font-semibold text-sm truncate">{channel.name}</h2>
@@ -140,23 +138,24 @@ export function MobileChatView({
               variant="ghost"
               size="sm"
               onClick={() => setFollowModalOpen(true)}
-              className="text-xs font-medium flex-shrink-0 rounded-full bg-primary/8 hover:bg-primary/15 text-primary h-6 px-2.5"
+              className="text-xs font-medium flex-shrink-0 border border-border/60 bg-muted/40 h-6 px-2"
             >
               Suivre
             </Button>
           )}
         </div>
 
-        {/* Action icons - Material pill buttons */}
+        {/* Action icons - compact */}
         <div className="flex items-center gap-0">
+          {/* Channel info */}
           {channel.description && (
             <Popover>
               <PopoverTrigger asChild>
-                <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+                <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                   <Info className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-72 rounded-2xl">
+              <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-72 rounded-xl">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <ChannelIcon className="w-4 h-4 text-muted-foreground" />
@@ -168,19 +167,20 @@ export function MobileChatView({
             </Popover>
           )}
 
+
           {/* Pinned messages */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground relative">
+              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground relative">
                 <Pin className="w-4 h-4" />
                 {pinnedMessages.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full">
                     {pinnedMessages.length}
                   </span>
                 )}
               </button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-2xl">
+            <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-xl">
               <div className="p-3 border-b border-border">
                 <h4 className="font-semibold text-sm">Messages épinglés</h4>
               </div>
@@ -190,7 +190,7 @@ export function MobileChatView({
                 ) : (
                   <div className="p-2 space-y-1">
                     {pinnedMessages.map((pm: any) => (
-                      <div key={pm.id} className="p-2.5 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div key={pm.id} className="p-2 rounded-lg hover:bg-muted/50 transition-colors">
                         <div className="flex items-center gap-2 mb-1">
                           <Avatar className="w-5 h-5">
                             {pm.message?.author?.avatar_url && <AvatarImage src={pm.message.author.avatar_url} />}
@@ -212,11 +212,11 @@ export function MobileChatView({
           {/* Threads */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                 <StreamlineThreads className="w-4 h-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-2xl">
+            <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-xl">
               <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
             </PopoverContent>
           </Popover>
@@ -224,7 +224,7 @@ export function MobileChatView({
           {/* Summaries */}
           <button
             onClick={() => setShowSummaries(!showSummaries)}
-            className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground"
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
           >
             <StreamlineSummaries className="w-4 h-4" />
           </button>
@@ -232,22 +232,22 @@ export function MobileChatView({
           {/* Notifications */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                 <Bell className="w-4 h-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-56 p-3 rounded-2xl">
+            <PopoverContent side="bottom" align="end" collisionPadding={8} className="w-56 p-3 rounded-xl">
               <h4 className="font-semibold text-foreground mb-3 text-sm">Notifications</h4>
-              <div className="space-y-0.5">
-                <button className="flex items-center gap-2 w-full px-3 py-2 rounded-xl hover:bg-muted/50 transition-colors text-sm">
+              <div className="space-y-1">
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
                   <BellRing className="w-4 h-4 text-muted-foreground" />
                   <span>Tous les messages</span>
                 </button>
-                <button className="flex items-center gap-2 w-full px-3 py-2 rounded-xl hover:bg-muted/50 transition-colors text-sm">
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
                   <AtSign className="w-4 h-4 text-muted-foreground" />
                   <span>Mentions uniquement</span>
                 </button>
-                <button className="flex items-center gap-2 w-full px-3 py-2 rounded-xl hover:bg-muted/50 transition-colors text-sm">
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 transition-colors text-sm">
                   <BellOff className="w-4 h-4 text-muted-foreground" />
                   <span>Aucun</span>
                 </button>
@@ -258,19 +258,20 @@ export function MobileChatView({
           {/* Members sheet */}
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                 <Users className="w-4 h-4" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-2xl [&>button.absolute]:hidden">
+            <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-xl [&>button.absolute]:hidden">
               <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
                 <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
                 <SheetClose asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 mr-0.5 rounded-full">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 mr-0.5">
                     <X className="w-4 h-4" />
                   </Button>
                 </SheetClose>
               </div>
+              {/* Channel topic / description */}
               {channel.description && (
                 <>
                   <div className="px-3 py-2">

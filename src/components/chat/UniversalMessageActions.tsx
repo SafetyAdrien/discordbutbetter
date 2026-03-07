@@ -57,10 +57,10 @@ export function UniversalMessageActions({
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
   if (isShiftPressed) {
     return <>
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onCopyId} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onCopyId} className="p-1.5 hover:bg-muted rounded transition-colors">
               <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -69,7 +69,7 @@ export function UniversalMessageActions({
         
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onCopyLink} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onCopyLink} className="p-1.5 hover:bg-muted rounded transition-colors">
               <Link className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -78,7 +78,7 @@ export function UniversalMessageActions({
         
         {onPin && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onPin} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <button onClick={onPin} className="p-1.5 hover:bg-muted rounded transition-colors">
                 <Pin className={cn("w-4 h-4", isPinned ? "text-primary" : "text-muted-foreground")} />
               </button>
             </TooltipTrigger>
@@ -87,7 +87,7 @@ export function UniversalMessageActions({
         
         {isOwnMessage && onEdit && <Tooltip>
             <TooltipTrigger asChild>
-               <button onClick={onEdit} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -96,7 +96,7 @@ export function UniversalMessageActions({
         
         {canDeleteMessage && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={() => onDelete?.()} className="p-1.5 hover:bg-destructive/15 rounded-full transition-colors">
+              <button onClick={() => onDelete?.()} className="p-1.5 hover:bg-destructive/20 rounded transition-colors">
                 <Trash2 className="w-4 h-4 text-destructive" />
               </button>
             </TooltipTrigger>
@@ -109,10 +109,10 @@ export function UniversalMessageActions({
   // Mode normal
   return <>
     {isVisible && (
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in bg-[hsl(var(--surface-3))]">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in bg-toolbar">
         {canAddReactions && onAddReaction && QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
             <TooltipTrigger asChild>
-              <button onClick={() => onAddReaction(emoji)} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors text-base">
+              <button onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded transition-colors text-base">
                 {emoji}
               </button>
             </TooltipTrigger>
@@ -122,13 +122,13 @@ export function UniversalMessageActions({
         {canAddReactions && onAddReaction && (
           <Popover>
             <PopoverTrigger asChild>
-               <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <button className="p-1.5 hover:bg-muted rounded transition-colors">
                 <SmilePlus className="w-4 h-4 text-muted-foreground" />
               </button>
             </PopoverTrigger>
             <PopoverContent side="top" align="end" className="w-64 p-2">
               <div className="grid grid-cols-8 gap-1">
-                {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-primary/10 rounded-full text-lg transition-colors">
+                {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-muted rounded text-lg transition-colors">
                     {emoji}
                   </button>)}
               </div>
@@ -140,7 +140,7 @@ export function UniversalMessageActions({
         
         {isOwnMessage && onEdit && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onEdit} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <button onClick={onEdit} className="p-1.5 hover:bg-muted rounded transition-colors">
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -149,7 +149,7 @@ export function UniversalMessageActions({
         
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onReply} className="p-1.5 hover:bg-muted rounded transition-colors">
               <Reply className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -158,7 +158,7 @@ export function UniversalMessageActions({
         
         <DropdownMenu onOpenChange={onDropdownOpenChange}>
           <DropdownMenuTrigger asChild>
-            <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button className="p-1.5 hover:bg-muted rounded transition-colors">
               <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>

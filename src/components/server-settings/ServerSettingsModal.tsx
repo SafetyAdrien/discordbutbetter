@@ -127,10 +127,10 @@ export function ServerSettingsModal({
   };
 
   const renderNavList = (onSelect: (tab: SettingsTab) => void) => (
-    <nav className="space-y-4 p-2.5">
+    <nav className="space-y-4 p-2">
       {sections.map(section => (
         <div key={section.id}>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1.5">
+          <p className="text-xs font-semibold text-muted-foreground capitalize px-3 mb-1">
             {section.name === 'server' ? serverName : section.name}
           </p>
           <div className="space-y-0.5">
@@ -139,20 +139,14 @@ export function ServerSettingsModal({
                 key={tab.id}
                 onClick={() => onSelect(tab.id)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 rounded-2xl text-sm transition-all duration-300',
-                  isMobile ? 'py-3' : 'py-2',
+                  'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                  isMobile ? 'py-3' : 'py-1.5',
                   activeTab === tab.id
-                    ? 'bg-primary/12 text-primary font-medium'
+                    ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
-                style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
               >
-                <div className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
-                  activeTab === tab.id ? 'bg-primary/15' : 'bg-transparent'
-                )}>
-                  <tab.icon className="w-4 h-4" />
-                </div>
+                <tab.icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{tab.label}</span>
                 {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
               </button>
@@ -160,31 +154,23 @@ export function ServerSettingsModal({
           </div>
         </div>
       ))}
-      <div className="h-px bg-border/50 mx-2 rounded-full" />
+      <Separator className="my-2" />
       <div className="space-y-0.5">
         {dangerTabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => onSelect(tab.id)}
             className={cn(
-              'w-full flex items-center gap-3 px-3 rounded-2xl text-sm transition-all duration-300',
-              isMobile ? 'py-3' : 'py-2',
+              'w-full flex items-center gap-2 px-3 rounded-lg text-sm transition-colors',
+              isMobile ? 'py-3' : 'py-1.5',
               activeTab === tab.id
-                ? tab.danger ? 'bg-destructive/10 text-destructive font-medium' : 'bg-primary/12 text-primary font-medium'
+                ? tab.danger ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
                 : tab.danger 
-                  ? 'text-destructive/70 hover:bg-destructive/8 hover:text-destructive'
+                  ? 'text-destructive/80 hover:bg-destructive/10 hover:text-destructive'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
-            style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
           >
-            <div className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
-              activeTab === tab.id
-                ? tab.danger ? 'bg-destructive/15' : 'bg-primary/15'
-                : tab.danger ? 'bg-destructive/5' : 'bg-transparent'
-            )}>
-              <tab.icon className="w-4 h-4" />
-            </div>
+            <tab.icon className="w-4 h-4" />
             <span className="flex-1 text-left">{tab.label}</span>
             {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           </button>
@@ -199,11 +185,11 @@ export function ServerSettingsModal({
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
         {activeTab === null ? (
           <>
-            <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
-              <h2 className="font-semibold text-base flex-1 truncate">{serverName}</h2>
+              <h2 className="font-semibold text-sm flex-1 truncate">{serverName}</h2>
             </div>
             <div className="flex-1 overflow-y-auto">
               {renderNavList((tab) => setActiveTab(tab))}
@@ -211,14 +197,14 @@ export function ServerSettingsModal({
           </>
         ) : (
           <>
-            <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={() => setActiveTab(null)} className="p-2 rounded-full hover:bg-muted">
+            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-lg hover:bg-muted">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h3 className={cn("font-semibold text-sm flex-1 truncate", activeTab === 'delete' && "text-destructive")}>
                 {getCurrentTabLabel()}
               </h3>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -231,13 +217,13 @@ export function ServerSettingsModal({
     );
   }
 
-  // Desktop: Material You elevated modal
+  // Desktop: sidebar + content
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] rounded-3xl overflow-hidden" style={{ boxShadow: 'var(--shadow-elevation-3)' }}>
-        <div className="w-60 bg-[hsl(var(--surface-1))] border-r border-border/30 flex flex-col">
-          <div className="p-4 border-b border-border/30">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] glass rounded-xl overflow-hidden">
+        <div className="w-56 bg-card/50 border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
             <h2 className="text-lg font-semibold truncate">{serverName}</h2>
             <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
           </div>
@@ -245,12 +231,12 @@ export function ServerSettingsModal({
             {renderNavList((tab) => setActiveTab(tab))}
           </div>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden bg-background">
-          <div className="h-14 px-6 flex items-center justify-between border-b border-border/30">
-            <h3 className={cn("font-semibold text-lg", activeTab === 'delete' && "text-destructive")}>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="h-12 px-6 flex items-center justify-between border-b border-border">
+            <h3 className={cn("font-semibold", activeTab === 'delete' && "text-destructive")}>
               {getCurrentTabLabel()}
             </h3>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>

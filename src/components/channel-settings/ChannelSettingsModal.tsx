@@ -69,17 +69,15 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     }
   };
 
-  // Mobile: Material You full screen with tabs
+  // Mobile: direct layout with Overview + tabs
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
             <X className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 rounded-full bg-primary/8 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-primary" />
-          </div>
+          <Icon className="w-4 h-4 text-muted-foreground" />
           <h2 className="font-semibold text-sm flex-1 truncate">Paramètres de {channel?.name || 'salon'}</h2>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -89,10 +87,10 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
             </div>
           ) : channel ? (
             <Tabs defaultValue="overview">
-              <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[hsl(var(--surface-2))] p-1">
-                <TabsTrigger value="overview" className="rounded-xl">Aperçu</TabsTrigger>
-                <TabsTrigger value="permissions" className="rounded-xl">Permissions</TabsTrigger>
-                <TabsTrigger value="integrations" className="rounded-xl">Intégrations</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Aperçu</TabsTrigger>
+                <TabsTrigger value="permissions">Permissions</TabsTrigger>
+                <TabsTrigger value="integrations">Intégrations</TabsTrigger>
               </TabsList>
               <TabsContent value="overview" className="mt-4">
                 <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
@@ -112,15 +110,13 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     );
   }
 
-  // Desktop - Material You dialog
+  // Desktop
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col min-h-[400px] rounded-3xl" style={{ boxShadow: 'var(--shadow-elevation-3)' }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col min-h-[400px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Icon className="w-5 h-5 text-primary" />
-            </div>
+          <DialogTitle className="flex items-center gap-2">
+            <Icon className="w-5 h-5 text-muted-foreground" />
             Paramètres de {channel?.name || 'salon'}
           </DialogTitle>
         </DialogHeader>
@@ -131,9 +127,9 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
           </div>
         ) : channel ? (
           <Tabs value={activeTab || 'overview'} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[hsl(var(--surface-2))] p-1">
+            <TabsList className="grid w-full grid-cols-3">
               {tabItems.map(item => (
-                <TabsTrigger key={item.id} value={item.id} className="rounded-xl">{item.label}</TabsTrigger>
+                <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
               ))}
             </TabsList>
 

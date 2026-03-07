@@ -405,7 +405,7 @@ export function MobileChannelListView({
     }, []);
 
     return (
-    <div className="flex flex-col h-full bg-card select-none">
+    <div className="flex flex-col h-full bg-[hsl(var(--surface-1))] select-none">
       {/* Banner (both embedded and non-embedded) - progressive fade */}
       {bannerUrl && (
         <div
@@ -429,12 +429,6 @@ export function MobileChannelListView({
               </button>
             } onOpenSettings={onOpenSettings} />
             <div className="flex-1" />
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors"
-            >
-              <UserPlus className="w-4 h-4 text-white" />
-            </button>
             {onOpenSettings && (
               <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
                 <Settings className="w-4 h-4 text-white/80" />
@@ -446,19 +440,13 @@ export function MobileChannelListView({
 
       {/* Header (shown when no banner or banner nearly hidden) */}
       {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
-        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-header))]">
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-1))]">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          >
-            <UserPlus className="w-4 h-4" />
-          </button>
           {onOpenSettings && (
             <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Settings className="w-4 h-4" />
@@ -467,7 +455,7 @@ export function MobileChannelListView({
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
-        <div className="h-12 px-4 flex items-center gap-2 border-b border-border bg-[hsl(var(--surface-header))]">
+        <div className="h-12 px-4 flex items-center gap-2 border-b border-border bg-[hsl(var(--surface-1))]">
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>

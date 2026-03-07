@@ -64,7 +64,7 @@ import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
 import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
-import { useThreads } from "@/hooks/useThreads";
+import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
 import { useChannels } from "@/hooks/useChannels";
 import { Thread } from "@/types/thread";
@@ -508,6 +508,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Threads - fetch all threads for this channel to find message-linked threads
   const { data: threads = [] } = useThreads(channel.id);
+  const updateThreadMut = useUpdateThread();
+  const deleteThreadMut = useDeleteThread();
 
   // AI Summaries
   const {
@@ -1280,53 +1282,72 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 return (
                   <div key={`msg-${message.id}`}>
                     {DateSeparator}
-                    <div className="py-1 px-4 my-0.5">
-                      {/* System text line */}
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span>
-                          <span className="font-semibold text-foreground">{message.author.displayName}</span>
-                          {' '}a créé un thread :{' '}
-                          <button
-                            onClick={() => onSelectThread?.(threadId)}
-                            className="font-semibold text-primary hover:underline cursor-pointer"
-                          >
-                            {threadName}
-                          </button>
-                        </span>
-                        <span className="text-muted-foreground/60 ml-1">
-                          {formatTime(message.timestamp)}
-                        </span>
-                      </div>
+                    <ContextMenu>
+                      <ContextMenuTrigger asChild>
+                        <div className="py-1 px-4 my-0.5">
+                          {/* System text line */}
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>
+                              <span className="font-semibold text-foreground">{message.author.displayName}</span>
+                              {' '}a créé un thread :{' '}
+                              <button
+                                onClick={() => onSelectThread?.(threadId)}
+                                className="font-semibold text-primary hover:underline cursor-pointer"
+                              >
+                                {threadName}
+                              </button>
+                            </span>
+                            <span className="text-muted-foreground/60 ml-1">
+                              {formatTime(message.timestamp)}
+                            </span>
+                          </div>
 
-                      {/* Spine + Thread embed */}
-                      <div className="flex mt-1.5">
-                        {/* Spine: curve only (L shape connecting to thread embed) */}
-                        <div className="flex-shrink-0 w-8 relative mr-1.5">
-                          <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                          {/* Spine + Thread embed */}
+                          <div className="flex mt-1.5">
+                            <div className="flex-shrink-0 w-8 relative mr-1.5">
+                              <div className="absolute left-[6px] top-0 w-[20px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {thread ? (
+                                <ThreadSystemMessage
+                                  thread={thread}
+                                  onClick={() => onSelectThread?.(threadId)}
+                                  canManage={thread.created_by === user?.id || canManageChannels}
+                                  onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
+                                  onDelete={() => {
+                                    deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
+                                    deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
+                                  }}
+                                />
+                              ) : (
+                                <button
+                                  onClick={() => onSelectThread?.(threadId)}
+                                  className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
+                                >
+                                  <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
+                                    <span className="text-xs text-foreground">0 Messages</span>
+                                  </div>
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {/* Thread embed card */}
-                        <div className="flex-1 min-w-0">
-                          {thread ? (
-                            <ThreadSystemMessage
-                              thread={thread}
-                              onClick={() => onSelectThread?.(threadId)}
-                            />
-                          ) : (
-                            <button
-                              onClick={() => onSelectThread?.(threadId)}
-                              className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
-                            >
-                              <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
-                                <span className="text-xs text-foreground">0 Messages</span>
-                              </div>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      </ContextMenuTrigger>
+                      {(user?.id === message.author.id || canManageMessages) && (
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDelete(message.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Supprimer le message
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      )}
+                    </ContextMenu>
                   </div>
                 );
               }

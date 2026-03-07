@@ -758,11 +758,11 @@ export function ChannelList({
     const ids: string[] = [];
     server.categories.forEach((cat) => {
       cat.channels.forEach((ch) => {
-        if (ch.type === "text") ids.push(ch.id);
+        if (ch.type === "text" || ch.type === "announcement") ids.push(ch.id);
       });
     });
     orphanChannels.forEach((ch) => {
-      if (ch.type === "text") ids.push(ch.id);
+      if (ch.type === "text" || ch.type === "announcement") ids.push(ch.id);
     });
     return ids;
   }, [server.categories, orphanChannels]);
@@ -800,11 +800,10 @@ export function ChannelList({
       toast.error("Erreur lors de la suppression");
     }
   };
+  const [duplicateModalChannel, setDuplicateModalChannel] = useState<{ id: string; name: string } | null>(null);
   const handleDuplicateChannel = (channelId: string) => {
-    duplicateChannel.mutate({
-      channelId,
-      serverId: server.id
-    });
+    const channelName = getChannelName(channelId);
+    setDuplicateModalChannel({ id: channelId, name: channelName });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {

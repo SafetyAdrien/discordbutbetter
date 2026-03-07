@@ -217,29 +217,32 @@ export function ServerSettingsModal({
     );
   }
 
-  // Desktop: full-page sidebar + content
+  // Desktop: sidebar + content
   return (
-    <div className="fixed inset-0 z-50 flex bg-background">
-      <div className="w-56 bg-card flex flex-col border-r border-border ml-4 my-4 rounded-lg">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-lg font-semibold truncate">{serverName}</h2>
-          <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
+    <div className="fixed inset-0 z-50 flex">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] glass rounded-xl overflow-hidden">
+        <div className="w-56 bg-card/50 border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
+            <h2 className="text-lg font-semibold truncate">{serverName}</h2>
+            <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {renderNavList((tab) => setActiveTab(tab))}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {renderNavList((tab) => setActiveTab(tab))}
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col overflow-hidden my-4 mr-4">
-        <div className="h-14 px-6 flex items-center justify-between border-b border-border flex-shrink-0">
-          <h1 className={cn("text-lg font-semibold", activeTab === 'delete' && "text-destructive")}>
-            {getCurrentTabLabel()}
-          </h1>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6">
-          {renderContent()}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="h-12 px-6 flex items-center justify-between border-b border-border">
+            <h3 className={cn("font-semibold", activeTab === 'delete' && "text-destructive")}>
+              {getCurrentTabLabel()}
+            </h3>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            {renderContent()}
+          </div>
         </div>
       </div>
     </div>

@@ -1370,7 +1370,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
                     }}
-                    className={cn("group message-hover rounded-xl px-4 mb-1 relative", showAuthor ? "pt-2" : "py-0.5")}
+                    className={cn("group message-hover rounded-xl px-4 pb-1 mb-1 relative", showAuthor ? "pt-2" : "py-0.5")}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {
                       if (openDropdownMessageId !== message.id) setHoveredMessageId(null);

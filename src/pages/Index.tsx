@@ -73,6 +73,8 @@ const Index = () => {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [voiceChatChannelId, setVoiceChatChannelId] = useState<string | null>(null);
+  const [threadPanelFlex, setThreadPanelFlex] = useState(4); // flex ratio for thread panel
+  const threadResizing = useRef(false);
 
   // Wrapper functions to persist navigation state
   const setActiveServerId = useCallback((id: string | null) => {
@@ -584,10 +586,13 @@ const Index = () => {
             onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
 
-          {/* Main Content Area - flex container for 60/40 split when thread is open */}
+          {/* Main Content Area - resizable split when thread is open */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
             {channelForChat && (
-              <div className={`${activeThreadId && channelForChat.type === 'text' ? (threadFullscreen ? 'hidden' : 'flex-[6] min-w-0') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}>
+              <div
+                className={`${activeThreadId && channelForChat.type === 'text' ? (threadFullscreen ? 'hidden' : 'min-w-[300px]') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}
+                style={activeThreadId && channelForChat.type === 'text' && !threadFullscreen ? { flex: `${10 - threadPanelFlex} 1 0%` } : undefined}
+              >
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
                     key={channelForChat.id}
@@ -676,11 +681,39 @@ const Index = () => {
               </div>
             )}
 
-            {/* Thread View - 60/40 split with chat */}
+            {/* Thread View - resizable split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
               <>
-              <div className="w-px bg-border/30 shrink-0" />
-              <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0`}>
+              {/* Invisible resize handle */}
+              <div
+                className="w-1 shrink-0 cursor-col-resize bg-transparent z-10 relative"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  threadResizing.current = true;
+                  const container = (e.currentTarget.parentElement as HTMLElement);
+                  const startX = e.clientX;
+                  const containerWidth = container.getBoundingClientRect().width;
+                  const startFlex = threadPanelFlex;
+                  const handleMouseMove = (ev: MouseEvent) => {
+                    if (!threadResizing.current) return;
+                    const delta = ev.clientX - startX;
+                    const deltaRatio = (delta / containerWidth) * 10;
+                    const newFlex = Math.max(2, Math.min(8, startFlex - deltaRatio));
+                    setThreadPanelFlex(Math.round(newFlex * 10) / 10);
+                  };
+                  const handleMouseUp = () => {
+                    threadResizing.current = false;
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                  };
+                  document.addEventListener('mousemove', handleMouseMove);
+                  document.addEventListener('mouseup', handleMouseUp);
+                }}
+              />
+              <div
+                className="min-w-[300px]"
+                style={threadFullscreen ? { flex: '1 1 0%' } : { flex: `${threadPanelFlex} 1 0%` }}
+              >
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}

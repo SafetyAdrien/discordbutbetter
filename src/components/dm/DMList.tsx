@@ -167,8 +167,8 @@ function DMConversationItem({
         <button
           onClick={onClick}
           className={cn(
-            'w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors text-left',
-            isActive ? 'bg-muted' : 'hover:bg-muted/50'
+            'w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-colors text-left',
+            isActive ? 'bg-[hsl(var(--surface-hover))]' : 'hover:bg-[hsl(var(--surface-2))]'
           )}
         >
           <div className="relative flex-shrink-0">

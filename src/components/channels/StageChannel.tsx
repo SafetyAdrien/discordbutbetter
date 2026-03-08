@@ -191,9 +191,9 @@ export function StageChannel({ channel, serverId }: StageChannelProps) {
   // No session state
   if (!session && !sessionLoading) {
     return (
-      <div className="flex-1 flex flex-col bg-background">
+      <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)]">
         {/* Header */}
-        <div className="h-12 border-b border-border flex items-center px-4">
+        <div className="h-12 flex items-center px-4 bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
           <Radio className="w-5 h-5 mr-2 text-muted-foreground" />
           <span className="font-semibold">{channel.name}</span>
         </div>

@@ -76,7 +76,7 @@ export function DMUserInfoPanel({
                 {participant.display_name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className={cn("absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card", statusColors[participant.status || 'offline'])} />
+            <div className={cn("absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-[hsl(var(--surface-1))]", statusColors[participant.status || 'offline'])} />
           </div>
         </div>
 

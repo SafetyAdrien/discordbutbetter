@@ -681,11 +681,39 @@ const Index = () => {
               </div>
             )}
 
-            {/* Thread View - 60/40 split with chat */}
+            {/* Thread View - resizable split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
               <>
-              <div className="w-px bg-border/30 shrink-0" />
-              <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0`}>
+              {/* Invisible resize handle */}
+              <div
+                className="w-1 shrink-0 cursor-col-resize bg-transparent z-10 relative"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  threadResizing.current = true;
+                  const container = (e.currentTarget.parentElement as HTMLElement);
+                  const startX = e.clientX;
+                  const containerWidth = container.getBoundingClientRect().width;
+                  const startFlex = threadPanelFlex;
+                  const handleMouseMove = (ev: MouseEvent) => {
+                    if (!threadResizing.current) return;
+                    const delta = ev.clientX - startX;
+                    const deltaRatio = (delta / containerWidth) * 10;
+                    const newFlex = Math.max(2, Math.min(8, startFlex - deltaRatio));
+                    setThreadPanelFlex(Math.round(newFlex * 10) / 10);
+                  };
+                  const handleMouseUp = () => {
+                    threadResizing.current = false;
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                  };
+                  document.addEventListener('mousemove', handleMouseMove);
+                  document.addEventListener('mouseup', handleMouseUp);
+                }}
+              />
+              <div
+                className="min-w-[300px]"
+                style={threadFullscreen ? { flex: '1 1 0%' } : { flex: `${threadPanelFlex} 1 0%` }}
+              >
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}

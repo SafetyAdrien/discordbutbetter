@@ -730,6 +730,10 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 <Link className="w-4 h-4 mr-2" />
                 Copier le lien
               </ContextMenuItem>
+              <ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(channel.id), "ID du salon copié")}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copier l'ID
+              </ContextMenuItem>
               <ContextMenuItem onClick={onCreateInvite}>
                 <UserPlus className="w-4 h-4 mr-2" />
                 Créer une invitation

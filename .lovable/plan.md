@@ -1,61 +1,21 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Améliorer les teintes du conteneur des Sondages
 
-## Root cause
+## Analyse
+Le sondage utilise `--poll-background: 220 18% 10%` (très sombre, proche de `surface-1` à 9%). Les options utilisent `bg-[hsl(var(--surface-2))]`. L'ensemble manque de profondeur et de cohérence avec le système de surfaces Material You.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Changements
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+### 1. `src/index.css`
+- Mettre à jour `--poll-background` de `220 18% 10%` vers `225 18% 12%` — entre surface-1 (9%) et surface-2 (14%), pour un fond distinct mais subtil.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### 2. `src/components/chat/PollDisplay.tsx`
+- **Conteneur principal** (L240) : `bg-poll rounded-lg` → `bg-[hsl(var(--surface-1))] rounded-xl border border-border/20`  — coins plus arrondis + bordure subtile pour l'élévation Material You.
+- **Options non sélectionnées** (L274) : `bg-[hsl(var(--surface-2))]` → `bg-[hsl(var(--surface-2)/0.6)]` — plus subtil, meilleur contraste avec le conteneur.
+- **Options sélectionnées/votées** (L273) : `bg-primary/10` → `bg-primary/15` — légèrement plus visible.
+- **Barre de progression du temps** (L339) : `bg-muted` → `bg-[hsl(var(--surface-3)/0.5)]` — cohérence avec la palette surface.
+- **Avatar border** (L32) : `border-card` → `border-[hsl(var(--surface-1))]` — s'adapte au fond du poll.
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**2 fichiers modifiés.**
 

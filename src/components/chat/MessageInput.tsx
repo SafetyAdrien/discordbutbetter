@@ -112,7 +112,7 @@ export function MessageInput({
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const DESKTOP_MIN_HEIGHT = 40;
+    const DESKTOP_MIN_HEIGHT = 44;
     const COMPACT_MIN_HEIGHT = 28;
     const DESKTOP_SINGLE_LINE_TOLERANCE = 6;
     const minH = compact ? COMPACT_MIN_HEIGHT : DESKTOP_MIN_HEIGHT;
@@ -556,7 +556,7 @@ export function MessageInput({
                 ref={overlayRef}
                 content={value}
                 compact={compact}
-                className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]'}
+                className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-3 pr-1 min-h-[44px]'}
                 mentionData={{ members, roles, channels }}
               />
             )}
@@ -574,7 +574,7 @@ export function MessageInput({
               } ${
               compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
+                  : `py-3 text-sm pr-1 min-h-[44px] max-h-[200px] overflow-y-auto`
               }`}
               style={hasMarkdown ? { fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 } : undefined}
               rows={1}

@@ -320,7 +320,7 @@
   }
 
   .channel-item.active {
-    background: hsl(var(--primary) / 0.12);
+    background: hsl(var(--surface-hover) / 0.4);
     color: hsl(var(--foreground));
   }
 

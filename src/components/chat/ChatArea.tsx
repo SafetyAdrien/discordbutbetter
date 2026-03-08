@@ -93,7 +93,6 @@ import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 
-
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
   return (
@@ -348,7 +347,7 @@ function PollLongPressWrapper({
   onLongPress: () => void;
   className?: string;
   children: React.ReactNode;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>) {
+} & Omit<React.HTMLAttributes<HTMLDivElement>, "children">) {
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTouchStart = () => {
@@ -532,46 +531,47 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Get owner/admin status (already loaded from server context - instant)
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
-  const isAdminOrOwner = isGod || hasServerPermission('administrator');
+  const isAdminOrOwner = isGod || hasServerPermission("administrator");
 
   // Check multiple chat permissions reactively
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
-    'send_messages',
-    'attach_files',
-    'add_reactions',
-    'create_polls',
-    'mention_everyone',
-    'create_public_threads',
-    'manage_messages',
-    'manage_channels',
+    "send_messages",
+    "attach_files",
+    "add_reactions",
+    "create_polls",
+    "mention_everyone",
+    "create_public_threads",
+    "manage_messages",
+    "manage_channels",
   ]);
-  
+
   // Short-circuit for owners/admins - they always have permissions
-  const canSendMessages = isAdminOrOwner || canPerm('send_messages');
-  const canAttachFiles = isAdminOrOwner || canPerm('attach_files');
-  const canAddReactions = isAdminOrOwner || canPerm('add_reactions');
-  const canCreatePolls = isAdminOrOwner || canPerm('create_polls');
-  const canMentionEveryone = isAdminOrOwner || canPerm('mention_everyone');
-  const canCreateThreads = isAdminOrOwner || canPerm('create_public_threads');
-  const canManageMessages = isAdminOrOwner || canPerm('manage_messages');
-  const canManageChannels = isAdminOrOwner || canPerm('manage_channels');
-  
+  const canSendMessages = isAdminOrOwner || canPerm("send_messages");
+  const canAttachFiles = isAdminOrOwner || canPerm("attach_files");
+  const canAddReactions = isAdminOrOwner || canPerm("add_reactions");
+  const canCreatePolls = isAdminOrOwner || canPerm("create_polls");
+  const canMentionEveryone = isAdminOrOwner || canPerm("mention_everyone");
+  const canCreateThreads = isAdminOrOwner || canPerm("create_public_threads");
+  const canManageMessages = isAdminOrOwner || canPerm("manage_messages");
+  const canManageChannels = isAdminOrOwner || canPerm("manage_channels");
+
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
-  
+
   // Track channel transitions to prevent permission flash
   const prevChannelIdRef = useRef(channel.id);
   const isChannelTransitioning = prevChannelIdRef.current !== channel.id;
-  
+
   useEffect(() => {
     prevChannelIdRef.current = channel.id;
   }, [channel.id]);
-  
+
   // Permission denied: show denied message only when permissions are resolved (not loading)
   // During loading or channel transition, show nothing (neutral state) to avoid flash
-  const permissionDeniedMessage = (isChannelTransitioning || permissionsLoading || isAdminOrOwner || canSendMessages) 
-    ? undefined
-    : "Vous n'avez pas la permission d'envoyer des messages dans ce salon.";
+  const permissionDeniedMessage =
+    isChannelTransitioning || permissionsLoading || isAdminOrOwner || canSendMessages
+      ? undefined
+      : "Vous n'avez pas la permission d'envoyer des messages dans ce salon.";
 
   // Scroll to message function for "Jump to Message"
   const scrollToMessage = useCallback((messageId: string) => {
@@ -602,7 +602,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     // Build users map from messages authors
     const usersMap = new Map<string, { displayName: string; avatarUrl?: string; bio?: string }>();
     const userIds: string[] = [];
-    
+
     messages.forEach((m) => {
       usersMap.set(m.author.id, {
         displayName: m.author.displayName,
@@ -620,7 +620,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       });
       userIds.push(m.id);
     });
-    
+
     // Register all user UUIDs in Snowflake registry for reverse lookups
     registerSnowflakeMappings(userIds);
 
@@ -639,7 +639,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       channelsMap.set(ch.id, { name: ch.name, serverId: channel.server_id });
       channelIds.push(ch.id);
     });
-    
+
     // Register all IDs in Snowflake registry for reverse lookups
     registerSnowflakeMappings([...roleIds, ...channelIds]);
 
@@ -686,12 +686,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       // Pre-fetch link metadata
       const urls = extractUrls(msg.content);
       urls.forEach((url) => fetchMetadata(url));
-      
+
       // Pre-load images from attachments
       const attachs = (msg as any).attachments as StoredAttachment[] | undefined;
       if (attachs) {
         attachs.forEach((att) => {
-          if (att.type?.startsWith('image/') && att.url) {
+          if (att.type?.startsWith("image/") && att.url) {
             const img = new Image();
             img.src = att.url;
           }
@@ -883,11 +883,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     copyToClipboard(link, "Lien du message copié");
   };
   return (
-    <div 
+    <div
       ref={(node) => {
         // Handle both refs
         chatContainerRef.current = node;
-        if (typeof ref === 'function') {
+        if (typeof ref === "function") {
           ref(node);
         } else if (ref) {
           ref.current = node;
@@ -900,184 +900,188 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       onDrop={handleDrop}
     >
       {/* Upload Drop Overlay */}
-      <AnimatePresence>
-        {isDragging && (
-          <UploadDropOverlay channelName={channel.name} />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{isDragging && <UploadDropOverlay channelName={channel.name} />}</AnimatePresence>
       {/* Channel Header - hidden on mobile where MobileChatView provides its own */}
-      {!isMobile && <div className="h-12 px-3 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
-        style={{ 
-          borderBottom: '1px solid hsl(var(--border) / 0.5)',
-          boxShadow: 'var(--shadow-elevation-1)',
-          borderRadius: '0 0 var(--radius-xl) var(--radius-xl)'
-        }}>
-        <div className="flex items-center gap-2 min-w-0 flex-shrink">
-          <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
-        </div>
+      {!isMobile && (
+        <div
+          className="h-12 px-3 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
+          style={{
+            borderBottom: "1px solid hsl(var(--border) / 0.5)",
+            boxShadow: "var(--shadow-elevation-1)",
+            borderRadius: "0 0 var(--radius-xl) var(--radius-xl)",
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-shrink">
+            <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          </div>
 
-        {channel.description && (
-          <>
-            <div className="w-px h-6 bg-border hidden sm:block" />
+          {channel.description && (
+            <>
+              <div className="w-px h-6 bg-border hidden sm:block" />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
+                    <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground truncate [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-sm [&_p]:inline [&_*]:!m-0">
+                      <MarkdownText
+                        content={channel.description || ""}
+                        className="[&_.markdown-content]:text-muted-foreground"
+                      />
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="start" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-3">
+                  <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
+                  <MarkdownText
+                    content={channel.description || ""}
+                    className="text-sm text-muted-foreground [&_.markdown-content]:text-muted-foreground"
+                  />
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+
+          <div className="flex items-center gap-1 ml-auto">
+            {/* Notifications Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
-                  <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground truncate [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-sm [&_p]:inline [&_*]:!m-0">
-                    <MarkdownText content={channel.description || ''} className="[&_.markdown-content]:text-muted-foreground" />
-                  </span>
-                </button>
+                <Button variant="ghost" size="iconSm">
+                  <Bell className="w-5 h-5" />
+                </Button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-3">
-                <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
-                <MarkdownText content={channel.description || ''} className="text-sm text-muted-foreground [&_.markdown-content]:text-muted-foreground" />
+              <PopoverContent side="bottom" align="end" className="w-64 p-3">
+                <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
+                <div className="space-y-2">
+                  <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                    <BellRing className="w-4 h-4 text-muted-foreground" />
+                    <span>Tous les messages</span>
+                  </button>
+                  <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                    <AtSign className="w-4 h-4 text-muted-foreground" />
+                    <span>Uniquement les mentions</span>
+                  </button>
+                  <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                    <BellOff className="w-4 h-4 text-muted-foreground" />
+                    <span>Aucun message</span>
+                  </button>
+                </div>
               </PopoverContent>
             </Popover>
-          </>
-        )}
 
-        <div className="flex items-center gap-1 ml-auto">
-          {/* Notifications Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="iconSm">
-                <Bell className="w-5 h-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-64 p-3">
-              <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
-              <div className="space-y-2">
-                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
-                  <BellRing className="w-4 h-4 text-muted-foreground" />
-                  <span>Tous les messages</span>
-                </button>
-                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
-                  <AtSign className="w-4 h-4 text-muted-foreground" />
-                  <span>Uniquement les mentions</span>
-                </button>
-                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
-                  <BellOff className="w-4 h-4 text-muted-foreground" />
-                  <span>Aucun message</span>
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
+            {/* Threads Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="iconSm">
+                  <StreamlineThreads className="w-5 h-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
+                <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
+              </PopoverContent>
+            </Popover>
 
-          {/* Threads Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="iconSm">
-                <StreamlineThreads className="w-5 h-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
-              <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
-            </PopoverContent>
-          </Popover>
-
-          {/* Pinned Messages Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="iconSm" className="relative">
-                <Pin className="w-5 h-5" />
-                {pinnedMessages && pinnedMessages.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                    {pinnedMessages.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
-              <div className="p-3 border-b border-border">
-                <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
-              </div>
-              <ScrollArea className="max-h-80">
-                {pinnedMessages && pinnedMessages.length > 0 ? (
-                  <div className="p-2 space-y-2">
-                    {pinnedMessages.map((pm) => (
-                      <div key={pm.id} className="p-3 bg-muted/50 rounded-lg group relative">
-                        <div className="flex items-start gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={pm.message?.author?.avatar_url || undefined} />
-                            <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                              {pm.message?.author?.display_name?.charAt(0).toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{pm.message?.author?.display_name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {pm.message?.created_at && formatDate(new Date(pm.message.created_at))}
-                              </span>
+            {/* Pinned Messages Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="iconSm" className="relative">
+                  <Pin className="w-5 h-5" />
+                  {pinnedMessages && pinnedMessages.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                      {pinnedMessages.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
+                <div className="p-3 border-b border-border">
+                  <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
+                </div>
+                <ScrollArea className="max-h-80">
+                  {pinnedMessages && pinnedMessages.length > 0 ? (
+                    <div className="p-2 space-y-2">
+                      {pinnedMessages.map((pm) => (
+                        <div key={pm.id} className="p-3 bg-muted/50 rounded-lg group relative">
+                          <div className="flex items-start gap-2">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={pm.message?.author?.avatar_url || undefined} />
+                              <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                                {pm.message?.author?.display_name?.charAt(0).toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">{pm.message?.author?.display_name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {pm.message?.created_at && formatDate(new Date(pm.message.created_at))}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{pm.message?.content}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{pm.message?.content}</p>
                           </div>
+                          <button
+                            onClick={() =>
+                              unpinMessage.mutate({
+                                messageId: pm.message_id,
+                                channelId: channel.id,
+                              })
+                            }
+                            className="absolute top-2 right-2 p-1 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3.5 h-3.5 text-destructive" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() =>
-                            unpinMessage.mutate({
-                              messageId: pm.message_id,
-                              channelId: channel.id,
-                            })
-                          }
-                          className="absolute top-2 right-2 p-1 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3.5 h-3.5 text-destructive" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground/70 text-center py-8">
-                    Ce salon n'a pas encore de message épinglé... pour l'instant.
-                  </div>
-                )}
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground/70 text-center py-8">
+                      Ce salon n'a pas encore de message épinglé... pour l'instant.
+                    </div>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
 
-          {/* Members Toggle / Thread Close */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={() => {
-                  if (activeThreadId) {
-                    onCloseThread?.();
-                  } else {
-                    onToggleMembers?.();
-                  }
-                }}
-                className={cn(showMembers && !activeThreadId && "bg-surface-hover")}
-              >
-                <Users className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {activeThreadId ? "Fermer le thread" : showMembers ? "Masquer les membres" : "Afficher les membres"}
-            </TooltipContent>
-          </Tooltip>
+            {/* Members Toggle / Thread Close */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={() => {
+                    if (activeThreadId) {
+                      onCloseThread?.();
+                    } else {
+                      onToggleMembers?.();
+                    }
+                  }}
+                  className={cn(showMembers && !activeThreadId && "bg-surface-hover")}
+                >
+                  <Users className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {activeThreadId ? "Fermer le thread" : showMembers ? "Masquer les membres" : "Afficher les membres"}
+              </TooltipContent>
+            </Tooltip>
 
-          {/* AI Summaries Trigger */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={toggleSummaries}
-                className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
-              >
-                <StreamlineSummaries className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}
-            </TooltipContent>
-          </Tooltip>
+            {/* AI Summaries Trigger */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={toggleSummaries}
+                  className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
+                >
+                  <StreamlineSummaries className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-      </div>}
+      )}
 
       {/* AI Summaries Bar */}
       {isSummariesEnabled && (
@@ -1103,7 +1107,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
-          
+
           {/* Welcome message - anchored at bottom like Discord */}
           <div className="mb-8 animate-fade-in">
             <div className="w-[72px] h-[72px] rounded-3xl bg-[hsl(var(--surface-3))] border border-border/30 flex items-center justify-center mb-4 shadow-[var(--shadow-elevation-1)]">
@@ -1112,12 +1116,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             <h1 className="text-3xl font-ginto font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
             <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
             {canManageChannels && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-4"
-                onClick={() => setChannelSettingsId(channel.id)}
-              >
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => setChannelSettingsId(channel.id)}>
                 <Pencil className="w-3 h-3 mr-1.5" />
                 Edit Channel
               </Button>
@@ -1129,7 +1128,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const currentDate = item.timestamp;
             const prevItem = index > 0 ? timelineItems[index - 1] : null;
             const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
-            
+
             const DateSeparator = showDateSeparator ? (
               <div className="flex items-center gap-4 my-3">
                 <div className="flex-1 h-px bg-border/40" />
@@ -1139,7 +1138,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <div className="flex-1 h-px bg-border/40" />
               </div>
             ) : null;
-            
+
             // Render Poll
             if (item.type === "poll") {
               const poll = item.data as Poll;
@@ -1155,131 +1154,142 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   {DateSeparator}
                   <ContextMenu>
                     <ContextMenuTrigger asChild>
-                    <PollLongPressWrapper
-                      isMobile={isMobile}
-                      onLongPress={() => setMobilePollSheetId(poll.id)}
-                      className={cn("group message-hover rounded-md px-2 -mx-2 mb-1 relative", showAuthor ? "pt-1" : "py-0")}
-                      onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
-                      onMouseLeave={() => {
-                        if (openDropdownPollId !== poll.id) setHoveredPollId(null);
-                      }}
-                    >
-                      {!isMobile && (
-                        <PollActions
-                          isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
-                          onCopyLink={() => handleCopyPollLink(poll.id)}
-                          onEdit={() => setEditingPoll(poll)}
-                          onDelete={() => handleDeletePoll(poll)}
-                          onReply={() => handleReplyToPoll(poll)}
-                          onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
+                      <PollLongPressWrapper
+                        isMobile={isMobile}
+                        onLongPress={() => setMobilePollSheetId(poll.id)}
+                        className={cn(
+                          "group message-hover rounded-md px-2 -mx-2 mb-1 relative",
+                          showAuthor ? "pt-1" : "py-0",
+                        )}
+                        onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
+                        onMouseLeave={() => {
+                          if (openDropdownPollId !== poll.id) setHoveredPollId(null);
+                        }}
+                      >
+                        {!isMobile && (
+                          <PollActions
+                            isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
+                            onCopyLink={() => handleCopyPollLink(poll.id)}
+                            onEdit={() => setEditingPoll(poll)}
+                            onDelete={() => handleDeletePoll(poll)}
+                            onReply={() => handleReplyToPoll(poll)}
+                            onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
+                            isOwnPoll={isOwnPoll}
+                            isPollExpired={isPollExpired}
+                            onEndPoll={() => handleEndPoll(poll)}
+                            onDropdownOpenChange={(open) => {
+                              setOpenDropdownPollId(open ? poll.id : null);
+                              if (!open) setHoveredPollId(null);
+                            }}
+                          />
+                        )}
+                        <MobilePollActions
+                          open={mobilePollSheetId === poll.id}
+                          onOpenChange={(open) => setMobilePollSheetId(open ? poll.id : null)}
                           isOwnPoll={isOwnPoll}
                           isPollExpired={isPollExpired}
+                          onCopyLink={() => handleCopyPollLink(poll.id)}
+                          onCopyId={() => handleCopyId(poll.id)}
+                          onEdit={() => setEditingPoll(poll)}
+                          onDelete={() => handleDeletePoll(poll)}
                           onEndPoll={() => handleEndPoll(poll)}
-                          onDropdownOpenChange={(open) => {
-                            setOpenDropdownPollId(open ? poll.id : null);
-                            if (!open) setHoveredPollId(null);
-                          }}
+                          onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                         />
-                      )}
-                      <MobilePollActions
-                        open={mobilePollSheetId === poll.id}
-                        onOpenChange={(open) => setMobilePollSheetId(open ? poll.id : null)}
-                        isOwnPoll={isOwnPoll}
-                        isPollExpired={isPollExpired}
-                        onCopyLink={() => handleCopyPollLink(poll.id)}
-                        onCopyId={() => handleCopyId(poll.id)}
-                        onEdit={() => setEditingPoll(poll)}
-                        onDelete={() => handleDeletePoll(poll)}
-                        onEndPoll={() => handleEndPoll(poll)}
-                        onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
-                      />
-                      {showAuthor ? (
-                        <div className="flex gap-3 my-0 py-[5px]">
-                          <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
-                            <AvatarImage src={poll.author?.avatar_url || undefined} />
-                            <AvatarFallback className="bg-primary/20 text-primary">
-                              {poll.author?.display_name?.charAt(0).toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0 my-0 py-0">
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-semibold text-foreground">
-                                {poll.author?.display_name || "Utilisateur inconnu"}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(new Date(poll.created_at))}
-                              </span>
-                              <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
-                                <BarChart2 className="w-3 h-3" />
-                                POLL
+                        {showAuthor ? (
+                          <div className="flex gap-3 my-0 py-[5px]">
+                            <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
+                              <AvatarImage src={poll.author?.avatar_url || undefined} />
+                              <AvatarFallback className="bg-primary/20 text-primary">
+                                {poll.author?.display_name?.charAt(0).toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0 my-0 py-0">
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-semibold text-foreground">
+                                  {poll.author?.display_name || "Utilisateur inconnu"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(new Date(poll.created_at))}
+                                </span>
+                                <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
+                                  <BarChart2 className="w-3 h-3" />
+                                  POLL
+                                </div>
+                              </div>
+                              <div className="mt-2">
+                                <PollDisplay poll={poll} channelId={channel.id} />
                               </div>
                             </div>
-                            <div className="mt-2">
+                          </div>
+                        ) : (
+                          <div className="flex gap-3 items-start">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
+                                  {formatTime(new Date(poll.created_at))}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {new Date(poll.created_at).toLocaleString("fr-FR", {
+                                  weekday: "long",
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })}
+                              </TooltipContent>
+                            </Tooltip>
+                            <div className="flex-1">
                               <PollDisplay poll={poll} channelId={channel.id} />
                             </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="flex gap-3 items-start">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
-                                {formatTime(new Date(poll.created_at))}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              {new Date(poll.created_at).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </TooltipContent>
-                          </Tooltip>
-                          <div className="flex-1">
-                            <PollDisplay poll={poll} channelId={channel.id} />
-                          </div>
-                        </div>
-                      )}
-                    </PollLongPressWrapper>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-48">
-                    <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>
-                      <Link className="w-4 h-4 mr-2" />
-                      Copier le lien du sondage
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
-                      <Hash className="w-4 h-4 mr-2" />
-                      Copier l'ID du sondage
-                    </ContextMenuItem>
-                    {isOwnPoll && (
-                      <>
-                        <ContextMenuSeparator />
-                        {!isPollExpired && (
-                          <ContextMenuItem onClick={() => handleEndPoll(poll)}>
-                            <StopCircle className="w-4 h-4 mr-2" />
-                            Terminer le sondage
-                          </ContextMenuItem>
                         )}
-                        <ContextMenuItem onClick={() => setEditingPoll(poll)}>
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Modifier le sondage
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleDeletePoll(poll)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Supprimer le sondage
-                        </ContextMenuItem>
-                      </>
-                    )}
-                  </ContextMenuContent>
-                </ContextMenu>
+                      </PollLongPressWrapper>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>
+                        <Link className="w-4 h-4 mr-2" />
+                        Copier le lien du sondage
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
+                        <Hash className="w-4 h-4 mr-2" />
+                        Copier l'ID du sondage
+                      </ContextMenuItem>
+                      {isOwnPoll && (
+                        <>
+                          <ContextMenuSeparator />
+                          {!isPollExpired && (
+                            <ContextMenuItem onClick={() => handleEndPoll(poll)}>
+                              <StopCircle className="w-4 h-4 mr-2" />
+                              Terminer le sondage
+                            </ContextMenuItem>
+                          )}
+                          <ContextMenuItem onClick={() => setEditingPoll(poll)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Modifier le sondage
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDeletePoll(poll)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Supprimer le sondage
+                          </ContextMenuItem>
+                        </>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
                 </div>
               );
             }
 
             // Render Message
             const message = item.data as Message;
-            
+
             // Render system message for thread creation
-            if (message.is_system && message.content.startsWith('[SYSTEM:THREAD_CREATED:')) {
+            if (message.is_system && message.content.startsWith("[SYSTEM:THREAD_CREATED:")) {
               const match = message.content.match(/\[SYSTEM:THREAD_CREATED:([^:]+):(.+)\]/);
               if (match) {
                 const [, threadId, threadName] = match;
@@ -1294,8 +1304,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>
-                              <span className="font-semibold text-foreground">{message.author.displayName}</span>
-                              {' '}a créé un thread :{' '}
+                              <span className="font-semibold text-foreground">{message.author.displayName}</span> a créé
+                              un thread :{" "}
                               <button
                                 onClick={() => onSelectThread?.(threadId)}
                                 className="font-semibold text-primary hover:underline cursor-pointer"
@@ -1303,37 +1313,37 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 {threadName}
                               </button>
                             </span>
-                            <span className="text-muted-foreground/60 ml-1">
-                              {formatTime(message.timestamp)}
-                            </span>
+                            <span className="text-muted-foreground/60 ml-1">{formatTime(message.timestamp)}</span>
                           </div>
 
                           {/* Spine + Thread embed */}
                           <div className="pt-1.5 pl-[50px] relative">
                             <div className="absolute left-[6px] top-0 w-[34px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                              {thread ? (
-                                <ThreadSystemMessage
-                                  thread={thread}
-                                  onClick={() => onSelectThread?.(threadId)}
-                                  canManage={thread.created_by === user?.id || canManageChannels}
-                                  onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
-                                  onDelete={() => {
-                                    deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
-                                    deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
-                                  }}
-                                />
-                              ) : (
-                                <button
-                                  onClick={() => onSelectThread?.(threadId)}
-                                  className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
-                                >
-                                  <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
-                                    <span className="text-xs text-foreground">0 Messages</span>
-                                  </div>
-                                </button>
-                              )}
+                            {thread ? (
+                              <ThreadSystemMessage
+                                thread={thread}
+                                onClick={() => onSelectThread?.(threadId)}
+                                canManage={thread.created_by === user?.id || canManageChannels}
+                                onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
+                                onDelete={() => {
+                                  deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
+                                  deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
+                                }}
+                              />
+                            ) : (
+                              <button
+                                onClick={() => onSelectThread?.(threadId)}
+                                className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
+                              >
+                                <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-primary hover:underline">
+                                    {threadName}
+                                  </span>
+                                  <span className="text-xs text-foreground">0 Messages</span>
+                                </div>
+                              </button>
+                            )}
                           </div>
                         </div>
                       </ContextMenuTrigger>
@@ -1353,7 +1363,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 );
               }
             }
-            
+
             const showAuthor =
               !prevItem ||
               prevItem.type !== "message" ||
@@ -1366,407 +1376,413 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 {DateSeparator}
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
-                  <div
-                    ref={(el) => {
-                      if (el) messageRefs.current.set(message.id, el);
-                    }}
-                    className={cn("group message-hover rounded-xl px-4 pb-1 mb-1 relative", showAuthor ? "pt-2" : "py-0.5")}
-                    onMouseEnter={() => setHoveredMessageId(message.id)}
-                    onMouseLeave={() => {
-                      if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
-                    }}
-                  >
-                    <UniversalMessageActions
-                      isVisible={
-                        (hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing
-                      }
-                      isShiftPressed={isShiftPressed}
-                      isOwnMessage={isOwnMessage}
-                      onReply={() => handleReply(message)}
-                      onAddReaction={canAddReactions ? (emoji) => handleAddReaction(message.id, emoji) : undefined}
-                      onCopyLink={() => handleCopyMessageLink(message.id)}
-                      onCopyId={() => handleCopyId(message.id)}
-                      onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
-                      onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
-                      onCreateThread={canCreateThreads ? () => setCreateThreadForMessageId(message.id) : undefined}
-                      onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}
-                      isPinned={pinnedMessageIds.has(message.id)}
-                      onDropdownOpenChange={(open) => {
-                        setOpenDropdownMessageId(open ? message.id : null);
-                        if (!open) setHoveredMessageId(null);
+                    <div
+                      ref={(el) => {
+                        if (el) messageRefs.current.set(message.id, el);
                       }}
-                      canAddReactions={canAddReactions}
-                      canManageMessages={canManageMessages}
-                    />
-                    {showAuthor ? (
-                      <div className="relative">
-                        {threadsByMessageId.has(message.id) && (
-                          <ThreadSpine startY={44} />
-                        )}
-                        <div className="flex gap-3 items-start">
-                          <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
-                            <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
-                              <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
-                              <AvatarFallback className="bg-primary/20 text-primary">
-                                {message.author.displayName.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          </button>
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                              <button
-                                onClick={() => handleUserClick(message.author)}
-                                className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
-                              >
-                                {message.author.displayName}
-                              </button>
-                              {/* SYSTEM tag for system messages */}
-                              {(message as any).isSystemMessage && (
-                                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5865f2] bg-[#5865f2]/10 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
-                                  SYSTEM
-                                </span>
-                              )}
-                              {/* Role badge icon - displayed to the right of username */}
-                              {memberRoles?.get(message.author.id)?.[0] &&
-                                memberRoles.get(message.author.id)![0].icon_url && (
-                                  <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
-                                )}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0 cursor-default">
-                                    {formatTime(message.timestamp)}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  {new Date(message.timestamp).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                            {isEditing ? (
-                              <div className="mt-1 space-y-2">
-                                <Textarea
-                                  ref={(el) => {
-                                    if (el) {
-                                      el.style.height = "auto";
-                                      el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                    }
-                                  }}
-                                  value={editingContent}
-                                  onChange={(e) => {
-                                    setEditingContent(e.target.value);
-                                    e.target.style.height = "auto";
-                                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleSaveEdit();
-                                    }
-                                    if (e.key === "Escape") {
-                                      handleCancelEdit();
-                                    }
-                                  }}
-                                  autoFocus
-                                  className="bg-input min-h-[40px] max-h-[200px] resize-none"
-                                  rows={1}
-                                />
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>Échap pour annuler</span>
-                                  <span>•</span>
-                                  <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                                  <span
-                                    className={cn(
-                                      "ml-auto",
-                                      editingContent.length > 1900 && "text-yellow-500",
-                                      editingContent.length > 1980 && "text-destructive font-medium",
-                                    )}
-                                  >
-                                    {editingContent.length}/2000
-                                  </span>
-                                  <div className="flex gap-1">
-                                    <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                    <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
-                                      <Check className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
-                                <MarkdownText content={message.content} />
-                              </p>
-                            )}
-
-                            {/* Message Attachments */}
-                            {(message as any).attachments && (message as any).attachments.length > 0 && (
-                              <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
-                            )}
-
-                            {/* Link Embeds */}
-                            <LinkEmbeds content={message.content} />
-
-                            {/* Edited indicator - after attachments */}
-                            {message.edited_at && (
-                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                            )}
-
-                            {message.reactions && message.reactions.length > 0 && (
-                              <div className="flex gap-1 mt-1">
-                                {message.reactions.map((reaction, i) => (
-                                  <button
-                                    key={i}
-                                    className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
-                                  >
-                                    <span>{reaction.emoji}</span>
-                                    <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Thread System Message */}
-                        {threadsByMessageId.has(message.id) && (
-                          <div className="pt-1.5 pl-[50px]">
-                            <ThreadSystemMessage
-                              thread={threadsByMessageId.get(message.id)!}
-                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        {threadsByMessageId.has(message.id) && (
-                          <ThreadSpine startY={0} />
-                        )}
-                        <div className="flex gap-3 items-start">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
-                                {formatTime(message.timestamp)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              {new Date(message.timestamp).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </TooltipContent>
-                          </Tooltip>
-                          <div className="flex-1 min-w-0">
-                            {isEditing ? (
-                              <div className="space-y-2">
-                                <Textarea
-                                  ref={(el) => {
-                                    if (el) {
-                                      el.style.height = "auto";
-                                      el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                    }
-                                  }}
-                                  value={editingContent}
-                                  onChange={(e) => {
-                                    setEditingContent(e.target.value);
-                                    e.target.style.height = "auto";
-                                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleSaveEdit();
-                                    }
-                                    if (e.key === "Escape") {
-                                      handleCancelEdit();
-                                    }
-                                  }}
-                                  autoFocus
-                                  className="bg-input min-h-[40px] max-h-[200px] resize-none"
-                                  rows={1}
-                                />
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>Échap pour annuler</span>
-                                  <span>•</span>
-                                  <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
-                                  <span
-                                    className={cn(
-                                      "ml-auto",
-                                      editingContent.length > 1900 && "text-yellow-500",
-                                      editingContent.length > 1980 && "text-destructive font-medium",
-                                    )}
-                                  >
-                                    {editingContent.length}/2000
-                                  </span>
-                                  <div className="flex gap-1">
-                                    <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                    <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
-                                      <Check className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
-                                <MarkdownText content={message.content} />
-                              </p>
-                            )}
-
-                            {/* Message Attachments for grouped messages */}
-                            {(message as any).attachments && (message as any).attachments.length > 0 && (
-                              <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
-                            )}
-
-                            {/* Link Embeds */}
-                            <LinkEmbeds content={message.content} />
-
-                            {/* Edited indicator - after attachments */}
-                            {message.edited_at && (
-                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                            )}
-
-                            {message.reactions && message.reactions.length > 0 && (
-                              <div className="flex gap-1 mt-1">
-                                {message.reactions.map((reaction, i) => (
-                                  <button
-                                    key={i}
-                                    className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
-                                  >
-                                    <span>{reaction.emoji}</span>
-                                    <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Thread System Message for grouped messages */}
-                        {threadsByMessageId.has(message.id) && (
-                          <div className="pt-1.5 pl-[50px]">
-                            <ThreadSystemMessage
-                              thread={threadsByMessageId.get(message.id)!}
-                              onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="min-w-[220px] p-1.5 rounded-2xl shadow-[var(--shadow-elevation-3)] border border-border/50" collisionPadding={8}>
-                  {/* Haut : Rangée d'émojis favoris */}
-                  <div className="flex items-center gap-1 p-1.5 pb-2 border-b border-border/30 mb-1">
-                    {CONTEXT_MENU_REACTIONS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleAddReaction(message.id, emoji)}
-                        className="p-1.5 hover:bg-primary/10 rounded-full text-lg transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
-                          <SmilePlus className="w-5 h-5 text-muted-foreground" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent side="right" align="start" className="w-64 p-2">
-                        <div className="grid grid-cols-8 gap-1">
-                          {[
-                            "😀",
-                            "😃",
-                            "😄",
-                            "😁",
-                            "😆",
-                            "😅",
-                            "🤣",
-                            "😂",
-                            "🙂",
-                            "😊",
-                            "😇",
-                            "🥰",
-                            "😍",
-                            "🤩",
-                            "😘",
-                            "😗",
-                            "😚",
-                            "😙",
-                            "🥲",
-                            "😋",
-                            "😛",
-                            "😜",
-                            "🤪",
-                            "😝",
-                            "🤑",
-                            "🤗",
-                            "🤭",
-                            "🤫",
-                            "🤔",
-                            "🤐",
-                            "🤨",
-                            "😐",
-                          ].map((emoji) => (
-                            <button
-                              key={emoji}
-                              onClick={() => handleAddReaction(message.id, emoji)}
-                              className="p-1 hover:bg-muted rounded text-lg transition-colors"
-                            >
-                              {emoji}
+                      className={cn(
+                        "group message-hover rounded-xl px-4 pb-5 mb-1 relative",
+                        showAuthor ? "pt-2" : "py-0.5",
+                      )}
+                      onMouseEnter={() => setHoveredMessageId(message.id)}
+                      onMouseLeave={() => {
+                        if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+                      }}
+                    >
+                      <UniversalMessageActions
+                        isVisible={
+                          (hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing
+                        }
+                        isShiftPressed={isShiftPressed}
+                        isOwnMessage={isOwnMessage}
+                        onReply={() => handleReply(message)}
+                        onAddReaction={canAddReactions ? (emoji) => handleAddReaction(message.id, emoji) : undefined}
+                        onCopyLink={() => handleCopyMessageLink(message.id)}
+                        onCopyId={() => handleCopyId(message.id)}
+                        onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
+                        onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
+                        onCreateThread={canCreateThreads ? () => setCreateThreadForMessageId(message.id) : undefined}
+                        onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}
+                        isPinned={pinnedMessageIds.has(message.id)}
+                        onDropdownOpenChange={(open) => {
+                          setOpenDropdownMessageId(open ? message.id : null);
+                          if (!open) setHoveredMessageId(null);
+                        }}
+                        canAddReactions={canAddReactions}
+                        canManageMessages={canManageMessages}
+                      />
+                      {showAuthor ? (
+                        <div className="relative">
+                          {threadsByMessageId.has(message.id) && <ThreadSpine startY={44} />}
+                          <div className="flex gap-3 items-start">
+                            <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                              <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                                <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                                <AvatarFallback className="bg-primary/20 text-primary">
+                                  {message.author.displayName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
                             </button>
-                          ))}
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                                <button
+                                  onClick={() => handleUserClick(message.author)}
+                                  className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                                >
+                                  {message.author.displayName}
+                                </button>
+                                {/* SYSTEM tag for system messages */}
+                                {(message as any).isSystemMessage && (
+                                  <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5865f2] bg-[#5865f2]/10 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
+                                    SYSTEM
+                                  </span>
+                                )}
+                                {/* Role badge icon - displayed to the right of username */}
+                                {memberRoles?.get(message.author.id)?.[0] &&
+                                  memberRoles.get(message.author.id)![0].icon_url && (
+                                    <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
+                                  )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-xs text-muted-foreground flex-shrink-0 cursor-default">
+                                      {formatTime(message.timestamp)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                      weekday: "long",
+                                      day: "numeric",
+                                      month: "long",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      second: "2-digit",
+                                    })}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                              {isEditing ? (
+                                <div className="mt-1 space-y-2">
+                                  <Textarea
+                                    ref={(el) => {
+                                      if (el) {
+                                        el.style.height = "auto";
+                                        el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                                      }
+                                    }}
+                                    value={editingContent}
+                                    onChange={(e) => {
+                                      setEditingContent(e.target.value);
+                                      e.target.style.height = "auto";
+                                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveEdit();
+                                      }
+                                      if (e.key === "Escape") {
+                                        handleCancelEdit();
+                                      }
+                                    }}
+                                    autoFocus
+                                    className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                    rows={1}
+                                  />
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>Échap pour annuler</span>
+                                    <span>•</span>
+                                    <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                                    <span
+                                      className={cn(
+                                        "ml-auto",
+                                        editingContent.length > 1900 && "text-yellow-500",
+                                        editingContent.length > 1980 && "text-destructive font-medium",
+                                      )}
+                                    >
+                                      {editingContent.length}/2000
+                                    </span>
+                                    <div className="flex gap-1">
+                                      <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                      <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
+                                  <MarkdownText content={message.content} />
+                                </p>
+                              )}
+
+                              {/* Message Attachments */}
+                              {(message as any).attachments && (message as any).attachments.length > 0 && (
+                                <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
+                              )}
+
+                              {/* Link Embeds */}
+                              <LinkEmbeds content={message.content} />
+
+                              {/* Edited indicator - after attachments */}
+                              {message.edited_at && (
+                                <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
+                              )}
+
+                              {message.reactions && message.reactions.length > 0 && (
+                                <div className="flex gap-1 mt-1">
+                                  {message.reactions.map((reaction, i) => (
+                                    <button
+                                      key={i}
+                                      className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
+                                    >
+                                      <span>{reaction.emoji}</span>
+                                      <span className="text-xs text-muted-foreground">{reaction.count}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Thread System Message */}
+                          {threadsByMessageId.has(message.id) && (
+                            <div className="pt-1.5 pl-[50px]">
+                              <ThreadSystemMessage
+                                thread={threadsByMessageId.get(message.id)!}
+                                onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              />
+                            </div>
+                          )}
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                      ) : (
+                        <div className="relative">
+                          {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
+                          <div className="flex gap-3 items-start">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
+                                  {formatTime(message.timestamp)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                  weekday: "long",
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })}
+                              </TooltipContent>
+                            </Tooltip>
+                            <div className="flex-1 min-w-0">
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <Textarea
+                                    ref={(el) => {
+                                      if (el) {
+                                        el.style.height = "auto";
+                                        el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                                      }
+                                    }}
+                                    value={editingContent}
+                                    onChange={(e) => {
+                                      setEditingContent(e.target.value);
+                                      e.target.style.height = "auto";
+                                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSaveEdit();
+                                      }
+                                      if (e.key === "Escape") {
+                                        handleCancelEdit();
+                                      }
+                                    }}
+                                    autoFocus
+                                    className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                    rows={1}
+                                  />
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>Échap pour annuler</span>
+                                    <span>•</span>
+                                    <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                                    <span
+                                      className={cn(
+                                        "ml-auto",
+                                        editingContent.length > 1900 && "text-yellow-500",
+                                        editingContent.length > 1980 && "text-destructive font-medium",
+                                      )}
+                                    >
+                                      {editingContent.length}/2000
+                                    </span>
+                                    <div className="flex gap-1">
+                                      <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                      <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden">
+                                  <MarkdownText content={message.content} />
+                                </p>
+                              )}
 
-                  {/* Milieu : Actions principales */}
-                  <ContextMenuItem onClick={() => handleReply(message)}>
-                    <Reply className="w-4 h-4 mr-2" />
-                    Répondre
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copier le texte
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handlePinMessage(message.id)}>
-                    <Pin className="w-4 h-4 mr-2" />
-                    {pinnedMessageIds.has(message.id) ? "Désépingler" : "Épingler"}
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => setCreateThreadForMessageId(message.id)}>
-                    <StreamlineThreads className="w-4 h-4 mr-2" />
-                    Créer un fil
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
-                    <Link className="w-4 h-4 mr-2" />
-                    Copier le lien du message
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleCopyId(message.id)}>
-                    <Hash className="w-4 h-4 mr-2" />
-                    Copier l'identifiant du message
-                  </ContextMenuItem>
+                              {/* Message Attachments for grouped messages */}
+                              {(message as any).attachments && (message as any).attachments.length > 0 && (
+                                <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
+                              )}
 
-                  {/* Bas : Zone Danger */}
-                  <ContextMenuSeparator />
-                  {isOwnMessage ? (
-                    <>
-                      <ContextMenuItem onClick={() => handleStartEdit(message)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Modifier le message
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                        onSelect={() => handleContextDeleteSelect(message.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2 text-destructive" />
-                        Supprimer le message
-                      </ContextMenuItem>
-                    </>
-                  ) : (
-                    <>
-                      {/* Moderators can delete other's messages */}
-                      {canManageMessages && (
+                              {/* Link Embeds */}
+                              <LinkEmbeds content={message.content} />
+
+                              {/* Edited indicator - after attachments */}
+                              {message.edited_at && (
+                                <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
+                              )}
+
+                              {message.reactions && message.reactions.length > 0 && (
+                                <div className="flex gap-1 mt-1">
+                                  {message.reactions.map((reaction, i) => (
+                                    <button
+                                      key={i}
+                                      className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
+                                    >
+                                      <span>{reaction.emoji}</span>
+                                      <span className="text-xs text-muted-foreground">{reaction.count}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Thread System Message for grouped messages */}
+                          {threadsByMessageId.has(message.id) && (
+                            <div className="pt-1.5 pl-[50px]">
+                              <ThreadSystemMessage
+                                thread={threadsByMessageId.get(message.id)!}
+                                onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent
+                    className="min-w-[220px] p-1.5 rounded-2xl shadow-[var(--shadow-elevation-3)] border border-border/50"
+                    collisionPadding={8}
+                  >
+                    {/* Haut : Rangée d'émojis favoris */}
+                    <div className="flex items-center gap-1 p-1.5 pb-2 border-b border-border/30 mb-1">
+                      {CONTEXT_MENU_REACTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleAddReaction(message.id, emoji)}
+                          className="p-1.5 hover:bg-primary/10 rounded-full text-lg transition-colors"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+                            <SmilePlus className="w-5 h-5 text-muted-foreground" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="right" align="start" className="w-64 p-2">
+                          <div className="grid grid-cols-8 gap-1">
+                            {[
+                              "😀",
+                              "😃",
+                              "😄",
+                              "😁",
+                              "😆",
+                              "😅",
+                              "🤣",
+                              "😂",
+                              "🙂",
+                              "😊",
+                              "😇",
+                              "🥰",
+                              "😍",
+                              "🤩",
+                              "😘",
+                              "😗",
+                              "😚",
+                              "😙",
+                              "🥲",
+                              "😋",
+                              "😛",
+                              "😜",
+                              "🤪",
+                              "😝",
+                              "🤑",
+                              "🤗",
+                              "🤭",
+                              "🤫",
+                              "🤔",
+                              "🤐",
+                              "🤨",
+                              "😐",
+                            ].map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => handleAddReaction(message.id, emoji)}
+                                className="p-1 hover:bg-muted rounded text-lg transition-colors"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Milieu : Actions principales */}
+                    <ContextMenuItem onClick={() => handleReply(message)}>
+                      <Reply className="w-4 h-4 mr-2" />
+                      Répondre
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copier le texte
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => handlePinMessage(message.id)}>
+                      <Pin className="w-4 h-4 mr-2" />
+                      {pinnedMessageIds.has(message.id) ? "Désépingler" : "Épingler"}
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => setCreateThreadForMessageId(message.id)}>
+                      <StreamlineThreads className="w-4 h-4 mr-2" />
+                      Créer un fil
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
+                      <Link className="w-4 h-4 mr-2" />
+                      Copier le lien du message
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleCopyId(message.id)}>
+                      <Hash className="w-4 h-4 mr-2" />
+                      Copier l'identifiant du message
+                    </ContextMenuItem>
+
+                    {/* Bas : Zone Danger */}
+                    <ContextMenuSeparator />
+                    {isOwnMessage ? (
+                      <>
+                        <ContextMenuItem onClick={() => handleStartEdit(message)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Modifier le message
+                        </ContextMenuItem>
                         <ContextMenuItem
                           className="text-destructive focus:text-destructive focus:bg-destructive/10"
                           onSelect={() => handleContextDeleteSelect(message.id)}
@@ -1774,18 +1790,30 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                           Supprimer le message
                         </ContextMenuItem>
-                      )}
-                      <ContextMenuItem
-                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                        onClick={() => setReportingMessage(message)}
-                      >
-                        <Flag className="w-4 h-4 mr-2 text-destructive" />
-                        Signaler ce message
-                      </ContextMenuItem>
-                    </>
-                  )}
-                </ContextMenuContent>
-              </ContextMenu>
+                      </>
+                    ) : (
+                      <>
+                        {/* Moderators can delete other's messages */}
+                        {canManageMessages && (
+                          <ContextMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onSelect={() => handleContextDeleteSelect(message.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                            Supprimer le message
+                          </ContextMenuItem>
+                        )}
+                        <ContextMenuItem
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          onClick={() => setReportingMessage(message)}
+                        >
+                          <Flag className="w-4 h-4 mr-2 text-destructive" />
+                          Signaler ce message
+                        </ContextMenuItem>
+                      </>
+                    )}
+                  </ContextMenuContent>
+                </ContextMenu>
               </div>
             );
           })}

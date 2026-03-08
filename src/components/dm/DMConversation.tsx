@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle, AtSign } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';

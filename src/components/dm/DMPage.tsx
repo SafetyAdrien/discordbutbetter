@@ -63,7 +63,7 @@ export function DMPage({
   return (
     <div className="flex-1 flex">
       {/* Left Sidebar - DM List */}
-      <div className="w-60 bg-card flex flex-col border-r border-border">
+      <div className="w-60 bg-[hsl(var(--surface-1))] flex flex-col border-r border-border">
         {/* Header - Search input triggers New Message Modal */}
         <div className="h-12 px-4 flex items-center border-b border-border">
           <div className="relative w-full">

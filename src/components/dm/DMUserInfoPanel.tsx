@@ -54,7 +54,7 @@ export function DMUserInfoPanel({
   }) : null;
   const hasNote = userNote?.content && userNote.content.trim().length > 0;
   return <div 
-    className="w-72 border-l border-border bg-card flex flex-col shrink-0"
+    className="w-72 border-l border-border bg-[hsl(var(--surface-1))] flex flex-col shrink-0"
     onMouseEnter={() => setIsHovering(true)}
     onMouseLeave={() => setIsHovering(false)}
   >

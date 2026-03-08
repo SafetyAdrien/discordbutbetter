@@ -1,61 +1,25 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correctif spacing DMs — alignement Discord
 
-## Root cause
+En comparant avec Discord, voici les problèmes de spacing identifiés :
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Problèmes actuels
+- **Boutons Amis/Inbox** : `px-3 py-2 gap-3` — le padding vertical est trop grand, le gap aussi
+- **Séparateur "Messages Privés"** : `px-2 pt-3 py-1` + `mb-2` sur le titre + `mb-2` sur la ligne — trop d'espace vertical accumulé
+- **Liste DM** : `px-2 py-2 space-y-1` — le `py-2` en haut ajoute du padding superflu car le séparateur en a déjà
+- **Items DM** : `px-2 py-2 gap-3 rounded-xl` — le padding et gap sont légèrement trop grands vs Discord
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements (alignement Discord)
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**1. `DMPage.tsx`** — Navigation (Amis / Boîte de réception)
+- Boutons : `px-2 py-1.5 gap-3 rounded-md` (Discord utilise ~6px vertical, border-radius petit)
+- Bloc séparateur : réduire à `px-2 pt-4 pb-1`, supprimer les `mb-2` redondants, label avec `px-2 text-[11px] font-semibold uppercase tracking-wider` sans margin-bottom
 
-## Fix
+**2. `DMList.tsx`** — Liste des conversations
+- Container : `px-2 space-y-[2px]` (pas de `py-2`, quasi pas de gap entre items)
+- Items : `px-2 py-1 gap-2 rounded-md` (Discord : items compacts, petit border-radius, gap réduit)
+- Avatar : garder `w-8 h-8`
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+3 zones de spacing corrigées, 2 fichiers modifiés.
 

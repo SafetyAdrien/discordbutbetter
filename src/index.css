@@ -761,7 +761,7 @@
   }
   
   .resize-handle {
-    @apply transition-[width,background-color] duration-100 cursor-col-resize;
+    @apply transition-[width,background-color] duration-100 cursor-ew-resize;
   }
 }
 

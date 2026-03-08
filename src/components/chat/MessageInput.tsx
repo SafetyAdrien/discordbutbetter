@@ -556,7 +556,7 @@ export function MessageInput({
                 ref={overlayRef}
                 content={value}
                 compact={compact}
-                className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]'}
+                className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-3 pr-1 min-h-[44px]'}
                 mentionData={{ members, roles, channels }}
               />
             )}

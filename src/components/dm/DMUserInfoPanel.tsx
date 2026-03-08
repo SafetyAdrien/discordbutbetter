@@ -70,7 +70,7 @@ export function DMUserInfoPanel({
         {/* Avatar */}
         <div className="px-4 -mt-10 relative z-10">
           <div className="relative inline-block">
-            <Avatar className="w-20 h-20 border-4 border-card">
+            <Avatar className="w-20 h-20 border-4 border-[hsl(var(--surface-1))]">
               <AvatarImage src={participant.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/20 text-primary text-2xl">
                 {participant.display_name?.charAt(0).toUpperCase()}

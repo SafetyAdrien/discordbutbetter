@@ -686,7 +686,7 @@ const Index = () => {
               <>
               {/* Invisible resize handle */}
               <div
-                className="w-1 shrink-0 cursor-col-resize bg-transparent z-10 relative"
+                className="w-1 shrink-0 cursor-ew-resize bg-transparent z-10 relative"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   threadResizing.current = true;

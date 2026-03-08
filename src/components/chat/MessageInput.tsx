@@ -574,7 +574,7 @@ export function MessageInput({
               } ${
               compact 
                   ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `py-2.5 text-sm pr-1 min-h-[40px] max-h-[200px] overflow-y-auto`
+                  : `py-3 text-sm pr-1 min-h-[44px] max-h-[200px] overflow-y-auto`
               }`}
               style={hasMarkdown ? { fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 } : undefined}
               rows={1}

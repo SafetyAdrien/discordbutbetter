@@ -1299,7 +1299,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     {DateSeparator}
                     <ContextMenu>
                       <ContextMenuTrigger asChild>
-                        <div className="py-1 px-4 my-0.5">
+                        <div className="group message-hover rounded-xl px-4 pb-2 pt-1 mb-1">
                           {/* System text line */}
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />

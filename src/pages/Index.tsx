@@ -18,6 +18,7 @@ import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
 import ThreadView from '@/components/threads/ThreadView';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MobileLayout } from '@/components/mobile/MobileLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAuth } from '@/contexts/AuthContext';

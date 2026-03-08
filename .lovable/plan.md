@@ -1,61 +1,34 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Deux ajustements UI
 
-## Root cause
+## 1. Fond sur l'icône d'invitation (ChannelList header)
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Fichier** : `src/components/layout/ChannelList.tsx` — ligne 1545
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Actuellement le bouton d'invitation n'a pas de fond au repos (`hover:bg-surface-3` seulement). La barre de recherche utilise `bg-surface-3`. On ajoute `bg-surface-3` au repos sur le bouton d'invitation pour matcher visuellement.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+```tsx
+// Avant
+className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors"
 
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Après
+className="p-2 rounded-full bg-surface-3 hover:bg-surface-hover text-muted-foreground hover:text-foreground transition-colors"
 ```
 
-### Code for onSuccess addition
+## 2. Surélever le ThreadView en split-view
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+**Fichier** : `src/components/threads/ThreadView.tsx` — ligne 382
+
+Ajouter un `z-10` au conteneur principal du ThreadView pour qu'il passe visuellement au-dessus de la zone de chat lorsqu'on est en split-view (grâce au shadow existant `-4px_0_12px`).
+
+```tsx
+// Avant
+className="h-full flex flex-col bg-[hsl(var(--surface-2)/0.3)] border-l-2 border-border/70 shadow-[-4px_0_12px_rgba(0,0,0,0.15)] min-w-0"
+
+// Après
+className="h-full flex flex-col bg-[hsl(var(--surface-2)/0.3)] border-l-2 border-border/70 shadow-[-4px_0_12px_rgba(0,0,0,0.15)] min-w-0 z-10"
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**2 fichiers modifiés, 1 ligne chacun.**
 

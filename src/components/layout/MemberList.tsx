@@ -1,6 +1,7 @@
 import { forwardRef, useState, useMemo, useRef, useEffect } from "react";
 import { User } from "@/types/app";
 import { cn } from "@/lib/utils";
+import { uuidToSnowflake } from "@/lib/snowflake";
 import {
   MessageCircle,
   UserPlus,

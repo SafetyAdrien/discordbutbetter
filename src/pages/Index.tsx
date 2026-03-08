@@ -548,7 +548,8 @@ const Index = () => {
           onShowFriends={handleShowFriends}
         />
       ) : activeServer && serverForChannelList ? (
-        <>
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
           {/* Channel List */}
           <ChannelList
             server={serverForChannelList}
@@ -584,7 +585,11 @@ const Index = () => {
             }}
             onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
+          </ResizablePanel>
 
+          <ResizableHandle className="w-0 border-0 bg-transparent cursor-col-resize opacity-0 hover:opacity-100 hover:w-px hover:bg-border/20 transition-all" />
+
+          <ResizablePanel defaultSize={80} minSize={50}>
           {/* Main Content Area */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
             {activeThreadId && channelForChat?.type === 'text' ? (
@@ -739,7 +744,8 @@ const Index = () => {
               onOpenDM={handleOpenDM}
             />
           )}
-        </>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       ) : null}
 
       {/* Modals */}

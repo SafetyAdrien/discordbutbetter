@@ -678,7 +678,7 @@ const Index = () => {
 
             {/* Thread View - 60/40 split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
-              <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0`}>
+              <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0 relative z-10`}>
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}

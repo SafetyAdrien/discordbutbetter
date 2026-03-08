@@ -1,27 +1,61 @@
 
 
-# Amélioration du Header DM (conversation 1:1)
+# Fix: Duplicated channel hidden by visibility filter
 
-## Analyse actuelle (lignes 264-333)
+## Root cause
 
-Le header actuel est basique : avatar 32px sans indicateur de statut, nom + username empilés, et boutons d'action alignés à droite. Comparé à Discord, il manque :
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-1. **Indicateur de statut** sur l'avatar dans le header
-2. **Layout horizontal** — Discord affiche le nom sur une seule ligne (pas de username en dessous dans le header)
-3. **Séparateur vertical** entre le nom et les boutons d'action
-4. **Icône @ devant le nom** — Discord utilise un symbole @ stylisé
-5. **Taille des icônes d'action** — légèrement plus grandes (w-5 h-5)
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## Changements proposés
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**Fichier : `src/components/dm/DMConversation.tsx`** (lignes 264-333)
+## Fix
 
-- Ajouter un **indicateur de statut** (pastille colorée) en bas à droite de l'avatar, utilisant les tokens `--online`, `--idle`, `--dnd`, `--offline`
-- Remplacer le layout nom/username empilé par une **ligne unique** : icône `@` + `displayName` en `font-semibold text-base`
-- Supprimer le `@username` secondaire (redondant dans un DM 1:1)
-- Ajouter un **séparateur vertical** (`h-6 w-px bg-border`) entre le nom et les boutons d'action
-- Augmenter les icônes d'action à `w-5 h-5` pour meilleure lisibilité
-- Rendre le nom cliquable pour ouvrir le panel d'info utilisateur
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-1 fichier modifié, section header uniquement.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

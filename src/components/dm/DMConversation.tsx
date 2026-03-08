@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle, AtSign } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { DMCallView } from './DMCallView';
@@ -267,20 +267,33 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             <ArrowLeft className="w-4 h-4" />
           </Button>
         )}
-        <Avatar className="w-8 h-8">
-          <AvatarImage src={participant?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/20 text-primary text-sm">
-            {displayName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <h2 className="font-semibold text-sm">{displayName}</h2>
-          {participant && (
-            <p className="text-xs text-muted-foreground">
-              @{participant.username.toLowerCase()}
-            </p>
+        <div className="relative">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={participant?.avatar_url || undefined} />
+            <AvatarFallback className="bg-primary/20 text-primary text-sm">
+              {displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {participant?.status && (
+            <div 
+              className={cn(
+                "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[2.5px] border-[hsl(var(--surface-header))]",
+                participant.status === 'online' && 'bg-status-online',
+                participant.status === 'idle' && 'bg-status-idle',
+                participant.status === 'dnd' && 'bg-status-dnd',
+                (!participant.status || participant.status === 'offline') && 'bg-status-offline'
+              )}
+            />
           )}
         </div>
+        <div 
+          className="flex items-center gap-1.5 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => setShowUserInfoPanel(!showUserInfoPanel)}
+        >
+          <AtSign className="w-5 h-5 text-muted-foreground shrink-0" />
+          <h2 className="font-semibold text-base truncate">{displayName}</h2>
+        </div>
+        <div className="h-6 w-px bg-border mx-1" />
         <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -290,7 +303,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 onClick={handleVoiceCall}
                 disabled={startCall.isPending || !!activeCall}
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Appel vocal</TooltipContent>
@@ -303,7 +316,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 onClick={handleVideoCall}
                 disabled={startCall.isPending || !!activeCall}
               >
-                <Video className="w-4 h-4" />
+                <Video className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Appel vidéo</TooltipContent>
@@ -324,7 +337,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 onClick={() => setShowUserInfoPanel(!showUserInfoPanel)}
                 className={showUserInfoPanel ? 'bg-muted' : ''}
               >
-                <UserCircle className="w-4 h-4" />
+                <UserCircle className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Profil de l'utilisateur</TooltipContent>

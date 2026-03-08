@@ -1,61 +1,64 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Audit border-radius + Réduction radius/spacing des salons
 
-## Root cause
+## 1. Audit border-radius : remplacer les valeurs px par des tokens
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+**Fichier `src/index.css`** — 5 occurrences à migrer :
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+| Ligne | Actuel | Nouveau | Contexte |
+|-------|--------|---------|----------|
+| 303, 307 | `border-radius: 18px` | `border-radius: var(--radius-xl)` | `.server-icon:hover` et `.active` |
+| 599 | `border-radius: 4px` | `border-radius: var(--radius-sm, 4px)` | Spoiler text (`.spoiler-hidden`) |
+| 777 | `border-radius: 3px` | `border-radius: 3px` | Scrollbar pseudo-element — conserver tel quel (trop petit pour un token) |
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+Les `rounded-[3px]` dans `MentionComponents.tsx` et `InputMarkdownOverlay.tsx` sont des inline badges très petits — on les conserve car `rounded-sm` (≈10px) serait trop grand pour du texte inline.
 
-## Fix
+Les `rounded-[2px]` dans `chart.tsx` sont des indicateurs de légende — conserver tel quel.
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**Fichier `tailwind.config.ts`** — Ajouter les tokens `xl`, `2xl`, `3xl` au mapping Tailwind :
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+```ts
+borderRadius: {
+  '3xl': 'var(--radius-3xl)',
+  '2xl': 'var(--radius-2xl)',
+  xl: 'var(--radius-xl)',
+  lg: 'var(--radius)',
+  md: 'calc(var(--radius) - 2px)',
+  sm: 'calc(var(--radius) - 4px)',
+},
+```
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+## 2. Réduire le radius du hover/select des salons (style Discord)
 
-### 2. In `onSuccess`: invalidate the permissions cache
+Discord utilise un `border-radius: 4px` sur les items de salon. Actuellement on a `var(--radius-xl)` = 20px, beaucoup trop arrondi.
 
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
+**Fichier `src/index.css`** :
+```css
+.channel-item {
+  border-radius: 4px;  /* Discord standard au lieu de var(--radius-xl) */
 }
 ```
 
-### Code for onSuccess addition
+## 3. Réduire le spacing des salons
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+Discord utilise `py-[6px] px-2` (padding vertical de 6px). Actuellement on a `py-2` (8px) et `px-3` (12px).
+
+**Fichier `src/index.css`** :
+```css
+.channel-item {
+  @apply flex items-center gap-2 px-2 py-[6px] cursor-pointer
+         text-muted-foreground hover:text-foreground;
+  border-radius: 4px;
+}
 ```
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+Changements : `gap-2.5` → `gap-2`, `px-3` → `px-2`, `py-2` → `py-[6px]`.
+
+## Résumé des fichiers modifiés
+
+1. **`tailwind.config.ts`** — Ajouter tokens radius xl/2xl/3xl
+2. **`src/index.css`** — Migrer server-icon vers tokens, réduire channel-item radius à 4px et spacing
+
+3 fichiers, changements mineurs et ciblés.
 

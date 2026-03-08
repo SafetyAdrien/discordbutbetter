@@ -1,6 +1,7 @@
 import { forwardRef, useState, useMemo, useRef, useEffect } from "react";
 import { User } from "@/types/app";
 import { cn } from "@/lib/utils";
+import { uuidToSnowflake } from "@/lib/snowflake";
 import {
   MessageCircle,
   UserPlus,
@@ -472,7 +473,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     return groups;
   }, [filteredMembers, allRoles]);
   const handleCopyId = (id: string) => {
-    copyToClipboard(id, "ID utilisateur copié");
+    copyToClipboard(uuidToSnowflake(id), "ID utilisateur copié");
   };
   const handleSendMessage = (member: MemberWithRoles) => {
     console.log("Send message to", member.id);

@@ -278,7 +278,7 @@ export function CreatePollModal({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || isPending}
-            className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
           >
             {isEditMode ? 'Sauvegarder' : 'Publier'}
           </Button>

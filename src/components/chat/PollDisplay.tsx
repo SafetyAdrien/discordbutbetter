@@ -271,7 +271,7 @@ export function PollDisplay({
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted
                     ? "border-primary bg-primary/10"
-                    : "border-border hover:border-border/80 bg-background"
+                    : "border-border hover:border-border/80 bg-[hsl(var(--surface-2))]"
                 )}
               >
                 {/* Progress bar background with animation */}

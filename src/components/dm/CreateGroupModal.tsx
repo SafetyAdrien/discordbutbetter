@@ -191,7 +191,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
               <div className="px-4 py-3 border-t border-border">
                 <button
                   onClick={() => setStep('details')}
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors"
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
                 >
                   Suivant ({selectedFriends.length})
                 </button>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { uuidToSnowflake } from '@/lib/snowflake';
 import { AnimatePresence } from 'framer-motion';
 import { useDMMessages, useSendDMMessage, useEditDMMessage, useDeleteDMMessage, DMMessage } from '@/hooks/useDMMessages';
 import { useDMConversations } from '@/hooks/useDMs';

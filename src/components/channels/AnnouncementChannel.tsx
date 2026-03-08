@@ -2,6 +2,7 @@ import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "r
 import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
+import { uuidToSnowflake } from "@/lib/snowflake";
 import {
   Bell,
   Pin,

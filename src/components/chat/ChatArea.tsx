@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
+import { uuidToSnowflake } from "@/lib/snowflake";
 import {
   Hash,
   Bell,

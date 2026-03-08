@@ -104,7 +104,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
       <div className="fixed inset-0 bg-black/60" />
       <div
-        className="relative mt-auto bg-card rounded-t-2xl shadow-xl w-full max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
+        className="relative mt-auto bg-[hsl(var(--surface-2))] rounded-t-3xl shadow-elevation-3 w-full max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

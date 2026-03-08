@@ -29,7 +29,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
         <Tooltip key={vote.id}>
           <TooltipTrigger asChild>
             <Avatar 
-              className="w-5 h-5 border-2 border-card transition-transform duration-300 cursor-pointer animate-vote-pop hover:scale-110"
+              className="w-5 h-5 border-2 border-[hsl(var(--surface-1))] transition-transform duration-300 cursor-pointer animate-vote-pop hover:scale-110"
               style={{ 
                 zIndex: maxVisible - index,
                 animationDelay: `${index * 50}ms`
@@ -237,7 +237,7 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-poll rounded-lg overflow-hidden max-w-[500px]">
+    <div className="bg-[hsl(var(--surface-1))] rounded-xl border border-border/20 overflow-hidden max-w-[500px]">
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         
@@ -270,8 +270,8 @@ export function PollDisplay({
               className={cn(
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-border/80 bg-[hsl(var(--surface-2))]"
+                    ? "border-primary bg-primary/15"
+                    : "border-border hover:border-border/80 bg-[hsl(var(--surface-2)/0.6)]"
                 )}
               >
                 {/* Progress bar background with animation */}
@@ -336,7 +336,7 @@ export function PollDisplay({
                   <span className="text-muted-foreground">Terminé</span>
                 ) : (
                   <>
-                    <div className="relative w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="relative w-16 h-1.5 bg-[hsl(var(--surface-3)/0.5)] rounded-full overflow-hidden">
                       <div 
                         className={cn(
                           "absolute inset-y-0 left-0 rounded-full transition-all duration-1000",

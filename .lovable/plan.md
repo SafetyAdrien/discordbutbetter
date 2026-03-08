@@ -1,25 +1,61 @@
 
 
-# Convert All Non-User IDs to Snowflake Format
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problem
-When copying IDs (messages, polls, servers, threads), the app currently copies raw UUIDs. User IDs already use Snowflake format (in `UserProfileCard`). All other entity IDs should also display as 18-digit Snowflake IDs.
+## Root cause
 
-## Changes
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-Wrap every `handleCopyId` and inline copy-ID call with `uuidToSnowflake()`, excluding the user ID copy in `MemberList.tsx`.
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-| File | What | Change |
-|------|------|--------|
-| `ChatArea.tsx` | `handleCopyId` (line ~815) | `copyToClipboard(uuidToSnowflake(id), ...)` |
-| `DMConversation.tsx` | `handleCopyId` (line ~169) | Same |
-| `ServerList.tsx` | `handleCopyId` (line ~347) | Same |
-| `ThreadView.tsx` | `handleCopyId` (line ~189) | Same |
-| `AnnouncementChannel.tsx` | `handleCopyId` (line ~358) | Same |
-| `VoiceChannelChat.tsx` | Inline copies (lines ~232, ~255) | Wrap `message.id` with `uuidToSnowflake` |
-| `ChannelList.tsx` | Thread ID copy (line ~511) | Wrap `thread.id` with `uuidToSnowflake` |
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-Each file gets an `import { uuidToSnowflake } from '@/lib/snowflake'` if not already present.
+## Fix
 
-**Excluded**: `MemberList.tsx` (`handleCopyId` for user IDs) — already handled separately via `UserProfileCard`.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

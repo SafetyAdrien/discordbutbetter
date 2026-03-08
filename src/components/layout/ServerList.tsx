@@ -1,5 +1,6 @@
 import { Server } from '@/types/app';
 import { cn } from '@/lib/utils';
+import { uuidToSnowflake } from '@/lib/snowflake';
 import { Compass, Plus, MessageCircle, Settings, UserPlus, Hash, LogOut, CheckCircle, Volume2 } from 'lucide-react';
 import { useServerVoiceParticipants } from '@/hooks/useServerVoiceParticipants';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -345,7 +346,7 @@ export function ServerList({
   }, [totalUnreadDMs]);
 
   const handleCopyId = (serverId: string) => {
-    copyToClipboard(serverId, 'ID serveur copié');
+    copyToClipboard(uuidToSnowflake(serverId), 'ID serveur copié');
   };
 
   const handleMarkAsRead = (serverId: string) => {

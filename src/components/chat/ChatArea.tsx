@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
+import { uuidToSnowflake } from "@/lib/snowflake";
 import {
   Hash,
   Bell,
@@ -813,7 +814,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     copyToClipboard(content, "Message copié");
   };
   const handleCopyId = (id: string) => {
-    copyToClipboard(id, "ID copié");
+    copyToClipboard(uuidToSnowflake(id), "ID copié");
   };
   const handleAddReaction = (messageId: string, emoji: string) => {
     const currentReactions = reactionsData?.[messageId] || [];

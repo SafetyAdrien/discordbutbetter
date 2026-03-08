@@ -18,6 +18,7 @@ import { UniversalMessageActions } from '@/components/chat/UniversalMessageActio
 import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
+import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
 import { toast } from 'sonner';
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
@@ -229,7 +230,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                       toast.success('Lien copié');
                     }}
                     onCopyId={() => {
-                      copyToClipboard(message.id);
+                      copyToClipboard(uuidToSnowflake(message.id));
                       toast.success('ID copié');
                     }}
                     onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}
@@ -252,7 +253,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                           toast.success('Lien copié');
                         }}
                         onCopyId={() => {
-                          copyToClipboard(message.id);
+                          copyToClipboard(uuidToSnowflake(message.id));
                           toast.success('ID copié');
                         }}
                         onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}

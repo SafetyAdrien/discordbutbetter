@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { uuidToSnowflake } from '@/lib/snowflake';
 import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -187,7 +188,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   };
 
   const handleCopyId = (id: string) => {
-    copyToClipboard(id, 'ID copié');
+    copyToClipboard(uuidToSnowflake(id), 'ID copié');
   };
 
   const handleCopyMessageLink = (messageId: string) => {

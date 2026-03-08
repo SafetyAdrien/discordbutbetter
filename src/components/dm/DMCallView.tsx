@@ -96,7 +96,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
   const displayName = participant?.display_name || 'Utilisateur';
 
   return (
-    <div className="absolute inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col">
+    <div className="absolute inset-0 bg-[hsl(var(--surface-1))]/95 backdrop-blur-sm z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-3">

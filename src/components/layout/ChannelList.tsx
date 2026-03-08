@@ -1368,27 +1368,13 @@ export function ChannelList({
         maxWidth: "340px"
       }}>
 
-      {/* Enhanced resize handle with visual feedback */}
+      {/* Resize handle - invisible, functional only */}
       <div
-        className={cn(
-          "absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10",
-          "transition-[width,background-color] duration-100",
-          isHoveringResize || isResizing.current ?
-          "w-1.5 bg-primary/70" :
-          "bg-transparent hover:bg-primary/30"
-        )}
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10 bg-transparent"
         onMouseEnter={() => setIsHoveringResize(true)}
         onMouseLeave={() => !isResizing.current && setIsHoveringResize(false)}
-        onMouseDown={handleResizeMouseDown}>
-
-        {/* Grip indicator */}
-        <div className={cn(
-          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-          "w-1 h-8 rounded-full bg-primary/50",
-          "transition-opacity duration-100",
-          isHoveringResize || isResizing.current ? "opacity-100" : "opacity-0"
-        )} />
-      </div>
+        onMouseDown={handleResizeMouseDown}
+      />
       {/* Server Header - styled like User Panel */}
       <div className="bg-surface-1">
         <div className="flex items-center rounded-t-xl relative overflow-hidden"

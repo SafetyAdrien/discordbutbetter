@@ -586,7 +586,7 @@ const Index = () => {
             onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
 
-          {/* Main Content Area - flex container for 60/40 split when thread is open */}
+          {/* Main Content Area - resizable split when thread is open */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
             {channelForChat && (
               <div

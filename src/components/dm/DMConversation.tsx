@@ -40,10 +40,10 @@ import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
 import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
 
 const statusColors: Record<string, string> = {
-  online: 'bg-green-500',
-  idle: 'bg-yellow-500',
-  dnd: 'bg-red-500',
-  offline: 'bg-gray-500',
+  online: 'bg-[hsl(var(--online))]',
+  idle: 'bg-[hsl(var(--idle))]',
+  dnd: 'bg-[hsl(var(--dnd))]',
+  offline: 'bg-[hsl(var(--offline))]',
 };
 
 function formatDate(date: Date): string {

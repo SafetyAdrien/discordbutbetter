@@ -18,7 +18,6 @@ import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
 import ThreadView from '@/components/threads/ThreadView';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MobileLayout } from '@/components/mobile/MobileLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAuth } from '@/contexts/AuthContext';
@@ -585,62 +584,10 @@ const Index = () => {
             onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
 
-          {/* Main Content Area */}
+          {/* Main Content Area - flex container for 60/40 split when thread is open */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
-            {activeThreadId && channelForChat?.type === 'text' ? (
-              <ResizablePanelGroup direction="horizontal" className="flex-1">
-                {!threadFullscreen && (
-                  <ResizablePanel defaultSize={60} minSize={30} maxSize={80}>
-                    <div className="flex flex-col h-full w-full overflow-hidden">
-                      <ChatArea
-                        key={channelForChat.id}
-                        channel={channelForChat}
-                        messages={messagesData}
-                        onSendMessage={handleSendMessage}
-                        memberRoles={memberRolesMap}
-                        onOpenDM={handleOpenDM}
-                        onToggleMembers={handleToggleMembers}
-                        showMembers={showMembers}
-                        onSelectThread={(threadId) => setActiveThreadId(threadId)}
-                        activeThreadId={activeThreadId}
-                        onCloseThread={() => {
-                          setActiveThreadId(null);
-                          setThreadChannelId(null);
-                        }}
-                        members={searchMembers}
-                        onChannelSelect={(channelId) => {
-                          setActiveChannelId(channelId);
-                          if (activeServerId) {
-                            setChannelForServer(activeServerId, channelId);
-                          }
-                          setActiveThreadId(null);
-                          setThreadChannelId(null);
-                        }}
-                      />
-                    </div>
-                  </ResizablePanel>
-                )}
-                {!threadFullscreen && (
-                  <ResizableHandle className="w-px bg-border/30 hover:bg-primary/30 transition-colors cursor-col-resize" />
-                )}
-                <ResizablePanel defaultSize={threadFullscreen ? 100 : 40} minSize={20} maxSize={70}>
-                  <ThreadView
-                    threadId={activeThreadId}
-                    channelId={threadChannelId || activeChannelId || undefined}
-                    serverId={activeServerId}
-                    channelName={channelForChat?.name || ''}
-                    onBack={() => {
-                      setActiveThreadId(null);
-                      setThreadChannelId(null);
-                      setThreadFullscreen(false);
-                    }}
-                    isFullscreen={threadFullscreen}
-                    onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
-                  />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            ) : channelForChat ? (
-              <div className="flex-1 min-w-0 flex flex-col w-full overflow-hidden">
+            {channelForChat && (
+              <div className={`${activeThreadId && channelForChat.type === 'text' ? (threadFullscreen ? 'hidden' : 'flex-[6] min-w-0') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}>
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
                     key={channelForChat.id}
@@ -727,7 +674,29 @@ const Index = () => {
                   />
                 )}
               </div>
-            ) : null}
+            )}
+
+            {/* Thread View - 60/40 split with chat */}
+            {activeThreadId && channelForChat?.type === 'text' && (
+              <>
+              <div className="w-px bg-border/30 shrink-0" />
+              <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0`}>
+                <ThreadView
+                  threadId={activeThreadId}
+                  channelId={threadChannelId || activeChannelId || undefined}
+                  serverId={activeServerId}
+                  channelName={channelForChat?.name || ''}
+                  onBack={() => {
+                    setActiveThreadId(null);
+                    setThreadChannelId(null);
+                    setThreadFullscreen(false);
+                  }}
+                  isFullscreen={threadFullscreen}
+                  onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
+                />
+              </div>
+              </>
+            )}
           </div>
 
           {/* Right Panel - Member List (only when no thread is open for text channels, and not on mobile) */}

@@ -695,7 +695,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 <div className="hidden group-hover:flex gap-[5px]">
                   {(isVoice || isStage) && onOpenChat &&
                   <MessageSquare
-                    className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                    className="w-4 h-4 text-muted-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       onOpenChat();
@@ -703,7 +703,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
                   }
                   <UserPlus
-                    className="w-4 h-4 text-muted-foreground hover:text-foreground"
+                    className="w-4 h-4 text-muted-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       onCreateInvite();

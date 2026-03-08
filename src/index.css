@@ -359,6 +359,15 @@
   }
 }
 
+@layer base {
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: inherit;
+    background-color: inherit;
+  }
+}
+
 @layer utilities {
   /* === GPU ACCELERATION HINTS === */
   

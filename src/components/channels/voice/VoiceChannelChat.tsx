@@ -230,7 +230,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                       toast.success('Lien copié');
                     }}
                     onCopyId={() => {
-                      copyToClipboard(message.id);
+                      copyToClipboard(uuidToSnowflake(message.id));
                       toast.success('ID copié');
                     }}
                     onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}

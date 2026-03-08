@@ -336,7 +336,7 @@ export function PollDisplay({
                   <span className="text-muted-foreground">Terminé</span>
                 ) : (
                   <>
-                    <div className="relative w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="relative w-16 h-1.5 bg-[hsl(var(--surface-3)/0.5)] rounded-full overflow-hidden">
                       <div 
                         className={cn(
                           "absolute inset-y-0 left-0 rounded-full transition-all duration-1000",

@@ -104,7 +104,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
       <div className="fixed inset-0 bg-black/60" />
       <div
-        className="relative mt-auto bg-card rounded-t-2xl shadow-xl w-full max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
+        className="relative mt-auto bg-[hsl(var(--surface-2))] rounded-t-3xl shadow-elevation-3 w-full max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -159,8 +159,8 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
                         key={friend.id}
                         onClick={() => toggleFriend(friend.profile.id)}
                         className={cn(
-                          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left',
-                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+                          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left',
+                          isSelected ? 'bg-primary/10' : 'hover:bg-[hsl(var(--surface-3))]'
                         )}
                       >
                         <Avatar className="w-10 h-10">
@@ -191,7 +191,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
               <div className="px-4 py-3 border-t border-border">
                 <button
                   onClick={() => setStep('details')}
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors"
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
                 >
                   Suivant ({selectedFriends.length})
                 </button>
@@ -259,7 +259,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
               <button
                 onClick={handleCreate}
                 disabled={isCreating || !groupName.trim()}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isCreating ? 'Création...' : 'Créer le groupe'}
               </button>

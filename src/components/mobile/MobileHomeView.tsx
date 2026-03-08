@@ -90,14 +90,14 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
       <div className="px-3 py-2 flex gap-2">
         <button
           onClick={() => setView('friends')}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm flex-1"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors text-sm flex-1"
         >
           <Users className="w-4 h-4" />
           Amis
         </button>
         <button
           onClick={() => setView('inbox')}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm flex-1 relative"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors text-sm flex-1 relative"
         >
           <Inbox className="w-4 h-4" />
           Inbox

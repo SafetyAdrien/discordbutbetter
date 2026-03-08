@@ -34,7 +34,7 @@ export function NewDMSheet({ onClose, onOpenDM }: NewDMSheetProps) {
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
       <div className="fixed inset-0 bg-black/60" />
       <div
-        className="relative mt-auto bg-card rounded-t-2xl shadow-xl w-full max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
+        className="relative mt-auto bg-[hsl(var(--surface-2))] rounded-t-3xl shadow-elevation-3 w-full max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -71,7 +71,7 @@ export function NewDMSheet({ onClose, onOpenDM }: NewDMSheetProps) {
                 <button
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend.profile.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left group"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--surface-3))] transition-colors text-left group"
                 >
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={friend.profile.avatar_url || undefined} />

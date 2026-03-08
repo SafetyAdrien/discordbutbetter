@@ -96,7 +96,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
   const displayName = participant?.display_name || 'Utilisateur';
 
   return (
-    <div className="absolute inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col">
+    <div className="absolute inset-0 bg-[hsl(var(--surface-1))]/95 backdrop-blur-sm z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-3">
@@ -142,7 +142,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
             autoPlay
             playsInline
             muted
-            className="absolute bottom-24 right-4 w-32 h-24 rounded-lg object-cover border-2 border-border shadow-lg z-10"
+            className="absolute bottom-24 right-4 w-32 h-24 rounded-2xl object-cover border-2 border-border shadow-elevation-2 z-10"
           />
         )}
 

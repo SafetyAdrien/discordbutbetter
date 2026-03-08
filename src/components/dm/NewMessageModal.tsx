@@ -51,7 +51,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
     >
       <div className="fixed inset-0 bg-black/60" />
       <div 
-        className="relative bg-card rounded-lg shadow-xl w-full max-w-lg animate-scale-in overflow-hidden"
+        className="relative bg-[hsl(var(--surface-2))] rounded-2xl shadow-elevation-3 w-full max-w-lg animate-scale-in overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search Input */}
@@ -88,7 +88,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
                 <button
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend.profile.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted/50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[hsl(var(--surface-3))] transition-colors text-left"
                 >
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={friend.profile.avatar_url || undefined} />
@@ -116,7 +116,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
           </div>
 
           {/* Pro tip */}
-          <div className="px-4 py-3 border-t border-border bg-muted/30">
+          <div className="px-4 py-3 border-t border-border bg-[hsl(var(--surface-1))]/50">
             <p className="text-xs text-muted-foreground">
               <span className="text-primary font-medium">PROTIP:</span>{' '}
               Commencez vos recherches par{' '}

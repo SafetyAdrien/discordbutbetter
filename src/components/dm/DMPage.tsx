@@ -63,13 +63,13 @@ export function DMPage({
   return (
     <div className="flex-1 flex">
       {/* Left Sidebar - DM List */}
-      <div className="w-60 bg-card flex flex-col border-r border-border">
+      <div className="w-60 bg-[hsl(var(--surface-1))] flex flex-col border-r border-border">
         {/* Header - Search input triggers New Message Modal */}
         <div className="h-12 px-4 flex items-center border-b border-border">
           <div className="relative w-full">
             <button 
               onClick={() => setShowNewMessageModal(true)}
-              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none text-left text-muted-foreground hover:bg-muted/50 transition-colors truncate"
+              className="w-full px-2 py-1.5 text-sm bg-[hsl(var(--surface-2))] rounded-xl border-none text-left text-muted-foreground hover:bg-[hsl(var(--surface-3))] transition-colors truncate"
             >
               Trouver ou commencer une...
             </button>
@@ -82,10 +82,10 @@ export function DMPage({
           <button 
             onClick={handleShowFriends} 
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
+              'w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-colors', 
               currentView === 'friends' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                ? 'bg-[hsl(var(--surface-hover))] text-foreground' 
+                : 'text-muted-foreground hover:bg-[hsl(var(--surface-2))] hover:text-foreground'
             )}
           >
             <Users className="w-5 h-5" />
@@ -96,10 +96,10 @@ export function DMPage({
           <button 
             onClick={handleShowInbox} 
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
+              'w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-colors', 
               currentView === 'inbox' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                ? 'bg-[hsl(var(--surface-hover))] text-foreground' 
+                : 'text-muted-foreground hover:bg-[hsl(var(--surface-2))] hover:text-foreground'
             )}
           >
             <div className="relative">

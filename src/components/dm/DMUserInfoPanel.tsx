@@ -54,7 +54,7 @@ export function DMUserInfoPanel({
   }) : null;
   const hasNote = userNote?.content && userNote.content.trim().length > 0;
   return <div 
-    className="w-72 border-l border-border bg-card flex flex-col shrink-0"
+    className="w-72 border-l border-border bg-[hsl(var(--surface-1))] flex flex-col shrink-0"
     onMouseEnter={() => setIsHovering(true)}
     onMouseLeave={() => setIsHovering(false)}
   >
@@ -70,13 +70,13 @@ export function DMUserInfoPanel({
         {/* Avatar */}
         <div className="px-4 -mt-10 relative z-10">
           <div className="relative inline-block">
-            <Avatar className="w-20 h-20 border-4 border-card">
+            <Avatar className="w-20 h-20 border-4 border-[hsl(var(--surface-1))]">
               <AvatarImage src={participant.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/20 text-primary text-2xl">
                 {participant.display_name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className={cn("absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card", statusColors[participant.status || 'offline'])} />
+            <div className={cn("absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-[hsl(var(--surface-1))]", statusColors[participant.status || 'offline'])} />
           </div>
         </div>
 
@@ -141,7 +141,7 @@ export function DMUserInfoPanel({
             <div className="px-4 py-3">
               <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
                 <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted/70 transition-colors">
+                  <button className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors">
                     <span className="text-xs font-semibold text-muted-foreground uppercase">
                       Serveurs en commun — {mutualServers.length}
                     </span>
@@ -150,7 +150,7 @@ export function DMUserInfoPanel({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
                   <div className="flex flex-col gap-1">
-                    {mutualServers.map(server => <div key={server.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors">
+                    {mutualServers.map(server => <div key={server.id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-[hsl(var(--surface-2))] transition-colors">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={server.icon_url || undefined} />
                           <AvatarFallback className="bg-muted text-muted-foreground text-xs">

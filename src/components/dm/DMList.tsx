@@ -167,8 +167,8 @@ function DMConversationItem({
         <button
           onClick={onClick}
           className={cn(
-            'w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors text-left',
-            isActive ? 'bg-muted' : 'hover:bg-muted/50'
+            'w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-colors text-left',
+            isActive ? 'bg-[hsl(var(--surface-hover))]' : 'hover:bg-[hsl(var(--surface-2))]'
           )}
         >
           <div className="relative flex-shrink-0">
@@ -180,7 +180,7 @@ function DMConversationItem({
             </Avatar>
             {!conversation.is_group && (
               <div className={cn(
-                'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card',
+                'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[hsl(var(--surface-1))]',
                 statusColors[status]
               )} />
             )}

@@ -71,7 +71,7 @@ export function DMPinnedMessagesPopover({
                   key={pin.id}
                   onClick={() => onJumpToMessage?.(pin.message_id)}
                   className={cn(
-                    "group relative p-3 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors",
+                    "group relative p-3 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors",
                     onJumpToMessage && "cursor-pointer"
                   )}
                 >

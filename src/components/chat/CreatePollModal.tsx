@@ -237,7 +237,7 @@ export function CreatePollModal({
                   Durée
                 </Label>
                 <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger className="bg-[#1e1f22] border-none">
+                  <SelectTrigger className="bg-[hsl(var(--surface-1))] border-none">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

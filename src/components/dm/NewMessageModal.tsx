@@ -51,7 +51,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
     >
       <div className="fixed inset-0 bg-black/60" />
       <div 
-        className="relative bg-card rounded-lg shadow-xl w-full max-w-lg animate-scale-in overflow-hidden"
+        className="relative bg-[hsl(var(--surface-2))] rounded-2xl shadow-elevation-3 w-full max-w-lg animate-scale-in overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search Input */}

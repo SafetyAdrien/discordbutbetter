@@ -171,7 +171,7 @@ export function CreatePollModal({
                 value={question}
                 onChange={(e) => setQuestion(e.target.value.slice(0, 300))}
                 placeholder="Quelle question voulez-vous poser ?"
-                className="bg-[#1e1f22] border-none resize-none min-h-[80px]"
+                className="bg-[hsl(var(--surface-1))] border-none resize-none min-h-[80px]"
               />
               <div className="text-xs text-muted-foreground text-right">
                 {question.length} / 300

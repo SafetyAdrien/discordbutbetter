@@ -223,12 +223,12 @@ export function StageChannel({ channel, serverId }: StageChannelProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
+    <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">
       {/* Header with status */}
       <div className={cn(
-        "h-12 border-b flex items-center px-2 sm:px-4 justify-between transition-colors gap-2 w-full",
-        isLive ? "bg-[hsl(var(--online))]/10 border-[hsl(var(--online))]" : "border-border"
-      )}>
+        "h-12 flex items-center px-2 sm:px-4 justify-between transition-colors gap-2 w-full bg-[hsl(var(--surface-2))]",
+        isLive && "bg-[hsl(var(--online))]/10"
+      )} style={{ borderBottom: isLive ? "1px solid hsl(var(--online))" : "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <Radio className={cn("w-5 h-5 flex-shrink-0", isLive && "text-[hsl(var(--online))] animate-pulse")} />
           <span className="font-semibold truncate">{channel.name}</span>

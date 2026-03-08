@@ -267,7 +267,7 @@ export function CreatePollModal({
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-white/10">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-border/30">
           <Button 
             variant="ghost" 
             onClick={() => setOpen(false)}

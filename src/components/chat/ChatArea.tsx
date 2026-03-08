@@ -1347,17 +1347,93 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         </div>
                       </ContextMenuTrigger>
-                      {(user?.id === message.author.id || canManageMessages) && (
-                        <ContextMenuContent>
+                      <ContextMenuContent
+                        className="min-w-[220px] p-1.5 rounded-2xl shadow-[var(--shadow-elevation-3)] border border-border/50"
+                        collisionPadding={8}
+                      >
+                        {/* Emoji reaction row */}
+                        <div className="flex items-center gap-1 p-1.5 pb-2 border-b border-border/30 mb-1">
+                          {CONTEXT_MENU_REACTIONS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => handleAddReaction(message.id, emoji)}
+                              className="p-1.5 hover:bg-primary/10 rounded-full text-lg transition-colors"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+                                <SmilePlus className="w-5 h-5 text-muted-foreground" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="right" align="start" className="w-64 p-2">
+                              <div className="grid grid-cols-8 gap-1">
+                                {[
+                                  "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
+                                  "🙂", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗",
+                                  "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝",
+                                  "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐",
+                                ].map((emoji) => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleAddReaction(message.id, emoji)}
+                                    className="p-1 hover:bg-muted rounded text-lg transition-colors"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+
+                        {/* Actions */}
+                        <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copier le texte
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
+                          <Link className="w-4 h-4 mr-2" />
+                          Copier le lien du message
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleCopyId(message.id)}>
+                          <Hash className="w-4 h-4 mr-2" />
+                          Copier l'identifiant du message
+                        </ContextMenuItem>
+
+                        {/* Danger zone */}
+                        <ContextMenuSeparator />
+                        {user?.id === message.author.id ? (
                           <ContextMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(message.id)}
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onSelect={() => handleContextDeleteSelect(message.id)}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
+                            <Trash2 className="w-4 h-4 mr-2 text-destructive" />
                             Supprimer le message
                           </ContextMenuItem>
-                        </ContextMenuContent>
-                      )}
+                        ) : (
+                          <>
+                            {canManageMessages && (
+                              <ContextMenuItem
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onSelect={() => handleContextDeleteSelect(message.id)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                                Supprimer le message
+                              </ContextMenuItem>
+                            )}
+                            <ContextMenuItem
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              onClick={() => setReportingMessage(message)}
+                            >
+                              <Flag className="w-4 h-4 mr-2 text-destructive" />
+                              Signaler ce message
+                            </ContextMenuItem>
+                          </>
+                        )}
+                      </ContextMenuContent>
                     </ContextMenu>
                   </div>
                 );

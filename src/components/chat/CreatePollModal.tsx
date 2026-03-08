@@ -201,7 +201,7 @@ export function CreatePollModal({
                       value={option.text}
                       onChange={(e) => updateOption(option.id, { text: e.target.value.slice(0, 100) })}
                       placeholder={`Réponse ${index + 1}`}
-                      className="flex-1 bg-[#1e1f22] border-none"
+                      className="flex-1 bg-[hsl(var(--surface-1))] border-none"
                     />
                     {options.length > 1 && (
                       <button

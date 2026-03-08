@@ -300,11 +300,11 @@
   }
 
   .server-icon:hover {
-    border-radius: 18px;
+    border-radius: var(--radius-xl);
   }
 
   .server-icon.active {
-    border-radius: 18px;
+    border-radius: var(--radius-xl);
   }
 
   /* === MATERIAL YOU CHANNEL ITEM === */

@@ -74,7 +74,7 @@ export function ThreadSystemMessage({
   const embedContent = (
     <button
       onClick={onClick}
-      className="group/thread flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 -mx-2 rounded-lg transition-colors bg-[hsl(var(--surface-2)/0.5)] hover:bg-[hsl(var(--surface-2)/0.8)]"
+      className="group/thread flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 -mx-2 rounded-lg transition-colors bg-[hsl(var(--surface-3)/0.4)] hover:bg-[hsl(var(--surface-3)/0.7)]"
     >
       <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
       <div className="flex-1 min-w-0">

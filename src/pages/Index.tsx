@@ -744,7 +744,8 @@ const Index = () => {
               onOpenDM={handleOpenDM}
             />
           )}
-        </>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       ) : null}
 
       {/* Modals */}

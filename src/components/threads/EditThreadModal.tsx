@@ -47,7 +47,7 @@ export function EditThreadModal({ open, onOpenChange, thread, serverId }: EditTh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-card border-border">
+      <DialogContent className="sm:max-w-[500px] bg-[hsl(var(--surface-2))] border-border">
         <DialogHeader>
           <DialogTitle>Modifier le fil</DialogTitle>
         </DialogHeader>

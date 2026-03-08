@@ -664,7 +664,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                     <span className="text-xs text-muted-foreground">
                                       {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
                                     </span>
-                                    <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
+                                    <div className="flex items-center gap-1 text-primary text-xs font-medium bg-primary/10 px-1.5 py-0.5 rounded">
                                       <BarChart2 className="w-3 h-3" />
                                       POLL
                                     </div>

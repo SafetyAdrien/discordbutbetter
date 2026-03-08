@@ -153,8 +153,8 @@ export function CreatePollModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[450px] p-0 bg-[#313338] border-none gap-0">
-        <DialogHeader className="px-4 py-3 border-b border-white/10">
+      <DialogContent className="sm:max-w-[450px] p-0 bg-[hsl(var(--surface-2))] border-none gap-0">
+        <DialogHeader className="px-4 py-3 border-b border-border/30">
           <DialogTitle className="font-semibold text-foreground">
             {isEditMode ? 'Modifier le sondage' : 'Créer un sondage'}
           </DialogTitle>
@@ -171,7 +171,7 @@ export function CreatePollModal({
                 value={question}
                 onChange={(e) => setQuestion(e.target.value.slice(0, 300))}
                 placeholder="Quelle question voulez-vous poser ?"
-                className="bg-[#1e1f22] border-none resize-none min-h-[80px]"
+                className="bg-[hsl(var(--surface-1))] border-none resize-none min-h-[80px]"
               />
               <div className="text-xs text-muted-foreground text-right">
                 {question.length} / 300
@@ -191,7 +191,7 @@ export function CreatePollModal({
                       onEmojiSelect={(emoji) => updateOption(option.id, { emoji })}
                       trigger={
                         <button 
-                          className="w-10 h-10 flex items-center justify-center rounded bg-[#1e1f22] hover:bg-[#2b2d31] transition-colors text-lg"
+                          className="w-10 h-10 flex items-center justify-center rounded bg-[hsl(var(--surface-1))] hover:bg-[hsl(var(--surface-2))] transition-colors text-lg"
                         >
                           {option.emoji || <Smile className="w-4 h-4 text-muted-foreground" />}
                         </button>
@@ -201,7 +201,7 @@ export function CreatePollModal({
                       value={option.text}
                       onChange={(e) => updateOption(option.id, { text: e.target.value.slice(0, 100) })}
                       placeholder={`Réponse ${index + 1}`}
-                      className="flex-1 bg-[#1e1f22] border-none"
+                      className="flex-1 bg-[hsl(var(--surface-1))] border-none"
                     />
                     {options.length > 1 && (
                       <button
@@ -237,7 +237,7 @@ export function CreatePollModal({
                   Durée
                 </Label>
                 <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger className="bg-[#1e1f22] border-none">
+                  <SelectTrigger className="bg-[hsl(var(--surface-1))] border-none">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -267,7 +267,7 @@ export function CreatePollModal({
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-white/10">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-border/30">
           <Button 
             variant="ghost" 
             onClick={() => setOpen(false)}
@@ -278,7 +278,7 @@ export function CreatePollModal({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || isPending}
-            className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
           >
             {isEditMode ? 'Sauvegarder' : 'Publier'}
           </Button>

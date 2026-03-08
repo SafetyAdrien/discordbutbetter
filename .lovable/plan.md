@@ -1,26 +1,61 @@
 
 
-# Améliorer les teintes du conteneur des Sondages
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problème
-Le sondage utilise `--poll-background: 220 18% 10%` (luminosité 10%) qui est très proche du fond principal (11%). Les options utilisent `bg-[hsl(var(--surface-2))]` (14%). Le conteneur se fond dans l'interface de discussion — pas assez de distinction visuelle.
+## Root cause
 
-## Solution
-Créer un conteneur de sondage avec une teinte distincte qui le fait ressortir visuellement, en utilisant une légère teinte colorée (bleu/indigo) pour signaler "ceci est un élément interactif spécial".
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-### Changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-**1. `src/index.css`** — Mettre à jour la variable poll-background
-- `--poll-background: 220 18% 10%` → `--poll-background: 228 20% 15%` (plus lumineux, légèrement plus saturé et teinté bleu)
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-**2. `src/components/chat/PollDisplay.tsx`** — Enrichir le conteneur
-- Conteneur principal : ajouter une bordure subtile `border border-primary/15` + `shadow-elevation-1` pour l'élévation
-- Coins plus arrondis : `rounded-lg` → `rounded-xl` (cohérence Material You)
-- Options : `bg-[hsl(var(--surface-2))]` → `bg-[hsl(var(--surface-1))]` pour créer du contraste avec le fond poll plus clair
-- Options sélectionnées/votées : garder `border-primary bg-primary/10`
-- Ajouter une bordure gauche colorée sur le conteneur : `border-l-[3px] border-l-primary/40` pour une accroche visuelle immédiate
+## Fix
 
-**Résultat** : Le sondage aura une élévation visible, une teinte bleutée distincte et un accent latéral coloré qui le distingue clairement des messages normaux.
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-2 fichiers modifiés.
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
+```
+
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

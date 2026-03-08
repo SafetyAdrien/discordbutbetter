@@ -237,7 +237,7 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-poll rounded-lg overflow-hidden max-w-[500px]">
+    <div className="bg-poll rounded-xl overflow-hidden max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         
@@ -271,7 +271,7 @@ export function PollDisplay({
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted
                     ? "border-primary bg-primary/10"
-                    : "border-border hover:border-border/80 bg-[hsl(var(--surface-2))]"
+                    : "border-border hover:border-border/80 bg-[hsl(var(--surface-1))]"
                 )}
               >
                 {/* Progress bar background with animation */}

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from "react";
 
 interface ThreadSpineProps {
   /** Y offset where the vertical line starts (e.g. 44 for below avatar, 0 for grouped) */
@@ -7,14 +7,14 @@ interface ThreadSpineProps {
 
 /**
  * ThreadSpine — single continuous SVG L-shaped connector.
- * 
+ *
  * Place as a direct child of a `relative` container.
  * The last sibling element (the thread embed) is measured to compute the curve point.
  * Draws: vertical line → rounded corner → horizontal branch.
  */
 export function ThreadSpine({ startY = 44 }: ThreadSpineProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [pathD, setPathD] = useState('');
+  const [pathD, setPathD] = useState("");
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -35,16 +35,13 @@ export function ThreadSpine({ startY = 44 }: ThreadSpineProps) {
       if (turnY <= startY) return;
 
       const x = 19;
-      const radius = 8;
+      const radius = 15;
       const endX = x + 18;
 
       // Single continuous path: vertical → quadratic curve → horizontal
-      const d = [
-        `M ${x} ${startY}`,
-        `V ${turnY - radius}`,
-        `Q ${x} ${turnY} ${x + radius} ${turnY}`,
-        `H ${endX}`,
-      ].join(' ');
+      const d = [`M ${x} ${startY}`, `V ${turnY - radius}`, `Q ${x} ${turnY} ${x + radius} ${turnY}`, `H ${endX}`].join(
+        " ",
+      );
 
       setPathD(d);
     };
@@ -63,7 +60,7 @@ export function ThreadSpine({ startY = 44 }: ThreadSpineProps) {
     <svg
       ref={svgRef}
       className="absolute top-0 left-0 pointer-events-none"
-      style={{ width: 42, height: '100%', overflow: 'visible' }}
+      style={{ width: 42, height: "100%", overflow: "visible" }}
     >
       {pathD && (
         <path

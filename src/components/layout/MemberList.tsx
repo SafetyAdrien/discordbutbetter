@@ -473,7 +473,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     return groups;
   }, [filteredMembers, allRoles]);
   const handleCopyId = (id: string) => {
-    copyToClipboard(id, "ID utilisateur copié");
+    copyToClipboard(uuidToSnowflake(id), "ID utilisateur copié");
   };
   const handleSendMessage = (member: MemberWithRoles) => {
     console.log("Send message to", member.id);

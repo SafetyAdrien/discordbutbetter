@@ -191,7 +191,7 @@ export function CreatePollModal({
                       onEmojiSelect={(emoji) => updateOption(option.id, { emoji })}
                       trigger={
                         <button 
-                          className="w-10 h-10 flex items-center justify-center rounded bg-[#1e1f22] hover:bg-[#2b2d31] transition-colors text-lg"
+                          className="w-10 h-10 flex items-center justify-center rounded bg-[hsl(var(--surface-1))] hover:bg-[hsl(var(--surface-2))] transition-colors text-lg"
                         >
                           {option.emoji || <Smile className="w-4 h-4 text-muted-foreground" />}
                         </button>

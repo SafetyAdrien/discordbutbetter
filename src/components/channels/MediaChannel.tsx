@@ -93,7 +93,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
 
   return (
     <div
-      className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden relative"
+      className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}

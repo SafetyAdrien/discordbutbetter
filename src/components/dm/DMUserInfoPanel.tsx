@@ -141,7 +141,7 @@ export function DMUserInfoPanel({
             <div className="px-4 py-3">
               <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
                 <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted/70 transition-colors">
+                  <button className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors">
                     <span className="text-xs font-semibold text-muted-foreground uppercase">
                       Serveurs en commun — {mutualServers.length}
                     </span>

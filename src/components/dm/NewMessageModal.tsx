@@ -88,7 +88,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
                 <button
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend.profile.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted/50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[hsl(var(--surface-3))] transition-colors text-left"
                 >
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={friend.profile.avatar_url || undefined} />

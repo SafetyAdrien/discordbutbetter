@@ -1,61 +1,52 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Fenêtre rétractable en split-view (Thread panel)
 
-## Root cause
+## Contexte actuel
+Le thread panel utilise `flex-[4]` / `flex-[6]` pour le split 40/60. Un séparateur visuel `w-px bg-border/30` existe entre les deux panneaux. Il n'y a pas de resize interactif.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Approche
+Utiliser `react-resizable-panels` (déjà installé) pour rendre le panneau thread redimensionnable par l'utilisateur, **sans** afficher la poignée visuelle (grip) du handle — juste une bordure invisible draggable.
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+## Changements — `src/pages/Index.tsx`
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+**Remplacer** le conteneur flex actuel (lignes 588-700) par un `ResizablePanelGroup` :
 
-## Fix
+```tsx
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+// Ligne ~588 : wrapper du contenu principal
+<div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
+  {activeThreadId && channelForChat?.type === 'text' ? (
+    <ResizablePanelGroup direction="horizontal" className="flex-1">
+      {!threadFullscreen && (
+        <ResizablePanel defaultSize={60} minSize={30} maxSize={80}>
+          <div className="flex flex-col h-full w-full overflow-hidden">
+            {/* ChatArea existant */}
+          </div>
+        </ResizablePanel>
+      )}
+      {!threadFullscreen && (
+        <ResizableHandle className="w-px bg-border/30 hover:bg-primary/30 transition-colors cursor-col-resize" />
+      )}
+      <ResizablePanel defaultSize={threadFullscreen ? 100 : 40} minSize={20} maxSize={70}>
+        <ThreadView ... />
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  ) : (
+    // Cas sans thread : layout existant inchangé
+    channelForChat && <div className="flex-1 min-w-0 flex flex-col ...">...</div>
+  )}
+</div>
 ```
 
-### Code for onSuccess addition
+**Points clés :**
+- `minSize={30}` / `maxSize={80}` sur le chat — empêche de trop réduire/agrandir
+- `minSize={20}` / `maxSize={70}` sur le thread — limite aussi de son côté  
+- Le handle est un simple trait de 1px (`w-px bg-border/30`) sans grip visuel — pas d'effet "splitter" visible, juste une bordure draggable
+- `hover:bg-primary/30` pour un feedback subtil au survol
+- En mode fullscreen le chat est masqué et le thread prend 100%
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+## Fichier modifié
+1. **`src/pages/Index.tsx`** — Remplacement du flex split par `ResizablePanelGroup`
 

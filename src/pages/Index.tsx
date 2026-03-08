@@ -585,7 +585,11 @@ const Index = () => {
             }}
             onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
+          </ResizablePanel>
 
+          <ResizableHandle className="w-0 border-0 bg-transparent cursor-col-resize opacity-0 hover:opacity-100 hover:w-px hover:bg-border/20 transition-all" />
+
+          <ResizablePanel defaultSize={80} minSize={50}>
           {/* Main Content Area */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
             {activeThreadId && channelForChat?.type === 'text' ? (

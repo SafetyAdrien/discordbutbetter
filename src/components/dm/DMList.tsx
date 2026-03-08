@@ -167,7 +167,7 @@ function DMConversationItem({
         <button
           onClick={onClick}
           className={cn(
-            'w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-colors text-left',
+            'w-full flex items-center gap-2 px-2 py-1 rounded-md transition-colors text-left',
             isActive ? 'bg-[hsl(var(--surface-hover))]' : 'hover:bg-[hsl(var(--surface-2))]'
           )}
         >

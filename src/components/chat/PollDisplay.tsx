@@ -29,7 +29,7 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
         <Tooltip key={vote.id}>
           <TooltipTrigger asChild>
             <Avatar 
-              className="w-5 h-5 border-2 border-card transition-transform duration-300 cursor-pointer animate-vote-pop hover:scale-110"
+              className="w-5 h-5 border-2 border-[hsl(var(--surface-1))] transition-transform duration-300 cursor-pointer animate-vote-pop hover:scale-110"
               style={{ 
                 zIndex: maxVisible - index,
                 animationDelay: `${index * 50}ms`

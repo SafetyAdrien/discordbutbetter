@@ -1301,7 +1301,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       <ContextMenuTrigger asChild>
                         <div className="group message-hover rounded-xl px-4 pb-2 pt-1 mb-1">
                           {/* System text line */}
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>
                               <span className="font-semibold text-foreground">{message.author.displayName}</span> a créé

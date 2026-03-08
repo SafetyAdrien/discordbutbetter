@@ -159,8 +159,8 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
                         key={friend.id}
                         onClick={() => toggleFriend(friend.profile.id)}
                         className={cn(
-                          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left',
-                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+                          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left',
+                          isSelected ? 'bg-primary/10' : 'hover:bg-[hsl(var(--surface-3))]'
                         )}
                       >
                         <Avatar className="w-10 h-10">

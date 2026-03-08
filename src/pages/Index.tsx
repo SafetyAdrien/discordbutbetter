@@ -73,6 +73,8 @@ const Index = () => {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [voiceChatChannelId, setVoiceChatChannelId] = useState<string | null>(null);
+  const [threadPanelFlex, setThreadPanelFlex] = useState(4); // flex ratio for thread panel
+  const threadResizing = useRef(false);
 
   // Wrapper functions to persist navigation state
   const setActiveServerId = useCallback((id: string | null) => {

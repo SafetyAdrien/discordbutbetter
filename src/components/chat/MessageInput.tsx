@@ -112,7 +112,7 @@ export function MessageInput({
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const DESKTOP_MIN_HEIGHT = 40;
+    const DESKTOP_MIN_HEIGHT = 44;
     const COMPACT_MIN_HEIGHT = 28;
     const DESKTOP_SINGLE_LINE_TOLERANCE = 6;
     const minH = compact ? COMPACT_MIN_HEIGHT : DESKTOP_MIN_HEIGHT;

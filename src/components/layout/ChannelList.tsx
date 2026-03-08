@@ -1542,7 +1542,7 @@ export function ChannelList({
             <TooltipTrigger asChild>
               <button
                 onClick={() => setInviteChannelId('server')}
-                className="p-2 rounded-full bg-surface-3 hover:bg-surface-hover text-muted-foreground hover:text-foreground transition-colors">
+                className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">
                 <UserPlus className="w-4 h-4" />
               </button>
             </TooltipTrigger>

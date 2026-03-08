@@ -379,7 +379,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   };
 
   return (
-    <div className="h-full flex flex-col bg-[hsl(var(--surface-2)/0.3)] border-l-2 border-border/70 shadow-[-4px_0_12px_rgba(0,0,0,0.15)] min-w-0 z-10">
+    <div className="h-full flex flex-col bg-[hsl(var(--surface-2)/0.3)] border-l-2 border-border/70 shadow-[-4px_0_12px_rgba(0,0,0,0.15)] min-w-0">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 h-12 shrink-0 bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <Button

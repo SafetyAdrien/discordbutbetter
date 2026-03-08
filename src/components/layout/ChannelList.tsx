@@ -325,6 +325,10 @@ function SortableCategory({
               <Pencil className="w-4 h-4 mr-2" />
               Modifier la catégorie
             </ContextMenuItem>
+            <ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(category.id), "ID de catégorie copié")}>
+              <Copy className="w-4 h-4 mr-2" />
+              Copier l'ID
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
@@ -725,6 +729,10 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
               <ContextMenuItem onClick={onCopyLink}>
                 <Link className="w-4 h-4 mr-2" />
                 Copier le lien
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(channel.id), "ID du salon copié")}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copier l'ID
               </ContextMenuItem>
               <ContextMenuItem onClick={onCreateInvite}>
                 <UserPlus className="w-4 h-4 mr-2" />

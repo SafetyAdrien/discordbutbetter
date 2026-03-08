@@ -678,6 +678,8 @@ const Index = () => {
 
             {/* Thread View - 60/40 split with chat */}
             {activeThreadId && channelForChat?.type === 'text' && (
+              <>
+              <div className="w-px bg-border/30 shrink-0" />
               <div className={`${threadFullscreen ? 'flex-1' : 'flex-[4]'} min-w-0`}>
                 <ThreadView
                   threadId={activeThreadId}
@@ -693,6 +695,7 @@ const Index = () => {
                   onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
                 />
               </div>
+              </>
             )}
           </div>
 

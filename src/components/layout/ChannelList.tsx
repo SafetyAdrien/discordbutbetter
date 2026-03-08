@@ -1533,7 +1533,7 @@ export function ChannelList({
         <div className="px-2.5 py-2 flex items-center gap-1.5">
           <button
             onClick={() => onOpenGlobalSearch?.()}
-            className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-full text-muted-foreground text-sm bg-surface-3 hover:bg-surface-hover"
+            className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-full text-muted-foreground text-sm bg-surface-3"
             style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}>
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Rechercher</span>
@@ -1542,7 +1542,7 @@ export function ChannelList({
             <TooltipTrigger asChild>
               <button
                 onClick={() => setInviteChannelId('server')}
-                className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">
+                className="flex items-center justify-center h-[36px] w-[36px] rounded-full bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">
                 <UserPlus className="w-4 h-4" />
               </button>
             </TooltipTrigger>

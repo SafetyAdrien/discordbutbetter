@@ -695,6 +695,7 @@ const Index = () => {
                   onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
                 />
               </div>
+              </>
             )}
           </div>
 

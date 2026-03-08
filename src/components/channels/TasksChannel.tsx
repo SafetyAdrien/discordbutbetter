@@ -58,8 +58,8 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
   });
 
   return (
-    <div className="flex-1 flex flex-col bg-background min-w-0 w-full overflow-x-hidden">
-      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 border-b border-border flex-shrink-0 w-full">
+    <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineTasks className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>

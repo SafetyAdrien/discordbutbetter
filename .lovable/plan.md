@@ -1,57 +1,61 @@
 
 
-# Aligner les couleurs de tous les types de salons sur le salon Textuel
+# Fix: Duplicated channel hidden by visibility filter
 
-## Problème
-Le salon textuel (`ChatArea`) utilise le design Material You avec :
-- Container : `bg-[hsl(var(--surface-2)/0.3)]`
-- Header : `bg-[hsl(var(--surface-2))]` + `borderBottom: 1px solid hsl(var(--border) / 0.5)` + `boxShadow: var(--shadow-elevation-1)` + `borderRadius: 0 0 var(--radius-xl) var(--radius-xl)`
+## Root cause
 
-Les autres salons utilisent encore `bg-background`, `border-b border-border`, ou `bg-[#151723]`.
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
-## Fichiers et changements
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-### 1. AnnouncementChannel.tsx
-- **L434** : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`
-- **L436** : header — supprimer `border-b border-border/50 bg-[#151723]`, appliquer style surface-2 + shadow + radius via `style={{}}`
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### 2. ForumChannel.tsx
-- **L44** : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`
-- **L45** : header — supprimer `border-b border-border`, appliquer `bg-[hsl(var(--surface-2))]` + style inline (shadow + radius)
+## Fix
 
-### 3. MediaChannel.tsx
-- **L96** : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`
-- **L107** : header — supprimer `border-b border-border`, appliquer style surface-2 + shadow + radius
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### 4. TasksChannel.tsx
-- **Container** : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`
-- **Header** : supprimer `border-b border-border`, appliquer style surface-2 + shadow + radius
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-### 5. CalendarChannel.tsx
-- **L53** : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`
-- **L54** : header — supprimer `border-b border-border`, appliquer style surface-2 + shadow + radius
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
 
-### 6. StageChannel.tsx
-- **L194** (état sans session) : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`, header L196 → style surface-2 + shadow + radius
-- **L226** (état principal) : `bg-background` → `bg-[hsl(var(--surface-2)/0.3)]`, header L228-230 → appliquer surface-2 base + shadow + radius (en gardant la logique conditionnelle pour le mode live)
+### 2. In `onSuccess`: invalidate the permissions cache
 
-### 7. ThreadView.tsx
-- **L382** : `bg-card` → `bg-[hsl(var(--surface-2)/0.3)]`
-- **L384** : header — supprimer `border-b border-border`, appliquer `bg-[hsl(var(--surface-2))]` + style inline (shadow + radius)
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
 
-### 8. VoiceChannelChat.tsx
-- **L175** : header — supprimer `border-b border-white/10`, appliquer `bg-[hsl(var(--surface-2))]` + style inline (shadow + radius)
+### 3. Hook needs `useAuth` for the user ID
 
-## Style header standardisé (appliqué partout)
+Add `useAuth()` to get the user ID for the correct permissions cache key.
 
-```tsx
-className="h-12 px-3 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
-style={{
-  borderBottom: "1px solid hsl(var(--border) / 0.5)",
-  boxShadow: "var(--shadow-elevation-1)",
-  borderRadius: "0 0 var(--radius-xl) var(--radius-xl)",
-}}
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
+}
 ```
 
-**8 fichiers modifiés — aucun nouveau fichier.**
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+```
+
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

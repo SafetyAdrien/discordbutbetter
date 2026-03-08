@@ -172,7 +172,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
         {isDragging && <UploadDropOverlay channelName={channelName} />}
       </AnimatePresence>
       
-      <div className="h-12 px-4 flex items-center justify-between border-b border-white/10">
+      <div className="h-12 px-4 flex items-center justify-between bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <span className="text-sm font-semibold text-white">Chat textuel</span>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white" onClick={onClose}>
           <X className="w-4 h-4" />

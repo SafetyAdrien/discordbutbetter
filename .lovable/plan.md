@@ -1,61 +1,31 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Add "Copier l'ID" to Channel and Category Context Menus
 
-## Root cause
+## Problem
+Channel and category context menus in `ChannelList.tsx` don't have a "Copier l'ID" option. All other entity context menus (messages, servers, threads, members, polls) already have one with Snowflake conversion.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Changes
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+| File | Location | Change |
+|------|----------|--------|
+| `ChannelList.tsx` | Category context menu (line ~316-336) | Add "Copier l'ID" item using `uuidToSnowflake(category.id)` |
+| `ChannelList.tsx` | Channel context menu (line ~720-753) | Add "Copier l'ID" item using `uuidToSnowflake(channel.id)` |
+| `ChannelList.tsx` | Imports (top) | Add `Hash` icon import (if missing), ensure `uuidToSnowflake` is imported |
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
-
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+### Category context menu — add after "Copier le lien" / before separator+delete:
+```tsx
+<ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(category.id), "ID de catégorie copié")}>
+  <Hash className="w-4 h-4 mr-2" />
+  Copier l'ID
+</ContextMenuItem>
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+### Channel context menu — add after "Copier le lien":
+```tsx
+<ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(channel.id), "ID du salon copié")}>
+  <Hash className="w-4 h-4 mr-2" />
+  Copier l'ID
+</ContextMenuItem>
 ```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

@@ -348,7 +348,6 @@ export function ServerList({
   const handleCopyId = (serverId: string) => {
     copyToClipboard(uuidToSnowflake(serverId), 'ID serveur copié');
   };
-  };
 
   const handleMarkAsRead = (serverId: string) => {
     markServerAsRead(serverId);

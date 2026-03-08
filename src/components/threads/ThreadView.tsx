@@ -190,7 +190,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const handleCopyId = (id: string) => {
     copyToClipboard(uuidToSnowflake(id), 'ID copié');
   };
-  };
 
   const handleCopyMessageLink = (messageId: string) => {
     const link = `${window.location.origin}/channels/${serverId}/${channelId}/thread/${threadId}/${messageId}`;

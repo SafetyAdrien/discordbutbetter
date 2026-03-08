@@ -816,7 +816,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const handleCopyId = (id: string) => {
     copyToClipboard(uuidToSnowflake(id), "ID copié");
   };
-  };
   const handleAddReaction = (messageId: string, emoji: string) => {
     const currentReactions = reactionsData?.[messageId] || [];
     const hasReacted = currentReactions.some((r) => r.user_id === user?.id && r.emoji === emoji);

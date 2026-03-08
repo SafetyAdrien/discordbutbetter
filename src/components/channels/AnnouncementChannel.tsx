@@ -359,7 +359,6 @@ export function AnnouncementChannel({
   const handleCopyId = (id: string) => {
     copyToClipboard(uuidToSnowflake(id), "ID copié");
   };
-  };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
     const currentReactions = reactionsData?.[messageId] || [];

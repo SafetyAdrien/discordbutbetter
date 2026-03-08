@@ -170,7 +170,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const handleCopyId = (id: string) => {
     copyToClipboard(uuidToSnowflake(id), 'ID copié');
   };
-  };
 
   const handleCopyLink = (messageId: string) => {
     const link = `${window.location.origin}/dm/${conversationId}/${messageId}`;

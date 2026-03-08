@@ -153,8 +153,8 @@ export function CreatePollModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[450px] p-0 bg-[#313338] border-none gap-0">
-        <DialogHeader className="px-4 py-3 border-b border-white/10">
+      <DialogContent className="sm:max-w-[450px] p-0 bg-[hsl(var(--surface-2))] border-none gap-0">
+        <DialogHeader className="px-4 py-3 border-b border-border/30">
           <DialogTitle className="font-semibold text-foreground">
             {isEditMode ? 'Modifier le sondage' : 'Créer un sondage'}
           </DialogTitle>

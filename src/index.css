@@ -316,7 +316,7 @@
   }
 
   .channel-item:hover {
-    background: hsl(var(--surface-hover) / 0.4);
+    background: hsl(var(--surface-hover) / 0.15);
   }
 
   .channel-item.active {

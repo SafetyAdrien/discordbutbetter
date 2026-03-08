@@ -1,61 +1,29 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Split-view rétractable pour la liste des salons
 
-## Root cause
+## Changement — `src/pages/Index.tsx`
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+Envelopper le `<ChannelList>` et le contenu principal (lignes 551-700+) dans un `ResizablePanelGroup` avec un handle **entièrement transparent** (pas de bordure, pas de fond).
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
-
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
-
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
+```tsx
+// Remplacer le fragment <> contenant ChannelList + Main Content
+<ResizablePanelGroup direction="horizontal" className="flex-1">
+  <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
+    <ChannelList ... />
+  </ResizablePanel>
+  <ResizableHandle className="w-0 border-0 bg-transparent cursor-col-resize opacity-0 hover:opacity-100 hover:w-px hover:bg-border/20 transition-all" />
+  <ResizablePanel defaultSize={80} minSize={50}>
+    <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
+      {/* contenu existant inchangé */}
+    </div>
+  </ResizablePanel>
+</ResizablePanelGroup>
 ```
 
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**Points clés :**
+- Handle totalement invisible (`w-0 opacity-0 bg-transparent`), léger feedback au hover uniquement
+- `minSize={15}` empêche de réduire la channel list trop petit
+- `maxSize={35}` empêche de l'agrandir excessivement
+- 1 fichier modifié : `src/pages/Index.tsx`
 

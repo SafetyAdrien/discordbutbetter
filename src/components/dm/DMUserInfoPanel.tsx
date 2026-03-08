@@ -150,7 +150,7 @@ export function DMUserInfoPanel({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
                   <div className="flex flex-col gap-1">
-                    {mutualServers.map(server => <div key={server.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors">
+                    {mutualServers.map(server => <div key={server.id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-[hsl(var(--surface-2))] transition-colors">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={server.icon_url || undefined} />
                           <AvatarFallback className="bg-muted text-muted-foreground text-xs">

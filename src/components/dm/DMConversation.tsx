@@ -261,7 +261,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       )}
 
       {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-3 border-b border-border">
+      <div className="h-12 px-4 flex items-center gap-3 border-b border-border bg-[hsl(var(--surface-header))]">
         {onBack && (
           <Button variant="ghost" size="icon" onClick={onBack} className="mr-1">
             <ArrowLeft className="w-4 h-4" />

@@ -116,7 +116,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
           </div>
 
           {/* Pro tip */}
-          <div className="px-4 py-3 border-t border-border bg-muted/30">
+          <div className="px-4 py-3 border-t border-border bg-[hsl(var(--surface-1))]/50">
             <p className="text-xs text-muted-foreground">
               <span className="text-primary font-medium">PROTIP:</span>{' '}
               Commencez vos recherches par{' '}

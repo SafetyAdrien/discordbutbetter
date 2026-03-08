@@ -142,7 +142,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
             autoPlay
             playsInline
             muted
-            className="absolute bottom-24 right-4 w-32 h-24 rounded-lg object-cover border-2 border-border shadow-lg z-10"
+            className="absolute bottom-24 right-4 w-32 h-24 rounded-2xl object-cover border-2 border-border shadow-elevation-2 z-10"
           />
         )}
 

@@ -46,7 +46,7 @@ export function IncomingCallModal({ call, onAccept, onDecline }: IncomingCallMod
 
   return (
     <Dialog open={true}>
-      <DialogContent className="sm:max-w-md [&>button]:hidden">
+      <DialogContent className="sm:max-w-md [&>button]:hidden rounded-2xl">
         <div className="flex flex-col items-center py-6">
           <div className="relative mb-6">
             <Avatar className="w-24 h-24 ring-4 ring-primary/20 animate-pulse">

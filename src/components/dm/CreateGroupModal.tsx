@@ -259,7 +259,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
               <button
                 onClick={handleCreate}
                 disabled={isCreating || !groupName.trim()}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isCreating ? 'Création...' : 'Créer le groupe'}
               </button>

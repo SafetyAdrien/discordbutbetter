@@ -96,10 +96,10 @@ export function DMPage({
           <button 
             onClick={handleShowInbox} 
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors', 
+              'w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-colors', 
               currentView === 'inbox' 
-                ? 'bg-muted text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                ? 'bg-[hsl(var(--surface-hover))] text-foreground' 
+                : 'text-muted-foreground hover:bg-[hsl(var(--surface-2))] hover:text-foreground'
             )}
           >
             <div className="relative">

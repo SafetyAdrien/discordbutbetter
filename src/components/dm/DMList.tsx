@@ -180,7 +180,7 @@ function DMConversationItem({
             </Avatar>
             {!conversation.is_group && (
               <div className={cn(
-                'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card',
+                'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[hsl(var(--surface-1))]',
                 statusColors[status]
               )} />
             )}

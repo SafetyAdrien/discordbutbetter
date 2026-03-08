@@ -69,7 +69,7 @@ export function DMPage({
           <div className="relative w-full">
             <button 
               onClick={() => setShowNewMessageModal(true)}
-              className="w-full px-2 py-1.5 text-sm bg-background rounded border-none text-left text-muted-foreground hover:bg-muted/50 transition-colors truncate"
+              className="w-full px-2 py-1.5 text-sm bg-[hsl(var(--surface-2))] rounded-xl border-none text-left text-muted-foreground hover:bg-[hsl(var(--surface-3))] transition-colors truncate"
             >
               Trouver ou commencer une...
             </button>

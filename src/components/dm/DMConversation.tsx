@@ -168,7 +168,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleCopyId = (id: string) => {
-    copyToClipboard(id, 'ID copié');
+    copyToClipboard(uuidToSnowflake(id), 'ID copié');
+  };
   };
 
   const handleCopyLink = (messageId: string) => {

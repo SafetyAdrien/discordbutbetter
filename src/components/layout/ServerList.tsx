@@ -346,7 +346,8 @@ export function ServerList({
   }, [totalUnreadDMs]);
 
   const handleCopyId = (serverId: string) => {
-    copyToClipboard(serverId, 'ID serveur copié');
+    copyToClipboard(uuidToSnowflake(serverId), 'ID serveur copié');
+  };
   };
 
   const handleMarkAsRead = (serverId: string) => {

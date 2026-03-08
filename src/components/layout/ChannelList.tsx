@@ -509,7 +509,7 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
                   )}
                   <ContextMenuSeparator />
                   <ContextMenuItem
-                    onClick={() => copyToClipboard(thread.id, "Identifiant du fil copié")}
+                    onClick={() => copyToClipboard(uuidToSnowflake(thread.id), "Identifiant du fil copié")}
                   >
                     <Copy className="w-4 h-4 mr-2" />
                     Copier l'identifiant du fil

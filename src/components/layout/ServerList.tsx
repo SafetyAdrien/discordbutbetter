@@ -124,7 +124,7 @@ function SortableServerIcon({
                           ? 'h-2'
                           : 'h-0 group-hover:h-5'
                     )}
-                    style={{ transition: 'height 300ms cubic-bezier(0.2, 0, 0, 1)' }}
+                    style={{ transition: 'none' }}
                   />
                 
               {server.icon ? (
@@ -459,14 +459,14 @@ export function ServerList({
             {/* Pill highlight behind active icon */}
             {activeServerId === null && (
               <div className="absolute -left-[14px] w-[4px] h-10 rounded-r-full bg-foreground" 
-                style={{ transition: 'height 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
+                style={{ transition: 'none' }} />
             )}
             {activeServerId !== null && hasUnreadDMs && (
               <div className="absolute -left-[14px] w-[4px] h-2 rounded-r-full bg-foreground" />
             )}
             {activeServerId !== null && !hasUnreadDMs && (
               <div className="absolute -left-[14px] w-[4px] h-0 group-hover:h-5 rounded-r-full bg-foreground"
-                style={{ transition: 'height 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
+                style={{ transition: 'none' }} />
             )}
             <MessageCircle className="w-6 h-6" />
             

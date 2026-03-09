@@ -1501,7 +1501,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               </Avatar>
                             </button>
                             <div className="flex-1 min-w-0 overflow-hidden">
-                              <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                              <div className="flex items-baseline gap-2 flex-nowrap">
                                 <button
                                   onClick={() => handleUserClick(message.author)}
                                   className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"

@@ -212,17 +212,21 @@ function SortableServerIcon({
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem 
-            onSelect={(e) => {
-              e.preventDefault();
-              onLeave();
-            }}
-            className="text-destructive focus:text-destructive"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Quitter le serveur
-          </ContextMenuItem>
+          {!isGod && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onLeave();
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Quitter le serveur
+              </ContextMenuItem>
+            </>
+          )}
         </ContextMenuContent>
       </ContextMenu>
       {/* Inline drop indicator - after */}

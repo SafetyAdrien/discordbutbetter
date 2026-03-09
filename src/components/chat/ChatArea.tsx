@@ -1458,7 +1458,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         if (el) messageRefs.current.set(message.id, el);
                       }}
                       className={cn(
-                        "group message-hover rounded-xl px-4 pb-1 mb-1 relative",
+                        "group/message group message-hover rounded-xl px-4 pb-1 mb-1 relative",
                         showAuthor ? "pt-1.5" : "py-0.5",
                       )}
                       onMouseEnter={() => setHoveredMessageId(message.id)}
@@ -1640,7 +1640,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="flex gap-3 items-start">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
+                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">
                                   {formatTime(message.timestamp)}
                                 </span>
                               </TooltipTrigger>

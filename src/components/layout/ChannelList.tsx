@@ -1418,7 +1418,7 @@ export function ChannelList({
                 }
 
                 {/* Leave Server Button - Only visible for non-owners */}
-                {!isOwner &&
+                {!isGod &&
                 <Tooltip>
                     <TooltipTrigger asChild>
                       <button

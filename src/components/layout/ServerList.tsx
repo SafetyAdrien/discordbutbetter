@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { copyToClipboard } from '@/lib/clipboard';
+import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';

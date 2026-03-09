@@ -127,10 +127,10 @@ export function ServerSettingsModal({
   };
 
   const renderNavList = (onSelect: (tab: SettingsTab) => void) => (
-    <nav className="space-y-4 p-2.5">
+    <nav className="space-y-2 p-2.5">
       {sections.map(section => (
         <div key={section.id}>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1">
             {section.name === 'server' ? serverName : section.name}
           </p>
           <div className="space-y-0.5">
@@ -140,7 +140,7 @@ export function ServerSettingsModal({
                 onClick={() => onSelect(tab.id)}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 rounded-2xl text-sm transition-all duration-300',
-                  isMobile ? 'py-3' : 'py-2',
+                  isMobile ? 'py-3' : 'py-1',
                   activeTab === tab.id
                     ? 'bg-primary/12 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -148,7 +148,7 @@ export function ServerSettingsModal({
                 style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
               >
                 <div className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
+                  'w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-200',
                   activeTab === tab.id ? 'bg-primary/15' : 'bg-transparent'
                 )}>
                   <tab.icon className="w-4 h-4" />

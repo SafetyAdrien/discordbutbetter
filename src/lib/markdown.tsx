@@ -675,7 +675,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     case 'header1':
       return (
         <div key={key}>
-          <h1 className="text-2xl font-bold text-white my-2">
+          <h1 className="text-2xl font-bold text-white my-1">
             {renderInlineContent(block.content)}
           </h1>
           <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
@@ -684,7 +684,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     case 'header2':
       return (
         <div key={key}>
-          <h2 className="text-xl font-bold text-white my-1.5">
+          <h2 className="text-xl font-bold text-white my-1">
             {renderInlineContent(block.content)}
           </h2>
           <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
@@ -693,7 +693,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     case 'header3':
       return (
         <div key={key}>
-          <h3 className="text-lg font-semibold text-white my-1">
+          <h3 className="text-lg font-semibold text-white my-0.5">
             {renderInlineContent(block.content)}
           </h3>
           <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
@@ -710,13 +710,13 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
       );
     case 'blockquote':
       return (
-        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-1 text-muted-foreground">
+        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground">
           {renderInlineContent(block.content)}
         </blockquote>
       );
     case 'multiBlockquote':
       return (
-        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-1 text-muted-foreground whitespace-pre-wrap">
+        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">
           {renderInlineContent(block.content)}
         </blockquote>
       );
@@ -740,7 +740,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     case 'codeBlock':
       return <CodeBlock key={key} code={block.content} language={block.language} />;
     case 'separator':
-      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-2" />;
+      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
     case 'empty':
       return <br key={key} />;
     case 'escapedParagraph':

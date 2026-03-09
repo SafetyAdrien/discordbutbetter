@@ -645,6 +645,9 @@
   .font-mono,
   code,
   pre,
+  .markdown-content {
+    line-height: 1.375rem;
+  }
   .markdown-content code {
     font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace !important;
   }

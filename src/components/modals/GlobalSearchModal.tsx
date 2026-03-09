@@ -438,7 +438,7 @@ export function GlobalSearchModal({
               onBlur={() => setTimeout(() => setShowPrefixSuggestions(false), 150)}
               placeholder="Rechercher des messages..."
               className="pl-9 pr-4 h-10 bg-input"
-              autoFocus
+              
             />
 
             {/* Prefix suggestions - inline on mobile, absolute dropdown on desktop */}

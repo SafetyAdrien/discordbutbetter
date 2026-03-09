@@ -3,7 +3,8 @@ import { useServers } from '@/hooks/useServers';
 import { useUpdateServerInfo } from '@/hooks/useServerAssets';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Globe, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Globe, Lock, Loader2 } from 'lucide-react';
 
 interface PrivacySettingsProps {
   serverId: string;
@@ -22,11 +23,12 @@ export function PrivacySettings({ serverId }: PrivacySettingsProps) {
     }
   }, [server]);
 
-  const handleToggle = (checked: boolean) => {
-    setIsPublic(checked);
+  const hasChanges = server && isPublic !== (server.is_public || false);
+
+  const handleSave = () => {
     updateServer.mutate({
       serverId,
-      is_public: checked,
+      is_public: isPublic,
     });
   };
 
@@ -63,10 +65,29 @@ export function PrivacySettings({ serverId }: PrivacySettingsProps) {
         <Switch
           id="is_public"
           checked={isPublic}
-          onCheckedChange={handleToggle}
-          disabled={updateServer.isPending}
+          onCheckedChange={setIsPublic}
         />
       </div>
+
+      {/* Sticky save button */}
+      {hasChanges && (
+        <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-background via-background to-transparent">
+          <Button 
+            onClick={handleSave} 
+            disabled={updateServer.isPending}
+            className="w-full"
+          >
+            {updateServer.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sauvegarde...
+              </>
+            ) : (
+              'Sauvegarder les modifications'
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

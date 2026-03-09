@@ -34,6 +34,14 @@ export function ProfileSettingsTab() {
     profile_theme: (profile as any)?.profile_theme || { primary: '#00D4FF', accent: '#8B5CF6' },
     featured_server_id: (profile as any)?.featured_server_id || '',
   });
+
+  const hasChanges = profile && (
+    formData.display_name !== (profile.display_name || '') ||
+    formData.bio !== (profile.bio || '') ||
+    formData.pronouns !== ((profile as any)?.pronouns || '') ||
+    formData.custom_status !== (profile.custom_status || '')
+  );
+
   const autoResizeBio = useCallback(() => {
     const el = bioTextareaRef.current;
     if (!el) return;
@@ -290,21 +298,25 @@ export function ProfileSettingsTab() {
             </Select>
           </div>
 
-          <div className="pt-4">
-            <Button 
-              onClick={handleSave} 
-              disabled={updateProfile.isPending || bioLength > 200}
-            >
-              {updateProfile.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                'Enregistrer les modifications'
-              )}
-            </Button>
-          </div>
+          {/* Sticky save button */}
+          {hasChanges && (
+            <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-background via-background to-transparent">
+              <Button 
+                onClick={handleSave} 
+                disabled={updateProfile.isPending || bioLength > 200}
+                className="w-full"
+              >
+                {updateProfile.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  'Sauvegarder les modifications'
+                )}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

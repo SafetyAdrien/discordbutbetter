@@ -21,20 +21,38 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
   const queryClient = useQueryClient();
   const { data: servers = [] } = useServers();
   const server = servers.find(s => s.id === serverId);
+  const { data: settings } = useServerSettings(serverId);
   
   const updateServer = useUpdateServerInfo();
+  const updateSettings = useUpdateServerSettings();
   const uploadIcon = useUploadServerIcon();
   const uploadBanner = useUploadServerBanner();
 
   const [formData, setFormData] = useState({
     name: server?.name || '',
     description: server?.description || '',
+    flexible_channel_names: settings?.flexible_channel_names ?? true,
   });
+
+  // Sync flexible_channel_names when settings load
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  if (settings && !settingsLoaded) {
+    setSettingsLoaded(true);
+    setFormData(prev => ({ ...prev, flexible_channel_names: settings.flexible_channel_names ?? true }));
+  }
+
+  const hasChanges = server && (
+    formData.name !== (server.name || '') ||
+    formData.description !== (server.description || '') ||
+    formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true)
+  );
 
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImage, setCropperImage] = useState<string>('');
   const [cropperType, setCropperType] = useState<'icon' | 'banner'>('icon');
+
+  const isSaving = updateServer.isPending || updateSettings.isPending;
 
   const handleSave = () => {
     updateServer.mutate({
@@ -42,6 +60,13 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
       name: formData.name,
       description: formData.description,
     });
+
+    if (formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true)) {
+      updateSettings.mutate({
+        serverId,
+        settings: { flexible_channel_names: formData.flexible_channel_names },
+      });
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'icon' | 'banner') => {
@@ -217,26 +242,50 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
           />
         </div>
 
-      {/* Save button */}
-        <Button 
-          onClick={handleSave} 
-          disabled={updateServer.isPending || !formData.name.trim()}
-        >
-          {updateServer.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Enregistrement...
-            </>
-          ) : (
-            'Enregistrer les modifications'
-          )}
-        </Button>
+        {/* Flexible channel names section - inlined */}
+        <div className="pt-6 border-t border-border space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">
+              Noms des salons textuels
+            </h3>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                <span className="font-medium text-sm">Autoriser des noms de canal de texte flexibles</span>
+                <p className="text-xs text-muted-foreground">
+                  Quand activé, les noms de salons textuels peuvent contenir des majuscules, des espaces et des caractères spéciaux. Quand désactivé, les noms seront automatiquement formatés en minuscules avec des tirets.
+                </p>
+              </div>
+              <Switch
+                checked={formData.flexible_channel_names}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, flexible_channel_names: checked }))}
+              />
+            </div>
+          </div>
+        </div>
 
-        {/* Flexible channel names section */}
-        <FlexibleChannelNamesSection serverId={serverId} />
+        {/* Sticky save button */}
+        {hasChanges && (
+          <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-background via-background to-transparent">
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving || !formData.name.trim()}
+              className="w-full"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sauvegarde...
+                </>
+              ) : (
+                'Sauvegarder les modifications'
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Image Cropper */}
       {/* Image Cropper */}
       <ImageCropper
         open={cropperOpen}
@@ -247,44 +296,5 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
         onCropComplete={handleCropComplete}
       />
     </>
-  );
-}
-
-function FlexibleChannelNamesSection({ serverId }: { serverId: string }) {
-  const { data: settings } = useServerSettings(serverId);
-  const updateSettings = useUpdateServerSettings();
-
-  const isFlexible = settings?.flexible_channel_names ?? true;
-
-  const handleToggle = (checked: boolean) => {
-    updateSettings.mutate({
-      serverId,
-      settings: { flexible_channel_names: checked },
-    });
-  };
-
-  return (
-    <div className="mt-8 pt-6 border-t border-border space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">
-          Noms des salons textuels
-        </h3>
-      </div>
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1 flex-1">
-            <span className="font-medium text-sm">Autoriser des noms de canal de texte flexibles</span>
-            <p className="text-xs text-muted-foreground">
-              Quand activé, les noms de salons textuels peuvent contenir des majuscules, des espaces et des caractères spéciaux. Quand désactivé, les noms seront automatiquement formatés en minuscules avec des tirets.
-            </p>
-          </div>
-          <Switch
-            checked={isFlexible}
-            onCheckedChange={handleToggle}
-            disabled={updateSettings.isPending}
-          />
-        </div>
-      </div>
-    </div>
   );
 }

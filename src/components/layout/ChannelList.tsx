@@ -298,7 +298,7 @@ function SortableCategory({
 
                 <ChevronDown className={cn("w-3 h-3", isCollapsed && "-rotate-90")}
                   style={{ transition: 'transform 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
-                <span className="tracking-wide font-ginto text-[14px] font-semibold my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
+                <span className="tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
                   {category.name}
                 </span>
               </button>

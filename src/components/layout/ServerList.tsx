@@ -124,7 +124,7 @@ function SortableServerIcon({
                           ? 'h-2'
                           : 'h-0 group-hover:h-5'
                     )}
-                    style={{ transition: 'none' }}
+                    style={{ transition: 'height 300ms' }}
                   />
                 
               {server.icon ? (

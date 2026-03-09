@@ -142,8 +142,8 @@ export function ServerSettingsModal({
                   'w-full flex items-center gap-3 px-3 rounded-2xl text-sm transition-all duration-300',
                   isMobile ? 'py-3' : 'py-1',
                   activeTab === tab.id
-                    ? 'bg-primary/12 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-muted text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 )}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
               >

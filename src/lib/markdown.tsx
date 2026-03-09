@@ -740,7 +740,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     case 'codeBlock':
       return <CodeBlock key={key} code={block.content} language={block.language} />;
     case 'separator':
-      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-2" />;
+      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
     case 'empty':
       return <br key={key} />;
     case 'escapedParagraph':

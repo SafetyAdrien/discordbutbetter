@@ -684,7 +684,7 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
     case 'header2':
       return (
         <div key={key}>
-          <h2 className="text-xl font-bold text-white my-1.5">
+          <h2 className="text-xl font-bold text-white my-1">
             {renderInlineContent(block.content)}
           </h2>
           <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />

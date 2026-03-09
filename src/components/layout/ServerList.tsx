@@ -72,6 +72,7 @@ function SortableServerIcon({
   onLeave: () => void;
 }) {
   const { data: voiceParticipants } = useServerVoiceParticipants(server.id);
+  const { isGod } = usePermissions(server.id);
   const {
     attributes,
     listeners,

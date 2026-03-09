@@ -1640,7 +1640,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="flex gap-3 items-start">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
+                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">
                                   {formatTime(message.timestamp)}
                                 </span>
                               </TooltipTrigger>

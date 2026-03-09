@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +17,7 @@ import {
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ServerDeletePageProps {
   serverId: string;
@@ -26,11 +27,13 @@ interface ServerDeletePageProps {
 export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
   const { data: servers = [] } = useServers();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const server = servers.find(s => s.id === serverId);
   
-  const [confirmText, setConfirmText] = useState('');
+  const [password, setPassword] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   if (!server || !user) return null;
 
@@ -39,23 +42,39 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
   const hasSecondaryOwner = !!server.secondary_owner_id;
 
   const handleDeleteRequest = async () => {
-    if (confirmText !== server.name) return;
+    if (!password.trim()) return;
     
     setIsDeleting(true);
+    setPasswordError('');
     
     try {
+      // Verify password first
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password,
+      });
+
+      if (authError) {
+        setPasswordError('Mot de passe incorrect');
+        setIsDeleting(false);
+        return;
+      }
+
       if (isOwner) {
-        // Primary owner deletes directly
         const { error } = await supabase.rpc('delete_server_as_owner', {
           _server_id: serverId
         });
         
         if (error) throw error;
+
+        // Optimistic: remove server from cache instantly
+        queryClient.setQueryData(['servers'], (old: any[] | undefined) =>
+          old?.filter(s => s.id !== serverId) ?? []
+        );
         
         toast.success('Serveur supprimé avec succès');
         onClose();
       } else if (isSecondaryOwner) {
-        // Secondary owner requests deletion
         const { error } = await supabase.rpc('request_server_deletion', {
           _server_id: serverId
         });
@@ -64,7 +83,7 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
         
         toast.success('Demande de suppression envoyée au propriétaire');
         setShowConfirm(false);
-        setConfirmText('');
+        setPassword('');
       }
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de la suppression');
@@ -104,22 +123,28 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirm-name">
-            Tapez <span className="font-semibold text-foreground">{server.name}</span> pour confirmer
+          <Label htmlFor="confirm-password">
+            Entrez votre mot de passe pour confirmer
           </Label>
-          <Input
-            id="confirm-name"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={server.name}
+          <PasswordInput
+            id="confirm-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordError('');
+            }}
+            placeholder="Mot de passe"
             className="max-w-sm"
           />
+          {passwordError && (
+            <p className="text-sm text-destructive">{passwordError}</p>
+          )}
         </div>
 
         <Button
           variant="destructive"
           onClick={() => setShowConfirm(true)}
-          disabled={confirmText !== server.name}
+          disabled={!password.trim()}
         >
           {isSecondaryOwner ? 'Demander la suppression' : 'Supprimer le serveur'}
         </Button>

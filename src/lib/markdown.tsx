@@ -710,13 +710,13 @@ function renderBlockToken(block: BlockToken, key: number, isLast: boolean = fals
       );
     case 'blockquote':
       return (
-        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-1 text-muted-foreground">
+        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground">
           {renderInlineContent(block.content)}
         </blockquote>
       );
     case 'multiBlockquote':
       return (
-        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-1 text-muted-foreground whitespace-pre-wrap">
+        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">
           {renderInlineContent(block.content)}
         </blockquote>
       );

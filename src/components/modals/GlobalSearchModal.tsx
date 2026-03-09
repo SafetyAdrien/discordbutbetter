@@ -434,7 +434,7 @@ export function GlobalSearchModal({
               ref={inputRef}
               value={query}
               onChange={(e) => handleInputChange(e.target.value)}
-              onFocus={() => !query.trim() && setShowPrefixSuggestions(true)}
+              
               onBlur={() => setTimeout(() => setShowPrefixSuggestions(false), 150)}
               placeholder="Rechercher des messages..."
               className="pl-9 pr-4 h-10 bg-input"

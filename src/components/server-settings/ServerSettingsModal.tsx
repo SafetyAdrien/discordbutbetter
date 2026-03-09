@@ -142,14 +142,14 @@ export function ServerSettingsModal({
                   'w-full flex items-center gap-3 px-3 rounded-2xl text-sm transition-all duration-300',
                   isMobile ? 'py-3' : 'py-1',
                   activeTab === tab.id
-                    ? 'bg-primary/12 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-muted text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 )}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
               >
                 <div className={cn(
                   'w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-200',
-                  activeTab === tab.id ? 'bg-primary/15' : 'bg-transparent'
+                  'bg-transparent'
                 )}>
                   <tab.icon className="w-4 h-4" />
                 </div>
@@ -170,18 +170,16 @@ export function ServerSettingsModal({
               'w-full flex items-center gap-3 px-3 rounded-2xl text-sm transition-all duration-300',
               isMobile ? 'py-3' : 'py-2',
               activeTab === tab.id
-                ? tab.danger ? 'bg-destructive/10 text-destructive font-medium' : 'bg-primary/12 text-primary font-medium'
+                ? tab.danger ? 'bg-destructive/8 text-destructive font-medium' : 'bg-muted text-foreground font-medium'
                 : tab.danger 
-                  ? 'text-destructive/70 hover:bg-destructive/8 hover:text-destructive'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'text-destructive/70 hover:bg-destructive/5 hover:text-destructive'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
             )}
             style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
           >
             <div className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
-              activeTab === tab.id
-                ? tab.danger ? 'bg-destructive/15' : 'bg-primary/15'
-                : tab.danger ? 'bg-destructive/5' : 'bg-transparent'
+              tab.danger ? 'bg-transparent' : 'bg-transparent'
             )}>
               <tab.icon className="w-4 h-4" />
             </div>

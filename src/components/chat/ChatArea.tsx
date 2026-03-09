@@ -1638,25 +1638,43 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         <div className="relative">
                           {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
                           <div className="flex gap-3 items-start">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
-                                  {formatTime(message.timestamp)}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="text-xs">
-                                {new Date(message.timestamp).toLocaleString("fr-FR", {
-                                  weekday: "long",
-                                  day: "numeric",
-                                  month: "long",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  second: "2-digit",
-                                })}
-                              </TooltipContent>
-                            </Tooltip>
+                            <span className="w-10 flex-shrink-0" aria-hidden="true" />
                             <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-2 flex-nowrap">
+                                <button
+                                  onClick={() => handleUserClick(message.author)}
+                                  className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                                >
+                                  {message.author.displayName}
+                                </button>
+                                {(message as any).isSystemMessage && (
+                                  <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5865f2] bg-[#5865f2]/10 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
+                                    SYSTEM
+                                  </span>
+                                )}
+                                {memberRoles?.get(message.author.id)?.[0] &&
+                                  memberRoles.get(message.author.id)![0].icon_url && (
+                                    <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
+                                  )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-xs text-muted-foreground flex-shrink-0 cursor-default">
+                                      {formatTime(message.timestamp)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                      weekday: "long",
+                                      day: "numeric",
+                                      month: "long",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      second: "2-digit",
+                                    })}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
                               {isEditing ? (
                                 <div className="space-y-2">
                                   <Textarea

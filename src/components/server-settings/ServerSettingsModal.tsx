@@ -179,9 +179,7 @@ export function ServerSettingsModal({
           >
             <div className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
-              activeTab === tab.id
-                ? tab.danger ? 'bg-destructive/15' : 'bg-primary/15'
-                : tab.danger ? 'bg-destructive/5' : 'bg-transparent'
+              tab.danger ? 'bg-transparent' : 'bg-transparent'
             )}>
               <tab.icon className="w-4 h-4" />
             </div>

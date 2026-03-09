@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { copyToClipboard } from '@/lib/clipboard';
+import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
@@ -71,6 +72,7 @@ function SortableServerIcon({
   onLeave: () => void;
 }) {
   const { data: voiceParticipants } = useServerVoiceParticipants(server.id);
+  const { isGod } = usePermissions(server.id);
   const {
     attributes,
     listeners,
@@ -210,17 +212,21 @@ function SortableServerIcon({
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem 
-            onSelect={(e) => {
-              e.preventDefault();
-              onLeave();
-            }}
-            className="text-destructive focus:text-destructive"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Quitter le serveur
-          </ContextMenuItem>
+          {!isGod && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onLeave();
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Quitter le serveur
+              </ContextMenuItem>
+            </>
+          )}
         </ContextMenuContent>
       </ContextMenu>
       {/* Inline drop indicator - after */}

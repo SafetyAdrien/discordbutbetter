@@ -299,13 +299,6 @@
     transition: none;
   }
 
-  .server-icon:hover {
-    border-radius: var(--radius-xl);
-  }
-
-  .server-icon.active {
-    border-radius: var(--radius-xl);
-  }
 
   /* === MATERIAL YOU CHANNEL ITEM === */
   .channel-item {

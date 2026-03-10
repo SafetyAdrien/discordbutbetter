@@ -1,61 +1,34 @@
 
 
-# Fix: Duplicated channel hidden by visibility filter
+# Correction des contours de focus — approche renforcée
 
-## Root cause
+## Problème
+La règle CSS actuelle ne fonctionne pas correctement pour deux raisons :
+1. Le sélecteur `[class*="focus-visible:ring"]` ne match pas les classes Tailwind compilées (les deux-points sont échappés dans le DOM).
+2. Le `MessageInput` utilise `focus-within:border-primary/40` et `focus-within:ring-2` — un pseudo-class différent de `focus-visible`, donc non couvert.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Solution
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+**Fichier : `src/index.css`** — Remplacer le bloc actuel (lignes 217-228) par une règle plus robuste :
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
-
-## Fix
-
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
-
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
-
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
-
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
+```css
+/* Global focus ring removal */
+*:focus, *:focus-visible, *:focus-within {
+  outline: none !important;
+}
+*, *::before, *::after {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
 }
 ```
 
-### Code for onSuccess addition
+Cela écrase les variables Tailwind ring globalement et couvre `focus`, `focus-visible` et `focus-within`.
 
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
+**Fichier : `src/components/chat/MessageInput.tsx`** (ligne 509) — Retirer `focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10` du className du conteneur input.
 
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
+**Fichier : `.focus-ring` class** (lignes 447-451) — Supprimer cette classe utilitaire inutilisée ou la vider.
+
+## Fichiers modifiés
+- `src/index.css`
+- `src/components/chat/MessageInput.tsx`
 

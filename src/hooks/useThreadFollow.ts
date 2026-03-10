@@ -67,8 +67,8 @@ export const useFollowThread = () => {
     onSettled: (_, __, threadId) => {
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['thread-follow', threadId, user.id] });
-        // Invalider la liste des threads suivis
         queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+        queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
       }
     },
   });

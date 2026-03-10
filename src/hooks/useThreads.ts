@@ -244,6 +244,8 @@ export const useCreateThread = () => {
       if (data?.channel_id) {
         queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
         queryClient.invalidateQueries({ queryKey: ['messages', data.channel_id] });
+        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+        queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
       }
     },
   });

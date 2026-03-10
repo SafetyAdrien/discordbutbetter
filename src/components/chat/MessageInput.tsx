@@ -506,7 +506,7 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--input))] border border-border/50 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10`} style={{ boxShadow: 'var(--shadow-elevation-2)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--input))] border border-border/50`} style={{ boxShadow: 'var(--shadow-elevation-2)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
           <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
             <PopoverTrigger asChild>
               <button

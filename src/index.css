@@ -215,14 +215,10 @@
   }
 
   /* Global focus ring removal */
-  *:focus-visible {
+  *:focus, *:focus-visible, *:focus-within {
     outline: none !important;
-    box-shadow: none !important;
   }
-
-  .ring-ring, [class*="focus-visible:ring"], [class*="focus:ring"] {
-    --tw-ring-color: transparent !important;
-    --tw-ring-offset-color: transparent !important;
+  *, *::before, *::after {
     --tw-ring-shadow: 0 0 #0000 !important;
     --tw-ring-offset-shadow: 0 0 #0000 !important;
   }
@@ -445,9 +441,7 @@
   }
   
   .focus-ring {
-    @apply focus-visible:ring-2 focus-visible:ring-primary/50 
-           focus-visible:ring-offset-2 focus-visible:ring-offset-background
-           focus-visible:outline-none;
+    @apply focus-visible:outline-none;
   }
 
   .animation-pulse-glow {

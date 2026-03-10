@@ -349,6 +349,7 @@ export const useLockThread = () => {
       toast.success(data.locked ? 'Fil verrouillé' : 'Fil déverrouillé');
       queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
       queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+      queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
     },
     onError: () => toast.error('Erreur lors du verrouillage'),

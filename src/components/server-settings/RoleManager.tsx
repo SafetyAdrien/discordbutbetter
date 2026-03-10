@@ -357,7 +357,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
             items={roleIds}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-1">
+            <div className="space-y-0">
               {roles.map((role) => (
                 <SortableRole
                   key={role.id}

@@ -92,7 +92,7 @@ function SortableRole({
 
       <div
         className={cn(
-          'flex items-center gap-2 px-1 py-2 rounded-lg transition-all duration-150 group',
+          'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group',
           isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
           isDragging && 'opacity-30',
           isDisabled && 'opacity-50'

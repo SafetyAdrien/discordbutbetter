@@ -441,9 +441,7 @@
   }
   
   .focus-ring {
-    @apply focus-visible:ring-2 focus-visible:ring-primary/50 
-           focus-visible:ring-offset-2 focus-visible:ring-offset-background
-           focus-visible:outline-none;
+    @apply focus-visible:outline-none;
   }
 
   .animation-pulse-glow {

@@ -322,9 +322,11 @@ export const useDeleteThread = () => {
     onSuccess: () => {
       toast.success('Thread supprimé');
     },
-    onSettled: (_, __, { channelId }) => {
+    onSettled: (_, __, { threadId, channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['thread', threadId] });
       queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
     },
   });
 };

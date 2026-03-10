@@ -420,6 +420,7 @@ export const useUpdateThread = () => {
         queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
         queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
         queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+        queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
       }
     },
   });

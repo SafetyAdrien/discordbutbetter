@@ -244,6 +244,8 @@ export const useCreateThread = () => {
       if (data?.channel_id) {
         queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
         queryClient.invalidateQueries({ queryKey: ['messages', data.channel_id] });
+        queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+        queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
       }
     },
   });
@@ -281,8 +283,11 @@ export const useArchiveThread = () => {
     onSuccess: () => {
       toast.success('Thread archivé');
     },
-    onSettled: (_, __, { channelId }) => {
+    onSettled: (_, __, { threadId, channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['thread', threadId] });
+      queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
     },
   });
 };
@@ -320,9 +325,11 @@ export const useDeleteThread = () => {
     onSuccess: () => {
       toast.success('Thread supprimé');
     },
-    onSettled: (_, __, { channelId }) => {
+    onSettled: (_, __, { threadId, channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['thread', threadId] });
       queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
     },
   });
 };
@@ -345,6 +352,7 @@ export const useLockThread = () => {
       toast.success(data.locked ? 'Fil verrouillé' : 'Fil déverrouillé');
       queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
       queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+      queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
     },
     onError: () => toast.error('Erreur lors du verrouillage'),
@@ -369,6 +377,7 @@ export const useCloseThread = () => {
       toast.success(data.closed ? 'Fil fermé' : 'Fil rouvert');
       queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
       queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
+      queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
       queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
     },
     onError: () => toast.error('Erreur lors de la fermeture'),
@@ -414,6 +423,7 @@ export const useUpdateThread = () => {
         queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
         queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
         queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
+        queryClient.invalidateQueries({ queryKey: ['all-followed-threads'] });
       }
     },
   });

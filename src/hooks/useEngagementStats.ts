@@ -30,12 +30,7 @@ export function useEngagementStats(serverId: string) {
 
   const query = useQuery({
     queryKey: ['engagement-stats', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:engagement-stats:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`engagement-stats:${serverId}`),
     queryFn: async () => {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);

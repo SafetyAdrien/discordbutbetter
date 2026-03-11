@@ -57,12 +57,7 @@ export function useServerInvites(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['invites', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:invites:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`invites:${serverId}`),
     queryFn: async (): Promise<Invite[]> => {
       if (!serverId) return [];
 

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;

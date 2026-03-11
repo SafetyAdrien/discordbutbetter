@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface ServerSettings {
   id: string;

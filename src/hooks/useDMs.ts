@@ -38,12 +38,7 @@ export function useDMConversations() {
 
   const query = useQuery({
     queryKey: ['dm-conversations', user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:dm-conversations:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`dm-conversations:${user?.id}`),
     queryFn: async (): Promise<DMConversation[]> => {
       if (!user) return [];
 

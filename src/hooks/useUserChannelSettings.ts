@@ -58,12 +58,7 @@ export function useUserChannelSettings(serverId: string | null) {
       }));
     },
     enabled: !!user && !!serverId,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:user-channel-settings:${serverId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`user-channel-settings:${serverId}:${user?.id}`),
   });
 
   // Persist to sessionStorage

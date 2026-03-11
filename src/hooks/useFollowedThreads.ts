@@ -47,12 +47,7 @@ export const useFollowedThreads = (channelId: string | undefined) => {
       return threadsWithCounts;
     },
     enabled: !!channelId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:followed-threads:${channelId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`followed-threads:${channelId}:${user?.id}`),
   });
 
   // Persist to sessionStorage

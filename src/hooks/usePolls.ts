@@ -270,10 +270,9 @@ export function useThreadPolls(threadId: string | null) {
     placeholderData: () => cacheGetSync(`polls:thread:${threadId}`),
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && threadId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:polls:thread:${threadId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`polls:thread:${threadId}`, query.data);
     }
   }, [query.data, threadId, query.isPlaceholderData]);
 

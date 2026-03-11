@@ -83,12 +83,9 @@ export function useNavigationState() {
     setState(prev => ({ ...prev, activeChannelId: channelId }));
     // Track recent channels for preloader cache optimization
     if (channelId) {
-      try {
-        const raw = sessionStorage.getItem('cache:recent-channels');
-        const recent: string[] = raw ? JSON.parse(raw) : [];
-        const updated = [channelId, ...recent.filter(id => id !== channelId)].slice(0, 30);
-        sessionStorage.setItem('cache:recent-channels', JSON.stringify(updated));
-      } catch {}
+      const recent: string[] = cacheGetSync<string[]>('recent-channels') || [];
+      const updated = [channelId, ...recent.filter(id => id !== channelId)].slice(0, 30);
+      cacheSetAsync('recent-channels', updated);
     }
   }, []);
 

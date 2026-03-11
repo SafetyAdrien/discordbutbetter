@@ -86,12 +86,7 @@ export function useDMPinnedMessages(conversationId: string | null) {
         message: item.message,
       })) as DMPinnedMessage[];
     },
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:dm-pinned-messages:${conversationId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`dm-pinned-messages:${conversationId}`),
   });
 
   // Persist to sessionStorage

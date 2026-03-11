@@ -104,12 +104,7 @@ export function usePolls(channelId: string | null) {
       return pollsWithDetails as Poll[];
     },
     enabled: !!channelId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:polls:channel:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`polls:channel:${channelId}`),
   });
 
   // Persist to sessionStorage

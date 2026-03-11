@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useEngagementStats(serverId: string) {

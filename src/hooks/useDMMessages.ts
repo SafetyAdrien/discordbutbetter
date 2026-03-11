@@ -80,12 +80,10 @@ export function useDMMessages(conversationId: string | null) {
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && conversationId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:dm-messages:${conversationId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`dm-messages:${conversationId}`, query.data);
     }
   }, [query.data, conversationId, query.isPlaceholderData]);
 

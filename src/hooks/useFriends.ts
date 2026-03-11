@@ -28,12 +28,7 @@ export function useFriends() {
 
   const query = useQuery({
     queryKey: ['friends', user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:friends:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`friends:${user?.id}`),
     queryFn: async (): Promise<FriendWithProfile[]> => {
       if (!user) return [];
 

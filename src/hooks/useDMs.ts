@@ -129,10 +129,10 @@ export function useDMConversations() {
     enabled: !!user,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:dm-conversations:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`dm-conversations:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

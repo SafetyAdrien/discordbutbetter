@@ -58,10 +58,10 @@ export function useNotifications() {
     enabled: !!user,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:notifications:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`notifications:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

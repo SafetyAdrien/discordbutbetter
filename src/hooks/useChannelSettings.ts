@@ -65,7 +65,7 @@ export function useChannelDetails(channelId: string | null) {
 
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:channel-details:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`channel-details:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

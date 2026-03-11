@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import ParticleBackground from '@/components/effects/ParticleBackground';
+import { ParticleBackground } from '@/components/effects/ParticleBackground';
 
 const motivationalPhrases = [
   "Là où les communautés prennent vie.",

@@ -10,12 +10,7 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
 
   const query = useQuery({
     queryKey: ['thread-unread-counts', channelId, user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:thread-unread:${channelId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`thread-unread:${channelId}:${user?.id}`),
     queryFn: async () => {
       if (!channelId || !user?.id) return {};
 

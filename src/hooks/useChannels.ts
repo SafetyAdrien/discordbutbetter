@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -133,10 +134,7 @@ export function useChannels(
     // Persist from sessionStorage for instant hydration after refresh
     placeholderData: () => {
       if (initialData) return undefined;
-      try {
-        const cached = sessionStorage.getItem(`cache:channels:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
+      return cacheGetSync(`channels:${serverId}`);
     },
     // Keep staleTime short so Realtime invalidations trigger immediate refetch
     staleTime: 0,
@@ -145,9 +143,7 @@ export function useChannels(
   // Persist channels cache to sessionStorage
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:channels:${serverId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`channels:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

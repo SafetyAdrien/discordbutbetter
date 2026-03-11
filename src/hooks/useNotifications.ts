@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
@@ -31,12 +32,7 @@ export function useNotifications() {
 
   const query = useQuery({
     queryKey: ['notifications'],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:notifications:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`notifications:${user?.id}`),
     queryFn: async (): Promise<ServerNotification[]> => {
       if (!user) return [];
 
@@ -62,10 +58,10 @@ export function useNotifications() {
     enabled: !!user,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:notifications:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`notifications:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { soundEffects } from '@/utils/audio/SoundEffects';
@@ -77,12 +78,7 @@ export function useServerUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['server-unread-counts', user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-unread:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-unread:${user?.id}`),
     queryFn: async (): Promise<Record<string, ServerUnreadInfo>> => {
       if (!user) return {};
 
@@ -178,7 +174,7 @@ export function useServerUnreadCounts() {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-unread:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-unread:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

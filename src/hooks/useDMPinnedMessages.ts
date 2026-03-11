@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -85,18 +86,13 @@ export function useDMPinnedMessages(conversationId: string | null) {
         message: item.message,
       })) as DMPinnedMessage[];
     },
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:dm-pinned-messages:${conversationId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`dm-pinned-messages:${conversationId}`),
   });
 
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && conversationId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:dm-pinned-messages:${conversationId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`dm-pinned-messages:${conversationId}`, query.data);
     }
   }, [query.data, conversationId, query.isPlaceholderData]);
 

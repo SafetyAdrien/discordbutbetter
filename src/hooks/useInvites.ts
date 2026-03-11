@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -56,12 +57,7 @@ export function useServerInvites(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['invites', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:invites:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`invites:${serverId}`),
     queryFn: async (): Promise<Invite[]> => {
       if (!serverId) return [];
 
@@ -85,7 +81,7 @@ export function useServerInvites(serverId: string | null) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:invites:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`invites:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -41,12 +42,7 @@ export function useServerRoles(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['roles', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:roles:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`roles:${serverId}`),
     queryFn: async (): Promise<RoleWithPermissions[]> => {
       if (!serverId) return [];
 
@@ -78,10 +74,10 @@ export function useServerRoles(serverId: string | null) {
     staleTime: 0,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:roles:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`roles:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

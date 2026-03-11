@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -28,12 +29,7 @@ export function useMediaPosts(channelId: string) {
 
   const query = useQuery<MediaPost[]>({
     queryKey: ['media-posts', channelId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:media-posts:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`media-posts:${channelId}`),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('media_posts')
@@ -89,7 +85,7 @@ export function useMediaPosts(channelId: string) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:media-posts:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`media-posts:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

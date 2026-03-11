@@ -1,114 +1,61 @@
 
 
-# Refactorisation technologique : IndexedDB, Canvas API, WebAssembly
+# Fix: Duplicated channel hidden by visibility filter
 
-## Vue d'ensemble
+## Root cause
 
-Trois axes de travail pour aligner l'application sur les technologies modernes de Discord :
-1. Migrer le cache sessionStorage vers IndexedDB (32 fichiers impactés)
-2. Ajouter des effets visuels via Canvas API
-3. Etendre l'usage de WebAssembly pour le traitement media
+The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
 
----
+When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
 
-## 1. Migration IndexedDB
+On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
 
-### Nouveau fichier : `src/lib/cache.ts`
+## Fix
 
-Couche d'abstraction IndexedDB avec API async simple :
-- `cacheGet(key)` / `cacheSet(key, value)` / `cacheDelete(key)` / `cacheClear()`
-- Base de données `app-cache`, object store `kv`
-- Fallback silencieux sur sessionStorage si IndexedDB indisponible (navigation privee)
-- TTL optionnel par entree
+Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
 
-### Migration des 32 hooks
+### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
 
-Remplacer le pattern synchrone :
-```ts
-// AVANT
-placeholderData: () => {
-  const cached = sessionStorage.getItem(`cache:...`);
-  return cached ? JSON.parse(cached) : undefined;
+After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+
+### 2. In `onSuccess`: invalidate the permissions cache
+
+After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
+
+### 3. Hook needs `useAuth` for the user ID
+
+Add `useAuth()` to get the user ID for the correct permissions cache key.
+
+## Detailed changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
+
+### Code sketch for onMutate addition (after servers cache update)
+
+```text
+// 3) Add temp channel to permissions cache so visibility filter passes
+const permKey = ['server-channel-permissions', serverId, user?.id];
+const prevPerms = queryClient.getQueryData(permKey);
+if (prevPerms) {
+  const newViewable = new Set(prevPerms.viewable);
+  const newConnectable = new Set(prevPerms.connectable);
+  newViewable.add(tempId);
+  newConnectable.add(tempId);
+  queryClient.setQueryData(permKey, {
+    viewable: newViewable,
+    connectable: newConnectable,
+  });
 }
-// + useEffect pour persister
 ```
 
-Par le pattern async IndexedDB :
-```ts
-// APRES
-const [cached, setCached] = useState();
-useEffect(() => { cacheGet('messages:' + id).then(setCached); }, [id]);
-// placeholderData utilise cached
-// useEffect persiste via cacheSet
+### Code for onSuccess addition
+
+```text
+// Also refresh permissions so real channel ID becomes visible
+queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
 ```
 
-Hooks concernes (tous dans `src/hooks/`) :
-- useMessages, useThreadMessages, useDMMessages
-- useChannels, useCategories, useChannelSettings
-- useMembers, useRoles, usePermissions
-- useServers, useServerAssets, useServerSettings
-- useChannelUnreadCounts, useThreadUnreadCounts, useServerUnreadCounts
-- usePinnedMessages, useDMPinnedMessages
-- useNotifications, useInvites, useWebhooks
-- useFollowedThreads, useUserChannelSettings
-- useEngagementStats, useAuditLogs
-- useFriends, useDMs, useProfile
-- useChannelPermissions, useCategoryPermissions
-- useAnnouncements, useMediaPosts
-
-### Nettoyage
-- Supprimer tous les `sessionStorage.getItem/setItem` du cache de donnees
-- Garder localStorage pour les preferences utilisateur legeres (theme, layout)
-
----
-
-## 2. Canvas API - Effets visuels
-
-### Nouveau fichier : `src/components/effects/ConfettiCanvas.tsx`
-- Canvas plein ecran en overlay (pointer-events: none)
-- Animation de confettis declenchee par evenements (boost serveur, nouveau membre)
-- RequestAnimationFrame pour performance
-- Auto-nettoyage apres animation
-
-### Nouveau fichier : `src/components/effects/ParticleBackground.tsx`
-- Particules subtiles pour l'ecran de chargement ou la page d'authentification
-- Rendu Canvas leger avec interpolation
-
-### Integration
-- LoadingScreen : fond anime avec particules
-- Auth page : effet visuel subtil
-- Boost : confettis lors d'un boost serveur
-
----
-
-## 3. WebAssembly - Extensions
-
-### Nouveau fichier : `src/utils/wasm/ImageCompressor.ts`
-- Compression d'images avant upload (avatars, bannieres) via un module Wasm
-- Redimensionnement cote client pour reduire la bande passante
-- Integration dans les formulaires d'upload existants (avatar, banniere serveur)
-
-### Amelioration : `src/utils/webrtc/AudioProcessor.ts`
-- Le traitement RNNoise (Wasm) est deja en place
-- Ajouter un compresseur audio Wasm optionnel pour les flux vocaux faible debit
-
----
-
-## Fichiers crees
-- `src/lib/cache.ts` (couche IndexedDB)
-- `src/components/effects/ConfettiCanvas.tsx`
-- `src/components/effects/ParticleBackground.tsx`
-- `src/utils/wasm/ImageCompressor.ts`
-
-## Fichiers modifies
-- 32 hooks dans `src/hooks/` (migration sessionStorage → IndexedDB)
-- `src/components/LoadingScreen.tsx` (particules)
-- `src/pages/Auth.tsx` (particules)
-
-## Ordre d'execution
-1. Creer `src/lib/cache.ts`
-2. Migrer tous les hooks (par lots)
-3. Creer les composants Canvas
-4. Creer le compresseur d'images Wasm
-5. Integrer les effets visuels
+This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
 

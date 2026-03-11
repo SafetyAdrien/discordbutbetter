@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -95,20 +96,13 @@ export function useMessages(channelId: string | null) {
       })) as MessageWithAuthor[];
     },
     enabled: !!channelId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:messages:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`messages:${channelId}`),
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:messages:${channelId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`messages:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

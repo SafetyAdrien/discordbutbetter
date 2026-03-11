@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -44,12 +45,7 @@ export function useChannelWebhooks(channelId: string | null) {
 
   const query = useQuery({
     queryKey: ['webhooks', channelId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:webhooks:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`webhooks:${channelId}`),
     queryFn: async (): Promise<Webhook[]> => {
       if (!channelId) return [];
 
@@ -64,7 +60,7 @@ export function useChannelWebhooks(channelId: string | null) {
 
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:webhooks:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`webhooks:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

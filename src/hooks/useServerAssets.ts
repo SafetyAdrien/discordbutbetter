@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -51,12 +52,7 @@ export function useServerEmojis(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['server-emojis', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-emojis:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-emojis:${serverId}`),
     queryFn: async (): Promise<ServerEmoji[]> => {
       if (!serverId) return [];
 
@@ -74,7 +70,7 @@ export function useServerEmojis(serverId: string | null) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-emojis:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-emojis:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 
@@ -234,12 +230,7 @@ export function useServerStickers(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['server-stickers', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-stickers:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-stickers:${serverId}`),
     queryFn: async (): Promise<ServerSticker[]> => {
       if (!serverId) return [];
 
@@ -257,7 +248,7 @@ export function useServerStickers(serverId: string | null) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-stickers:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-stickers:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

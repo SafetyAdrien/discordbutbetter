@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChannelType, CategoryWithChannels, OrphanChannel } from './useChannels';
 import { toast } from 'sonner';
@@ -46,12 +47,7 @@ export function useChannelDetails(channelId: string | null) {
 
   const query = useQuery({
     queryKey: ['channel-details', channelId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:channel-details:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`channel-details:${channelId}`),
     queryFn: async (): Promise<ChannelDetails | null> => {
       if (!channelId) return null;
 
@@ -69,7 +65,7 @@ export function useChannelDetails(channelId: string | null) {
 
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:channel-details:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`channel-details:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Mutation lock to prevent Realtime invalidations during local role mutations
@@ -54,12 +55,7 @@ export function useMembers(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['members', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:members:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`members:${serverId}`),
     queryFn: async (): Promise<MemberWithProfile[]> => {
       if (!serverId) return [];
 
@@ -131,10 +127,10 @@ export function useMembers(serverId: string | null) {
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:members:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`members:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

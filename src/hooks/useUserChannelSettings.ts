@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
@@ -57,18 +58,13 @@ export function useUserChannelSettings(serverId: string | null) {
       }));
     },
     enabled: !!user && !!serverId,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:user-channel-settings:${serverId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`user-channel-settings:${serverId}:${user?.id}`),
   });
 
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:user-channel-settings:${serverId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`user-channel-settings:${serverId}:${user.id}`, query.data);
     }
   }, [query.data, serverId, user?.id, query.isPlaceholderData]);
 

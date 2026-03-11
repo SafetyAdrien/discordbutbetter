@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -27,12 +28,7 @@ export function useFriends() {
 
   const query = useQuery({
     queryKey: ['friends', user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:friends:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`friends:${user?.id}`),
     queryFn: async (): Promise<FriendWithProfile[]> => {
       if (!user) return [];
 
@@ -77,7 +73,7 @@ export function useFriends() {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:friends:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`friends:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

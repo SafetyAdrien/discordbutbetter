@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { ThreadMessage } from '@/types/thread';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
@@ -61,20 +62,13 @@ export const useThreadMessages = (threadId: string | undefined) => {
       return data as ThreadMessage[];
     },
     enabled: !!threadId,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:thread-messages:${threadId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && threadId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:thread-messages:${threadId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`thread-messages:${threadId}`, query.data);
     }
   }, [query.data, threadId, query.isPlaceholderData]);
 

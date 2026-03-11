@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -76,20 +77,13 @@ export function useDMMessages(conversationId: string | null) {
       })) as DMMessage[];
     },
     enabled: !!conversationId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:dm-messages:${conversationId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && conversationId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:dm-messages:${conversationId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`dm-messages:${conversationId}`, query.data);
     }
   }, [query.data, conversationId, query.isPlaceholderData]);
 

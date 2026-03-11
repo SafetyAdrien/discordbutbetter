@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -160,20 +161,13 @@ export function useServers() {
     },
     enabled: !!user,
     // Persist from sessionStorage for instant hydration after refresh
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:servers:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`servers:${user?.id}`),
   });
 
-  // Persist servers cache to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:servers:${user.id}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`servers:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

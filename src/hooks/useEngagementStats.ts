@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useEngagementStats(serverId: string) {
@@ -29,12 +30,7 @@ export function useEngagementStats(serverId: string) {
 
   const query = useQuery({
     queryKey: ['engagement-stats', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:engagement-stats:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`engagement-stats:${serverId}`),
     queryFn: async () => {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -109,7 +105,7 @@ export function useEngagementStats(serverId: string) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:engagement-stats:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`engagement-stats:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

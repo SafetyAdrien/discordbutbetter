@@ -132,10 +132,9 @@ export function useChannelUnreadCounts(serverId: string | null) {
     refetchInterval: 60000,
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:channel-unread:${serverId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`channel-unread:${serverId}:${user.id}`, query.data);
     }
   }, [query.data, serverId, user?.id, query.isPlaceholderData]);
 

@@ -64,10 +64,9 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
     enabled: !!channelId && !!user?.id,
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:thread-unread:${channelId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`thread-unread:${channelId}:${user.id}`, query.data);
     }
   }, [query.data, channelId, user?.id, query.isPlaceholderData]);
 

@@ -97,10 +97,9 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
     };
   }, [serverId, queryClient]);
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:audit-logs:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`audit-logs:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

@@ -88,7 +88,7 @@ export function useServerSettings(serverId: string) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-settings:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-settings:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

@@ -501,7 +501,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 memberId,
               })
             }
-            className="flex items-center gap-3 w-full px-2.5 py-2 rounded-2xl hover:bg-surface-hover/40 group"
+            className="flex items-center gap-3 w-full px-2.5 py-1 rounded-2xl hover:bg-surface-hover/40 group"
             style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}
           >
             <div className="relative flex-shrink-0">
@@ -695,7 +695,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         <Separator className="mt-3" />
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
           {groupedMembers.map((group, index) => (
-            <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-4">
+            <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-2">
               <h3 className="px-3 py-1.5 text-xs font-semibold capitalize tracking-wider flex items-center gap-1.5 text-muted-foreground">
                 {group.role?.icon_url && (
                   <Tooltip>
@@ -718,7 +718,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 </span>
                 <span> — {group.members.length}</span>
               </h3>
-              <div className="space-y-0.5">{group.members.map(renderMember)}</div>
+              <div className="space-y-0">{group.members.map(renderMember)}</div>
             </div>
           ))}
         </div>

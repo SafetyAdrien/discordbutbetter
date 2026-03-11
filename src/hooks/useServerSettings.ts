@@ -55,12 +55,7 @@ export function useServerSettings(serverId: string) {
 
   const query = useQuery({
     queryKey: ['server-settings', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-settings:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-settings:${serverId}`),
     queryFn: async (): Promise<ServerSettings | null> => {
       const { data, error } = await supabase
         .from('server_settings')

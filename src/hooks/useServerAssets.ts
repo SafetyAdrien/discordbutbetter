@@ -70,7 +70,7 @@ export function useServerEmojis(serverId: string | null) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-emojis:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-emojis:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

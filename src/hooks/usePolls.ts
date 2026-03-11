@@ -267,12 +267,7 @@ export function useThreadPolls(threadId: string | null) {
       return pollsWithDetails as Poll[];
     },
     enabled: !!threadId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:polls:thread:${threadId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`polls:thread:${threadId}`),
   });
 
   // Persist to sessionStorage

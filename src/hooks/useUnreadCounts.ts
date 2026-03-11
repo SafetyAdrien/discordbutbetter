@@ -15,12 +15,7 @@ export function useUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['unread-counts', user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:unread-counts:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`unread-counts:${user?.id}`),
     queryFn: async (): Promise<Record<string, number>> => {
       if (!user) return {};
 

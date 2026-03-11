@@ -501,7 +501,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 memberId,
               })
             }
-            className="flex items-center gap-3 w-full px-2.5 py-2 rounded-2xl hover:bg-surface-hover/40 group"
+            className="flex items-center gap-3 w-full px-2.5 py-1 rounded-2xl hover:bg-surface-hover/40 group"
             style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}
           >
             <div className="relative flex-shrink-0">

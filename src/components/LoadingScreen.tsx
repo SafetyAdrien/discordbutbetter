@@ -52,7 +52,7 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-8 select-none relative overflow-hidden">
       {/* Canvas particle background */}
-      <ParticleBackground particleCount={40} speed={0.3} opacity={0.15} />
+      <ParticleBackground count={40} speed={0.3} />
 
       {/* Logo with pulse animation */}
       <div className="relative z-10">

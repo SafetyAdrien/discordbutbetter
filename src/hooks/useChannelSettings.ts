@@ -47,12 +47,7 @@ export function useChannelDetails(channelId: string | null) {
 
   const query = useQuery({
     queryKey: ['channel-details', channelId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:channel-details:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`channel-details:${channelId}`),
     queryFn: async (): Promise<ChannelDetails | null> => {
       if (!channelId) return null;
 

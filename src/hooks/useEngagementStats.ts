@@ -105,7 +105,7 @@ export function useEngagementStats(serverId: string) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:engagement-stats:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`engagement-stats:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

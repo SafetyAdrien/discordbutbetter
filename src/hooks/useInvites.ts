@@ -81,7 +81,7 @@ export function useServerInvites(serverId: string | null) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:invites:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`invites:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

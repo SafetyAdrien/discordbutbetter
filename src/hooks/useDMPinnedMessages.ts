@@ -92,7 +92,7 @@ export function useDMPinnedMessages(conversationId: string | null) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && conversationId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:dm-pinned-messages:${conversationId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`dm-pinned-messages:${conversationId}`, query.data);
     }
   }, [query.data, conversationId, query.isPlaceholderData]);
 

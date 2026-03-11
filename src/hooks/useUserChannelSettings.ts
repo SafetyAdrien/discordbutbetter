@@ -64,7 +64,7 @@ export function useUserChannelSettings(serverId: string | null) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:user-channel-settings:${serverId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`user-channel-settings:${serverId}:${user.id}`, query.data);
     }
   }, [query.data, serverId, user?.id, query.isPlaceholderData]);
 

@@ -96,12 +96,7 @@ export function useMessages(channelId: string | null) {
       })) as MessageWithAuthor[];
     },
     enabled: !!channelId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:messages:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`messages:${channelId}`),
   });
 
   // Persist to sessionStorage

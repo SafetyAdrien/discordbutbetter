@@ -45,12 +45,7 @@ export function useChannelWebhooks(channelId: string | null) {
 
   const query = useQuery({
     queryKey: ['webhooks', channelId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:webhooks:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`webhooks:${channelId}`),
     queryFn: async (): Promise<Webhook[]> => {
       if (!channelId) return [];
 

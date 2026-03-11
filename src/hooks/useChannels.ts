@@ -143,9 +143,7 @@ export function useChannels(
   // Persist channels cache to sessionStorage
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:channels:${serverId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`channels:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

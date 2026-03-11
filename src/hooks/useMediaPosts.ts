@@ -85,7 +85,7 @@ export function useMediaPosts(channelId: string) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:media-posts:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`media-posts:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

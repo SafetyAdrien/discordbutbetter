@@ -79,7 +79,7 @@ export function usePinnedMessages(channelId: string) {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:pinned-messages:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`pinned-messages:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

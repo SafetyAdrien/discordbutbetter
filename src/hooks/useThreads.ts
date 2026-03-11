@@ -121,7 +121,7 @@ export const useThreads = (channelId: string | undefined) => {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:threads:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`threads:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

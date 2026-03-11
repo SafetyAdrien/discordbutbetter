@@ -248,7 +248,7 @@ export function useServerStickers(serverId: string | null) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-stickers:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-stickers:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

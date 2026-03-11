@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface Poll {
   id: string;
@@ -103,18 +104,12 @@ export function usePolls(channelId: string | null) {
       return pollsWithDetails as Poll[];
     },
     enabled: !!channelId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:polls:channel:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`polls:channel:${channelId}`),
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:polls:channel:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`polls:channel:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 
@@ -272,18 +267,12 @@ export function useThreadPolls(threadId: string | null) {
       return pollsWithDetails as Poll[];
     },
     enabled: !!threadId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:polls:thread:${threadId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`polls:thread:${threadId}`),
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && threadId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:polls:thread:${threadId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`polls:thread:${threadId}`, query.data);
     }
   }, [query.data, threadId, query.isPlaceholderData]);
 

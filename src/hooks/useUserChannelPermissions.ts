@@ -2,48 +2,29 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 type ServerPermission = Database['public']['Enums']['server_permission'];
 
-// ── sessionStorage permission cache helpers ──
-// Persists permission results so that on hard refresh (CTRL+F5),
-// the last-known value is used instead of optimistic `true`.
+// ── IndexedDB permission cache helpers ──
 const PERM_CACHE_PREFIX = 'perm:';
 
 function getPermissionCache(key: string): boolean | null {
-  try {
-    const raw = sessionStorage.getItem(PERM_CACHE_PREFIX + key);
-    if (raw === null) return null;
-    return raw === '1';
-  } catch {
-    return null;
-  }
+  const raw = cacheGetSync<string>(PERM_CACHE_PREFIX + key);
+  if (raw === undefined) return null;
+  return raw === '1';
 }
 
 function setPermissionCache(key: string, value: boolean): void {
-  try {
-    sessionStorage.setItem(PERM_CACHE_PREFIX + key, value ? '1' : '0');
-  } catch {
-    // quota exceeded or private browsing – ignore
-  }
+  cacheSetAsync(PERM_CACHE_PREFIX + key, value ? '1' : '0');
 }
 
 function getPermissionsObjectCache(channelId: string): UserChannelPermissions | null {
-  try {
-    const raw = sessionStorage.getItem(PERM_CACHE_PREFIX + 'obj:' + channelId);
-    if (!raw) return null;
-    return JSON.parse(raw) as UserChannelPermissions;
-  } catch {
-    return null;
-  }
+  return cacheGetSync<UserChannelPermissions>(PERM_CACHE_PREFIX + 'obj:' + channelId) ?? null;
 }
 
 function setPermissionsObjectCache(channelId: string, perms: UserChannelPermissions): void {
-  try {
-    sessionStorage.setItem(PERM_CACHE_PREFIX + 'obj:' + channelId, JSON.stringify(perms));
-  } catch {
-    // ignore
-  }
+  cacheSetAsync(PERM_CACHE_PREFIX + 'obj:' + channelId, perms);
 }
 
 export interface UserChannelPermissions {

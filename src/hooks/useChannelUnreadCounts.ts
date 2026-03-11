@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;
@@ -68,12 +69,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['channel-unread-counts', serverId, user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:channel-unread:${serverId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`channel-unread:${serverId}:${user?.id}`),
     queryFn: async (): Promise<Record<string, ChannelUnreadInfo>> => {
       if (!user || !serverId) return {};
 
@@ -136,10 +132,9 @@ export function useChannelUnreadCounts(serverId: string | null) {
     refetchInterval: 60000,
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:channel-unread:${serverId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`channel-unread:${serverId}:${user.id}`, query.data);
     }
   }, [query.data, serverId, user?.id, query.isPlaceholderData]);
 

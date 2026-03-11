@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 interface PreloadStep {
   label: string;
@@ -16,17 +17,14 @@ interface PreloaderResult {
   steps: PreloadStep[];
 }
 
-/** Try to read from sessionStorage, return parsed data or null */
+/** Try to read from IndexedDB-backed memory cache */
 function readCache<T>(key: string): T | null {
-  try {
-    const raw = sessionStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  return cacheGetSync<T>(key) ?? null;
 }
 
-/** Write to sessionStorage, silently ignore quota errors */
+/** Write to IndexedDB-backed cache */
 function writeCache(key: string, data: unknown): void {
-  try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+  cacheSetAsync(key, data);
 }
 
 export function usePreloader(
@@ -54,7 +52,7 @@ export function usePreloader(
 
   // Adaptive min loading: instant if cache exists, otherwise short delay
   useEffect(() => {
-    const hasPreviousLoad = sessionStorage.getItem('cache:preloader-done');
+    const hasPreviousLoad = cacheGetSync('preloader-done');
     if (hasPreviousLoad) {
       setMinTimePassed(true);
       return;
@@ -79,7 +77,7 @@ export function usePreloader(
 
     // GROUP 1: Profile + server order
     const profilePromise = (async () => {
-      const cached = readCache<any>(`cache:profile:${user.id}`);
+      const cached = readCache<any>(`profile:${user.id}`);
       if (cached) {
         queryClient.setQueryData(['profile', user.id], cached);
         queryClient.setQueryData(['server-order', user.id], cached.server_order || []);
@@ -93,7 +91,7 @@ export function usePreloader(
           if (profile) {
             queryClient.setQueryData(['profile', user.id], profile);
             queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
-            writeCache(`cache:profile:${user.id}`, profile);
+            writeCache(`profile:${user.id}`, profile);
           }
         } catch {}
       }
@@ -104,7 +102,7 @@ export function usePreloader(
     // GROUP 2: Channels for all servers
     const channelsPromise = (async () => {
       await Promise.all(serverIds.map(async (sid) => {
-        const cached = readCache<any>(`cache:channels:${sid}`);
+        const cached = readCache<any>(`channels:${sid}`);
         if (cached) {
           queryClient.setQueryData(['channels', sid], cached);
           return;
@@ -129,7 +127,7 @@ export function usePreloader(
               })),
             };
             queryClient.setQueryData(['channels', sid], result);
-            writeCache(`cache:channels:${sid}`, result);
+            writeCache(`channels:${sid}`, result);
           }
         } catch {}
       }));
@@ -139,7 +137,7 @@ export function usePreloader(
     // GROUP 3: Members for all servers
     const membersPromise = (async () => {
       await Promise.all(serverIds.map(async (sid) => {
-        const cached = readCache<any>(`cache:members:${sid}`);
+        const cached = readCache<any>(`members:${sid}`);
         if (cached) {
           queryClient.setQueryData(['members', sid], cached);
           return;
@@ -180,7 +178,7 @@ export function usePreloader(
               serverProfile: profileMap.get(member.user?.id) ?? null,
             }));
             queryClient.setQueryData(['members', sid], members);
-            writeCache(`cache:members:${sid}`, members);
+            writeCache(`members:${sid}`, members);
           }
         } catch {}
       }));
@@ -190,7 +188,7 @@ export function usePreloader(
     // GROUP 4: Roles + permissions for all servers
     const permissionsPromise = (async () => {
       await Promise.all(serverIds.map(async (sid) => {
-        const cached = readCache<any>(`cache:roles:${sid}`);
+        const cached = readCache<any>(`roles:${sid}`);
         if (cached) {
           queryClient.setQueryData(['roles', sid], cached);
           return;
@@ -212,18 +210,17 @@ export function usePreloader(
               permissions: (permissions || []).filter(p => p.role_id === role.id).map(p => p.permission),
             }));
             queryClient.setQueryData(['roles', sid], rolesWithPerms);
-            writeCache(`cache:roles:${sid}`, rolesWithPerms);
+            writeCache(`roles:${sid}`, rolesWithPerms);
           }
         } catch {}
       }));
       setPermissionsLoaded(true);
     })();
 
-    // GROUP 5: DM conversations (read from sessionStorage written by useDMs hook, or fetch full data)
+    // GROUP 5: DM conversations
     const dmsPromise = (async () => {
-      const cached = readCache<any>(`cache:dm-conversations:${user.id}`);
+      const cached = readCache<any>(`dm-conversations:${user.id}`);
       if (cached && Array.isArray(cached) && cached.length > 0 && cached[0].participants) {
-        // Only use cache if it has full data (with participants)
         queryClient.setQueryData(['dm-conversations', user.id], cached);
       } else {
         try {
@@ -270,7 +267,7 @@ export function usePreloader(
                   return bMs - aMs;
                 });
                 queryClient.setQueryData(['dm-conversations', user.id], fullConversations);
-                writeCache(`cache:dm-conversations:${user.id}`, fullConversations);
+                writeCache(`dm-conversations:${user.id}`, fullConversations);
               }
             }
           }
@@ -282,7 +279,7 @@ export function usePreloader(
     // GROUP 6: Channel permissions for all servers
     const channelPermsPromise = (async () => {
       await Promise.all(serverIds.map(async (sid) => {
-        const cacheKey = `cache:channel-perms:${sid}:${user.id}`;
+        const cacheKey = `channel-perms:${sid}:${user.id}`;
         const cached = readCache<any>(cacheKey);
         if (cached) {
           queryClient.setQueryData(['server-channel-permissions', sid, user.id], {
@@ -311,13 +308,12 @@ export function usePreloader(
 
     // PHASE 2: After channels + DMs + channel perms resolved, preload messages + detailed perms
     const messagesPhase = Promise.all([channelsPromise, dmsPromise, channelPermsPromise]).then(async () => {
-      // 6b. Detailed channel permissions (send_messages, manage_messages, etc.)
+      // 6b. Detailed channel permissions
       const detailedPermsPromise = (async () => {
         try {
-          const recentChannels = readCache<string[]>('cache:recent-channels') || [];
+          const recentChannels = readCache<string[]>('recent-channels') || [];
           const channelIdsForPerms = new Set<string>(recentChannels.slice(0, 50));
 
-          // Add ALL text/announcement channels per server (not just the first one)
           const permTypes = ['text', 'announcement'];
           for (const sid of serverIds) {
             const channelData = queryClient.getQueryData(['channels', sid]) as any;
@@ -338,38 +334,31 @@ export function usePreloader(
           }
 
           await Promise.all([...channelIdsForPerms].map(async (chId) => {
-            // Check if already cached in sessionStorage
-            const PERM_CACHE_PREFIX = 'perm:';
-            const testKey = `${chId}:send_messages`;
-            try {
-              if (sessionStorage.getItem(PERM_CACHE_PREFIX + testKey) !== null) {
-                // Already cached — inject into queryClient from sessionStorage
-                const allPerms = [
-                  'read_messages', 'send_messages', 'manage_messages',
-                  'connect_voice', 'speak_voice', 'mention_everyone',
-                  'manage_channels', 'manage_roles', 'kick_members',
-                  'ban_members', 'manage_server', 'administrator',
-                  'mute_members', 'move_members', 'create_invites'
-                ];
-                for (const perm of allPerms) {
-                  const raw = sessionStorage.getItem(PERM_CACHE_PREFIX + `${chId}:${perm}`);
-                  if (raw !== null) {
-                    queryClient.setQueryData(
-                      ['channel-permission', chId, perm, user.id],
-                      { permission: perm, granted: raw === '1' }
-                    );
-                  }
+            // Check if already cached in IndexedDB memory
+            const testCached = cacheGetSync<string>(`perm:${chId}:send_messages`);
+            if (testCached !== undefined) {
+              const allPerms = [
+                'read_messages', 'send_messages', 'manage_messages',
+                'connect_voice', 'speak_voice', 'mention_everyone',
+                'manage_channels', 'manage_roles', 'kick_members',
+                'ban_members', 'manage_server', 'administrator',
+                'mute_members', 'move_members', 'create_invites'
+              ];
+              for (const perm of allPerms) {
+                const raw = cacheGetSync<string>(`perm:${chId}:${perm}`);
+                if (raw !== undefined) {
+                  queryClient.setQueryData(
+                    ['channel-permission', chId, perm, user.id],
+                    { permission: perm, granted: raw === '1' }
+                  );
                 }
-                // Also inject the permissions object cache
-                const objRaw = sessionStorage.getItem(PERM_CACHE_PREFIX + 'obj:' + chId);
-                if (objRaw) {
-                  try {
-                    queryClient.setQueryData(['user-channel-permissions', chId, user.id], JSON.parse(objRaw));
-                  } catch {}
-                }
-                return;
               }
-            } catch {}
+              const objCached = cacheGetSync<any>(`perm:obj:${chId}`);
+              if (objCached) {
+                queryClient.setQueryData(['user-channel-permissions', chId, user.id], objCached);
+              }
+              return;
+            }
 
             // Fetch from DB
             try {
@@ -380,18 +369,13 @@ export function usePreloader(
               if (data) {
                 const permMap: Record<string, boolean> = {};
                 (data as { permission: string; granted: boolean }[]).forEach(row => {
-                  // Inject into queryClient
                   queryClient.setQueryData(
                     ['channel-permission', chId, row.permission, user.id],
                     { permission: row.permission, granted: row.granted }
                   );
-                  // Write to sessionStorage
-                  try {
-                    sessionStorage.setItem(PERM_CACHE_PREFIX + `${chId}:${row.permission}`, row.granted ? '1' : '0');
-                  } catch {}
+                  cacheSetAsync(`perm:${chId}:${row.permission}`, row.granted ? '1' : '0');
                   permMap[row.permission] = row.granted;
                 });
-                // Also build and cache the permissions object
                 const permsObj = {
                   canReadMessages: permMap['read_messages'] ?? false,
                   canSendMessages: permMap['send_messages'] ?? false,
@@ -404,22 +388,19 @@ export function usePreloader(
                   isAdmin: permMap['administrator'] ?? false,
                 };
                 queryClient.setQueryData(['user-channel-permissions', chId, user.id], permsObj);
-                try {
-                  sessionStorage.setItem(PERM_CACHE_PREFIX + 'obj:' + chId, JSON.stringify(permsObj));
-                } catch {}
+                cacheSetAsync(`perm:obj:${chId}`, permsObj);
               }
             } catch {}
           }));
         } catch {}
       })();
 
-      // 7. Server messages — only active channel + last 5 visited per server
+      // 7. Server messages
       const serverMsgPromise = (async () => {
         try {
-          const recentChannels = readCache<string[]>('cache:recent-channels') || [];
+          const recentChannels = readCache<string[]>('recent-channels') || [];
           const channelIdsToLoad = new Set<string>(recentChannels.slice(0, 30));
 
-          // Also add first text channel per server as fallback
           for (const sid of serverIds) {
             const channelData = queryClient.getQueryData(['channels', sid]) as any;
             if (channelData) {
@@ -447,8 +428,7 @@ export function usePreloader(
           }
 
           await Promise.all([...channelIdsToLoad].map(async (chId) => {
-            // Skip if already in sessionStorage
-            const cached = readCache<any>(`cache:messages:${chId}`);
+            const cached = readCache<any>(`messages:${chId}`);
             if (cached) {
               queryClient.setQueryData(['messages', chId], cached);
               return;
@@ -472,7 +452,7 @@ export function usePreloader(
                 attachments: Array.isArray(msg.attachments) ? msg.attachments : []
               }));
               queryClient.setQueryData(['messages', chId], messages);
-              writeCache(`cache:messages:${chId}`, messages);
+              writeCache(`messages:${chId}`, messages);
             }
           }));
         } catch {}
@@ -485,7 +465,7 @@ export function usePreloader(
           const conversations = queryClient.getQueryData(['dm-conversations', user.id]) as any[] | undefined;
           if (conversations && conversations.length > 0) {
             await Promise.all(conversations.map(async (conv: any) => {
-              const cached = readCache<any>(`cache:dm-messages:${conv.id}`);
+              const cached = readCache<any>(`dm-messages:${conv.id}`);
               if (cached) {
                 queryClient.setQueryData(['dm-messages', conv.id], cached);
                 return;
@@ -507,7 +487,7 @@ export function usePreloader(
                   attachments: Array.isArray(msg.attachments) ? msg.attachments : []
                 }));
                 queryClient.setQueryData(['dm-messages', conv.id], messages);
-                writeCache(`cache:dm-messages:${conv.id}`, messages);
+                writeCache(`dm-messages:${conv.id}`, messages);
               }
             }));
           }
@@ -533,7 +513,7 @@ export function usePreloader(
               .filter((t: any) => serverIds.includes(t.channels?.server_id))
               .map((t: any) => t.id);
             await Promise.all(validThreadIds.map(async (tid: string) => {
-              const cached = readCache<any>(`cache:thread-messages:${tid}`);
+              const cached = readCache<any>(`thread-messages:${tid}`);
               if (cached) {
                 queryClient.setQueryData(['thread-messages', tid], cached);
                 return;
@@ -547,7 +527,7 @@ export function usePreloader(
                 .order('created_at', { ascending: true });
               if (data) {
                 queryClient.setQueryData(['thread-messages', tid], data);
-                writeCache(`cache:thread-messages:${tid}`, data);
+                writeCache(`thread-messages:${tid}`, data);
               }
             }));
           }
@@ -555,7 +535,7 @@ export function usePreloader(
         setThreadMessagesLoaded(true);
       })();
 
-      // 10. Threads for loaded channels (background) - text + announcement
+      // 10. Threads for loaded channels (background)
       const threadsPromise = (async () => {
         try {
           const channelIdsToLoad = new Set<string>();
@@ -574,7 +554,7 @@ export function usePreloader(
             }
           }
           await Promise.all([...channelIdsToLoad].map(async (chId) => {
-            const cached = readCache<any>(`cache:threads:${chId}`);
+            const cached = readCache<any>(`threads:${chId}`);
             if (cached) {
               queryClient.setQueryData(['threads', chId], cached);
               return;
@@ -588,7 +568,7 @@ export function usePreloader(
                 .order('last_message_at', { ascending: false });
               if (data) {
                 queryClient.setQueryData(['threads', chId], data);
-                writeCache(`cache:threads:${chId}`, data);
+                writeCache(`threads:${chId}`, data);
               }
             } catch {}
           }));
@@ -613,7 +593,7 @@ export function usePreloader(
             }
           }
           await Promise.all([...channelIdsToLoad].map(async (chId) => {
-            const cached = readCache<any>(`cache:polls:channel:${chId}`);
+            const cached = readCache<any>(`polls:channel:${chId}`);
             if (cached) {
               queryClient.setQueryData(['polls', 'channel', chId], cached);
               return;
@@ -636,10 +616,10 @@ export function usePreloader(
                   })
                 );
                 queryClient.setQueryData(['polls', 'channel', chId], pollsWithDetails);
-                writeCache(`cache:polls:channel:${chId}`, pollsWithDetails);
+                writeCache(`polls:channel:${chId}`, pollsWithDetails);
               } else if (polls) {
                 queryClient.setQueryData(['polls', 'channel', chId], []);
-                writeCache(`cache:polls:channel:${chId}`, []);
+                writeCache(`polls:channel:${chId}`, []);
               }
             } catch {}
           }));
@@ -652,7 +632,6 @@ export function usePreloader(
       try {
         const imageUrls = new Set<string>();
 
-        // Collect all message channel IDs from queryClient
         for (const sid of serverIds) {
           const channelData = queryClient.getQueryData(['channels', sid]) as any;
           if (channelData) {
@@ -677,7 +656,6 @@ export function usePreloader(
           }
         }
 
-        // From DM messages
         const convos = queryClient.getQueryData(['dm-conversations', user.id]) as any[];
         convos?.forEach(conv => {
           const msgs = queryClient.getQueryData(['dm-messages', conv.id]) as any[];
@@ -688,7 +666,6 @@ export function usePreloader(
           });
         });
 
-        // Fire-and-forget prefetch
         imageUrls.forEach(url => {
           const img = new Image();
           img.src = url;
@@ -696,9 +673,9 @@ export function usePreloader(
       } catch {}
     });
 
-    // GROUP 7: Friends (background, no loading step)
+    // GROUP 7: Friends (background)
     const friendsPromise = (async () => {
-      const cached = readCache<any>(`cache:friends:${user.id}`);
+      const cached = readCache<any>(`friends:${user.id}`);
       if (cached) {
         queryClient.setQueryData(['friends', user.id], cached);
       } else {
@@ -717,7 +694,7 @@ export function usePreloader(
               return { ...f, profile, isIncoming: f.friend_id === user.id };
             }).filter(f => f.profile);
             queryClient.setQueryData(['friends', user.id], friends);
-            writeCache(`cache:friends:${user.id}`, friends);
+            writeCache(`friends:${user.id}`, friends);
           }
         } catch {}
       }
@@ -725,7 +702,7 @@ export function usePreloader(
 
     // GROUP 8: Notifications (background)
     const notificationsPromise = (async () => {
-      const cached = readCache<any>(`cache:notifications:${user.id}`);
+      const cached = readCache<any>(`notifications:${user.id}`);
       if (cached) {
         queryClient.setQueryData(['notifications'], cached);
       } else {
@@ -741,7 +718,7 @@ export function usePreloader(
             .order('created_at', { ascending: false });
           if (data) {
             queryClient.setQueryData(['notifications'], data);
-            writeCache(`cache:notifications:${user.id}`, data);
+            writeCache(`notifications:${user.id}`, data);
           }
         } catch {}
       }
@@ -749,41 +726,40 @@ export function usePreloader(
 
     // GROUP 9: Unread counts (background)
     const unreadCountsPromise = (async () => {
-      const cached = readCache<any>(`cache:unread-counts:${user.id}`);
+      const cached = readCache<any>(`unread-counts:${user.id}`);
       if (cached) {
         queryClient.setQueryData(['unread-counts', user.id], cached);
       }
-      const serverCached = readCache<any>(`cache:server-unread:${user.id}`);
+      const serverCached = readCache<any>(`server-unread:${user.id}`);
       if (serverCached) {
         queryClient.setQueryData(['server-unread-counts', user.id], serverCached);
       }
-      // Channel unread counts per server
       for (const sid of serverIds) {
-        const chUnread = readCache<any>(`cache:channel-unread:${sid}:${user.id}`);
+        const chUnread = readCache<any>(`channel-unread:${sid}:${user.id}`);
         if (chUnread) {
           queryClient.setQueryData(['channel-unread-counts', sid, user.id], chUnread);
         }
       }
     })();
 
-    // GROUP 10: Server assets (emojis + stickers) — background
+    // GROUP 10: Server assets (emojis + stickers)
     const assetsPromise = (async () => {
       await Promise.all(serverIds.map(async (sid) => {
-        const emojisCached = readCache<any>(`cache:server-emojis:${sid}`);
+        const emojisCached = readCache<any>(`server-emojis:${sid}`);
         if (emojisCached) {
           queryClient.setQueryData(['server-emojis', sid], emojisCached);
         }
-        const stickersCached = readCache<any>(`cache:server-stickers:${sid}`);
+        const stickersCached = readCache<any>(`server-stickers:${sid}`);
         if (stickersCached) {
           queryClient.setQueryData(['server-stickers', sid], stickersCached);
         }
       }));
     })();
 
-    // Run all groups in parallel, messages phase waits for channels+DMs
+    // Run all groups in parallel
     Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase, friendsPromise, notificationsPromise, unreadCountsPromise, assetsPromise])
       .then(() => {
-        writeCache('cache:preloader-done', '1');
+        writeCache('preloader-done', '1');
       });
   }, [serversLoaded, user, servers, queryClient]);
 

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface AuditLog {
   id: string;
@@ -45,12 +46,7 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
 
   const query = useQuery({
     queryKey: ['audit-logs', serverId, filters],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:audit-logs:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`audit-logs:${serverId}`),
     queryFn: async () => {
       let q = supabase
         .from('audit_logs')
@@ -101,10 +97,9 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
     };
   }, [serverId, queryClient]);
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:audit-logs:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`audit-logs:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

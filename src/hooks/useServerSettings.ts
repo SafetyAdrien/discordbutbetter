@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface ServerSettings {
   id: string;
@@ -54,12 +55,7 @@ export function useServerSettings(serverId: string) {
 
   const query = useQuery({
     queryKey: ['server-settings', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-settings:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-settings:${serverId}`),
     queryFn: async (): Promise<ServerSettings | null> => {
       const { data, error } = await supabase
         .from('server_settings')
@@ -92,7 +88,7 @@ export function useServerSettings(serverId: string) {
 
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:server-settings:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`server-settings:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

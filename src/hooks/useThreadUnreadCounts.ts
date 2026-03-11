@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export const useThreadUnreadCounts = (channelId: string | undefined) => {
   const { user } = useAuth();
@@ -9,12 +10,7 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
 
   const query = useQuery({
     queryKey: ['thread-unread-counts', channelId, user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:thread-unread:${channelId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`thread-unread:${channelId}:${user?.id}`),
     queryFn: async () => {
       if (!channelId || !user?.id) return {};
 
@@ -68,10 +64,9 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
     enabled: !!channelId && !!user?.id,
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:thread-unread:${channelId}:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`thread-unread:${channelId}:${user.id}`, query.data);
     }
   }, [query.data, channelId, user?.id, query.isPlaceholderData]);
 

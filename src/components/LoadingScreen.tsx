@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ParticleBackground } from '@/components/effects/ParticleBackground';
 
 const motivationalPhrases = [
   "Là où les communautés prennent vie.",
@@ -49,9 +50,12 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
   }, []);
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-8 select-none">
+    <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-8 select-none relative overflow-hidden">
+      {/* Canvas particle background */}
+      <ParticleBackground count={40} speed={0.3} />
+
       {/* Logo with pulse animation */}
-      <div className="relative">
+      <div className="relative z-10">
         <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
         <img
           src="/pwa-192x192.png"
@@ -63,7 +67,7 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
       </div>
 
       {/* Loading text */}
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-2 z-10">
         <p className="text-lg font-semibold text-foreground tracking-wide">
           Chargement{dots}
         </p>
@@ -72,8 +76,8 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
         </p>
       </div>
 
-      {/* Progress bar — real progress */}
-      <div className="w-64 flex flex-col items-center gap-2">
+      {/* Progress bar */}
+      <div className="w-64 flex flex-col items-center gap-2 z-10">
         <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
@@ -88,7 +92,7 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
       </div>
 
       {/* Tip */}
-      <div className="absolute bottom-8 px-6 max-w-md text-center">
+      <div className="absolute bottom-8 px-6 max-w-md text-center z-10">
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-primary">ASTUCE</span>
           {' — '}

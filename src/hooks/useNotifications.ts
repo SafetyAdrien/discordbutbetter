@@ -32,12 +32,7 @@ export function useNotifications() {
 
   const query = useQuery({
     queryKey: ['notifications'],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:notifications:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`notifications:${user?.id}`),
     queryFn: async (): Promise<ServerNotification[]> => {
       if (!user) return [];
 

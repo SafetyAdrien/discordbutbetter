@@ -60,7 +60,7 @@ export function useChannelWebhooks(channelId: string | null) {
 
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:webhooks:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`webhooks:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

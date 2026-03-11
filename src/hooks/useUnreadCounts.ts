@@ -74,7 +74,7 @@ export function useUnreadCounts() {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:unread-counts:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`unread-counts:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

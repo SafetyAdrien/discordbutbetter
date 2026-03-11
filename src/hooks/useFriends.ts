@@ -73,7 +73,7 @@ export function useFriends() {
   // Persist to sessionStorage
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:friends:${user.id}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`friends:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

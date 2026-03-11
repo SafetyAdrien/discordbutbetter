@@ -230,12 +230,7 @@ export function useServerStickers(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['server-stickers', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-stickers:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-stickers:${serverId}`),
     queryFn: async (): Promise<ServerSticker[]> => {
       if (!serverId) return [];
 

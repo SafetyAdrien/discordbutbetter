@@ -52,12 +52,7 @@ export function useServerEmojis(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['server-emojis', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:server-emojis:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`server-emojis:${serverId}`),
     queryFn: async (): Promise<ServerEmoji[]> => {
       if (!serverId) return [];
 

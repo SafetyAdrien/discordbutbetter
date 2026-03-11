@@ -115,12 +115,7 @@ export const useThreads = (channelId: string | undefined) => {
       return threadsWithData;
     },
     enabled: !!channelId,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:threads:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`threads:${channelId}`),
   });
 
   // Persist to sessionStorage

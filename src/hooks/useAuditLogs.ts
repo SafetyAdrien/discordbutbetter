@@ -46,12 +46,7 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
 
   const query = useQuery({
     queryKey: ['audit-logs', serverId, filters],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:audit-logs:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`audit-logs:${serverId}`),
     queryFn: async () => {
       let q = supabase
         .from('audit_logs')

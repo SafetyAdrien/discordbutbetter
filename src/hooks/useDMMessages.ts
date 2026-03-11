@@ -77,12 +77,7 @@ export function useDMMessages(conversationId: string | null) {
       })) as DMMessage[];
     },
     enabled: !!conversationId && !!user,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:dm-messages:${conversationId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
   });
 
   // Persist to sessionStorage

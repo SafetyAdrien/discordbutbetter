@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 import { lockPermissionsMutation } from './usePermissionsRealtime';
+import { cacheDeleteByPrefix } from '@/lib/cache';
 
 type ServerPermission = Database['public']['Enums']['server_permission'];
 

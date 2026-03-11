@@ -41,12 +41,7 @@ export function useServerRoles(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['roles', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:roles:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`roles:${serverId}`),
     queryFn: async (): Promise<RoleWithPermissions[]> => {
       if (!serverId) return [];
 

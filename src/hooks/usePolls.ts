@@ -107,10 +107,9 @@ export function usePolls(channelId: string | null) {
     placeholderData: () => cacheGetSync(`polls:channel:${channelId}`),
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:polls:channel:${channelId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`polls:channel:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

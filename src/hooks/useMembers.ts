@@ -54,12 +54,7 @@ export function useMembers(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['members', serverId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:members:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`members:${serverId}`),
     queryFn: async (): Promise<MemberWithProfile[]> => {
       if (!serverId) return [];
 

@@ -718,7 +718,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 </span>
                 <span> — {group.members.length}</span>
               </h3>
-              <div className="space-y-0.5">{group.members.map(renderMember)}</div>
+              <div className="space-y-0">{group.members.map(renderMember)}</div>
             </div>
           ))}
         </div>

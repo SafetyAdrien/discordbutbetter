@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 const STORAGE_KEY = 'discord_navigation_state';
 

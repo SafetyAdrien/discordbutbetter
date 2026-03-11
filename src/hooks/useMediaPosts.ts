@@ -29,12 +29,7 @@ export function useMediaPosts(channelId: string) {
 
   const query = useQuery<MediaPost[]>({
     queryKey: ['media-posts', channelId],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:media-posts:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`media-posts:${channelId}`),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('media_posts')

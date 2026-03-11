@@ -160,12 +160,7 @@ export function useServers() {
     },
     enabled: !!user,
     // Persist from sessionStorage for instant hydration after refresh
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:servers:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`servers:${user?.id}`),
   });
 
   // Persist servers cache to sessionStorage

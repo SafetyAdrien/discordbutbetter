@@ -73,12 +73,7 @@ export function usePinnedMessages(channelId: string) {
       return data as unknown as PinnedMessage[];
     },
     enabled: !!channelId,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:pinned-messages:${channelId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`pinned-messages:${channelId}`),
   });
 
   // Persist to sessionStorage

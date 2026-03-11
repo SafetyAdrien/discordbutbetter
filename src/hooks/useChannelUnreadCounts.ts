@@ -69,12 +69,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['channel-unread-counts', serverId, user?.id],
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:channel-unread:${serverId}:${user?.id}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`channel-unread:${serverId}:${user?.id}`),
     queryFn: async (): Promise<Record<string, ChannelUnreadInfo>> => {
       if (!user || !serverId) return {};
 

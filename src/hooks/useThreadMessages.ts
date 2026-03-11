@@ -61,12 +61,7 @@ export const useThreadMessages = (threadId: string | undefined) => {
       return data as ThreadMessage[];
     },
     enabled: !!threadId,
-    placeholderData: () => {
-      try {
-        const cached = sessionStorage.getItem(`cache:thread-messages:${threadId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
-    },
+    placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
   });
 
   // Persist to sessionStorage

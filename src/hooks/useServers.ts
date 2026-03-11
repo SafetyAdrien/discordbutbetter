@@ -163,12 +163,10 @@ export function useServers() {
     placeholderData: () => cacheGetSync(`servers:${user?.id}`),
   });
 
-  // Persist servers cache to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && user?.id && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:servers:${user.id}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`servers:${user.id}`, query.data);
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 

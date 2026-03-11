@@ -64,12 +64,10 @@ export const useThreadMessages = (threadId: string | undefined) => {
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && threadId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:thread-messages:${threadId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`thread-messages:${threadId}`, query.data);
     }
   }, [query.data, threadId, query.isPlaceholderData]);
 

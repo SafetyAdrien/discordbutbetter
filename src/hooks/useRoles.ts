@@ -73,10 +73,10 @@ export function useServerRoles(serverId: string | null) {
     staleTime: 0,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:roles:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`roles:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

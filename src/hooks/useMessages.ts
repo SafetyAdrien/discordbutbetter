@@ -99,12 +99,10 @@ export function useMessages(channelId: string | null) {
     placeholderData: () => cacheGetSync(`messages:${channelId}`),
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && channelId && !query.isPlaceholderData) {
-      try {
-        sessionStorage.setItem(`cache:messages:${channelId}`, JSON.stringify(query.data));
-      } catch { /* quota exceeded */ }
+      cacheSetAsync(`messages:${channelId}`, query.data);
     }
   }, [query.data, channelId, query.isPlaceholderData]);
 

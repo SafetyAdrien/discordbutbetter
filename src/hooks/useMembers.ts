@@ -126,10 +126,10 @@ export function useMembers(serverId: string | null) {
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 
-  // Persist to sessionStorage
+  // Persist to IndexedDB
   useEffect(() => {
     if (query.data && serverId && !query.isPlaceholderData) {
-      try { sessionStorage.setItem(`cache:members:${serverId}`, JSON.stringify(query.data)); } catch {}
+      cacheSetAsync(`members:${serverId}`, query.data);
     }
   }, [query.data, serverId, query.isPlaceholderData]);
 

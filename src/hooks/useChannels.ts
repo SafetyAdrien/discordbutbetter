@@ -134,10 +134,7 @@ export function useChannels(
     // Persist from sessionStorage for instant hydration after refresh
     placeholderData: () => {
       if (initialData) return undefined;
-      try {
-        const cached = sessionStorage.getItem(`cache:channels:${serverId}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch { return undefined; }
+      return cacheGetSync(`channels:${serverId}`);
     },
     // Keep staleTime short so Realtime invalidations trigger immediate refetch
     staleTime: 0,

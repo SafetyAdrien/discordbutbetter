@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Puzzle, Bot, Webhook, ExternalLink } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Puzzle, Bot, Webhook, ExternalLink } from "lucide-react";
 
 interface IntegrationsPageProps {
   serverId: string;
@@ -9,18 +9,25 @@ interface IntegrationsPageProps {
 export function IntegrationsPage({ serverId }: IntegrationsPageProps) {
   const integrations = [
     {
-      id: 'webhooks',
-      name: 'Webhooks',
-      description: 'Recevez des notifications automatiques depuis d\'autres services',
+      id: "webhooks",
+      name: "Webhooks",
+      description: "Recevez des notifications automatiques depuis d'autres services",
       icon: Webhook,
       enabled: true,
       count: 0,
     },
     {
-      id: 'bots',
-      name: 'Bots',
-      description: 'Ajoutez des bots pour automatiser des tâches',
+      id: "bots",
+      name: "Bots",
+      description: "Ajoutez des bots pour automatiser des tâches",
       icon: Bot,
+      enabled: false,
+      count: 0,
+    },
+    {
+      id: "followed-channels",
+      name: "Channels Followed",
+      icon: Channel,
       enabled: false,
       count: 0,
     },
@@ -30,9 +37,7 @@ export function IntegrationsPage({ serverId }: IntegrationsPageProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-1">Intégrations</h3>
-        <p className="text-sm text-muted-foreground">
-          Connectez des applications et services externes à votre serveur
-        </p>
+        <p className="text-sm text-muted-foreground">Connectez des applications et services externes à votre serveur</p>
       </div>
 
       <div className="space-y-4">
@@ -46,7 +51,6 @@ export function IntegrationsPage({ serverId }: IntegrationsPageProps) {
                   </div>
                   <div>
                     <CardTitle className="text-base">{integration.name}</CardTitle>
-                    <CardDescription>{integration.description}</CardDescription>
                   </div>
                 </div>
                 <Button variant="outline" size="sm">
@@ -58,7 +62,7 @@ export function IntegrationsPage({ serverId }: IntegrationsPageProps) {
             {integration.count > 0 && (
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {integration.count} {integration.name.toLowerCase()} actif{integration.count > 1 ? 's' : ''}
+                  {integration.count} {integration.name.toLowerCase()} actif{integration.count > 1 ? "s" : ""}
                 </p>
               </CardContent>
             )}

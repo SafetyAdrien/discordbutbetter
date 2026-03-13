@@ -27,7 +27,7 @@ export function IntegrationsPage({ serverId }: IntegrationsPageProps) {
     {
       id: "followed-channels",
       name: "Channels Followed",
-      icon: Channel,
+      icon: Webhook,
       enabled: false,
       count: 0,
     },

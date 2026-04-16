@@ -20,6 +20,7 @@ import { ImageCropper } from '@/components/ui/image-cropper';
 import { compressImage } from '@/utils/wasm/ImageCompressor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 function formatStrictChannelName(name: string): string {
   return name
@@ -28,7 +29,6 @@ function formatStrictChannelName(name: string): string {
     .replace(/[^\p{L}\p{N}\p{Emoji_Presentation}\p{So}・\-_]/gu, '');
 }
 
-// Slowmode steps: index -> seconds
 const SLOWMODE_STEPS = [0, 5, 10, 15, 30, 60, 120, 300, 600];
 
 function formatSlowmodeLabel(seconds: number): string {
@@ -68,6 +68,8 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   );
   const [slowmodeIndex, setSlowmodeIndex] = useState(secondsToIndex(channel.slowmode_seconds ?? 0));
   const [iconUrl, setIconUrl] = useState<string | null>(channel.icon_url ?? null);
+  const [pendingIconBlob, setPendingIconBlob] = useState<Blob | null>(null);
+  const [iconRemoved, setIconRemoved] = useState(false);
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,13 +80,14 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
-  // Re-sync local state when channel prop changes
   useEffect(() => {
     setName(channel.name);
     setDescription(channel.description || '');
     setChannelType(channel.type === 'announcement' ? 'announcement' : 'text');
     setSlowmodeIndex(secondsToIndex(channel.slowmode_seconds ?? 0));
     setIconUrl(channel.icon_url ?? null);
+    setPendingIconBlob(null);
+    setIconRemoved(false);
   }, [channel.id, channel.name, channel.description, channel.type, channel.slowmode_seconds, channel.icon_url]);
 
   const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
@@ -97,11 +100,14 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const effectiveName = shouldFormatStrict ? formatStrictChannelName(name.trim()) : name.trim();
   const currentSlowmodeSeconds = SLOWMODE_STEPS[slowmodeIndex];
 
+  const iconChanged = pendingIconBlob !== null || iconRemoved;
+
   const hasChanges = 
     effectiveName !== channel.name || 
     description !== (channel.description || '') ||
     (canToggleType && channelType !== channel.type) ||
-    (supportsSlowmode && currentSlowmodeSeconds !== (channel.slowmode_seconds ?? 0));
+    (supportsSlowmode && currentSlowmodeSeconds !== (channel.slowmode_seconds ?? 0)) ||
+    iconChanged;
 
   const handleTypeToggle = (isAnnouncement: boolean) => {
     setChannelType(isAnnouncement ? 'announcement' : 'text');
@@ -122,66 +128,20 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     }
     const url = URL.createObjectURL(file);
     setCropperSrc(url);
-    // Reset input so same file can be re-selected
     e.target.value = '';
   };
 
-  const handleCropComplete = async (blob: Blob) => {
-    setIsUploadingIcon(true);
-    try {
-      // Compress the image
-      const compressed = await compressImage(blob, {
-        maxWidth: 128,
-        maxHeight: 128,
-        quality: 0.9,
-        maxBytes: 64 * 1024,
-      });
-
-      const ext = compressed.format === 'image/webp' ? 'webp' : compressed.format === 'image/png' ? 'png' : 'jpg';
-      const filePath = `${channel.id}/icon.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('channel-icons')
-        .upload(filePath, compressed.blob, { upsert: true, contentType: compressed.format });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('channel-icons')
-        .getPublicUrl(filePath);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-
-      await updateChannel.mutateAsync({
-        channelId: channel.id,
-        serverId: channel.server_id,
-        name: channel.name,
-        icon_url: publicUrl,
-      });
-
-      setIconUrl(publicUrl);
-      toast.success('Icône du salon mise à jour');
-    } catch (error) {
-      console.error('Icon upload error:', error);
-      toast.error("Erreur lors de l'upload de l'icône");
-    } finally {
-      setIsUploadingIcon(false);
-    }
+  const handleCropComplete = (blob: Blob) => {
+    const previewUrl = URL.createObjectURL(blob);
+    setIconUrl(previewUrl);
+    setPendingIconBlob(blob);
+    setIconRemoved(false);
   };
 
-  const handleRemoveIcon = async () => {
-    try {
-      await updateChannel.mutateAsync({
-        channelId: channel.id,
-        serverId: channel.server_id,
-        name: channel.name,
-        icon_url: null,
-      });
-      setIconUrl(null);
-      toast.success('Icône retirée');
-    } catch {
-      toast.error("Erreur lors de la suppression de l'icône");
-    }
+  const handleRemoveIcon = () => {
+    setIconUrl(null);
+    setPendingIconBlob(null);
+    setIconRemoved(true);
   };
 
   const handleSave = async () => {
@@ -198,6 +158,36 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         return;
       }
 
+      let finalIconUrl: string | null | undefined = undefined;
+
+      if (pendingIconBlob) {
+        setIsUploadingIcon(true);
+        const compressed = await compressImage(pendingIconBlob, {
+          maxWidth: 128,
+          maxHeight: 128,
+          quality: 0.9,
+          maxBytes: 64 * 1024,
+        });
+
+        const ext = compressed.format === 'image/webp' ? 'webp' : compressed.format === 'image/png' ? 'png' : 'jpg';
+        const filePath = `${channel.id}/icon.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('channel-icons')
+          .upload(filePath, compressed.blob, { upsert: true, contentType: compressed.format });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('channel-icons')
+          .getPublicUrl(filePath);
+
+        finalIconUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+        setIsUploadingIcon(false);
+      } else if (iconRemoved) {
+        finalIconUrl = null;
+      }
+
       await updateChannel.mutateAsync({
         channelId: channel.id,
         serverId: channel.server_id,
@@ -205,9 +195,14 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         description: description.trim() || null,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
         slowmode_seconds: supportsSlowmode ? currentSlowmodeSeconds : undefined,
+        icon_url: finalIconUrl,
       });
+
+      setPendingIconBlob(null);
+      setIconRemoved(false);
     } catch (error) {
       console.error('Save error:', error);
+      setIsUploadingIcon(false);
       toast.error('Erreur lors de la mise à jour');
     }
   };
@@ -221,7 +216,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
             <div
               onClick={handleIconClick}
               className={cn(
-                "w-10 h-10 rounded-full bg-muted flex items-center justify-center border-2 border-border shrink-0 relative overflow-hidden group",
+                "w-10 h-10 rounded-full bg-muted flex items-center justify-center border-2 border-border shrink-0 relative overflow-hidden",
                 canHaveCustomIcon && "cursor-pointer"
               )}
             >
@@ -229,11 +224,6 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
                 <img src={iconUrl} alt="Icône" className="w-full h-full object-cover" />
               ) : (
                 <TypeIcon className="w-4 h-4 text-muted-foreground" />
-              )}
-              {canHaveCustomIcon && (
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-[9px] text-white font-medium">Modifier</span>
-                </div>
               )}
               {isUploadingIcon && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -278,7 +268,6 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         <p className="text-xs text-muted-foreground">{description.length}/1024</p>
       </div>
 
-      {/* Slowmode slider for text/voice/forum */}
       {supportsSlowmode && (
         <div className="rounded-lg border border-border p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -307,7 +296,6 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         </div>
       )}
 
-      {/* Toggle for text <-> announcement */}
       {canToggleType && (
         <div className="rounded-lg border border-border p-4">
           <div className="flex items-center justify-between gap-4">
@@ -328,18 +316,16 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         </div>
       )}
 
-
       <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-between items-center">
         {channelId && channelName && serverId && onDeleted ? (
           <ChannelDangerZone channelId={channelId} channelName={channelName} serverId={serverId} onDeleted={onDeleted} />
         ) : <div />}
-        <Button onClick={handleSave} disabled={updateChannel.isPending || !hasChanges}>
-          {updateChannel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        <Button onClick={handleSave} disabled={updateChannel.isPending || isUploadingIcon || !hasChanges}>
+          {(updateChannel.isPending || isUploadingIcon) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Enregistrer
         </Button>
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -348,7 +334,6 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         onChange={handleFileSelect}
       />
 
-      {/* Image cropper modal */}
       {cropperSrc && (
         <ImageCropper
           open={!!cropperSrc}
@@ -366,6 +351,3 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     </div>
   );
 }
-
-// Need cn utility
-import { cn } from '@/lib/utils';

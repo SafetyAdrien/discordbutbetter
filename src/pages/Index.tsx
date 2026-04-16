@@ -418,6 +418,7 @@ const Index = () => {
         name: ch.name,
         type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link',
         description: ch.description || undefined,
+        icon_url: (ch as any).icon_url ?? null,
       })),
     })),
   }));
@@ -434,10 +435,11 @@ const Index = () => {
       id: cat.id,
       name: cat.name,
       channels: cat.channels.map(ch => ({
-      id: ch.id,
+        id: ch.id,
         name: ch.name,
         type: (ch.type || 'text') as 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link',
         description: ch.description || undefined,
+        icon_url: (ch as any).icon_url ?? null,
       })),
     })),
   } : null;

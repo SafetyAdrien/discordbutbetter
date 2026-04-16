@@ -253,12 +253,12 @@ export function MobileServersView({
     id: cat.id,
     name: cat.name,
     channels: cat.channels.map((ch: any) => ({
-      id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
-    })),
-  })) || [];
+    id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
+  })),
+})) || [];
 
   const orphanChannelsForList = (selectedRawServer?.orphanChannels || []).map((ch: any) => ({
-    id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
+    id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
   }));
 
   return (

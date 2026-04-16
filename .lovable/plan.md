@@ -1,40 +1,57 @@
 
 
-# Icônes de type de salon dans les paramètres + Tooltips manquants
+# Plan : Rôle @everyone protégé + Import de serveur Discord
 
-## Problème 1 : Icône de type manquante dans les paramètres
+## 1. Rôle @everyone — Protection complète
 
-Dans `ChannelOverview.tsx`, le cercle avec l'icône du type de salon (hashtag, micro, forum, etc.) n'apparaît que pour les salons `text` et `announcement` (via `canHaveCustomIcon`). Pour les autres types (voice, forum, media, calendar, tasks), aucune icône de type n'est affichée à côté du nom du salon dans les paramètres.
+### Problèmes actuels
+- Le rôle `@everyone` (`is_default`) peut être déplacé via drag-and-drop
+- Le RoleEditor désactive certains champs via `role.is_default` mais la couleur est aussi désactivée (l'utilisateur veut pouvoir la modifier)
 
-**Solution** : Toujours afficher l'icône du type de salon à côté du nom, pour tous les types. Seul le comportement de clic (upload d'image) reste limité aux types `text`/`announcement`. Les autres types affichent simplement leur icône sans interaction.
+### Corrections dans `RoleManager.tsx`
+- Exclure le rôle `is_default` du `SortableContext` (ou le rendre `disabled` dans le sortable, ce qui est déjà fait via `canDragAbove` mais pas suffisant)
+- Empêcher tout autre rôle d'être déplacé **en dessous** du rôle `@everyone` : dans `handleDragEnd`, si la position cible placerait un rôle après `@everyone` (dernier), bloquer le drop
+- Le rôle `@everyone` doit toujours rester en dernière position dans la liste
 
-### Changements dans `ChannelOverview.tsx`
-- Ajouter `stage` et `link` dans `channelTypeLabels`
-- Utiliser `channel.type` directement (pas `channelType` qui est limité à text/announcement) pour résoudre l'icône affichée
-- Toujours rendre le cercle d'icône, mais sans `cursor-pointer` ni `onClick` pour les types non-éligibles à l'upload
+### Corrections dans `RoleEditor.tsx`
+- Quand `role.is_default` :
+  - Nom : `disabled` (déjà fait)
+  - Couleur : **activée** (retirer `disabled={role.is_default}` des inputs couleur)
+  - Description, icône, hoist : `disabled` (déjà fait)
+  - Permissions : modifiables (déjà fait)
+- Le `hasChanges` et `handleSave` restent fonctionnels pour permettre la modification de couleur + permissions
 
-## Problème 2 : Tooltips manquants
+## 2. Import de serveur Discord
 
-Plusieurs icônes interactives dans `ChannelList.tsx` n'ont pas de tooltip au hover :
+### Nouveau flow dans `CreateServerModal.tsx`
+- Ajouter un bouton "Importer un serveur" dans l'étape `choice` (entre "Créer le mien" et "Rejoindre un serveur")
+- Nouvel étape `step = 'import-source'` : choix entre "Discord" (et "Fluxer" grisé/coming soon)
+- Nouvel étape `step = 'import-discord'` : 
+  - Input pour le lien `discord.new/TEMPLATE_ID` ou directement l'ID du template
+  - Bouton "Récupérer" qui appelle l'API publique Discord `https://discord.com/api/v10/guilds/templates/{code}` via une edge function (pour éviter CORS)
+  - Affiche un aperçu : nom du serveur, liste des salons par catégorie, liste des rôles
+  - Bouton "Finaliser" qui crée le serveur avec les catégories, salons et rôles importés
 
-**Dans la sidebar des salons (hover actions, lignes 700-726)** :
-- `MessageSquare` (ouvrir le chat vocal) — pas de tooltip
-- `UserPlus` (créer une invitation) — pas de tooltip
-- `Settings` (paramètres du salon) — pas de tooltip
+### Nouvelle edge function `import-discord-template`
+- Reçoit le template code/URL
+- Fetch `https://discord.com/api/v10/guilds/templates/{code}` (API publique, pas de token requis)
+- Retourne la structure : nom, description, catégories, salons (nom + type), rôles (nom + couleur + permissions mappées)
 
-**Dans le header du serveur (ligne 1508-1518)** :
-- `Settings` (paramètres du serveur) — pas de tooltip
+### Mapping des types de salons Discord → Fluxer
+- `0` (GUILD_TEXT) → `text`
+- `2` (GUILD_VOICE) → `voice`
+- `5` (GUILD_ANNOUNCEMENT) → `announcement`
+- `15` (GUILD_FORUM) → `forum`
+- Autres → `text` par défaut
 
-**Sur les icônes de type des salons dans la liste** :
-- L'icône du type (hashtag, micro, etc.) n'a pas de tooltip indiquant le type du salon
-
-### Changements dans `ChannelList.tsx`
-- Wrapper chaque icône d'action hover avec `<Tooltip>/<TooltipTrigger>/<TooltipContent>`
-- Labels : "Ouvrir le chat" (MessageSquare), "Créer une invitation" (UserPlus), "Modifier le salon" (Settings)
-- Header serveur Settings : "Paramètres du serveur"
-- Icône de type dans la liste : tooltip avec le nom du type ("Salon textuel", "Salon vocal", "Forum", "Annonces", "Médias", "Calendrier", "Tâches", "Scène", "Lien")
+### Création effective
+- Après "Finaliser", utiliser `useCreateServer` avec un nouveau paramètre `importData` contenant les catégories, salons et rôles à recréer
+- Ou directement créer le serveur puis insérer les catégories/salons/rôles dans `CreateServerModal` comme le fait déjà le template system
 
 ## Fichiers modifiés
-- `src/components/channel-settings/ChannelOverview.tsx`
-- `src/components/layout/ChannelList.tsx`
+- `src/components/server-settings/RoleManager.tsx` — protection drag @everyone
+- `src/components/server-settings/RoleEditor.tsx` — autoriser couleur pour @everyone
+- `src/components/modals/CreateServerModal.tsx` — nouveau flow import
+- `supabase/functions/import-discord-template/index.ts` — nouvelle edge function
+- `src/hooks/useServers.ts` — support import data dans create server
 

@@ -309,7 +309,8 @@ export function useCreateChannel() {
         description: null,
         position: 0,
         category_id: categoryId,
-        server_id: serverId
+        server_id: serverId,
+        icon_url: null,
       };
       
       if (previousChannels) {

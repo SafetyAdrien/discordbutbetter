@@ -171,6 +171,7 @@ const Index = () => {
           position: ch.position ?? 0,
           category_id: cat.id,
           server_id: activeServerId,
+          icon_url: (ch as any).icon_url ?? null,
         })),
       })),
       orphanChannels: (server.orphanChannels || []).map(ch => ({
@@ -181,6 +182,7 @@ const Index = () => {
         position: ch.position ?? 0,
         category_id: null,
         server_id: activeServerId,
+        icon_url: (ch as any).icon_url ?? null,
       })),
     };
   }, [activeServerId, servers]);

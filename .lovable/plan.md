@@ -1,68 +1,40 @@
 
-# Correctif réel à appliquer pour l’icône de salon
 
-## Problème réellement constaté
+# Icônes de type de salon dans les paramètres + Tooltips manquants
 
-La correction n’a pas été appliquée au bon endroit.
+## Problème 1 : Icône de type manquante dans les paramètres
 
-Le hook `useUpdateChannel` contient déjà `icon_url` dans ses updates optimistes. Le vrai blocage vient de `src/pages/Index.tsx` :
+Dans `ChannelOverview.tsx`, le cercle avec l'icône du type de salon (hashtag, micro, forum, etc.) n'apparaît que pour les salons `text` et `announcement` (via `canHaveCustomIcon`). Pour les autres types (voice, forum, media, calendar, tasks), aucune icône de type n'est affichée à côté du nom du salon dans les paramètres.
 
-- `ChannelList` reçoit `serverForChannelList`
-- `serverForChannelList.categories[].channels` est reconstruit sans `icon_url`
-- donc même si `ChannelList.tsx` sait afficher `channel.icon_url`, cette donnée n’arrive jamais jusqu’à lui
+**Solution** : Toujours afficher l'icône du type de salon à côté du nom, pour tous les types. Seul le comportement de clic (upload d'image) reste limité aux types `text`/`announcement`. Les autres types affichent simplement leur icône sans interaction.
 
-En plus, l’état courant du salon (`activeChannel`) est encore lu depuis `activeServer.categories`, donc certaines vues restent dépendantes d’un cache partiel.
+### Changements dans `ChannelOverview.tsx`
+- Ajouter `stage` et `link` dans `channelTypeLabels`
+- Utiliser `channel.type` directement (pas `channelType` qui est limité à text/announcement) pour résoudre l'icône affichée
+- Toujours rendre le cercle d'icône, mais sans `cursor-pointer` ni `onClick` pour les types non-éligibles à l'upload
 
-## Correctif à faire
+## Problème 2 : Tooltips manquants
 
-### 1. Corriger `src/pages/Index.tsx`
-Inclure `icon_url` lors de la construction de `serverForChannelList` :
+Plusieurs icônes interactives dans `ChannelList.tsx` n'ont pas de tooltip au hover :
 
-- dans `categories.map(...).channels.map(...)`
-- garder aussi `icon_url` pour tous les salons passés à la sidebar
+**Dans la sidebar des salons (hover actions, lignes 700-726)** :
+- `MessageSquare` (ouvrir le chat vocal) — pas de tooltip
+- `UserPlus` (créer une invitation) — pas de tooltip
+- `Settings` (paramètres du salon) — pas de tooltip
 
-Exemple visé :
-```ts
-channels: cat.channels.map(ch => ({
-  id: ch.id,
-  name: ch.name,
-  type: ...,
-  description: ch.description ?? undefined,
-  icon_url: ch.icon_url ?? null,
-}))
-```
+**Dans le header du serveur (ligne 1508-1518)** :
+- `Settings` (paramètres du serveur) — pas de tooltip
 
-### 2. Stabiliser la source de vérité de la sidebar
-Vérifier que `ChannelList` continue bien d’utiliser :
-- `serverForChannelList.categories`
-- `orphanChannels` passés séparément
+**Sur les icônes de type des salons dans la liste** :
+- L'icône du type (hashtag, micro, etc.) n'a pas de tooltip indiquant le type du salon
 
-Le composant `ChannelList.tsx` est déjà prêt à afficher :
-```tsx
-channel.icon_url ? <img ... /> : <DefaultIcon ... />
-```
-Donc pas besoin de refaire la logique visuelle, seulement s’assurer que la donnée arrive correctement.
+### Changements dans `ChannelList.tsx`
+- Wrapper chaque icône d'action hover avec `<Tooltip>/<TooltipTrigger>/<TooltipContent>`
+- Labels : "Ouvrir le chat" (MessageSquare), "Créer une invitation" (UserPlus), "Modifier le salon" (Settings)
+- Header serveur Settings : "Paramètres du serveur"
+- Icône de type dans la liste : tooltip avec le nom du type ("Salon textuel", "Salon vocal", "Forum", "Annonces", "Médias", "Calendrier", "Tâches", "Scène", "Lien")
 
-### 3. Corriger aussi les données dérivées dans `Index.tsx`
-Mettre à jour les objets dérivés qui reconstruisent les salons depuis `activeServer` sans `icon_url`, pour éviter les incohérences après sauvegarde :
+## Fichiers modifiés
+- `src/components/channel-settings/ChannelOverview.tsx`
+- `src/components/layout/ChannelList.tsx`
 
-- `serverForChannelList`
-- si nécessaire, les structures liées à la navigation/recherche qui repartent de `activeServer.categories`
-
-### 4. Vérifier la cohérence mobile
-Le mobile lit `rawServers`, donc il faut contrôler que les structures reconstruites côté mobile n’écrasent pas `icon_url` si la liste des salons mobile doit aussi refléter les icônes personnalisées.
-
-## Résultat attendu
-
-Après sauvegarde d’une icône de salon :
-- l’icône se met à jour immédiatement dans les paramètres du salon
-- la liste des salons desktop se met à jour immédiatement
-- les salons orphelins restent cohérents
-- les vues dérivées n’écrasent plus `icon_url`
-
-## Fichiers à modifier
-- `src/pages/Index.tsx`
-- éventuellement `src/components/mobile/MobileServersView.tsx` si la vue mobile doit aussi refléter cette donnée immédiatement
-
-## Détail technique
-Le bug n’est pas dans `ChannelList.tsx` ni principalement dans `useChannelSettings.ts`, mais dans le mapping intermédiaire de `Index.tsx` qui supprime `icon_url` avant rendu.

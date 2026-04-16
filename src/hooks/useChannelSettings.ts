@@ -98,7 +98,7 @@ export function useUpdateChannel() {
         .eq('id', channelId);
 
       if (error) throw error;
-      return { channelId, serverId, name, description, type, slowmode_seconds };
+      return { channelId, serverId, name, description, type, slowmode_seconds, icon_url };
     },
     onMutate: async ({ channelId, serverId, name, description, type }) => {
       await queryClient.cancelQueries({ queryKey: ['channel-details', channelId] });

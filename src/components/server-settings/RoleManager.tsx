@@ -92,7 +92,7 @@ function SortableRole({
 
       <div
         className={cn(
-          'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group',
+          'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group cursor-pointer',
           isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
           isDragging && 'opacity-30',
           isDisabled && 'opacity-50'
@@ -364,7 +364,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
             items={sortableRoleIds}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-0">
+            <div className={cn("space-y-0", activeId && "cursor-grabbing")}>
               {sortableRoles.map((role) => (
                 <SortableRole
                   key={role.id}
@@ -383,7 +383,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
               {defaultRole && (
                 <div
                   className={cn(
-                    'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group',
+                    'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group cursor-pointer',
                     selectedRoleId === defaultRole.id ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
                   )}
                   onClick={() => handleRoleSelect(defaultRole.id)}

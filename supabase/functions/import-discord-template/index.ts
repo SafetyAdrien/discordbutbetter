@@ -22,6 +22,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+  }
+
+  try {
     const { templateCode } = await req.json();
 
     if (!templateCode || typeof templateCode !== 'string') {

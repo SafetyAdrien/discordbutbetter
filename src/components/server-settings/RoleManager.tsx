@@ -407,6 +407,30 @@ export function RoleManager({ serverId }: RoleManagerProps) {
             )}
           </DragOverlay>
         </DndContext>
+
+        {/* @everyone role - always at bottom, not draggable */}
+        {defaultRole && (
+          <div className="border-t border-border pt-1 mt-1">
+            <div
+              className={cn(
+                'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150',
+                selectedRoleId === defaultRole.id ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
+                'opacity-70'
+              )}
+              onClick={() => handleRoleSelect(defaultRole.id)}
+            >
+              <div className="flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 cursor-not-allowed text-muted-foreground/20">
+                <GripVertical className="w-3.5 h-3.5" />
+              </div>
+              <RoleIcon role={defaultRole} />
+              <span className="flex-1 truncate text-sm">{defaultRole.name}</span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+                <Users className="w-3 h-3" />
+                <span>{memberCounts[defaultRole.id] || 0}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Role Editor */}

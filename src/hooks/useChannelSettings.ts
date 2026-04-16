@@ -143,7 +143,7 @@ export function useUpdateChannel() {
                   categories: server.categories?.map((cat: any) => ({
                     ...cat,
                     channels: cat.channels?.map((ch: any) =>
-                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type } : ch
+                      ch.id === channelId ? { ...ch, name, type: type ?? ch.type, ...(icon_url !== undefined && { icon_url }) } : ch
                     ) || []
                   })) || []
                 }

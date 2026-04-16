@@ -122,7 +122,7 @@ export function useUpdateChannel() {
       if (previousChannels) {
       const updateChannel = (ch: any) => 
           ch.id === channelId 
-            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type } 
+            ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type, ...(icon_url !== undefined && { icon_url }) } 
             : ch;
         
         queryClient.setQueryData(['channels', serverId], {

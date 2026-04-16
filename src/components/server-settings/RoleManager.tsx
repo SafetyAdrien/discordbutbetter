@@ -180,7 +180,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
   // Separate default role — always last, never draggable
   const defaultRole = roles.find(r => r.is_default);
   const sortableRoles = useMemo(() => roles.filter(r => !r.is_default), [roles]);
-  const allDisplayRoles = useMemo(() => [...sortableRoles, ...(defaultRole ? [defaultRole] : [])], [sortableRoles, defaultRole]);
+  
   const sortableRoleIds = useMemo(() => sortableRoles.map(r => r.id), [sortableRoles]);
 
   const canDragRole = (role: RoleWithPermissions) => {

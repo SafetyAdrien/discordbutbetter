@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const permissionsMutationLockRef = { current: false };
 
 /** Lock helper — sets lock and auto-releases after `ms`. */
-export function lockPermissionsMutation(ms = 600) {
+export function lockPermissionsMutation(ms = 200) {
   permissionsMutationLockRef.current = true;
   setTimeout(() => { permissionsMutationLockRef.current = false; }, ms);
 }
@@ -69,7 +69,7 @@ export function usePermissionsRealtime(serverId: string | null) {
         pendingPostLockRef.current = false;
         doRefetch(pendingSourceRef.current || 'post-lock');
       }
-    }, 200);
+    }, 50);
     return () => clearInterval(interval);
   }, [doRefetch]);
 

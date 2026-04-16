@@ -180,6 +180,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
   // Separate default role — always last, never draggable
   const defaultRole = roles.find(r => r.is_default);
   const sortableRoles = useMemo(() => roles.filter(r => !r.is_default), [roles]);
+  
   const sortableRoleIds = useMemo(() => sortableRoles.map(r => r.id), [sortableRoles]);
 
   const canDragRole = (role: RoleWithPermissions) => {
@@ -377,10 +378,30 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                   canDragAbove={canDragRole(role)}
                 />
               ))}
+
+              {/* @everyone - inline, not draggable */}
+              {defaultRole && (
+                <div
+                  className={cn(
+                    'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group',
+                    selectedRoleId === defaultRole.id ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
+                  )}
+                  onClick={() => handleRoleSelect(defaultRole.id)}
+                >
+                  <div className="flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 cursor-not-allowed text-muted-foreground/20">
+                    <GripVertical className="w-3.5 h-3.5" />
+                  </div>
+                  <RoleIcon role={defaultRole} />
+                  <span className="flex-1 truncate text-sm">{defaultRole.name}</span>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+                    <Users className="w-3 h-3" />
+                    <span>{memberCounts[defaultRole.id] || 0}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </SortableContext>
 
-          {/* Drag Overlay - inline DOM to avoid ref issues */}
           <DragOverlay dropAnimation={null}>
             {activeRole && (
               <div className={cn(
@@ -389,7 +410,6 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                 "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
                 "scale-105 cursor-grabbing"
               )}>
-                {/* Inline role icon to avoid forwardRef issues in overlay */}
                 {activeRole.icon_url ? (
                   activeRole.icon_url.startsWith('http') ? (
                     <img src={activeRole.icon_url} alt="" className="w-3 h-3 object-contain flex-shrink-0" />
@@ -407,30 +427,6 @@ export function RoleManager({ serverId }: RoleManagerProps) {
             )}
           </DragOverlay>
         </DndContext>
-
-        {/* @everyone role - always at bottom, not draggable */}
-        {defaultRole && (
-          <div className="border-t border-border pt-1 mt-1">
-            <div
-              className={cn(
-                'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150',
-                selectedRoleId === defaultRole.id ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
-                'opacity-70'
-              )}
-              onClick={() => handleRoleSelect(defaultRole.id)}
-            >
-              <div className="flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 cursor-not-allowed text-muted-foreground/20">
-                <GripVertical className="w-3.5 h-3.5" />
-              </div>
-              <RoleIcon role={defaultRole} />
-              <span className="flex-1 truncate text-sm">{defaultRole.name}</span>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
-                <Users className="w-3 h-3" />
-                <span>{memberCounts[defaultRole.id] || 0}</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Role Editor */}

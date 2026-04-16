@@ -47,7 +47,7 @@ export function useServerChannelPermissions(serverId: string | null) {
       return { viewable, connectable };
     },
     enabled: !!serverId && !!user?.id,
-    staleTime: 30000, // Cache 30 seconds - Realtime handles updates
+    staleTime: 0, // Always refetch on invalidation for instant permission updates
     gcTime: 300000, // Keep in garbage collection for 5 min
   });
 

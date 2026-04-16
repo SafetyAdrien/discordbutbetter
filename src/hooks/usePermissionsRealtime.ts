@@ -59,7 +59,7 @@ export function usePermissionsRealtime(serverId: string | null) {
     }
 
     clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => doRefetch(source), 150);
+    debounceTimerRef.current = setTimeout(() => doRefetch(source), 50);
   }, [doRefetch]);
 
   // Check for pending post-lock refetch

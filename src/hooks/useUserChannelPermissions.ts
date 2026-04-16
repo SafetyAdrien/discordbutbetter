@@ -67,7 +67,7 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
       return result;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 30000,
+    staleTime: 0,
     gcTime: 300000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -106,7 +106,7 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
         return { permission, granted };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 30000,
+      staleTime: 0,
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,
@@ -165,7 +165,7 @@ export function useChannelsVisibility(channelIds: string[]) {
         return { channelId, visible: data ?? true };
       },
       enabled: !!channelId && !!user?.id,
-      staleTime: 30000,
+      staleTime: 0,
       gcTime: 300000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,
@@ -254,7 +254,7 @@ export function useUserChannelPermissions(channelId: string | null) {
       return result;
     },
     enabled: !!channelId && !!user?.id,
-    staleTime: 30000,
+    staleTime: 0,
     // Use cached value from sessionStorage; fall back to all-true only on first-ever visit
     placeholderData: cachedPerms ?? defaultPermissions(true),
   });

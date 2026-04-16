@@ -1,61 +1,30 @@
 
+# Correctif d'alignement des Tabs (Connexion/Inscription)
 
-# Fix: Duplicated channel hidden by visibility filter
+## Problème identifié
 
-## Root cause
+Le `TabsList` utilise actuellement `grid grid-cols-2` pour afficher les deux boutons "Connexion" et "Inscription". Cette approche peut causer des problèmes d'alignement et d'espacement, surtout si les textes ont des longueurs différentes.
 
-The `ChannelList` component filters every channel through `shouldShowChannel(channelId)`, which calls `useServerChannelPermissions`. This hook caches a `viewable` Set of channel IDs (via an RPC call, cached 30 seconds).
+## Solution
 
-When a channel is duplicated, its new ID is NOT in the cached `viewable` Set. So `viewable.has(newChannelId)` returns `false`, and the channel is hidden -- even though it was correctly inserted into the `['servers', userId]` cache.
+Modifier `src/components/ui/tabs.tsx` pour utiliser un layout flex avec `flex-1` sur les `TabsTrigger`, garantissant un alignement et une distribution parfaite de l'espace.
 
-On restart, the permissions are re-fetched with the new channel ID included, and the channel appears.
+### Changements dans `src/components/ui/tabs.tsx`
 
-## Fix
+**TabsList** (ligne 15) :
+- Remplacer `inline-flex` par `flex` 
+- Ajouter `w-full` pour occuper toute la largeur
 
-Two changes in `src/hooks/useChannels.ts`, inside `useDuplicateChannel`:
+**TabsTrigger** (ligne 30) :
+- Ajouter `flex-1` pour que chaque bouton occupe un espace égal
+- Assurer que le texte est parfaitement centré
 
-### 1. In `onMutate`: optimistically add the temp channel ID to the permissions cache
+### Changements dans `src/pages/Auth.tsx`
 
-After updating the servers cache, also update `['server-channel-permissions', serverId, userId]` to add the temp channel ID to the `viewable` and `connectable` sets.
+**TabsList** (ligne 690) :
+- Retirer `grid w-full grid-cols-2` (déjà géré par le composant)
+- Simplifier en `w-full`
 
-### 2. In `onSuccess`: invalidate the permissions cache
-
-After invalidating `['channels']` and `['servers']`, also invalidate `['server-channel-permissions', serverId]` so the real channel ID gets fetched.
-
-### 3. Hook needs `useAuth` for the user ID
-
-Add `useAuth()` to get the user ID for the correct permissions cache key.
-
-## Detailed changes
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChannels.ts` | Add `useAuth()` to `useDuplicateChannel`; in `onMutate`, update `['server-channel-permissions']` cache with temp channel ID in viewable/connectable sets; in `onSuccess`, add `invalidateQueries(['server-channel-permissions', serverId])` |
-
-### Code sketch for onMutate addition (after servers cache update)
-
-```text
-// 3) Add temp channel to permissions cache so visibility filter passes
-const permKey = ['server-channel-permissions', serverId, user?.id];
-const prevPerms = queryClient.getQueryData(permKey);
-if (prevPerms) {
-  const newViewable = new Set(prevPerms.viewable);
-  const newConnectable = new Set(prevPerms.connectable);
-  newViewable.add(tempId);
-  newConnectable.add(tempId);
-  queryClient.setQueryData(permKey, {
-    viewable: newViewable,
-    connectable: newConnectable,
-  });
-}
-```
-
-### Code for onSuccess addition
-
-```text
-// Also refresh permissions so real channel ID becomes visible
-queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
-```
-
-This ensures the duplicated channel passes the visibility filter immediately and remains visible after the real data is fetched.
-
+## Fichier modifié
+- `src/components/ui/tabs.tsx`
+- `src/pages/Auth.tsx`

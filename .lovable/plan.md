@@ -1,39 +1,29 @@
 
 
-# Icône personnalisée pour les salons textuels
+# Correctifs ChannelOverview
 
-## Vue d'ensemble
+## 3 problemes
 
-Permettre de cliquer sur le hashtag dans les paramètres d'un salon text pour uploader une image personnalisée, la recadrer, et l'utiliser comme icône du salon. Un bouton poubelle rouge permet de retirer l'icône.
+1. **Label "Modifier"** (ligne 234-236) : L'overlay hover affiche "Modifier" dans le cercle du hashtag. A supprimer.
 
-## Changements
+2. **Taille de l'image dans le cropper** : Les images PNG larges ne s'adaptent pas bien dans le dialog de 400px max. Reduire `maxDimension` du cropper ou contraindre l'image importee avant de l'envoyer au cropper (via `object-contain` + taille max CSS).
 
-### 1. Migration base de données
-- Ajouter la colonne `icon_url TEXT` à la table `channels`
-- Créer un bucket storage `channel-icons` (public) avec politique RLS pour les membres authentifiés
+3. **Bouton "Enregistrer" desactive** : `hasChanges` (ligne 100-104) ne prend pas en compte le changement d'icone (`iconUrl !== channel.icon_url`). Quand on change l'icone via upload, le save est deja fait immediatement dans `handleCropComplete`, donc le bouton reste desactive. Le probleme est que l'utilisateur s'attend a pouvoir cliquer "Enregistrer" apres avoir change l'icone. Solution : inclure `iconUrl !== (channel.icon_url ?? null)` dans `hasChanges`, et deplacer l'upload/save de l'icone dans `handleSave` au lieu de le faire immediatement dans `handleCropComplete`.
 
-### 2. `src/hooks/useChannelSettings.ts`
-- Ajouter `icon_url` dans `ChannelDetails`
-- Ajouter `icon_url` dans la query `select`
-- Ajouter `icon_url` dans `useUpdateChannel` (mutationFn + optimistic updates)
+## Changements dans `src/components/channel-settings/ChannelOverview.tsx`
 
-### 3. `src/components/channel-settings/ChannelOverview.tsx`
-- Ajouter un état local `iconUrl` synchronisé avec `channel.icon_url`
-- Remplacer le conteneur rond du hashtag (ligne 134) par un bouton cliquable :
-  - Si pas d'icône : affiche le `TypeIcon` avec un curseur pointer et un overlay hover "Modifier"
-  - Si icône : affiche l'image dans un cercle
-- Au clic : ouvrir un `<input type="file" accept="image/*">` caché
-- Après sélection : ouvrir le composant `ImageCropper` existant (aspect 1:1, circularCrop)
-- Après crop : uploader le blob dans le bucket `channel-icons`, mettre à jour `icon_url` via `useUpdateChannel`
-- Ajouter un bouton `Trash2` rouge à côté quand une icône est définie, qui supprime l'icône (set `icon_url` à `null`)
+### A. Supprimer l'overlay "Modifier"
+- Retirer les lignes 233-236 (le `<div>` avec le texte "Modifier")
 
-### 4. `src/components/layout/ChannelList.tsx`
-- Ligne ~677 : si le channel a un `icon_url`, afficher un `<img>` rond (w-4 h-4) au lieu du `DefaultIcon`
+### B. Adapter le cropper pour les grandes images
+- Dans `ImageCropper`, l'image est deja contrainte a `max-h-[400px] object-contain`, donc ca devrait aller. Le vrai souci est le `maxDimension={128}` qui compresse l'output a 128px. Ca ne change pas la resolution du cropper lui-meme. Garder tel quel car c'est pour l'icone finale (petite).
 
-### 5. `src/hooks/useChannels.ts`
-- Vérifier que `icon_url` est inclus dans les queries existantes pour que ChannelList y ait accès
+### C. Permettre "Enregistrer" apres changement d'icone
+- Changer `handleCropComplete` : au lieu d'uploader et sauvegarder immediatement, stocker le blob localement dans un state `pendingIconBlob`
+- Ajouter `pendingIconBlob` dans le calcul de `hasChanges`
+- Dans `handleSave`, si `pendingIconBlob` existe, uploader + sauvegarder l'icone avec les autres champs
+- Si l'utilisateur clique "Retirer l'icone", ca met aussi `pendingIconBlob = null` et `iconUrl = null`, et `hasChanges` detecte le changement
 
-## Fichiers impactés
-- **Migration** : nouvelle colonne + bucket storage
-- **Modifier** : `useChannelSettings.ts`, `ChannelOverview.tsx`, `ChannelList.tsx`, `useChannels.ts`
+## Fichier modifie
+- `src/components/channel-settings/ChannelOverview.tsx`
 

@@ -15,6 +15,7 @@ export interface ChannelDetails {
   category_id: string | null;
   position: number | null;
   slowmode_seconds: number;
+  icon_url: string | null;
 }
 
 export function useChannelDetails(channelId: string | null) {
@@ -53,7 +54,7 @@ export function useChannelDetails(channelId: string | null) {
 
       const { data, error } = await supabase
         .from('channels')
-        .select('id, name, description, type, server_id, category_id, position, slowmode_seconds')
+        .select('id, name, description, type, server_id, category_id, position, slowmode_seconds, icon_url')
         .eq('id', channelId)
         .single();
 
@@ -76,18 +77,20 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ channelId, serverId, name, description, type, slowmode_seconds }: { 
+    mutationFn: async ({ channelId, serverId, name, description, type, slowmode_seconds, icon_url }: { 
       channelId: string; 
       serverId: string; 
       name: string; 
       description?: string | null;
       type?: 'text' | 'announcement';
       slowmode_seconds?: number;
+      icon_url?: string | null;
     }) => {
-      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number } = { name };
+      const updateData: { name: string; description?: string | null; type?: 'text' | 'announcement'; slowmode_seconds?: number; icon_url?: string | null } = { name };
       if (description !== undefined) updateData.description = description;
       if (type) updateData.type = type;
       if (slowmode_seconds !== undefined) updateData.slowmode_seconds = slowmode_seconds;
+      if (icon_url !== undefined) updateData.icon_url = icon_url;
 
       const { error } = await supabase
         .from('channels')

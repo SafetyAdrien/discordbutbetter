@@ -674,7 +674,11 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   hasUnread && !isActive && "bg-muted/30"
                 )}>
 
-                <DefaultIcon className={cn("w-4 h-4 flex-shrink-0", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
+                {channel.icon_url && !isVoice && !isStage ? (
+                  <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-cover flex-shrink-0" />
+                ) : (
+                  <DefaultIcon className={cn("w-4 h-4 flex-shrink-0", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
+                )}
                 <span
                   className={cn(
                     "truncate flex-1 text-left font-ginto text-[16px] font-medium",

@@ -196,13 +196,15 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
     setIsImporting(true);
 
     try {
-      // Create the server
+      // Create the server with icon/banner from Discord
       const { data: server, error: serverError } = await supabase
         .from('servers')
         .insert({
           name: importServerName.trim(),
           description: importedData.description,
           owner_id: (await supabase.auth.getUser()).data.user?.id,
+          icon_url: importedData.iconUrl || null,
+          banner_url: importedData.bannerUrl || null,
         })
         .select()
         .single();
@@ -492,6 +494,31 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
           {step === 'import-preview' && importedData && (
             <div className="px-6 pb-6 space-y-4">
+              {/* Icon & Banner preview */}
+              {(importedData.iconUrl || importedData.bannerUrl) && (
+                <div className="relative">
+                  {importedData.bannerUrl ? (
+                    <div
+                      className="h-20 rounded-lg bg-muted overflow-hidden"
+                      style={{
+                        backgroundImage: `url(${importedData.bannerUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    />
+                  ) : (
+                    <div className="h-20 rounded-lg bg-muted" />
+                  )}
+                  {importedData.iconUrl && (
+                    <div className="flex justify-center -mt-8">
+                      <div className="w-16 h-16 rounded-full border-4 border-card overflow-hidden bg-card shadow-lg">
+                        <img src={importedData.iconUrl} alt="Server icon" className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Server name */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-muted-foreground">

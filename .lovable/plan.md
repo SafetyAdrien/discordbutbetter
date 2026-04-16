@@ -1,29 +1,40 @@
 
 
-# Correctifs ChannelOverview
+# Correctif : icon_url non propagé dans la liste des salons
 
-## 3 problemes
+## Problème
 
-1. **Label "Modifier"** (ligne 234-236) : L'overlay hover affiche "Modifier" dans le cercle du hashtag. A supprimer.
+Dans `useChannelSettings.ts`, la mutation `useUpdateChannel` :
+1. **`onMutate`** (ligne 103) ne destructure pas `icon_url` des paramètres
+2. **`updateChannel`** (ligne 122-125) ne propage pas `icon_url` dans le cache `['channels', serverId]`
+3. **`mutationFn` return** (ligne 101) n'inclut pas `icon_url`, donc `onSettled` ne peut pas le transmettre
 
-2. **Taille de l'image dans le cropper** : Les images PNG larges ne s'adaptent pas bien dans le dialog de 400px max. Reduire `maxDimension` du cropper ou contraindre l'image importee avant de l'envoyer au cropper (via `object-contain` + taille max CSS).
+L'icône est bien sauvegardée en DB mais le cache React Query de la liste des salons n'est jamais mis à jour optimistiquement, et le realtime met ~300ms avant d'invalider.
 
-3. **Bouton "Enregistrer" desactive** : `hasChanges` (ligne 100-104) ne prend pas en compte le changement d'icone (`iconUrl !== channel.icon_url`). Quand on change l'icone via upload, le save est deja fait immediatement dans `handleCropComplete`, donc le bouton reste desactive. Le probleme est que l'utilisateur s'attend a pouvoir cliquer "Enregistrer" apres avoir change l'icone. Solution : inclure `iconUrl !== (channel.icon_url ?? null)` dans `hasChanges`, et deplacer l'upload/save de l'icone dans `handleSave` au lieu de le faire immediatement dans `handleCropComplete`.
+## Solution
 
-## Changements dans `src/components/channel-settings/ChannelOverview.tsx`
+Dans `src/hooks/useChannelSettings.ts` :
 
-### A. Supprimer l'overlay "Modifier"
-- Retirer les lignes 233-236 (le `<div>` avec le texte "Modifier")
+1. **Ligne 103** — Ajouter `icon_url` dans la destructuration de `onMutate` :
+   ```ts
+   onMutate: async ({ channelId, serverId, name, description, type, icon_url }) => {
+   ```
 
-### B. Adapter le cropper pour les grandes images
-- Dans `ImageCropper`, l'image est deja contrainte a `max-h-[400px] object-contain`, donc ca devrait aller. Le vrai souci est le `maxDimension={128}` qui compresse l'output a 128px. Ca ne change pas la resolution du cropper lui-meme. Garder tel quel car c'est pour l'icone finale (petite).
+2. **Lignes 112-118** — Inclure `icon_url` dans le cache `channel-details` :
+   ```ts
+   icon_url: icon_url !== undefined ? icon_url : previousDetails.icon_url,
+   ```
 
-### C. Permettre "Enregistrer" apres changement d'icone
-- Changer `handleCropComplete` : au lieu d'uploader et sauvegarder immediatement, stocker le blob localement dans un state `pendingIconBlob`
-- Ajouter `pendingIconBlob` dans le calcul de `hasChanges`
-- Dans `handleSave`, si `pendingIconBlob` existe, uploader + sauvegarder l'icone avec les autres champs
-- Si l'utilisateur clique "Retirer l'icone", ca met aussi `pendingIconBlob = null` et `iconUrl = null`, et `hasChanges` detecte le changement
+3. **Lignes 122-125** — Inclure `icon_url` dans le `updateChannel` pour le cache `['channels', serverId]` :
+   ```ts
+   const updateChannel = (ch: any) =>
+     ch.id === channelId
+       ? { ...ch, name, description: description ?? ch.description, type: type ?? ch.type, ...(icon_url !== undefined && { icon_url }) }
+       : ch;
+   ```
 
-## Fichier modifie
-- `src/components/channel-settings/ChannelOverview.tsx`
+4. **Ligne 145** — Inclure `icon_url` dans le cache `['servers']` aussi.
+
+## Fichier modifié
+- `src/hooks/useChannelSettings.ts`
 

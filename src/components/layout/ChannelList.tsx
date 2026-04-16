@@ -675,11 +675,18 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   hasUnread && !isActive && "bg-muted/30"
                 )}>
 
-                {channel.icon_url && !isVoice && !isStage ? (
-                  <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-cover flex-shrink-0" />
-                ) : (
-                  <DefaultIcon className={cn("w-4 h-4 flex-shrink-0", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
-                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex-shrink-0 flex items-center justify-center">
+                      {channel.icon_url && !isVoice && !isStage ? (
+                        <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-cover" />
+                      ) : (
+                        <DefaultIcon className={cn("w-4 h-4", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top"><p>{channelTypeTooltips[channel.type] ?? 'Salon'}</p></TooltipContent>
+                </Tooltip>
                 <span
                   className={cn(
                     "truncate flex-1 text-left font-ginto text-[16px] font-medium",
@@ -699,29 +706,41 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
                 <div className="hidden group-hover:flex gap-[5px]">
                   {(isVoice || isStage) && onOpenChat &&
-                  <MessageSquare
-                    className="w-4 h-4 text-muted-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenChat();
-                    }} />
-
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <MessageSquare
+                        className="w-4 h-4 text-muted-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenChat();
+                        }} />
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><p>Ouvrir le chat</p></TooltipContent>
+                  </Tooltip>
                   }
-                  <UserPlus
-                    className="w-4 h-4 text-muted-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCreateInvite();
-                    }} />
-
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <UserPlus
+                        className="w-4 h-4 text-muted-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCreateInvite();
+                        }} />
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><p>Créer une invitation</p></TooltipContent>
+                  </Tooltip>
                   {canManageChannels &&
-                  <Settings
-                    className="w-4 h-4 text-muted-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenSettings();
-                    }} />
-
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Settings
+                        className="w-4 h-4 text-muted-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenSettings();
+                        }} />
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><p>Modifier le salon</p></TooltipContent>
+                  </Tooltip>
                   }
                 </div>
               </button>
@@ -1506,16 +1525,21 @@ export function ChannelList({
             showBanner && server.bannerUrl ? "self-end pb-2" : ""
           )}>
             {canAccessSettings &&
-              <button
-                onClick={() => onOpenServerSettings?.()}
-                className={cn(
-                  "p-1.5 rounded-lg transition-colors",
-                  showBanner && server.bannerUrl ?
-                  "hover:bg-background/30 text-white" :
-                  "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}>
-                <Settings className="w-4 h-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onOpenServerSettings?.()}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      showBanner && server.bannerUrl ?
+                      "hover:bg-background/30 text-white" :
+                      "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}>
+                    <Settings className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom"><p>Paramètres du serveur</p></TooltipContent>
+              </Tooltip>
             }
           </div>
         </div>

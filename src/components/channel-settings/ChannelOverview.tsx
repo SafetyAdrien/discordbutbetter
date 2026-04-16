@@ -8,6 +8,8 @@ import { Slider } from '@/components/ui/slider';
 import { Loader2, Clock, Trash2 } from 'lucide-react';
 import { ChannelDangerZone } from './ChannelDangerZone';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
+import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
@@ -50,7 +52,7 @@ interface ChannelOverviewProps {
   onDeleted?: () => void;
 }
 
-const channelTypeLabels = {
+const channelTypeLabels: Record<string, { label: string; icon: React.ElementType }> = {
   text: { label: 'Textuel', icon: StreamlineHash },
   voice: { label: 'Vocal', icon: StreamlineVoice },
   forum: { label: 'Forum', icon: StreamlineForum },
@@ -58,6 +60,8 @@ const channelTypeLabels = {
   media: { label: 'Médias', icon: StreamlineMedia },
   calendar: { label: 'Calendrier', icon: StreamlineCalendar },
   tasks: { label: 'Tâches', icon: StreamlineTasks },
+  stage: { label: 'Scène', icon: StreamlineStage },
+  link: { label: 'Lien', icon: StreamlineLink },
 };
 
 export function ChannelOverview({ channel, channelId, channelName, serverId, onDeleted }: ChannelOverviewProps) {
@@ -90,7 +94,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     setIconRemoved(false);
   }, [channel.id, channel.name, channel.description, channel.type, channel.slowmode_seconds, channel.icon_url]);
 
-  const typeInfo = channelType ? channelTypeLabels[channelType] : channelTypeLabels.text;
+  const typeInfo = channelTypeLabels[channel.type] ?? channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
 
   const canToggleType = channel.type === 'text' || channel.type === 'announcement';

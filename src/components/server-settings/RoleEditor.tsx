@@ -180,12 +180,10 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
                   className="w-10 h-10 rounded cursor-pointer"
-                  disabled={role.is_default}
                 />
                 <Input
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  disabled={role.is_default}
                   className="flex-1"
                 />
               </div>

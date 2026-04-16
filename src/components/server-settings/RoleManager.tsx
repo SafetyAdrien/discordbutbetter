@@ -177,9 +177,13 @@ export function RoleManager({ serverId }: RoleManagerProps) {
   const wasDraggingRef = useRef(false);
 
   const selectedRole = roles.find(r => r.id === selectedRoleId);
-  const roleIds = useMemo(() => roles.map(r => r.id), [roles]);
+  // Separate default role — always last, never draggable
+  const defaultRole = roles.find(r => r.is_default);
+  const sortableRoles = useMemo(() => roles.filter(r => !r.is_default), [roles]);
+  const sortableRoleIds = useMemo(() => sortableRoles.map(r => r.id), [sortableRoles]);
 
   const canDragRole = (role: RoleWithPermissions) => {
+    if (role.is_default) return false;
     return canDragRolePosition(role.position);
   };
 
@@ -226,8 +230,8 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     setOverId(null);
 
     if (over && active.id !== over.id) {
-      const activeRole = roles.find(r => r.id === active.id);
-      const overRole = roles.find(r => r.id === over.id);
+      const activeRole = sortableRoles.find(r => r.id === active.id);
+      const overRole = sortableRoles.find(r => r.id === over.id);
 
       if (activeRole && overRole && !isGod) {
         const targetPosition = overRole.position ?? 0;
@@ -238,16 +242,18 @@ export function RoleManager({ serverId }: RoleManagerProps) {
         }
       }
 
-      const oldIndex = roleIds.indexOf(active.id as string);
-      const newIndex = roleIds.indexOf(over.id as string);
+      const oldIndex = sortableRoleIds.indexOf(active.id as string);
+      const newIndex = sortableRoleIds.indexOf(over.id as string);
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(roleIds, oldIndex, newIndex);
+        const newOrder = arrayMove(sortableRoleIds, oldIndex, newIndex);
+        // Append the default role at the end
+        if (defaultRole) newOrder.push(defaultRole.id);
         reorderRoles.mutate({ serverId, orderedIds: newOrder });
       }
     }
 
     setTimeout(() => { wasDraggingRef.current = false; }, 150);
-  }, [roles, roleIds, isGod, userHighestRolePosition, serverId, reorderRoles]);
+  }, [sortableRoles, sortableRoleIds, defaultRole, isGod, userHighestRolePosition, serverId, reorderRoles]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
@@ -284,7 +290,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     duplicateRole.mutate({ roleId, serverId });
   };
 
-  const activeRole = activeId ? roles.find(r => r.id === activeId) : null;
+  const activeRole = activeId ? sortableRoles.find(r => r.id === activeId) : null;
 
   if (isLoading) {
     return (
@@ -354,11 +360,11 @@ export function RoleManager({ serverId }: RoleManagerProps) {
           onDragCancel={handleDragCancel}
         >
           <SortableContext
-            items={roleIds}
+            items={sortableRoleIds}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-0">
-              {roles.map((role) => (
+              {sortableRoles.map((role) => (
                 <SortableRole
                   key={role.id}
                   role={role}

@@ -30,6 +30,8 @@ interface ImportedTemplate {
   roles: { name: string; color: string | null; hoist: boolean }[];
   usageCount: number;
   creator: { username: string } | null;
+  iconUrl: string | null;
+  bannerUrl: string | null;
 }
 
 const templates = [

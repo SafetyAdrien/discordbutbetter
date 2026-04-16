@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -14,6 +16,43 @@ const DISCORD_TYPE_MAP: Record<number, string> = {
 
 function mapChannelType(discordType: number): string {
   return DISCORD_TYPE_MAP[discordType] || 'text';
+}
+
+async function fetchAndUploadImage(
+  supabase: any,
+  imageUrl: string,
+  bucket: string,
+  path: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(path, uint8, {
+        contentType: blob.type || 'image/png',
+        upsert: true,
+      });
+
+    if (error) {
+      console.error(`Upload error for ${bucket}/${path}:`, error);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+
+    return publicUrl;
+  } catch (err) {
+    console.error(`Fetch/upload error:`, err);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -33,18 +72,15 @@ Deno.serve(async (req) => {
 
     // Extract code from URL or use directly
     let code = templateCode.trim();
-    // Handle discord.new/XXXX or https://discord.new/XXXX
     const urlMatch = code.match(/discord\.new\/([a-zA-Z0-9]+)/);
     if (urlMatch) {
       code = urlMatch[1];
     }
-    // Handle https://discord.com/template/XXXX
     const templateMatch = code.match(/discord\.com\/template\/([a-zA-Z0-9]+)/);
     if (templateMatch) {
       code = templateMatch[1];
     }
 
-    // Validate code format
     if (!/^[a-zA-Z0-9]+$/.test(code)) {
       return new Response(
         JSON.stringify({ error: 'Invalid template code format' }),
@@ -73,11 +109,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build categories map (Discord uses channel type 4 for categories)
+    // Build categories map
     const categories: Record<string, { name: string; position: number; channels: any[] }> = {};
     const orphanChannels: any[] = [];
 
-    // First pass: collect categories
     for (const ch of guild.channels || []) {
       if (ch.type === 4) {
         categories[ch.id] = {
@@ -88,7 +123,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Second pass: collect channels
     for (const ch of guild.channels || []) {
       if (ch.type === 4) continue;
       const mapped = {
@@ -103,7 +137,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Sort channels inside categories
     const sortedCategories = Object.values(categories)
       .sort((a, b) => a.position - b.position)
       .map(cat => ({
@@ -111,7 +144,6 @@ Deno.serve(async (req) => {
         channels: cat.channels.sort((a: any, b: any) => a.position - b.position),
       }));
 
-    // Map roles (exclude @everyone which is id "0" in templates)
     const roles = (guild.roles || [])
       .filter((r: any) => r.id !== 0 && r.name !== '@everyone')
       .sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0))
@@ -120,6 +152,43 @@ Deno.serve(async (req) => {
         color: r.color ? `#${r.color.toString(16).padStart(6, '0')}` : null,
         hoist: r.hoist ?? false,
       }));
+
+    // --- Fetch and upload icon/banner to storage ---
+    let iconUrl: string | null = null;
+    let bannerUrl: string | null = null;
+
+    const sourceGuildId = template.source_guild_id;
+    const iconHash = guild.icon_hash;
+    const splashHash = guild.splash_hash;
+
+    if (sourceGuildId && (iconHash || splashHash)) {
+      // Create a Supabase admin client
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+      const uploadId = crypto.randomUUID();
+
+      if (iconHash) {
+        const discordIconUrl = `https://cdn.discordapp.com/icons/${sourceGuildId}/${iconHash}.png?size=512`;
+        iconUrl = await fetchAndUploadImage(
+          supabase,
+          discordIconUrl,
+          'server-icons',
+          `imported/${uploadId}/icon.png`,
+        );
+      }
+
+      if (splashHash) {
+        const discordSplashUrl = `https://cdn.discordapp.com/splashes/${sourceGuildId}/${splashHash}.png?size=1024`;
+        bannerUrl = await fetchAndUploadImage(
+          supabase,
+          discordSplashUrl,
+          'server-banners',
+          `imported/${uploadId}/banner.png`,
+        );
+      }
+    }
 
     const result = {
       name: template.name,
@@ -132,6 +201,8 @@ Deno.serve(async (req) => {
       creator: template.creator ? {
         username: template.creator.username,
       } : null,
+      iconUrl,
+      bannerUrl,
     };
 
     return new Response(JSON.stringify(result), {

@@ -160,6 +160,7 @@ interface Channel {
   type: ChannelType;
   description?: string;
   unreadCount?: number;
+  icon_url?: string | null;
 }
 interface Category {
   id: string;

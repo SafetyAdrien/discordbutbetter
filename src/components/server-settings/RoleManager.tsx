@@ -219,10 +219,10 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     }
 
     setOverId(over.id as string);
-    const activeIdx = roleIds.indexOf(active.id as string);
-    const overIdx = roleIds.indexOf(over.id as string);
+    const activeIdx = sortableRoleIds.indexOf(active.id as string);
+    const overIdx = sortableRoleIds.indexOf(over.id as string);
     setDropPosition(activeIdx < overIdx ? 'after' : 'before');
-  }, [roleIds]);
+  }, [sortableRoleIds]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;

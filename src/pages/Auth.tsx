@@ -687,7 +687,7 @@ export default function Auth() {
         {/* Auth Card */}
         <div className="glass rounded-xl p-6">
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="w-full mb-6">
               <TabsTrigger value="login">Connexion</TabsTrigger>
               <TabsTrigger value="signup">Inscription</TabsTrigger>
             </TabsList>

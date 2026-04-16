@@ -202,6 +202,17 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   stage: StreamlineStage,
   link: StreamlineLink
 };
+const channelTypeTooltips: Record<string, string> = {
+  text: 'Salon textuel',
+  voice: 'Salon vocal',
+  forum: 'Forum',
+  announcement: 'Annonces',
+  media: 'Médias',
+  calendar: 'Calendrier',
+  tasks: 'Tâches',
+  stage: 'Scène',
+  link: 'Lien',
+};
 const statusColors = {
   online: "bg-[hsl(var(--online))]",
   idle: "bg-[hsl(var(--idle))]",

@@ -428,6 +428,17 @@ export function GlobalSearchModal({
   const hasInput = searchQuery.length > 0 || hasActiveFilters;
   const showLoading = isFetching && !results;
 
+  // Prefixes still available (not already used as a filter)
+  const remainingPrefixes = useMemo(() => {
+    return searchPrefixes.filter((p) => {
+      const v = (mergedFilters as any)[p.key];
+      return v === undefined || v === null || v === '';
+    });
+  }, [mergedFilters]);
+
+  const showSearchOptions =
+    isInputFocused && !activeAutocomplete && remainingPrefixes.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent

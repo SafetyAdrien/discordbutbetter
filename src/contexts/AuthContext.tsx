@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { cacheGetSync, cacheSetAsync, cacheDelete } from '@/lib/cache';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -25,40 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer profile fetch with setTimeout to prevent deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -68,22 +36,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
 
-      // Au login, on met l'utilisateur en ligne (sauf si il était en DND)
       const shouldGoOnline = data.status !== 'dnd';
       const nextProfile = (shouldGoOnline ? { ...data, status: 'online' } : data) as Profile;
       setProfile(nextProfile);
+      cacheSetAsync(`profile:${userId}`, nextProfile);
 
       if (shouldGoOnline) {
         await supabase.from('profiles').update({ status: 'online' }).eq('id', userId);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
-  // Realtime: garder le profil local sync (ex: statut idle/dnd depuis un autre onglet)
+  const applySession = useCallback((nextSession: Session | null) => {
+    setSession(nextSession);
+
+    const nextUser = nextSession?.user ?? null;
+    setUser(nextUser);
+
+    if (!nextUser) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    const cachedProfile = cacheGetSync<Profile>(`profile:${nextUser.id}`);
+    if (cachedProfile) {
+      setProfile(cachedProfile);
+    }
+
+    setLoading(false);
+    void fetchProfile(nextUser.id);
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, nextSession) => {
+      applySession(nextSession);
+    });
+
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      applySession(existingSession);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [applySession]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -98,7 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          setProfile(payload.new as Profile);
+          const nextProfile = payload.new as Profile;
+          setProfile(nextProfile);
+          cacheSetAsync(`profile:${user.id}`, nextProfile);
         }
       )
       .subscribe();
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, username: string, displayName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -134,42 +134,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // Set user as offline before signing out
     if (user) {
       await supabase
         .from('profiles')
         .update({ status: 'offline' })
         .eq('id', user.id);
+
+      cacheDelete(`profile:${user.id}`);
     }
-    
+
     await supabase.auth.signOut();
     setProfile(null);
   };
 
   const updateProfile = useCallback(async (data: Partial<Profile>) => {
     if (!user) return;
-    
+
     const { error } = await supabase
       .from('profiles')
       .update(data)
       .eq('id', user.id);
 
     if (error) throw error;
-    
-    setProfile(prev => prev ? { ...prev, ...data } : null);
+
+    setProfile(prev => {
+      const next = prev ? { ...prev, ...data } : null;
+      if (next) cacheSetAsync(`profile:${user.id}`, next);
+      return next;
+    });
   }, [user]);
 
   const updateStatus = useCallback(async (status: Database['public']['Enums']['user_status']) => {
     if (!user) return;
-    
+
     const { error } = await supabase
       .from('profiles')
       .update({ status })
       .eq('id', user.id);
 
     if (error) throw error;
-    
-    setProfile(prev => prev ? { ...prev, status } : null);
+
+    setProfile(prev => {
+      const next = prev ? { ...prev, status } : null;
+      if (next) cacheSetAsync(`profile:${user.id}`, next);
+      return next;
+    });
   }, [user]);
 
   return (

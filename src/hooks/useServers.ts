@@ -68,6 +68,8 @@ export function useServers() {
     };
   }, [user, queryClient]);
 
+  const cachedServers = user?.id ? cacheGetSync<ServerWithDetails[]>(`servers:${user.id}`) : undefined;
+
   const query = useQuery({
     queryKey: ['servers'],
     queryFn: async (): Promise<ServerWithDetails[]> => {
@@ -114,12 +116,10 @@ export function useServers() {
 
       if (error) throw error;
 
-      // Extract and sort servers
       const servers = data
         ?.map((m) => m.server)
         .filter((s): s is NonNullable<typeof s> => s !== null)
         .map((server) => {
-          // Get all channels and filter orphans (no category_id)
           const allChannels = (server as any).channels || [];
           const orphanChannels = allChannels
             .filter((ch: any) => !ch.category_id)
@@ -160,8 +160,8 @@ export function useServers() {
       return servers;
     },
     enabled: !!user,
-    // Persist from sessionStorage for instant hydration after refresh
-    placeholderData: () => cacheGetSync(`servers:${user?.id}`),
+    initialData: cachedServers,
+    initialDataUpdatedAt: cachedServers ? Date.now() : 0,
   });
 
   // Persist to IndexedDB

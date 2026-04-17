@@ -39,10 +39,10 @@ export interface RoleWithPermissions {
 
 export function useServerRoles(serverId: string | null) {
   const { user } = useAuth();
+  const cachedRoles = serverId ? cacheGetSync<RoleWithPermissions[]>(`roles:${serverId}`) : undefined;
 
   const query = useQuery({
     queryKey: ['roles', serverId],
-    placeholderData: () => cacheGetSync(`roles:${serverId}`),
     queryFn: async (): Promise<RoleWithPermissions[]> => {
       if (!serverId) return [];
 
@@ -54,7 +54,6 @@ export function useServerRoles(serverId: string | null) {
 
       if (rolesError) throw rolesError;
 
-      // Get permissions for each role
       const roleIds = roles?.map(r => r.id) || [];
       const { data: permissions, error: permError } = await supabase
         .from('role_permissions')
@@ -71,6 +70,8 @@ export function useServerRoles(serverId: string | null) {
       })) || [];
     },
     enabled: !!serverId && !!user,
+    initialData: cachedRoles,
+    initialDataUpdatedAt: cachedRoles ? Date.now() : 0,
     staleTime: 0,
   });
 

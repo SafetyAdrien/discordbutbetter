@@ -305,7 +305,7 @@ export function GlobalSearchModal({
     prefix: string;
     query: string;
   } | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { isMobile } = useBreakpoint();
 
@@ -315,7 +315,7 @@ export function GlobalSearchModal({
       setRawInput('');
       setFilters({});
       setActiveAutocomplete(null);
-      setShowShortcuts(false);
+      setIsInputFocused(false);
     }
   }, [open]);
 

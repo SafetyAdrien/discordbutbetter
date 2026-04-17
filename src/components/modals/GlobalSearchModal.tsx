@@ -375,14 +375,16 @@ export function GlobalSearchModal({
       const cfg = searchPrefixes.find((p) => p.prefix === prefix);
       if (cfg) setActiveAutocomplete({ type: cfg.type, prefix, query: '' });
     }
-    setShowShortcuts(false);
     inputRef.current?.focus();
+    setIsInputFocused(true);
   };
 
   const handleRemoveFilter = (key: keyof SearchFiltersType) => {
     const next = { ...filters };
     delete next[key];
     setFilters(next);
+    inputRef.current?.focus();
+    setIsInputFocused(true);
   };
 
   // Compute final query: contains = remaining text without prefix tokens

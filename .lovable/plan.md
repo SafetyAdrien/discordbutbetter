@@ -1,89 +1,67 @@
 
+## Analyse
 
-## Objectif
+Dans `GlobalSearchModal.tsx`, après ajout d'un premier filtre (chip), l'autocomplétion des préfixes suivants ne s'affiche pas immédiatement. Il faut vérifier la logique actuelle.
+<lov-tool-use id="toolu_vrtx_01GqcT5ZoKNNFeoTV9B5u2sj" name="code--search_files" integration-id="code" data="{\"query\": \"searchPrefixes|showPrefixes|prefixSuggestions|setShowAutocomplete\", \"include_patterns\": \"src/components/modals/GlobalSearchModal.tsx\"}">
+</lov-tool-use>
 
-Refondre en profondeur le système de recherche serveur pour correspondre au modèle Discord montré dans l'image : pills de filtres dynamiques (épinglé, type d'auteur, image, etc.), autocomplétion riche (avatars + handles), résultats temps réel instantanés, et UX fluide.
+<lov-tool-use id="toolu_vrtx_01VzT39m8gx4EkT5BtxoXeeg" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/modals/GlobalSearchModal.tsx\"}">
+</lov-tool-use>
 
-## Analyse de l'existant
+<lov-tool-use id="toolu_vrtx_01ASXH6RDDcM71DG1mLcaDLN" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/modals/GlobalSearchModal.tsx\", \"lines\": \"486-594\"}">
+</lov-tool-use>
+J'ai bien compris le problème. Actuellement, le dropdown "Search options" (qui liste tous les préfixes disponibles) ne s'affiche QUE si :
+- `showShortcuts === true` (donc focus sur input vide)
+- ET `!rawInput && !hasActiveFilters` (donc pas de filtre actif)
 
-**`GlobalSearchModal.tsx`** (actuel) :
-- Préfixes français textuels (`de:`, `dans:`, `pendant:`...) → peu intuitif
-- Suggestions de préfixes affichées uniquement avec champ vide → friction
-- Debounce 300ms → pas instantané
-- Autocomplétion utilisateurs minimaliste (pas de "From User" header, pas d'aperçu enrichi)
-- Filtres rendus comme tags simples au-dessus, pas comme pills inline avant l'input
-- Pas d'icônes "shortcuts" rapides (épinglé, image, etc.) à gauche du champ
+Donc dès qu'un filtre est ajouté, le dropdown des préfixes restants disparaît. L'utilisateur doit cliquer ailleurs ou re-focuser pour voir les options suivantes → délai/friction.
 
-**`useGlobalSearch.ts`** :
-- Utilise `useMutation` (pas réactif). Refait à chaque exécution.
-- Filtre `mentions` basé sur texte `@username` — fragile (notre système utilise Snowflakes `<@ID>`)
-- Filtre `from` post-traité (filter en mémoire) → résultats limités à 50 lignes serveur, peut rater
-- Pas de filtre "has:image/video/file"
+<lov-plan>
+
+## Problème
+
+Quand l'utilisateur sélectionne un premier filtre (ex: `from:Pikasudo`), le dropdown "Search options" qui liste les préfixes disponibles (`mentions:`, `in:`, `has:`, etc.) **disparaît immédiatement** car la condition d'affichage est `!rawInput && !hasActiveFilters`. Pour voir les filtres suivants, il faut re-cliquer ou re-focuser → friction.
+
+L'utilisateur veut que les **filtres suivants apparaissent instantanément à la suite**, sans aucun délai, après chaque sélection.
 
 ## Solution
 
-### 1. `useGlobalSearch.ts` — passer en `useQuery` réactif + corrections
+### `src/components/modals/GlobalSearchModal.tsx`
 
-- Convertir `useMutation` → `useQuery` avec `queryKey: ['globalSearch', serverId, query, filters]`
-- `enabled: query.length > 0 || hasAnyFilter`, `staleTime: 0`, `placeholderData: keepPreviousData` → résultats instantanés à chaque frappe sans flash
-- Filtre `from` côté serveur : résoudre `username/displayName` → `userId` via les `members` passés depuis le composant, puis `.eq('author_id', resolvedId)` (vraie performance)
-- Filtre `mentions` : convertir en `<@SNOWFLAKE_ID>` (cohérent avec notre système de mentions Snowflake)
-- Ajouter filtre `has: 'image' | 'video' | 'file' | 'link'` → filtré sur `attachments` JSONB
-- Augmenter `.limit(100)`
+**1. Toujours afficher les préfixes restants quand l'input est focused et qu'il n'y a pas d'autocomplétion active**
 
-### 2. `GlobalSearchModal.tsx` — refonte UI à la Discord
+Modifier la condition d'affichage du dropdown "Search options" :
+- Avant : `showShortcuts && !activeAutocomplete` + condition cachée `!rawInput && !hasActiveFilters` au focus
+- Après : `isInputFocused && !activeAutocomplete && remainingPrefixes.length > 0` — affiché tant qu'il reste des filtres à sélectionner
 
-**Nouveau layout d'input** :
-```
-[📌] [👤] [🖼️] | from: ▏                         [✕]
-                      ┌──────────────────────────┐
-                      │ From User                │
-                      │ 🟢 PikaSudo  pikasudo    │
-                      │ 🔵 Adrien_Sama adrien    │
-                      └──────────────────────────┘
-```
+**2. Filtrer dynamiquement les préfixes déjà utilisés**
 
-- **Pills d'icônes à gauche** (cliquables) : `Pin` (épinglé:), `User` (de:), `Image` (a:image), `AtSign` (mentions:), `Hash` (dans:). Clic = insère le préfixe + ouvre l'autocomplétion.
-- **Input intégré** : tape directement, tokens parsés en temps réel
-- **Dropdown autocomplétion enrichie** :
-  - Header "From User" / "In Channel" / "Mentioning" selon contexte
-  - Pour utilisateurs : avatar + display_name (gras) + `@username` (muted) — match l'image
-  - Pour salons : icône type (#, 📢, 📌, etc.) + nom
+Calculer `remainingPrefixes` = `searchPrefixes` moins ceux déjà présents dans `mergedFilters`. Ainsi après avoir choisi `from:`, le dropdown affiche immédiatement `mentions:`, `in:`, `has:`, `before:`, `during:`, `after:`, `pinned:`.
 
-**Préfixes anglais standardisés** (style Discord) :
-- `from:`, `mentions:`, `has:`, `before:`, `during:`, `after:`, `in:`, `pinned:`
+**3. Maintenir le focus après sélection d'un filtre**
 
-**Suppression du debounce** :
-- Recherche déclenchée immédiatement à chaque changement (le `useQuery` + `placeholderData: keepPreviousData` évite les flashs)
+- `handleAutocompleteSelect` : déjà fait (`inputRef.current?.focus()`), mais réafficher immédiatement le dropdown des préfixes restants via `setShowShortcuts(true)` à la fin
+- `handleShortcutClick` (auto-filters comme `has:image`) : idem, garder le dropdown ouvert pour permettre l'enchaînement instantané
+- `handleRemoveFilter` : refocus + réafficher le dropdown
 
-**Filtre tags** :
-- Affichés inline DANS l'input comme "chips" (pas au-dessus), supprimables via ✕
-- Style : pilule colorée `bg-primary/15` avec préfixe en bold
+**4. Remplacer `setTimeout(150)` du onBlur par une logique plus stricte**
 
-**Résultats temps réel** :
-- Pas de spinner intrusif si on a déjà des résultats précédents (`isPending && !data` seulement)
-- Highlight du terme recherché dans le contenu via wrapping `<mark>`
+Le `setTimeout(() => setShowShortcuts(false), 150)` actuel est lent. Utiliser `onMouseDown={(e) => e.preventDefault()}` sur tous les boutons (déjà en place) et fermer immédiatement uniquement si le focus part vraiment ailleurs (vérifier `relatedTarget`).
 
-### 3. Détection nouveaux préfixes
+**5. État `isInputFocused`**
 
-Mettre à jour `prefixMap` et `searchPrefixes` :
-- `from:` → `from`
-- `mentions:` → `mentions`  
-- `has:` → nouveau (image/video/file/link)
-- `in:` → `channel`
-- `before:` / `during:` / `after:` → dates
-- `pinned:` → `pinned` (true/false)
+Remplacer `showShortcuts` par un véritable état `isInputFocused` mis à jour via `onFocus`/`onBlur`. Le dropdown s'affiche tant que :
+- input focused
+- pas d'autocomplétion de valeur active
+- il reste des préfixes disponibles
 
-## Fichiers modifiés
+## Résultat
 
-- `src/hooks/useGlobalSearch.ts` — `useQuery` réactif, filtre `from` résolu serveur, filtre `has:`, filtre `mentions:` Snowflake
-- `src/components/modals/GlobalSearchModal.tsx` — refonte complète UI : pills à gauche, autocomplétion enrichie type Discord, recherche instantanée sans debounce, tokens chips inline
+- Sélection d'un filtre → dropdown des préfixes restants réapparaît **instantanément** (0ms)
+- Préfixes déjà actifs n'apparaissent plus dans la liste
+- Enchaînement fluide : `from:user` → click → `in:channel` → click → `has:image` → click, sans aucune friction
 
-## Résultat attendu
+## Fichier modifié
 
-- Frappe = résultats instantanés sans flash
-- Autocomplétion utilisateurs identique à l'image Discord (avatars + handles)
-- Pills d'accès rapide à gauche pour les filtres courants
-- Filtres `from:`/`mentions:` réellement performants côté serveur
-- Nouveau filtre `has:` pour images/vidéos/fichiers/liens
+- `src/components/modals/GlobalSearchModal.tsx`
 

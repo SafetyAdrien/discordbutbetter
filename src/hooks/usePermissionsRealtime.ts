@@ -5,10 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 /** Shared lock: prevents Realtime invalidations while a local mutation is settling. */
 export const permissionsMutationLockRef = { current: false };
 
-/** Lock helper — sets lock and auto-releases after `ms`. */
+/** Lock helper — sets lock and auto-releases after `ms`, then dispatches event. */
 export function lockPermissionsMutation(ms = 50) {
   permissionsMutationLockRef.current = true;
-  setTimeout(() => { permissionsMutationLockRef.current = false; }, ms);
+  setTimeout(() => {
+    permissionsMutationLockRef.current = false;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('permissions:lock-released'));
+    }
+  }, ms);
 }
 
 /** All permission-related query keys that must stay in sync. */
@@ -62,15 +67,16 @@ export function usePermissionsRealtime(serverId: string | null) {
     doRefetch(source);
   }, [doRefetch]);
 
-  // Check for pending post-lock refetch
+  // Event-driven post-lock refetch (no polling)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const handler = () => {
       if (pendingPostLockRef.current && !permissionsMutationLockRef.current) {
         pendingPostLockRef.current = false;
         doRefetch(pendingSourceRef.current || 'post-lock');
       }
-    }, 50);
-    return () => clearInterval(interval);
+    };
+    window.addEventListener('permissions:lock-released', handler);
+    return () => window.removeEventListener('permissions:lock-released', handler);
   }, [doRefetch]);
 
   useEffect(() => {

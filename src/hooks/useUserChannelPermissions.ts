@@ -44,7 +44,7 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
   const { user } = useAuth();
 
   const cacheKey = `${channelId}:${permission}`;
-  const cached = getPermissionCache(cacheKey);
+  const cached = channelId ? getPermissionCache(cacheKey) : null;
 
   const query = useQuery({
     queryKey: ['channel-permission', channelId, permission, user?.id],
@@ -71,9 +71,10 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
     gcTime: 300000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    initialData: cached !== null ? cached : undefined,
+    initialDataUpdatedAt: cached !== null ? Date.now() : 0,
   });
 
-  // Use sessionStorage cache as fallback during loading; only fall back to true if no cache exists
   return {
     ...query,
     data: query.data ?? (query.isPending ? (cached ?? true) : false),
@@ -85,35 +86,40 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   const { user } = useAuth();
 
   const queries = useQueries({
-    queries: permissions.map((permission) => ({
-      queryKey: ['channel-permission', channelId, permission, user?.id],
-      queryFn: async (): Promise<{ permission: ServerPermission; granted: boolean }> => {
-        if (!channelId || !user?.id) return { permission, granted: false };
+    queries: permissions.map((permission) => {
+      const cached = channelId ? getPermissionCache(`${channelId}:${permission}`) : null;
+      return {
+        queryKey: ['channel-permission', channelId, permission, user?.id],
+        queryFn: async (): Promise<{ permission: ServerPermission; granted: boolean }> => {
+          if (!channelId || !user?.id) return { permission, granted: false };
 
-        const { data, error } = await supabase.rpc('has_channel_permission', {
-          _user_id: user.id,
-          _channel_id: channelId,
-          _permission: permission,
-        });
+          const { data, error } = await supabase.rpc('has_channel_permission', {
+            _user_id: user.id,
+            _channel_id: channelId,
+            _permission: permission,
+          });
 
-        if (error) {
-          console.error(`Error checking ${permission}:`, error);
-          return { permission, granted: false };
-        }
+          if (error) {
+            console.error(`Error checking ${permission}:`, error);
+            return { permission, granted: false };
+          }
 
-        const granted = data ?? false;
-        if (channelId) setPermissionCache(`${channelId}:${permission}`, granted);
-        return { permission, granted };
-      },
-      enabled: !!channelId && !!user?.id,
-      staleTime: 0,
-      gcTime: 300000,
-      refetchOnMount: true,
-      refetchOnWindowFocus: false,
-    })),
+          const granted = data ?? false;
+          if (channelId) setPermissionCache(`${channelId}:${permission}`, granted);
+          return { permission, granted };
+        },
+        enabled: !!channelId && !!user?.id,
+        staleTime: 0,
+        gcTime: 300000,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+        initialData: cached !== null ? { permission, granted: cached } : undefined,
+        initialDataUpdatedAt: cached !== null ? Date.now() : 0,
+      };
+    }),
   });
 
-  // Bypass loading state when all permissions are already cached in sessionStorage
+  // Bypass loading state when all permissions are already cached
   const allCached = permissions.every(p =>
     channelId ? getPermissionCache(`${channelId}:${p}`) !== null : false
   );
@@ -121,8 +127,6 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   const isPending = allCached ? false : queries.some(q => q.isPending);
   const isError = queries.some(q => q.isError);
 
-  // Build a map of permission -> granted
-  // Use sessionStorage cache during loading; fall back to true only if no cache
   const permissionsMap = new Map<ServerPermission, boolean>();
   queries.forEach((query, index) => {
     const perm = permissions[index];
@@ -146,52 +150,64 @@ export function useChannelsVisibility(channelIds: string[]) {
   const { user } = useAuth();
 
   const queries = useQueries({
-    queries: channelIds.map((channelId) => ({
-      queryKey: ['channel-permission', channelId, 'view_channel', user?.id],
-      queryFn: async (): Promise<{ channelId: string; visible: boolean }> => {
-        if (!channelId || !user?.id) return { channelId, visible: true };
+    queries: channelIds.map((channelId) => {
+      const cached = getPermissionCache(`${channelId}:view_channel`);
+      return {
+        queryKey: ['channel-permission', channelId, 'view_channel', user?.id],
+        queryFn: async (): Promise<{ channelId: string; visible: boolean }> => {
+          if (!channelId || !user?.id) return { channelId, visible: true };
 
-        const { data, error } = await supabase.rpc('has_channel_permission', {
-          _user_id: user.id,
-          _channel_id: channelId,
-          _permission: 'view_channel' as ServerPermission,
-        });
+          const { data, error } = await supabase.rpc('has_channel_permission', {
+            _user_id: user.id,
+            _channel_id: channelId,
+            _permission: 'view_channel' as ServerPermission,
+          });
 
-        if (error) {
-          console.error(`Error checking view_channel for ${channelId}:`, error);
-          return { channelId, visible: true };
-        }
+          if (error) {
+            console.error(`Error checking view_channel for ${channelId}:`, error);
+            return { channelId, visible: true };
+          }
 
-        return { channelId, visible: data ?? true };
-      },
-      enabled: !!channelId && !!user?.id,
-      staleTime: 0,
-      gcTime: 300000,
-      refetchOnMount: true,
-      refetchOnWindowFocus: false,
-    })),
+          const visible = data ?? true;
+          setPermissionCache(`${channelId}:view_channel`, visible);
+          return { channelId, visible };
+        },
+        enabled: !!channelId && !!user?.id,
+        staleTime: 0,
+        gcTime: 300000,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+        initialData: cached !== null ? { channelId, visible: cached } : undefined,
+        initialDataUpdatedAt: cached !== null ? Date.now() : 0,
+      };
+    }),
   });
 
-  const isLoading = queries.some(q => q.isLoading);
-  const isPending = queries.some(q => q.isPending);
+  const allCached = channelIds.every(id => getPermissionCache(`${id}:view_channel`) !== null);
+  const isLoading = allCached ? false : queries.some(q => q.isLoading);
+  const isPending = allCached ? false : queries.some(q => q.isPending);
 
   // Build a set of visible channel IDs
-  // OPTIMISTIC: while data hasn't arrived, assume ALL channels visible to prevent flash
   const visibleChannelIds = new Set<string>();
-  if (isPending) {
+  if (isPending && !allCached) {
     channelIds.forEach(id => visibleChannelIds.add(id));
   } else {
-    queries.forEach((query) => {
-      if (query.data?.visible) {
-        visibleChannelIds.add(query.data.channelId);
-      }
+    queries.forEach((query, index) => {
+      const id = channelIds[index];
+      const cached = getPermissionCache(`${id}:view_channel`);
+      const visible = query.data?.visible ?? (cached !== null ? cached : true);
+      if (visible) visibleChannelIds.add(id);
     });
   }
 
   return {
     visibleChannelIds,
     isLoading,
-    isVisible: (channelId: string) => isPending ? true : visibleChannelIds.has(channelId),
+    isVisible: (channelId: string) => {
+      if (visibleChannelIds.has(channelId)) return true;
+      if (isPending && !allCached) return true;
+      return false;
+    },
   };
 }
 
@@ -255,7 +271,8 @@ export function useUserChannelPermissions(channelId: string | null) {
     },
     enabled: !!channelId && !!user?.id,
     staleTime: 0,
-    // Use cached value from sessionStorage; fall back to all-true only on first-ever visit
+    initialData: cachedPerms ?? undefined,
+    initialDataUpdatedAt: cachedPerms ? Date.now() : 0,
     placeholderData: cachedPerms ?? defaultPermissions(true),
   });
 }

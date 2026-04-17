@@ -131,6 +131,54 @@ export function MessageInput({
     adjustTextareaHeight();
   }, [value, adjustTextareaHeight]);
 
+  // Discord-style auto-focus: when user starts typing anywhere on page,
+  // route the keystroke into the message textarea.
+  useEffect(() => {
+    if (isMobile) return;
+    if (disabled || permissionDeniedMessage) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      // Already focused on the textarea — let native handler work
+      if (document.activeElement === textarea) return;
+
+      // Skip if any modifier (shortcuts like Ctrl+K, Cmd+F, etc.)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Skip non-printable keys (arrows, F-keys, Escape, Tab, Enter, etc.)
+      // Printable characters always have a single-char key value.
+      if (e.key.length !== 1) return;
+
+      // Skip if focus is on another editable element
+      const active = document.activeElement as HTMLElement | null;
+      if (active) {
+        const tag = active.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (active.isContentEditable) return;
+      }
+
+      // Skip if a modal/dialog/popover is open
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [data-radix-popper-content-wrapper]')) {
+        return;
+      }
+
+      // Skip if user is selecting text
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return;
+
+      // Focus the textarea — let the keystroke fall through naturally
+      textarea.focus();
+      // Move cursor to end
+      const len = textarea.value.length;
+      textarea.setSelectionRange(len, len);
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isMobile, disabled, permissionDeniedMessage]);
+
   const insertEmoji = useCallback((emoji: string) => {
     const textarea = textareaRef.current;
     if (textarea) {

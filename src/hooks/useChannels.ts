@@ -91,12 +91,13 @@ export function useChannels(
     };
   }, [serverId, user, queryClient]);
 
+  const cachedChannels = initialData ?? (serverId ? cacheGetSync<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(`channels:${serverId}`) : undefined);
+
   const query = useQuery({
     queryKey: ['channels', serverId],
     queryFn: async (): Promise<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }> => {
       if (!serverId) return { categories: [], orphanChannels: [] };
 
-      // Fetch categories
       const { data: categories, error: catError } = await supabase
         .from('categories')
         .select('id, name, position')
@@ -105,7 +106,6 @@ export function useChannels(
 
       if (catError) throw catError;
 
-      // Fetch channels
       const { data: channels, error: chanError } = await supabase
         .from('channels')
         .select('id, name, type, description, position, category_id, server_id, icon_url')
@@ -114,7 +114,6 @@ export function useChannels(
 
       if (chanError) throw chanError;
 
-      // Group channels by category
       const categorizedChannels = categories.map((cat) => ({
         ...cat,
         channels: channels
@@ -122,7 +121,6 @@ export function useChannels(
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
       }));
 
-      // Get orphan channels (no category)
       const orphanChannels = channels
         .filter((ch) => !ch.category_id)
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -130,14 +128,8 @@ export function useChannels(
       return { categories: categorizedChannels, orphanChannels };
     },
     enabled: !!serverId && !!user,
-    // Use initial data from servers cache for instant display
-    initialData: initialData,
-    // Persist from sessionStorage for instant hydration after refresh
-    placeholderData: () => {
-      if (initialData) return undefined;
-      return cacheGetSync(`channels:${serverId}`);
-    },
-    // Keep staleTime short so Realtime invalidations trigger immediate refetch
+    initialData: cachedChannels,
+    initialDataUpdatedAt: cachedChannels ? Date.now() : 0,
     staleTime: 0,
   });
 

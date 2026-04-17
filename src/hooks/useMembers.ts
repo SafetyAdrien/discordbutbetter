@@ -53,9 +53,10 @@ export function useMembers(serverId: string | null) {
   const [hasRealtimeError, setHasRealtimeError] = useState(false);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const cachedMembers = serverId ? cacheGetSync<MemberWithProfile[]>(`members:${serverId}`) : undefined;
+
   const query = useQuery({
     queryKey: ['members', serverId],
-    placeholderData: () => cacheGetSync(`members:${serverId}`),
     queryFn: async (): Promise<MemberWithProfile[]> => {
       if (!serverId) return [];
 
@@ -93,7 +94,6 @@ export function useMembers(serverId: string | null) {
 
       if (error) throw error;
 
-      // Fetch server profiles for all members in one query
       const userIds = data.map((m) => (m.user as any)?.id).filter(Boolean);
       const { data: serverProfiles } = userIds.length > 0
         ? await supabase
@@ -106,7 +106,6 @@ export function useMembers(serverId: string | null) {
       const profileMap = new Map<string, ServerProfileData>();
       serverProfiles?.forEach((sp) => profileMap.set(sp.user_id, sp as ServerProfileData));
 
-      // Transform data to flatten roles
       return data.map((member) => {
         const userObj = member.user as MemberWithProfile['user'];
         return {
@@ -123,7 +122,8 @@ export function useMembers(serverId: string | null) {
       });
     },
     enabled: !!serverId && !!user,
-    // Polling fallback if realtime fails
+    initialData: cachedMembers,
+    initialDataUpdatedAt: cachedMembers ? Date.now() : 0,
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 

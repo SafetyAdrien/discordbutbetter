@@ -1,23 +1,97 @@
 /**
- * IndexedDB cache layer with synchronous in-memory fallback.
+ * IndexedDB cache layer with synchronous localStorage + in-memory fallback.
  * 
  * Architecture:
- * - In-memory Map for synchronous reads (used by placeholderData)
- * - IndexedDB for persistent storage (survives browser restarts, no 5MB limit)
- * - warmCache() loads all IDB entries into memory on app start
- * - cacheSetAsync() writes to both memory + IDB
- * - cacheGetSync() reads from memory only (instant)
+ * - In-memory Map for instant synchronous reads during runtime
+ * - localStorage mirror for instant synchronous reads on cold boot
+ * - IndexedDB for persistent bulk storage
+ * - warmCache() hydrates IDB entries into memory in background
+ * - cacheSetAsync() writes to memory + localStorage + IndexedDB
+ * - cacheGetSync() reads from memory first, then localStorage mirror
  */
 
 const DB_NAME = 'nexuschat-cache';
 const STORE_NAME = 'kv';
 const DB_VERSION = 1;
+const SYNC_STORAGE_PREFIX = `${DB_NAME}:${STORE_NAME}:`;
 
-// In-memory sync cache
 const memoryCache = new Map<string, any>();
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 let idbAvailable = true;
+
+function getSyncStorageKey(key: string): string {
+  return `${SYNC_STORAGE_PREFIX}${key}`;
+}
+
+function canUseLocalStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function readSyncMirror<T = any>(key: string): T | undefined {
+  if (!canUseLocalStorage()) return undefined;
+
+  try {
+    const raw = window.localStorage.getItem(getSyncStorageKey(key));
+    if (raw === null) return undefined;
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSyncMirror(key: string, value: any): void {
+  if (!canUseLocalStorage()) return;
+
+  try {
+    window.localStorage.setItem(getSyncStorageKey(key), JSON.stringify(value));
+  } catch {
+    // Ignore quota or serialization errors — memory/IDB still work
+  }
+}
+
+function deleteSyncMirror(key: string): void {
+  if (!canUseLocalStorage()) return;
+
+  try {
+    window.localStorage.removeItem(getSyncStorageKey(key));
+  } catch {}
+}
+
+function deleteSyncMirrorByPrefix(prefix: string): void {
+  if (!canUseLocalStorage()) return;
+
+  try {
+    const fullPrefix = getSyncStorageKey(prefix);
+    const keysToDelete: string[] = [];
+
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith(fullPrefix)) {
+        keysToDelete.push(key);
+      }
+    }
+
+    keysToDelete.forEach((key) => window.localStorage.removeItem(key));
+  } catch {}
+}
+
+function clearSyncMirror(): void {
+  if (!canUseLocalStorage()) return;
+
+  try {
+    const keysToDelete: string[] = [];
+
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith(SYNC_STORAGE_PREFIX)) {
+        keysToDelete.push(key);
+      }
+    }
+
+    keysToDelete.forEach((key) => window.localStorage.removeItem(key));
+  } catch {}
+}
 
 function getDB(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
@@ -45,8 +119,7 @@ function getDB(): Promise<IDBDatabase> {
 
 /**
  * Warm the in-memory cache from IndexedDB.
- * Call this once on app startup (before rendering).
- * Returns quickly — typically < 50ms for hundreds of entries.
+ * Call this once on app startup; it now runs in background.
  */
 export async function warmCache(): Promise<void> {
   try {
@@ -66,43 +139,52 @@ export async function warmCache(): Promise<void> {
       tx.onerror = () => resolve();
     });
   } catch {
-    // IDB unavailable (private browsing, etc.) — memory cache still works for session
+    // IDB unavailable — sync mirror + memory cache still work
   }
 }
 
 /**
- * Synchronous read from in-memory cache.
- * Used by placeholderData in react-query hooks.
+ * Synchronous read from in-memory cache, with localStorage cold-boot fallback.
  */
 export function cacheGetSync<T = any>(key: string): T | undefined {
-  return memoryCache.get(key) as T | undefined;
+  if (memoryCache.has(key)) {
+    return memoryCache.get(key) as T | undefined;
+  }
+
+  const mirrored = readSyncMirror<T>(key);
+  if (mirrored !== undefined) {
+    memoryCache.set(key, mirrored);
+    return mirrored;
+  }
+
+  return undefined;
 }
 
 /**
- * Write to both in-memory cache and IndexedDB (async, fire-and-forget).
- * The memory write is synchronous, IDB write is background.
+ * Write to memory + sync mirror immediately, IndexedDB in background.
  */
 export function cacheSetAsync(key: string, value: any): void {
   memoryCache.set(key, value);
+  writeSyncMirror(key, value);
 
   if (!idbAvailable) return;
 
-  // Fire-and-forget IDB write
   getDB().then(db => {
     try {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       tx.objectStore(STORE_NAME).put(value, key);
     } catch {
-      // Quota exceeded or other error — memory cache still valid
+      // Memory + sync mirror stay valid
     }
   }).catch(() => {});
 }
 
 /**
- * Delete a key from both caches.
+ * Delete a key from all cache layers.
  */
 export function cacheDelete(key: string): void {
   memoryCache.delete(key);
+  deleteSyncMirror(key);
 
   if (!idbAvailable) return;
 
@@ -115,17 +197,17 @@ export function cacheDelete(key: string): void {
 }
 
 /**
- * Delete all keys matching a prefix from both caches.
+ * Delete all keys matching a prefix from all cache layers.
  */
 export function cacheDeleteByPrefix(prefix: string): void {
-  // Memory
   for (const key of memoryCache.keys()) {
     if (key.startsWith(prefix)) memoryCache.delete(key);
   }
 
+  deleteSyncMirrorByPrefix(prefix);
+
   if (!idbAvailable) return;
 
-  // IDB
   getDB().then(db => {
     try {
       const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -149,6 +231,7 @@ export function cacheDeleteByPrefix(prefix: string): void {
  */
 export function cacheClear(): void {
   memoryCache.clear();
+  clearSyncMirror();
 
   if (!idbAvailable) return;
 

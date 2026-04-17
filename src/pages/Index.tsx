@@ -393,12 +393,15 @@ const Index = () => {
     setShowMembers(!showMembers);
   };
 
-  // Preloader — loads everything before showing the app
+  // Preloader — now runs only in background, without blocking the shell
   const preloader = usePreloader(authLoading, serversPending, servers);
 
-  // Loading state
-  if (!preloader.ready) {
+  if (authLoading) {
     return <LoadingScreen progress={preloader.progress} currentStep={preloader.currentStep} />;
+  }
+
+  if (!user) {
+    return null;
   }
 
   // Transform data for components - full Server type

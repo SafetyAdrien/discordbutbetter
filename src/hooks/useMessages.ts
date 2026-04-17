@@ -53,6 +53,8 @@ export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  const cachedMessages = channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined;
+
   const query = useQuery({
     queryKey: ['messages', channelId],
     queryFn: async (): Promise<MessageWithAuthor[]> => {
@@ -88,15 +90,15 @@ export function useMessages(channelId: string | null) {
         .limit(100);
 
       if (error) throw error;
-      
-      // Parse attachments from JSON
+
       return (data as any[]).map(msg => ({
         ...msg,
         attachments: Array.isArray(msg.attachments) ? msg.attachments : []
       })) as MessageWithAuthor[];
     },
     enabled: !!channelId && !!user,
-    placeholderData: () => cacheGetSync(`messages:${channelId}`),
+    initialData: cachedMessages,
+    initialDataUpdatedAt: cachedMessages ? Date.now() : 0,
   });
 
   // Persist to IndexedDB

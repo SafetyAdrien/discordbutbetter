@@ -357,6 +357,7 @@ export function GlobalSearchModal({
     setRawInput(cleaned.trimStart());
     setActiveAutocomplete(null);
     inputRef.current?.focus();
+    setIsInputFocused(true);
   };
 
   const handleShortcutClick = (prefix: string, auto?: boolean) => {

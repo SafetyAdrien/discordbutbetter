@@ -305,7 +305,7 @@ export function GlobalSearchModal({
     prefix: string;
     query: string;
   } | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { isMobile } = useBreakpoint();
 
@@ -315,7 +315,7 @@ export function GlobalSearchModal({
       setRawInput('');
       setFilters({});
       setActiveAutocomplete(null);
-      setShowShortcuts(false);
+      setIsInputFocused(false);
     }
   }, [open]);
 
@@ -335,7 +335,6 @@ export function GlobalSearchModal({
     setRawInput(value);
     const active = detectActivePrefix(value);
     setActiveAutocomplete(active);
-    setShowShortcuts(false);
   };
 
   const handleAutocompleteSelect = (value: string) => {
@@ -358,6 +357,7 @@ export function GlobalSearchModal({
     setRawInput(cleaned.trimStart());
     setActiveAutocomplete(null);
     inputRef.current?.focus();
+    setIsInputFocused(true);
   };
 
   const handleShortcutClick = (prefix: string, auto?: boolean) => {
@@ -376,14 +376,16 @@ export function GlobalSearchModal({
       const cfg = searchPrefixes.find((p) => p.prefix === prefix);
       if (cfg) setActiveAutocomplete({ type: cfg.type, prefix, query: '' });
     }
-    setShowShortcuts(false);
     inputRef.current?.focus();
+    setIsInputFocused(true);
   };
 
   const handleRemoveFilter = (key: keyof SearchFiltersType) => {
     const next = { ...filters };
     delete next[key];
     setFilters(next);
+    inputRef.current?.focus();
+    setIsInputFocused(true);
   };
 
   // Compute final query: contains = remaining text without prefix tokens
@@ -426,6 +428,17 @@ export function GlobalSearchModal({
   );
   const hasInput = searchQuery.length > 0 || hasActiveFilters;
   const showLoading = isFetching && !results;
+
+  // Prefixes still available (not already used as a filter)
+  const remainingPrefixes = useMemo(() => {
+    return searchPrefixes.filter((p) => {
+      const v = (mergedFilters as any)[p.key];
+      return v === undefined || v === null || v === '';
+    });
+  }, [mergedFilters]);
+
+  const showSearchOptions =
+    isInputFocused && !activeAutocomplete && remainingPrefixes.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -471,8 +484,13 @@ export function GlobalSearchModal({
                 ref={inputRef}
                 value={rawInput}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onFocus={() => !rawInput && !hasActiveFilters && setShowShortcuts(true)}
-                onBlur={() => setTimeout(() => setShowShortcuts(false), 150)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={(e) => {
+                  // Keep open if focus moves to a button inside the popover (handled via onMouseDown preventDefault)
+                  const next = e.relatedTarget as HTMLElement | null;
+                  if (next && next.closest('[data-search-popover]')) return;
+                  setIsInputFocused(false);
+                }}
                 placeholder={hasActiveFilters ? 'Search…' : 'Search messages, type "from:" or "in:"…'}
                 className="flex-1 min-w-[120px] h-7 bg-transparent text-sm placeholder:text-muted-foreground outline-none border-0"
               />
@@ -492,13 +510,16 @@ export function GlobalSearchModal({
               )}
             </div>
 
-            {/* Prefix shortcuts dropdown (when input empty + focused) */}
-            {showShortcuts && !activeAutocomplete && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+            {/* Prefix shortcuts dropdown — instant chaining when input focused */}
+            {showSearchOptions && (
+              <div
+                data-search-popover
+                className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
+              >
                 <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Search options
                 </p>
-                {searchPrefixes.map((p) => {
+                {remainingPrefixes.map((p) => {
                   const Icon = p.icon;
                   return (
                     <button
@@ -518,13 +539,15 @@ export function GlobalSearchModal({
             )}
 
             {activeAutocomplete && (
-              <AutocompleteSuggestions
-                type={activeAutocomplete.type}
-                query={activeAutocomplete.query}
-                channels={channels}
-                members={members}
-                onSelect={handleAutocompleteSelect}
-              />
+              <div data-search-popover>
+                <AutocompleteSuggestions
+                  type={activeAutocomplete.type}
+                  query={activeAutocomplete.query}
+                  channels={channels}
+                  members={members}
+                  onSelect={handleAutocompleteSelect}
+                />
+              </div>
             )}
           </div>
         </div>

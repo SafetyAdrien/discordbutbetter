@@ -1,37 +1,72 @@
 
 
-# Import serveur : icône et bannière Discord
+## Analyse
 
-## Problème
-L'edge function `import-discord-template` ne récupère pas l'icône ni la bannière du template Discord. Le `handleImportFinalize` crée le serveur sans `icon_url` ni `banner_url`.
+Le délai résiduel après chargement provient de :
+
+1. **`useUserChannelPermissions`** (ligne ~227) : `placeholderData: defaultPermissions(true)` n'est utilisé qu'à la première visite. Le `useQuery` attend toujours la résolution RPC avant de marquer `isSuccess`, ce qui bloque les composants utilisant `isLoading`.
+
+2. **`useChannelsVisibility`** (ligne ~165) : `isPending` reste `true` tant que TOUTES les requêtes ne sont pas résolues. Bien qu'il y ait un fallback optimiste, certains composants consomment `isLoading` directement → flash visible.
+
+3. **`useHasChannelPermission`** (ligne ~67) : Sur la 2ᵉ visite, le cache IndexedDB (`getPermissionCache`) est lu de manière synchrone via `cacheGetSync`, mais **uniquement après warmup**. Si le composant monte avant `warmCache().finally(...)` → cache miss → fallback `true` → re-render quand RPC répond.
+
+4. **`usePermissionsRealtime`** : Le `setInterval(50ms)` tourne en permanence — micro-coût CPU mais pas la cause du délai visuel.
+
+5. **Cause principale** : Le hook `useUserChannelPermissions` n'utilise PAS le cache IndexedDB synchrone comme `initialData`. Il se contente de `placeholderData` qui est remplacé dès que la query roule, créant une transition visible (true partout → vraies valeurs).
 
 ## Solution
 
-### 1. Edge function (`supabase/functions/import-discord-template/index.ts`)
-- Extraire `guild.icon_hash` et construire l'URL CDN Discord : `https://cdn.discordapp.com/guilds/${template.source_guild_id}/icons/${icon_hash}.png?size=512`
-- Extraire `guild.splash_hash` (bannière) : `https://cdn.discordapp.com/splashes/${template.source_guild_id}/${splash_hash}.png?size=1024`
-- Note : les templates Discord exposent `source_guild_id` et `serialized_source_guild.icon_hash`. Si `icon_hash` est absent, utiliser `null`.
-- Retourner `iconUrl` et `bannerUrl` dans le résultat JSON.
+### `src/hooks/useUserChannelPermissions.ts`
 
-### 2. CreateServerModal (`src/components/modals/CreateServerModal.tsx`)
-- Dans `handleImportFinalize`, après récupération de `importedData.iconUrl` et `importedData.bannerUrl` :
-  - Si une URL d'icône existe : fetch l'image depuis le CDN Discord (via l'edge function pour éviter CORS), upload dans le bucket `server-icons`, et passer l'URL publique au `insert` du serveur.
-  - Idem pour la bannière dans `server-banners`.
-- Mettre à jour le type `ImportedTemplate` pour inclure `iconUrl` et `bannerUrl`.
-- Afficher un aperçu de l'icône/bannière dans l'étape `import-preview`.
+**A. `useUserChannelPermissions`** : Utiliser `initialData` (cache IDB) au lieu de `placeholderData`. `initialData` est traité comme une vraie valeur fraîche → pas de transition de loading.
 
-### 3. Edge function — proxy d'image (optionnel mais nécessaire pour CORS)
-- Ajouter une route ou une seconde fonction pour proxifier le téléchargement d'image Discord, ou bien faire le fetch + upload vers le storage directement dans l'edge function existante en utilisant le service role key.
+```ts
+return useQuery({
+  // ...
+  initialData: cachedPerms ?? undefined,  // si cache existe, instantané
+  initialDataUpdatedAt: cachedPerms ? Date.now() : 0,
+  placeholderData: cachedPerms ?? defaultPermissions(true), // fallback 1ère visite
+});
+```
 
-### Approche retenue (plus simple)
-L'edge function fait tout côté serveur :
-1. Fetch l'icône Discord si disponible
-2. Upload dans le bucket `server-icons` avec le service role key
-3. Retourne l'URL publique du storage dans le résultat
+**B. `useHasChannelPermission`** : Idem, lire le cache IDB en synchrone et le passer comme `initialData` :
 
-Cela évite les problèmes CORS et simplifie le client.
+```ts
+const cached = getPermissionCache(cacheKey);
+useQuery({
+  // ...
+  initialData: cached !== null ? cached : undefined,
+  initialDataUpdatedAt: cached !== null ? Date.now() : 0,
+});
+```
+
+**C. `useMultipleChannelPermissions`** : Pour chaque permission, lire le cache et passer `initialData` à la query correspondante.
+
+**D. `useChannelsVisibility`** : Lire le cache `${channelId}:view_channel` pour chaque canal et le passer comme `initialData`. Plus de `isPending` qui bloque.
+
+### `src/hooks/usePermissionsRealtime.ts`
+
+Remplacer le `setInterval(50ms)` permanent par un mécanisme event-driven : déclencher la vérification post-lock via un `setTimeout` planifié au moment du lock, pas par polling.
+
+```ts
+export function lockPermissionsMutation(ms = 50) {
+  permissionsMutationLockRef.current = true;
+  setTimeout(() => {
+    permissionsMutationLockRef.current = false;
+    // Trigger post-lock event
+    window.dispatchEvent(new CustomEvent('permissions:lock-released'));
+  }, ms);
+}
+```
+
+Dans le hook : écouter l'event au lieu de polling.
 
 ## Fichiers modifiés
-- `supabase/functions/import-discord-template/index.ts` — extraire icon/banner, fetch et upload dans storage
-- `src/components/modals/CreateServerModal.tsx` — utiliser `iconUrl`/`bannerUrl` retournées, les afficher dans le preview et les passer à l'insert serveur
+- `src/hooks/useUserChannelPermissions.ts` — `initialData` depuis cache IDB partout
+- `src/hooks/usePermissionsRealtime.ts` — supprimer `setInterval`, utiliser event
+
+## Résultat attendu
+- 1ère visite : fallback optimiste `true` (déjà le cas)
+- 2ᵉ visite et + : valeurs réelles depuis cache IDB instantanément, **zéro flash, zéro re-render visible** lorsque la RPC répond avec les mêmes valeurs
+- Aucun polling CPU permanent
 

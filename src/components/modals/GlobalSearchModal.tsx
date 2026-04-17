@@ -509,13 +509,16 @@ export function GlobalSearchModal({
               )}
             </div>
 
-            {/* Prefix shortcuts dropdown (when input empty + focused) */}
-            {showShortcuts && !activeAutocomplete && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+            {/* Prefix shortcuts dropdown — instant chaining when input focused */}
+            {showSearchOptions && (
+              <div
+                data-search-popover
+                className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
+              >
                 <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Search options
                 </p>
-                {searchPrefixes.map((p) => {
+                {remainingPrefixes.map((p) => {
                   const Icon = p.icon;
                   return (
                     <button

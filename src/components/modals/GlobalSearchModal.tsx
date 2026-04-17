@@ -335,7 +335,6 @@ export function GlobalSearchModal({
     setRawInput(value);
     const active = detectActivePrefix(value);
     setActiveAutocomplete(active);
-    setShowShortcuts(false);
   };
 
   const handleAutocompleteSelect = (value: string) => {

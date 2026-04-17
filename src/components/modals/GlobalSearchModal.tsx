@@ -539,13 +539,15 @@ export function GlobalSearchModal({
             )}
 
             {activeAutocomplete && (
-              <AutocompleteSuggestions
-                type={activeAutocomplete.type}
-                query={activeAutocomplete.query}
-                channels={channels}
-                members={members}
-                onSelect={handleAutocompleteSelect}
-              />
+              <div data-search-popover>
+                <AutocompleteSuggestions
+                  type={activeAutocomplete.type}
+                  query={activeAutocomplete.query}
+                  channels={channels}
+                  members={members}
+                  onSelect={handleAutocompleteSelect}
+                />
+              </div>
             )}
           </div>
         </div>

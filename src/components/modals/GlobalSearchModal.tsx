@@ -483,8 +483,13 @@ export function GlobalSearchModal({
                 ref={inputRef}
                 value={rawInput}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onFocus={() => !rawInput && !hasActiveFilters && setShowShortcuts(true)}
-                onBlur={() => setTimeout(() => setShowShortcuts(false), 150)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={(e) => {
+                  // Keep open if focus moves to a button inside the popover (handled via onMouseDown preventDefault)
+                  const next = e.relatedTarget as HTMLElement | null;
+                  if (next && next.closest('[data-search-popover]')) return;
+                  setIsInputFocused(false);
+                }}
                 placeholder={hasActiveFilters ? 'Search…' : 'Search messages, type "from:" or "in:"…'}
                 className="flex-1 min-w-[120px] h-7 bg-transparent text-sm placeholder:text-muted-foreground outline-none border-0"
               />

@@ -938,9 +938,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       )}
 
       {/* Input */}
-      <div className="relative px-4 pb-4 pt-2">
-        {/* Blur fade overlay above input — masks scrolling messages */}
-        <div className="pointer-events-none absolute -top-6 left-0 right-0 h-6 z-10 backdrop-blur-sm [mask-image:linear-gradient(to_bottom,transparent,black)]" />
+      <div className="px-4 pb-4 pt-2">
       <MessageInput
         value={messageContent}
         onChange={setMessageContent}

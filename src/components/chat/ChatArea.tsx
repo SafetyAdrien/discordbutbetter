@@ -1892,9 +1892,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="relative flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
-        {/* Blur fade overlay above input — masks scrolling messages */}
-        <div className="pointer-events-none absolute -top-6 left-0 right-0 h-6 z-10 backdrop-blur-sm [mask-image:linear-gradient(to_bottom,transparent,black)]" />
+      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
         <MessageInput

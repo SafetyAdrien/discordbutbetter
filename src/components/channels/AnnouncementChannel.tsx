@@ -256,7 +256,7 @@ export function AnnouncementChannel({
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
   const [createThreadDefaultName, setCreateThreadDefaultName] = useState<string>('');
-  const { data: canCreateThreadsRaw } = useMultipleChannelPermissions(channel.id, ['create_public_threads']);
+  const canCreatePublicThreads = isAdminOrOwner || canPerm('create_public_threads');
   
   // Threads
   const { data: threads = [] } = useThreads(channel.id);

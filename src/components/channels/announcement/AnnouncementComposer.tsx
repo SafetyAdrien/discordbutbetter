@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 import { ImagePlus, Paperclip, Smile, Send, ChevronDown, ChevronUp, MessageSquarePlus, Megaphone, X } from 'lucide-react';
 import { Channel } from '@/types/app';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,7 +43,6 @@ export function AnnouncementComposer({
   const [createThreadEnabled, setCreateThreadEnabled] = useState(false);
   const [autoPublishEnabled, setAutoPublishEnabled] = useState(false);
   const [threadName, setThreadName] = useState('');
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -385,67 +384,46 @@ export function AnnouncementComposer({
 
         </div>
 
-        {/* Right: Send + options dropdown */}
-        <div className="flex items-stretch rounded-md overflow-hidden">
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="h-8 px-4 rounded-r-none gap-1.5"
-          >
-            <Send className="w-3.5 h-3.5" />
-            Envoyer
-          </Button>
+        {/* Right: Send button with hover options */}
+        <HoverCard openDelay={150} closeDelay={150}>
+          <HoverCardTrigger asChild>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="h-8 px-4 gap-1.5"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Envoyer
+            </Button>
+          </HoverCardTrigger>
           {(canCreateThreads || canPublish) && (
-            <Popover open={optionsOpen} onOpenChange={setOptionsOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  className="h-8 px-2 rounded-l-none border-l border-primary-foreground/20"
-                  disabled={isDisabled}
-                >
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="end"
-                side="top"
-                className="w-72 p-2 bg-popover border border-border"
-              >
-                {canCreateThreads && (
-                  <label className="flex items-start gap-3 p-2 rounded-md hover:bg-accent cursor-pointer">
-                    <Switch
-                      checked={createThreadEnabled}
-                      onCheckedChange={setCreateThreadEnabled}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground">Créer un fil</div>
-                      <div className="text-xs text-muted-foreground">
-                        Ouvre automatiquement un fil sous l'annonce.
-                      </div>
-                    </div>
-                  </label>
-                )}
-                {canPublish && (
-                  <label className="flex items-start gap-3 p-2 rounded-md hover:bg-accent cursor-pointer">
-                    <Switch
-                      checked={autoPublishEnabled}
-                      onCheckedChange={setAutoPublishEnabled}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground">Publier automatiquement</div>
-                      <div className="text-xs text-muted-foreground">
-                        Diffuse vers les {followers.length} salon{followers.length > 1 ? 's' : ''} qui suivent ce salon.
-                      </div>
-                    </div>
-                  </label>
-                )}
-              </PopoverContent>
-            </Popover>
+            <HoverCardContent
+              align="end"
+              side="top"
+              className="w-56 p-2 bg-popover border border-border"
+            >
+              {canCreateThreads && (
+                <label className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer">
+                  <span className="text-sm text-foreground">Créer un fil</span>
+                  <Switch
+                    checked={createThreadEnabled}
+                    onCheckedChange={setCreateThreadEnabled}
+                  />
+                </label>
+              )}
+              {canPublish && (
+                <label className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer">
+                  <span className="text-sm text-foreground">Publier</span>
+                  <Switch
+                    checked={autoPublishEnabled}
+                    onCheckedChange={setAutoPublishEnabled}
+                  />
+                </label>
+              )}
+            </HoverCardContent>
           )}
-        </div>
+        </HoverCard>
       </div>
     </div>
   );

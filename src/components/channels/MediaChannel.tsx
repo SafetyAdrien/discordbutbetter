@@ -1,14 +1,13 @@
 import { useState, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Upload, Grid, List, Users, EyeOff, Layers } from 'lucide-react';
+import { Upload, Grid, List, Users, EyeOff } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
-import { MediaPostDetailModal } from '@/components/channels/media/MediaPostDetailModal';
-import { useMediaPosts, useCreateMediaPost, type MediaPost } from '@/hooks/useMediaPosts';
+import { useMediaPosts, useCreateMediaPost } from '@/hooks/useMediaPosts';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 
@@ -28,8 +27,7 @@ export interface MediaChannelProps {
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
-  const [activePost, setActivePost] = useState<MediaPost | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Real data hooks
   const { data: mediaItems = [] } = useMediaPosts(channel.id);
@@ -73,11 +71,12 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     e.preventDefault();
     setIsDragging(false);
     setDragCounter(0);
-    const dropped = Array.from(e.dataTransfer.files).filter(
-      (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
-    );
-    if (dropped.length > 0) {
-      setSelectedFiles(dropped);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        setSelectedFile(file);
+      }
     }
   }, []);
 
@@ -85,25 +84,22 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*,video/*';
-    input.multiple = true;
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        setSelectedFiles(Array.from(files));
-      }
+      if (files && files[0]) setSelectedFile(files[0]);
     };
     input.click();
   };
 
-  const handlePublish = (data: {
-    files: File[];
+  const handlePublish = async (data: {
+    file: File;
     title: string;
     description: string;
-    altTexts: string[];
+    altText: string;
     isSpoiler: boolean;
   }) => {
     createPost.mutate(data);
-    setSelectedFiles(null);
+    setSelectedFile(null);
   };
 
   return (
@@ -191,51 +187,43 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                 : 'space-y-2'
             )}
           >
-            {mediaItems.map((item) => {
-              const firstItem = item.items?.[0];
-              const cover = firstItem ?? {
-                file_url: item.file_url,
-                file_type: item.file_type,
-                alt_text: item.alt_text,
-              };
-              const albumCount = item.items?.length ?? 0;
-              return (
+            {mediaItems.map((item) => (
               <div
                 key={item.id}
-                onClick={() => !item._isPending && setActivePost(item)}
                 className={cn(
                   'group relative rounded-lg overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all',
                   viewMode === 'grid' ? 'aspect-square' : 'flex items-center gap-4 p-2',
-                  item._isPending && 'opacity-60 cursor-default'
+                  item._isPending && 'opacity-60'
                 )}
               >
+                {/* Spoiler overlay */}
                 {item.is_spoiler && (
                   <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-xl flex items-center justify-center">
                     <EyeOff className="w-6 h-6 text-muted-foreground" />
                   </div>
                 )}
 
-                {cover.file_type === 'video' ? (
+                {item.file_type === 'video' ? (
                   <video
-                    src={cover.file_url}
-                    className={cn('object-cover', viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded')}
+                    src={item.file_url}
+                    className={cn(
+                      'object-cover',
+                      viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
+                    )}
                     muted
                   />
                 ) : (
                   <img
-                    src={cover.file_url}
-                    alt={cover.alt_text || item.title}
-                    className={cn('object-cover', viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded')}
+                    src={item.file_url}
+                    alt={item.alt_text || item.title}
+                    className={cn(
+                      'object-cover',
+                      viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
+                    )}
                   />
                 )}
 
-                {albumCount > 1 && (
-                  <div className="absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded-md bg-black/70 text-white text-xs font-semibold flex items-center gap-1">
-                    <Layers className="w-3 h-3" />
-                    {albumCount}
-                  </div>
-                )}
-
+                {/* Grid overlay with title */}
                 {viewMode === 'grid' && (
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <p className="text-white text-xs font-medium truncate">{item.title}</p>
@@ -260,7 +248,10 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                   </div>
                 )}
                 {viewMode === 'grid' && (
-                  <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="absolute top-2 left-2 right-2 z-20"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <ReactionBar
                       reactions={reactionsData[item.id] || []}
                       onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
@@ -270,26 +261,18 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                   </div>
                 )}
               </div>
-              );
-            })}
+            ))}
           </div>
         )}
       </div>
 
-      {selectedFiles && (
+      {/* Media Post Modal */}
+      {selectedFile && (
         <CreateMediaPostModal
-          files={selectedFiles}
-          onClose={() => setSelectedFiles(null)}
+          file={selectedFile}
+          onClose={() => setSelectedFile(null)}
           onPublish={handlePublish}
           isPending={createPost.isPending}
-        />
-      )}
-
-      {activePost && (
-        <MediaPostDetailModal
-          post={activePost}
-          channelId={channel.id}
-          onClose={() => setActivePost(null)}
         />
       )}
     </div>

@@ -996,15 +996,29 @@ export function AnnouncementChannel({
                             </div>
                           ) : (
                             <>
-                              <p className="text-foreground break-words font-ginto">
-                                <MarkdownText content={message.content} />
-                                {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
-                                )}
-                              </p>
-                              {(message as any).attachments?.length > 0 && (
-                                <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
-                              )}
+                              {(() => {
+                                const allAttachments = ((message as any).attachments as StoredAttachment[]) || [];
+                                const headerImage = allAttachments[0]?.type === 'image' ? allAttachments[0] : null;
+                                const otherAttachments = headerImage ? allAttachments.slice(1) : allAttachments;
+                                return (
+                                  <>
+                                    {headerImage && (
+                                      <div className="mb-2">
+                                        <MessageAttachments attachments={[headerImage]} />
+                                      </div>
+                                    )}
+                                    <p className="text-foreground break-words font-ginto">
+                                      <MarkdownText content={message.content} />
+                                      {message.edited_at && (
+                                        <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
+                                      )}
+                                    </p>
+                                    {otherAttachments.length > 0 && (
+                                      <MessageAttachments attachments={otherAttachments} />
+                                    )}
+                                  </>
+                                );
+                              })()}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />

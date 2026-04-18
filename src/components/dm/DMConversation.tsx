@@ -111,6 +111,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const unpinMessage = useUnpinDMMessage();
   const { data: pinnedMessages = [] } = useDMPinnedMessages(conversationId);
 
+  // Reactions
+  const messageIds = useMemo(() => messages.map((m: any) => m.id), [messages]);
+  const { data: reactionsData = {} } = useDMMessageReactions(messageIds);
+  const toggleReaction = useToggleDMReaction();
+
   const conversation = conversations.find((c) => c.id === conversationId);
   const participantFromList = conversation?.participants[0] ?? null;
 
@@ -179,8 +184,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
-    console.log('Add reaction', messageId, emoji);
-    toast.success(`Réaction ${emoji} ajoutée`);
+    const currentReactions = reactionsData?.[messageId] || [];
+    toggleReaction.mutate({ messageId, emoji, currentReactions });
   };
 
   const handleReply = (message: DMMessage) => {

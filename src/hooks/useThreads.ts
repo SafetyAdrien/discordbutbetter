@@ -181,8 +181,10 @@ export const useCreateThread = () => {
           user_id: authUser.id,
         });
       
-      // Insert system message in channel if NOT private
-      if (!isPrivate) {
+      // Insert system message in channel ONLY for standalone thread creation
+      // (i.e. NOT attached to a parent message). When messageId is provided,
+      // the thread embed appears naturally under the parent message.
+      if (!isPrivate && !messageId) {
         await supabase
           .from('messages')
           .insert({

@@ -597,8 +597,8 @@ const Index = () => {
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
             {channelForChat && (
               <div
-                className={`${activeThreadId && channelForChat.type === 'text' ? (threadFullscreen ? 'hidden' : 'min-w-[300px]') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}
-                style={activeThreadId && channelForChat.type === 'text' && !threadFullscreen ? { flex: `${10 - threadPanelFlex} 1 0%` } : undefined}
+                className={`${activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') ? (threadFullscreen ? 'hidden' : 'min-w-[300px]') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}
+                style={activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') && !threadFullscreen ? { flex: `${10 - threadPanelFlex} 1 0%` } : undefined}
               >
                 {channelForChat.type === 'voice' ? (
                   <VoiceChannelView 
@@ -689,7 +689,7 @@ const Index = () => {
             )}
 
             {/* Thread View - resizable split with chat */}
-            {activeThreadId && channelForChat?.type === 'text' && (
+            {activeThreadId && (channelForChat?.type === 'text' || channelForChat?.type === 'announcement') && (
               <>
               {/* Invisible resize handle */}
               <div

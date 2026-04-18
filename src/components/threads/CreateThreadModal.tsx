@@ -17,6 +17,7 @@ interface CreateThreadModalProps {
   onOpenChange: (open: boolean) => void;
   channelId: string;
   messageId?: string;
+  forcePublic?: boolean;
   onThreadCreated?: (threadId: string) => void;
 }
 
@@ -25,6 +26,7 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
   onOpenChange,
   channelId,
   messageId,
+  forcePublic = false,
   onThreadCreated,
 }) => {
   const [name, setName] = useState('');
@@ -40,7 +42,7 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
         channelId,
         name: name.trim(),
         messageId,
-        isPrivate,
+        isPrivate: forcePublic ? false : isPrivate,
       });
       setName('');
       setIsPrivate(false);
@@ -69,19 +71,25 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
               autoFocus
             />
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium">Thread privé</p>
-                <p className="text-xs text-muted-foreground">Seuls les membres invités pourront voir ce thread</p>
+          {forcePublic ? (
+            <p className="text-xs text-muted-foreground italic">
+              Les fils créés dans un salon d'annonce sont toujours publics.
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Thread privé</p>
+                  <p className="text-xs text-muted-foreground">Seuls les membres invités pourront voir ce thread</p>
+                </div>
               </div>
+              <Switch
+                checked={isPrivate}
+                onCheckedChange={setIsPrivate}
+              />
             </div>
-            <Switch
-              checked={isPrivate}
-              onCheckedChange={setIsPrivate}
-            />
-          </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button
               type="button"

@@ -1081,22 +1081,24 @@ export function AnnouncementChannel({
             </button>
           </div>
         )}
-        <MessageInput
-          placeholder={`Envoyer un message dans #${channel.name}`}
-          value={messageInput}
-          onChange={(value) => {
-            setMessageInput(value);
-            startTyping();
-          }}
-          onSend={handleSubmit}
+        <AnnouncementComposer
           channelId={channel.id}
+          channelName={channel.name}
           serverId={channel.server_id}
-          members={members}
-          permissionDeniedMessage={permissionDeniedMessage}
+          serverName={serverName}
+          serverIcon={serverIcon}
+          canSendMessages={canSendMessages}
           canAttachFiles={canAttachFiles}
-          canCreatePolls={canCreatePolls}
+          canPublishMessages={canPublishMessages}
+          canCreateThreads={canCreatePublicThreads}
+          permissionDeniedMessage={permissionDeniedMessage}
           showFollowBar={!canSendMessages}
           onFollowClick={() => setFollowModalOpen(true)}
+          onTypingStart={startTyping}
+          onMessageSent={(messageId, title) => {
+            setCreateThreadDefaultName(title);
+            setCreateThreadForMessageId(messageId);
+          }}
         />
       </div>
 
@@ -1138,10 +1140,17 @@ export function AnnouncementChannel({
         <CreateThreadModal
           channelId={channel.id}
           messageId={createThreadForMessageId}
+          defaultName={createThreadDefaultName}
           open={!!createThreadForMessageId}
-          onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCreateThreadForMessageId(null);
+              setCreateThreadDefaultName('');
+            }
+          }}
           onThreadCreated={(threadId) => {
             setCreateThreadForMessageId(null);
+            setCreateThreadDefaultName('');
             onSelectThread?.(threadId);
           }}
         />

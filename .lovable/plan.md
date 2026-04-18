@@ -1,67 +1,77 @@
 
+
+## Objectif
+
+Améliorer la fonctionnalité Résumés IA pour que :
+1. L'IA détecte le **sujet précis** de chaque conversation (pas juste un thème générique)
+2. Chaque résumé inclut un **lien d'accès rapide vers le premier message** lié à ce sujet
+3. Les **titres soient limités à 20-30 caractères**
+4. Le résumé apparaisse dans la banderole "Résumés IA" séparé d'un `-` (ex: `Résumés IA - Bug du chat vocal`)
+
 ## Analyse
 
-Dans `GlobalSearchModal.tsx`, après ajout d'un premier filtre (chip), l'autocomplétion des préfixes suivants ne s'affiche pas immédiatement. Il faut vérifier la logique actuelle.
-<lov-tool-use id="toolu_vrtx_01GqcT5ZoKNNFeoTV9B5u2sj" name="code--search_files" integration-id="code" data="{\"query\": \"searchPrefixes|showPrefixes|prefixSuggestions|setShowAutocomplete\", \"include_patterns\": \"src/components/modals/GlobalSearchModal.tsx\"}">
-</lov-tool-use>
-
-<lov-tool-use id="toolu_vrtx_01VzT39m8gx4EkT5BtxoXeeg" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/modals/GlobalSearchModal.tsx\"}">
-</lov-tool-use>
-
-<lov-tool-use id="toolu_vrtx_01ASXH6RDDcM71DG1mLcaDLN" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/modals/GlobalSearchModal.tsx\", \"lines\": \"486-594\"}">
-</lov-tool-use>
-J'ai bien compris le problème. Actuellement, le dropdown "Search options" (qui liste tous les préfixes disponibles) ne s'affiche QUE si :
-- `showShortcuts === true` (donc focus sur input vide)
-- ET `!rawInput && !hasActiveFilters` (donc pas de filtre actif)
-
-Donc dès qu'un filtre est ajouté, le dropdown des préfixes restants disparaît. L'utilisateur doit cliquer ailleurs ou re-focuser pour voir les options suivantes → délai/friction.
-
-<lov-plan>
-
-## Problème
-
-Quand l'utilisateur sélectionne un premier filtre (ex: `from:Pikasudo`), le dropdown "Search options" qui liste les préfixes disponibles (`mentions:`, `in:`, `has:`, etc.) **disparaît immédiatement** car la condition d'affichage est `!rawInput && !hasActiveFilters`. Pour voir les filtres suivants, il faut re-cliquer ou re-focuser → friction.
-
-L'utilisateur veut que les **filtres suivants apparaissent instantanément à la suite**, sans aucun délai, après chaque sélection.
+**Existant** :
+- Edge function `summarize-channel` génère des résumés via Gemini avec un prompt qui demande "max 5 mots" pour le titre (pas de garantie de longueur en caractères)
+- La table `channel_summaries` a déjà `start_message_id` (parfait pour le lien rapide), mais c'est actuellement le 1er message de la fenêtre, pas le 1er message **du sujet**
+- Pas de jump-to-message implémenté lors du clic sur un topic
+- `SummariesBar.tsx` affiche "Voir Tous Les Résumés" / "Résumés IA" sans contextualiser le sujet actif
 
 ## Solution
 
-### `src/components/modals/GlobalSearchModal.tsx`
+### 1. Edge function `summarize-channel/index.ts` — détection précise + ID du 1er message
 
-**1. Toujours afficher les préfixes restants quand l'input est focused et qu'il n'y a pas d'autocomplétion active**
+**Prompt enrichi** :
+- Demander explicitement au LLM d'identifier le **sujet précis** (pas générique : « Bug login OAuth Google » plutôt que « Discussion technique »)
+- Titre **strictement entre 20 et 30 caractères**
+- Pour chaque sujet, retourner l'**indice du premier message** (`first_message_index`) dans la liste fournie, pour qu'on puisse mapper vers `messages[index].id`
 
-Modifier la condition d'affichage du dropdown "Search options" :
-- Avant : `showShortcuts && !activeAutocomplete` + condition cachée `!rawInput && !hasActiveFilters` au focus
-- Après : `isInputFocused && !activeAutocomplete && remainingPrefixes.length > 0` — affiché tant qu'il reste des filtres à sélectionner
+**Format** :
+```json
+{
+  "topics": [
+    {
+      "title": "Bug du chat vocal Discord",  // 20-30 chars
+      "summary": "Plusieurs membres signalent...",
+      "message_count": 12,
+      "first_message_index": 5  // index dans le tableau fourni
+    }
+  ]
+}
+```
 
-**2. Filtrer dynamiquement les préfixes déjà utilisés**
+**Côté serveur** : numéroter les messages avant envoi (`[#0] [Alice]: ...`), puis mapper `first_message_index` → `messages[index].id` à sauvegarder dans `start_message_id`.
 
-Calculer `remainingPrefixes` = `searchPrefixes` moins ceux déjà présents dans `mergedFilters`. Ainsi après avoir choisi `from:`, le dropdown affiche immédiatement `mentions:`, `in:`, `has:`, `before:`, `during:`, `after:`, `pinned:`.
+**Validation** : tronquer/valider le titre côté serveur (forcer 20-30 chars, sinon ajustement).
 
-**3. Maintenir le focus après sélection d'un filtre**
+### 2. `useSummaries.ts` — exposer `startMessageId` + jump callback
 
-- `handleAutocompleteSelect` : déjà fait (`inputRef.current?.focus()`), mais réafficher immédiatement le dropdown des préfixes restants via `setShowShortcuts(true)` à la fin
-- `handleShortcutClick` (auto-filters comme `has:image`) : idem, garder le dropdown ouvert pour permettre l'enchaînement instantané
-- `handleRemoveFilter` : refocus + réafficher le dropdown
+- Ajouter `startMessageId?: string` dans `SummaryTopic`
+- Ajouter un callback `onJumpToMessage` (déclenché par `selectTopic`) qui navigue vers le message via `useNavigationState` ou un event custom
 
-**4. Remplacer `setTimeout(150)` du onBlur par une logique plus stricte**
+### 3. `SummariesBar.tsx` — afficher le sujet actif après `-`
 
-Le `setTimeout(() => setShowShortcuts(false), 150)` actuel est lent. Utiliser `onMouseDown={(e) => e.preventDefault()}` sur tous les boutons (déjà en place) et fermer immédiatement uniquement si le focus part vraiment ailleurs (vérifier `relatedTarget`).
+Quand `activeTopic` est défini :
+```
+[icon] Résumés IA - Bug du chat vocal Discord  ▼
+```
+Sinon : `Résumés IA` ou `Voir Tous Les Résumés` comme aujourd'hui.
 
-**5. État `isInputFocused`**
+### 4. Navigation vers le message
 
-Remplacer `showShortcuts` par un véritable état `isInputFocused` mis à jour via `onFocus`/`onBlur`. Le dropdown s'affiche tant que :
-- input focused
-- pas d'autocomplétion de valeur active
-- il reste des préfixes disponibles
+Au clic sur un topic dans le dropdown :
+- Marquer comme lu (déjà fait)
+- **Naviguer/scroller** vers `start_message_id` dans `ChatArea` (utiliser le système existant de jump-to-message via les mentions de salons — voir `chat/channel-mention-navigation-architecture`)
 
-## Résultat
+## Fichiers modifiés
 
-- Sélection d'un filtre → dropdown des préfixes restants réapparaît **instantanément** (0ms)
-- Préfixes déjà actifs n'apparaissent plus dans la liste
-- Enchaînement fluide : `from:user` → click → `in:channel` → click → `has:image` → click, sans aucune friction
+- `supabase/functions/summarize-channel/index.ts` — prompt strict (20-30 chars, sujet précis, `first_message_index`), mapping serveur vers `start_message_id`
+- `src/hooks/useSummaries.ts` — exposer `startMessageId` + handler jump
+- `src/components/summaries/SummariesBar.tsx` — affichage `Résumés IA - {titre}` quand sujet actif
+- `src/components/chat/ChatArea.tsx` — déclencher le scroll/jump vers `startMessageId` lors de la sélection d'un topic (via state partagé ou prop)
 
-## Fichier modifié
+## Résultat attendu
 
-- `src/components/modals/GlobalSearchModal.tsx`
+- Titres précis et concis (20-30 chars), ex: « Bug login Google OAuth »
+- Clic sur un résumé → saut instantané vers le premier message lié
+- Banderole : `Résumés IA - Bug login Google OAuth` quand un sujet est sélectionné
 

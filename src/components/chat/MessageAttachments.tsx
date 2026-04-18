@@ -55,7 +55,7 @@ function ImageAttachment({
         src={attachment.url}
         alt={attachment.description || attachment.name}
         className={cn(
-          'rounded-lg cursor-pointer max-h-80 w-full object-cover',
+          'rounded-lg cursor-pointer max-h-96 max-w-full object-contain bg-surface-hover',
           'transition-[filter,opacity] duration-150 ease-out',
           !revealed && 'blur-2xl brightness-50',
           !loaded && 'opacity-0'

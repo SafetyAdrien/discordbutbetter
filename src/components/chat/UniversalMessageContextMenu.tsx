@@ -129,7 +129,21 @@ export function UniversalMessageContextMenu({
       <button onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
         <Hash className="w-4 h-4 text-muted-foreground" /> Copier l'ID
       </button>
-      
+
+      {hasReactions && onViewReactions && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button onClick={() => { onViewReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <Eye className="w-4 h-4 text-muted-foreground" /> Voir les réactions
+          </button>
+          {canManageReactions && onClearAllReactions && (
+            <button onClick={() => { onClearAllReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+              <Trash2 className="w-4 h-4" /> Supprimer toutes les réactions
+            </button>
+          )}
+        </>
+      )}
+
       <div className="h-px bg-border my-1" />
       {isOwnMessage ? (
         <>
@@ -252,7 +266,26 @@ export function UniversalMessageContextMenu({
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
-          
+
+          {hasReactions && onViewReactions && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={onViewReactions}>
+                <Eye className="w-4 h-4 mr-2" />
+                Voir les réactions
+              </ContextMenuItem>
+              {canManageReactions && onClearAllReactions && (
+                <ContextMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={onClearAllReactions}
+                >
+                  <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                  Supprimer toutes les réactions
+                </ContextMenuItem>
+              )}
+            </>
+          )}
+
           <ContextMenuSeparator />
           {isOwnMessage ? (
             <>

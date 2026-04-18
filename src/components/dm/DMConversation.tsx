@@ -546,6 +546,19 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             {/* Link Embeds */}
                             <LinkEmbeds content={message.content} />
 
+                            {/* Reactions */}
+                            {(reactionsData[message.id]?.length ?? 0) > 0 && (
+                              <div className="mt-1">
+                                <ReactionBar
+                                  reactions={reactionsData[message.id] || []}
+                                  onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                  serverId={null}
+                                  showAddButton={false}
+                                  size="sm"
+                                />
+                              </div>
+                            )}
+
                             {/* Edited indicator - after attachments */}
                             {message.edited_at && (
                               <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>

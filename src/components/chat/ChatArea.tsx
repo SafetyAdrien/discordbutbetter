@@ -388,6 +388,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [pendingContextDeleteMessageId, setPendingContextDeleteMessageId] = useState<string | null>(null);
   const [reactionsViewerMessageId, setReactionsViewerMessageId] = useState<string | null>(null);
+  const [reactionsViewerInitialEmoji, setReactionsViewerInitialEmoji] = useState<string | null>(null);
   const clearMessageReactions = useClearMessageReactions();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -1585,8 +1586,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     reactions={reactionsData?.[message.id] || []}
                                     onToggle={(emoji) => handleAddReaction(message.id, emoji)}
                                     serverId={channel.server_id}
-                                    showAddButton={false}
                                     size="sm"
+                                    onViewReactors={(emoji) => {
+                                      setReactionsViewerInitialEmoji(emoji ?? null);
+                                      setReactionsViewerMessageId(message.id);
+                                    }}
                                   />
                                 </div>
                               )}
@@ -1702,8 +1706,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     reactions={reactionsData?.[message.id] || []}
                                     onToggle={(emoji) => handleAddReaction(message.id, emoji)}
                                     serverId={channel.server_id}
-                                    showAddButton={false}
                                     size="sm"
+                                    onViewReactors={(emoji) => {
+                                      setReactionsViewerInitialEmoji(emoji ?? null);
+                                      setReactionsViewerMessageId(message.id);
+                                    }}
                                   />
                                 </div>
                               )}
@@ -1992,7 +1999,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       <ReactionsViewerModal
         messageId={reactionsViewerMessageId}
         canManageReactions={canManageMessages}
-        onOpenChange={(open) => !open && setReactionsViewerMessageId(null)}
+        initialEmoji={reactionsViewerInitialEmoji}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReactionsViewerMessageId(null);
+            setReactionsViewerInitialEmoji(null);
+          }
+        }}
       />
     </div>
   );

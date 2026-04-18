@@ -58,6 +58,8 @@ import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
 import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobilePollActions } from '@/components/mobile/MobilePollActions';
+import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useThreadReactions';
+import { ReactionBar } from '@/components/chat/ReactionBar';
 
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {

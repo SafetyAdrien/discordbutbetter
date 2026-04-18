@@ -584,18 +584,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     }
   }, []);
 
-  // Bridge: allow external components (e.g. mobile SummariesBar) to trigger jump for THIS channel
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ev = e as CustomEvent<{ channelId: string; messageId: string }>;
-      if (ev.detail?.channelId === channel.id && ev.detail?.messageId) {
-        scrollToMessage(ev.detail.messageId);
-      }
-    };
-    window.addEventListener("summary:jump-to-message", handler as EventListener);
-    return () => window.removeEventListener("summary:jump-to-message", handler as EventListener);
-  }, [channel.id, scrollToMessage]);
-
   // Build all channels list for mention autocomplete
   const allChannels = useMemo(() => {
     const channels: Array<{ id: string; name: string; type: string }> = [];
@@ -1103,7 +1091,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           isDropdownOpen={isDropdownOpen}
           summaries={summaries}
           onToggleDropdown={toggleDropdown}
-          onSelectTopic={(topic) => selectTopic(topic, scrollToMessage)}
+          onSelectTopic={selectTopic}
           onMarkAsRead={markAsRead}
           onGenerateSummaries={generateSummaries}
           isGenerating={isGenerating}

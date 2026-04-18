@@ -1,27 +1,26 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import {
-  Search,
-  User,
-  AtSign,
-  Hash,
-  Calendar as CalendarIcon,
-  Pin,
-  Image as ImageIcon,
-  Film,
-  Paperclip,
-  Link as LinkIcon,
-  X,
+import { 
+  Search, 
+  User, 
+  AtSign, 
+  FileText, 
+  Hash, 
+  Calendar as CalendarIcon, 
+  Pin, 
+  UserCircle,
   MessageSquare,
-  Loader2,
+  X,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGlobalSearch, SearchFilters as SearchFiltersType, SearchMember } from '@/hooks/useGlobalSearch';
+import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/useGlobalSearch';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -32,61 +31,24 @@ interface GlobalSearchModalProps {
   onClose: () => void;
   serverId: string | null;
   channels?: { id: string; name: string; type: string }[];
-  members?: SearchMember[];
+  members?: { id: string; username: string; displayName: string; avatar?: string }[];
   onNavigateToMessage?: (channelId: string, messageId: string) => void;
 }
 
-// English Discord-style prefixes
+// Search filter prefixes configuration
 const searchPrefixes = [
-  { prefix: 'from:', label: 'from user', icon: User, type: 'user' as const, key: 'from' as const },
-  { prefix: 'mentions:', label: 'mentioning user', icon: AtSign, type: 'user' as const, key: 'mentions' as const },
-  { prefix: 'has:', label: 'has attachment', icon: Paperclip, type: 'has' as const, key: 'has' as const },
-  { prefix: 'in:', label: 'in channel', icon: Hash, type: 'channel' as const, key: 'channel' as const },
-  { prefix: 'before:', label: 'before date', icon: CalendarIcon, type: 'date' as const, key: 'before' as const },
-  { prefix: 'during:', label: 'during date', icon: CalendarIcon, type: 'date' as const, key: 'during' as const },
-  { prefix: 'after:', label: 'after date', icon: CalendarIcon, type: 'date' as const, key: 'after' as const },
-  { prefix: 'pinned:', label: 'pinned', icon: Pin, type: 'boolean' as const, key: 'pinned' as const },
+  { prefix: 'de:', label: 'de la personne', icon: User, type: 'user' as const },
+  { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign, type: 'user' as const },
+  { prefix: 'contient:', label: 'contient', icon: FileText, type: 'text' as const },
+  { prefix: 'dans:', label: 'dans un salon', icon: Hash, type: 'channel' as const },
+  { prefix: 'pendant:', label: 'envoyé le', icon: CalendarIcon, type: 'date' as const },
+  { prefix: 'avant:', label: 'avant le', icon: CalendarIcon, type: 'date' as const },
+  { prefix: 'après:', label: 'après le', icon: CalendarIcon, type: 'date' as const },
+  { prefix: 'épinglé:', label: 'épinglé', icon: Pin, type: 'boolean' as const },
+  { prefix: 'auteur:', label: 'type d\'auteur', icon: UserCircle, type: 'authorType' as const },
 ];
 
-const prefixToKey: Record<string, keyof SearchFiltersType> = {
-  'from:': 'from',
-  'mentions:': 'mentions',
-  'has:': 'has',
-  'in:': 'channel',
-  'before:': 'before',
-  'during:': 'during',
-  'after:': 'after',
-  'pinned:': 'pinned',
-};
-
-const keyToPrefix: Record<keyof SearchFiltersType, string> = {
-  from: 'from:',
-  mentions: 'mentions:',
-  contains: '',
-  channel: 'in:',
-  before: 'before:',
-  during: 'during:',
-  after: 'after:',
-  pinned: 'pinned:',
-  authorType: 'author:',
-  has: 'has:',
-};
-
-// Quick-access shortcut pills (left of input)
-const quickShortcuts = [
-  { icon: User, prefix: 'from:', tooltip: 'From user' },
-  { icon: AtSign, prefix: 'mentions:', tooltip: 'Mentions' },
-  { icon: Hash, prefix: 'in:', tooltip: 'In channel' },
-  { icon: ImageIcon, prefix: 'has:image', tooltip: 'Has image', auto: true },
-  { icon: Film, prefix: 'has:video', tooltip: 'Has video', auto: true },
-  { icon: LinkIcon, prefix: 'has:link', tooltip: 'Has link', auto: true },
-  { icon: Pin, prefix: 'pinned:true', tooltip: 'Pinned', auto: true },
-];
-
-function ChannelIcon({ type }: { type?: string | null }) {
-  return <Hash className="w-4 h-4 text-muted-foreground" />;
-}
-
+// Autocomplete suggestion component
 function AutocompleteSuggestions({
   type,
   query,
@@ -94,42 +56,38 @@ function AutocompleteSuggestions({
   members,
   onSelect,
 }: {
-  type: 'user' | 'channel' | 'date' | 'boolean' | 'has';
+  type: 'user' | 'channel' | 'date' | 'boolean' | 'authorType' | 'text';
   query: string;
   channels?: { id: string; name: string; type: string }[];
-  members?: SearchMember[];
+  members?: { id: string; username: string; displayName: string; avatar?: string }[];
   onSelect: (value: string) => void;
 }) {
-  if (type === 'user') {
-    const filtered = (members || [])
-      .filter(
-        (m) =>
-          m.displayName.toLowerCase().includes(query.toLowerCase()) ||
-          m.username.toLowerCase().includes(query.toLowerCase()),
-      )
-      .slice(0, 8);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-    if (filtered.length === 0) return null;
+  if (type === 'user') {
+    const filteredMembers = members?.filter(m => 
+      m.displayName.toLowerCase().includes(query.toLowerCase()) ||
+      m.username.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 5) || [];
+
+    if (filteredMembers.length === 0) return null;
+
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-        <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          From User
-        </p>
-        {filtered.map((m) => (
+        {filteredMembers.map(member => (
           <button
-            key={m.id}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onSelect(m.username)}
+            key={member.id}
+            onClick={() => onSelect(member.username)}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
           >
-            <Avatar className="w-7 h-7">
-              <AvatarImage src={m.avatar} />
+            <Avatar className="w-6 h-6">
+              <AvatarImage src={member.avatar} />
               <AvatarFallback className="text-xs bg-primary/20 text-primary">
-                {m.displayName.charAt(0).toUpperCase()}
+                {member.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-semibold">{m.displayName}</span>
-            <span className="text-xs text-muted-foreground">{m.username}</span>
+            <span className="text-sm font-medium">{member.displayName}</span>
+            <span className="text-xs text-muted-foreground">@{member.username}</span>
           </button>
         ))}
       </div>
@@ -137,53 +95,22 @@ function AutocompleteSuggestions({
   }
 
   if (type === 'channel') {
-    const filtered = (channels || [])
-      .filter((c) => c.name.toLowerCase().includes(query.toLowerCase().replace(/^#/, '')))
-      .slice(0, 8);
-    if (filtered.length === 0) return null;
-    return (
-      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-        <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          In Channel
-        </p>
-        {filtered.map((c) => (
-          <button
-            key={c.id}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onSelect(c.name)}
-            className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
-          >
-            <ChannelIcon type={c.type} />
-            <span className="text-sm">{c.name}</span>
-          </button>
-        ))}
-      </div>
-    );
-  }
+    const filteredChannels = channels?.filter(c => 
+      c.name.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 5) || [];
 
-  if (type === 'has') {
-    const opts = [
-      { value: 'image', label: 'Image', Icon: ImageIcon },
-      { value: 'video', label: 'Video', Icon: Film },
-      { value: 'file', label: 'File', Icon: Paperclip },
-      { value: 'link', label: 'Link', Icon: LinkIcon },
-    ];
-    const filtered = opts.filter((o) => o.value.includes(query.toLowerCase()));
-    if (filtered.length === 0) return null;
+    if (filteredChannels.length === 0) return null;
+
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-        <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Has
-        </p>
-        {filtered.map(({ value, label, Icon }) => (
+        {filteredChannels.map(channel => (
           <button
-            key={value}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onSelect(value)}
+            key={channel.id}
+            onClick={() => onSelect(channel.name)}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
           >
-            <Icon className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm">{label}</span>
+            <Hash className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm">{channel.name}</span>
           </button>
         ))}
       </div>
@@ -192,14 +119,33 @@ function AutocompleteSuggestions({
 
   if (type === 'date') {
     return (
-      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden p-2">
-        <Calendar
-          mode="single"
-          selected={query ? new Date(query) : undefined}
-          onSelect={(date) => date && onSelect(format(date, 'yyyy-MM-dd'))}
-          locale={fr}
-          className="pointer-events-auto"
-        />
+      <div className="absolute z-50 top-full left-0 right-0 mt-1">
+        <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start text-left font-normal"
+              onClick={() => setDatePickerOpen(true)}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {query || 'Sélectionner une date'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={query ? new Date(query) : undefined}
+              onSelect={(date) => {
+                if (date) {
+                  onSelect(format(date, 'yyyy-MM-dd'));
+                  setDatePickerOpen(false);
+                }
+              }}
+              locale={fr}
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
       </div>
     );
   }
@@ -208,20 +154,46 @@ function AutocompleteSuggestions({
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
         <button
-          onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect('true')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
           <Pin className="w-4 h-4 text-primary" />
-          <span className="text-sm">True (pinned)</span>
+          <span className="text-sm">Oui</span>
         </button>
         <button
-          onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect('false')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
           <Pin className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm">False (not pinned)</span>
+          <span className="text-sm">Non</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (type === 'authorType') {
+    return (
+      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+        <button
+          onClick={() => onSelect('user')}
+          className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
+        >
+          <User className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm">Utilisateur</span>
+        </button>
+        <button
+          onClick={() => onSelect('bot')}
+          className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
+        >
+          <UserCircle className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm">Bot</span>
+        </button>
+        <button
+          onClick={() => onSelect('webhook')}
+          className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
+        >
+          <AtSign className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm">Webhook</span>
         </button>
       </div>
     );
@@ -230,64 +202,47 @@ function AutocompleteSuggestions({
   return null;
 }
 
-function FilterChips({
+// Filter tags display
+function FilterTags({
   filters,
   onRemove,
 }: {
   filters: SearchFiltersType;
   onRemove: (key: keyof SearchFiltersType) => void;
 }) {
-  const chips: { key: keyof SearchFiltersType; label: string; value: string }[] = [];
-  if (filters.from) chips.push({ key: 'from', label: 'from:', value: filters.from });
-  if (filters.mentions) chips.push({ key: 'mentions', label: 'mentions:', value: filters.mentions });
-  if (filters.channel) chips.push({ key: 'channel', label: 'in:', value: filters.channel });
-  if (filters.has) chips.push({ key: 'has', label: 'has:', value: filters.has });
-  if (filters.during) chips.push({ key: 'during', label: 'during:', value: filters.during });
-  if (filters.before) chips.push({ key: 'before', label: 'before:', value: filters.before });
-  if (filters.after) chips.push({ key: 'after', label: 'after:', value: filters.after });
-  if (filters.pinned !== undefined)
-    chips.push({ key: 'pinned', label: 'pinned:', value: filters.pinned ? 'true' : 'false' });
-  if (filters.authorType) chips.push({ key: 'authorType', label: 'author:', value: filters.authorType });
+  const tags: { key: keyof SearchFiltersType; label: string; value: string }[] = [];
 
-  if (chips.length === 0) return null;
+  if (filters.from) tags.push({ key: 'from', label: 'de:', value: filters.from });
+  if (filters.mentions) tags.push({ key: 'mentions', label: 'mentions:', value: filters.mentions });
+  if (filters.contains) tags.push({ key: 'contains', label: 'contient:', value: filters.contains });
+  if (filters.channel) tags.push({ key: 'channel', label: 'dans:', value: filters.channel });
+  if (filters.during) tags.push({ key: 'during', label: 'pendant:', value: filters.during });
+  if (filters.before) tags.push({ key: 'before', label: 'avant:', value: filters.before });
+  if (filters.after) tags.push({ key: 'after', label: 'après:', value: filters.after });
+  if (filters.pinned !== undefined) tags.push({ key: 'pinned', label: 'épinglé:', value: filters.pinned ? 'oui' : 'non' });
+  if (filters.authorType) tags.push({ key: 'authorType', label: 'auteur:', value: filters.authorType });
+
+  if (tags.length === 0) return null;
+
   return (
-    <>
-      {chips.map((c) => (
+    <div className="flex flex-wrap gap-1.5 mb-3">
+      {tags.map(tag => (
         <span
-          key={c.key}
-          className="inline-flex items-center gap-1 h-7 pl-2 pr-1 bg-primary/15 text-primary rounded-md text-xs flex-shrink-0"
+          key={tag.key}
+          className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs"
         >
-          <span className="font-bold">{c.label}</span>
-          <span>{c.value}</span>
+          <span className="font-medium">{tag.label}</span>
+          <span>{tag.value}</span>
           <button
-            onClick={() => onRemove(c.key)}
-            className="hover:bg-primary/25 rounded p-0.5 ml-0.5"
-            type="button"
+            onClick={() => onRemove(tag.key)}
+            className="hover:bg-primary/20 rounded p-0.5"
           >
             <X className="w-3 h-3" />
           </button>
         </span>
       ))}
-    </>
+    </div>
   );
-}
-
-function highlight(text: string, term: string) {
-  if (!term.trim()) return text;
-  try {
-    const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.split(re).map((part, i) =>
-      re.test(part) ? (
-        <mark key={i} className="bg-primary/30 text-foreground rounded px-0.5">
-          {part}
-        </mark>
-      ) : (
-        <span key={i}>{part}</span>
-      ),
-    );
-  } catch {
-    return text;
-  }
 }
 
 export function GlobalSearchModal({
@@ -298,123 +253,153 @@ export function GlobalSearchModal({
   members = [],
   onNavigateToMessage,
 }: GlobalSearchModalProps) {
-  const [rawInput, setRawInput] = useState('');
+  const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<SearchFiltersType>({});
+  const [showPrefixSuggestions, setShowPrefixSuggestions] = useState(false);
   const [activeAutocomplete, setActiveAutocomplete] = useState<{
-    type: 'user' | 'channel' | 'date' | 'boolean' | 'has';
+    type: 'user' | 'channel' | 'date' | 'boolean' | 'authorType' | 'text';
     prefix: string;
     query: string;
   } | null>(null);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { isMobile } = useBreakpoint();
 
-  // Reset on close
-  useEffect(() => {
-    if (!open) {
-      setRawInput('');
-      setFilters({});
-      setActiveAutocomplete(null);
-      setIsInputFocused(false);
-    }
-  }, [open]);
+  const { mutate: search, data: results, isPending } = useGlobalSearch(serverId);
 
-  // Detect active prefix in input
+  // Parse query for active prefix
   const detectActivePrefix = useCallback((value: string) => {
-    for (const p of searchPrefixes) {
-      const regex = new RegExp(`${p.prefix.replace(':', '\\:')}(\\S*)$`, 'i');
+    for (const prefixConfig of searchPrefixes) {
+      const regex = new RegExp(`${prefixConfig.prefix}(\\S*)$`);
       const match = value.match(regex);
       if (match) {
-        return { type: p.type, prefix: p.prefix, query: match[1] || '' };
+        return {
+          type: prefixConfig.type,
+          prefix: prefixConfig.prefix,
+          query: match[1] || '',
+        };
       }
     }
     return null;
   }, []);
 
+  // Handle input change
   const handleInputChange = (value: string) => {
-    setRawInput(value);
+    setQuery(value);
     const active = detectActivePrefix(value);
     setActiveAutocomplete(active);
+    setShowPrefixSuggestions(!active && !value.trim());
   };
 
+  // Handle autocomplete selection
   const handleAutocompleteSelect = (value: string) => {
-    if (!activeAutocomplete) return;
-    const key = prefixToKey[activeAutocomplete.prefix];
-    if (key) {
-      const newFilters: SearchFiltersType = { ...filters };
-      if (key === 'pinned') {
-        newFilters.pinned = value === 'true';
-      } else {
-        (newFilters as any)[key] = value;
-      }
-      setFilters(newFilters);
+    if (activeAutocomplete) {
+      const newQuery = query.replace(
+        new RegExp(`${activeAutocomplete.prefix}\\S*$`),
+        `${activeAutocomplete.prefix}${value} `
+      );
+      setQuery(newQuery);
+      setActiveAutocomplete(null);
+      inputRef.current?.focus();
     }
-    // Strip the prefix+partial from raw input
-    const cleaned = rawInput.replace(
-      new RegExp(`${activeAutocomplete.prefix.replace(':', '\\:')}\\S*$`, 'i'),
-      '',
-    );
-    setRawInput(cleaned.trimStart());
-    setActiveAutocomplete(null);
-    inputRef.current?.focus();
-    setIsInputFocused(true);
   };
 
-  const handleShortcutClick = (prefix: string, auto?: boolean) => {
-    if (auto) {
-      // e.g. 'has:image' → set filter directly
-      const [p, v] = prefix.split(':');
-      const key = prefixToKey[`${p}:`];
-      if (key) {
-        const newFilters: SearchFiltersType = { ...filters };
-        if (key === 'pinned') newFilters.pinned = v === 'true';
-        else (newFilters as any)[key] = v;
-        setFilters(newFilters);
-      }
-    } else {
-      setRawInput((prev) => (prev ? `${prev} ${prefix}` : prefix));
-      const cfg = searchPrefixes.find((p) => p.prefix === prefix);
-      if (cfg) setActiveAutocomplete({ type: cfg.type, prefix, query: '' });
+  // Handle prefix selection
+  const handlePrefixSelect = (prefix: string) => {
+    setQuery(prev => prev + prefix);
+    setShowPrefixSuggestions(false);
+    inputRef.current?.focus();
+    
+    const prefixConfig = searchPrefixes.find(p => p.prefix === prefix);
+    if (prefixConfig) {
+      setActiveAutocomplete({
+        type: prefixConfig.type,
+        prefix: prefixConfig.prefix,
+        query: '',
+      });
     }
-    inputRef.current?.focus();
-    setIsInputFocused(true);
   };
 
-  const handleRemoveFilter = (key: keyof SearchFiltersType) => {
-    const next = { ...filters };
-    delete next[key];
-    setFilters(next);
-    inputRef.current?.focus();
-    setIsInputFocused(true);
-  };
+  // Parse query and build filters
+  const parseAndSearch = useCallback(() => {
+    const parsedFilters: SearchFiltersType = {};
+    let remaining = query;
 
-  // Compute final query: contains = remaining text without prefix tokens
-  const { searchQuery, mergedFilters } = useMemo(() => {
-    let remaining = rawInput;
-    const merged: SearchFiltersType = { ...filters };
+    // Parse each prefix
+    const prefixMap: Record<string, keyof SearchFiltersType> = {
+      'de:': 'from',
+      'mentions:': 'mentions',
+      'contient:': 'contains',
+      'dans:': 'channel',
+      'pendant:': 'during',
+      'avant:': 'before',
+      'après:': 'after',
+      'épinglé:': 'pinned',
+      'auteur:': 'authorType',
+    };
 
-    // Parse complete prefix tokens (prefix:value followed by space/end)
-    for (const [prefix, key] of Object.entries(prefixToKey)) {
-      const regex = new RegExp(`${prefix.replace(':', '\\:')}(\\S+)`, 'gi');
+    for (const [prefix, filterKey] of Object.entries(prefixMap)) {
+      const regex = new RegExp(`${prefix}(\\S+)`, 'gi');
       const match = regex.exec(remaining);
       if (match) {
-        if (key === 'pinned') merged.pinned = match[1].toLowerCase() === 'true';
-        else (merged as any)[key] = match[1];
+        if (filterKey === 'pinned') {
+          parsedFilters[filterKey] = match[1].toLowerCase() === 'true' || match[1].toLowerCase() === 'oui';
+        } else {
+          (parsedFilters as any)[filterKey] = match[1];
+        }
         remaining = remaining.replace(match[0], '').trim();
       }
     }
 
-    return { searchQuery: remaining.trim(), mergedFilters: merged };
-  }, [rawInput, filters]);
+    // Remaining text is free search
+    if (remaining.trim()) {
+      parsedFilters.contains = parsedFilters.contains 
+        ? `${parsedFilters.contains} ${remaining.trim()}`
+        : remaining.trim();
+    }
 
-  const { data: results, isFetching, isPending } = useGlobalSearch(
-    serverId,
-    searchQuery,
-    mergedFilters,
-    members,
-    open,
-  );
+    setFilters(parsedFilters);
+    
+    if (Object.keys(parsedFilters).length > 0) {
+      search({ query: remaining.trim(), filters: parsedFilters });
+    }
+  }, [query, search]);
 
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (query.trim()) {
+        parseAndSearch();
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, parseAndSearch]);
+
+  // Handle filter removal
+  const handleRemoveFilter = (key: keyof SearchFiltersType) => {
+    const newFilters = { ...filters };
+    delete newFilters[key];
+    setFilters(newFilters);
+    
+    // Also remove from query text
+    const prefixMap: Record<keyof SearchFiltersType, string> = {
+      from: 'de:',
+      mentions: 'mentions:',
+      contains: 'contient:',
+      channel: 'dans:',
+      during: 'pendant:',
+      before: 'avant:',
+      after: 'après:',
+      pinned: 'épinglé:',
+      authorType: 'auteur:',
+    };
+    
+    const prefix = prefixMap[key];
+    if (prefix) {
+      setQuery(prev => prev.replace(new RegExp(`${prefix}\\S+\\s?`, 'gi'), '').trim());
+    }
+  };
+
+  // Format date for display
   const formatDate = (dateStr: string) => {
     try {
       return format(new Date(dateStr), 'dd MMM yyyy, HH:mm', { locale: fr });
@@ -423,151 +408,101 @@ export function GlobalSearchModal({
     }
   };
 
-  const hasActiveFilters = Object.keys(mergedFilters).some(
-    (k) => (mergedFilters as any)[k] !== undefined,
-  );
-  const hasInput = searchQuery.length > 0 || hasActiveFilters;
-  const showLoading = isFetching && !results;
-
-  // Prefixes still available (not already used as a filter)
-  const remainingPrefixes = useMemo(() => {
-    return searchPrefixes.filter((p) => {
-      const v = (mergedFilters as any)[p.key];
-      return v === undefined || v === null || v === '';
-    });
-  }, [mergedFilters]);
-
-  const showSearchOptions =
-    isInputFocused && !activeAutocomplete && remainingPrefixes.length > 0;
+  const { isMobile } = useBreakpoint();
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent
-        className={cn(
-          'flex flex-col p-0 gap-0',
-          isMobile ? 'h-full max-h-full w-full max-w-full rounded-none' : 'sm:max-w-2xl max-h-[80vh]',
-        )}
-      >
+      <DialogContent className={cn(
+        "flex flex-col p-0 gap-0",
+        isMobile ? "h-full max-h-full w-full max-w-full rounded-none" : "sm:max-w-2xl max-h-[80vh]"
+      )}>
         <DialogHeader className="px-4 py-3 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <Search className="w-5 h-5" />
-            Recherche
+            Recherche globale
           </DialogTitle>
         </DialogHeader>
 
         <div className="px-4 py-3 border-b border-border">
+          {/* Filter tags */}
+          <FilterTags filters={filters} onRemove={handleRemoveFilter} />
+
+          {/* Search input */}
           <div className="relative">
-            <div className="flex items-center gap-1.5 min-h-10 rounded-xl border border-border bg-input px-2 py-1.5 flex-wrap">
-              {/* Quick shortcuts */}
-              <div className="flex items-center gap-0.5 flex-shrink-0 pr-1.5 mr-0.5 border-r border-border/60">
-                {quickShortcuts.map((s) => {
-                  const Icon = s.icon;
-                  return (
-                    <button
-                      key={s.tooltip}
-                      type="button"
-                      title={s.tooltip}
-                      onClick={() => handleShortcutClick(s.prefix, s.auto)}
-                      className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                    </button>
-                  );
-                })}
-              </div>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => handleInputChange(e.target.value)}
+              
+              onBlur={() => setTimeout(() => setShowPrefixSuggestions(false), 150)}
+              placeholder="Rechercher des messages..."
+              className="pl-9 pr-4 h-10 bg-input"
+              
+            />
 
-              {/* Active filter chips */}
-              <FilterChips filters={filters} onRemove={handleRemoveFilter} />
-
-              {/* Free text input */}
-              <input
-                ref={inputRef}
-                value={rawInput}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={(e) => {
-                  // Keep open if focus moves to a button inside the popover (handled via onMouseDown preventDefault)
-                  const next = e.relatedTarget as HTMLElement | null;
-                  if (next && next.closest('[data-search-popover]')) return;
-                  setIsInputFocused(false);
-                }}
-                placeholder={hasActiveFilters ? 'Search…' : 'Search messages, type "from:" or "in:"…'}
-                className="flex-1 min-w-[120px] h-7 bg-transparent text-sm placeholder:text-muted-foreground outline-none border-0"
-              />
-
-              {(rawInput || hasActiveFilters) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRawInput('');
-                    setFilters({});
-                    inputRef.current?.focus();
-                  }}
-                  className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Prefix shortcuts dropdown — instant chaining when input focused */}
-            {showSearchOptions && (
-              <div
-                data-search-popover
-                className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
-              >
-                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Search options
+            {/* Prefix suggestions - inline on mobile, absolute dropdown on desktop */}
+            {showPrefixSuggestions && (
+              <div className={cn(
+                "bg-popover border border-border rounded-lg shadow-lg overflow-hidden",
+                isMobile
+                  ? "mt-2"
+                  : "absolute z-50 top-full left-0 right-0 mt-1"
+              )}>
+                <p className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
+                  Options de recherche
                 </p>
-                {remainingPrefixes.map((p) => {
-                  const Icon = p.icon;
-                  return (
-                    <button
-                      key={p.prefix}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleShortcutClick(p.prefix)}
-                      className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      <span className="font-bold text-primary text-sm">{p.prefix}</span>
-                      <span className="text-muted-foreground text-sm">{p.label}</span>
-                    </button>
-                  );
-                })}
+                <div className={cn(
+                  isMobile && "grid grid-cols-2 gap-0"
+                )}>
+                  {searchPrefixes.map(prefixConfig => {
+                    const Icon = prefixConfig.icon;
+                    return (
+                      <button
+                        key={prefixConfig.prefix}
+                        onClick={() => handlePrefixSelect(prefixConfig.prefix)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors text-left",
+                          isMobile ? "text-xs" : "w-full text-sm"
+                        )}
+                      >
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium text-primary truncate">{prefixConfig.prefix}</span>
+                        {!isMobile && <span className="text-muted-foreground">{prefixConfig.label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
+            {/* Autocomplete suggestions */}
             {activeAutocomplete && (
-              <div data-search-popover>
-                <AutocompleteSuggestions
-                  type={activeAutocomplete.type}
-                  query={activeAutocomplete.query}
-                  channels={channels}
-                  members={members}
-                  onSelect={handleAutocompleteSelect}
-                />
-              </div>
+              <AutocompleteSuggestions
+                type={activeAutocomplete.type}
+                query={activeAutocomplete.query}
+                channels={channels}
+                members={members}
+                onSelect={handleAutocompleteSelect}
+              />
             )}
           </div>
         </div>
 
+        {/* Results */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
-            {showLoading ? (
+            {isPending ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : results && results.length > 0 ? (
-              <div className="space-y-2">
-                {results.map((message) => (
+              <div className="space-y-3">
+                {results.map(message => (
                   <button
                     key={message.id}
-                    onClick={() => {
-                      onNavigateToMessage?.(message.channel_id, message.id);
-                      onClose();
-                    }}
-                    className="w-full text-left p-3 bg-muted/40 hover:bg-muted rounded-lg transition-colors"
+                    onClick={() => onNavigateToMessage?.(message.channel_id, message.id)}
+                    className="w-full text-left p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Avatar className="w-5 h-5">
@@ -576,9 +511,7 @@ export function GlobalSearchModal({
                           {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-semibold">
-                        {message.author?.display_name || 'Inconnu'}
-                      </span>
+                      <span className="text-sm font-medium">{message.author?.display_name || 'Inconnu'}</span>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Hash className="w-3 h-3" />
                         {message.channel?.name || 'Salon'}
@@ -587,13 +520,13 @@ export function GlobalSearchModal({
                         {formatDate(message.created_at || '')}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/80 line-clamp-2 font-ginto">
-                      {searchQuery ? highlight(message.content, searchQuery) : <MarkdownText content={message.content} />}
+                    <p className="text-sm text-muted-foreground line-clamp-2 font-ginto">
+                      <MarkdownText content={message.content} />
                     </p>
                   </button>
                 ))}
               </div>
-            ) : hasInput && !isFetching ? (
+            ) : query.trim() && !isPending ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Aucun message trouvé</p>
@@ -601,12 +534,8 @@ export function GlobalSearchModal({
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Search this server</p>
-                <p className="text-xs mt-1">
-                  Try <span className="font-bold text-primary">from:</span>username,{' '}
-                  <span className="font-bold text-primary">in:</span>channel,{' '}
-                  <span className="font-bold text-primary">has:</span>image
-                </p>
+                <p>Utilisez les préfixes pour affiner votre recherche</p>
+                <p className="text-xs mt-1">Ex: de:username dans:général contient:hello</p>
               </div>
             )}
           </div>

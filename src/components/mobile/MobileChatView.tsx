@@ -297,15 +297,7 @@ export function MobileChatView({
           isDropdownOpen={isDropdownOpen}
           summaries={summaries}
           onToggleDropdown={toggleDropdown}
-          onSelectTopic={(topic) =>
-            selectTopic(topic, (messageId) => {
-              window.dispatchEvent(
-                new CustomEvent("summary:jump-to-message", {
-                  detail: { channelId: channel.id, messageId },
-                })
-              );
-            })
-          }
+          onSelectTopic={selectTopic}
           onMarkAsRead={markAsRead}
           onGenerateSummaries={generateSummaries}
           isGenerating={isGenerating}

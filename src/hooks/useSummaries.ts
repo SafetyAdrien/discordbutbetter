@@ -224,10 +224,15 @@ export function useSummaries(channelId?: string) {
   }, []);
 
   // Select a topic from the list
-  const selectTopic = useCallback((topic: SummaryTopic) => {
+  const selectTopic = useCallback((topic: SummaryTopic, onJump?: (messageId: string) => void) => {
     setActiveTopic(topic);
     setIsDropdownOpen(false);
-    
+
+    // Jump to first message of the topic
+    if (topic.startMessageId && onJump) {
+      onJump(topic.startMessageId);
+    }
+
     // Mark as read in database
     if (user?.id && !topic.isRead) {
       supabase

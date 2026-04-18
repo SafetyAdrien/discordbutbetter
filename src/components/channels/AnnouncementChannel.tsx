@@ -62,6 +62,7 @@ import { useChannels } from "@/hooks/useChannels";
 import { useServers } from "@/hooks/useServers";
 import { useMembers } from "@/hooks/useMembers";
 import { MessageInput } from "@/components/chat/MessageInput";
+import { AnnouncementComposer } from "./announcement/AnnouncementComposer";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { FollowChannelModal } from "./announcement/FollowChannelModal";
 import { FollowSuccessModal } from "./announcement/FollowSuccessModal";
@@ -1078,21 +1079,15 @@ export function AnnouncementChannel({
             </button>
           </div>
         )}
-        <MessageInput
-          placeholder={`Envoyer un message dans #${channel.name}`}
-          value={messageInput}
-          onChange={(value) => {
-            setMessageInput(value);
-            startTyping();
-          }}
-          onSend={handleSubmit}
-          channelId={channel.id}
-          serverId={channel.server_id}
-          members={members}
+        <AnnouncementComposer
+          channel={channel}
+          serverName={serverName}
+          serverIcon={serverIcon}
           permissionDeniedMessage={permissionDeniedMessage}
           canAttachFiles={canAttachFiles}
-          canCreatePolls={canCreatePolls}
-          showFollowBar={!canSendMessages}
+          canCreateThreads={isAdminOrOwner || canPerm('create_public_threads')}
+          canPublish={canPublishMessages}
+          showFollowBar={!canSendMessages && !permissionDeniedMessage}
           onFollowClick={() => setFollowModalOpen(true)}
         />
       </div>

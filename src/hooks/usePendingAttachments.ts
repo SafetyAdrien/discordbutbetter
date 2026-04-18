@@ -17,7 +17,11 @@ export function usePendingAttachments() {
   const addFiles = useCallback((files: FileList | File[]) => {
     const fileArray = Array.from(files);
     const newAttachments: PendingAttachment[] = fileArray
-      .filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'))
+      .filter(file =>
+        file.type.startsWith('image/') ||
+        file.type.startsWith('video/') ||
+        file.type === 'application/pdf'
+      )
       .map(file => ({
         id: crypto.randomUUID(),
         file,

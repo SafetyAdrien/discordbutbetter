@@ -48,6 +48,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { copyToClipboard } from "@/lib/clipboard";
+import { ThreadSpine } from "@/components/threads/ThreadSpine";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { TypingIndicator } from "@/components/typing/TypingIndicator";
@@ -803,13 +804,7 @@ export function AnnouncementChannel({
 
                     {showAuthor ? (
                       <div className="relative">
-                        {/* Thread Spine - positioned from avatar center */}
-                        {threadsByMessageId.has(message.id) && (
-                          <div className="absolute left-[19px] top-[44px] bottom-0 pointer-events-none">
-                            <div className="absolute left-0 top-0 w-0.5 bg-muted-foreground/30 h-[calc(100%-14px)]" />
-                            <div className="absolute left-0 bottom-[6px] w-[22px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                          </div>
-                        )}
+                        {threadsByMessageId.has(message.id) && <ThreadSpine startY={44} />}
 
                         <div className="flex gap-3 items-start">
                         {isPublishedFromOther ? (
@@ -956,7 +951,7 @@ export function AnnouncementChannel({
 
                         {/* Thread System Message under message with thread */}
                         {threadsByMessageId.has(message.id) && (
-                          <div className="mt-1 ml-[52px]">
+                          <div className="pt-1.5 pl-[50px]">
                             <ThreadSystemMessage
                               thread={threadsByMessageId.get(message.id)!}
                               onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}

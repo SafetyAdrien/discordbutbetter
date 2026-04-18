@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent } from 'react';
-import { Image as ImageIcon, Paperclip, Smile, Send, ChevronDown, MessageSquarePlus, Megaphone } from 'lucide-react';
+import { ImagePlus, Paperclip, Smile, Send, ChevronDown, MessageSquarePlus, Megaphone, X } from 'lucide-react';
 import { Channel } from '@/types/app';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -8,11 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
 import { AttachmentStagingArea } from '@/components/chat/upload/AttachmentStagingArea';
-import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { useSendMessage } from '@/hooks/useMessages';
 import { useCreateThread } from '@/hooks/useThreads';
 import { usePublishMessage, useChannelFollowers } from '@/hooks/useChannelFollowers';
-import { GifPicker } from './GifPicker';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -45,7 +44,9 @@ export function AnnouncementComposer({
   const [autoPublishEnabled, setAutoPublishEnabled] = useState(false);
   const [threadName, setThreadName] = useState('');
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const headerImageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
@@ -72,16 +73,11 @@ export function AnnouncementComposer({
   const canSubmit =
     !isDisabled &&
     !isSending &&
-    (title.trim().length > 0 || message.trim().length > 0 || attachments.length > 0) &&
+    (title.trim().length > 0 || message.trim().length > 0 || attachments.length > 0 || !!headerImage) &&
     (!createThreadEnabled || threadName.trim().length > 0);
 
   const handleEmojiSelect = (emoji: string) => {
     setMessage((prev) => prev + emoji);
-    textareaRef.current?.focus();
-  };
-
-  const handleGifSelect = (gifUrl: string) => {
-    setMessage((prev) => (prev.trim() ? `${prev.trim()}\n${gifUrl}` : gifUrl));
     textareaRef.current?.focus();
   };
 
@@ -90,6 +86,20 @@ export function AnnouncementComposer({
       addFiles(e.target.files);
       e.target.value = '';
     }
+  };
+
+  const handleHeaderImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      if (headerImage) URL.revokeObjectURL(headerImage.previewUrl);
+      setHeaderImage({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    e.target.value = '';
+  };
+
+  const removeHeaderImage = () => {
+    if (headerImage) URL.revokeObjectURL(headerImage.previewUrl);
+    setHeaderImage(null);
   };
 
   const handleSubmit = async () => {
@@ -103,11 +113,25 @@ export function AnnouncementComposer({
         : `# ${trimmedTitle}`
       : trimmedMessage;
 
+    // Build final attachment list with header image first
+    let finalAttachments: PendingAttachment[] = attachments;
+    if (headerImage) {
+      const headerAttachment: PendingAttachment = {
+        id: crypto.randomUUID(),
+        file: headerImage.file,
+        previewUrl: headerImage.previewUrl,
+        name: headerImage.file.name,
+        description: '',
+        isSpoiler: false,
+      };
+      finalAttachments = [headerAttachment, ...attachments];
+    }
+
     try {
       const result = await sendMessage.mutateAsync({
         channelId: channel.id,
         content: finalContent,
-        attachments,
+        attachments: finalAttachments,
       });
 
       const newMessageId = (result as any)?.id;
@@ -116,6 +140,7 @@ export function AnnouncementComposer({
       setTitle('');
       setMessage('');
       clearAttachments();
+      setHeaderImage(null);
 
       // Create thread if enabled
       if (createThreadEnabled && threadName.trim() && newMessageId) {
@@ -201,20 +226,47 @@ export function AnnouncementComposer({
         </div>
       )}
 
-      {/* Attach image button + inputs */}
-      <div className="flex items-start gap-3 p-3 pb-2">
+      {/* Header image tile + inputs */}
+      <div className="p-3 pb-2 space-y-3">
         {canAttachFiles && (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex-shrink-0 w-9 h-9 rounded-full bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            title="Ajouter une image"
-          >
-            <ImageIcon className="w-5 h-5" strokeWidth={1.75} />
-          </button>
+          <>
+            <input
+              ref={headerImageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleHeaderImageSelect}
+              className="hidden"
+            />
+            {headerImage ? (
+              <div className="relative w-20 h-20 rounded-lg overflow-hidden group">
+                <img
+                  src={headerImage.previewUrl}
+                  alt="En-tête"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={removeHeaderImage}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 text-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Retirer l'image d'en-tête"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => headerImageInputRef.current?.click()}
+                className="w-20 h-20 rounded-lg bg-background/60 hover:bg-background/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                title="Ajouter une image d'en-tête"
+              >
+                <ImagePlus className="w-6 h-6" strokeWidth={1.75} />
+              </button>
+            )}
+          </>
         )}
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
           <input
             type="text"
             value={title}
@@ -278,23 +330,10 @@ export function AnnouncementComposer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
-                title="Joindre un fichier (image, vidéo, PDF)"
+                title="Joindre un fichier (image, vidéo, PDF, GIF)"
               >
                 <Paperclip className="w-[18px] h-[18px]" />
               </button>
-
-              <GifPicker
-                onSelect={handleGifSelect}
-                trigger={
-                  <button
-                    type="button"
-                    className="h-8 px-2 rounded-md flex items-center justify-center text-[11px] font-bold text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
-                    title="Ajouter un GIF"
-                  >
-                    GIF
-                  </button>
-                }
-              />
             </>
           )}
 

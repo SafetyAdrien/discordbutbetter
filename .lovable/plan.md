@@ -1,62 +1,46 @@
 
 
-## Problème
+## Problèmes identifiés
 
-Actuellement dans `AnnouncementChannel`, quand un message est publié avec une image d'en-tête + du texte + d'autres pièces jointes, l'ordre de rendu n'est pas garanti :
-- Le texte (titre `# Titre` + corps) s'affiche via `<MarkdownText />`
-- **Toutes** les pièces jointes (y compris l'image d'en-tête) s'affichent ensuite via `<MessageAttachments />`
+### Bug #1 — Message système redondant pour les fils créés depuis le composer
+Dans `useCreateThread` (ligne 184-194), un message système `[SYSTEM:THREAD_CREATED:...]` est inséré **systématiquement** dès qu'un fil public est créé. Or quand l'utilisateur publie une annonce avec l'option "Créer un fil" activée, le fil est déjà attaché à l'annonce via `messageId` et apparaît naturellement sous le message via le bloc `threadsByMessageId.has(message.id)` (ligne 957-965). Résultat : on voit **deux** embeds (l'annonce avec son fil intégré + un message système séparé).
 
-Résultat : l'image d'en-tête, qui devrait être visuellement la première chose vue, se retrouve en bas du message.
+→ **Le message système ne doit apparaître QUE lorsque le fil est créé sans `messageId`** (ex. via le bouton "Créer un Thread" dans le header).
 
-## Investigation nécessaire
+### Bug #2 — Ouverture du fil ne fonctionne pas dans les annonces
+Dans `Index.tsx` (ligne 600 et ligne 692), le panneau `ThreadView` est rendu et la zone de chat est rétrécie **uniquement quand `channelForChat?.type === 'text'`**. Les salons d'annonce appellent bien `onSelectThread` → `setActiveThreadId(threadId)` mais aucun panneau ne s'ouvre car la condition exclut le type `'announcement'`.
 
-Je dois vérifier dans `AnnouncementChannel.tsx` (lignes ~880-1000) comment les messages sont actuellement rendus pour confirmer l'ordre exact, et m'assurer que la première pièce jointe envoyée par le composer est bien l'image d'en-tête (déjà le cas dans `AnnouncementComposer.handleSubmit` qui prepend `headerImage` aux attachments).
+→ Étendre les deux conditions à `type === 'text' || type === 'announcement'`.
+
+---
 
 ## Solution
 
-Réorganiser le rendu d'un message d'annonce dans `AnnouncementChannel.tsx` selon l'ordre demandé :
-
-1. **Image d'en-tête** (première pièce jointe si elle est de type image) — rendue seule en haut, format pleine largeur (proéminent comme une bannière)
-2. **Contenu texte** (titre `# ...` + corps Markdown)
-3. **Autres pièces jointes** (fichiers restants : PDFs, vidéos, autres images)
-4. **Embed du fil** (`ThreadSystemMessage` si `is_system === true` pour `THREAD_CREATED`)
-
-### Logique de séparation
-
-```tsx
-const allAttachments = (message as any).attachments as StoredAttachment[] || [];
-const headerImage = allAttachments[0]?.type?.startsWith('image/') ? allAttachments[0] : null;
-const otherAttachments = headerImage ? allAttachments.slice(1) : allAttachments;
+### Fix #1 — `src/hooks/useThreads.ts`
+Modifier `useCreateThread` pour insérer le message système **seulement si `!messageId`** (création autonome) :
+```ts
+if (!isPrivate && !messageId) {
+  await supabase.from('messages').insert({ ... });
+}
 ```
+Quand `messageId` est fourni, le fil est lié au message porteur ; l'embed sous l'annonce suffit.
 
-### Ordre de rendu
+### Fix #2 — `src/pages/Index.tsx`
+Étendre la condition d'affichage du `ThreadView` aux salons d'annonce :
+- Ligne 600 (className width): `channelForChat.type === 'text' || channelForChat.type === 'announcement'`
+- Ligne 601 (style flex): même condition
+- Ligne 692 (rendu de `<ThreadView />` et de la poignée de redimensionnement): même condition
 
-```tsx
-{/* 1. Header image — full width, prominent */}
-{headerImage && (
-  <div className="mb-3 -mx-1">
-    <MessageAttachments attachments={[headerImage]} />
-  </div>
-)}
+Aucun changement nécessaire dans `AnnouncementChannel.tsx` — il propage déjà `onSelectThread`, `activeThreadId` et `onCloseThread`.
 
-{/* 2. Text content */}
-<MarkdownText>{message.content}</MarkdownText>
+---
 
-{/* 3. Other attachments */}
-{otherAttachments.length > 0 && (
-  <MessageAttachments attachments={otherAttachments} />
-)}
-
-{/* 4. Thread embed (existing logic, unchanged) */}
-```
-
-Appliquer cette logique aux **deux** points de rendu identifiés (message principal ~ligne 906 et version groupée ~ligne 981).
-
-## Fichier modifié
-
-- `src/components/channels/announcement/AnnouncementChannel.tsx` — réorganiser l'ordre de rendu (header image en premier, texte ensuite, autres pièces jointes après).
+## Fichiers modifiés
+1. `src/hooks/useThreads.ts` — n'insérer le message système que si aucun `messageId` n'est fourni
+2. `src/pages/Index.tsx` — autoriser l'affichage du panneau `ThreadView` pour `type === 'announcement'`
 
 ## Résultat
-
-Les annonces publiées affichent désormais l'image d'en-tête comme bannière proéminente en haut, suivie du titre/contenu, puis des éventuelles autres pièces jointes, et enfin l'embed du fil — exactement comme dans la maquette de référence.
+- ✅ Plus de message système redondant quand une annonce est publiée avec un fil intégré
+- ✅ Le message système `ThreadSystemMessage` apparaît toujours quand un fil est créé via le bouton du header (sans message porteur)
+- ✅ Cliquer sur un fil dans un salon d'annonce ouvre le panneau split-view comme dans les salons textuels
 

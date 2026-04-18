@@ -904,12 +904,26 @@ export function AnnouncementChannel({
                             </div>
                           ) : (
                             <>
-                              <p className="text-foreground break-words font-ginto">
-                                <MarkdownText content={message.content} />
-                              </p>
-                              {(message as any).attachments?.length > 0 && (
-                                <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
-                              )}
+                              {(() => {
+                                const allAttachments = ((message as any).attachments as StoredAttachment[]) || [];
+                                const headerImage = allAttachments[0]?.type === 'image' ? allAttachments[0] : null;
+                                const otherAttachments = headerImage ? allAttachments.slice(1) : allAttachments;
+                                return (
+                                  <>
+                                    {headerImage && (
+                                      <div className="mb-2">
+                                        <MessageAttachments attachments={[headerImage]} />
+                                      </div>
+                                    )}
+                                    <p className="text-foreground break-words font-ginto">
+                                      <MarkdownText content={message.content} />
+                                    </p>
+                                    {otherAttachments.length > 0 && (
+                                      <MessageAttachments attachments={otherAttachments} />
+                                    )}
+                                  </>
+                                );
+                              })()}
                               {message.edited_at && (
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}

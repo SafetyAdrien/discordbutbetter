@@ -875,6 +875,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               <MarkdownText content={message.content} />
                             </div>
                           )}
+                          {(reactionsData[message.id]?.length ?? 0) > 0 && (
+                            <div className="mt-1">
+                              <ReactionBar
+                                reactions={reactionsData[message.id] || []}
+                                onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                serverId={serverId || null}
+                                showAddButton={false}
+                                size="sm"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </UniversalMessageContextMenu>

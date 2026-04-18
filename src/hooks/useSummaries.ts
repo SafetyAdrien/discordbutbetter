@@ -17,6 +17,7 @@ export interface SummaryTopic {
   newSummaries?: number;
   isRead?: boolean;
   isLiked?: boolean;
+  startMessageId?: string;
 }
 
 interface ChannelSummary {
@@ -27,6 +28,7 @@ interface ChannelSummary {
   message_count: number;
   participants: string[];
   created_at: string;
+  start_message_id: string | null;
 }
 
 // Format relative time
@@ -136,6 +138,7 @@ export function useSummaries(channelId?: string) {
     newSummaries: readStates.includes(s.id) ? 0 : 1,
     isRead: readStates.includes(s.id),
     isLiked: likedStates.includes(s.id),
+    startMessageId: s.start_message_id ?? undefined,
   }));
 
   // Filter summaries based on liked filter
@@ -221,10 +224,15 @@ export function useSummaries(channelId?: string) {
   }, []);
 
   // Select a topic from the list
-  const selectTopic = useCallback((topic: SummaryTopic) => {
+  const selectTopic = useCallback((topic: SummaryTopic, onJump?: (messageId: string) => void) => {
     setActiveTopic(topic);
     setIsDropdownOpen(false);
-    
+
+    // Jump to first message of the topic
+    if (topic.startMessageId && onJump) {
+      onJump(topic.startMessageId);
+    }
+
     // Mark as read in database
     if (user?.id && !topic.isRead) {
       supabase

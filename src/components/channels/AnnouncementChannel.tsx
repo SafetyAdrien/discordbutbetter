@@ -74,6 +74,7 @@ import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import CreateThreadModal from "@/components/threads/CreateThreadModal";
 import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
+import { MessageAttachments, type StoredAttachment } from "@/components/chat/MessageAttachments";
 import { Thread } from "@/types/thread";
 import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
@@ -192,7 +193,8 @@ export function AnnouncementChannel({
       content: m.content,
       timestamp: new Date(m.created_at || Date.now()),
       edited_at: m.edited_at,
-      attachments: [],
+      attachments: ((m as any).attachments as StoredAttachment[]) || [],
+      is_system: (m as any).is_system || false,
       author: m.author ? {
         id: m.author.id,
         username: m.author.username,
@@ -905,6 +907,9 @@ export function AnnouncementChannel({
                               <p className="text-foreground break-words font-ginto">
                                 <MarkdownText content={message.content} />
                               </p>
+                              {(message as any).attachments?.length > 0 && (
+                                <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
+                              )}
                               {message.edited_at && (
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
@@ -983,6 +988,9 @@ export function AnnouncementChannel({
                                   <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                 )}
                               </p>
+                              {(message as any).attachments?.length > 0 && (
+                                <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
+                              )}
                               {showPublishPrompt && (
                                 <div className="flex items-center gap-2 mt-2 bg-surface-hover rounded-md px-3 py-2 text-sm">
                                   <StreamlineMegaphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -1132,6 +1140,7 @@ export function AnnouncementChannel({
           messageId={createThreadForMessageId}
           open={!!createThreadForMessageId}
           onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
+          forcePublic
           onThreadCreated={(threadId) => {
             setCreateThreadForMessageId(null);
             onSelectThread?.(threadId);

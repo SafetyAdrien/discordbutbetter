@@ -43,7 +43,6 @@ export function AnnouncementComposer({
   const [createThreadEnabled, setCreateThreadEnabled] = useState(false);
   const [autoPublishEnabled, setAutoPublishEnabled] = useState(false);
   const [threadName, setThreadName] = useState('');
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

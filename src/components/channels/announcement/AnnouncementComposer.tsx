@@ -247,8 +247,19 @@ export function AnnouncementComposer({
         </div>
       )}
 
+      {/* Collapse button — top right */}
+      <button
+        type="button"
+        onClick={() => setCollapsed(true)}
+        disabled={hasContent}
+        className="absolute top-2 right-2 z-10 w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        title={hasContent ? "Effacez le contenu pour réduire" : "Réduire"}
+      >
+        <ChevronDown className="w-4 h-4" />
+      </button>
+
       {/* Header image tile + inputs */}
-      <div className="p-3 pb-2 space-y-3">
+      <div className="p-3 pb-2 pr-10 space-y-3">
         {canAttachFiles && (
           <>
             <input

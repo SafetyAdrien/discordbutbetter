@@ -1,129 +1,67 @@
 
 
 ## Objectif
-Ajouter au menu contextuel des messages :
-1. **"Voir les réactions"** → modal avec tabs par emoji + liste des utilisateurs ayant réagi
-2. **"Supprimer toutes les réactions"** (raccourci) → réservé aux modérateurs avec permission `manage_expressions`
+Améliorer l'affichage des réactions sous chaque message :
+1. **Bouton "+"** à côté des pills pour ajouter rapidement une réaction (picker emoji + emojis serveur).
+2. **Aperçu des réacteurs** : afficher jusqu'à 3 avatars + noms d'affichage des personnes ayant réagi sur chaque pill (tooltip enrichi).
+3. **"Voir plus"** : si > 3 réacteurs, ouvrir le `ReactionsViewerModal` existant filtré sur l'emoji concerné.
 
-## Exploration nécessaire
+## Analyse
 
-Je dois vérifier :
-- La permission `manage_expressions` existe-t-elle dans `server_permission` enum ?
-- Comment `UniversalMessageContextMenu` est utilisé dans `ChatArea` (props passées)
-- Les hooks de réactions disponibles (`useReactions.ts` + 4 nouveaux : DM, Thread, Media, Comment)
+### État actuel (`src/components/chat/ReactionBar.tsx`)
+- Pills affichent uniquement `emoji + count`.
+- Tooltip simpliste : "Vous avez réagi" ou "X réaction(s)".
+- `showAddButton` existe déjà avec `EmojiStickerPicker` — fonctionnel mais désactivé partout (`showAddButton={false}` dans ChatArea, DM, Threads, Media).
+- Pas d'avatars ni noms affichés.
 
-D'après le code visible :
-- `useReactions.ts` expose `useRemoveReaction` qui supprime UNIQUEMENT la réaction de l'utilisateur courant (`.eq('user_id', user.id)`)
-- Pour le mode modérateur, il faut une nouvelle mutation pouvant supprimer la réaction de N'IMPORTE QUEL utilisateur
-- RLS actuelle sur `reactions` : `Users can remove their reactions` → `auth.uid() = user_id` ❌ bloque les modos
+### Données disponibles
+- `reactions: { user_id, emoji }[]` → groupées par emoji.
+- Besoin de récupérer les profils (avatar_url, display_name) pour les user_ids.
+- `useProfile` ou `useMembers` peut hydrater. Le plus simple : ajouter une requête batch dans `ReactionBar` via `profiles` table sur les user_ids présents.
 
-## Architecture
+## Solution
 
-### 1. DB / RLS
-Ajouter via migration une politique DELETE supplémentaire sur les 5 tables de réactions (`reactions`, `dm_message_reactions`, `thread_message_reactions`, `media_post_reactions`, `announcement_comment_reactions`) :
+### 1. Réactiver le bouton "+" partout
+Passer `showAddButton={true}` (ou retirer le prop, défaut `true`) dans :
+- `src/components/chat/ChatArea.tsx` (2 emplacements)
+- `src/components/dm/DMConversation.tsx`
+- `src/components/threads/ThreadView.tsx`
+- `src/components/channels/voice/VoiceChannelChat.tsx`
+- `src/components/channels/MediaChannel.tsx` ou équivalent
 
-```sql
--- Pour reactions (server messages)
-CREATE POLICY "Moderators can delete any reactions"
-ON reactions FOR DELETE
-USING (
-  EXISTS (
-    SELECT 1 FROM messages m JOIN channels c ON c.id = m.channel_id
-    WHERE m.id = reactions.message_id
-      AND has_server_permission(auth.uid(), c.server_id, 'manage_expressions'::server_permission)
-  )
-);
-```
+Le picker `EmojiStickerPicker` est déjà branché avec `serverId` → emojis serveur inclus automatiquement.
 
-Équivalent pour les 4 autres tables (sauf `dm_message_reactions` qui n'a pas de notion de modérateur — on n'ajoute rien là).
+### 2. Enrichir `ReactionBar.tsx`
+- **Fetch profils** : ajouter `useQuery(['profiles-batch', userIds])` qui SELECT `id, username, display_name, avatar_url` depuis `profiles` pour tous les `user_id` présents dans `reactions`. Cache partagé.
+- **Tooltip enrichi** sur chaque pill :
+  - Mini-grille : 3 premiers avatars (12px) + display_name côte à côte.
+  - Si > 3 : afficher "et X autres…" + bouton **"Voir plus"** qui appelle un callback `onViewReactors(emoji)`.
+  - Sinon : juste la liste.
+- Pour rester performant, le tooltip est rendu via `HoverCard` (Radix) plutôt que `Tooltip` simple (permet contenu interactif avec bouton cliquable).
 
-Si `manage_expressions` n'existe pas dans l'enum, je le créerai. (À vérifier en début d'implémentation.)
+### 3. Branchement "Voir plus"
+- Ajouter prop `onViewReactors?: (emoji?: string) => void` à `ReactionBar`.
+- Dans `ChatArea`/`DMConversation`/`ThreadView` : passer `(emoji) => { setReactionsViewerMessageId(message.id); setReactionsViewerInitialEmoji(emoji); }`.
+- Étendre `ReactionsViewerModal` avec prop `initialEmoji?: string` pour pré-sélectionner l'onglet correspondant à l'ouverture.
 
-### 2. Nouveaux hooks de modération
-Étendre chaque fichier de hook réaction avec :
-- `useRemoveAnyReaction(messageId, userId, emoji)` → suppression ciblée d'1 réaction d'1 utilisateur
-- `useRemoveAllReactions(messageId)` → suppression en masse pour 1 message
+### 4. Détails UI
+- Avatar : `w-4 h-4 rounded-full` dans le hover card.
+- Display name : texte sm, truncate.
+- Bouton "+" : déjà stylisé, juste réactiver.
+- Tooltip → HoverCard : `openDelay={200} closeDelay={100}`.
 
-Optimistic updates cohérents avec le pattern existant.
-
-### 3. Nouveau composant `ReactionsViewerModal`
-`src/components/chat/ReactionsViewerModal.tsx`
-
-```
-┌──────────────────────────────────────┐
-│ Réactions                         X  │
-├──────────────────────────────────────┤
-│ [👍 5] [❤️ 3] [😂 1]  [Tous]        │ ← Tabs par emoji
-├──────────────────────────────────────┤
-│ ☑ avatar  username       [×]        │ ← × visible si moi OU modo
-│ ☑ avatar  username       [×]        │
-│ ...                                 │
-├──────────────────────────────────────┤
-│ [Mode sélection] [Supprimer tout]   │ ← Modo only
-└──────────────────────────────────────┘
-```
-
-Props :
-```ts
-{
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  messageId: string;
-  reactions: Reaction[];
-  canModerate: boolean;
-  onRemoveOwn: (emoji: string) => void;
-  onRemoveAny: (userId: string, emoji: string) => void;
-  onRemoveAll: () => void;
-}
-```
-
-Comportement :
-- Tabs = chaque emoji unique + un tab "Tous"
-- Liste utilisateurs résolus via `useProfile`/cache de profils
-- Bouton × à côté de chaque ligne : si c'est moi → toujours actif ; si modo → actif sur tous
-- Mode "checklist" (modo only) : checkboxes apparaissent → bouton "Supprimer la sélection"
-- Bouton "Supprimer toutes les réactions" (modo only) → confirm dialog
-
-### 4. Étendre `UniversalMessageContextMenu`
-Ajouter 2 props + 2 entrées :
-
-```ts
-canManageExpressions?: boolean;
-onViewReactions?: () => void;
-onRemoveAllReactions?: () => void;
-```
-
-Entrées dans le menu (après "Copier l'ID", avant le séparateur destructif) :
-- 👁 **Voir les réactions** → `onViewReactions()` (toujours visible si message a ≥ 1 réaction)
-- 🗑 **Supprimer toutes les réactions** → `onRemoveAllReactions()` (uniquement si `canManageExpressions`)
-
-Mêmes ajouts dans la version mobile (Sheet).
-
-### 5. Intégration dans `ChatArea`
-- Passer `canManageExpressions` (nouveau check via `usePermissions`)
-- Gérer l'état d'ouverture du modal (`viewingReactionsFor: messageId | null`)
-- Connecter `onRemoveAllReactions` à la nouvelle mutation `useRemoveAllReactions`
-
-### 6. Réplication minimale
-Pour respecter le scope sans exploser le PR, j'intègre **uniquement dans `ChatArea`** (messages serveur textuels) en première itération. Les autres surfaces (DM, Thread, Media, Comments) auront le bouton "Voir les réactions" sans modération massive (DM n'a pas de modo, threads/media/comments suivront le même pattern dans les itérations futures si demandé).
-
-## Fichiers
-
-**Migration SQL** : politiques DELETE modérateur sur 4 tables (+ ajout `manage_expressions` si absent).
-
-**Hooks modifiés** :
-- `src/hooks/useReactions.ts` — ajouter `useRemoveAnyReaction`, `useRemoveAllReactions`
-
-**Composant créé** :
-- `src/components/chat/ReactionsViewerModal.tsx`
-
-**Composants modifiés** :
-- `src/components/chat/UniversalMessageContextMenu.tsx` — 2 nouvelles entrées (desktop + mobile)
-- `src/components/chat/ChatArea.tsx` — état modal + props + mutations
+## Fichiers modifiés
+- `src/components/chat/ReactionBar.tsx` — fetch profils, HoverCard avec avatars/noms, callback `onViewReactors`, par défaut `showAddButton=true`.
+- `src/components/chat/ReactionsViewerModal.tsx` — accepter `initialEmoji` pour onglet par défaut.
+- `src/components/chat/ChatArea.tsx` — 2 ReactionBar : retirer `showAddButton={false}`, passer `onViewReactors`, gérer `initialEmoji` dans state du modal.
+- `src/components/dm/DMConversation.tsx` — idem.
+- `src/components/threads/ThreadView.tsx` — idem.
+- `src/components/channels/voice/VoiceChannelChat.tsx` — idem.
+- `src/components/channels/MediaChannel.tsx` (et/ou composants posts média) — idem si applicable.
 
 ## Résultat
-Clic droit sur un message :
-- "Voir les réactions" → modal détaillée avec tabs emoji et liste utilisateurs
-- Modos (`manage_expressions`) : checklist + bouton suppression groupée + bouton "Supprimer toutes les réactions" en accès rapide
-- Utilisateur normal : peut s'auto-retirer depuis la liste
+- Bouton "+" cliquable sur chaque message → picker complet avec emojis serveur.
+- Hover sur un pill → mini-aperçu des 3 premiers réacteurs (avatar + nom).
+- Si plus de 3 → bouton "Voir plus" ouvre le viewer modal directement sur l'emoji concerné.
+- Cohérence sur toutes les surfaces (chat serveur, DM, threads, vocal, média).
 

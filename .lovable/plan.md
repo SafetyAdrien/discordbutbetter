@@ -1,67 +1,79 @@
 
 
 ## Objectif
-Améliorer l'affichage des réactions sous chaque message :
-1. **Bouton "+"** à côté des pills pour ajouter rapidement une réaction (picker emoji + emojis serveur).
-2. **Aperçu des réacteurs** : afficher jusqu'à 3 avatars + noms d'affichage des personnes ayant réagi sur chaque pill (tooltip enrichi).
-3. **"Voir plus"** : si > 3 réacteurs, ouvrir le `ReactionsViewerModal` existant filtré sur l'emoji concerné.
+Refondre le composant de saisie du salon Annonces en un **AnnouncementComposer** dédié, distinct du `MessageInput` standard, intégrant : import média, titre (avec préfixe `#` automatique), contenu, fichier PDF, GIF, et un **popover Send** avec options "Créer un thread" et "Publier" (auto-publication aux salons abonnés).
 
-## Analyse
+## État actuel
+- `AnnouncementChannel.tsx` ligne 1081 utilise le `MessageInput` standard (chat texte classique).
+- Publication aux abonnés (`usePublishMessage`) existe mais déclenchée **après envoi** via `PublishPrompt`.
+- Création de thread existe via `CreateThreadModal` mais déclenchée depuis le menu contextuel.
+- Pas de champ titre, pas d'upload PDF dédié, pas de GIF, pas d'aperçu d'image en haut.
 
-### État actuel (`src/components/chat/ReactionBar.tsx`)
-- Pills affichent uniquement `emoji + count`.
-- Tooltip simpliste : "Vous avez réagi" ou "X réaction(s)".
-- `showAddButton` existe déjà avec `EmojiStickerPicker` — fonctionnel mais désactivé partout (`showAddButton={false}` dans ChatArea, DM, Threads, Media).
-- Pas d'avatars ni noms affichés.
+## Conception du composant
 
-### Données disponibles
-- `reactions: { user_id, emoji }[]` → groupées par emoji.
-- Besoin de récupérer les profils (avatar_url, display_name) pour les user_ids.
-- `useProfile` ou `useMembers` peut hydrater. Le plus simple : ajouter une requête batch dans `ReactionBar` via `profiles` table sur les user_ids présents.
+### Nouveau fichier : `src/components/channels/announcement/AnnouncementComposer.tsx`
 
-## Solution
+Layout (cf. images 2 et 3) :
+```text
+┌─────────────────────────────────────────────────────┐
+│ [🖼️+]    ← Tooltip "Upload Header Image"           │
+│                                                       │
+│ Titre                  ← Input bold/large            │
+│ Message d'envoi.       ← Textarea (avec overlay md)  │
+│                                                       │
+│ [📎 lorem.pdf] ← Pièces jointes PDF/fichiers         │
+│                                                       │
+│ [📁] [GIF] [😊]                          [Send ▼]   │
+└─────────────────────────────────────────────────────┘
+```
 
-### 1. Réactiver le bouton "+" partout
-Passer `showAddButton={true}` (ou retirer le prop, défaut `true`) dans :
-- `src/components/chat/ChatArea.tsx` (2 emplacements)
-- `src/components/dm/DMConversation.tsx`
-- `src/components/threads/ThreadView.tsx`
-- `src/components/channels/voice/VoiceChannelChat.tsx`
-- `src/components/channels/MediaChannel.tsx` ou équivalent
+**Bouton Send (split-button avec popover ancré à gauche)** :
+```text
+☐ Créer un thread
+☐ Publier
+              [Send ➤]
+```
 
-Le picker `EmojiStickerPicker` est déjà branché avec `serverId` → emojis serveur inclus automatiquement.
+### Fonctionnalités
+1. **Header image** (zone carrée 64×64 en haut-gauche) → upload vers bucket `message-attachments` (image jointe au message, traitée comme première attachment de type image).
+2. **Titre** (Input optionnel, `font-bold text-base`) → affiché en première ligne du `content` final sous forme `# {title}\n{message}` (Markdown H1, déjà géré par `MarkdownText`). Pendant la rédaction, l'overlay markdown rend visuellement le `#`.
+3. **Contenu** (Textarea avec `InputMarkdownOverlay` + mentions, comme `MessageInput`).
+4. **PDF / fichiers** : bouton 📁 → input `accept="application/pdf,image/*,video/*"` → utilise `usePendingAttachments` + `AttachmentStagingArea` existante.
+5. **GIF** : bouton dédié → ouvre `EmojiStickerPicker` en mode GIF (déjà supporté) ou un picker GIF léger ; insère l'URL GIF comme attachment image.
+6. **Emoji** : bouton 😊 → `EmojiStickerPicker` (insertion dans la textarea).
+7. **Popover Send** :
+   - `Checkbox "Créer un thread"` → après envoi du message, ouvre `CreateThreadModal` pré-rempli avec le titre.
+   - `Checkbox "Publier"` → après envoi, appelle automatiquement `usePublishMessage` (s'il y a des abonnés, sinon toast info).
+   - Bouton **Send** envoie le message + déclenche les actions cochées en séquence.
 
-### 2. Enrichir `ReactionBar.tsx`
-- **Fetch profils** : ajouter `useQuery(['profiles-batch', userIds])` qui SELECT `id, username, display_name, avatar_url` depuis `profiles` pour tous les `user_id` présents dans `reactions`. Cache partagé.
-- **Tooltip enrichi** sur chaque pill :
-  - Mini-grille : 3 premiers avatars (12px) + display_name côte à côte.
-  - Si > 3 : afficher "et X autres…" + bouton **"Voir plus"** qui appelle un callback `onViewReactors(emoji)`.
-  - Sinon : juste la liste.
-- Pour rester performant, le tooltip est rendu via `HoverCard` (Radix) plutôt que `Tooltip` simple (permet contenu interactif avec bouton cliquable).
+### Logique d'envoi
+```ts
+const fullContent = title.trim() ? `# ${title.trim()}\n${content}` : content;
+const result = await sendMessageMutation.mutateAsync({ channelId, content: fullContent, attachments });
+if (autoPublish && followers.length > 0) {
+  await publishMessage.mutateAsync({ messageId: result.id, ... });
+}
+if (autoCreateThread) {
+  setCreateThreadForMessageId(result.id); // ouvre le modal existant
+}
+```
 
-### 3. Branchement "Voir plus"
-- Ajouter prop `onViewReactors?: (emoji?: string) => void` à `ReactionBar`.
-- Dans `ChatArea`/`DMConversation`/`ThreadView` : passer `(emoji) => { setReactionsViewerMessageId(message.id); setReactionsViewerInitialEmoji(emoji); }`.
-- Étendre `ReactionsViewerModal` avec prop `initialEmoji?: string` pour pré-sélectionner l'onglet correspondant à l'ouverture.
+### Permissions respectées
+- `canSendMessages` → désactive tout
+- `canAttachFiles` → désactive 📁 et header image
+- `canPublishMessages` → masque/désactive l'option "Publier"
+- `create_public_threads` → masque/désactive l'option "Créer un thread"
 
-### 4. Détails UI
-- Avatar : `w-4 h-4 rounded-full` dans le hover card.
-- Display name : texte sm, truncate.
-- Bouton "+" : déjà stylisé, juste réactiver.
-- Tooltip → HoverCard : `openDelay={200} closeDelay={100}`.
+### Intégration dans `AnnouncementChannel.tsx`
+Remplacer le bloc `<MessageInput …/>` (lignes 1081-1097) par `<AnnouncementComposer …/>` avec props : `channelId`, `serverId`, `serverName`, `serverIcon`, `members`, `followers`, permissions, et callbacks `onCreateThreadFor(messageId, title)`.
 
-## Fichiers modifiés
-- `src/components/chat/ReactionBar.tsx` — fetch profils, HoverCard avec avatars/noms, callback `onViewReactors`, par défaut `showAddButton=true`.
-- `src/components/chat/ReactionsViewerModal.tsx` — accepter `initialEmoji` pour onglet par défaut.
-- `src/components/chat/ChatArea.tsx` — 2 ReactionBar : retirer `showAddButton={false}`, passer `onViewReactors`, gérer `initialEmoji` dans state du modal.
-- `src/components/dm/DMConversation.tsx` — idem.
-- `src/components/threads/ThreadView.tsx` — idem.
-- `src/components/channels/voice/VoiceChannelChat.tsx` — idem.
-- `src/components/channels/MediaChannel.tsx` (et/ou composants posts média) — idem si applicable.
+Garder `MessageInput` intact pour les autres channels.
+
+## Fichiers modifiés / créés
+- **Créé** : `src/components/channels/announcement/AnnouncementComposer.tsx`
+- **Modifié** : `src/components/channels/AnnouncementChannel.tsx` — remplace `MessageInput` par `AnnouncementComposer`, branche `onCreateThreadFor` sur `setCreateThreadForMessageId` + état pour pré-titre.
+- **Modifié** : `src/components/threads/CreateThreadModal.tsx` — accepter `defaultName` optionnel pour pré-remplir le champ.
 
 ## Résultat
-- Bouton "+" cliquable sur chaque message → picker complet avec emojis serveur.
-- Hover sur un pill → mini-aperçu des 3 premiers réacteurs (avatar + nom).
-- Si plus de 3 → bouton "Voir plus" ouvre le viewer modal directement sur l'emoji concerné.
-- Cohérence sur toutes les surfaces (chat serveur, DM, threads, vocal, média).
+Composer Discord-like pour les annonces : header image, titre `#`, contenu Markdown, GIF, fichiers PDF/images, et bouton Send unifié avec options "Créer thread" / "Publier" cochables avant l'envoi — tout en une seule action.
 

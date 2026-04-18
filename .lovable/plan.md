@@ -1,67 +1,119 @@
 
 
 ## Objectif
-Améliorer l'affichage des réactions sous chaque message :
-1. **Bouton "+"** à côté des pills pour ajouter rapidement une réaction (picker emoji + emojis serveur).
-2. **Aperçu des réacteurs** : afficher jusqu'à 3 avatars + noms d'affichage des personnes ayant réagi sur chaque pill (tooltip enrichi).
-3. **"Voir plus"** : si > 3 réacteurs, ouvrir le `ReactionsViewerModal` existant filtré sur l'emoji concerné.
+Créer un composer dédié pour les salons d'annonce (`AnnouncementComposer`) qui remplace le `MessageInput` standard, avec :
+- Champ Titre (rendu `# titre` dans le contenu envoyé, invisible en saisie)
+- Champ Message
+- Pièces jointes images/vidéos **et PDF**
+- Bouton GIF (recherche Tenor)
+- Toggles "Créer un thread" + "Publier auto" via menu déroulant à côté du bouton Send
 
-## Analyse
+## Composant final
 
-### État actuel (`src/components/chat/ReactionBar.tsx`)
-- Pills affichent uniquement `emoji + count`.
-- Tooltip simpliste : "Vous avez réagi" ou "X réaction(s)".
-- `showAddButton` existe déjà avec `EmojiStickerPicker` — fonctionnel mais désactivé partout (`showAddButton={false}` dans ChatArea, DM, Threads, Media).
-- Pas d'avatars ni noms affichés.
+Layout (Image 1 + 3) :
+```
+┌─────────────────────────────────────────────────────┐
+│ [📷+]                                                │
+│  Title (optional)                                    │
+│  Message #publish                                    │
+│                                                      │
+│  [📄 thumb] [🖼 thumb]   ← attachments staging      │
+│                                                      │
+│  [📎] [GIF] [😊]                          [Send ▾]  │
+└─────────────────────────────────────────────────────┘
+```
 
-### Données disponibles
-- `reactions: { user_id, emoji }[]` → groupées par emoji.
-- Besoin de récupérer les profils (avatar_url, display_name) pour les user_ids.
-- `useProfile` ou `useMembers` peut hydrater. Le plus simple : ajouter une requête batch dans `ReactionBar` via `profiles` table sur les user_ids présents.
+Le menu **▾** à droite de "Send" ouvre un popover avec :
+- ☐ Créer un thread (révèle un input nom du thread sous le composer)
+- ☐ Publier auto (publie vers les abonnés à l'envoi)
 
-## Solution
+## Implémentation
 
-### 1. Réactiver le bouton "+" partout
-Passer `showAddButton={true}` (ou retirer le prop, défaut `true`) dans :
-- `src/components/chat/ChatArea.tsx` (2 emplacements)
-- `src/components/dm/DMConversation.tsx`
-- `src/components/threads/ThreadView.tsx`
-- `src/components/channels/voice/VoiceChannelChat.tsx`
-- `src/components/channels/MediaChannel.tsx` ou équivalent
+### 1. Nouveau fichier `src/components/channels/announcement/AnnouncementComposer.tsx`
+- Carte unique englobante (bg `--input`, radius 2xl, shadow elevation 2) — pas une simple barre.
+- Header zone : bouton image-add carré (+ icône image) en haut à gauche.
+- Inputs empilés :
+  - `<input>` Titre, font-bold, placeholder "Title (optional)", `border-0 bg-transparent`
+  - `<textarea>` Message avec `MarkdownText` overlay (réutilise `InputMarkdownOverlay`), placeholder dynamique `Message #${channel.name}`
+- `AttachmentStagingArea` réutilisé sous les inputs (avec icône PDF custom pour les fichiers `application/pdf`).
+- Footer barre d'actions :
+  - Gauche : bouton Files (📎 — déclenche `<input type=file accept="image/*,video/*,application/pdf">`), bouton GIF, bouton Emoji (réutilise `EmojiStickerPicker`).
+  - Droite : groupe `[Send | ▾]` — bouton Send + chevron qui ouvre le popover de toggles (Image 2).
 
-Le picker `EmojiStickerPicker` est déjà branché avec `serverId` → emojis serveur inclus automatiquement.
+### 2. Submit logic
+```ts
+const finalContent = title.trim() 
+  ? `# ${title.trim()}\n\n${message}`   // # rendu en H1 par MarkdownText
+  : message;
 
-### 2. Enrichir `ReactionBar.tsx`
-- **Fetch profils** : ajouter `useQuery(['profiles-batch', userIds])` qui SELECT `id, username, display_name, avatar_url` depuis `profiles` pour tous les `user_id` présents dans `reactions`. Cache partagé.
-- **Tooltip enrichi** sur chaque pill :
-  - Mini-grille : 3 premiers avatars (12px) + display_name côte à côte.
-  - Si > 3 : afficher "et X autres…" + bouton **"Voir plus"** qui appelle un callback `onViewReactors(emoji)`.
-  - Sinon : juste la liste.
-- Pour rester performant, le tooltip est rendu via `HoverCard` (Radix) plutôt que `Tooltip` simple (permet contenu interactif avec bouton cliquable).
+await sendMessage.mutateAsync({ channelId, content: finalContent, attachments });
 
-### 3. Branchement "Voir plus"
-- Ajouter prop `onViewReactors?: (emoji?: string) => void` à `ReactionBar`.
-- Dans `ChatArea`/`DMConversation`/`ThreadView` : passer `(emoji) => { setReactionsViewerMessageId(message.id); setReactionsViewerInitialEmoji(emoji); }`.
-- Étendre `ReactionsViewerModal` avec prop `initialEmoji?: string` pour pré-sélectionner l'onglet correspondant à l'ouverture.
+if (createThreadEnabled && threadName.trim() && newMsgId) {
+  await createThread.mutateAsync({ channelId, name: threadName.trim(), messageId: newMsgId });
+}
+if (autoPublishEnabled) {
+  await publishMessage.mutateAsync({ messageId: newMsgId, channelId, content: finalContent, ... });
+}
+```
+- Le `#` n'apparaît jamais dans le champ Titre — il est ajouté à l'envoi uniquement.
+- `MarkdownText` rend déjà `# x` comme heading → titre stylé dans la bulle de message.
 
-### 4. Détails UI
-- Avatar : `w-4 h-4 rounded-full` dans le hover card.
-- Display name : texte sm, truncate.
-- Bouton "+" : déjà stylisé, juste réactiver.
-- Tooltip → HoverCard : `openDelay={200} closeDelay={100}`.
+### 3. Étendre `usePendingAttachments` pour PDF
+Modifier le filtre :
+```ts
+.filter(file => 
+  file.type.startsWith('image/') || 
+  file.type.startsWith('video/') ||
+  file.type === 'application/pdf'
+)
+```
+`useSendMessage` utilise déjà `type: 'file'` pour le reste → PDF stocké comme `'file'` dans `StoredAttachment`.
 
-## Fichiers modifiés
-- `src/components/chat/ReactionBar.tsx` — fetch profils, HoverCard avec avatars/noms, callback `onViewReactors`, par défaut `showAddButton=true`.
-- `src/components/chat/ReactionsViewerModal.tsx` — accepter `initialEmoji` pour onglet par défaut.
-- `src/components/chat/ChatArea.tsx` — 2 ReactionBar : retirer `showAddButton={false}`, passer `onViewReactors`, gérer `initialEmoji` dans state du modal.
-- `src/components/dm/DMConversation.tsx` — idem.
-- `src/components/threads/ThreadView.tsx` — idem.
-- `src/components/channels/voice/VoiceChannelChat.tsx` — idem.
-- `src/components/channels/MediaChannel.tsx` (et/ou composants posts média) — idem si applicable.
+### 4. GIF picker via Tenor
+- Nouveau composant `GifPicker.tsx` (popover) : input recherche, grille de résultats, sélection insère l'URL GIF dans `messageInput` (envoi en lien standard).
+- Edge function `supabase/functions/tenor-search/index.ts` qui proxy l'API Tenor v2 (`https://tenor.googleapis.com/v2/search`) avec la clé secrète.
+- **Nécessite** : ajouter le secret `TENOR_API_KEY` (via outil `add_secret` lors de l'implémentation).
+
+### 5. Création de thread post-envoi
+- Réutilise `useCreateThread` du hook existant.
+- Si toggle activé : un input "Nom du thread" apparaît juste sous le composer (au-dessus des actions).
+- Après envoi : récupérer l'ID du message créé (retourné par `mutateAsync`) et créer le thread lié.
+
+### 6. Auto-publish
+- Réutilise `usePublishMessage` (déjà importé dans AnnouncementChannel).
+- Si toggle activé : appel automatique après l'envoi avec les métadonnées du serveur source.
+
+### 7. Intégration dans `AnnouncementChannel.tsx`
+Remplacer le bloc `<MessageInput .../>` (lignes ~1081-1097) par :
+```tsx
+<AnnouncementComposer
+  channel={channel}
+  serverName={serverName}
+  serverIcon={serverIcon}
+  members={members}
+  permissionDenied={permissionDeniedMessage}
+  canAttachFiles={canAttachFiles}
+  canCreateThreads={canPerm('create_public_threads') || isAdminOrOwner}
+  canPublish={canPublishMessages}
+  showFollowBar={!canSendMessages}
+  onFollowClick={() => setFollowModalOpen(true)}
+/>
+```
+
+## Fichiers
+**Créés :**
+- `src/components/channels/announcement/AnnouncementComposer.tsx`
+- `src/components/channels/announcement/GifPicker.tsx`
+- `supabase/functions/tenor-search/index.ts` (proxy Tenor)
+
+**Modifiés :**
+- `src/hooks/usePendingAttachments.ts` — accepter `application/pdf`
+- `src/components/chat/upload/AttachmentStagingArea.tsx` — afficher icône PDF pour fichiers non-media
+- `src/components/channels/AnnouncementChannel.tsx` — utiliser `AnnouncementComposer` au lieu de `MessageInput`
+
+**Secret à ajouter :**
+- `TENOR_API_KEY` (Google Tenor API key — récupérable sur https://developers.google.com/tenor/guides/quickstart)
 
 ## Résultat
-- Bouton "+" cliquable sur chaque message → picker complet avec emojis serveur.
-- Hover sur un pill → mini-aperçu des 3 premiers réacteurs (avatar + nom).
-- Si plus de 3 → bouton "Voir plus" ouvre le viewer modal directement sur l'emoji concerné.
-- Cohérence sur toutes les surfaces (chat serveur, DM, threads, vocal, média).
+Composer dédié aux annonces avec titre auto-`#`, médias + PDF, GIFs Tenor, et publication/thread en un clic via le menu Send déroulant — fidèle aux maquettes Image 1, 2 et 3.
 

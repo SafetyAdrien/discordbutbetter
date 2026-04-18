@@ -128,7 +128,7 @@ Réponds UNIQUEMENT avec un JSON valide :
   ]
 }
 
-Maximum 5 sujets. Si rien de notable, retourne { "topics": [] }.`
+Identifie TOUS les sujets distincts présents dans la conversation, sans limite de nombre. Ne fusionne pas des sujets différents. Si la conversation contient 10 sujets distincts, retourne 10 sujets. Si rien de notable, retourne { "topics": [] }.`
           },
           {
             role: 'user',

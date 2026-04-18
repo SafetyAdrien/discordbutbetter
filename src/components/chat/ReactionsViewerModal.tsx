@@ -21,6 +21,7 @@ import {
 interface ReactionsViewerModalProps {
   messageId: string | null;
   canManageReactions?: boolean;
+  initialEmoji?: string | null;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -29,6 +30,7 @@ const ALL_TAB = '__all__';
 export function ReactionsViewerModal({
   messageId,
   canManageReactions = false,
+  initialEmoji = null,
   onOpenChange,
 }: ReactionsViewerModalProps) {
   const { user } = useAuth();

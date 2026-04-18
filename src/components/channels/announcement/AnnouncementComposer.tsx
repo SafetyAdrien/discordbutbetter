@@ -383,15 +383,6 @@ export function AnnouncementComposer({
             }
           />
 
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            disabled={hasContent}
-            className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={hasContent ? "Effacez le contenu pour réduire" : "Réduire le composer"}
-          >
-            <ChevronDown className="w-[18px] h-[18px]" />
-          </button>
         </div>
 
         {/* Right: Send + options dropdown */}

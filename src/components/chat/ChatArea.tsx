@@ -1987,6 +1987,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onClose={() => setChannelSettingsId(null)}
         />
       )}
+
+      {/* Reactions Viewer Modal */}
+      <ReactionsViewerModal
+        messageId={reactionsViewerMessageId}
+        canManageReactions={canManageMessages}
+        onOpenChange={(open) => !open && setReactionsViewerMessageId(null)}
+      />
     </div>
   );
 });

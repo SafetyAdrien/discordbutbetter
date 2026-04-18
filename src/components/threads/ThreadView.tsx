@@ -939,27 +939,29 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
       {/* Input */}
       <div className="relative px-4 pb-4 pt-2">
-        <div className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-gradient-to-b from-transparent to-background/80 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
-      <MessageInput
-        value={messageContent}
-        onChange={setMessageContent}
-        onSend={handleSend}
-        placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}` : `Envoyer un message dans ${thread?.name || 'le thread'}`}
-        disabled={sendMessage.isPending || isThreadLocked || isThreadClosed}
-        isSending={sendMessage.isPending}
-        onTypingStart={startTyping}
-        onTypingStop={stopTyping}
-        serverId={serverId}
-        channelId={channelId || thread?.channel_id}
-        threadId={threadId}
-        members={mentionMembers}
-        roles={mentionRoles}
-        channels={allChannels}
-        permissionDeniedMessage={permissionDeniedMessage}
-        canAttachFiles={canAttachFiles}
-        canCreatePolls={canCreatePolls}
-        canMentionEveryone={canMentionEveryone}
-      />
+        <div className="pointer-events-none absolute -top-8 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/0 via-background/60 to-background/85 -z-0" />
+        <div className="relative z-10">
+          <MessageInput
+            value={messageContent}
+            onChange={setMessageContent}
+            onSend={handleSend}
+            placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}` : `Envoyer un message dans ${thread?.name || 'le thread'}`}
+            disabled={sendMessage.isPending || isThreadLocked || isThreadClosed}
+            isSending={sendMessage.isPending}
+            onTypingStart={startTyping}
+            onTypingStop={stopTyping}
+            serverId={serverId}
+            channelId={channelId || thread?.channel_id}
+            threadId={threadId}
+            members={mentionMembers}
+            roles={mentionRoles}
+            channels={allChannels}
+            permissionDeniedMessage={permissionDeniedMessage}
+            canAttachFiles={canAttachFiles}
+            canCreatePolls={canCreatePolls}
+            canMentionEveryone={canMentionEveryone}
+          />
+        </div>
       </div>
       {/* Edit Poll Modal */}
       <CreatePollModal

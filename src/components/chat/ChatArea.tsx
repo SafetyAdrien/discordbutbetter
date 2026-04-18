@@ -1893,40 +1893,42 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="relative flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
-        <div className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-gradient-to-b from-transparent to-background/80 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
-        <TypingIndicator channelId={channel.id} />
-        {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
-        <MessageInput
-          value={messageInput}
-          onChange={setMessageInput}
-          onSend={handleSubmit}
-          placeholder={`Envoyer un message dans #${channel.name}`}
-          isSending={isSending}
-          onTypingStart={startTyping}
-          onTypingStop={stopTyping}
-          serverId={channel.server_id}
-          channelId={channel.id}
-          channelName={channel.name}
-          members={members.map((m) => ({
-            id: m.id,
-            displayName: m.displayName,
-            username: m.username,
-            avatar: m.avatar,
-          }))}
-          roles={serverRoles.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
-          channels={allChannels}
-          attachments={attachments}
-          onAddFiles={addFiles}
-          onRemoveAttachment={removeAttachment}
-          onUpdateAttachment={updateAttachment}
-          onToggleSpoiler={toggleSpoiler}
-          onClearAttachments={clearAttachments}
-          permissionDeniedMessage={permissionDeniedMessage}
-          canAttachFiles={canAttachFiles}
-          canCreatePolls={canCreatePolls}
-          canMentionEveryone={canMentionEveryone}
-          slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
-        />
+        <div className="pointer-events-none absolute -top-8 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/0 via-background/60 to-background/85 -z-0" />
+        <div className="relative z-10">
+          <TypingIndicator channelId={channel.id} />
+          {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
+          <MessageInput
+            value={messageInput}
+            onChange={setMessageInput}
+            onSend={handleSubmit}
+            placeholder={`Envoyer un message dans #${channel.name}`}
+            isSending={isSending}
+            onTypingStart={startTyping}
+            onTypingStop={stopTyping}
+            serverId={channel.server_id}
+            channelId={channel.id}
+            channelName={channel.name}
+            members={members.map((m) => ({
+              id: m.id,
+              displayName: m.displayName,
+              username: m.username,
+              avatar: m.avatar,
+            }))}
+            roles={serverRoles.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
+            channels={allChannels}
+            attachments={attachments}
+            onAddFiles={addFiles}
+            onRemoveAttachment={removeAttachment}
+            onUpdateAttachment={updateAttachment}
+            onToggleSpoiler={toggleSpoiler}
+            onClearAttachments={clearAttachments}
+            permissionDeniedMessage={permissionDeniedMessage}
+            canAttachFiles={canAttachFiles}
+            canCreatePolls={canCreatePolls}
+            canMentionEveryone={canMentionEveryone}
+            slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
+          />
+        </div>
       </div>
 
       <UserProfilePopup

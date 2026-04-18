@@ -191,43 +191,51 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                 : 'space-y-2'
             )}
           >
-            {mediaItems.map((item) => (
+            {mediaItems.map((item) => {
+              const firstItem = item.items?.[0];
+              const cover = firstItem ?? {
+                file_url: item.file_url,
+                file_type: item.file_type,
+                alt_text: item.alt_text,
+              };
+              const albumCount = item.items?.length ?? 0;
+              return (
               <div
                 key={item.id}
+                onClick={() => !item._isPending && setActivePost(item)}
                 className={cn(
                   'group relative rounded-lg overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all',
                   viewMode === 'grid' ? 'aspect-square' : 'flex items-center gap-4 p-2',
-                  item._isPending && 'opacity-60'
+                  item._isPending && 'opacity-60 cursor-default'
                 )}
               >
-                {/* Spoiler overlay */}
                 {item.is_spoiler && (
                   <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-xl flex items-center justify-center">
                     <EyeOff className="w-6 h-6 text-muted-foreground" />
                   </div>
                 )}
 
-                {item.file_type === 'video' ? (
+                {cover.file_type === 'video' ? (
                   <video
-                    src={item.file_url}
-                    className={cn(
-                      'object-cover',
-                      viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
-                    )}
+                    src={cover.file_url}
+                    className={cn('object-cover', viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded')}
                     muted
                   />
                 ) : (
                   <img
-                    src={item.file_url}
-                    alt={item.alt_text || item.title}
-                    className={cn(
-                      'object-cover',
-                      viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded'
-                    )}
+                    src={cover.file_url}
+                    alt={cover.alt_text || item.title}
+                    className={cn('object-cover', viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded')}
                   />
                 )}
 
-                {/* Grid overlay with title */}
+                {albumCount > 1 && (
+                  <div className="absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded-md bg-black/70 text-white text-xs font-semibold flex items-center gap-1">
+                    <Layers className="w-3 h-3" />
+                    {albumCount}
+                  </div>
+                )}
+
                 {viewMode === 'grid' && (
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <p className="text-white text-xs font-medium truncate">{item.title}</p>
@@ -252,10 +260,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                   </div>
                 )}
                 {viewMode === 'grid' && (
-                  <div
-                    className="absolute top-2 left-2 right-2 z-20"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
                     <ReactionBar
                       reactions={reactionsData[item.id] || []}
                       onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
@@ -265,18 +270,26 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Media Post Modal */}
-      {selectedFile && (
+      {selectedFiles && (
         <CreateMediaPostModal
-          file={selectedFile}
-          onClose={() => setSelectedFile(null)}
+          files={selectedFiles}
+          onClose={() => setSelectedFiles(null)}
           onPublish={handlePublish}
           isPending={createPost.isPending}
+        />
+      )}
+
+      {activePost && (
+        <MediaPostDetailModal
+          post={activePost}
+          channelId={channel.id}
+          onClose={() => setActivePost(null)}
         />
       )}
     </div>

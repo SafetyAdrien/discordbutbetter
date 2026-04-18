@@ -1356,6 +1356,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           Copier l'identifiant du message
                         </ContextMenuItem>
 
+                        {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                          <>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem onClick={() => setReactionsViewerMessageId(message.id)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Voir les réactions
+                            </ContextMenuItem>
+                            {canManageMessages && (
+                              <ContextMenuItem
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onClick={() => clearMessageReactions.mutate({ messageId: message.id })}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                                Supprimer toutes les réactions
+                              </ContextMenuItem>
+                            )}
+                          </>
+                        )}
+
                         {/* Danger zone */}
                         <ContextMenuSeparator />
                         {user?.id === message.author.id ? (
@@ -1799,6 +1818,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       <Hash className="w-4 h-4 mr-2" />
                       Copier l'identifiant du message
                     </ContextMenuItem>
+
+                    {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                      <>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem onClick={() => setReactionsViewerMessageId(message.id)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Voir les réactions
+                        </ContextMenuItem>
+                        {canManageMessages && (
+                          <ContextMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onClick={() => clearMessageReactions.mutate({ messageId: message.id })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                            Supprimer toutes les réactions
+                          </ContextMenuItem>
+                        )}
+                      </>
+                    )}
 
                     {/* Bas : Zone Danger */}
                     <ContextMenuSeparator />

@@ -6,17 +6,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Force a title to land in the 20-30 chars window
+function normalizeTitle(raw: string): string {
+  let t = (raw || '').trim().replace(/\s+/g, ' ');
+  if (t.length > 30) t = t.slice(0, 30).trimEnd();
+  if (t.length < 20) {
+    // Pad with a soft suffix so we hit the minimum without lying about content
+    const pad = ' (discussion)';
+    if (t.length === 0) t = 'Discussion du salon';
+    if ((t + pad).length <= 30 && t.length < 20) t = (t + pad).slice(0, 30);
+    while (t.length < 20) t = t + '.';
+  }
+  return t;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Extract and validate authorization header
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      console.error('No authorization header provided');
       return new Response(
         JSON.stringify({ error: 'Authorization required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -24,7 +35,6 @@ serve(async (req) => {
     }
 
     const { channelId } = await req.json();
-    
     if (!channelId) {
       return new Response(
         JSON.stringify({ error: 'channelId is required' }),
@@ -38,22 +48,16 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create authenticated Supabase client using the user's JWT to respect RLS
     const supabaseAuth = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
-      global: {
-        headers: { Authorization: authHeader }
-      }
+      global: { headers: { Authorization: authHeader } }
     });
 
-    // First, verify the user has access to this channel by checking RLS
-    // This query will fail if the user is not a member of the server
     const { data: channelAccess, error: accessError } = await supabaseAuth
       .from('channels')
       .select('id, server_id')
@@ -61,36 +65,22 @@ serve(async (req) => {
       .single();
 
     if (accessError || !channelAccess) {
-      console.error('Channel access denied or not found:', accessError);
       return new Response(
         JSON.stringify({ error: 'Channel not found or access denied' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`User has access to channel ${channelId} in server ${channelAccess.server_id}`);
-
-    // Use service role client only for operations that need it (saving summaries)
-    // but we've already verified access above
     const supabaseService = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Fetch recent messages from the channel (last 100 messages)
-    // Use the authenticated client to respect RLS
     const { data: messages, error: messagesError } = await supabaseAuth
       .from('messages')
-      .select(`
-        id,
-        content,
-        created_at,
-        author_id,
-        profiles:author_id (display_name)
-      `)
+      .select(`id, content, created_at, author_id, profiles:author_id (display_name)`)
       .eq('channel_id', channelId)
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (messagesError) {
-      console.error('Error fetching messages:', messagesError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch messages' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -104,18 +94,14 @@ serve(async (req) => {
       );
     }
 
-    // Format messages for AI
-    const formattedMessages = messages
-      .reverse() // Chronological order
-      .map((m: any) => `[${m.profiles?.display_name || 'Utilisateur'}]: ${m.content}`)
+    // Chronological order; index = position in this array (used for first_message_index)
+    const ordered = [...messages].reverse();
+    const formattedMessages = ordered
+      .map((m: any, i: number) => `[#${i}] [${m.profiles?.display_name || 'Utilisateur'}]: ${m.content}`)
       .join('\n');
 
-    // Get unique participants
-    const participants = [...new Set(messages.map((m: any) => m.profiles?.display_name).filter(Boolean))];
+    const participants = [...new Set(ordered.map((m: any) => m.profiles?.display_name).filter(Boolean))];
 
-    console.log(`Summarizing ${messages.length} messages from channel ${channelId}`);
-
-    // Call Lovable AI to generate summaries
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -127,25 +113,22 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Tu es un assistant qui analyse des conversations et génère des résumés structurés.
-            
-Analyse les messages suivants et identifie les principaux sujets de discussion. Pour chaque sujet, génère:
-- Un titre court et descriptif (max 5 mots)
-- Un résumé concis (1-2 phrases)
-- Le nombre approximatif de messages sur ce sujet
+            content: `Tu es un assistant qui analyse des conversations et identifie les SUJETS PRÉCIS abordés.
 
-Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
+Chaque message est préfixé par son index sous la forme [#N]. Pour chaque sujet distinct détecté :
+- "title" : le sujet PRÉCIS (pas générique). Évite "Discussion technique", préfère "Bug login Google OAuth", "Sortie de Cyberpunk 2", "Choix du serveur vocal". Le titre DOIT faire entre 20 et 30 caractères (espaces compris). Pas de guillemets, pas d'emoji.
+- "summary" : 1-2 phrases factuelles décrivant ce qui a été dit.
+- "message_count" : nombre approximatif de messages liés à ce sujet.
+- "first_message_index" : l'index N (entier) du PREMIER message [#N] qui lance ce sujet.
+
+Réponds UNIQUEMENT avec un JSON valide :
 {
   "topics": [
-    {
-      "title": "Titre du sujet",
-      "summary": "Résumé du sujet",
-      "message_count": 10
-    }
+    { "title": "...", "summary": "...", "message_count": 10, "first_message_index": 0 }
   ]
 }
 
-Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retourne un tableau vide.`
+Maximum 5 sujets. Si rien de notable, retourne { "topics": [] }.`
           },
           {
             role: 'user',
@@ -180,27 +163,18 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
     const aiContent = aiData.choices?.[0]?.message?.content;
 
     if (!aiContent) {
-      console.error('No content in AI response');
       return new Response(
         JSON.stringify({ summaries: [] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Parse AI response
-    let topics = [];
+    let topics: any[] = [];
     try {
-      // Clean up the response - remove markdown code blocks if present
       let cleanContent = aiContent.trim();
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.slice(7);
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.slice(3);
-      }
-      if (cleanContent.endsWith('```')) {
-        cleanContent = cleanContent.slice(0, -3);
-      }
-      
+      if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
+      else if (cleanContent.startsWith('```')) cleanContent = cleanContent.slice(3);
+      if (cleanContent.endsWith('```')) cleanContent = cleanContent.slice(0, -3);
       const parsed = JSON.parse(cleanContent.trim());
       topics = parsed.topics || [];
     } catch (parseError) {
@@ -208,19 +182,22 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
       topics = [];
     }
 
-    // Save summaries to database using service role (since we've already verified access)
     const savedSummaries = [];
     for (const topic of topics) {
+      const idx = Number.isInteger(topic.first_message_index) ? topic.first_message_index : 0;
+      const safeIdx = Math.max(0, Math.min(idx, ordered.length - 1));
+      const startMessageId = ordered[safeIdx]?.id ?? ordered[0]?.id;
+
       const { data: saved, error: saveError } = await supabaseService
         .from('channel_summaries')
         .insert({
           channel_id: channelId,
-          title: topic.title,
+          title: normalizeTitle(topic.title),
           summary: topic.summary,
           message_count: topic.message_count || 0,
-          start_message_id: messages[messages.length - 1]?.id,
-          end_message_id: messages[0]?.id,
-          participants: participants.slice(0, 5), // Limit to 5 participants
+          start_message_id: startMessageId,
+          end_message_id: ordered[ordered.length - 1]?.id,
+          participants: participants.slice(0, 5),
         })
         .select()
         .single();
@@ -231,8 +208,6 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
         savedSummaries.push(saved);
       }
     }
-
-    console.log(`Generated ${savedSummaries.length} summaries for channel ${channelId}`);
 
     return new Response(
       JSON.stringify({ summaries: savedSummaries }),

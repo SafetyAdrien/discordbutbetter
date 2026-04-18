@@ -939,7 +939,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
       {/* Input */}
       <div className="relative px-4 pb-4 pt-2">
-        <div className="pointer-events-none absolute -top-8 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/0 via-background/60 to-background/85 -z-0" />
+        <div className="pointer-events-none absolute -top-1 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/40 via-background/70 to-background/85 -z-0" />
         <div className="relative z-10">
           <MessageInput
             value={messageContent}

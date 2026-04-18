@@ -1893,7 +1893,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="relative flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
-        <div className="pointer-events-none absolute -top-8 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/0 via-background/60 to-background/85 -z-0" />
+        <div className="pointer-events-none absolute -top-1 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/40 via-background/70 to-background/85 -z-0" />
         <div className="relative z-10">
           <TypingIndicator channelId={channel.id} />
           {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}

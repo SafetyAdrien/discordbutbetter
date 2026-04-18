@@ -1091,39 +1091,36 @@ export function AnnouncementChannel({
       </ScrollArea>
 
       {/* Input Container */}
-      <div className="relative flex-shrink-0 w-full px-4 pb-4 pt-2">
-        <div className="pointer-events-none absolute -top-1 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/40 via-background/70 to-background/85 -z-0" />
-        <div className="relative z-10">
-          <TypingIndicator channelId={channel.id} />
-          {replyingTo && (
-            <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
-              <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <span className="text-xs text-primary font-medium">
-                  Réponse à {replyingTo.author.displayName}
-                </span>
-                <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
-              </div>
-              <button
-                onClick={() => setReplyingTo(null)}
-                className="p-1 hover:bg-muted rounded transition-colors"
-              >
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
+      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2">
+        <TypingIndicator channelId={channel.id} />
+        {replyingTo && (
+          <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+            <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-primary font-medium">
+                Réponse à {replyingTo.author.displayName}
+              </span>
+              <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
             </div>
-          )}
-          <AnnouncementComposer
-            channel={channel}
-            serverName={serverName}
-            serverIcon={serverIcon}
-            permissionDeniedMessage={permissionDeniedMessage}
-            canAttachFiles={canAttachFiles}
-            canCreateThreads={isAdminOrOwner || canPerm('create_public_threads')}
-            canPublish={canPublishMessages}
-            showFollowBar={!canSendMessages && !permissionDeniedMessage}
-            onFollowClick={() => setFollowModalOpen(true)}
-          />
-        </div>
+            <button
+              onClick={() => setReplyingTo(null)}
+              className="p-1 hover:bg-muted rounded transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+        <AnnouncementComposer
+          channel={channel}
+          serverName={serverName}
+          serverIcon={serverIcon}
+          permissionDeniedMessage={permissionDeniedMessage}
+          canAttachFiles={canAttachFiles}
+          canCreateThreads={isAdminOrOwner || canPerm('create_public_threads')}
+          canPublish={canPublishMessages}
+          showFollowBar={!canSendMessages && !permissionDeniedMessage}
+          onFollowClick={() => setFollowModalOpen(true)}
+        />
       </div>
 
       {/* User Profile Popup */}

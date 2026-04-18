@@ -17,6 +17,7 @@ interface CreateThreadModalProps {
   onOpenChange: (open: boolean) => void;
   channelId: string;
   messageId?: string;
+  defaultName?: string;
   onThreadCreated?: (threadId: string) => void;
 }
 
@@ -25,11 +26,16 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({
   onOpenChange,
   channelId,
   messageId,
+  defaultName,
   onThreadCreated,
 }) => {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(defaultName ?? '');
   const [isPrivate, setIsPrivate] = useState(false);
   const createThread = useCreateThread();
+
+  React.useEffect(() => {
+    if (open) setName(defaultName ?? '');
+  }, [open, defaultName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

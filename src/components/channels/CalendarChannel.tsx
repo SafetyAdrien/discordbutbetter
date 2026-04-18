@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -63,6 +64,21 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
               <Plus className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Nouvel événement</span>
             </Button>
+          )}
+          {onToggleMembers && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={onToggleMembers}
+                  className={cn(showMembers && "bg-surface-hover")}
+                >
+                  <Users className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

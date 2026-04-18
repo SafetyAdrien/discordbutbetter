@@ -15,7 +15,9 @@ import { fr } from 'date-fns/locale';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
-import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from '@/hooks/useReactions';
+import { useMessageReactions, useAddReaction, useRemoveReaction, useClearMessageReactions, Reaction } from '@/hooks/useReactions';
+import { ReactionsViewerModal } from '@/components/chat/ReactionsViewerModal';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
@@ -64,6 +66,9 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   const deleteMessage = useDeleteMessage();
   const addReaction = useAddReaction();
   const removeReaction = useRemoveReaction();
+  const clearMessageReactions = useClearMessageReactions();
+  const { data: canManageMessages = false } = useHasChannelPermission(channelId, 'manage_messages');
+  const [reactionsViewerMessageId, setReactionsViewerMessageId] = useState<string | null>(null);
   
   const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
   const { data: reactionsData = {} } = useMessageReactions(messageIds);
@@ -219,6 +224,11 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                   <UniversalMessageContextMenu
                     messageId={message.id}
                     isOwnMessage={isOwnMessage}
+                    canManageMessages={canManageMessages}
+                    hasReactions={(reactionsData[message.id]?.length ?? 0) > 0}
+                    canManageReactions={canManageMessages}
+                    onViewReactions={() => setReactionsViewerMessageId(message.id)}
+                    onClearAllReactions={() => clearMessageReactions.mutate({ messageId: message.id })}
                     onReply={() => {}}
                     onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                     onCopyText={() => {
@@ -359,6 +369,12 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
           onClearAttachments={clearAttachments}
         />
       </div>
+
+      <ReactionsViewerModal
+        messageId={reactionsViewerMessageId}
+        canManageReactions={canManageMessages}
+        onOpenChange={(open) => !open && setReactionsViewerMessageId(null)}
+      />
     </div>
   );
 }

@@ -178,6 +178,88 @@ export function useRemoveReaction() {
   });
 }
 
+// Moderator: remove a specific user's reaction
+export function useRemoveSpecificReaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, userId, emoji }: { messageId: string; userId: string; emoji: string }) => {
+      const { error } = await supabase
+        .from('reactions')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', userId)
+        .eq('emoji', emoji);
+      if (error) throw error;
+    },
+    onMutate: async ({ messageId, userId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ['reactions'] });
+      const previousReactions = queryClient.getQueriesData({ queryKey: ['reactions'] });
+      queryClient.setQueriesData({ queryKey: ['reactions'] }, (old: Record<string, Reaction[]> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          [messageId]: (old[messageId] || []).filter(r => !(r.user_id === userId && r.emoji === emoji)),
+        };
+      });
+      return { previousReactions };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousReactions) {
+        context.previousReactions.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error('Erreur lors de la suppression de la réaction');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['reactions'] });
+    },
+  });
+}
+
+// Moderator: clear all reactions on a message (optionally only one emoji)
+export function useClearMessageReactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: string; emoji?: string }) => {
+      let query = supabase.from('reactions').delete().eq('message_id', messageId);
+      if (emoji) query = query.eq('emoji', emoji);
+      const { error } = await query;
+      if (error) throw error;
+    },
+    onMutate: async ({ messageId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ['reactions'] });
+      const previousReactions = queryClient.getQueriesData({ queryKey: ['reactions'] });
+      queryClient.setQueriesData({ queryKey: ['reactions'] }, (old: Record<string, Reaction[]> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          [messageId]: emoji
+            ? (old[messageId] || []).filter(r => r.emoji !== emoji)
+            : [],
+        };
+      });
+      return { previousReactions };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousReactions) {
+        context.previousReactions.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error('Erreur lors de la suppression des réactions');
+    },
+    onSuccess: () => {
+      toast.success('Réactions supprimées');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['reactions'] });
+    },
+  });
+}
+
 export function useToggleReaction() {
   const { user } = useAuth();
   const addReaction = useAddReaction();

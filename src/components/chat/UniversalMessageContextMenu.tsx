@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Reply, Copy, Pin, Link, Hash, Pencil, Trash2, Flag, SmilePlus } from 'lucide-react';
+import { Reply, Copy, Pin, Link, Hash, Pencil, Trash2, Flag, SmilePlus, Eye } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -33,6 +33,8 @@ export interface UniversalMessageContextMenuProps {
   messageId: string;
   canAddReactions?: boolean;
   canManageMessages?: boolean;
+  hasReactions?: boolean;
+  canManageReactions?: boolean;
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   onCopyText: () => void;
@@ -43,6 +45,8 @@ export interface UniversalMessageContextMenuProps {
   onCreateThread?: () => void;
   onPin?: () => void;
   onReport?: () => void;
+  onViewReactions?: () => void;
+  onClearAllReactions?: () => void;
 }
 
 export function UniversalMessageContextMenu({
@@ -52,6 +56,8 @@ export function UniversalMessageContextMenu({
   messageId,
   canAddReactions = true,
   canManageMessages = false,
+  hasReactions = false,
+  canManageReactions = false,
   onReply,
   onAddReaction,
   onCopyText,
@@ -62,6 +68,8 @@ export function UniversalMessageContextMenu({
   onCreateThread,
   onPin,
   onReport,
+  onViewReactions,
+  onClearAllReactions,
 }: UniversalMessageContextMenuProps) {
   const { isMobile } = useBreakpoint();
   const isShiftPressed = useShiftKey();
@@ -121,7 +129,21 @@ export function UniversalMessageContextMenu({
       <button onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
         <Hash className="w-4 h-4 text-muted-foreground" /> Copier l'ID
       </button>
-      
+
+      {hasReactions && onViewReactions && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button onClick={() => { onViewReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <Eye className="w-4 h-4 text-muted-foreground" /> Voir les réactions
+          </button>
+          {canManageReactions && onClearAllReactions && (
+            <button onClick={() => { onClearAllReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+              <Trash2 className="w-4 h-4" /> Supprimer toutes les réactions
+            </button>
+          )}
+        </>
+      )}
+
       <div className="h-px bg-border my-1" />
       {isOwnMessage ? (
         <>
@@ -244,7 +266,26 @@ export function UniversalMessageContextMenu({
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID
           </ContextMenuItem>
-          
+
+          {hasReactions && onViewReactions && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={onViewReactions}>
+                <Eye className="w-4 h-4 mr-2" />
+                Voir les réactions
+              </ContextMenuItem>
+              {canManageReactions && onClearAllReactions && (
+                <ContextMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={onClearAllReactions}
+                >
+                  <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                  Supprimer toutes les réactions
+                </ContextMenuItem>
+              )}
+            </>
+          )}
+
           <ContextMenuSeparator />
           {isOwnMessage ? (
             <>

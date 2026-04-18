@@ -63,7 +63,9 @@ import { MarkdownText, setMarkdownContext } from "@/lib/markdown";
 import { registerSnowflakeMappings } from "@/lib/snowflake";
 import { useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";
-import { useMessageReactions, useAddReaction, useRemoveReaction, Reaction } from "@/hooks/useReactions";
+import { useMessageReactions, useAddReaction, useRemoveReaction, useClearMessageReactions, Reaction } from "@/hooks/useReactions";
+import { ReactionsViewerModal } from "@/components/chat/ReactionsViewerModal";
+import { Eye } from "lucide-react";
 import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
 import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
@@ -385,6 +387,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [mobilePollSheetId, setMobilePollSheetId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [pendingContextDeleteMessageId, setPendingContextDeleteMessageId] = useState<string | null>(null);
+  const [reactionsViewerMessageId, setReactionsViewerMessageId] = useState<string | null>(null);
+  const clearMessageReactions = useClearMessageReactions();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -1352,6 +1356,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           Copier l'identifiant du message
                         </ContextMenuItem>
 
+                        {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                          <>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem onClick={() => setReactionsViewerMessageId(message.id)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Voir les réactions
+                            </ContextMenuItem>
+                            {canManageMessages && (
+                              <ContextMenuItem
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onClick={() => clearMessageReactions.mutate({ messageId: message.id })}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                                Supprimer toutes les réactions
+                              </ContextMenuItem>
+                            )}
+                          </>
+                        )}
+
                         {/* Danger zone */}
                         <ContextMenuSeparator />
                         {user?.id === message.author.id ? (
@@ -1796,6 +1819,25 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       Copier l'identifiant du message
                     </ContextMenuItem>
 
+                    {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                      <>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem onClick={() => setReactionsViewerMessageId(message.id)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Voir les réactions
+                        </ContextMenuItem>
+                        {canManageMessages && (
+                          <ContextMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onClick={() => clearMessageReactions.mutate({ messageId: message.id })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2 text-destructive" />
+                            Supprimer toutes les réactions
+                          </ContextMenuItem>
+                        )}
+                      </>
+                    )}
+
                     {/* Bas : Zone Danger */}
                     <ContextMenuSeparator />
                     {isOwnMessage ? (
@@ -1945,6 +1987,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onClose={() => setChannelSettingsId(null)}
         />
       )}
+
+      {/* Reactions Viewer Modal */}
+      <ReactionsViewerModal
+        messageId={reactionsViewerMessageId}
+        canManageReactions={canManageMessages}
+        onOpenChange={(open) => !open && setReactionsViewerMessageId(null)}
+      />
     </div>
   );
 });

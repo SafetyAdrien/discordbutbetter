@@ -1,119 +1,58 @@
 
 
-## Objectif
-Créer un composer dédié pour les salons d'annonce (`AnnouncementComposer`) qui remplace le `MessageInput` standard, avec :
-- Champ Titre (rendu `# titre` dans le contenu envoyé, invisible en saisie)
-- Champ Message
-- Pièces jointes images/vidéos **et PDF**
-- Bouton GIF (recherche Tenor)
-- Toggles "Créer un thread" + "Publier auto" via menu déroulant à côté du bouton Send
+## Problèmes à corriger
 
-## Composant final
+1. **API Tenor obsolète** — Tenor v1 a été fermée par Google. Tenor v2 nécessite une clé Google Cloud avec activation de "Tenor API". L'utilisateur indique qu'il n'y a plus d'API → on **retire complètement** le bouton GIF du composer (ou le remplace par un upload de `.gif` standard).
 
-Layout (Image 1 + 3) :
+2. **Image d'en-tête mal placée** — Sur la maquette (Image 4), le bouton "ajouter image d'en-tête" est une **grande tuile carrée (~80×80px) positionnée AU-DESSUS** des champs Titre/Message, pas en ligne à gauche d'eux. Quand une image est ajoutée, elle remplit cette tuile en aperçu plein.
+
+## Solution
+
+### 1. Retirer Tenor
+- Supprimer le bouton GIF du `AnnouncementComposer`.
+- Supprimer le composant `GifPicker.tsx`.
+- Supprimer l'edge function `tenor-search/index.ts` (et son entrée dans `supabase/config.toml` si présente).
+- Le bouton 📎 (Paperclip) accepte déjà `image/gif` via `image/*` → suffisant pour partager des GIFs.
+
+### 2. Refondre le layout du composer (fidèle à Image 4)
+
 ```
-┌─────────────────────────────────────────────────────┐
-│ [📷+]                                                │
-│  Title (optional)                                    │
-│  Message #publish                                    │
-│                                                      │
-│  [📄 thumb] [🖼 thumb]   ← attachments staging      │
-│                                                      │
-│  [📎] [GIF] [😊]                          [Send ▾]  │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│ ┌──────┐                                              │
+│ │  🖼+ │   ← grande tuile (80×80, rounded-lg)        │
+│ └──────┘                                              │
+│                                                       │
+│  Title (optional)         ← gras, large               │
+│  Message #publish         ← placeholder dynamique     │
+│                                                       │
+│  [📎] [😊]                              [Send ▸]     │
+└──────────────────────────────────────────────────────┘
 ```
 
-Le menu **▾** à droite de "Send" ouvre un popover avec :
-- ☐ Créer un thread (révèle un input nom du thread sous le composer)
-- ☐ Publier auto (publie vers les abonnés à l'envoi)
+**Comportement de la tuile d'en-tête :**
+- Vide : icône `ImagePlus` centrée, fond `bg-background/60`, hover assombri.
+- Click : ouvre un `<input type=file accept="image/*">` séparé (`headerImageInputRef`).
+- Une fois sélectionnée : la tuile montre l'aperçu de l'image (`object-cover`), avec un petit bouton ✕ en haut-à-droite pour la retirer.
+- L'image d'en-tête est gérée séparément des autres attachments (state local `headerImage: File | null`) puis injectée en première position dans `attachments` au moment de l'envoi.
 
-## Implémentation
+**Ajustements :**
+- Retirer le bouton image-add inline (anciennement à gauche des inputs).
+- Le bouton 📎 (footer gauche) reste pour les pièces jointes additionnelles (PDF, vidéos, autres images).
+- Footer simplifié : `[📎] [😊]` à gauche, `[Send ▾]` à droite (toggles inchangés).
 
-### 1. Nouveau fichier `src/components/channels/announcement/AnnouncementComposer.tsx`
-- Carte unique englobante (bg `--input`, radius 2xl, shadow elevation 2) — pas une simple barre.
-- Header zone : bouton image-add carré (+ icône image) en haut à gauche.
-- Inputs empilés :
-  - `<input>` Titre, font-bold, placeholder "Title (optional)", `border-0 bg-transparent`
-  - `<textarea>` Message avec `MarkdownText` overlay (réutilise `InputMarkdownOverlay`), placeholder dynamique `Message #${channel.name}`
-- `AttachmentStagingArea` réutilisé sous les inputs (avec icône PDF custom pour les fichiers `application/pdf`).
-- Footer barre d'actions :
-  - Gauche : bouton Files (📎 — déclenche `<input type=file accept="image/*,video/*,application/pdf">`), bouton GIF, bouton Emoji (réutilise `EmojiStickerPicker`).
-  - Droite : groupe `[Send | ▾]` — bouton Send + chevron qui ouvre le popover de toggles (Image 2).
-
-### 2. Submit logic
-```ts
-const finalContent = title.trim() 
-  ? `# ${title.trim()}\n\n${message}`   // # rendu en H1 par MarkdownText
-  : message;
-
-await sendMessage.mutateAsync({ channelId, content: finalContent, attachments });
-
-if (createThreadEnabled && threadName.trim() && newMsgId) {
-  await createThread.mutateAsync({ channelId, name: threadName.trim(), messageId: newMsgId });
-}
-if (autoPublishEnabled) {
-  await publishMessage.mutateAsync({ messageId: newMsgId, channelId, content: finalContent, ... });
-}
-```
-- Le `#` n'apparaît jamais dans le champ Titre — il est ajouté à l'envoi uniquement.
-- `MarkdownText` rend déjà `# x` comme heading → titre stylé dans la bulle de message.
-
-### 3. Étendre `usePendingAttachments` pour PDF
-Modifier le filtre :
-```ts
-.filter(file => 
-  file.type.startsWith('image/') || 
-  file.type.startsWith('video/') ||
-  file.type === 'application/pdf'
-)
-```
-`useSendMessage` utilise déjà `type: 'file'` pour le reste → PDF stocké comme `'file'` dans `StoredAttachment`.
-
-### 4. GIF picker via Tenor
-- Nouveau composant `GifPicker.tsx` (popover) : input recherche, grille de résultats, sélection insère l'URL GIF dans `messageInput` (envoi en lien standard).
-- Edge function `supabase/functions/tenor-search/index.ts` qui proxy l'API Tenor v2 (`https://tenor.googleapis.com/v2/search`) avec la clé secrète.
-- **Nécessite** : ajouter le secret `TENOR_API_KEY` (via outil `add_secret` lors de l'implémentation).
-
-### 5. Création de thread post-envoi
-- Réutilise `useCreateThread` du hook existant.
-- Si toggle activé : un input "Nom du thread" apparaît juste sous le composer (au-dessus des actions).
-- Après envoi : récupérer l'ID du message créé (retourné par `mutateAsync`) et créer le thread lié.
-
-### 6. Auto-publish
-- Réutilise `usePublishMessage` (déjà importé dans AnnouncementChannel).
-- Si toggle activé : appel automatique après l'envoi avec les métadonnées du serveur source.
-
-### 7. Intégration dans `AnnouncementChannel.tsx`
-Remplacer le bloc `<MessageInput .../>` (lignes ~1081-1097) par :
-```tsx
-<AnnouncementComposer
-  channel={channel}
-  serverName={serverName}
-  serverIcon={serverIcon}
-  members={members}
-  permissionDenied={permissionDeniedMessage}
-  canAttachFiles={canAttachFiles}
-  canCreateThreads={canPerm('create_public_threads') || isAdminOrOwner}
-  canPublish={canPublishMessages}
-  showFollowBar={!canSendMessages}
-  onFollowClick={() => setFollowModalOpen(true)}
-/>
-```
+### 3. Intégration de l'image d'en-tête à l'envoi
+- Au submit : si `headerImage` existe, créer un `PendingAttachment` correspondant et le placer en première position du tableau passé à `sendMessage`.
+- Reset après envoi (`setHeaderImage(null)`).
 
 ## Fichiers
-**Créés :**
-- `src/components/channels/announcement/AnnouncementComposer.tsx`
-- `src/components/channels/announcement/GifPicker.tsx`
-- `supabase/functions/tenor-search/index.ts` (proxy Tenor)
 
 **Modifiés :**
-- `src/hooks/usePendingAttachments.ts` — accepter `application/pdf`
-- `src/components/chat/upload/AttachmentStagingArea.tsx` — afficher icône PDF pour fichiers non-media
-- `src/components/channels/AnnouncementChannel.tsx` — utiliser `AnnouncementComposer` au lieu de `MessageInput`
+- `src/components/channels/announcement/AnnouncementComposer.tsx` — nouveau layout (tuile en-tête en haut), suppression bouton GIF, état `headerImage`.
 
-**Secret à ajouter :**
-- `TENOR_API_KEY` (Google Tenor API key — récupérable sur https://developers.google.com/tenor/guides/quickstart)
+**Supprimés :**
+- `src/components/channels/announcement/GifPicker.tsx`
+- `supabase/functions/tenor-search/index.ts`
 
 ## Résultat
-Composer dédié aux annonces avec titre auto-`#`, médias + PDF, GIFs Tenor, et publication/thread en un clic via le menu Send déroulant — fidèle aux maquettes Image 1, 2 et 3.
+Composer fidèle à la maquette Image 4 : tuile d'image d'en-tête proéminente en haut à gauche, champs Titre/Message dessous, footer minimal `[📎] [😊]` → `[Send ▾]`. Plus aucune dépendance à Tenor.
 

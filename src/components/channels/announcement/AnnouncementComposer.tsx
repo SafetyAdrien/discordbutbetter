@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent } from 'react';
-import { ImagePlus, Paperclip, Smile, Send, ChevronDown, MessageSquarePlus, Megaphone, X } from 'lucide-react';
+import { ImagePlus, Paperclip, Smile, Send, ChevronDown, ChevronUp, MessageSquarePlus, Megaphone, X } from 'lucide-react';
 import { Channel } from '@/types/app';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -45,6 +45,7 @@ export function AnnouncementComposer({
   const [threadName, setThreadName] = useState('');
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headerImageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

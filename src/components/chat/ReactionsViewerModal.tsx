@@ -47,14 +47,17 @@ export function ReactionsViewerModal({
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  // Reset state when modal closes
+  // Reset state when modal closes; apply initialEmoji when opening
   useEffect(() => {
     if (!open) {
       setActiveTab(ALL_TAB);
       setSelectMode(false);
       setSelected(new Set());
+    } else {
+      setActiveTab(initialEmoji ?? ALL_TAB);
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialEmoji]);
 
   // Group by emoji
   const byEmoji = useMemo(() => {

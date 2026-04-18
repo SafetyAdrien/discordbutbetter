@@ -224,7 +224,7 @@ export function AnnouncementComposer({
         className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-input text-sm text-muted-foreground hover:text-foreground transition-colors group"
       >
         <Megaphone className="w-4 h-4 flex-shrink-0" />
-        <span className="flex-1 text-left truncate">Ouvre le panneau pour rédiger une annonce.</span>
+        <span className="flex-1 text-left truncate">Rédiger une annonce dans #{channel.name}</span>
         <ChevronUp className="w-4 h-4 flex-shrink-0 opacity-70 group-hover:opacity-100" />
       </button>
     );

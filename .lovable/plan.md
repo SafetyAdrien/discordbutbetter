@@ -1,57 +1,35 @@
 
 
-## Objectif
-Remplacer le `Popover` (clic sur la chevron) par un `HoverCard` qui s'ouvre au survol du bouton "Envoyer", et simplifier le contenu (juste label + toggle à droite, sans description).
+## Problème
+Le fond `bg-surface-hover` ajouté précédemment sur les images (ligne 58) trahit la transparence des PNG : un rectangle gris coloré apparaît autour/derrière les images transparentes (logos, stickers, captures avec alpha), au lieu de laisser transparaître le fond du message.
 
-## Changements
+## Solution
+Retirer le fond opaque sur l'image. Le fond neutre n'était utile que pour les zones letterbox de bannières paysage très basses, mais il casse complètement le rendu des PNG transparents — usage bien plus fréquent.
 
-### `src/components/channels/announcement/AnnouncementComposer.tsx`
+### Changement
+`src/components/chat/MessageAttachments.tsx`, ligne 58 :
 
-**1. Imports**
-- Retirer `Popover, PopoverContent, PopoverTrigger` et `ChevronDown` (du split button)
-- Ajouter `HoverCard, HoverCardContent, HoverCardTrigger` depuis `@/components/ui/hover-card`
-- Retirer l'état `optionsOpen` (plus nécessaire)
-
-**2. Bouton Envoyer (footer ~lignes 365-400)**
-Supprimer le split button (Send + Chevron) et le remplacer par un `HoverCard` qui enveloppe uniquement le bouton "Envoyer" :
-
+**Avant :**
 ```tsx
-<HoverCard openDelay={150} closeDelay={150}>
-  <HoverCardTrigger asChild>
-    <Button onClick={handleSubmit} disabled={!canSubmit} className="h-8 px-4 gap-1.5">
-      <Send className="w-3.5 h-3.5" />
-      Envoyer
-    </Button>
-  </HoverCardTrigger>
-  {(canCreateThreads || canPublish) && (
-    <HoverCardContent align="end" side="top" className="w-56 p-2 bg-popover">
-      {canCreateThreads && (
-        <label className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer">
-          <span className="text-sm text-foreground">Créer un fil</span>
-          <Switch checked={createThreadEnabled} onCheckedChange={setCreateThreadEnabled} />
-        </label>
-      )}
-      {canPublish && (
-        <label className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer">
-          <span className="text-sm text-foreground">Publier</span>
-          <Switch checked={autoPublishEnabled} onCheckedChange={setAutoPublishEnabled} />
-        </label>
-      )}
-    </HoverCardContent>
-  )}
-</HoverCard>
+'rounded-lg cursor-pointer max-h-96 max-w-full object-contain bg-surface-hover',
 ```
 
-**3. Comportement préservé**
-- Logique `handleSubmit`, `createThreadEnabled`, `autoPublishEnabled`, `threadName` input conditionnel : inchangés
-- Si ni `canCreateThreads` ni `canPublish` : le HoverCard reste mais sans contenu déroulant (équivalent à un simple bouton)
+**Après :**
+```tsx
+'rounded-lg cursor-pointer max-h-96 max-w-full object-contain',
+```
 
-## Résultat
-- ✅ Plus de chevron ni de popover sur clic
-- ✅ Survol du bouton "Envoyer" → mini-panneau au-dessus avec « Créer un fil » et « Publier » (label gauche + toggle droite)
-- ✅ Plus de descriptions verbeuses ni de compteur de followers
-- ✅ Aucun changement de logique d'envoi/publication
+Le placeholder de chargement `bg-muted` (ligne 73) reste actif pendant le `onLoad`, donc aucun "flash blanc" pendant le chargement.
+
+## Garantie "ne casse rien"
+- `object-contain` reste — pas de re-zoom des bannières
+- Hauteurs/largeurs max inchangées
+- Spoiler, description, lightbox : intacts
+- Carousel et vidéos : non modifiés
 
 ## Fichier modifié
-- `src/components/channels/announcement/AnnouncementComposer.tsx`
+- `src/components/chat/MessageAttachments.tsx` (1 classe retirée ligne 58)
+
+## Résultat
+Les PNG à fond transparent s'affichent correctement, sans rectangle gris parasite derrière l'image.
 

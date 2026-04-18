@@ -1000,6 +1000,131 @@ export type Database = {
           },
         ]
       }
+      media_post_comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_post_comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "media_post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_post_comment_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_post_comments: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          post_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          post_id: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_post_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "media_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_post_items: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+          position: number
+          post_id: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url: string
+          id?: string
+          position?: number
+          post_id: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          position?: number
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_post_items_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "media_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_post_reactions: {
         Row: {
           created_at: string | null

@@ -1561,7 +1561,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   <ReactionBar
                                     reactions={reactionsData?.[message.id] || []}
                                     onToggle={(emoji) => handleAddReaction(message.id, emoji)}
-                                    serverId={serverId}
+                                    serverId={channel.server_id}
                                     showAddButton={false}
                                     size="sm"
                                   />
@@ -1678,7 +1678,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   <ReactionBar
                                     reactions={reactionsData?.[message.id] || []}
                                     onToggle={(emoji) => handleAddReaction(message.id, emoji)}
-                                    serverId={serverId}
+                                    serverId={channel.server_id}
                                     showAddButton={false}
                                     size="sm"
                                   />

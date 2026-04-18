@@ -553,7 +553,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                   reactions={reactionsData[message.id] || []}
                                   onToggle={(emoji) => handleAddReaction(message.id, emoji)}
                                   serverId={null}
-                                  showAddButton={false}
                                   size="sm"
                                 />
                               </div>

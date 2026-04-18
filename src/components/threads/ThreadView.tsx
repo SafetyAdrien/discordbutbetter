@@ -881,7 +881,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                 reactions={reactionsData[message.id] || []}
                                 onToggle={(emoji) => handleAddReaction(message.id, emoji)}
                                 serverId={serverId || null}
-                                showAddButton={false}
                                 size="sm"
                               />
                             </div>

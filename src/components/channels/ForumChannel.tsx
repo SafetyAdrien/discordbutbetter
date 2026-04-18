@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Tag, ArrowUp, MessageCircle, Clock } from 'lucide-react';
+import { Plus, Search, Tag, ArrowUp, MessageCircle, Clock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
@@ -63,6 +64,21 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
               <Plus className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Nouveau sujet</span>
             </Button>
+          )}
+          {onToggleMembers && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={onToggleMembers}
+                  className={cn(showMembers && "bg-surface-hover")}
+                >
+                  <Users className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

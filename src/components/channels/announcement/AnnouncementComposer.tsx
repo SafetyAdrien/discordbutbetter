@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent } from 'react';
-import { ImagePlus, Paperclip, Smile, Send, ChevronDown, MessageSquarePlus, Megaphone, X } from 'lucide-react';
+import { ImagePlus, Paperclip, Smile, Send, ChevronDown, ChevronUp, MessageSquarePlus, Megaphone, X } from 'lucide-react';
 import { Channel } from '@/types/app';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -45,6 +45,7 @@ export function AnnouncementComposer({
   const [threadName, setThreadName] = useState('');
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headerImageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -209,6 +210,26 @@ export function AnnouncementComposer({
     );
   }
 
+  const hasContent =
+    title.trim().length > 0 ||
+    message.trim().length > 0 ||
+    attachments.length > 0 ||
+    !!headerImage;
+
+  if (collapsed && !hasContent) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-input text-sm text-muted-foreground hover:text-foreground transition-colors group"
+      >
+        <Megaphone className="w-4 h-4 flex-shrink-0" />
+        <span className="flex-1 text-left truncate">Rédiger une annonce dans #{channel.name}</span>
+        <ChevronUp className="w-4 h-4 flex-shrink-0 opacity-70 group-hover:opacity-100" />
+      </button>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -350,6 +371,16 @@ export function AnnouncementComposer({
               </button>
             }
           />
+
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            disabled={hasContent}
+            className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={hasContent ? "Effacez le contenu pour réduire" : "Réduire le composer"}
+          >
+            <ChevronDown className="w-[18px] h-[18px]" />
+          </button>
         </div>
 
         {/* Right: Send + options dropdown */}

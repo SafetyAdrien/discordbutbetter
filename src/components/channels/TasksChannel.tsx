@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, Check, Clock, User } from 'lucide-react';
+import { Plus, Check, Clock, User, Users } from 'lucide-react';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
@@ -81,6 +82,21 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
               </button>
             ))}
           </div>
+          {onToggleMembers && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={onToggleMembers}
+                  className={cn(showMembers && "bg-surface-hover")}
+                >
+                  <Users className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 

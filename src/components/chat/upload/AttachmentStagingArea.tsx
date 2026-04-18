@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Trash2, FileText } from 'lucide-react';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { AttachmentEditModal } from './AttachmentEditModal';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,16 @@ export function AttachmentStagingArea({
                   )}
                   muted
                 />
+              ) : attachment.file.type === 'application/pdf' ? (
+                <div
+                  className={cn(
+                    "w-full h-full flex flex-col items-center justify-center gap-1 bg-muted",
+                    attachment.isSpoiler && "blur-xl"
+                  )}
+                >
+                  <FileText className="w-10 h-10 text-destructive" strokeWidth={1.5} />
+                  <span className="text-[10px] font-bold text-muted-foreground tracking-wider">PDF</span>
+                </div>
               ) : (
                 <img
                   src={attachment.previewUrl}

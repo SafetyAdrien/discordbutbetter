@@ -58,6 +58,8 @@ import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
 import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobilePollActions } from '@/components/mobile/MobilePollActions';
+import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useThreadReactions';
+import { ReactionBar } from '@/components/chat/ReactionBar';
 
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
@@ -108,6 +110,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const markAsRead = useMarkThreadAsRead();
   const deletePoll = useDeletePoll();
   const endPollMutation = useEndPoll();
+
+  // Reactions
+  const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
+  const { data: reactionsData = {} } = useThreadMessageReactions(messageIds);
+  const toggleReaction = useToggleThreadReaction();
   
   // Fetch channels, roles and members for mention autocomplete
   const { data: channelsData } = useChannels(serverId || null);
@@ -197,8 +204,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
-    console.log('Add reaction', messageId, emoji);
-    toast.success(`Réaction ${emoji} ajoutée`);
+    const currentReactions = reactionsData?.[messageId] || [];
+    toggleReaction.mutate({ messageId, emoji, currentReactions });
   };
 
   const handleStartEdit = (message: ThreadMessage) => {
@@ -866,6 +873,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           ) : (
                             <div className="text-sm text-foreground break-words">
                               <MarkdownText content={message.content} />
+                            </div>
+                          )}
+                          {(reactionsData[message.id]?.length ?? 0) > 0 && (
+                            <div className="mt-1">
+                              <ReactionBar
+                                reactions={reactionsData[message.id] || []}
+                                onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                serverId={serverId || null}
+                                showAddButton={false}
+                                size="sm"
+                              />
                             </div>
                           )}
                         </div>

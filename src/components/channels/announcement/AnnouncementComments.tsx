@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Send, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MarkdownText } from '@/lib/markdown';
 import { useAuth } from '@/contexts/AuthContext';
+import { ReactionBar } from '@/components/chat/ReactionBar';
+import { useAnnouncementCommentReactions, useToggleCommentReaction } from '@/hooks/useCommentReactions';
 import type { AnnouncementComment } from '@/hooks/useAnnouncements';
 
 interface AnnouncementCommentsProps {
   comments: AnnouncementComment[];
   onAddComment: (content: string) => void;
   onDeleteComment: (commentId: string) => void;
+  serverId?: string | null;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -28,9 +31,18 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString('fr-FR');
 }
 
-export function AnnouncementComments({ comments, onAddComment, onDeleteComment }: AnnouncementCommentsProps) {
+export function AnnouncementComments({ comments, onAddComment, onDeleteComment, serverId = null }: AnnouncementCommentsProps) {
   const { user, profile } = useAuth();
   const [newComment, setNewComment] = useState('');
+
+  const commentIds = useMemo(() => comments.map(c => c.id), [comments]);
+  const { data: reactionsData = {} } = useAnnouncementCommentReactions(commentIds);
+  const toggleReaction = useToggleCommentReaction();
+
+  const handleToggleReaction = (commentId: string, emoji: string) => {
+    const currentReactions = reactionsData?.[commentId] || [];
+    toggleReaction.mutate({ commentId, emoji, currentReactions });
+  };
 
   const handleSubmit = () => {
     if (!newComment.trim()) return;
@@ -92,6 +104,14 @@ export function AnnouncementComments({ comments, onAddComment, onDeleteComment }
               </div>
               <div className="text-sm mt-1">
                 <MarkdownText content={comment.content} />
+              </div>
+              <div className="mt-2">
+                <ReactionBar
+                  reactions={reactionsData[comment.id] || []}
+                  onToggle={(emoji) => handleToggleReaction(comment.id, emoji)}
+                  serverId={serverId}
+                  size="sm"
+                />
               </div>
             </div>
           </div>

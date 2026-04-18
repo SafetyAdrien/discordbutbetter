@@ -49,6 +49,30 @@ export type Database = {
           },
         ]
       }
+      announcement_comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string | null
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string | null
+          emoji: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       announcement_comments: {
         Row: {
           announcement_id: string
@@ -699,6 +723,30 @@ export type Database = {
         }
         Relationships: []
       }
+      dm_message_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dm_messages: {
         Row: {
           attachments: Json | null
@@ -951,6 +999,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      media_post_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       media_posts: {
         Row: {
@@ -2170,6 +2242,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      thread_message_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       thread_messages: {
         Row: {

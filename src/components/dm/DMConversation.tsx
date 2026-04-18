@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,8 @@ import { DMUserInfoPanel } from './DMUserInfoPanel';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
 import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
+import { useDMMessageReactions, useToggleDMReaction } from '@/hooks/useDMReactions';
+import { ReactionBar } from '@/components/chat/ReactionBar';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
@@ -109,6 +111,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const unpinMessage = useUnpinDMMessage();
   const { data: pinnedMessages = [] } = useDMPinnedMessages(conversationId);
 
+  // Reactions
+  const messageIds = useMemo(() => messages.map((m: any) => m.id), [messages]);
+  const { data: reactionsData = {} } = useDMMessageReactions(messageIds);
+  const toggleReaction = useToggleDMReaction();
+
   const conversation = conversations.find((c) => c.id === conversationId);
   const participantFromList = conversation?.participants[0] ?? null;
 
@@ -177,8 +184,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
-    console.log('Add reaction', messageId, emoji);
-    toast.success(`Réaction ${emoji} ajoutée`);
+    const currentReactions = reactionsData?.[messageId] || [];
+    toggleReaction.mutate({ messageId, emoji, currentReactions });
   };
 
   const handleReply = (message: DMMessage) => {
@@ -538,6 +545,19 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
                             {/* Link Embeds */}
                             <LinkEmbeds content={message.content} />
+
+                            {/* Reactions */}
+                            {(reactionsData[message.id]?.length ?? 0) > 0 && (
+                              <div className="mt-1">
+                                <ReactionBar
+                                  reactions={reactionsData[message.id] || []}
+                                  onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                  serverId={null}
+                                  showAddButton={false}
+                                  size="sm"
+                                />
+                              </div>
+                            )}
 
                             {/* Edited indicator - after attachments */}
                             {message.edited_at && (

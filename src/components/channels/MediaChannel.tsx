@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Upload, Grid, List, Users, EyeOff } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
@@ -8,6 +8,8 @@ import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
 import { useMediaPosts, useCreateMediaPost } from '@/hooks/useMediaPosts';
+import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
+import { ReactionBar } from '@/components/chat/ReactionBar';
 
 interface Channel {
   id: string;
@@ -30,6 +32,15 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
   // Real data hooks
   const { data: mediaItems = [] } = useMediaPosts(channel.id);
   const createPost = useCreateMediaPost(channel.id);
+
+  // Reactions
+  const postIds = useMemo(() => mediaItems.map(m => m.id), [mediaItems]);
+  const { data: reactionsData = {} } = useMediaPostReactions(postIds);
+  const toggleReaction = useToggleMediaReaction();
+  const handleToggleReaction = (postId: string, emoji: string) => {
+    const currentReactions = reactionsData?.[postId] || [];
+    toggleReaction.mutate({ postId, emoji, currentReactions });
+  };
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
@@ -226,6 +237,27 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                     <p className="text-xs text-muted-foreground">
                       {new Date(item.created_at).toLocaleDateString('fr-FR')}
                     </p>
+                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                      <ReactionBar
+                        reactions={reactionsData[item.id] || []}
+                        onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
+                        serverId={null}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                )}
+                {viewMode === 'grid' && (
+                  <div
+                    className="absolute top-2 left-2 right-2 z-20"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ReactionBar
+                      reactions={reactionsData[item.id] || []}
+                      onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
+                      serverId={null}
+                      size="sm"
+                    />
                   </div>
                 )}
               </div>

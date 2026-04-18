@@ -1,60 +1,62 @@
 
 
-## Problèmes identifiés
+## Problème
 
-### Bug #1 — Pièces jointes invisibles dans `AnnouncementChannel`
-Le mapping des messages (lignes 188-218) **force `attachments: []`** au lieu de propager les pièces jointes réelles depuis la base. De plus, le rendu (lignes 905, 980) n'inclut **aucun appel à `<MessageAttachments />`**. Conséquence : aucune image/PDF/vidéo n'est affichée après envoi.
+Actuellement dans `AnnouncementChannel`, quand un message est publié avec une image d'en-tête + du texte + d'autres pièces jointes, l'ordre de rendu n'est pas garanti :
+- Le texte (titre `# Titre` + corps) s'affiche via `<MarkdownText />`
+- **Toutes** les pièces jointes (y compris l'image d'en-tête) s'affichent ensuite via `<MessageAttachments />`
 
-### Bug #2 — Système de fil non rendu (`[SYSTEM:THREAD_CREATED:...]` brut)
-Le mapping ne propage pas non plus le flag **`is_system`** depuis la base. La vérification `(message as any).is_system` (ligne 652) renvoie donc toujours `undefined`, et le message système est rendu comme du texte brut au lieu de l'embed `ThreadSystemMessage`.
+Résultat : l'image d'en-tête, qui devrait être visuellement la première chose vue, se retrouve en bas du message.
 
-### Bug #3 — Choix Public/Privé indésirable pour les fils d'annonce
-Le `CreateThreadModal` propose un toggle "Thread privé" même dans les salons d'annonce. Or par nature, une annonce diffuse publiquement et son fil doit l'être aussi.
+## Investigation nécessaire
 
----
+Je dois vérifier dans `AnnouncementChannel.tsx` (lignes ~880-1000) comment les messages sont actuellement rendus pour confirmer l'ordre exact, et m'assurer que la première pièce jointe envoyée par le composer est bien l'image d'en-tête (déjà le cas dans `AnnouncementComposer.handleSubmit` qui prepend `headerImage` aux attachments).
 
 ## Solution
 
-### Fix #1 et #2 — `src/components/channels/AnnouncementChannel.tsx`
+Réorganiser le rendu d'un message d'annonce dans `AnnouncementChannel.tsx` selon l'ordre demandé :
 
-**A. Mapping des messages (lignes 188-218)** :
-- Remplacer `attachments: []` par `attachments: (m.attachments as any) || []`
-- Ajouter `is_system: (m as any).is_system || false` dans l'objet retourné
+1. **Image d'en-tête** (première pièce jointe si elle est de type image) — rendue seule en haut, format pleine largeur (proéminent comme une bannière)
+2. **Contenu texte** (titre `# ...` + corps Markdown)
+3. **Autres pièces jointes** (fichiers restants : PDFs, vidéos, autres images)
+4. **Embed du fil** (`ThreadSystemMessage` si `is_system === true` pour `THREAD_CREATED`)
 
-**B. Rendu des pièces jointes** :
-- Importer `MessageAttachments` et `StoredAttachment` depuis `@/components/chat/MessageAttachments`
-- Sous le `<MarkdownText />` aux lignes 906 et 981, ajouter :
-  ```tsx
-  {(message as any).attachments?.length > 0 && (
-    <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
-  )}
-  ```
+### Logique de séparation
 
-### Fix #3 — `src/components/channels/AnnouncementChannel.tsx`
-
-Ajouter une prop `forcePublic` au `CreateThreadModal` :
 ```tsx
-<CreateThreadModal
-  ...
-  forcePublic
-  ...
-/>
+const allAttachments = (message as any).attachments as StoredAttachment[] || [];
+const headerImage = allAttachments[0]?.type?.startsWith('image/') ? allAttachments[0] : null;
+const otherAttachments = headerImage ? allAttachments.slice(1) : allAttachments;
 ```
 
-### Fix #3 (suite) — `src/components/threads/CreateThreadModal.tsx`
+### Ordre de rendu
 
-- Ajouter `forcePublic?: boolean` à l'interface
-- Si `forcePublic === true` : masquer entièrement le bloc Switch "Thread privé" et forcer `isPrivate = false` à l'envoi
-- Dans le cas `forcePublic`, ajouter un sous-titre informatif : *"Les fils créés dans un salon d'annonce sont toujours publics."*
+```tsx
+{/* 1. Header image — full width, prominent */}
+{headerImage && (
+  <div className="mb-3 -mx-1">
+    <MessageAttachments attachments={[headerImage]} />
+  </div>
+)}
 
----
+{/* 2. Text content */}
+<MarkdownText>{message.content}</MarkdownText>
 
-## Fichiers modifiés
-1. `src/components/channels/AnnouncementChannel.tsx` — mapping `attachments` + `is_system`, rendu `<MessageAttachments />`, prop `forcePublic` sur le modal
-2. `src/components/threads/CreateThreadModal.tsx` — prop `forcePublic` qui masque le toggle de confidentialité
+{/* 3. Other attachments */}
+{otherAttachments.length > 0 && (
+  <MessageAttachments attachments={otherAttachments} />
+)}
+
+{/* 4. Thread embed (existing logic, unchanged) */}
+```
+
+Appliquer cette logique aux **deux** points de rendu identifiés (message principal ~ligne 906 et version groupée ~ligne 981).
+
+## Fichier modifié
+
+- `src/components/channels/announcement/AnnouncementChannel.tsx` — réorganiser l'ordre de rendu (header image en premier, texte ensuite, autres pièces jointes après).
 
 ## Résultat
-- ✅ Images, vidéos et PDF s'affichent correctement après envoi dans les salons d'annonce
-- ✅ Les fils créés via une annonce affichent l'embed cliquable `ThreadSystemMessage` (plus de `[SYSTEM:THREAD_CREATED:...]` brut)
-- ✅ Aucun choix Public/Privé proposé dans les salons d'annonce — toujours public par défaut
+
+Les annonces publiées affichent désormais l'image d'en-tête comme bannière proéminente en haut, suivie du titre/contenu, puis des éventuelles autres pièces jointes, et enfin l'embed du fil — exactement comme dans la maquette de référence.
 

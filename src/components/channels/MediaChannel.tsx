@@ -237,6 +237,27 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                     <p className="text-xs text-muted-foreground">
                       {new Date(item.created_at).toLocaleDateString('fr-FR')}
                     </p>
+                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                      <ReactionBar
+                        reactions={reactionsData[item.id] || []}
+                        onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
+                        serverId={null}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                )}
+                {viewMode === 'grid' && (
+                  <div
+                    className="absolute top-2 left-2 right-2 z-20"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ReactionBar
+                      reactions={reactionsData[item.id] || []}
+                      onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
+                      serverId={null}
+                      size="sm"
+                    />
                   </div>
                 )}
               </div>

@@ -62,6 +62,7 @@ import { useChannels } from "@/hooks/useChannels";
 import { useServers } from "@/hooks/useServers";
 import { useMembers } from "@/hooks/useMembers";
 import { MessageInput } from "@/components/chat/MessageInput";
+import { AnnouncementComposer } from "./announcement/AnnouncementComposer";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { FollowChannelModal } from "./announcement/FollowChannelModal";
 import { FollowSuccessModal } from "./announcement/FollowSuccessModal";
@@ -254,6 +255,8 @@ export function AnnouncementChannel({
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
+  const [createThreadDefaultName, setCreateThreadDefaultName] = useState<string>('');
+  const { data: canCreateThreadsRaw } = useMultipleChannelPermissions(channel.id, ['create_public_threads']);
   
   // Threads
   const { data: threads = [] } = useThreads(channel.id);

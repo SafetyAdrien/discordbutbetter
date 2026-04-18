@@ -62,7 +62,6 @@ import { useChannels } from "@/hooks/useChannels";
 import { useServers } from "@/hooks/useServers";
 import { useMembers } from "@/hooks/useMembers";
 import { MessageInput } from "@/components/chat/MessageInput";
-import { AnnouncementComposer } from "./announcement/AnnouncementComposer";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { FollowChannelModal } from "./announcement/FollowChannelModal";
 import { FollowSuccessModal } from "./announcement/FollowSuccessModal";
@@ -255,8 +254,6 @@ export function AnnouncementChannel({
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
-  const [createThreadDefaultName, setCreateThreadDefaultName] = useState<string>('');
-  const canCreatePublicThreads = isAdminOrOwner || canPerm('create_public_threads');
   
   // Threads
   const { data: threads = [] } = useThreads(channel.id);
@@ -1081,24 +1078,22 @@ export function AnnouncementChannel({
             </button>
           </div>
         )}
-        <AnnouncementComposer
+        <MessageInput
+          placeholder={`Envoyer un message dans #${channel.name}`}
+          value={messageInput}
+          onChange={(value) => {
+            setMessageInput(value);
+            startTyping();
+          }}
+          onSend={handleSubmit}
           channelId={channel.id}
-          channelName={channel.name}
           serverId={channel.server_id}
-          serverName={serverName}
-          serverIcon={serverIcon}
-          canSendMessages={canSendMessages}
-          canAttachFiles={canAttachFiles}
-          canPublishMessages={canPublishMessages}
-          canCreateThreads={canCreatePublicThreads}
+          members={members}
           permissionDeniedMessage={permissionDeniedMessage}
+          canAttachFiles={canAttachFiles}
+          canCreatePolls={canCreatePolls}
           showFollowBar={!canSendMessages}
           onFollowClick={() => setFollowModalOpen(true)}
-          onTypingStart={startTyping}
-          onMessageSent={(messageId, title) => {
-            setCreateThreadDefaultName(title);
-            setCreateThreadForMessageId(messageId);
-          }}
         />
       </div>
 
@@ -1140,17 +1135,10 @@ export function AnnouncementChannel({
         <CreateThreadModal
           channelId={channel.id}
           messageId={createThreadForMessageId}
-          defaultName={createThreadDefaultName}
           open={!!createThreadForMessageId}
-          onOpenChange={(open) => {
-            if (!open) {
-              setCreateThreadForMessageId(null);
-              setCreateThreadDefaultName('');
-            }
-          }}
+          onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
           onThreadCreated={(threadId) => {
             setCreateThreadForMessageId(null);
-            setCreateThreadDefaultName('');
             onSelectThread?.(threadId);
           }}
         />

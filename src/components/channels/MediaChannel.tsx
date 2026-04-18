@@ -28,7 +28,8 @@ export interface MediaChannelProps {
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
+  const [activePost, setActivePost] = useState<MediaPost | null>(null);
 
   // Real data hooks
   const { data: mediaItems = [] } = useMediaPosts(channel.id);
@@ -72,12 +73,11 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     e.preventDefault();
     setIsDragging(false);
     setDragCounter(0);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-        setSelectedFile(file);
-      }
+    const dropped = Array.from(e.dataTransfer.files).filter(
+      (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
+    );
+    if (dropped.length > 0) {
+      setSelectedFiles(dropped);
     }
   }, []);
 
@@ -85,22 +85,25 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*,video/*';
+    input.multiple = true;
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
-      if (files && files[0]) setSelectedFile(files[0]);
+      if (files && files.length > 0) {
+        setSelectedFiles(Array.from(files));
+      }
     };
     input.click();
   };
 
-  const handlePublish = async (data: {
-    file: File;
+  const handlePublish = (data: {
+    files: File[];
     title: string;
     description: string;
-    altText: string;
+    altTexts: string[];
     isSpoiler: boolean;
   }) => {
     createPost.mutate(data);
-    setSelectedFile(null);
+    setSelectedFiles(null);
   };
 
   return (

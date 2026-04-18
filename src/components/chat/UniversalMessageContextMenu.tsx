@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Reply, Copy, Pin, Link, Hash, Pencil, Trash2, Flag, SmilePlus } from 'lucide-react';
+import { Reply, Copy, Pin, Link, Hash, Pencil, Trash2, Flag, SmilePlus, Eye } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -33,6 +33,8 @@ export interface UniversalMessageContextMenuProps {
   messageId: string;
   canAddReactions?: boolean;
   canManageMessages?: boolean;
+  hasReactions?: boolean;
+  canManageReactions?: boolean;
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   onCopyText: () => void;
@@ -43,6 +45,8 @@ export interface UniversalMessageContextMenuProps {
   onCreateThread?: () => void;
   onPin?: () => void;
   onReport?: () => void;
+  onViewReactions?: () => void;
+  onClearAllReactions?: () => void;
 }
 
 export function UniversalMessageContextMenu({
@@ -52,6 +56,8 @@ export function UniversalMessageContextMenu({
   messageId,
   canAddReactions = true,
   canManageMessages = false,
+  hasReactions = false,
+  canManageReactions = false,
   onReply,
   onAddReaction,
   onCopyText,
@@ -62,6 +68,8 @@ export function UniversalMessageContextMenu({
   onCreateThread,
   onPin,
   onReport,
+  onViewReactions,
+  onClearAllReactions,
 }: UniversalMessageContextMenuProps) {
   const { isMobile } = useBreakpoint();
   const isShiftPressed = useShiftKey();

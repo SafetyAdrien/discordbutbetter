@@ -105,6 +105,14 @@ export function AnnouncementComments({ comments, onAddComment, onDeleteComment, 
               <div className="text-sm mt-1">
                 <MarkdownText content={comment.content} />
               </div>
+              <div className="mt-2">
+                <ReactionBar
+                  reactions={reactionsData[comment.id] || []}
+                  onToggle={(emoji) => handleToggleReaction(comment.id, emoji)}
+                  serverId={serverId}
+                  size="sm"
+                />
+              </div>
             </div>
           </div>
         ))}

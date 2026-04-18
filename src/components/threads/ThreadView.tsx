@@ -938,8 +938,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       )}
 
       {/* Input */}
-      <div className="px-4 pb-4 pt-2">
-      <MessageInput
+      <div className="relative px-4 pb-4 pt-2">
+        <div className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-gradient-to-b from-transparent to-background/80 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
         value={messageContent}
         onChange={setMessageContent}
         onSend={handleSend}

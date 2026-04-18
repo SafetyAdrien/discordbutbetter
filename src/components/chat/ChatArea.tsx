@@ -1091,7 +1091,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           isDropdownOpen={isDropdownOpen}
           summaries={summaries}
           onToggleDropdown={toggleDropdown}
-          onSelectTopic={selectTopic}
+          onSelectTopic={(topic) => selectTopic(topic, scrollToMessage)}
           onMarkAsRead={markAsRead}
           onGenerateSummaries={generateSummaries}
           isGenerating={isGenerating}

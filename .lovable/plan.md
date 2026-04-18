@@ -1,35 +1,54 @@
 
 
-## Problème
-Le fond `bg-surface-hover` ajouté précédemment sur les images (ligne 58) trahit la transparence des PNG : un rectangle gris coloré apparaît autour/derrière les images transparentes (logos, stickers, captures avec alpha), au lieu de laisser transparaître le fond du message.
+## Compréhension
+
+L'utilisateur souhaite que le **conteneur du composant de saisie lui-même** (et non juste la mince bande de 24px au-dessus) agisse comme un **calque flou** par-dessus les messages qui défilent derrière, au lieu d'avoir un fond opaque qui masque tout.
+
+État actuel : le conteneur `<div className="... px-4 pb-4 pt-2">` a un fond hérité du parent (opaque `bg-background`), et seule une petite bande de 24px au-dessus a un dégradé flouté.
+
+Objectif : transformer toute la zone du composer en surface translucide floutée → on aperçoit les anciens messages floutés derrière le champ de saisie, au lieu d'un bloc plat.
 
 ## Solution
-Retirer le fond opaque sur l'image. Le fond neutre n'était utile que pour les zones letterbox de bannières paysage très basses, mais il casse complètement le rendu des PNG transparents — usage bien plus fréquent.
 
-### Changement
-`src/components/chat/MessageAttachments.tsx`, ligne 58 :
+Remplacer la bande de transition (`-top-6 h-6`) par un **fond flou intégré au conteneur du composer**, couvrant toute sa hauteur, avec un dégradé d'opacité (haut transparent → bas opaque) pour une transition douce.
 
-**Avant :**
+### Changements (3 fichiers, même pattern)
+
+**1. `src/components/chat/ChatArea.tsx` (~ligne 1894-1896)**
 ```tsx
-'rounded-lg cursor-pointer max-h-96 max-w-full object-contain bg-surface-hover',
+<div className="relative flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
+  {/* Calque flou couvrant tout le composer + extension vers le haut */}
+  <div className="pointer-events-none absolute -top-8 left-0 right-0 bottom-0 backdrop-blur-md bg-gradient-to-b from-background/0 via-background/60 to-background/85 -z-0" />
+  <div className="relative z-10">
+    <TypingIndicator ... />
+    {replyingTo && <ReplyReference ... />}
+    <MessageInput ... />
+  </div>
+</div>
 ```
 
-**Après :**
-```tsx
-'rounded-lg cursor-pointer max-h-96 max-w-full object-contain',
-```
+**2. `src/components/threads/ThreadView.tsx` (~ligne 940-942)** — même pattern.
 
-Le placeholder de chargement `bg-muted` (ligne 73) reste actif pendant le `onLoad`, donc aucun "flash blanc" pendant le chargement.
+**3. `src/components/channels/AnnouncementChannel.tsx` (~ligne 1093-1095)** — même pattern.
 
-## Garantie "ne casse rien"
-- `object-contain` reste — pas de re-zoom des bannières
-- Hauteurs/largeurs max inchangées
-- Spoiler, description, lightbox : intacts
-- Carousel et vidéos : non modifiés
+### Détails techniques
+- `-top-8` : étend le flou 32px au-dessus du conteneur pour une transition naturelle
+- `backdrop-blur-md` : flou réel sur les pixels derrière (vs `blur-[2px]` cosmétique)
+- `bg-gradient-to-b from-background/0 via-background/60 to-background/85` : transparent en haut → semi-opaque en bas pour assurer la lisibilité du champ de saisie
+- `pointer-events-none` + `z-0` derrière, contenu en `z-10` : le composer reste 100% interactif
+- Aucune logique métier touchée, uniquement présentation
 
-## Fichier modifié
-- `src/components/chat/MessageAttachments.tsx` (1 classe retirée ligne 58)
+### Garantie "ne casse rien"
+- Hauteur, padding, comportement du composer : inchangés
+- TypingIndicator, ReplyReference, MessageInput : positionnement préservé via wrapper `relative z-10`
+- Mobile : `md:` paddings préservés
+- Le `pointer-events-none` empêche tout blocage de clic
+
+## Fichiers modifiés
+- `src/components/chat/ChatArea.tsx`
+- `src/components/threads/ThreadView.tsx`
+- `src/components/channels/AnnouncementChannel.tsx`
 
 ## Résultat
-Les PNG à fond transparent s'affichent correctement, sans rectangle gris parasite derrière l'image.
+Les messages qui défilent derrière le composant de saisie apparaissent **subtilement floutés** avec un fondu progressif vers le bas, créant un effet "verre dépoli" moderne au lieu d'un fond plat opaque — appliqué à tous les types de salons (Texte, Annonces, Fils).
 

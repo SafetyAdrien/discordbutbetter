@@ -93,6 +93,7 @@ import { LinkEmbeds } from "@/components/chat/LinkEmbed";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
+import { ReactionBar } from "@/components/chat/ReactionBar";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
@@ -106,59 +107,6 @@ function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () =>
       <button onClick={onClear} className="p-1 hover:bg-muted rounded transition-colors">
         <X className="w-4 h-4 text-muted-foreground" />
       </button>
-    </div>
-  );
-}
-
-// Reactions Display Component
-function MessageReactions({
-  reactions,
-  onToggle,
-  userId,
-}: {
-  reactions: Reaction[];
-  onToggle: (emoji: string) => void;
-  userId?: string;
-}) {
-  // Group reactions by emoji
-  const grouped = useMemo(() => {
-    const groups: Record<
-      string,
-      {
-        count: number;
-        hasUserReacted: boolean;
-      }
-    > = {};
-    reactions.forEach((r) => {
-      if (!groups[r.emoji]) {
-        groups[r.emoji] = {
-          count: 0,
-          hasUserReacted: false,
-        };
-      }
-      groups[r.emoji].count++;
-      if (r.user_id === userId) {
-        groups[r.emoji].hasUserReacted = true;
-      }
-    });
-    return groups;
-  }, [reactions, userId]);
-  if (Object.keys(grouped).length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {Object.entries(grouped).map(([emoji, { count, hasUserReacted }]) => (
-        <button
-          key={emoji}
-          onClick={() => onToggle(emoji)}
-          className={cn(
-            "flex items-center gap-1 px-2 py-0.5 rounded-full text-sm transition-colors",
-            hasUserReacted ? "bg-primary/20 border border-primary/50" : "bg-surface-hover hover:bg-muted",
-          )}
-        >
-          <span>{emoji}</span>
-          <span className="text-xs text-muted-foreground">{count}</span>
-        </button>
-      ))}
     </div>
   );
 }
@@ -1608,17 +1556,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
 
-                              {message.reactions && message.reactions.length > 0 && (
-                                <div className="flex gap-1 mt-1">
-                                  {message.reactions.map((reaction, i) => (
-                                    <button
-                                      key={i}
-                                      className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
-                                    >
-                                      <span>{reaction.emoji}</span>
-                                      <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                                    </button>
-                                  ))}
+                              {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                                <div className="mt-1">
+                                  <ReactionBar
+                                    reactions={reactionsData?.[message.id] || []}
+                                    onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                    serverId={serverId}
+                                    showAddButton={false}
+                                    size="sm"
+                                  />
                                 </div>
                               )}
                             </div>
@@ -1727,17 +1673,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
                               )}
 
-                              {message.reactions && message.reactions.length > 0 && (
-                                <div className="flex gap-1 mt-1">
-                                  {message.reactions.map((reaction, i) => (
-                                    <button
-                                      key={i}
-                                      className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full text-sm hover:bg-primary/20 transition-colors"
-                                    >
-                                      <span>{reaction.emoji}</span>
-                                      <span className="text-xs text-muted-foreground">{reaction.count}</span>
-                                    </button>
-                                  ))}
+                              {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                                <div className="mt-1">
+                                  <ReactionBar
+                                    reactions={reactionsData?.[message.id] || []}
+                                    onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                    serverId={serverId}
+                                    showAddButton={false}
+                                    size="sm"
+                                  />
                                 </div>
                               )}
                             </div>

@@ -1,26 +1,60 @@
 
 
-## Plan
+## Problèmes identifiés
 
-Déplacer le bouton chevron (réduire le composer) du footer vers le coin **haut-droit** du composer d'annonce, en mode étendu uniquement.
+### Bug #1 — Pièces jointes invisibles dans `AnnouncementChannel`
+Le mapping des messages (lignes 188-218) **force `attachments: []`** au lieu de propager les pièces jointes réelles depuis la base. De plus, le rendu (lignes 905, 980) n'inclut **aucun appel à `<MessageAttachments />`**. Conséquence : aucune image/PDF/vidéo n'est affichée après envoi.
 
-### Changement
-Dans `AnnouncementComposer.tsx` :
-1. **Retirer** le bouton `ChevronDown` actuellement dans la barre footer (entre Emoji et Send).
-2. **Ajouter** un petit bouton `ChevronDown` positionné en absolute en haut-droite du composer (coin supérieur droit), avec :
-   - `position: absolute; top: 8px; right: 8px; z-index: 10`
-   - Icône `ChevronDown` (16-18px), couleur `text-muted-foreground hover:text-foreground`
-   - Background subtil au hover (`hover:bg-background/60`)
-   - Désactivé si `hasContent` (cohérence avec comportement actuel — empêche réduction si du contenu est en cours de rédaction)
-   - Tooltip "Réduire" / "Effacez le contenu pour réduire"
-3. Ajuster légèrement le padding-top de la zone header (`p-3 pb-2 → pt-3 pr-10` ou équivalent) pour éviter que la tuile d'image d'en-tête se chevauche avec le bouton.
+### Bug #2 — Système de fil non rendu (`[SYSTEM:THREAD_CREATED:...]` brut)
+Le mapping ne propage pas non plus le flag **`is_system`** depuis la base. La vérification `(message as any).is_system` (ligne 652) renvoie donc toujours `undefined`, et le message système est rendu comme du texte brut au lieu de l'embed `ThreadSystemMessage`.
 
-### Mode réduit
-Inchangé — le bouton `ChevronUp` reste à droite de la barre compacte.
+### Bug #3 — Choix Public/Privé indésirable pour les fils d'annonce
+Le `CreateThreadModal` propose un toggle "Thread privé" même dans les salons d'annonce. Or par nature, une annonce diffuse publiquement et son fil doit l'être aussi.
 
-### Fichier modifié
-- `src/components/channels/announcement/AnnouncementComposer.tsx`
+---
 
-### Résultat
-Le chevron de réduction est désormais discret en haut-droite du composer (comme un bouton "minimize" classique), libérant la barre footer pour les actions principales (📎, 😊, Send).
+## Solution
+
+### Fix #1 et #2 — `src/components/channels/AnnouncementChannel.tsx`
+
+**A. Mapping des messages (lignes 188-218)** :
+- Remplacer `attachments: []` par `attachments: (m.attachments as any) || []`
+- Ajouter `is_system: (m as any).is_system || false` dans l'objet retourné
+
+**B. Rendu des pièces jointes** :
+- Importer `MessageAttachments` et `StoredAttachment` depuis `@/components/chat/MessageAttachments`
+- Sous le `<MarkdownText />` aux lignes 906 et 981, ajouter :
+  ```tsx
+  {(message as any).attachments?.length > 0 && (
+    <MessageAttachments attachments={(message as any).attachments as StoredAttachment[]} />
+  )}
+  ```
+
+### Fix #3 — `src/components/channels/AnnouncementChannel.tsx`
+
+Ajouter une prop `forcePublic` au `CreateThreadModal` :
+```tsx
+<CreateThreadModal
+  ...
+  forcePublic
+  ...
+/>
+```
+
+### Fix #3 (suite) — `src/components/threads/CreateThreadModal.tsx`
+
+- Ajouter `forcePublic?: boolean` à l'interface
+- Si `forcePublic === true` : masquer entièrement le bloc Switch "Thread privé" et forcer `isPrivate = false` à l'envoi
+- Dans le cas `forcePublic`, ajouter un sous-titre informatif : *"Les fils créés dans un salon d'annonce sont toujours publics."*
+
+---
+
+## Fichiers modifiés
+1. `src/components/channels/AnnouncementChannel.tsx` — mapping `attachments` + `is_system`, rendu `<MessageAttachments />`, prop `forcePublic` sur le modal
+2. `src/components/threads/CreateThreadModal.tsx` — prop `forcePublic` qui masque le toggle de confidentialité
+
+## Résultat
+- ✅ Images, vidéos et PDF s'affichent correctement après envoi dans les salons d'annonce
+- ✅ Les fils créés via une annonce affichent l'embed cliquable `ThreadSystemMessage` (plus de `[SYSTEM:THREAD_CREATED:...]` brut)
+- ✅ Aucun choix Public/Privé proposé dans les salons d'annonce — toujours public par défaut
 

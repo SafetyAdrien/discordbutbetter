@@ -1091,11 +1091,7 @@ export function AnnouncementChannel({
       </ScrollArea>
 
       {/* Input Container */}
-      <div className="relative flex-shrink-0 w-full px-4 pb-4 pt-2">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-0 right-0 -top-10 h-10 z-[1] bg-gradient-to-b from-transparent to-[hsl(var(--surface-2)/0.95)] [mask-image:linear-gradient(to_bottom,transparent,black_70%)] backdrop-blur-[2px]"
-        />
+      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && (
           <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">

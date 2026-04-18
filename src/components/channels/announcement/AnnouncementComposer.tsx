@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 import { ImagePlus, Paperclip, Smile, Send, ChevronDown, ChevronUp, MessageSquarePlus, Megaphone, X } from 'lucide-react';
 import { Channel } from '@/types/app';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

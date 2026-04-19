@@ -1516,7 +1516,7 @@ export function ChannelList({
                     <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
                     <div className="flex flex-wrap gap-1">
                       {serverEmojis.slice(0, 10).map((emoji) =>
-                    <img key={emoji.id} src={emoji.image_url} alt={emoji.name} className="w-6 h-6 rounded" />
+                    <img key={emoji.id} src={emoji.url} alt={emoji.name} className="w-6 h-6 rounded" />
                     )}
                       {serverEmojis.length > 10 &&
                     <span className="text-xs text-muted-foreground self-center ml-1">

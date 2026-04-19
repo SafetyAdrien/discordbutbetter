@@ -1058,7 +1058,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
-        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+        <div className="flex flex-col min-h-full px-4 py-4 pb-24 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
 
@@ -1892,10 +1892,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 bg-background/60 backdrop-blur-sm">
-        <TypingIndicator channelId={channel.id} />
-        {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
-        <MessageInput
+      <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
+        <div className="pointer-events-auto">
+          <TypingIndicator channelId={channel.id} />
+          {replyingTo && <ReplyReference replyTo={replyingTo} onClear={() => setReplyingTo(null)} />}
+          <MessageInput
           value={messageInput}
           onChange={setMessageInput}
           onSend={handleSubmit}
@@ -1925,7 +1926,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           canCreatePolls={canCreatePolls}
           canMentionEveryone={canMentionEveryone}
           slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
-        />
+          />
+        </div>
       </div>
 
       <UserProfilePopup

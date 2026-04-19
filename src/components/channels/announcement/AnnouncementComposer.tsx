@@ -312,7 +312,7 @@ export function AnnouncementComposer({
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={`Message #${channel.name}`}
-            className="min-h-[44px] max-h-[280px] resize-none bg-transparent border-0 px-0 py-1 text-sm placeholder:text-muted-foreground/70"
+            className="min-h-[44px] max-h-[280px] resize-none bg-transparent hover:bg-transparent border-0 px-0 py-1 text-sm placeholder:text-muted-foreground/70"
             rows={1}
           />
         </div>

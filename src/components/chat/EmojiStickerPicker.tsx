@@ -91,7 +91,7 @@ export function EmojiStickerPicker({
                 <div className="grid grid-cols-8 gap-0.5">
                   {filteredServerEmojis.map((emoji) => (
                     <button key={emoji.id} onClick={() => handleEmojiClick(`:${emoji.name}:`)} className="w-9 h-9 flex items-center justify-center rounded hover:bg-white/10 transition-colors" title={`:${emoji.name}:`}>
-                      <img src={emoji.image_url} alt={emoji.name} className="w-6 h-6 object-contain" />
+                      <img src={emoji.url} alt={emoji.name} className="w-6 h-6 object-contain" />
                     </button>
                   ))}
                 </div>
@@ -119,8 +119,8 @@ export function EmojiStickerPicker({
             {filteredStickers.length > 0 ? (
               <div className="grid grid-cols-4 gap-2">
                 {filteredStickers.map((sticker) => (
-                  <button key={sticker.id} onClick={() => handleStickerClick(sticker.image_url, sticker.name)} className="aspect-square rounded-lg hover:bg-white/10 transition-colors p-2 flex items-center justify-center" title={sticker.name}>
-                    <img src={sticker.image_url} alt={sticker.name} className="max-w-full max-h-full object-contain" />
+                  <button key={sticker.id} onClick={() => handleStickerClick(sticker.url, sticker.name)} className="aspect-square rounded-lg hover:bg-white/10 transition-colors p-2 flex items-center justify-center" title={sticker.name}>
+                    <img src={sticker.url} alt={sticker.name} className="max-w-full max-h-full object-contain" />
                   </button>
                 ))}
               </div>

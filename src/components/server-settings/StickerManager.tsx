@@ -167,7 +167,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
               className="p-4 rounded-lg bg-muted/30 group relative"
             >
               <img
-                src={sticker.image_url}
+                src={sticker.url}
                 alt={sticker.name}
                 className="w-full aspect-square object-contain mb-2"
               />

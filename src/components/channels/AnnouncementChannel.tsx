@@ -1090,6 +1090,9 @@ export function AnnouncementChannel({
         </div>
       </ScrollArea>
 
+      {/* Fade-out overlay above composer */}
+      <div className="absolute bottom-[88px] left-0 right-0 h-24 bg-gradient-to-b from-transparent to-background pointer-events-none z-[5]" />
+
       {/* Input Container */}
       <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none w-full px-4 pb-4 pt-2">
         <div className="pointer-events-auto">

@@ -245,7 +245,7 @@ function ServerProfileSheet({
                   {displayedEmojis.map((emoji) => (
                     <img
                       key={emoji.id}
-                      src={emoji.image_url}
+                      src={emoji.url}
                       alt={emoji.name}
                       title={`:${emoji.name}:`}
                       className="w-7 h-7 rounded object-contain"

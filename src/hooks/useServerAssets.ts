@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 export interface ServerEmoji {
   id: string;
   name: string;
-  image_url: string;
+  url: string;
   server_id: string;
   created_at: string | null;
 }
@@ -17,7 +17,7 @@ export interface ServerSticker {
   id: string;
   name: string;
   description: string | null;
-  image_url: string;
+  url: string;
   server_id: string;
   created_at: string | null;
 }
@@ -111,8 +111,8 @@ export function useUploadEmoji() {
         .insert({
           server_id: serverId,
           name,
-          image_url: publicUrl,
-          uploaded_by: user.id,
+          url: publicUrl,
+          creator_id: user.id,
         })
         .select()
         .single();
@@ -130,7 +130,7 @@ export function useUploadEmoji() {
       const tempEmoji: ServerEmoji = {
         id: `temp-${Date.now()}`,
         name,
-        image_url: blobUrl,
+        url: blobUrl,
         server_id: serverId,
         created_at: new Date().toISOString(),
       };
@@ -292,8 +292,8 @@ export function useUploadSticker() {
           server_id: serverId,
           name,
           description: description || null,
-          image_url: publicUrl,
-          uploaded_by: user.id,
+          url: publicUrl,
+          creator_id: user.id,
         })
         .select()
         .single();
@@ -312,7 +312,7 @@ export function useUploadSticker() {
         id: `temp-${Date.now()}`,
         name,
         description: description || null,
-        image_url: blobUrl,
+        url: blobUrl,
         server_id: serverId,
         created_at: new Date().toISOString(),
       };

@@ -153,7 +153,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
               className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 group"
             >
               <img
-                src={emoji.image_url}
+                src={emoji.url}
                 alt={emoji.name}
                 className="w-10 h-10 object-contain"
               />

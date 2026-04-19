@@ -1,43 +1,51 @@
 
 
-## Problème
-La zone qui contient le `MessageInput` / `AnnouncementComposer` (le wrapper en `pb-4 pt-2`) est totalement transparente — les messages défilent dessous et peuvent rester visibles juste sous le conteneur de saisie (zone marquée en rouge sur la capture). L'utilisateur veut un léger voile sombre + flou pour que le texte derrière transparaisse subtilement, sans masque opaque.
+## Compréhension corrigée
+
+Le voile `bg-background/60 + backdrop-blur-sm` que j'ai posé sur le wrapper masque justement ce que tu veux voir. Tu veux **l'inverse** : la bande autour du composer doit être **transparente** pour qu'on voie nettement les messages défiler en arrière-plan tout autour de la carte de saisie.
+
+Actuellement, la liste de messages se termine au-dessus du wrapper du composer (le wrapper occupe `pt-2 pb-4` opaques/voilés en bas du chat). Il faut donc :
+
+1. Rendre le wrapper du composer **totalement transparent** (retirer le voile que je viens d'ajouter).
+2. Faire en sorte que la zone de scroll des messages **passe sous** le wrapper du composer, pour que des messages soient effectivement visibles autour de la carte arrondie.
 
 ## Solution
-Ajouter sur le wrapper qui entoure `MessageInput` (texte) et `AnnouncementComposer` (annonce) :
-- `bg-background/60` (voile sombre semi-transparent — la couleur exacte sera ajustée selon la palette pour rester subtile, ~50–65% d'opacité)
-- `backdrop-blur-sm` (léger flou des messages qui passent dessous)
 
-Le **conteneur de saisie lui-même** (carte arrondie du composer) reste inchangé — déjà `bg-input` opaque. Seule la bande autour (haut + bas + côtés du wrapper `px-4 pb-4 pt-2`) devient un léger overlay.
+### Étape 1 — Retirer le voile (annuler la dernière modif)
+- `src/components/chat/ChatArea.tsx` : retirer `bg-background/60 backdrop-blur-sm` du wrapper composer.
+- `src/components/channels/AnnouncementChannel.tsx` : idem.
 
-## Fichiers à modifier
+### Étape 2 — Faire passer le scroll sous le composer
+Aujourd'hui le layout est `flex-col` avec :
+- zone messages (`flex-1` scrollable)
+- wrapper composer (`flex-shrink-0`) — pousse les messages vers le haut.
 
-### 1. `src/components/chat/ChatArea.tsx` (ligne 1895)
-```tsx
-// AVANT
-<div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
+Pour que les messages passent **derrière** le composer :
+- Le wrapper du composer devient **positionné en absolu** en bas (`absolute bottom-0 left-0 right-0`) avec `pointer-events-none` sur le wrapper et `pointer-events-auto` sur la carte interne.
+- Le parent devient `relative`.
+- La zone scrollable récupère un `padding-bottom` égal à la hauteur visible du composer (≈ hauteur de la carte + marges) pour que le dernier message ne soit pas masqué quand on est au bas du scroll.
 
-// APRÈS
-<div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 bg-background/60 backdrop-blur-sm">
-```
+Résultat visuel : quand on scrolle, les messages glissent **derrière** la carte arrondie du composer (visibles à gauche, droite, au-dessus et en-dessous) ; la carte du composer reste opaque (`bg-input`) et lisible.
 
-### 2. `src/components/channels/AnnouncementChannel.tsx` (ligne 1094)
-```tsx
-// AVANT
-<div className="flex-shrink-0 w-full px-4 pb-4 pt-2">
+## Fichiers modifiés
 
-// APRÈS
-<div className="flex-shrink-0 w-full px-4 pb-4 pt-2 bg-background/60 backdrop-blur-sm">
-```
+### `src/components/chat/ChatArea.tsx`
+- Wrapper composer : `absolute bottom-0 left-0 right-0 z-10 pointer-events-none px-4 pb-4 pt-2`
+- Carte intérieure (`MessageInput` + `TypingIndicator` + `ReplyReference`) : enveloppée dans un `<div className="pointer-events-auto">` pour rester interactive.
+- Conteneur parent du chat : ajouter `relative` si pas déjà présent.
+- Zone scrollable des messages : ajouter `pb-24` (≈ 96px, hauteur typique du composer mono-ligne ; ajusté pour rester correct quand le composer grandit jusqu'à `max-h-[280px]`).
+
+### `src/components/channels/AnnouncementChannel.tsx`
+- Mêmes 3 ajustements que ci-dessus pour le composer d'annonces.
 
 ## Garanties « ne casse rien »
-- Aucun changement structurel : seules 2 classes Tailwind ajoutées sur 2 wrappers
-- Le `MessageInput` / `AnnouncementComposer` à l'intérieur garde son fond `bg-input` opaque → la carte de saisie reste nette
-- `flex-shrink-0` préservé → pas de déplacement de mise en page
-- `TypingIndicator` et `ReplyReference` restent visibles, posés sur le voile
-- Aucun impact sur DM, Threads, Voice (modifications limitées aux deux wrappers cités)
+- `MessageInput` / `AnnouncementComposer` gardent leur fond `bg-input` opaque → carte de saisie nette.
+- `pointer-events-none` sur le wrapper + `pointer-events-auto` sur la carte → on peut toujours cliquer/écrire dans le composer, et on peut sélectionner les messages qui passent dessous *autour* de la carte.
+- `TypingIndicator` et `ReplyReference` restent dans la carte interactive, donc visibles et fonctionnels.
+- Pas de modification du DM / Threads / Voice.
+- `pb-24` sur le scroll empêche le dernier message d'être masqué derrière la carte au repos.
 
-## Hors-scope (non modifié)
-- `DMConversation.tsx`, `ThreadView.tsx`, `VoiceChannelChat.tsx` : la demande mentionne explicitement « Texte et Annonces » uniquement.
-- Aucun changement de tokens CSS ni de Tailwind config.
+## Hors-scope
+- DM, Threads, Voice (pas demandés).
+- Tokens CSS et Tailwind config inchangés.
 

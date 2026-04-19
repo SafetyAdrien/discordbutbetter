@@ -435,7 +435,7 @@ export function AnnouncementChannel({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden relative">
+    <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">
       {/* Channel Header */}
       {!hideHeader && <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -609,7 +609,7 @@ export function AnnouncementChannel({
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
-        <div className="flex flex-col min-h-full px-4 py-4 pb-24 space-y-0.5 w-full max-w-full">
+        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
           
@@ -1090,42 +1090,37 @@ export function AnnouncementChannel({
         </div>
       </ScrollArea>
 
-      {/* Fade-out overlay above composer */}
-      <div className="absolute bottom-[88px] left-0 right-0 h-24 bg-gradient-to-b from-transparent to-background pointer-events-none z-[5]" />
-
       {/* Input Container */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none w-full px-4 pb-4 pt-2">
-        <div className="pointer-events-auto">
-          <TypingIndicator channelId={channel.id} />
-          {replyingTo && (
-            <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
-              <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <span className="text-xs text-primary font-medium">
-                  Réponse à {replyingTo.author.displayName}
-                </span>
-                <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
-              </div>
-              <button
-                onClick={() => setReplyingTo(null)}
-                className="p-1 hover:bg-muted rounded transition-colors"
-              >
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
+      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2">
+        <TypingIndicator channelId={channel.id} />
+        {replyingTo && (
+          <div className="mx-4 mb-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border-l-2 border-primary">
+            <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-primary font-medium">
+                Réponse à {replyingTo.author.displayName}
+              </span>
+              <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
             </div>
-          )}
-          <AnnouncementComposer
-            channel={channel}
-            serverName={serverName}
-            serverIcon={serverIcon}
-            permissionDeniedMessage={permissionDeniedMessage}
-            canAttachFiles={canAttachFiles}
-            canCreateThreads={isAdminOrOwner || canPerm('create_public_threads')}
-            canPublish={canPublishMessages}
-            showFollowBar={!canSendMessages && !permissionDeniedMessage}
-            onFollowClick={() => setFollowModalOpen(true)}
-          />
-        </div>
+            <button
+              onClick={() => setReplyingTo(null)}
+              className="p-1 hover:bg-muted rounded transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+        <AnnouncementComposer
+          channel={channel}
+          serverName={serverName}
+          serverIcon={serverIcon}
+          permissionDeniedMessage={permissionDeniedMessage}
+          canAttachFiles={canAttachFiles}
+          canCreateThreads={isAdminOrOwner || canPerm('create_public_threads')}
+          canPublish={canPublishMessages}
+          showFollowBar={!canSendMessages && !permissionDeniedMessage}
+          onFollowClick={() => setFollowModalOpen(true)}
+        />
       </div>
 
       {/* User Profile Popup */}

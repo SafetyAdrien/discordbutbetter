@@ -1926,7 +1926,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           canCreatePolls={canCreatePolls}
           canMentionEveryone={canMentionEveryone}
           slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
-        />
+          />
+        </div>
       </div>
 
       <UserProfilePopup

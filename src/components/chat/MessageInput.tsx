@@ -484,7 +484,7 @@ export function MessageInput({
   if (permissionDeniedMessage && showFollowBar) {
     return (
       <div className={compact ? "p-3 border-t border-white/10 w-full relative" : nonCompactContainerClass}>
-        <div className="flex items-center justify-between rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
+        <div className="flex items-center justify-between rounded-2xl bg-black/30 backdrop-blur-md border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
           <span className="text-muted-foreground text-sm">
             Suivez ce salon pour recevoir ses mises à jour sur votre propre serveur.
           </span>

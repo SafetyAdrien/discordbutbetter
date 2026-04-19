@@ -193,7 +193,7 @@ export function AnnouncementComposer({
       <button
         type="button"
         onClick={onFollowClick}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-input text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-black/30 backdrop-blur-md text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <Megaphone className="w-4 h-4" />
         Suivre #{channel.name} pour recevoir les annonces
@@ -203,7 +203,7 @@ export function AnnouncementComposer({
 
   if (permissionDeniedMessage) {
     return (
-      <div className="w-full px-4 py-3 rounded-2xl bg-input text-sm text-muted-foreground text-center">
+      <div className="w-full px-4 py-3 rounded-2xl bg-black/30 backdrop-blur-md text-sm text-muted-foreground text-center">
         {permissionDeniedMessage}
       </div>
     );
@@ -220,7 +220,7 @@ export function AnnouncementComposer({
       <button
         type="button"
         onClick={() => setCollapsed(false)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-input text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-black/30 backdrop-blur-md text-sm text-muted-foreground hover:text-foreground transition-colors group"
       >
         <Megaphone className="w-4 h-4 flex-shrink-0" />
         <span className="flex-1 text-left truncate">Rédiger une annonce dans #{channel.name}</span>
@@ -232,7 +232,7 @@ export function AnnouncementComposer({
   return (
     <div
       className={cn(
-        'relative w-full rounded-2xl bg-input shadow-md overflow-hidden transition-all',
+        'relative w-full rounded-2xl bg-black/30 backdrop-blur-md shadow-md overflow-hidden transition-all',
         isDragging && 'ring-2 ring-primary'
       )}
       onDragEnter={handleDragEnter}

@@ -1,80 +1,135 @@
 
+## Objectif
 
-## Problèmes identifiés
+Corriger définitivement le décalage de la zone de saisie dans `MessageInput.tsx` quand on clique sur un bouton Markdown, sans régression sur la barre d’actions, le textarea, l’overlay Markdown ni le comportement mobile.
 
-### 1. Markdown manquants dans la barre
-La barre a 9 icônes inline. **Manquent** les éléments de **bloc** que le moteur `markdown.tsx` supporte :
-- `# Titre` (header1), `## Titre` (header2), `### Titre` (header3)
-- `-# Subtext` (texte discret gris)
-- `1. ` Liste numérotée (`orderedListItem`)
-- ` ``` ` Bloc de code multi-ligne (`codeBlock`)
-- `>>> ` Citation multi-ligne (`multiBlockquote`)
+## Problème exact
 
-### 2. Décalage de la barre de saisie au clic
-Deux causes cumulées :
-- **Layout cassé** : le wrapper Markdown utilise `flex-1 min-w-0` → il prend toute la largeur disponible et **pousse** les boutons de droite (Sticker/Emoji/Send) à chaque ouverture/fermeture, créant un saut visuel.
-- **Largeur insuffisante** : `max-w-[400px]` ne suffit pas pour 16 icônes → débordement horizontal et chevauchement avec le bloc droit.
+Le saut visible ne vient pas d’une seule cause :
 
-## Solution
+1. Le bouton **Send** est monté/démonté conditionnellement :
+   - état vide → pas de bouton
+   - après clic Markdown (`# `, `**`, etc.) → le champ devient non vide, donc le bouton apparaît
+   - résultat : le bloc droit change de largeur et toute la ligne se recalcule
 
-### A — Refonte du layout de la barre d'actions (corrige le décalage)
+2. La zone Markdown centrale utilise une largeur animée (`max-w-[640px]`) dans un layout flex :
+   - à l’ouverture/fermeture ou après insertion, le navigateur recalcule la répartition de largeur
+   - le bloc droit peut être repoussé ou recompacté
 
-Restructurer la `<div>` ligne 634 en **3 zones fixes** plutôt qu'en `justify-between` avec un milieu élastique :
+3. Le clic sur les boutons Markdown doit continuer à préserver le focus du textarea, sinon cela ajoute un micro-saut de reflow/scroll.
+
+## Fix définitif
+
+### A — Stabiliser la largeur du bloc droit
+
+Dans `src/components/chat/MessageInput.tsx` :
+
+- **Toujours rendre** le bouton Send dans le DOM
+- Ne plus utiliser :
+  - `(value.trim() || attachments.length > 0 || isMobile) && (...)`
+- Le remplacer par un bouton permanent avec 3 états :
+  - **actif** si message/pièces jointes/mobile
+  - **désactivé visuellement** si vide
+  - **disabled** si envoi impossible
+
+Effet :
+- la largeur du bloc droit ne change plus jamais
+- cliquer sur un bouton Markdown n’ajoute plus brutalement un nouvel élément à droite
+
+### B — Réserver une largeur fixe au groupe droit
+
+Toujours dans `MessageInput.tsx` :
+
+- Encapsuler `Sticker + Emoji + Send` dans un conteneur à largeur stable
+- Exemple de logique :
+  - desktop avec stickers : largeur prévue pour 3 actions
+  - mobile : largeur prévue pour 2 actions
+- Le groupe droit garde `shrink-0`
+- Le bouton Send garde sa place même quand il est inactif
+
+Effet :
+- plus aucun déplacement horizontal des actions de droite
+
+### C — Rendre la zone Markdown non-intrusive pour le layout
+
+Refactor de la barre d’actions en 3 zones réellement stables :
 
 ```text
-[+] [‹/›  H1 H2 H3 -# B I U S </> ``` 〝 ❯❯❯ • 1. 🔗 ‖ ]    [🏷️ 😊 ➤]
- ↑   ↑                                                          ↑
-fixe  zone scrollable horizontalement (flex-1 min-w-0)         fixe (shrink-0)
+[gauche fixe] [centre flexible mais contraint] [droite fixe]
+   + / chevron      toolbar markdown scrollable     sticker emoji send
 ```
 
-Changements concrets :
-1. La `<div>` parent reste `flex items-center` mais on ajoute `gap-1`.
-2. **Bloc gauche** : `+` reste tel quel (shrink-0).
-3. **Bloc Markdown** : devient `flex items-center min-w-0 flex-1 overflow-hidden` (au lieu de juste `flex-1`). Le wrapper interne des icônes utilise `overflow-x-auto scrollbar-none` quand ouvert pour permettre le défilement horizontal silencieux si l'espace manque, sans pousser les autres blocs.
-4. **Bloc droit** : ajouter `shrink-0` pour qu'il ne soit jamais compressé/déplacé.
-5. Augmenter `max-w-[400px]` → `max-w-[640px]` pour les 16 icônes.
+Changements :
+- zone gauche : `shrink-0`
+- zone centre : `min-w-0 flex-1 overflow-hidden`
+- wrapper interne Markdown :
+  - `overflow-x-auto`
+  - pas de comportement qui pousse les siblings
+  - garder le scroll horizontal si besoin
+- zone droite : `shrink-0`
 
-### B — Ajout des 7 markdown manquants
+En plus :
+- remplacer l’animation la plus agressive basée uniquement sur `max-width` par une ouverture plus stable :
+  - soit `w-0 -> w-auto` via wrapper externe + contenu interne
+  - soit `max-width` mais dans un conteneur dont les blocs voisins ont déjà leurs largeurs réservées
 
-Mettre à jour `applyMarkdown` pour mieux gérer les blocs multi-lignes (` ``` ... ``` ` et `>>> `). Ajouter une variante `applyBlockWrap(prefix, suffix)` qui :
-- insère `prefix\n` avant la sélection et `\nsuffix` après
-- place le caret à l'intérieur si pas de sélection
+### D — Préserver définitivement le focus
 
-Nouveaux boutons (lucide-react) à ajouter avant Bold :
-| Icône | Action | Insertion |
-|---|---|---|
-| `Heading1` | Titre 1 | `# ` (préfixe ligne) |
-| `Heading2` | Titre 2 | `## ` (préfixe ligne) |
-| `Heading3` | Titre 3 | `### ` (préfixe ligne) |
-| `Type` | Subtext | `-# ` (préfixe ligne) |
+Conserver et homogénéiser sur **tous** les boutons Markdown :
 
-Et après List (avant Link) :
-| Icône | Action | Insertion |
-|---|---|---|
-| `ListOrdered` | Liste numérotée | `1. ` (préfixe ligne) |
-| `TextQuote` | Citation multi-ligne | `>>> ` (préfixe en début de bloc) |
-| `SquareCode` | Bloc de code | ` ``` \nselected\n``` ` (block wrap) |
+- `onMouseDown={(e) => e.preventDefault()}`
 
-Ordre final (16 boutons) :
-`H1 · H2 · H3 · -# · | · B · I · U · S · </> · ``` · 〝 · ❯❯❯ · • · 1. · 🔗 · ‖`
-(avec un séparateur visuel `<div className="w-px h-4 bg-border/40 mx-1" />` entre groupes Titres / Inline / Blocs)
+Effet :
+- le textarea ne perd pas le focus
+- pas de scroll-into-view parasite
+- pas de re-mesure liée à une perte/reprise de focus
 
-### C — Empêcher le saut vertical au clic
+### E — Vérifier les métriques overlay / textarea
 
-- Ajouter `onMouseDown={e => e.preventDefault()}` sur tous les boutons Markdown : empêche le textarea de perdre le focus pendant le clic, donc pas de re-rendu / re-mesure du textarea.
-- Cela élimine le scroll-into-view automatique du navigateur qui décalait la zone.
+Le décalage principal vient du layout, mais je sécurise aussi l’alignement visuel :
 
-### D — Détails
+- vérifier que le textarea et `InputMarkdownOverlay` gardent exactement :
+  - même font family
+  - même font size
+  - même line-height
+  - mêmes paddings horizontaux/verticaux dans cette version du composer
+- ne pas modifier le moteur Markdown, seulement l’alignement du composer si nécessaire
 
-- Les boutons Markdown gardent les mêmes classes (`text-muted-foreground hover:text-primary rounded-full p-1.5`).
-- Tooltip `title` localisé en français (« Titre 1 », « Liste numérotée », « Bloc de code », etc.).
-- Aucun changement sur `markdown.tsx` (le moteur supporte déjà tous ces tokens).
-- Aucune nouvelle dépendance.
+## Fichiers concernés
 
-## Fichier modifié
+### 1. `src/components/chat/MessageInput.tsx`
+Modifications prévues :
+- rendre le bouton Send permanent
+- réserver la largeur du bloc droit
+- stabiliser la structure en 3 zones
+- conserver la toolbar Markdown complète
+- garder `onMouseDown preventDefault` partout
+- ajuster les classes flex/overflow pour éviter tout reflow visible
 
-- `src/components/chat/MessageInput.tsx`
-  - Imports lucide : ajouter `Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode`
-  - `applyMarkdown` : ajouter un mode `blockWrap` (4ème paramètre booléen) pour ` ``` ` et `>>> `
-  - JSX ligne 634–743 : restructurer en 3 zones fixes, ajouter les 7 boutons + 2 séparateurs, ajouter `onMouseDown preventDefault` sur tous les boutons Markdown, agrandir `max-w-[640px]`
+### 2. `src/components/chat/InputMarkdownOverlay.tsx`
+Seulement si nécessaire :
+- harmonisation fine des paddings/classe passés par `MessageInput`
+- aucun changement du parsing Markdown
 
+## Résultat attendu
+
+Après correction :
+- cliquer sur n’importe quelle icône Markdown ne déplace plus la barre
+- le bouton Send ne “pop” plus à l’apparition du texte
+- Sticker / Emoji / Send restent parfaitement immobiles
+- la toolbar Markdown reste rétractable
+- aucun saut horizontal ni vertical sur desktop et mobile
+
+## Détails techniques
+
+- Cause racine la plus probable : **montage conditionnel du bouton Send**
+- Cause secondaire : **animation de largeur de la toolbar au sein d’un flex non totalement contraint**
+- Approche retenue : **stabiliser le DOM et réserver l’espace**, plutôt que continuer à compenser visuellement le saut
+- Aucun changement backend, aucune migration, aucune dépendance
+
+## Garantie de non-régression
+
+- Pas de modification de props de `MessageInput`
+- Pas de changement sur mentions, slowmode, attachments, polls, follow bar
+- Pas de changement sur `src/lib/markdown.tsx`
+- La toolbar Markdown garde tous les raccourcis visuels déjà ajoutés

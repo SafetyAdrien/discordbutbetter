@@ -41,6 +41,9 @@ import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
 import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
 import { useDMMessageReactions, useToggleDMReaction } from '@/hooks/useDMReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',

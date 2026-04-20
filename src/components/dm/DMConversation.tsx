@@ -440,6 +440,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                           edited_at: message.edited_at || null,
                         }) : undefined}
                       >
+                        <SwipeToReplyRow
+                          enabled={isMobile}
+                          onReply={() => handleReply(message)}
+                          onDoubleTap={() => handleAddReaction(message.id, '❤️')}
+                        >
                         <div 
                           className={cn(
                             'flex gap-3 group message-hover px-2 -mx-2 relative',
@@ -574,6 +579,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             )}
                           </div>
                         </div>
+                        </SwipeToReplyRow>
                       </UniversalMessageContextMenu>
                       </div>
                     );

@@ -14,6 +14,7 @@ import { useCreateThread } from '@/hooks/useThreads';
 import { usePublishMessage, useChannelFollowers } from '@/hooks/useChannelFollowers';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from '@/components/chat/MentionEveryoneWarningModal';
 
 interface AnnouncementComposerProps {
   channel: Channel;
@@ -23,6 +24,7 @@ interface AnnouncementComposerProps {
   canAttachFiles: boolean;
   canCreateThreads: boolean;
   canPublish: boolean;
+  canMentionEveryone?: boolean;
   showFollowBar?: boolean;
   onFollowClick?: () => void;
 }
@@ -35,6 +37,7 @@ export function AnnouncementComposer({
   canAttachFiles,
   canCreateThreads,
   canPublish,
+  canMentionEveryone = false,
   showFollowBar,
   onFollowClick,
 }: AnnouncementComposerProps) {

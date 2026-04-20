@@ -60,7 +60,7 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
             />
           </div>
           {canCreatePosts && (
-            <Button size="sm">
+            <Button size="sm" className="hidden sm:inline-flex">
               <Plus className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Nouveau sujet</span>
             </Button>
@@ -172,6 +172,16 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
           </div>
         )}
       </div>
+
+      {/* Mobile FAB */}
+      {canCreatePosts && (
+        <button
+          className="sm:hidden fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
+          aria-label="Nouveau sujet"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 }

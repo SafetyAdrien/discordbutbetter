@@ -451,6 +451,13 @@ export function AnnouncementComposer({
           )}
         </HoverCard>
       </div>
+
+      <MentionEveryoneWarningModal
+        open={pendingEveryoneMention !== null}
+        mentionType={pendingEveryoneMention ?? 'everyone'}
+        onConfirm={handleConfirmEveryone}
+        onEdit={handleEditEveryone}
+      />
     </div>
   );
 }

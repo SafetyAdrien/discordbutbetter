@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Users, Inbox, Search, UsersRound } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DMList } from '@/components/dm/DMList';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { InboxPanel } from '@/components/inbox/InboxPanel';
@@ -9,6 +10,8 @@ import { NewDMSheet } from '@/components/dm/NewDMSheet';
 import { CreateGroupModal } from '@/components/dm/CreateGroupModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 
 interface MobileHomeViewProps {
   activeDMId: string | null;

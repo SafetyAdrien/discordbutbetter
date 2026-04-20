@@ -640,7 +640,7 @@ export function MessageInput({
           </div>
 
           {/* Action bar - bottom */}
-          <div className={`flex items-center justify-between border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
+          <div className={`flex items-center gap-1 border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
             <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
               <PopoverTrigger asChild>
                 <button

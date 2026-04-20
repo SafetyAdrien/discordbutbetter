@@ -2,57 +2,92 @@
 
 ## Objectif
 
-Restructurer la zone de saisie de `MessageInput.tsx` : le **textarea occupe toute la largeur** sur sa propre ligne, et les **boutons (+, Sticker, Emoji, Send) deviennent une barre d'actions en dessous, alignée à droite**. Plus de disposition horizontale — tout passe en colonne à l'intérieur du conteneur arrondi `bg-input`.
+Ajouter une **barre d'outils Markdown** dans la barre d'actions du `MessageInput`, sur la même ligne que `+`, `Sticker`, `Emoji`, `Send`. La barre est **rétractable** via un bouton chevron : `ChevronRight` pour ouvrir, `ChevronLeft` pour fermer (gain de place).
 
 ## Structure visuelle cible
 
+État **fermé** (par défaut) :
 ```text
 ┌──────────────────────────────────────────────────┐
-│ Envoyer un message dans #Lisez-moi               │  ← textarea pleine largeur
-│                                                   │
-├──────────────────────────────────────────────────┤  ← séparateur subtil border-border/40
-│ ⊕                              🏷️  😊   ➤        │  ← barre d'actions
+│ Textarea pleine largeur                          │
+├──────────────────────────────────────────────────┤
+│ ⊕  ›                          🏷️  😊  ➤          │
 └──────────────────────────────────────────────────┘
 ```
 
-- `+` reste à gauche de la barre d'actions
-- `Sticker`, `Emoji`, `Send` restent groupés à droite
-- Le textarea déborde verticalement comme aujourd'hui (min 44px, max 200px)
-- L'overlay Markdown reste parfaitement aligné sur le textarea (mêmes paddings)
-- L'autocomplete de mentions, la zone d'attachements, le slowmode et l'état "follow bar / permission denied" restent inchangés
+État **ouvert** :
+```text
+┌──────────────────────────────────────────────────┐
+│ Textarea pleine largeur                          │
+├──────────────────────────────────────────────────┤
+│ ⊕  ‹  B  I  U  S  </>  ”  •  🔗  ‖     🏷️ 😊 ➤  │
+└──────────────────────────────────────────────────┘
+```
 
-## Changements (un seul fichier)
+## Icônes Markdown (lucide-react)
 
-**`src/components/chat/MessageInput.tsx`** — remplacer le bloc lignes ~557–671 :
+| Icône | Action | Wrap |
+|---|---|---|
+| `Bold` | Gras | `**texte**` |
+| `Italic` | Italique | `*texte*` |
+| `Underline` | Souligné | `__texte__` |
+| `Strikethrough` | Barré | `~~texte~~` |
+| `Code` | Inline code | `` `texte` `` |
+| `Quote` | Citation | `> texte` (préfixe ligne) |
+| `List` | Liste à puces | `- texte` (préfixe ligne) |
+| `Link` | Lien | `[texte](url)` |
+| `EyeOff` | Spoiler | `\|\|texte\|\|` |
 
-1. Le wrapper principal passe de `flex items-stretch gap-2` à `flex flex-col w-full`.
-2. **Bloc 1 — textarea** : sortir le `<div className="relative flex-1 ...">` du flex horizontal, le placer en haut, occuper toute la largeur avec un padding interne (`px-4 pt-3 pb-2` desktop, `px-3 pt-2 pb-1.5` compact).
-3. **Bloc 2 — barre d'actions** : nouvelle `<div className="flex items-center justify-between px-2 py-1.5 border-t border-border/40">` contenant :
-   - Gauche : le `<Popover>` `+` existant
-   - Droite : `<div className="flex items-center gap-0.5">` avec `Sticker`, `Emoji`, `Send`
-4. Conserver `bg-[hsl(var(--input))] border border-border/50 rounded-2xl` et `boxShadow: var(--shadow-elevation-2)` sur le conteneur global.
-5. Adapter les classes du textarea : retirer `pr-1` / `pr-2` (plus besoin de réserver la place pour les boutons à droite), conserver `min-h-[44px] max-h-[200px]` et la logique d'auto-resize.
-6. Ajuster `InputMarkdownOverlay` : retirer `pr-1` / `pr-2`, garder les paddings verticaux.
+Toutes mappées sur la sélection actuelle du textarea (ou insérées au curseur si pas de sélection), avec re-focus + restauration du caret après l'insertion.
 
-## Détails de comportement préservés
+## Comportement du toggle
 
-- **Auto-resize** du textarea (`adjustTextareaHeight`) : inchangé
-- **Sync overlay scroll** ↔ textarea scroll : inchangé
-- **Mention autocomplete** : se positionne au-dessus du textarea, donc compatible avec la nouvelle structure (rien à changer)
-- **Send button** : reste conditionnel (apparaît si `value.trim() || attachments.length > 0 || isMobile`), mais reste dans la barre du bas — sur mobile il était déjà toujours visible
-- **Compact mode** (utilisé dans threads/DM) : applique aussi la nouvelle structure verticale, paddings réduits
-- **Permission denied / Follow bar** : aucun changement (early returns indépendants)
-- **Focus ring removal**, hover states, font-ginto : inchangés
+- Nouveau state local `markdownBarOpen` (défaut `false`).
+- Bouton chevron placé **juste à droite du `+`** :
+  - Fermé → `ChevronRight` (clic = ouvrir, animation `width` 0 → auto sur un wrapper `overflow-hidden`)
+  - Ouvert → `ChevronLeft` (clic = fermer)
+- Les icônes Markdown apparaissent dans un conteneur `flex` entre le chevron et le bloc droit, avec une transition `max-width` douce (200ms, `cubic-bezier(0.2,0,0,1)` — cohérent avec le wrapper existant).
+- Sur mobile (`isMobile`) : la barre Markdown reste accessible mais en mode rétracté par défaut pour préserver l'espace horizontal.
+
+## Implémentation
+
+**1 seul fichier modifié : `src/components/chat/MessageInput.tsx`**
+
+1. **Imports** (ligne 12) : ajouter `ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff`.
+2. **State** : ajouter `const [markdownBarOpen, setMarkdownBarOpen] = useState(false);` près des autres states.
+3. **Helper** : ajouter une fonction `applyMarkdown(prefix: string, suffix: string, isLinePrefix?: boolean)` qui :
+   - Lit `textareaRef.current.selectionStart` / `selectionEnd`
+   - Pour `isLinePrefix` (Quote, List) : insère le préfixe au début de chaque ligne sélectionnée
+   - Pour les wraps : enveloppe la sélection (ou insère `prefix+suffix` au curseur)
+   - Met à jour `value` via `onChange`
+   - Restaure le focus + place le caret de manière logique
+4. **JSX (ligne 591–632)** : entre le `<Popover>` du `+` et la `<div>` droite, insérer :
+   ```tsx
+   <button onClick={() => setMarkdownBarOpen(o => !o)} ...>
+     {markdownBarOpen ? <ChevronLeft/> : <ChevronRight/>}
+   </button>
+   <div className={`flex items-center gap-0.5 overflow-hidden transition-[max-width,opacity] duration-200 ${markdownBarOpen ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}>
+     {/* 9 boutons icônes Markdown */}
+   </div>
+   ```
+5. **Layout** : restructurer la `<div>` parent en `flex items-center` avec un sous-groupe gauche `flex-1 min-w-0` (contient `+` + chevron + barre Markdown) et le sous-groupe droit inchangé (Sticker/Emoji/Send).
+
+## Détails préservés
+
+- Tous les comportements existants : auto-resize, mention autocomplete, overlay markdown, slowmode, follow bar, permission denied, mode `compact`.
+- Aucune nouvelle dépendance.
+- Les boutons Markdown utilisent les **mêmes classes** que les boutons existants (`text-muted-foreground hover:text-primary rounded-full p-1.5`) avec icônes `w-4 h-4` (cohérent avec le mode compact actuel).
+- Tooltip natif via `title="Gras (Ctrl+B)"`, etc.
+- **Bonus optionnel** : raccourcis clavier `Ctrl/Cmd+B`, `+I`, `+U` déjà gérés ? Sinon on les ajoute dans `handleKeyDown` pour appeler `applyMarkdown`.
 
 ## Garantie « ne casse rien »
 
-- Aucune prop, aucune signature, aucun hook modifié
-- AttachmentStagingArea reste au-dessus du conteneur (inchangé)
-- `CreatePollModal` et tous les handlers (`handleSendMessage`, `handlePaste`, `handleKeyDown`) inchangés
-- Auto-focus global Discord-style (`handleGlobalKeyDown`) inchangé
-- Le `compact` prop continue de s'appliquer aux paddings et tailles d'icônes
+- Aucune modification de signature de `MessageInput` (zéro nouvelle prop).
+- Aucun changement sur les hooks, mutations, ou structure du textarea.
+- Sur les viewports étroits, la barre étant rétractable, aucun débordement horizontal.
+- Persistance optionnelle de `markdownBarOpen` dans `localStorage` ? **Non** — état local par instance, redémarre fermé pour rester discret par défaut.
 
 ## Fichier modifié
 
-- `src/components/chat/MessageInput.tsx` (refactor du JSX du conteneur principal — lignes 557 à 671)
+- `src/components/chat/MessageInput.tsx` (imports + 1 state + 1 helper + refonte de la barre d'actions ligne 591–673)
 

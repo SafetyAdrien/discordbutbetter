@@ -804,6 +804,13 @@ export function MessageInput({
           onOpenChange={setPollModalOpen}
         />
       )}
+
+      <MentionEveryoneWarningModal
+        open={pendingEveryoneMention !== null}
+        mentionType={pendingEveryoneMention ?? 'everyone'}
+        onConfirm={handleConfirmEveryone}
+        onEdit={handleEditEveryone}
+      />
     </div>
   );
 }

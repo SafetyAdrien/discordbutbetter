@@ -9,7 +9,7 @@ import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from 
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
 
@@ -103,6 +103,49 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [markdownBarOpen, setMarkdownBarOpen] = useState(false);
+
+  const applyMarkdown = useCallback((prefix: string, suffix: string = prefix, isLinePrefix: boolean = false) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = value.slice(0, start);
+    const selected = value.slice(start, end);
+    const after = value.slice(end);
+
+    let newValue: string;
+    let newStart: number;
+    let newEnd: number;
+
+    if (isLinePrefix) {
+      // Find start of first line in selection
+      const lineStart = before.lastIndexOf('\n') + 1;
+      const segment = value.slice(lineStart, end);
+      const prefixed = segment
+        .split('\n')
+        .map(l => (l.startsWith(prefix) ? l : prefix + l))
+        .join('\n');
+      newValue = value.slice(0, lineStart) + prefixed + after;
+      newStart = lineStart;
+      newEnd = lineStart + prefixed.length;
+    } else if (selected.length > 0) {
+      newValue = before + prefix + selected + suffix + after;
+      newStart = start + prefix.length;
+      newEnd = end + prefix.length;
+    } else {
+      newValue = before + prefix + suffix + after;
+      newStart = start + prefix.length;
+      newEnd = newStart;
+    }
+
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(newStart, newEnd);
+    });
+  }, [value, onChange]);
+
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [lastSentAt, setLastSentAt] = useState(0);
@@ -630,6 +673,33 @@ export function MessageInput({
                 )}
               </PopoverContent>
             </Popover>
+
+            {/* Markdown toolbar toggle + bar */}
+            <div className="flex items-center min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setMarkdownBarOpen(o => !o)}
+                title={markdownBarOpen ? 'Masquer le formatage' : 'Afficher le formatage'}
+                className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1' : 'p-1.5'}`}
+              >
+                {markdownBarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+              <div
+                className={`flex items-center gap-0.5 overflow-hidden transition-[max-width,opacity] duration-200 ${markdownBarOpen ? 'max-w-[400px] opacity-100 ml-0.5' : 'max-w-0 opacity-0'}`}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
+              >
+                <button type="button" title="Gras" onClick={() => applyMarkdown('**')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Bold className="w-4 h-4" /></button>
+                <button type="button" title="Italique" onClick={() => applyMarkdown('*')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Italic className="w-4 h-4" /></button>
+                <button type="button" title="Souligné" onClick={() => applyMarkdown('__')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Underline className="w-4 h-4" /></button>
+                <button type="button" title="Barré" onClick={() => applyMarkdown('~~')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Strikethrough className="w-4 h-4" /></button>
+                <button type="button" title="Code" onClick={() => applyMarkdown('`')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Code className="w-4 h-4" /></button>
+                <button type="button" title="Citation" onClick={() => applyMarkdown('> ', '', true)} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Quote className="w-4 h-4" /></button>
+                <button type="button" title="Liste" onClick={() => applyMarkdown('- ', '', true)} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><List className="w-4 h-4" /></button>
+                <button type="button" title="Lien" onClick={() => applyMarkdown('[', '](url)')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><LinkIcon className="w-4 h-4" /></button>
+                <button type="button" title="Spoiler" onClick={() => applyMarkdown('||')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><EyeOff className="w-4 h-4" /></button>
+              </div>
+            </div>
+
 
             <div className="flex items-center gap-0.5">
               {!isMobile && (

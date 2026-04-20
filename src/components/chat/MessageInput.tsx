@@ -103,6 +103,49 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [markdownBarOpen, setMarkdownBarOpen] = useState(false);
+
+  const applyMarkdown = useCallback((prefix: string, suffix: string = prefix, isLinePrefix: boolean = false) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = value.slice(0, start);
+    const selected = value.slice(start, end);
+    const after = value.slice(end);
+
+    let newValue: string;
+    let newStart: number;
+    let newEnd: number;
+
+    if (isLinePrefix) {
+      // Find start of first line in selection
+      const lineStart = before.lastIndexOf('\n') + 1;
+      const segment = value.slice(lineStart, end);
+      const prefixed = segment
+        .split('\n')
+        .map(l => (l.startsWith(prefix) ? l : prefix + l))
+        .join('\n');
+      newValue = value.slice(0, lineStart) + prefixed + after;
+      newStart = lineStart;
+      newEnd = lineStart + prefixed.length;
+    } else if (selected.length > 0) {
+      newValue = before + prefix + selected + suffix + after;
+      newStart = start + prefix.length;
+      newEnd = end + prefix.length;
+    } else {
+      newValue = before + prefix + suffix + after;
+      newStart = start + prefix.length;
+      newEnd = newStart;
+    }
+
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(newStart, newEnd);
+    });
+  }, [value, onChange]);
+
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [lastSentAt, setLastSentAt] = useState(0);

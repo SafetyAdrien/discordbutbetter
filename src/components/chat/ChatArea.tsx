@@ -78,6 +78,7 @@ import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import CreateThreadModal from "@/components/threads/CreateThreadModal";
 import { ThreadSpine } from "@/components/threads/ThreadSpine";
+import { SwipeToReplyRow } from "@/components/mobile/SwipeToReplyRow";
 import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
@@ -1737,6 +1738,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         </div>
                       )}
                     </div>
+                    </SwipeToReplyRow>
                   </ContextMenuTrigger>
                   <ContextMenuContent
                     className="min-w-[220px] p-1.5 rounded-2xl shadow-[var(--shadow-elevation-3)] border border-border/50"

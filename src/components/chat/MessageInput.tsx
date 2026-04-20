@@ -90,7 +90,7 @@ export function MessageInput({
   showFollowBar = false,
   onFollowClick,
 }: MessageInputProps) {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -105,7 +105,6 @@ export function MessageInput({
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
   // Markdown formatting bar: collapsed by default on mobile/tablet to save horizontal space
-  const { isTablet } = useBreakpoint();
   const [markdownBarOpen, setMarkdownBarOpen] = useState(!isMobile && !isTablet);
   const canSubmitMessage = !!value.trim() || attachments.length > 0;
   // Bigger touch targets on mobile/tablet (min 40x40 for accessibility)

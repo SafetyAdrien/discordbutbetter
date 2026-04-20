@@ -1,10 +1,13 @@
 import { useState, forwardRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Server } from '@/types/app';
 import { X, Search, Users, Compass, Gamepad2, Palette, Music, Code, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 
 interface DiscoverModalProps {
   servers: Server[];

@@ -1,201 +1,171 @@
 
 
-# Audit responsive complet & plan d'amélioration mobile/tablette
+# Audit mobile complet — alignement standards Discord
 
-## Diagnostic actuel
+## Diagnostic actuel vs Discord mobile
 
-### Layouts existants
-- **Desktop (`≥ 640px`)** : `ServerList(80px) + ChannelList(~240px) + MemberList(~240px) + ChatArea` → **560px de chrome**, le contenu chat tombe à <100px sur tablette portrait.
-- **Mobile (`< 640px`)** : `MobileLayout` complet avec `MobileBottomNav`, navigation à pile (`channels → chat → thread`), swipe back, Sheet pour membres.
-- **Trou critique [640–1024px]** (téléphones paysage, petites tablettes, iPad portrait à 820px) : utilise le layout **desktop entier** alors qu'aucun panneau n'a de place. ChannelList et MemberList se côtoient et écrasent le chat.
+### Ce qui existe déjà (acquis Lots 1-7)
+- Bottom nav 4 onglets (Serveurs / Discuter / Notifs / Vous), badges, haptics
+- Swipe-back depuis l'edge gauche (`useSwipeBack`, edge 30 px / threshold 100 px)
+- Swipe horizontal entre onglets (`useSwipeTabs`)
+- `useSwipeToReply` créé mais **non câblé** dans `ChatArea` / `DMConversation` / `ThreadView`
+- `useLongPress` + `MobileMessageActions` (drawer avec quick reactions + menu)
+- `useReducedMotion` gating animations
+- FAB sur Forum/Tasks/Media, vue Agenda Calendar, hauteur `100svh`
 
-### Points faibles relevés
-1. **`useBreakpoint().isMobile` = `< 640px`** uniquement → flag binaire, pas de couche tablette.
-2. **`MobileLayout` n'est activé qu'à `< 640px`** → 645px d'écran = expérience desktop cassée.
-3. **MemberList toujours ouvert** sur tablette (640–1024) → mange 240px du chat.
-4. **Modals** (`CreateServer`, `ServerSettings`, `AccountSettings`, `ChannelSettings`, `GlobalSearch`) : déjà adaptées mobile via `isMobile`, mais leur seuil `< 640px` exclut les tablettes portrait.
-5. **`ChatArea` header desktop** (`!isMobile`) reste affiché en tablette → header mobile compact non utilisé.
-6. **`MessageInput`** : barre markdown non compactée en tablette → boutons coupés.
-7. **`ServerSettingsModal`** : sidebar 240px + contenu ne tient plus < 800px.
-8. **DMPage / FriendsPanel / InboxPanel** : pas de version mobile dans le pane principal sous 1024px.
-9. **Voice / Stage / Forum / Calendar / Tasks / Media** : header desktop sur tablette, pas de mode plein écran.
-10. **Pas de support paysage mobile** (`< 640px` mais `min-height` cassé par claviers virtuels qui réduisent `100dvh`).
-11. **Touch targets** : certains boutons à `p-1` ou `w-4 h-4` icons sans zone de tap minimum 44px.
-12. **Pas de version `2xl/3xl` à `≥ 1280px`** pour exploiter les grands écrans tablette paysage / iPad Pro.
+### Lacunes vs l'app Discord officielle
 
----
+#### 1. Gestes manquants ou incomplets
+- ❌ **Swipe-to-reply non branché** sur les bulles de message (le hook existe mais n'est utilisé nulle part)
+- ❌ **Pas de pull-to-refresh** sur DM list, channel list, notifications, server discovery
+- ❌ **Pas d'edge-swipe dans DM** (DMConversation.tsx ne consomme pas `useSwipeBack`)
+- ❌ **Pas de pinch-to-zoom** sur images dans `MessageAttachments`
+- ❌ **Pas de double-tap pour réagir** (Discord = double-tap = ❤️)
+- ❌ **Drag delay 500 ms** trop long pour réordonner serveurs (Discord ≈ 250 ms après long-press feedback)
 
-## Stratégie : 4 paliers de breakpoints unifiés
+#### 2. Clavier virtuel & viewport
+- ❌ **Pas de support `visualViewport`** : quand le clavier s'ouvre, l'input est masqué et le scroll de la liste de messages ne s'ajuste pas (sur iOS Safari c'est critique)
+- ❌ Bottom nav reste visible sous le clavier sur Android (devrait se masquer en focus input)
+- ❌ Hauteur `100svh` figée — un input focus + clavier ouvert provoque des sauts visuels en orientation paysage
 
-```
-xs   < 480px   téléphone portrait        → MobileLayout (pile, bottom nav)
-sm   < 768px   téléphone paysage / petite tablette portrait → MobileLayout étendu
-md   < 1024px  tablette portrait / iPad → TabletLayout (hybrid, drawer-based)
-lg   ≥ 1024px  desktop                  → DesktopLayout (3 panneaux)
-xl   ≥ 1440px  desktop large            → DesktopLayout + member list ouvert par défaut
-```
+#### 3. En-tête de chat mobile (`MobileChatView`)
+- ⚠️ **Trop d'icônes en barre** (Info, Pin, Threads, Summaries, Bell, Members) sur 320–375 px = débordement
+- ❌ Pas de menu **« More » (kebab)** mobile pour regrouper les actions secondaires
+- ❌ **Pas de tap sur le titre** pour ouvrir le détail du salon (Discord = tap header = sheet salon)
+- ❌ Pas d'**indicateur de connexion** (online dot, voice connection)
 
-**Principe** : `MobileLayout` couvre désormais tout `< 768px`. Un nouveau `TabletLayout` couvre `[768–1024)`. `DesktopLayout` reste tel quel à `≥ 1024px`.
+#### 4. Long-press & feedback
+- ⚠️ Le long-press sur message ouvre un drawer mais **sans aperçu épinglé du message** (Discord met le message au-dessus du menu, blur le reste)
+- ❌ Pas de **survol haptique progressif** (Discord pulse 60 ms à 250 ms puis commit à 400 ms)
+- ❌ Pas de **scrim / backdrop blur** lors du long-press
 
----
+#### 5. Navigation & history
+- ⚠️ `MobileServersView` montre TOUTE l'app dans 72 px + panel : sur petits écrans (320–360 px), la zone utile passe à 248 px → boutons de salon coupés
+- ❌ Pas de **collapse de la rail serveurs** par swipe (Discord = swipe gauche → cache la rail, pleine largeur du panel)
+- ❌ Pas de **bottom sheet « Profil utilisateur »** depuis tap sur avatar dans les messages (existe en popover, pas adapté tactile)
 
-## Plan d'amélioration
+#### 6. Accessibilité (A11y)
+- ❌ Aucun `aria-live` (toasts annoncés, nouveaux messages mention)
+- ⚠️ `role="status"` absent sur indicateurs de chargement
+- ⚠️ Boutons icon-only ont `aria-label` mais **pas de `title`** secondaire
+- ❌ Pas de **focus trap** dans les bottom sheets (drawer)
+- ❌ Pas de **gestion VoiceOver/TalkBack** des swipes (annonce "Glisser pour répondre")
+- ❌ **Contraste insuffisant** des badges sur surfaces sombres (à mesurer)
+- ❌ Pas de **mode "agrandir le texte"** (Discord respecte la taille système)
 
-### Phase 1 — Fondations (breakpoints & layout switch)
+#### 7. Vue voice mobile
+- ⚠️ `VoiceChannelView` rendu en plein écran sans **mini-PiP draggable** quand l'utilisateur navigue ailleurs
+- ❌ Bouton « raccrocher » non flottant en bas (caché si scroll)
+- ❌ Pas de **gesture swipe-down** pour minimiser la vue voice
 
-1. **Réécrire `useBreakpoint`** :
-   - `isXs` < 480px (compact)
-   - `isMobile` < 768px (regroupe xs + sm)
-   - `isTablet` ≥ 768 et < 1024
-   - `isDesktop` ≥ 1024
-   - `isLargeDesktop` ≥ 1440
-   - Garde compat : `isSmallMobile = isXs`
-2. **`Index.tsx`** : `if (isMobile) → <MobileLayout/>`, `else if (isTablet) → <TabletLayout/>`, `else → <DesktopLayout/>` (extrait des lignes 539–752 actuelles).
-3. **`useIsMobile` (`use-mobile.tsx`)** : aligner sur 768px pour cohérence avec sidebar shadcn.
+#### 8. Performance perçue
+- ❌ Pas de **skeletons** spécifiques mobile pour DM list / messages (juste spinner)
+- ❌ Pas de **virtualisation** de la liste de messages (sur mobile, scroll lag dès 200 messages)
+- ❌ Images attachées non **lazy** au scroll fast
 
-### Phase 2 — Couche tablette (`TabletLayout`)
+#### 9. Profil mobile (`MobileProfileView`)
+- ⚠️ Pas d'accès direct à : amis, comptes connectés, sécurité, sessions, changer mot de passe (tout enfoui dans modal Settings)
+- ❌ Pas de **toggle thème clair/sombre rapide** sur la vue profil
+- ❌ Pas de **switch de compte** (Discord supporte multi-compte)
 
-Nouveau composant `src/components/tablet/TabletLayout.tsx` :
-- **ServerList** rail compact 64px (au lieu de 80) à gauche, toujours visible.
-- **ChannelList** drawer rétractable (Sheet `side="left"`) déclenché par bouton hamburger du header chat. Persisté ouvert par défaut en paysage, fermé en portrait.
-- **MemberList** Sheet `side="right"` (déjà utilisé en mobile chat) — bouton dans le header.
-- **Chat / Voice / autres canaux** : pleine largeur, header tablette = header mobile (bouton retour transformé en menu hamburger).
-- **Threads** : ouverture **pleine largeur** avec bouton retour, jamais de split-view en tablette.
-
-### Phase 3 — `MobileLayout` étendu (xs + sm)
-
-- Étendre l'activation jusqu'à `< 768px`.
-- **Bottom nav** : ajouter le tab **« Discuter »** entre Serveurs et Notifs pour accès direct DMs.
-- **`MobileChatView` header** : passer en grid responsive — sur `xs` masquer Pin/Threads/Summaries derrière un menu `MoreVertical`, garder seulement Membres + Notifications.
-- **`MessageInput`** : 
-  - `xs` → barre markdown collapse en bouton « + » avec popover.
-  - Boutons à `min-h-11 min-w-11` (44px Apple HIG).
-  - Hauteur input min 44px, padding tactile.
-- **`100dvh` → `100svh`** sur conteneurs racine (clavier virtuel n'écrase plus le contenu).
-- **Safe areas** systématisées : `pb-[env(safe-area-inset-bottom)]` sur bottom nav, `pt-[env(safe-area-inset-top)]` sur headers fixes.
-
-### Phase 4 — Modals & overlays universels
-
-Créer un wrapper `<AdaptiveSheet>` qui rend :
-- `< 768px` → `Drawer` plein écran ou bottom-sheet
-- `≥ 768 et < 1024` → `Sheet` side
-- `≥ 1024` → `Dialog` centré
-
-Migrer :
-- `ServerSettingsModal` : déjà mobile-aware → étendre seuil à 768px.
-- `AccountSettingsModal` : idem.
-- `CreateServerModal`, `JoinServerModal`, `DiscoverModal` : passer en bottom-sheet sur mobile, dialog desktop.
-- `ChannelSettingsModal`, `EditCategoryModal` : 2-niveaux mobile déjà OK.
-- `GlobalSearchModal` : conserver fullscreen mobile.
-- `KeyboardShortcutsModal` : masquer le bouton d'ouverture sur mobile.
-
-### Phase 5 — Canaux spécialisés (mobile/tablette)
-
-- **`VoiceChannelView`** : 
-  - Grille participants `grid-cols-1` xs / `grid-cols-2` sm / `grid-cols-3` md.
-  - Action bar collée au bas avec safe area.
-  - Sidebar membres → Sheet.
-  - Chat vocal → Sheet bottom plein écran.
-- **`StageChannel`** : podium responsive, audience scroll horizontal sur mobile.
-- **`MediaChannel` / `ForumChannel`** : grid `1` colonne xs, `2` sm, `3` md, `4` lg.
-- **`CalendarChannel`** : vue agenda liste sur mobile (au lieu de la grille mois).
-- **`TasksChannel`** : kanban → tabs (un statut par tab) sur mobile.
-- **`AnnouncementChannel`** : déjà standardisé, vérifier le composer mobile.
-
-### Phase 6 — DMs & Friends en mobile
-
-- **`MobileHomeView`** déjà existante — l'enrichir :
-  - Onglets internes (Tous / En ligne / En attente / Bloqués) en pills horizontales scrollables.
-  - Recherche DM en sticky top.
-  - Boutons « Nouvelle conversation » et « Nouveau groupe » FAB en bas à droite (au-dessus du bottom nav).
-- **`DMConversation`** mobile : header sticky avec avatar + appel/vidéo accessibles, swipe-back.
-- **Inbox** mobile : stack de cartes pleine largeur, swipe-to-dismiss.
-
-### Phase 7 — Composants de chat critiques
-
-- **`ChatArea`** : 
-  - Header mobile/tablette = `MobileChatView` actuel, étendu jusqu'à 1024px.
-  - `MessageAttachments` : grid adaptive `1 col xs / 2 sm`, lightbox plein écran.
-  - `EmojiStickerPicker` : sheet bottom mobile, popover desktop.
-  - `MentionAutocomplete` : positionnement `bottom-full` toujours sur mobile (au-dessus du clavier).
-- **`PollDisplay`** : actions verticales sur mobile.
-- **`UniversalMessageContextMenu`** : remplacé par `MobileMessageActions` bottom sheet via long-press (déjà partiellement implémenté).
-
-### Phase 8 — Profil / paramètres serveur tablette
-
-- `ServerSettingsModal` : 
-  - mobile (déjà 2-niveaux) → étendre à `< 1024px`.
-  - tablette : sidebar 200px + contenu dans flex-1.
-- `AccountSettingsModal` : même pattern.
-- `MemberManager`, `RoleManager`, `InviteManager`, `BannedMembersManager`, `AuditLogManager` : tableaux → cards verticales sur mobile, table scroll-x sur tablette.
-- `RoleEditor` : stepper plein écran mobile.
-
-### Phase 9 — Touch & accessibilité
-
-- Globalement augmenter zones tactiles : tous les `<button>` de moins de 32×32 → wrapper `min-w-11 min-h-11`.
-- Long-press systématique sur messages / membres / serveurs → `useLongPress` (déjà existant).
-- Swipe gestures cohérents : 
-  - droite → back partout (déjà via `useSwipeBack`)
-  - gauche sur message → actions rapides
-  - bas-haut sur DM → archiver (à ajouter).
-- `tap-highlight-color: transparent` global, `user-select: none` sur listes, déjà partiellement présent.
-
-### Phase 10 — Performance mobile
-
-- `prefers-reduced-motion` honoré sur toutes les animations Framer Motion.
-- `IntersectionObserver` pour lazy-load les avatars membres dans MemberList.
-- Réduire bundle initial mobile : code-splitter `MobileLayout` séparément, lazy-load `DesktopLayout`.
-- Service worker / PWA install prompt déjà partiellement présent (`pages/Install.tsx`) → lier depuis profil mobile.
+#### 10. Notifications mobile (`MobileNotificationsView`)
+- ⚠️ **Réutilise `InboxPanel` desktop sans adaptation** : pas de swipe-to-archive, pas de groupes, densité non optimisée
+- ❌ Pas de **badge "Tout marquer lu"** flottant en bas
+- ❌ Pas de **filtre rapide** (Mentions / Réponses / Threads) en pills
 
 ---
 
-## Fichiers impactés (synthèse)
+## Plan d'amélioration en 8 lots
 
-**Nouveaux** :
-- `src/components/tablet/TabletLayout.tsx`
-- `src/components/ui/adaptive-sheet.tsx` (wrapper)
-- `src/components/mobile/MobileMoreActionsSheet.tsx` (menu kebab header)
+### **Lot A — Gestes critiques manquants**
+1. Câbler `useSwipeToReply` dans :
+   - `ChatArea.tsx` (rangée message)
+   - `DMConversation.tsx` (rangée message DM)
+   - `ThreadView.tsx` (rangée message thread)
+   - Visuel : icône `Reply` qui apparaît en fade depuis la gauche, fond `surface-2`, opacité = `progress`
+2. Activer `useSwipeBack` dans `DMConversation` pour retour à la liste DM
+3. Ajouter **double-tap = réaction ❤️** (`useDoubleTap` hook)
+4. Réduire le `delay` du `TouchSensor` server-icons à 250 ms
 
-**Modifiés (majeur)** :
-- `src/hooks/useBreakpoint.ts` (4 paliers)
-- `src/hooks/use-mobile.tsx` (768px)
-- `src/pages/Index.tsx` (3-way switch + extraire `DesktopLayout`)
-- `src/components/mobile/MobileLayout.tsx` (étendu jusqu'à 768px, bottom nav 4 tabs)
-- `src/components/mobile/MobileBottomNav.tsx` (ajouter tab Discuter)
-- `src/components/mobile/MobileChatView.tsx` (header overflow menu, 100svh)
-- `src/components/chat/ChatArea.tsx` (header masqué jusqu'à 1024)
-- `src/components/chat/MessageInput.tsx` (touch targets, markdown bar collapse)
-- `src/components/server-settings/ServerSettingsModal.tsx` (seuil 1024)
-- `src/components/account-settings/AccountSettingsModal.tsx` (idem)
-- Tous les modals dans `src/components/modals/*` (migration AdaptiveSheet)
-- Tous les canaux spécialisés (`VoiceChannelView`, `StageChannel`, `MediaChannel`, `ForumChannel`, `TasksChannel`, `CalendarChannel`)
+### **Lot B — Clavier virtuel & viewport**
+1. Créer `useVisualViewport` hook → expose `keyboardHeight` et `isKeyboardOpen`
+2. Dans `MobileLayout` : `paddingBottom: keyboardHeight` sur le wrapper de chat, masquer la `MobileBottomNav` quand `isKeyboardOpen && isFocusedInput`
+3. Auto-scroll bas de liste messages quand le clavier s'ouvre (déjà chat actif)
+4. Empêcher le bounce iOS quand input focus (`overscroll-behavior: contain`)
 
-**Modifiés (mineur)** :
-- `src/index.css` : ajout utilitaires `.touch-target`, `.svh-screen`, safe-area helpers
-- `tailwind.config.ts` : screens étendus (`xs: 480, sm: 640, md: 768, lg: 1024, xl: 1280, 2xl: 1440`)
+### **Lot C — Long-press premium (style Discord)**
+1. Refondre `MobileMessageActions` : 
+   - Aperçu du message **figé en haut** (avatar + extrait), backdrop `bg-black/60 backdrop-blur-md`
+   - Quick reactions au-dessus de l'aperçu
+   - Liste actions en bas
+2. Long-press progression : haptic léger à 250 ms, commit haptic medium à 400 ms (raccourcir delay)
+3. Ajouter `data-message-id` pour positionner l'aperçu correctement
+
+### **Lot D — Header chat mobile compact**
+1. Garder dans header : **Back, Icon, Nom (tappable), Members count, Kebab**
+2. Tap sur **Nom** → bottom sheet "Détails du salon" (description, pinned, threads, summaries, notifs)
+3. Tap sur **Members count** → bottom sheet membres (existant)
+4. **Kebab** → `MobileMoreActionsSheet` avec : Notifs, Search, Pin, Threads, Summaries, Follow
+
+### **Lot E — Pull-to-refresh & rafraîchissement**
+1. Créer `usePullToRefresh` hook (touch + Y delta + spring back)
+2. Brancher sur :
+   - DM list (`MobileHomeView`)
+   - Channel list (`MobileChannelListView`)  
+   - Notifications (`MobileNotificationsView`)
+   - Discover modal
+3. Indicateur visuel : petit spinner Material qui descend depuis le top
+
+### **Lot F — A11y & VoiceOver/TalkBack**
+1. Ajouter `aria-live="polite"` sur la zone de toasts (Sonner config)
+2. `role="status"` + `aria-busy="true"` sur tous les loaders mobile
+3. `aria-roledescription="Glisser à droite pour répondre"` sur message rows
+4. **Focus trap** sur drawers (radix Drawer ne le fait pas par défaut → ajouter)
+5. Boutons icon-only : ajouter `title` en plus de `aria-label`
+6. Audit contraste (badges destructive, muted-foreground sur surface-1)
+7. Respect `font-size` système → `text-base` au lieu de `text-sm` sur targets clés ; activer Tailwind `text-size-adjust`
+
+### **Lot G — Voice mobile & PiP**
+1. Mini-PiP voice draggable quand on quitte le salon vocal mais reste connecté
+2. Bouton raccrocher fixe en bottom (au-dessus du nav)
+3. Swipe-down pour minimiser `VoiceChannelView` en PiP
+4. Indicateur connexion (dot vert) dans `MobileBottomNav` si voice actif
+
+### **Lot H — Profil & Notifications mobile**
+1. `MobileProfileView` : ajouter sections directes (Amis, Sécurité, Connexions, Sessions, Apparence) avec navigation interne (pas de modal)
+2. Toggle thème rapide en haut
+3. `MobileNotificationsView` : remplacer `InboxPanel` par une vue dédiée :
+   - Pills filtres (Tout / Mentions / Réponses / Threads)
+   - Swipe-left = archiver, swipe-right = marquer lu
+   - FAB "Tout marquer lu"
 
 ---
 
-## Livraison itérative recommandée
+## Priorités recommandées
 
-| Lot | Contenu | Impact visuel | Risque |
-|-----|---------|---------------|--------|
-| **1** | Phases 1 + 2 (breakpoints + TabletLayout) | Énorme — corrige le trou 640-1024px | Moyen |
-| **2** | Phase 3 (MobileLayout étendu + bottom nav 4 tabs) | Grand | Faible |
-| **3** | Phase 4 (AdaptiveSheet + modals) | Moyen | Faible |
-| **4** | Phases 5 + 6 (canaux spécialisés + DMs) | Grand | Moyen |
-| **5** | Phases 7 + 8 (chat polish + settings) | Moyen | Faible |
-| **6** | Phases 9 + 10 (touch + perf) | Subtil mais critique UX | Faible |
+| Lot | Impact UX | Effort | Priorité |
+|-----|-----------|--------|----------|
+| A — Gestes | Très haute | Moyen | 🔴 P0 |
+| B — Clavier | Très haute | Moyen | 🔴 P0 |
+| C — Long-press | Haute | Moyen | 🟠 P1 |
+| D — Header | Haute | Faible | 🟠 P1 |
+| E — Pull-to-refresh | Moyenne | Moyen | 🟡 P2 |
+| F — A11y | Haute (légal) | Élevé | 🟠 P1 |
+| G — Voice PiP | Moyenne | Élevé | 🟡 P2 |
+| H — Profil/Notifs | Moyenne | Moyen | 🟡 P2 |
 
-Chaque lot est indépendant et testable isolément. Aucun changement de DB, aucune migration backend, purement UI/layout.
+## Garanties
 
----
+- Aucune migration DB, aucun changement RLS
+- Desktop ≥ 1024 px strictement préservé (gates `isMobile` / `useBreakpoint`)
+- Hooks de données inchangés
+- Réutilisation des composants existants (`Drawer`, `Sheet`, `MobileMoreActionsSheet`, `useReducedMotion`)
+- Lots indépendants, testables isolément
 
-## Garanties de non-régression
+## Détails techniques
 
-- Aucune modification du wire format messages, mentions, snowflakes
-- Aucun changement de RLS / permissions
-- Layout desktop ≥ 1024px **strictement préservé** (il est extrait sans modification dans Phase 1)
-- Hooks de données (`useChannels`, `useMessages`, `useMembers`, etc.) inchangés
-- Realtime / cache architecture inchangés
+- **Nouveaux hooks** : `useVisualViewport`, `usePullToRefresh`, `useDoubleTap`
+- **Nouveaux composants** : `MessagePreviewSheet` (long-press refondu), `MobileChannelDetailSheet` (tap header), `VoicePiP`, `MobilePullIndicator`
+- **Modifs** : `ChatArea`, `DMConversation`, `ThreadView`, `MobileChatView`, `MobileLayout`, `MobileBottomNav`, `MobileNotificationsView`, `MobileProfileView`, `MessageAttachments` (pinch-zoom), `MobileMessageActions` (preview)
+- **CSS** : `overscroll-behavior: contain` sur scroll containers, support `text-size-adjust: 100%`
 

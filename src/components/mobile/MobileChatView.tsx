@@ -125,7 +125,7 @@ export function MobileChatView({
     <div className="flex flex-col h-full">
       {/* Header - Material You elevated surface */}
       <div className="h-13 px-2 flex items-center gap-1.5 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-primary/8 transition-all duration-200 flex-shrink-0" style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+        <button onClick={onBack} aria-label="Retour" className="p-2 rounded-full hover:bg-primary/8 transition-all duration-200 flex-shrink-0" style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
           <ChevronLeft className="w-5 h-5" />
         </button>
 
@@ -152,7 +152,7 @@ export function MobileChatView({
           {channel.description && (
             <Popover>
               <PopoverTrigger asChild>
-                <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+                <button aria-label="Informations du salon" className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
                   <Info className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
@@ -171,10 +171,10 @@ export function MobileChatView({
           {/* Pinned messages */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground relative">
+              <button aria-label={`Messages épinglés${pinnedMessages.length > 0 ? `, ${pinnedMessages.length}` : ''}`} className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground relative">
                 <Pin className="w-4 h-4" />
                 {pinnedMessages.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                  <span aria-hidden="true" className="absolute top-0.5 right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full">
                     {pinnedMessages.length}
                   </span>
                 )}
@@ -212,7 +212,7 @@ export function MobileChatView({
           {/* Threads */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+              <button aria-label="Fils de discussion" className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
                 <StreamlineThreads className="w-4 h-4" />
               </button>
             </PopoverTrigger>
@@ -224,6 +224,8 @@ export function MobileChatView({
           {/* Summaries */}
           <button
             onClick={() => setShowSummaries(!showSummaries)}
+            aria-label="Résumés"
+            aria-pressed={showSummaries}
             className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground"
           >
             <StreamlineSummaries className="w-4 h-4" />
@@ -232,7 +234,7 @@ export function MobileChatView({
           {/* Notifications */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+              <button aria-label="Notifications du salon" className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
                 <Bell className="w-4 h-4" />
               </button>
             </PopoverTrigger>
@@ -258,7 +260,7 @@ export function MobileChatView({
           {/* Members sheet */}
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
+              <button aria-label="Membres" className="p-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground">
                 <Users className="w-4 h-4" />
               </button>
             </SheetTrigger>

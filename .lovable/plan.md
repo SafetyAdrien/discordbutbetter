@@ -1,57 +1,58 @@
 
 
-## Problème
+## Objectif
 
-Erreur Vite bloquante :
+Restructurer la zone de saisie de `MessageInput.tsx` : le **textarea occupe toute la largeur** sur sa propre ligne, et les **boutons (+, Sticker, Emoji, Send) deviennent une barre d'actions en dessous, alignée à droite**. Plus de disposition horizontale — tout passe en colonne à l'intérieur du conteneur arrondi `bg-input`.
+
+## Structure visuelle cible
+
+```text
+┌──────────────────────────────────────────────────┐
+│ Envoyer un message dans #Lisez-moi               │  ← textarea pleine largeur
+│                                                   │
+├──────────────────────────────────────────────────┤  ← séparateur subtil border-border/40
+│ ⊕                              🏷️  😊   ➤        │  ← barre d'actions
+└──────────────────────────────────────────────────┘
 ```
-Failed to resolve import "@radix-ui/react-portal" from "src/components/profile/UserProfilePopup.tsx"
-```
 
-Le package `@radix-ui/react-portal` n'est pas installé dans le projet. Il a été importé en ligne 23 de `UserProfilePopup.tsx` puis utilisé une seule fois (ligne 592) sous la forme `<Portal.Root>…</Portal.Root>` pour wrapper la carte de profil en mode `card`.
+- `+` reste à gauche de la barre d'actions
+- `Sticker`, `Emoji`, `Send` restent groupés à droite
+- Le textarea déborde verticalement comme aujourd'hui (min 44px, max 200px)
+- L'overlay Markdown reste parfaitement aligné sur le textarea (mêmes paddings)
+- L'autocomplete de mentions, la zone d'attachements, le slowmode et l'état "follow bar / permission denied" restent inchangés
 
-## Cause
+## Changements (un seul fichier)
 
-Lors d'une itération précédente, l'import `import * as Portal from '@radix-ui/react-portal'` a été ajouté sans installer la dépendance correspondante. Tous les autres composants overlay utilisés dans le projet (`Dialog`, `Drawer`, `Popover`, `Tooltip`) embarquent déjà leur propre Portal via `@radix-ui/react-*`, donc cette dépendance directe n'a jamais été nécessaire.
+**`src/components/chat/MessageInput.tsx`** — remplacer le bloc lignes ~557–671 :
 
-## Solution (la plus simple, zéro nouvelle dépendance)
+1. Le wrapper principal passe de `flex items-stretch gap-2` à `flex flex-col w-full`.
+2. **Bloc 1 — textarea** : sortir le `<div className="relative flex-1 ...">` du flex horizontal, le placer en haut, occuper toute la largeur avec un padding interne (`px-4 pt-3 pb-2` desktop, `px-3 pt-2 pb-1.5` compact).
+3. **Bloc 2 — barre d'actions** : nouvelle `<div className="flex items-center justify-between px-2 py-1.5 border-t border-border/40">` contenant :
+   - Gauche : le `<Popover>` `+` existant
+   - Droite : `<div className="flex items-center gap-0.5">` avec `Sticker`, `Emoji`, `Send`
+4. Conserver `bg-[hsl(var(--input))] border border-border/50 rounded-2xl` et `boxShadow: var(--shadow-elevation-2)` sur le conteneur global.
+5. Adapter les classes du textarea : retirer `pr-1` / `pr-2` (plus besoin de réserver la place pour les boutons à droite), conserver `min-h-[44px] max-h-[200px]` et la logique d'auto-resize.
+6. Ajuster `InputMarkdownOverlay` : retirer `pr-1` / `pr-2`, garder les paddings verticaux.
 
-Remplacer `Portal.Root` par le primitive natif de React `createPortal` (déjà disponible via `react-dom`, déjà installé). Comportement identique : le contenu est monté dans `document.body`.
+## Détails de comportement préservés
 
-### Changements dans `src/components/profile/UserProfilePopup.tsx`
-
-1. **Ligne 23** — supprimer :
-   ```ts
-   import * as Portal from '@radix-ui/react-portal';
-   ```
-   et ajouter :
-   ```ts
-   import { createPortal } from 'react-dom';
-   ```
-
-2. **Lignes 590–617** — remplacer le wrapper `<Portal.Root>…</Portal.Root>` par un appel à `createPortal(…, document.body)` :
-   ```tsx
-   return (
-     <>
-       {createPortal(
-         <div className="fixed inset-0 z-50">
-           …contenu existant inchangé…
-         </div>,
-         document.body
-       )}
-       {serverProfileModal}
-     </>
-   );
-   ```
-
-Aucune logique métier modifiée — uniquement le mécanisme de portail.
+- **Auto-resize** du textarea (`adjustTextareaHeight`) : inchangé
+- **Sync overlay scroll** ↔ textarea scroll : inchangé
+- **Mention autocomplete** : se positionne au-dessus du textarea, donc compatible avec la nouvelle structure (rien à changer)
+- **Send button** : reste conditionnel (apparaît si `value.trim() || attachments.length > 0 || isMobile`), mais reste dans la barre du bas — sur mobile il était déjà toujours visible
+- **Compact mode** (utilisé dans threads/DM) : applique aussi la nouvelle structure verticale, paddings réduits
+- **Permission denied / Follow bar** : aucun changement (early returns indépendants)
+- **Focus ring removal**, hover states, font-ginto : inchangés
 
 ## Garantie « ne casse rien »
 
-- Le rendu visuel et la position de la carte (`cardPosition`) restent identiques (toujours dans `document.body`, `position: fixed`).
-- Aucun autre fichier n'importe `@radix-ui/react-portal` (vérifié).
-- Pas de nouvelle dépendance, pas de migration SQL, pas de modification d'API.
+- Aucune prop, aucune signature, aucun hook modifié
+- AttachmentStagingArea reste au-dessus du conteneur (inchangé)
+- `CreatePollModal` et tous les handlers (`handleSendMessage`, `handlePaste`, `handleKeyDown`) inchangés
+- Auto-focus global Discord-style (`handleGlobalKeyDown`) inchangé
+- Le `compact` prop continue de s'appliquer aux paddings et tailles d'icônes
 
 ## Fichier modifié
 
-- `src/components/profile/UserProfilePopup.tsx` (1 import remplacé + 1 wrapper de rendu remplacé par `createPortal`)
+- `src/components/chat/MessageInput.tsx` (refactor du JSX du conteneur principal — lignes 557 à 671)
 

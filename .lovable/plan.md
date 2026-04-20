@@ -1,93 +1,80 @@
 
 
-## Objectif
+## Problèmes identifiés
 
-Ajouter une **barre d'outils Markdown** dans la barre d'actions du `MessageInput`, sur la même ligne que `+`, `Sticker`, `Emoji`, `Send`. La barre est **rétractable** via un bouton chevron : `ChevronRight` pour ouvrir, `ChevronLeft` pour fermer (gain de place).
+### 1. Markdown manquants dans la barre
+La barre a 9 icônes inline. **Manquent** les éléments de **bloc** que le moteur `markdown.tsx` supporte :
+- `# Titre` (header1), `## Titre` (header2), `### Titre` (header3)
+- `-# Subtext` (texte discret gris)
+- `1. ` Liste numérotée (`orderedListItem`)
+- ` ``` ` Bloc de code multi-ligne (`codeBlock`)
+- `>>> ` Citation multi-ligne (`multiBlockquote`)
 
-## Structure visuelle cible
+### 2. Décalage de la barre de saisie au clic
+Deux causes cumulées :
+- **Layout cassé** : le wrapper Markdown utilise `flex-1 min-w-0` → il prend toute la largeur disponible et **pousse** les boutons de droite (Sticker/Emoji/Send) à chaque ouverture/fermeture, créant un saut visuel.
+- **Largeur insuffisante** : `max-w-[400px]` ne suffit pas pour 16 icônes → débordement horizontal et chevauchement avec le bloc droit.
 
-État **fermé** (par défaut) :
+## Solution
+
+### A — Refonte du layout de la barre d'actions (corrige le décalage)
+
+Restructurer la `<div>` ligne 634 en **3 zones fixes** plutôt qu'en `justify-between` avec un milieu élastique :
+
 ```text
-┌──────────────────────────────────────────────────┐
-│ Textarea pleine largeur                          │
-├──────────────────────────────────────────────────┤
-│ ⊕  ›                          🏷️  😊  ➤          │
-└──────────────────────────────────────────────────┘
+[+] [‹/›  H1 H2 H3 -# B I U S </> ``` 〝 ❯❯❯ • 1. 🔗 ‖ ]    [🏷️ 😊 ➤]
+ ↑   ↑                                                          ↑
+fixe  zone scrollable horizontalement (flex-1 min-w-0)         fixe (shrink-0)
 ```
 
-État **ouvert** :
-```text
-┌──────────────────────────────────────────────────┐
-│ Textarea pleine largeur                          │
-├──────────────────────────────────────────────────┤
-│ ⊕  ‹  B  I  U  S  </>  ”  •  🔗  ‖     🏷️ 😊 ➤  │
-└──────────────────────────────────────────────────┘
-```
+Changements concrets :
+1. La `<div>` parent reste `flex items-center` mais on ajoute `gap-1`.
+2. **Bloc gauche** : `+` reste tel quel (shrink-0).
+3. **Bloc Markdown** : devient `flex items-center min-w-0 flex-1 overflow-hidden` (au lieu de juste `flex-1`). Le wrapper interne des icônes utilise `overflow-x-auto scrollbar-none` quand ouvert pour permettre le défilement horizontal silencieux si l'espace manque, sans pousser les autres blocs.
+4. **Bloc droit** : ajouter `shrink-0` pour qu'il ne soit jamais compressé/déplacé.
+5. Augmenter `max-w-[400px]` → `max-w-[640px]` pour les 16 icônes.
 
-## Icônes Markdown (lucide-react)
+### B — Ajout des 7 markdown manquants
 
-| Icône | Action | Wrap |
+Mettre à jour `applyMarkdown` pour mieux gérer les blocs multi-lignes (` ``` ... ``` ` et `>>> `). Ajouter une variante `applyBlockWrap(prefix, suffix)` qui :
+- insère `prefix\n` avant la sélection et `\nsuffix` après
+- place le caret à l'intérieur si pas de sélection
+
+Nouveaux boutons (lucide-react) à ajouter avant Bold :
+| Icône | Action | Insertion |
 |---|---|---|
-| `Bold` | Gras | `**texte**` |
-| `Italic` | Italique | `*texte*` |
-| `Underline` | Souligné | `__texte__` |
-| `Strikethrough` | Barré | `~~texte~~` |
-| `Code` | Inline code | `` `texte` `` |
-| `Quote` | Citation | `> texte` (préfixe ligne) |
-| `List` | Liste à puces | `- texte` (préfixe ligne) |
-| `Link` | Lien | `[texte](url)` |
-| `EyeOff` | Spoiler | `\|\|texte\|\|` |
+| `Heading1` | Titre 1 | `# ` (préfixe ligne) |
+| `Heading2` | Titre 2 | `## ` (préfixe ligne) |
+| `Heading3` | Titre 3 | `### ` (préfixe ligne) |
+| `Type` | Subtext | `-# ` (préfixe ligne) |
 
-Toutes mappées sur la sélection actuelle du textarea (ou insérées au curseur si pas de sélection), avec re-focus + restauration du caret après l'insertion.
+Et après List (avant Link) :
+| Icône | Action | Insertion |
+|---|---|---|
+| `ListOrdered` | Liste numérotée | `1. ` (préfixe ligne) |
+| `TextQuote` | Citation multi-ligne | `>>> ` (préfixe en début de bloc) |
+| `SquareCode` | Bloc de code | ` ``` \nselected\n``` ` (block wrap) |
 
-## Comportement du toggle
+Ordre final (16 boutons) :
+`H1 · H2 · H3 · -# · | · B · I · U · S · </> · ``` · 〝 · ❯❯❯ · • · 1. · 🔗 · ‖`
+(avec un séparateur visuel `<div className="w-px h-4 bg-border/40 mx-1" />` entre groupes Titres / Inline / Blocs)
 
-- Nouveau state local `markdownBarOpen` (défaut `false`).
-- Bouton chevron placé **juste à droite du `+`** :
-  - Fermé → `ChevronRight` (clic = ouvrir, animation `width` 0 → auto sur un wrapper `overflow-hidden`)
-  - Ouvert → `ChevronLeft` (clic = fermer)
-- Les icônes Markdown apparaissent dans un conteneur `flex` entre le chevron et le bloc droit, avec une transition `max-width` douce (200ms, `cubic-bezier(0.2,0,0,1)` — cohérent avec le wrapper existant).
-- Sur mobile (`isMobile`) : la barre Markdown reste accessible mais en mode rétracté par défaut pour préserver l'espace horizontal.
+### C — Empêcher le saut vertical au clic
 
-## Implémentation
+- Ajouter `onMouseDown={e => e.preventDefault()}` sur tous les boutons Markdown : empêche le textarea de perdre le focus pendant le clic, donc pas de re-rendu / re-mesure du textarea.
+- Cela élimine le scroll-into-view automatique du navigateur qui décalait la zone.
 
-**1 seul fichier modifié : `src/components/chat/MessageInput.tsx`**
+### D — Détails
 
-1. **Imports** (ligne 12) : ajouter `ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff`.
-2. **State** : ajouter `const [markdownBarOpen, setMarkdownBarOpen] = useState(false);` près des autres states.
-3. **Helper** : ajouter une fonction `applyMarkdown(prefix: string, suffix: string, isLinePrefix?: boolean)` qui :
-   - Lit `textareaRef.current.selectionStart` / `selectionEnd`
-   - Pour `isLinePrefix` (Quote, List) : insère le préfixe au début de chaque ligne sélectionnée
-   - Pour les wraps : enveloppe la sélection (ou insère `prefix+suffix` au curseur)
-   - Met à jour `value` via `onChange`
-   - Restaure le focus + place le caret de manière logique
-4. **JSX (ligne 591–632)** : entre le `<Popover>` du `+` et la `<div>` droite, insérer :
-   ```tsx
-   <button onClick={() => setMarkdownBarOpen(o => !o)} ...>
-     {markdownBarOpen ? <ChevronLeft/> : <ChevronRight/>}
-   </button>
-   <div className={`flex items-center gap-0.5 overflow-hidden transition-[max-width,opacity] duration-200 ${markdownBarOpen ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}>
-     {/* 9 boutons icônes Markdown */}
-   </div>
-   ```
-5. **Layout** : restructurer la `<div>` parent en `flex items-center` avec un sous-groupe gauche `flex-1 min-w-0` (contient `+` + chevron + barre Markdown) et le sous-groupe droit inchangé (Sticker/Emoji/Send).
-
-## Détails préservés
-
-- Tous les comportements existants : auto-resize, mention autocomplete, overlay markdown, slowmode, follow bar, permission denied, mode `compact`.
+- Les boutons Markdown gardent les mêmes classes (`text-muted-foreground hover:text-primary rounded-full p-1.5`).
+- Tooltip `title` localisé en français (« Titre 1 », « Liste numérotée », « Bloc de code », etc.).
+- Aucun changement sur `markdown.tsx` (le moteur supporte déjà tous ces tokens).
 - Aucune nouvelle dépendance.
-- Les boutons Markdown utilisent les **mêmes classes** que les boutons existants (`text-muted-foreground hover:text-primary rounded-full p-1.5`) avec icônes `w-4 h-4` (cohérent avec le mode compact actuel).
-- Tooltip natif via `title="Gras (Ctrl+B)"`, etc.
-- **Bonus optionnel** : raccourcis clavier `Ctrl/Cmd+B`, `+I`, `+U` déjà gérés ? Sinon on les ajoute dans `handleKeyDown` pour appeler `applyMarkdown`.
-
-## Garantie « ne casse rien »
-
-- Aucune modification de signature de `MessageInput` (zéro nouvelle prop).
-- Aucun changement sur les hooks, mutations, ou structure du textarea.
-- Sur les viewports étroits, la barre étant rétractable, aucun débordement horizontal.
-- Persistance optionnelle de `markdownBarOpen` dans `localStorage` ? **Non** — état local par instance, redémarre fermé pour rester discret par défaut.
 
 ## Fichier modifié
 
-- `src/components/chat/MessageInput.tsx` (imports + 1 state + 1 helper + refonte de la barre d'actions ligne 591–673)
+- `src/components/chat/MessageInput.tsx`
+  - Imports lucide : ajouter `Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode`
+  - `applyMarkdown` : ajouter un mode `blockWrap` (4ème paramètre booléen) pour ` ``` ` et `>>> `
+  - JSX ligne 634–743 : restructurer en 3 zones fixes, ajouter les 7 boutons + 2 séparateurs, ajouter `onMouseDown preventDefault` sur tous les boutons Markdown, agrandir `max-w-[640px]`
 

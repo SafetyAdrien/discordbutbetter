@@ -19,6 +19,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
         },
       }}
+      // A11y: meaningful landmark label for assistive tech (Sonner exposes an
+      // internal aria-live region for new toasts).
+      containerAriaLabel="Notifications"
       {...props}
     />
   );

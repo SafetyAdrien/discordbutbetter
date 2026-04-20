@@ -9,6 +9,8 @@ export type MobileTab = 'servers' | 'discuss' | 'notifications' | 'profile';
 interface MobileBottomNavProps {
   activeTab: MobileTab;
   onTabChange: (tab: MobileTab) => void;
+  /** When true, shows a tiny green dot near the Servers tab to signal an active voice connection. */
+  voiceActive?: boolean;
 }
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
@@ -18,7 +20,7 @@ const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Vous', icon: User },
 ];
 
-export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps) {
+export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }: MobileBottomNavProps) {
   const notifCount = useUnreadNotificationsCount();
 
   const getBadge = (id: MobileTab) => {
@@ -73,6 +75,13 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
                   <span aria-hidden="true" className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
                     {badge > 99 ? '99+' : badge}
                   </span>
+                )}
+                {voiceActive && id === 'servers' && (
+                  <span
+                    aria-label="Connecté en vocal"
+                    title="Connecté en vocal"
+                    className="absolute -bottom-0.5 -right-1 w-2 h-2 rounded-full bg-status-online ring-2 ring-[hsl(var(--surface-1))]"
+                  />
                 )}
               </div>
               <span className={cn(

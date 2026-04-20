@@ -8,6 +8,7 @@ import { MobileProfileView } from './MobileProfileView';
 import { MobileHomeView } from './MobileHomeView';
 import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
+import { VoicePiP } from './VoicePiP';
 import { StageChannel } from '@/components/channels/StageChannel';
 import { MediaChannel } from '@/components/channels/MediaChannel';
 import { ForumChannel } from '@/components/channels/ForumChannel';
@@ -549,12 +550,37 @@ export function MobileLayout({
         </div>
       )}
 
+      {/* Floating Voice PiP — visible on every view EXCEPT the active voice channel itself */}
+      {isConnected && voiceState.channelId &&
+        !(mobileView.type === 'chat' && mobileView.channelId === voiceState.channelId) && (
+          <VoicePiP
+            onExpand={() => {
+              // Find the channel and navigate to it
+              const channel = rawServers
+                .flatMap((s: any) => [...s.categories.flatMap((c: any) => c.channels), ...(s.orphanChannels || [])])
+                .find((ch: any) => ch.id === voiceState.channelId);
+              if (channel) {
+                const serverId = rawServers.find((s: any) =>
+                  [...s.categories.flatMap((c: any) => c.channels), ...(s.orphanChannels || [])].some((ch: any) => ch.id === voiceState.channelId)
+                )?.id;
+                if (serverId) {
+                  setMobileView({ type: 'chat', serverId, channelId: voiceState.channelId!, channelType: 'voice' });
+                }
+              }
+            }}
+          />
+        )}
+
       {/* Bottom Navigation - hidden when keyboard is open on a focused input */}
       {!activeDMId && !hideBottomNav && (
-        <MobileBottomNav activeTab={activeTab} onTabChange={(tab) => {
-          setActiveTab(tab);
-          setMobileView({ type: 'tab' });
-        }} />
+        <MobileBottomNav
+          activeTab={activeTab}
+          voiceActive={isConnected && !!voiceState.channelId}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setMobileView({ type: 'tab' });
+          }}
+        />
       )}
 
       {/* Modals */}

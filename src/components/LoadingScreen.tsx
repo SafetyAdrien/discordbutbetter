@@ -50,7 +50,12 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
   }, []);
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-8 select-none relative overflow-hidden">
+    <div
+      className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-8 select-none relative overflow-hidden"
+      role="status"
+      aria-busy="true"
+      aria-label={currentStep ? `Chargement, ${currentStep}` : 'Chargement de l\'application'}
+    >
       {/* Canvas particle background */}
       <ParticleBackground count={40} speed={0.3} />
 

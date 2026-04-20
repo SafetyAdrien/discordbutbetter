@@ -756,7 +756,7 @@ export function AnnouncementChannel({
                       if (el) messageRefs.current.set(message.id, el);
                     }}
                     className={cn(
-                      "group message-hover rounded-md px-2 -mx-2 relative",
+                      "group message-hover px-2 -mx-2 relative",
                       showAuthor ? "pt-1" : "py-0"
                     )}
                     onMouseEnter={() => setHoveredMessageId(message.id)}

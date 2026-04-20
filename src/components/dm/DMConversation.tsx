@@ -433,7 +433,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       >
                         <div 
                           className={cn(
-                            'flex gap-3 group message-hover rounded-md px-2 -mx-2 relative',
+                            'flex gap-3 group message-hover px-2 -mx-2 relative',
                             showAuthor ? 'pt-1' : 'py-0',
                             !showAuthor && 'pl-12'
                           )}

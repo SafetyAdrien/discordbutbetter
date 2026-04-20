@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useServerRoles } from "@/hooks/useRoles";
 import { RoleCheckboxItem } from "@/components/profile/RoleCheckboxItem";
-import * as Portal from "@radix-ui/react-portal";
+import { createPortal } from "react-dom";
 
 interface RoleManagementPanelProps {
   serverId: string;

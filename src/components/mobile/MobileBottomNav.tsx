@@ -9,6 +9,8 @@ export type MobileTab = 'servers' | 'discuss' | 'notifications' | 'profile';
 interface MobileBottomNavProps {
   activeTab: MobileTab;
   onTabChange: (tab: MobileTab) => void;
+  /** When true, shows a tiny green dot near the Servers tab to signal an active voice connection. */
+  voiceActive?: boolean;
 }
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
@@ -18,7 +20,7 @@ const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Vous', icon: User },
 ];
 
-export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps) {
+export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }: MobileBottomNavProps) {
   const notifCount = useUnreadNotificationsCount();
 
   const getBadge = (id: MobileTab) => {

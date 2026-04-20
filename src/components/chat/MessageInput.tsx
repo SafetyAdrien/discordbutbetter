@@ -379,7 +379,7 @@ export function MessageInput({
       return channels.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
     }
     return 0;
-  }, [mentionState, members, roles, channels]);
+  }, [mentionState, members, roles, channels, canMentionEveryone]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Handle mention autocomplete navigation

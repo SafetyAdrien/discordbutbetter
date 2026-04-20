@@ -749,15 +749,19 @@ export function MessageInput({
                   </button>
                 }
               />
-              {(value.trim() || attachments.length > 0 || isMobile) && (
-                <button 
-                  type="submit" 
-                  disabled={disabled || (!value.trim() && attachments.length === 0)}
-                  className={`ml-0.5 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]'}`}
-                >
-                  <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-                </button>
-              )}
+              {(() => {
+                const canSend = !!value.trim() || attachments.length > 0;
+                return (
+                  <button
+                    type="submit"
+                    disabled={disabled || !canSend}
+                    aria-label="Envoyer"
+                    className={`ml-0.5 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${canSend ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]' : 'opacity-30 cursor-not-allowed'}`}
+                  >
+                    <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

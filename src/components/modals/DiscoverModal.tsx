@@ -1,10 +1,13 @@
 import { useState, forwardRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Server } from '@/types/app';
 import { X, Search, Users, Compass, Gamepad2, Palette, Music, Code, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 
 interface DiscoverModalProps {
   servers: Server[];
@@ -25,6 +28,15 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
     const { isMobile } = useBreakpoint();
+    const queryClient = useQueryClient();
+
+    const { containerRef, pullDistance, progress, refreshing } =
+      usePullToRefresh<HTMLDivElement>({
+        onRefresh: async () => {
+          await queryClient.invalidateQueries({ queryKey: ['servers'] });
+        },
+        disabled: !isMobile,
+      });
 
     const filteredServers = servers.filter((server) =>
       server.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -129,7 +141,17 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
           </div>
 
           {/* Server Grid */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
+          <div
+            ref={containerRef}
+            className="relative flex-1 overflow-y-auto overscroll-contain scrollbar-thin p-4"
+          >
+            {isMobile && (
+              <MobilePullIndicator
+                pullDistance={pullDistance}
+                progress={progress}
+                refreshing={refreshing}
+              />
+            )}
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
               Serveurs en vedette
             </h3>

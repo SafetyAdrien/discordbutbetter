@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Users, Inbox, Search, UsersRound } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DMList } from '@/components/dm/DMList';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { InboxPanel } from '@/components/inbox/InboxPanel';
@@ -9,6 +10,8 @@ import { NewDMSheet } from '@/components/dm/NewDMSheet';
 import { CreateGroupModal } from '@/components/dm/CreateGroupModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 
 interface MobileHomeViewProps {
   activeDMId: string | null;
@@ -22,6 +25,16 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   const [showSearch, setShowSearch] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const unreadCount = useUnreadNotificationsCount();
+  const queryClient = useQueryClient();
+
+  const { containerRef, pullDistance, progress, refreshing } = usePullToRefresh<HTMLDivElement>({
+    onRefresh: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dm-conversations'] }),
+        queryClient.invalidateQueries({ queryKey: ['friends'] }),
+      ]);
+    },
+  });
 
   // If a DM is selected, show the conversation full-screen
   if (activeDMId) {
@@ -109,8 +122,9 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
         </button>
       </div>
 
-      {/* DM List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* DM List with pull-to-refresh */}
+      <div ref={containerRef} className="relative flex-1 overflow-y-auto overscroll-contain">
+        <MobilePullIndicator pullDistance={pullDistance} progress={progress} refreshing={refreshing} />
         <DMList activeConversationId={activeDMId} onConversationSelect={onConversationSelect} />
       </div>
 

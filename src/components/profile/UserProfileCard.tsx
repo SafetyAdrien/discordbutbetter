@@ -200,35 +200,34 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 </button>
 
                 {/* Status Menu via Portal */}
-                {showStatusMenu && (
-                  <Portal.Root>
-                    <div
-                      className="fixed z-[100]"
-                      style={{ top: menuPosition.top, left: menuPosition.left }}
-                      onMouseEnter={cancelCloseTimer}
-                      onMouseLeave={startCloseTimer}
-                    >
-                      {/* Invisible bridge to connect popover to this menu */}
-                      <div className="absolute top-0 -left-1 w-1 h-full" />
-                      {/* Actual menu content */}
-                      <div className="w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 animate-slide-in-right">
-                        <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
-                        {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => handleStatusChange(status)}
-                            className={cn(
-                              "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                              currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted",
-                            )}
-                          >
-                            <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[status])} />
-                            <span>{statusLabels[status]}</span>
-                          </button>
-                        ))}
-                      </div>
+                {showStatusMenu && createPortal(
+                  <div
+                    className="fixed z-[100]"
+                    style={{ top: menuPosition.top, left: menuPosition.left }}
+                    onMouseEnter={cancelCloseTimer}
+                    onMouseLeave={startCloseTimer}
+                  >
+                    {/* Invisible bridge to connect popover to this menu */}
+                    <div className="absolute top-0 -left-1 w-1 h-full" />
+                    {/* Actual menu content */}
+                    <div className="w-44 bg-popover border border-border rounded-lg shadow-xl p-1.5 animate-slide-in-right">
+                      <p className="text-xs text-muted-foreground px-2 py-1 mb-1">Définir le statut</p>
+                      {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => handleStatusChange(status)}
+                          className={cn(
+                            "flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                            currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted",
+                          )}
+                        >
+                          <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[status])} />
+                          <span>{statusLabels[status]}</span>
+                        </button>
+                      ))}
                     </div>
-                  </Portal.Root>
+                  </div>,
+                  document.body
                 )}
               </div>
 

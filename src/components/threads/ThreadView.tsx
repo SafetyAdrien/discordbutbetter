@@ -147,7 +147,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   
   // Build roles list for mentions
   const mentionRoles = useMemo(() => {
-    return serverRoles.map(r => ({
+    return serverRoles.filter(r => !r.is_default).map(r => ({
       id: r.id,
       name: r.name,
       color: r.color || undefined

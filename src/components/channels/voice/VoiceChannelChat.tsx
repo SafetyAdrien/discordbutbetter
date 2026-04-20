@@ -106,7 +106,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   }, [membersData]);
   
   const mentionRoles = useMemo(() => {
-    return serverRoles.map(r => ({
+    return serverRoles.filter(r => !r.is_default).map(r => ({
       id: r.id, name: r.name, color: r.color || undefined
     }));
   }, [serverRoles]);

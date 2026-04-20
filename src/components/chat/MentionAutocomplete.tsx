@@ -12,6 +12,7 @@ import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { uuidToSnowflake } from "@/lib/snowflake";
 
 const channelTypeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -50,7 +51,7 @@ export interface MentionChannel {
 }
 
 interface MentionAutocompleteProps {
-  type: "user" | "channel" | "role";
+  type: "user" | "channel";
   query: string;
   members?: MentionMember[];
   roles?: MentionRole[];
@@ -76,38 +77,39 @@ export function MentionAutocomplete({
 }: MentionAutocompleteProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter suggestions based on query
-  const suggestions = (() => {
-    const q = query.toLowerCase();
+  const q = query.toLowerCase();
 
-    if (type === "user") {
-      return members
-        .filter((m) => m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q))
-        .slice(0, 10);
-    }
+  // Unified mention: members + (special globals + roles)
+  const filteredMembers =
+    type === "user"
+      ? members
+          .filter((m) => m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q))
+          .slice(0, 10)
+      : [];
 
-    if (type === "role") {
-      // Include @everyone and @here as special options only if user has permission
-      const specialRoles = canMentionEveryone
-        ? [
-            { id: "everyone", name: "everyone", color: "#5865f2" },
-            { id: "here", name: "here", color: "#5865f2" },
-          ].filter((r) => r.name.includes(q))
-        : [];
+  const specialRoles: MentionRole[] =
+    type === "user" && canMentionEveryone
+      ? [
+          { id: "everyone", name: "everyone", color: "#5865f2" },
+          { id: "here", name: "here", color: "#5865f2" },
+        ].filter((r) => r.name.includes(q))
+      : [];
 
-      const filteredRoles = roles.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
+  const filteredRoles =
+    type === "user" ? roles.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8) : [];
 
-      return [...specialRoles, ...filteredRoles];
-    }
+  const rolesAndGlobal: MentionRole[] = [...specialRoles, ...filteredRoles];
 
-    if (type === "channel") {
-      // Smart match: normalize query and channel names for comparison
-      const normalizedQuery = normalizeForSearch(query);
-      return channels.filter((c) => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10);
-    }
+  const filteredChannels =
+    type === "channel"
+      ? (() => {
+          const normalizedQuery = normalizeForSearch(query);
+          return channels.filter((c) => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10);
+        })()
+      : [];
 
-    return [];
-  })();
+  const totalCount =
+    type === "user" ? filteredMembers.length + rolesAndGlobal.length : filteredChannels.length;
 
   // Scroll selected item into view
   useEffect(() => {
@@ -118,28 +120,26 @@ export function MentionAutocomplete({
     }
   }, [selectedIndex]);
 
-  if (suggestions.length === 0) return null;
+  if (totalCount === 0) return null;
 
-  const handleSelect = (item: any) => {
-    if (type === "user") {
-      // Use Snowflake ID (18 digits) for user mentions
-      const snowflakeId = uuidToSnowflake(item.id);
-      onSelect(`<@${snowflakeId}>`, item.displayName);
-    } else if (type === "role") {
-      if (item.id === "everyone" || item.id === "here") {
-        onSelect(`@${item.name}`, `@${item.name}`);
-      } else {
-        // Use Snowflake ID for role mentions
-        const snowflakeId = uuidToSnowflake(item.id);
-        onSelect(`<@&${snowflakeId}>`, `@${item.name}`);
-      }
-    } else if (type === "channel") {
-      // Use Snowflake ID for channel mentions
-      const snowflakeId = uuidToSnowflake(item.id);
-      // Format channel name based on type (kebab-case for text, exact for voice)
-      const formattedName = formatChannelName(item.name, item.type);
-      onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
+  const handleSelectMember = (member: MentionMember) => {
+    const snowflakeId = uuidToSnowflake(member.id);
+    onSelect(`<@${snowflakeId}>`, member.displayName);
+  };
+
+  const handleSelectRole = (role: MentionRole) => {
+    if (role.id === "everyone" || role.id === "here") {
+      onSelect(`@${role.name}`, `@${role.name}`);
+    } else {
+      const snowflakeId = uuidToSnowflake(role.id);
+      onSelect(`<@&${snowflakeId}>`, `@${role.name}`);
     }
+  };
+
+  const handleSelectChannel = (channel: MentionChannel) => {
+    const snowflakeId = uuidToSnowflake(channel.id);
+    const formattedName = formatChannelName(channel.name, channel.type);
+    onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
   };
 
   return (
@@ -147,71 +147,86 @@ export function MentionAutocomplete({
       ref={containerRef}
       className="absolute bottom-full left-0 right-0 mb-1 bg-[#272e4e] border border-border rounded-lg shadow-lg overflow-hidden z-50"
     >
-      <ScrollArea className="max-h-[200px]">
+      <ScrollArea className="max-h-[280px]">
         <div className="p-1">
           {type === "user" && (
             <>
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Membres</div>
-              {(suggestions as MentionMember[]).map((member, index) => (
-                <button
-                  type="button"
-                  key={member.id}
-                  data-mention-item
-                  onClick={() => handleSelect(member)}
-                  onMouseEnter={() => onIndexChange(index)}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                    index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
-                  )}
-                >
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={member.avatar} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                      {member.displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{member.displayName}</span>
-                  <span className="text-muted-foreground">{member.username.toLowerCase()}</span>
-                </button>
-              ))}
-            </>
-          )}
+              {filteredMembers.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                    Membres
+                  </div>
+                  {filteredMembers.map((member, index) => (
+                    <button
+                      type="button"
+                      key={member.id}
+                      data-mention-item
+                      onClick={() => handleSelectMember(member)}
+                      onMouseEnter={() => onIndexChange(index)}
+                      className={cn(
+                        "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
+                        index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                      )}
+                    >
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={member.avatar} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                          {member.displayName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{member.displayName}</span>
+                      <span className="text-muted-foreground">{member.username.toLowerCase()}</span>
+                    </button>
+                  ))}
+                </>
+              )}
 
-          {type === "role" && (
-            <>
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Rôles</div>
-              {(suggestions as MentionRole[]).map((role, index) => (
-                <button
-                  type="button"
-                  key={role.id}
-                  data-mention-item
-                  onClick={() => handleSelect(role)}
-                  onMouseEnter={() => onIndexChange(index)}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                    index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
-                  )}
-                >
-                  <AtSign className="w-4 h-4" style={{ color: role.color || "#99aab5" }} />
-                  <span style={{ color: index === selectedIndex ? "white" : role.color || "#99aab5" }}>
-                    {role.name}
-                  </span>
-                </button>
-              ))}
+              {filteredMembers.length > 0 && rolesAndGlobal.length > 0 && (
+                <Separator className="my-1" />
+              )}
+
+              {rolesAndGlobal.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                    Rôles & Mentions globales
+                  </div>
+                  {rolesAndGlobal.map((role, idx) => {
+                    const globalIndex = filteredMembers.length + idx;
+                    return (
+                      <button
+                        type="button"
+                        key={role.id}
+                        data-mention-item
+                        onClick={() => handleSelectRole(role)}
+                        onMouseEnter={() => onIndexChange(globalIndex)}
+                        className={cn(
+                          "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
+                          globalIndex === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                        )}
+                      >
+                        <AtSign className="w-4 h-4" style={{ color: role.color || "#99aab5" }} />
+                        <span style={{ color: globalIndex === selectedIndex ? "white" : role.color || "#99aab5" }}>
+                          {role.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
             </>
           )}
 
           {type === "channel" && (
             <>
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Salons</div>
-              {(suggestions as MentionChannel[]).map((channel, index) => {
+              {filteredChannels.map((channel, index) => {
                 const ChannelIcon = getChannelIcon(channel.type);
                 return (
                   <button
                     type="button"
                     key={channel.id}
                     data-mention-item
-                    onClick={() => handleSelect(channel)}
+                    onClick={() => handleSelectChannel(channel)}
                     onMouseEnter={() => onIndexChange(index)}
                     className={cn(
                       "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",

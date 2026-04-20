@@ -53,7 +53,7 @@ interface MessageInputProps {
 }
 
 interface MentionState {
-  type: 'user' | 'channel' | 'role';
+  type: 'user' | 'channel';
   query: string;
   startIndex: number;
   triggerLength: number;
@@ -264,20 +264,6 @@ export function MessageInput({
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
     
-    // Check for role mention (@& prefix) - non-capturing group for compatibility
-    const roleMatch = beforeCursor.match(/(?:^|\s)(@&[\w\u00C0-\u024F]*)$/);
-    if (roleMatch) {
-      const fullMatch = roleMatch[1]; // "@&admin"
-      const query = fullMatch.slice(2); // Remove @&
-      const matchStart = beforeCursor.lastIndexOf(fullMatch);
-      return {
-        type: 'role' as const,
-        query,
-        startIndex: matchStart,
-        triggerLength: 2,
-      };
-    }
-    
     // Check for channel mention (# prefix) - explicit logic for full browser compatibility
     const hashIndex = beforeCursor.lastIndexOf('#');
     if (hashIndex !== -1) {
@@ -304,10 +290,10 @@ export function MessageInput({
       }
     }
     
-    // Check for user mention (@ prefix, not followed by &) - non-capturing group for compatibility
-    const userMatch = beforeCursor.match(/(?:^|\s)(@(?!&)[\w\u00C0-\u024F]*)$/);
+    // Check for unified mention (@ prefix) - members + roles + global mentions
+    const userMatch = beforeCursor.match(/(?:^|\s)(@[\w\u00C0-\u024F]*)$/);
     if (userMatch) {
-      const fullMatch = userMatch[1]; // "@username"
+      const fullMatch = userMatch[1]; // "@query"
       const query = fullMatch.slice(1); // Remove @
       const matchStart = beforeCursor.lastIndexOf(fullMatch);
       return {
@@ -377,15 +363,15 @@ export function MessageInput({
     const q = mentionState.query.toLowerCase();
     
     if (mentionState.type === 'user') {
-      return members.filter(m => 
-        m.displayName.toLowerCase().includes(q) || 
+      const memberCount = members.filter(m =>
+        m.displayName.toLowerCase().includes(q) ||
         m.username.toLowerCase().includes(q)
       ).slice(0, 10).length;
-    }
-    if (mentionState.type === 'role') {
-      const special = ['everyone', 'here'].filter(r => r.includes(q)).length;
-      const filtered = roles.filter(r => r.name.toLowerCase().includes(q)).slice(0, 8).length;
-      return special + filtered;
+      const specialCount = canMentionEveryone
+        ? ['everyone', 'here'].filter(r => r.includes(q)).length
+        : 0;
+      const roleCount = roles.filter(r => r.name.toLowerCase().includes(q)).slice(0, 8).length;
+      return memberCount + specialCount + roleCount;
     }
     if (mentionState.type === 'channel') {
       // Smart match using normalized search
@@ -393,7 +379,7 @@ export function MessageInput({
       return channels.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
     }
     return 0;
-  }, [mentionState, members, roles, channels]);
+  }, [mentionState, members, roles, channels, canMentionEveryone]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Handle mention autocomplete navigation

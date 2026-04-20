@@ -34,10 +34,12 @@ interface CalendarEvent {
 }
 
 export function CalendarChannel({ channel, onToggleMembers, showMembers }: CalendarChannelProps) {
+  const { isMobile } = useBreakpoint();
   // Permissions
   const { data: canCreateEvents = true } = useHasChannelPermission(channel.id, 'create_events');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<'month' | 'agenda'>(isMobile ? 'agenda' : 'month');
 
   const events: CalendarEvent[] = [];
 
@@ -48,8 +50,12 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
   const startPadding = (monthStart.getDay() + 6) % 7;
   const paddedDays = Array(startPadding).fill(null).concat(days);
 
-  const eventsForDate = (date: Date) => 
+  const eventsForDate = (date: Date) =>
     events.filter((e) => isSameDay(e.startDate, date));
+
+  const upcomingEvents = events
+    .filter((e) => isAfter(e.startDate, new Date()) || isDateToday(e.startDate))
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
   return (
     <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">

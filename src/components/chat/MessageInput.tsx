@@ -104,6 +104,11 @@ export function MessageInput({
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [markdownBarOpen, setMarkdownBarOpen] = useState(false);
+  const canSubmitMessage = !!value.trim() || attachments.length > 0;
+  const markdownButtonClass = `shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1' : 'p-1.5'}`;
+  const rightActionsWidthClass = compact
+    ? (isMobile ? 'w-[4.5rem]' : 'w-[6.75rem]')
+    : (isMobile ? 'w-[4.75rem]' : 'w-[7.5rem]');
 
   const applyMarkdown = useCallback((prefix: string, suffix: string = prefix, isLinePrefix: boolean = false, blockWrap: boolean = false) => {
     const ta = textareaRef.current;
@@ -634,13 +639,13 @@ export function MessageInput({
                   ? `py-0 text-sm min-h-[28px] max-h-[120px] overflow-y-auto` 
                   : `py-0 text-sm min-h-[28px] max-h-[200px] overflow-y-auto`
               }`}
-              style={hasMarkdown ? { fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 } : undefined}
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 }}
               rows={1}
             />
           </div>
 
           {/* Action bar - bottom */}
-          <div className={`flex items-center gap-1 border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
+          <div className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
             <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -683,8 +688,7 @@ export function MessageInput({
               </PopoverContent>
             </Popover>
 
-            {/* Markdown toolbar toggle + bar */}
-            <div className="flex items-center min-w-0 flex-1 overflow-hidden">
+            <div className="flex min-w-0 items-center overflow-hidden">
               <button
                 type="button"
                 onMouseDown={e => e.preventDefault()}
@@ -694,33 +698,35 @@ export function MessageInput({
               >
                 {markdownBarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
-              <div
-                className={`flex items-center gap-0.5 overflow-x-auto scrollbar-none transition-[max-width,opacity] duration-200 ${markdownBarOpen ? 'max-w-[640px] opacity-100 ml-0.5' : 'max-w-0 opacity-0'}`}
-                style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
-              >
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 1" onClick={() => applyMarkdown('# ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Heading1 className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 2" onClick={() => applyMarkdown('## ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Heading2 className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 3" onClick={() => applyMarkdown('### ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Heading3 className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Texte discret" onClick={() => applyMarkdown('-# ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Type className="w-4 h-4" /></button>
-                <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Gras" onClick={() => applyMarkdown('**')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Bold className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Italique" onClick={() => applyMarkdown('*')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Italic className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Souligné" onClick={() => applyMarkdown('__')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Underline className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Barré" onClick={() => applyMarkdown('~~')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Strikethrough className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Code en ligne" onClick={() => applyMarkdown('`')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Code className="w-4 h-4" /></button>
-                <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Bloc de code" onClick={() => applyMarkdown('```', '```', false, true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><SquareCode className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Citation" onClick={() => applyMarkdown('> ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Quote className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Citation multi-ligne" onClick={() => applyMarkdown('>>> ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><TextQuote className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Liste à puces" onClick={() => applyMarkdown('- ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><List className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Liste numérotée" onClick={() => applyMarkdown('1. ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><ListOrdered className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Lien" onClick={() => applyMarkdown('[', '](url)')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><LinkIcon className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={e => e.preventDefault()} title="Spoiler" onClick={() => applyMarkdown('||')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><EyeOff className="w-4 h-4" /></button>
+              <div className="ml-0.5 min-w-0 flex-1 overflow-hidden">
+                <div
+                  className={`flex items-center gap-0.5 whitespace-nowrap overflow-x-auto scrollbar-none transition-[opacity,transform] duration-200 ${markdownBarOpen ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0 pointer-events-none'}`}
+                  style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
+                  aria-hidden={!markdownBarOpen}
+                >
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 1" onClick={() => applyMarkdown('# ', '', true)} className={markdownButtonClass}><Heading1 className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 2" onClick={() => applyMarkdown('## ', '', true)} className={markdownButtonClass}><Heading2 className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 3" onClick={() => applyMarkdown('### ', '', true)} className={markdownButtonClass}><Heading3 className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Texte discret" onClick={() => applyMarkdown('-# ', '', true)} className={markdownButtonClass}><Type className="w-4 h-4" /></button>
+                  <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Gras" onClick={() => applyMarkdown('**')} className={markdownButtonClass}><Bold className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Italique" onClick={() => applyMarkdown('*')} className={markdownButtonClass}><Italic className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Souligné" onClick={() => applyMarkdown('__')} className={markdownButtonClass}><Underline className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Barré" onClick={() => applyMarkdown('~~')} className={markdownButtonClass}><Strikethrough className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Code en ligne" onClick={() => applyMarkdown('`')} className={markdownButtonClass}><Code className="w-4 h-4" /></button>
+                  <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Bloc de code" onClick={() => applyMarkdown('```', '```', false, true)} className={markdownButtonClass}><SquareCode className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Citation" onClick={() => applyMarkdown('> ', '', true)} className={markdownButtonClass}><Quote className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Citation multi-ligne" onClick={() => applyMarkdown('>>> ', '', true)} className={markdownButtonClass}><TextQuote className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Liste à puces" onClick={() => applyMarkdown('- ', '', true)} className={markdownButtonClass}><List className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Liste numérotée" onClick={() => applyMarkdown('1. ', '', true)} className={markdownButtonClass}><ListOrdered className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Lien" onClick={() => applyMarkdown('[', '](url)')} className={markdownButtonClass}><LinkIcon className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} title="Spoiler" onClick={() => applyMarkdown('||')} className={markdownButtonClass}><EyeOff className="w-4 h-4" /></button>
+                </div>
               </div>
             </div>
 
-
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className={`flex items-center justify-end gap-0.5 shrink-0 ${rightActionsWidthClass}`}>
               {!isMobile && (
                 <EmojiStickerPicker
                   serverId={serverId}
@@ -749,19 +755,14 @@ export function MessageInput({
                   </button>
                 }
               />
-              {(() => {
-                const canSend = !!value.trim() || attachments.length > 0;
-                return (
-                  <button
-                    type="submit"
-                    disabled={disabled || !canSend}
-                    aria-label="Envoyer"
-                    className={`ml-0.5 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${canSend ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]' : 'opacity-30 cursor-not-allowed'}`}
-                  >
-                    <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-                  </button>
-                );
-              })()}
+              <button
+                type="submit"
+                disabled={disabled || !canSubmitMessage}
+                aria-label="Envoyer"
+                className={`ml-0.5 shrink-0 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${canSubmitMessage ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]' : 'text-muted-foreground opacity-30 cursor-not-allowed'}`}
+              >
+                <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+              </button>
             </div>
           </div>
         </div>

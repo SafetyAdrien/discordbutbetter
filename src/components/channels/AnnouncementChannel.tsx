@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
 import { uuidToSnowflake } from "@/lib/snowflake";
+import { messageMentionsMe } from "@/lib/mention-detection";
 import {
   Bell,
   Pin,
@@ -757,7 +758,8 @@ export function AnnouncementChannel({
                     }}
                     className={cn(
                       "group message-hover px-2 -mx-2 relative",
-                      showAuthor ? "pt-1" : "py-0"
+                      showAuthor ? "pt-1" : "py-0",
+                      messageMentionsMe(message.content, user?.id, memberRoles?.get(user?.id ?? '')?.map(r => r.id) ?? []) && "message-mentioned",
                     )}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {

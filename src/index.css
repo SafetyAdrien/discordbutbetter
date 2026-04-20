@@ -335,6 +335,17 @@
     box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.15);
   }
 
+  /* Persistent highlight when a message mentions the current user */
+  .message-mentioned {
+    background: rgba(250, 166, 26, 0.10);
+    box-shadow: inset 2px 0 0 0 #faa61a;
+  }
+
+  .message-mentioned:hover {
+    background: rgba(250, 166, 26, 0.15);
+    box-shadow: inset 2px 0 0 0 #faa61a;
+  }
+
   /* === MATERIAL YOU SCROLLBAR === */
   .scrollbar-thin {
     scrollbar-width: thin;

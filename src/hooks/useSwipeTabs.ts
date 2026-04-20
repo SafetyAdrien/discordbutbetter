@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { haptics } from '@/lib/haptics';
 
 interface SwipeTabsOptions {
   currentIndex: number;
@@ -86,8 +87,10 @@ export function useSwipeTabs({
 
     if (lockedRef.current === 'horizontal' && Math.abs(dx) > threshold) {
       if (dx < 0 && currentIndex < tabCount - 1) {
+        haptics.selection();
         onSwipe(currentIndex + 1);
       } else if (dx > 0 && currentIndex > 0) {
+        haptics.selection();
         onSwipe(currentIndex - 1);
       }
     }

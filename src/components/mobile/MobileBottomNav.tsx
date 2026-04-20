@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { Globe, Bell, User, MessageCircle } from 'lucide-react';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { motion } from 'framer-motion';
+import { haptics } from '@/lib/haptics';
 
 export type MobileTab = 'servers' | 'discuss' | 'notifications' | 'profile';
 
@@ -42,7 +43,10 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
           return (
             <button
               key={id}
-              onClick={() => onTabChange(id)}
+              onClick={() => {
+                if (activeTab !== id) haptics.selection();
+                onTabChange(id);
+              }}
               className={cn(
                 'flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all duration-300 relative min-w-[56px] min-h-[44px]',
               )}

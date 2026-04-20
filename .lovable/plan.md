@@ -2,139 +2,92 @@
 
 ## Objectif
 
-Lorsqu'un message contient une **mention qui concerne l'utilisateur courant** (mention directe `<@MOI>`, mention d'un de ses rôles `<@&ROLE>`, ou mention globale `@everyone` / `@here`), styliser le message entier comme dans Discord :
+Simplifier l'apparence des pastilles de mention dans le chat :
+- **Rôles** : retirer la bordure gauche colorée et le fond teinté → afficher uniquement le **texte en bleu Discord** (`#5865F2`)
+- **`@everyone` / `@here`** : retirer la bordure gauche jaune et le fond jaune → afficher uniquement le **texte en bleu Discord**
 
-- **Bordure gauche jaune** (4 px) couleur `#faa61a`
-- **Fond jaune teinté** à environ **30 % d'opacité** (`rgba(250, 166, 26, 0.10-0.15)`) couvrant toute la zone du message
-- Effet **persistant** (pas seulement au survol)
+Seul le surlignage **du message entier** (bordure gauche jaune + fond jaune) reste actif lorsque l'utilisateur est concerné par la mention. C'est désormais le **seul indicateur de "ça me concerne"**.
 
 ## Comportement final
 
-```
-┃ Adrien_Sama 00:09
-┃ @everyone Salut !       ← bordure gauche jaune + fond jaune translucide
-```
-
-| Type de mention | Concerné si | Styling appliqué |
+| Élément | Avant | Après |
 |---|---|---|
-| `<@MON_SNOWFLAKE>` | Toujours pour moi | Oui |
-| `<@&ROLE_SNOWFLAKE>` | Si je possède ce rôle | Oui |
-| `@everyone` (littéral) | Toujours | Oui |
-| `@here` (littéral) | Toujours | Oui |
-| Autres mentions | Pour les autres | Non — rendu normal |
+| `@NomDuRôle` (pastille) | Fond coloré + bordure gauche couleur du rôle | Texte bleu `#5865F2`, sans fond, sans bordure |
+| `@everyone` (pastille) | Fond jaune + bordure gauche jaune | Texte bleu `#5865F2`, sans fond, sans bordure |
+| `@here` (pastille) | Fond jaune + bordure gauche jaune | Texte bleu `#5865F2`, sans fond, sans bordure |
+| Bordure gauche du **message** mentionné | Jaune (déjà en place) | Inchangé |
+| Fond jaune translucide du **message** mentionné | ~10 % opacité (déjà en place) | Inchangé |
+
+`@MonNom` (self-mention utilisateur) reste **inchangé** (jaune avec bordure et fond) — c'est la convention Discord pour distinguer les mentions directes vous concernant des mentions globales/rôle.
 
 ## Modifications
 
-### 1. Nouveau utilitaire : `src/lib/mention-detection.ts`
+### `src/components/chat/mentions/MentionComponents.tsx`
 
-Fonction pure `messageMentionsMe(content, currentUserId, currentUserRoleIds)` qui retourne `true` si :
+**1. `RoleMention`** (lignes 86-115)
 
-```ts
-import { uuidToSnowflake } from './snowflake';
-
-export function messageMentionsMe(
-  content: string,
-  currentUserId: string | undefined,
-  currentUserRoleIds: string[] = []
-): boolean {
-  if (!content) return false;
-  
-  // @everyone / @here (literals)
-  if (/(?:^|\s)@(everyone|here)(?:\s|$|[.,!?])/.test(content)) return true;
-  
-  if (!currentUserId) return false;
-  
-  // User mention: <@SNOWFLAKE> or <@!SNOWFLAKE>
-  const mySnowflake = uuidToSnowflake(currentUserId);
-  const userMentionRegex = new RegExp(`<@!?(${currentUserId}|${mySnowflake})>`, 'i');
-  if (userMentionRegex.test(content)) return true;
-  
-  // Role mention: <@&ROLE_SNOWFLAKE>
-  for (const roleId of currentUserRoleIds) {
-    const roleSnowflake = uuidToSnowflake(roleId);
-    const roleRegex = new RegExp(`<@&(${roleId}|${roleSnowflake})>`, 'i');
-    if (roleRegex.test(content)) return true;
-  }
-  
-  return false;
-}
-```
-
-### 2. Nouvelle classe CSS dans `src/index.css`
-
-Ajouter sous `.message-hover` :
-
-```css
-.message-mentioned {
-  background: rgba(250, 166, 26, 0.10);
-  box-shadow: inset 2px 0 0 0 #faa61a;
-}
-
-.message-mentioned:hover {
-  background: rgba(250, 166, 26, 0.15);
-  box-shadow: inset 2px 0 0 0 #faa61a;
-}
-```
-
-Le `inset 2px 0 0 0` agit comme une bordure gauche sans modifier la largeur réelle, restant compatible avec le `box-shadow` du hover existant (les angles droits sont préservés).
-
-### 3. Application dans les composers
-
-**`src/components/chat/ChatArea.tsx`** :
-
-- Récupérer `currentUserRoleIds` depuis `memberRoles?.get(user.id)` (déjà disponible dans le composant)
-- Pour chaque message rendu (lignes ~1115, ~1256, ~1433), calculer `const isMentioningMe = messageMentionsMe(message.content, user?.id, currentUserRoleIds)` et conditionnellement ajouter la classe :
+Remplacer le bloc `<span>` actuel par :
 
 ```tsx
-className={cn(
-  "group/message group message-hover px-4 pb-1 mb-1 relative",
-  showAuthor ? "pt-1.5" : "py-0.5",
-  isMentioningMe && "message-mentioned",
-)}
+<span
+  className="inline-flex items-center px-1 rounded-[3px] cursor-default font-medium transition-colors duration-100"
+  style={{ color: '#5865F2' }}
+>
+  @{roleName}
+</span>
 ```
 
-**`src/components/threads/ThreadView.tsx`** (ligne ~777) — même logique.
+Retraits :
+- `border-l-2`
+- `borderLeftColor` inline
+- `backgroundColor: hexToRgba(roleColor, 0.3)` inline
+- `pl-1.5 pr-1` (compensation de la bordure) → remplacé par `px-1` symétrique
 
-**`src/components/channels/AnnouncementChannel.tsx`** (ligne ~759) — même logique.
+L'helper `hexToRgba` n'est plus utilisé dans `RoleMention` mais reste exporté si réutilisé ailleurs (à laisser en place, sans risque). La prop `roleColor` reste acceptée mais n'est utilisée que dans le **tooltip** (pour la pastille de couleur du rôle dans le popup hover).
 
-**`src/components/dm/DMConversation.tsx`** (ligne ~436) — pour les DM, seules les mentions utilisateur directes comptent (pas de rôles, pas de `@everyone` dans une DM 1-1, mais on applique la même fonction par cohérence).
+**2. `EveryoneMention`** (lignes 232-239)
 
-### 4. Récupération des rôles utilisateur
+Remplacer par :
 
-Dans `ChatArea.tsx`, le hook `useMembers` retourne déjà `memberRoles` (Map<userId, Role[]>). Ajouter en haut du composant :
-
-```ts
-const currentUserRoleIds = useMemo(
-  () => (user ? memberRoles?.get(user.id)?.map(r => r.id) ?? [] : []),
-  [memberRoles, user]
-);
+```tsx
+export function EveryoneMention({ type }: EveryoneMentionProps) {
+  return (
+    <span
+      className="inline-flex items-center px-1 rounded-[3px] font-medium"
+      style={{ color: '#5865F2' }}
+    >
+      @{type}
+    </span>
+  );
+}
 ```
 
-Idem dans `ThreadView` et `AnnouncementChannel`.
+Retraits :
+- `bg-[rgba(250,166,26,0.3)]`
+- `text-[#faa61a]`
+- `border-l-2 border-[#faa61a]`
 
 ## Détails techniques
 
-- **Pas de migration SQL** — purement client-side, basé sur le contenu du message déjà chargé
-- **Pas de changement du moteur Markdown** — `src/lib/markdown.tsx` continue de rendre les pastilles colorées des mentions individuelles
-- **Performance** : la détection est O(n) sur le nombre de rôles de l'utilisateur courant (généralement < 10), exécutée une fois par rendu de message via `useMemo`/calcul direct
-- **Compatibilité** : fonctionne avec UUID et Snowflake (regex couvre les deux formats)
-- **Préserve les angles droits** : on utilise `box-shadow` (pas de `border-left`) pour ne pas décaler le contenu et rester cohérent avec la suppression du `border-radius` faite précédemment
-- **Self-mention déjà visible** : la pastille `@MonNom` reste stylisée en jaune (déjà en place dans `UserMention`)
+- Couleur retenue : `#5865F2` — bleu Discord standard (déjà utilisé pour les `UserMention` non-self dans la variante `bio` du même fichier, cohérence garantie).
+- Aucun changement sur :
+  - `UserMention` (mentions utilisateurs : self reste jaune, autres restent violet/bleu pâle Discord)
+  - `ChannelMention`, `SpecialMention`, `MessageLinkEmbed`
+  - La détection `messageMentionsMe` et la classe `.message-mentioned` (le surlignage du message entier reste l'indicateur principal)
+  - Le moteur Markdown (`src/lib/markdown.tsx`)
+  - Le wire format `<@&SNOWFLAKE>` / `@everyone` / `@here`
+- L'autocomplétion (dropdown) garde son style propre (non touché).
+- Tooltip de `RoleMention` conservé tel quel (affiche toujours la couleur réelle du rôle dans la pastille du popup).
 
 ## Garantie de non-régression
 
-- Aucun changement sur le rendu Markdown, les attachments, polls, reactions
-- Les messages **sans** mention de l'utilisateur courant restent strictement identiques (hover normal)
-- Le hover normal reste fonctionnel et superposé au style "mentionné"
-- Aucun impact sur les notifications/compteurs (séparés via `channel_mentions`)
-- Mobile : la classe `.message-mentioned` reste persistante (le `:hover` mobile désactivé n'affecte que le hover normal)
+- Aucune migration SQL
+- Aucune perte de fonctionnalité (clic, hover tooltip, etc.)
+- Aucun impact sur les notifications, permissions, popup d'avertissement `@everyone`
+- Le contraste sur fond sombre reste lisible (`#5865F2` testé Discord-natif sur `--background`)
+- Les messages **mentionnant l'utilisateur** restent identifiables via la bordure gauche jaune + fond jaune translucide du message lui-même
 
 ## Fichiers modifiés
 
-- `src/lib/mention-detection.ts` — **nouveau** : fonction de détection
-- `src/index.css` — ajout des classes `.message-mentioned` et `.message-mentioned:hover`
-- `src/components/chat/ChatArea.tsx` — détection + classe conditionnelle (3 emplacements de rendu)
-- `src/components/threads/ThreadView.tsx` — idem
-- `src/components/channels/AnnouncementChannel.tsx` — idem
-- `src/components/dm/DMConversation.tsx` — idem (mentions utilisateur uniquement)
+- `src/components/chat/mentions/MentionComponents.tsx` — `RoleMention` et `EveryoneMention` simplifiés (texte bleu uniquement)
 

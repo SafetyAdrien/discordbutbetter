@@ -437,7 +437,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             'flex gap-3 group message-hover px-2 -mx-2 relative',
                             showAuthor ? 'pt-1' : 'py-0',
                             !showAuthor && 'pl-12',
-                            messageMentionsMe(message.content, user?.id, []) && 'message-mentioned',
+                            messageMentionsMe(message.content, user?.id, []) && 'message-mentioned !-mx-4 !px-6',
                           )}
                           onMouseEnter={() => setHoveredMessageId(message.id)}
                           onMouseLeave={() => { 

@@ -105,7 +105,7 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [markdownBarOpen, setMarkdownBarOpen] = useState(false);
 
-  const applyMarkdown = useCallback((prefix: string, suffix: string = prefix, isLinePrefix: boolean = false) => {
+  const applyMarkdown = useCallback((prefix: string, suffix: string = prefix, isLinePrefix: boolean = false, blockWrap: boolean = false) => {
     const ta = textareaRef.current;
     if (!ta) return;
     const start = ta.selectionStart;
@@ -118,7 +118,16 @@ export function MessageInput({
     let newStart: number;
     let newEnd: number;
 
-    if (isLinePrefix) {
+    if (blockWrap) {
+      // Wrap selection in block delimiters with newlines: prefix\nselected\nsuffix
+      const needsLeadingNewline = before.length > 0 && !before.endsWith('\n');
+      const needsTrailingNewline = after.length > 0 && !after.startsWith('\n');
+      const lead = (needsLeadingNewline ? '\n' : '') + prefix + '\n';
+      const trail = '\n' + suffix + (needsTrailingNewline ? '\n' : '');
+      newValue = before + lead + selected + trail + after;
+      newStart = start + lead.length;
+      newEnd = newStart + selected.length;
+    } else if (isLinePrefix) {
       // Find start of first line in selection
       const lineStart = before.lastIndexOf('\n') + 1;
       const segment = value.slice(lineStart, end);

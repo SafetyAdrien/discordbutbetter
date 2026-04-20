@@ -106,7 +106,7 @@ export function AnnouncementComposer({
     setHeaderImage(null);
   };
 
-  const handleSubmit = async () => {
+  const performSubmit = async () => {
     if (!canSubmit) return;
 
     const trimmedTitle = title.trim();

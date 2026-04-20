@@ -166,23 +166,19 @@ export function MessageInput({
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Adjust textarea height and reset overlay scroll position
+  // Uses a single 28px baseline matching the textarea's min-h-[28px] class
+  // to prevent vertical jumps when toggling markdown content.
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const DESKTOP_MIN_HEIGHT = 44;
-    const COMPACT_MIN_HEIGHT = 28;
-    const DESKTOP_SINGLE_LINE_TOLERANCE = 6;
-    const minH = compact ? COMPACT_MIN_HEIGHT : DESKTOP_MIN_HEIGHT;
+    const MIN_HEIGHT = 28;
     textarea.style.height = 'auto';
     const sh = textarea.scrollHeight;
-    // For desktop single-line: clamp to baseline if scrollHeight is within tolerance (handles 43-46px browser variance)
-    const height = (!compact && sh <= DESKTOP_MIN_HEIGHT + DESKTOP_SINGLE_LINE_TOLERANCE) ? DESKTOP_MIN_HEIGHT : Math.max(sh, minH);
-    textarea.style.height = height + 'px';
-    // Sync overlay scroll
+    textarea.style.height = Math.max(sh, MIN_HEIGHT) + 'px';
     if (overlayRef.current) {
       overlayRef.current.scrollTop = textarea.scrollTop;
     }
-  }, [compact]);
+  }, []);
 
   useEffect(() => {
     adjustTextareaHeight();

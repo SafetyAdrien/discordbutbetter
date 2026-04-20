@@ -416,8 +416,15 @@ export function MobileLayout({
   const isOverlayActive = mobileView.type !== 'tab';
   const canSwipeTabs = !isOverlayActive && !activeDMId && !showDiscover && !showCreate && !settingsServerId;
 
+  // Visual viewport / keyboard handling
+  const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
+  const hideBottomNav = isKeyboardOpen && isInputFocused;
+
   return (
-    <div className="h-[100svh] flex flex-col bg-background overflow-hidden relative">
+    <div
+      className="flex flex-col bg-background overflow-hidden relative"
+      style={{ height: '100svh', paddingBottom: hideBottomNav ? `${keyboardHeight}px` : undefined }}
+    >
       {/* Main Content */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
@@ -541,8 +548,8 @@ export function MobileLayout({
         </div>
       )}
 
-      {/* Bottom Navigation - always visible */}
-      {!activeDMId && (
+      {/* Bottom Navigation - hidden when keyboard is open on a focused input */}
+      {!activeDMId && !hideBottomNav && (
         <MobileBottomNav activeTab={activeTab} onTabChange={(tab) => {
           setActiveTab(tab);
           setMobileView({ type: 'tab' });

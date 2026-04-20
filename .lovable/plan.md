@@ -2,115 +2,130 @@
 
 ## Objectif
 
-Compléter le système `@everyone` / `@here` avec :
-1. Ciblage par statut différencié
-2. Respect strict de la permission serveur `mention_everyone`
-3. **Popup d'avertissement obligatoire** avant l'envoi de tout message contenant `@everyone` ou `@here`
+Unifier le caractère de déclenchement des mentions : un seul `@` ouvre désormais un dropdown unifié contenant **utilisateurs**, **rôles** et **mentions globales** (`@everyone` / `@here`), avec un séparateur visuel entre les utilisateurs d'un côté et les rôles + mentions globales de l'autre. Le préfixe `@&` disparaît côté UX.
 
 ## Comportement final
 
-### Mentions et ciblage
+### Saisie utilisateur
 
-| Mention | Notifie qui |
+| Avant | Après |
 |---|---|
-| `@everyone` | Tous les membres du serveur (`online`, `idle`, `dnd`, `offline`) — sauf l'auteur |
-| `@here` | Uniquement les membres `online`, `idle`, `dnd` (exclut `offline`) — sauf l'auteur |
+| `@john` → menu utilisateurs | `@john` → dropdown unifié filtré (utilisateurs + rôles + globaux) |
+| `@&admin` → menu rôles | `@admin` → dropdown unifié, filtre sur rôles aussi |
+| `@everyone` tapé manuellement | Suggéré dans le dropdown unifié dès `@e` |
 
-### Permission `mention_everyone`
+Le déclencheur `@&` est **complètement supprimé** côté input. Un seul `@` ouvre tout.
 
-- **Désactivée** → `@everyone` et `@here` masqués dans l'autocomplétion **et** ignorés côté trigger SQL (le message s'envoie, mais aucune entrée dans `channel_mentions`).
-- **Activée** ou utilisateur owner/admin → mentions actives + popup d'avertissement déclenchée.
+### Dropdown unifié
 
-### Popup d'avertissement (nouveau)
+Structure verticale avec séparateur :
 
-Avant chaque envoi d'un message contenant `@everyone` ou `@here` (avec permission valide) :
+```
+┌─────────────────────────────────┐
+│ MEMBRES                         │
+│  👤 Alice          alice        │
+│  👤 Bob            bob          │
+├─── separator ───────────────────┤
+│ RÔLES & MENTIONS GLOBALES       │
+│  @ everyone                     │
+│  @ here                         │
+│  @ Admin           (rouge)      │
+│  @ Modérateur      (vert)       │
+└─────────────────────────────────┘
+```
 
-**Titre** : "Mentionner tout le monde ?"
+- Section **Membres** en haut
+- Composant `Separator` shadcn entre les deux blocs
+- Section **Rôles & Mentions globales** en bas, avec `@everyone` et `@here` épinglés en tête (si permission `mention_everyone`)
+- Filtre commun appliqué à toutes les entrées : la requête `@adm` filtre simultanément utilisateurs ET rôles
+- Si une seule des deux sections a des résultats, l'autre + le séparateur ne s'affichent pas
 
-**Corps** : "Tu es sur le point de mentionner tout un groupe de personnes, souhaites-tu vraiment envoyer ou modifier ton message ?"
+### Format câblé (inchangé)
 
-**Boutons** :
-- **Publier** → envoie le message tel quel, déclenche les notifications
-- **Modifier le message** → annule l'envoi, le contenu reste dans le textarea, focus rendu pour édition
+Le format stocké en base reste **strictement identique** :
+- Utilisateur → `<@SNOWFLAKE>`
+- Rôle → `<@&SNOWFLAKE>`
+- `@everyone` / `@here` → littéral
 
-**Conditions de déclenchement** :
-- Détection regex `\B@(everyone|here)\b` dans le contenu
-- Uniquement si l'utilisateur a la permission `mention_everyone` (sinon les mentions sont silencieusement ignorées sans popup, comme du texte normal)
-- S'applique aux messages texte, threads, annonces — pas aux DMs (pas de `@everyone` en DM)
+Seul le **trigger de saisie** change. Le rendu Markdown, le trigger SQL, les notifications restent inchangés.
 
 ## Modifications
 
-### 1. Migration SQL
+### 1. `src/components/chat/MessageInput.tsx`
 
-**Nouvelle fonction** `can_mention_everyone(_user_id uuid, _server_id uuid)` SECURITY DEFINER :
-- Owner principal/secondaire → `true`
-- Rôle avec `administrator` → `true`
-- Rôle avec `mention_everyone` → `true`
-- Sinon → `false`
+**Supprimer** la détection du préfixe `@&` (lignes 267-279).
 
-**Refonte** `detect_and_insert_mentions()` :
-- Vérifier la permission via `can_mention_everyone` avant d'insérer pour `@everyone` ou `@here`
-- `@everyone` → tous les membres du serveur (sauf auteur)
-- `@here` → membres avec `profiles.status IN ('online','idle','dnd')` (sauf auteur)
-- Le reste du trigger (mentions utilisateur, rôles) inchangé
+**Modifier** la détection `@` (lignes 307-319) pour qu'elle ouvre un nouveau type unifié `'user-role'` au lieu de `'user'` strict.
 
-### 2. Nouveau composant `MentionEveryoneWarningModal.tsx`
+```ts
+// Nouveau : un seul match @ qui couvre tout
+const mentionMatch = beforeCursor.match(/(?:^|\s)(@(?!&)[\w\u00C0-\u024F]*)$/);
+if (mentionMatch) {
+  return { type: 'unified', query, startIndex, triggerLength: 1 };
+}
+```
 
-Modal léger basé sur `AlertDialog` shadcn :
-- Props : `open`, `mentionType: 'everyone' | 'here' | 'both'`, `onConfirm`, `onEdit`
-- Titre dynamique selon `mentionType`
-- 2 boutons : **Publier** (variant primary) et **Modifier le message** (variant secondary)
-- Pas de dismiss par clic extérieur (force le choix explicite)
+Mettre à jour `MentionState` pour accepter le type `'unified'` (ou réutiliser `'user'` en élargissant son comportement dans l'autocomplete).
 
-### 3. Intégration dans `MessageInput.tsx`
+### 2. `src/components/chat/MentionAutocomplete.tsx`
 
-- Détection regex au moment du `handleSubmit`
-- Si match + permission → ouvrir le modal au lieu d'envoyer
-- Stocker temporairement le payload (content + attachments) dans un état local
-- **Publier** → exécute l'envoi original + ferme le modal
-- **Modifier** → ferme le modal, restitue le focus au textarea, contenu préservé
-- Préférence utilisateur ignorée (pas de "Ne plus afficher" pour le moment, comme demandé)
+**Refonte** du composant pour le type `user` (renommé conceptuellement en "unified") :
 
-### 4. Intégration dans `ThreadView.tsx`
+- Le composant accepte `members`, `roles` et `canMentionEveryone` simultanément quand `type === 'user'`
+- Calcule deux listes filtrées :
+  - `filteredMembers` : utilisateurs matchant la query
+  - `filteredRolesAndGlobal` : `@everyone` + `@here` (si permission) + rôles matchant la query
+- Rend deux sections séparées par `<Separator />` (shadcn) si les deux ont des résultats
+- Navigation clavier (↑/↓) traverse les deux sections de manière fluide via un index global
+- Header "MEMBRES" + header "RÔLES & MENTIONS GLOBALES"
 
-Même logique que `MessageInput` pour les messages envoyés dans les threads (réutilise le même modal).
+Le type `role` séparé est **supprimé** de l'API publique du composant (plus aucun appelant ne le déclenche).
 
-### 5. Intégration dans `AnnouncementComposer.tsx`
+### 3. `handleMentionSelect` dans `MessageInput.tsx`
 
-Même logique pour les annonces (réutilise le même modal).
+Aucun changement de format de sortie : `handleSelect` dans `MentionAutocomplete` continue d'émettre :
+- `<@SNOWFLAKE>` pour utilisateur
+- `<@&SNOWFLAKE>` pour rôle
+- `@everyone` / `@here` littéral
 
-### 6. Permission resolution côté client
+Ces wire formats sont conservés pour la compatibilité avec le moteur Markdown, le trigger SQL et l'historique des messages.
 
-Réutiliser `usePermissions` pour exposer `canMentionEveryone` au composer. Si déjà disponible via `MentionAutocomplete`, le hook est partagé. Sinon, ajout d'un sélecteur léger dans le composer parent.
+### 4. Réutilisation dans les autres composers
 
-### 7. Mise à jour `src/constants/permissions.ts`
+Vérifier et mettre à jour si nécessaire :
+- `src/components/threads/ThreadView.tsx`
+- `src/components/channels/announcement/AnnouncementComposer.tsx`
+- `src/components/dm/DMConversation.tsx`
 
-Description de `mention_everyone` mise à jour :
-> "Permet de notifier tous les membres (`@everyone`) ou uniquement les membres en ligne (`@here`)"
+Si ces composers utilisent `MessageInput.tsx` directement → rien à faire (héritage automatique). Sinon, propager la même logique de détection `@` unifié.
+
+### 5. Aucun changement nécessaire
+
+- `src/lib/markdown.tsx` — le rendu lit toujours `<@&...>` correctement
+- `src/components/chat/InputMarkdownOverlay.tsx` — overlay préserve le rendu wire format
+- `supabase/migrations/...` — trigger SQL inchangé
+- `src/constants/permissions.ts` — permission `mention_everyone` toujours active
 
 ## Détails techniques
 
-- **Détection** : `/\B@(everyone|here)\b/` exécutée juste avant l'envoi (pas pendant la frappe pour éviter les déclenchements parasites)
-- **Permission checking côté client** : optimiste — on affiche le popup même si le client pense avoir la permission. Le trigger SQL reste la source de vérité.
-- **Pas de popup en DM** : les DMs n'ont pas de notion de `@everyone`
-- **Pas de popup pour l'édition de message** : seulement à l'envoi initial (cohérent avec Discord)
-- **Réutilisation** : un seul composant `MentionEveryoneWarningModal` partagé entre les 3 composers
-- **i18n** : strings en français (cohérent avec le reste de l'UI)
+- **Conflit de filtre** : si un utilisateur s'appelle `everyone`, il apparaît dans la section Membres ; le rôle global `@everyone` reste dans la section Rôles. Pas de collision puisque les sections sont distinctes.
+- **Navigation clavier** : un index global `[0..members.length + rolesAndGlobal.length - 1]` ; la sélection visuelle suit l'ordre d'affichage (membres en premier, puis séparateur, puis rôles).
+- **Séparateur** : composant `<Separator />` shadcn déjà disponible dans `src/components/ui/separator.tsx`.
+- **Limite d'affichage** : 10 utilisateurs max + 8 rôles max (comme aujourd'hui), `@everyone`/`@here` toujours en tête de la section rôle.
+- **Backward compat** : les anciens messages contenant `@&...` saisis manuellement avant ce changement restent valides (le trigger `@&` n'est plus suggéré mais le wire format `<@&SNOWFLAKE>` continue d'être rendu correctement).
 
-## Fichiers modifiés / créés
+## Fichiers modifiés
 
-- `supabase/migrations/<nouveau>.sql` — fonction `can_mention_everyone` + refonte `detect_and_insert_mentions`
-- `src/constants/permissions.ts` — description mise à jour
-- `src/components/chat/MentionEveryoneWarningModal.tsx` — **nouveau composant**
-- `src/components/chat/MessageInput.tsx` — détection + intégration modal
-- `src/components/threads/ThreadView.tsx` — intégration modal
-- `src/components/channels/announcement/AnnouncementComposer.tsx` — intégration modal
+- `src/components/chat/MessageInput.tsx` — suppression du trigger `@&`, unification sous `@`
+- `src/components/chat/MentionAutocomplete.tsx` — fusion des sections user/role + séparateur
+- (potentiellement) `src/components/threads/ThreadView.tsx` et autres composers si logique de détection dupliquée
 
 ## Garantie de non-régression
 
-- Aucune modification du moteur Markdown (`src/lib/markdown.tsx`)
-- Aucune modification du système de mentions utilisateur/rôle/salon
-- Aucun changement sur le rendu visuel des mentions `@everyone` / `@here` (style jaune/orange déjà en place)
-- Notifications/badges fonctionnent automatiquement via la table `channel_mentions` existante
-- Pas d'impact sur les DMs ni le système de présence
+- Wire format `<@&SNOWFLAKE>` préservé en base et au rendu
+- Trigger SQL `detect_and_insert_mentions` inchangé
+- Permission `mention_everyone` toujours respectée
+- Popup d'avertissement `MentionEveryoneWarningModal` inchangée
+- Mentions de salons (`#`) inchangées
+- Aucune migration SQL nécessaire
 

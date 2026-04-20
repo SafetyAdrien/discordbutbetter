@@ -34,6 +34,9 @@ import { useNavigationState } from '@/hooks/useNavigationState';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import LoadingScreen from '@/components/LoadingScreen';
 import { usePreloader } from '@/hooks/usePreloader';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Menu, Users } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
 
 // Main application component

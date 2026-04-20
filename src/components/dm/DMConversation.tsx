@@ -41,6 +41,9 @@ import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
 import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
 import { useDMMessageReactions, useToggleDMReaction } from '@/hooks/useDMReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
@@ -71,6 +74,8 @@ export interface DMConversationProps {
 }
 
 export function DMConversation({ conversationId, onBack }: DMConversationProps) {
+  const { isMobile } = useBreakpoint();
+  const swipeBack = useSwipeBack({ onBack: () => onBack?.() });
   const [messageInput, setMessageInput] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
@@ -254,6 +259,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onTouchStart={isMobile && onBack ? swipeBack.onTouchStart : undefined}
+      onTouchMove={isMobile && onBack ? swipeBack.onTouchMove : undefined}
+      onTouchEnd={isMobile && onBack ? swipeBack.onTouchEnd : undefined}
     >
       <AnimatePresence>
         {isDragging && <UploadDropOverlay channelName={displayName} />}
@@ -432,6 +440,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                           edited_at: message.edited_at || null,
                         }) : undefined}
                       >
+                        <SwipeToReplyRow
+                          enabled={isMobile}
+                          onReply={() => handleReply(message)}
+                          onDoubleTap={() => handleAddReaction(message.id, '❤️')}
+                        >
                         <div 
                           className={cn(
                             'flex gap-3 group message-hover px-2 -mx-2 relative',
@@ -566,6 +579,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             )}
                           </div>
                         </div>
+                        </SwipeToReplyRow>
                       </UniversalMessageContextMenu>
                       </div>
                     );

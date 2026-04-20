@@ -852,3 +852,13 @@
     padding-bottom: 0.75rem;
   }
 }
+
+/* Mobile: prevent iOS rubber-band bounce inside scroll containers and respect system text size. */
+@media (max-width: 1023px) {
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  .scroll-area-viewport,
+  [data-radix-scroll-area-viewport],
+  .messages-scroll {
+    overscroll-behavior: contain;
+  }
+}

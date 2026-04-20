@@ -26,6 +26,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSwipeTabs } from '@/hooks/useSwipeTabs';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
+import { useVisualViewport } from '@/hooks/useVisualViewport';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -415,8 +416,15 @@ export function MobileLayout({
   const isOverlayActive = mobileView.type !== 'tab';
   const canSwipeTabs = !isOverlayActive && !activeDMId && !showDiscover && !showCreate && !settingsServerId;
 
+  // Visual viewport / keyboard handling
+  const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
+  const hideBottomNav = isKeyboardOpen && isInputFocused;
+
   return (
-    <div className="h-[100svh] flex flex-col bg-background overflow-hidden relative">
+    <div
+      className="flex flex-col bg-background overflow-hidden relative"
+      style={{ height: '100svh', paddingBottom: hideBottomNav ? `${keyboardHeight}px` : undefined }}
+    >
       {/* Main Content */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
@@ -488,7 +496,8 @@ export function MobileLayout({
 
         {/* Base tab views with swipe */}
         <div
-          className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]"
+          className="h-full"
+          style={{ paddingBottom: hideBottomNav ? 0 : 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
           {...(canSwipeTabs ? {
             onTouchStart: swipeTabs.onTouchStart,
             onTouchMove: swipeTabs.onTouchMove,
@@ -540,8 +549,8 @@ export function MobileLayout({
         </div>
       )}
 
-      {/* Bottom Navigation - always visible */}
-      {!activeDMId && (
+      {/* Bottom Navigation - hidden when keyboard is open on a focused input */}
+      {!activeDMId && !hideBottomNav && (
         <MobileBottomNav activeTab={activeTab} onTabChange={(tab) => {
           setActiveTab(tab);
           setMobileView({ type: 'tab' });

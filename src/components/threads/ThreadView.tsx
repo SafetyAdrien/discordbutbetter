@@ -61,6 +61,7 @@ import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/
 import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useThreadReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
@@ -773,6 +774,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         edited_at: message.edited_at || null,
                       }) : undefined}
                     >
+                      <SwipeToReplyRow
+                        enabled={isMobile}
+                        onReply={() => setReplyingTo(message)}
+                        onDoubleTap={() => handleAddReaction(message.id, '❤️')}
+                      >
                       <div 
                         className={cn(
                           'flex gap-3 px-2 py-1 message-hover relative',
@@ -889,6 +895,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           )}
                         </div>
                       </div>
+                      </SwipeToReplyRow>
                     </UniversalMessageContextMenu>
                   );
                 })}

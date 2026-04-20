@@ -88,8 +88,12 @@ export function RoleMention({ roleId, roleName, roleColor }: RoleMentionProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className="inline-flex items-center px-1 rounded-[3px] cursor-default font-medium transition-colors duration-100"
-            style={{ color: '#5865F2' }}
+            className="inline-flex items-center gap-0.5 pl-1.5 pr-1 rounded-[3px] cursor-default font-medium border-l-2 transition-colors duration-100"
+            style={{
+              backgroundColor: hexToRgba(roleColor || '#99aab5', 0.3),
+              color: roleColor || '#99aab5',
+              borderLeftColor: roleColor || '#99aab5',
+            }}
           >
             @{roleName}
           </span>
@@ -227,10 +231,8 @@ interface EveryoneMentionProps {
 
 export function EveryoneMention({ type }: EveryoneMentionProps) {
   return (
-    <span
-      className="inline-flex items-center px-1 rounded-[3px] font-medium"
-      style={{ color: '#5865F2' }}
-    >
+    <span className="inline-flex items-center px-1 rounded-[3px] font-medium
+      bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a]">
       @{type}
     </span>
   );

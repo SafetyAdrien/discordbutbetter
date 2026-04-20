@@ -73,6 +73,8 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+  const [tabletChannelsOpen, setTabletChannelsOpen] = useState(false);
+  const [tabletMembersOpen, setTabletMembersOpen] = useState(false);
   const [voiceChatChannelId, setVoiceChatChannelId] = useState<string | null>(null);
   const [threadPanelFlex, setThreadPanelFlex] = useState(4); // flex ratio for thread panel
   const threadResizing = useRef(false);

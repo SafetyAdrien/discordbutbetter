@@ -753,6 +753,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       key={message.id}
                       isOwnMessage={isOwnMessage}
                       messageId={message.id}
+                      previewAuthorName={message.author?.display_name || message.author?.username}
+                      previewAuthorAvatar={message.author?.avatar_url || undefined}
+                      previewContent={message.content}
                       onReply={() => setReplyingTo(message)}
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                       onCopyText={() => copyToClipboard(message.content, 'Message copié')}

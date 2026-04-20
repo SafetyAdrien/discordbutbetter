@@ -227,6 +227,9 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     canManageMessages={canManageMessages}
                     hasReactions={(reactionsData[message.id]?.length ?? 0) > 0}
                     canManageReactions={canManageMessages}
+                    previewAuthorName={message.author?.display_name || message.author?.username}
+                    previewAuthorAvatar={message.author?.avatar_url || undefined}
+                    previewContent={message.content}
                     onViewReactions={() => setReactionsViewerMessageId(message.id)}
                     onClearAllReactions={() => clearMessageReactions.mutate({ messageId: message.id })}
                     onReply={() => {}}

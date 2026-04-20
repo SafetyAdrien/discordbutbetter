@@ -14,6 +14,7 @@ import { useCreateThread } from '@/hooks/useThreads';
 import { usePublishMessage, useChannelFollowers } from '@/hooks/useChannelFollowers';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from '@/components/chat/MentionEveryoneWarningModal';
 
 interface AnnouncementComposerProps {
   channel: Channel;
@@ -23,6 +24,7 @@ interface AnnouncementComposerProps {
   canAttachFiles: boolean;
   canCreateThreads: boolean;
   canPublish: boolean;
+  canMentionEveryone?: boolean;
   showFollowBar?: boolean;
   onFollowClick?: () => void;
 }
@@ -35,6 +37,7 @@ export function AnnouncementComposer({
   canAttachFiles,
   canCreateThreads,
   canPublish,
+  canMentionEveryone = false,
   showFollowBar,
   onFollowClick,
 }: AnnouncementComposerProps) {
@@ -45,6 +48,7 @@ export function AnnouncementComposer({
   const [threadName, setThreadName] = useState('');
   const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [pendingEveryoneMention, setPendingEveryoneMention] = useState<EveryoneMentionType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headerImageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -102,7 +106,7 @@ export function AnnouncementComposer({
     setHeaderImage(null);
   };
 
-  const handleSubmit = async () => {
+  const performSubmit = async () => {
     if (!canSubmit) return;
 
     const trimmedTitle = title.trim();
@@ -179,6 +183,28 @@ export function AnnouncementComposer({
     } catch (err) {
       console.error('Send failed', err);
     }
+  };
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    if (canMentionEveryone) {
+      const mentionType = detectEveryoneMention(`${title}\n${message}`);
+      if (mentionType) {
+        setPendingEveryoneMention(mentionType);
+        return;
+      }
+    }
+    void performSubmit();
+  };
+
+  const handleConfirmEveryone = () => {
+    setPendingEveryoneMention(null);
+    void performSubmit();
+  };
+
+  const handleEditEveryone = () => {
+    setPendingEveryoneMention(null);
+    requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -425,6 +451,13 @@ export function AnnouncementComposer({
           )}
         </HoverCard>
       </div>
+
+      <MentionEveryoneWarningModal
+        open={pendingEveryoneMention !== null}
+        mentionType={pendingEveryoneMention ?? 'everyone'}
+        onConfirm={handleConfirmEveryone}
+        onEdit={handleEditEveryone}
+      />
     </div>
   );
 }

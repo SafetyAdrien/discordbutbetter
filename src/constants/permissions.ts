@@ -100,7 +100,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { key: 'add_reactions', label: 'Ajouter des réactions', description: 'Réagir aux messages avec des emojis' },
       { key: 'use_external_emojis', label: 'Emojis externes', description: 'Utiliser des emojis d\'autres serveurs' },
       { key: 'use_external_stickers', label: 'Stickers externes', description: 'Utiliser des stickers d\'autres serveurs' },
-      { key: 'mention_everyone', label: 'Mentionner @everyone', description: 'Mentionner tous les membres' },
+      { key: 'mention_everyone', label: 'Mentionner @everyone et @here', description: 'Permet de notifier tous les membres (@everyone) ou uniquement les membres en ligne (@here)' },
       { key: 'send_tts_messages', label: 'Messages TTS', description: 'Envoyer des messages vocaux synthétiques' },
       { key: 'use_slash_commands', label: 'Commandes slash', description: 'Utiliser les commandes de l\'application' },
       { key: 'send_voice_messages', label: 'Messages vocaux', description: 'Envoyer des messages vocaux' },

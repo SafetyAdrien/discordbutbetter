@@ -1118,6 +1118,7 @@ export function AnnouncementChannel({
           canAttachFiles={canAttachFiles}
           canCreateThreads={isAdminOrOwner || canPerm('create_public_threads')}
           canPublish={canPublishMessages}
+          canMentionEveryone={isAdminOrOwner || canPerm('mention_everyone')}
           showFollowBar={!canSendMessages && !permissionDeniedMessage}
           onFollowClick={() => setFollowModalOpen(true)}
         />

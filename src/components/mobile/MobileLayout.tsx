@@ -69,7 +69,7 @@ export function MobileLayout({
   // Restore persisted state on mount
   const [activeTab, setActiveTabLocal] = useState<MobileTab>(() => {
     const tab = persistedTab as MobileTab;
-    if (tab === 'servers' || tab === 'notifications' || tab === 'profile') return tab;
+    if (tab === 'servers' || tab === 'discuss' || tab === 'notifications' || tab === 'profile') return tab;
     return 'servers';
   });
   const [mobileView, setMobileViewLocal] = useState<MobileView>(() => {
@@ -396,7 +396,7 @@ export function MobileLayout({
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
 
   // Swipe between tabs
-  const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];
+  const TAB_ORDER: MobileTab[] = ['servers', 'discuss', 'notifications', 'profile'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
 
   const handleSwipeTab = useCallback((newIndex: number) => {
@@ -415,7 +415,7 @@ export function MobileLayout({
   const canSwipeTabs = !isOverlayActive && !activeDMId && !showDiscover && !showCreate && !settingsServerId;
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden relative">
+    <div className="h-[100svh] flex flex-col bg-background overflow-hidden relative">
       {/* Main Content */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">

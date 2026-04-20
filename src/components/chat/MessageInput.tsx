@@ -9,7 +9,7 @@ import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from 
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
 

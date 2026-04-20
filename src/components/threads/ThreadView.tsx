@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { uuidToSnowflake } from '@/lib/snowflake';
+import { messageMentionsMe } from '@/lib/mention-detection';
 import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -776,6 +777,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         className={cn(
                           'flex gap-3 px-2 py-1 message-hover relative',
                           showAuthor ? 'pt-2' : '',
+                          messageMentionsMe(message.content, user?.id, membersData.find(m => m.user?.id === user?.id)?.roles?.map((r: any) => r.id) ?? []) && 'message-mentioned',
                         )}
                         onMouseEnter={() => setHoveredMessageId(message.id)}
                         onMouseLeave={() => { 

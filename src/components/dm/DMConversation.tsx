@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { uuidToSnowflake } from '@/lib/snowflake';
+import { messageMentionsMe } from '@/lib/mention-detection';
 import { AnimatePresence } from 'framer-motion';
 import { useDMMessages, useSendDMMessage, useEditDMMessage, useDeleteDMMessage, DMMessage } from '@/hooks/useDMMessages';
 import { useDMConversations } from '@/hooks/useDMs';
@@ -435,7 +436,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                           className={cn(
                             'flex gap-3 group message-hover px-2 -mx-2 relative',
                             showAuthor ? 'pt-1' : 'py-0',
-                            !showAuthor && 'pl-12'
+                            !showAuthor && 'pl-12',
+                            messageMentionsMe(message.content, user?.id, []) && 'message-mentioned',
                           )}
                           onMouseEnter={() => setHoveredMessageId(message.id)}
                           onMouseLeave={() => { 

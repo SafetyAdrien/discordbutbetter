@@ -100,9 +100,9 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
         </div>
       </div>
 
-      {/* Add Task */}
+      {/* Add Task (desktop inline) */}
       {canCreateTasks && (
-        <div className="px-4 py-3 border-b border-border">
+        <div className="hidden sm:block px-4 py-3 border-b border-border">
           <div className="flex gap-2">
             <Input
               placeholder="Ajouter une tâche..."
@@ -193,6 +193,16 @@ export function TasksChannel({ channel, onToggleMembers, showMembers }: TasksCha
           </div>
         )}
       </div>
+
+      {/* Mobile FAB */}
+      {canCreateTasks && (
+        <button
+          className="sm:hidden fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
+          aria-label="Nouvelle tâche"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 }

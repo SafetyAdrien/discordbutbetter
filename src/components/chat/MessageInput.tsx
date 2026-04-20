@@ -684,33 +684,43 @@ export function MessageInput({
             </Popover>
 
             {/* Markdown toolbar toggle + bar */}
-            <div className="flex items-center min-w-0 flex-1">
+            <div className="flex items-center min-w-0 flex-1 overflow-hidden">
               <button
                 type="button"
+                onMouseDown={e => e.preventDefault()}
                 onClick={() => setMarkdownBarOpen(o => !o)}
                 title={markdownBarOpen ? 'Masquer le formatage' : 'Afficher le formatage'}
-                className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1' : 'p-1.5'}`}
+                className={`shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1' : 'p-1.5'}`}
               >
                 {markdownBarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               <div
-                className={`flex items-center gap-0.5 overflow-hidden transition-[max-width,opacity] duration-200 ${markdownBarOpen ? 'max-w-[400px] opacity-100 ml-0.5' : 'max-w-0 opacity-0'}`}
+                className={`flex items-center gap-0.5 overflow-x-auto scrollbar-none transition-[max-width,opacity] duration-200 ${markdownBarOpen ? 'max-w-[640px] opacity-100 ml-0.5' : 'max-w-0 opacity-0'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
               >
-                <button type="button" title="Gras" onClick={() => applyMarkdown('**')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Bold className="w-4 h-4" /></button>
-                <button type="button" title="Italique" onClick={() => applyMarkdown('*')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Italic className="w-4 h-4" /></button>
-                <button type="button" title="Souligné" onClick={() => applyMarkdown('__')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Underline className="w-4 h-4" /></button>
-                <button type="button" title="Barré" onClick={() => applyMarkdown('~~')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Strikethrough className="w-4 h-4" /></button>
-                <button type="button" title="Code" onClick={() => applyMarkdown('`')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Code className="w-4 h-4" /></button>
-                <button type="button" title="Citation" onClick={() => applyMarkdown('> ', '', true)} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Quote className="w-4 h-4" /></button>
-                <button type="button" title="Liste" onClick={() => applyMarkdown('- ', '', true)} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><List className="w-4 h-4" /></button>
-                <button type="button" title="Lien" onClick={() => applyMarkdown('[', '](url)')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><LinkIcon className="w-4 h-4" /></button>
-                <button type="button" title="Spoiler" onClick={() => applyMarkdown('||')} className="text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><EyeOff className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 1" onClick={() => applyMarkdown('# ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Heading1 className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 2" onClick={() => applyMarkdown('## ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Heading2 className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 3" onClick={() => applyMarkdown('### ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Heading3 className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Texte discret" onClick={() => applyMarkdown('-# ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Type className="w-4 h-4" /></button>
+                <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Gras" onClick={() => applyMarkdown('**')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Bold className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Italique" onClick={() => applyMarkdown('*')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Italic className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Souligné" onClick={() => applyMarkdown('__')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Underline className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Barré" onClick={() => applyMarkdown('~~')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Strikethrough className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Code en ligne" onClick={() => applyMarkdown('`')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Code className="w-4 h-4" /></button>
+                <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Bloc de code" onClick={() => applyMarkdown('```', '```', false, true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><SquareCode className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Citation" onClick={() => applyMarkdown('> ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><Quote className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Citation multi-ligne" onClick={() => applyMarkdown('>>> ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><TextQuote className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Liste à puces" onClick={() => applyMarkdown('- ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><List className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Liste numérotée" onClick={() => applyMarkdown('1. ', '', true)} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><ListOrdered className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Lien" onClick={() => applyMarkdown('[', '](url)')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><LinkIcon className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={e => e.preventDefault()} title="Spoiler" onClick={() => applyMarkdown('||')} className="shrink-0 text-muted-foreground hover:text-primary rounded-full p-1.5 transition-colors flex items-center justify-center"><EyeOff className="w-4 h-4" /></button>
               </div>
             </div>
 
 
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5 shrink-0">
               {!isMobile && (
                 <EmojiStickerPicker
                   serverId={serverId}

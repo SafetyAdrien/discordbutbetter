@@ -12,6 +12,7 @@ import { normalizeForSearch } from '@/lib/utils';
 import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
+import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from './MentionEveryoneWarningModal';
 
 interface MessageInputProps {
   value: string;
@@ -459,6 +460,20 @@ export function MessageInput({
     return () => clearInterval(interval);
   }, [slowmodeSeconds, lastSentAt]);
 
+  const [pendingEveryoneMention, setPendingEveryoneMention] = useState<EveryoneMentionType | null>(null);
+
+  const performSend = useCallback(() => {
+    setLastSentAt(Date.now());
+    const attachmentData = attachments.map(a => ({
+      file: a.file,
+      name: a.name,
+      description: a.description,
+      isSpoiler: a.isSpoiler,
+    }));
+    onSend(attachmentData.length > 0 ? attachmentData : undefined);
+    onClearAttachments?.();
+  }, [attachments, onSend, onClearAttachments]);
+
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {
       // Slowmode check
@@ -471,17 +486,18 @@ export function MessageInput({
         }
       }
 
-      setLastSentAt(Date.now());
-      const attachmentData = attachments.map(a => ({
-        file: a.file,
-        name: a.name,
-        description: a.description,
-        isSpoiler: a.isSpoiler,
-      }));
-      onSend(attachmentData.length > 0 ? attachmentData : undefined);
-      onClearAttachments?.();
+      // @everyone / @here warning — only if user has permission
+      if (canMentionEveryone) {
+        const mentionType = detectEveryoneMention(value);
+        if (mentionType) {
+          setPendingEveryoneMention(mentionType);
+          return;
+        }
+      }
+
+      performSend();
     }
-  }, [value, attachments, disabled, onSend, onClearAttachments, slowmodeSeconds, lastSentAt]);
+  }, [value, attachments, disabled, performSend, slowmodeSeconds, lastSentAt, canMentionEveryone]);
 
   handleSendMessageRef.current = handleSendMessage;
 
@@ -493,10 +509,25 @@ export function MessageInput({
     }
   }, [value]);
 
+  const handleConfirmEveryone = useCallback(() => {
+    setPendingEveryoneMention(null);
+    performSend();
+  }, [performSend]);
+
+  const handleEditEveryone = useCallback(() => {
+    setPendingEveryoneMention(null);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const len = textareaRef.current?.value.length ?? 0;
+      textareaRef.current?.setSelectionRange(len, len);
+    });
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage();
   };
+
 
   // Handle paste: if text is selected and clipboard contains a URL, wrap as [text](url)
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {

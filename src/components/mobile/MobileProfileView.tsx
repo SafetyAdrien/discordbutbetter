@@ -26,7 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
-import { snowflakeFromUuid } from '@/lib/snowflake';
+import { uuidToSnowflake } from '@/lib/snowflake';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
 
@@ -73,7 +73,7 @@ export function MobileProfileView() {
   const handleCopyId = async () => {
     if (!user?.id) return;
     haptics.light();
-    const snowflake = snowflakeFromUuid(user.id);
+    const snowflake = uuidToSnowflake(user.id);
     await navigator.clipboard.writeText(snowflake);
     setCopied(true);
     toast.success('Identifiant copié');
@@ -331,7 +331,7 @@ export function MobileProfileView() {
         </section>
 
         <p className="text-center text-[11px] text-muted-foreground/60 mt-4 px-4">
-          ID · {user?.id ? snowflakeFromUuid(user.id) : '—'}
+          ID · {user?.id ? uuidToSnowflake(user.id) : '—'}
         </p>
       </div>
 

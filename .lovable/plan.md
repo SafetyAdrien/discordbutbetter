@@ -1,135 +1,151 @@
 
 ## Objectif
 
-Corriger définitivement le décalage de la zone de saisie dans `MessageInput.tsx` quand on clique sur un bouton Markdown, sans régression sur la barre d’actions, le textarea, l’overlay Markdown ni le comportement mobile.
+Corriger définitivement le décalage visible du composer Markdown dans `MessageInput.tsx`. Le problème restant ne vient pas seulement de la toolbar : il y a encore un désalignement structurel entre le textarea, l’overlay Markdown, et l’auto-resize du composer.
 
-## Problème exact
+## Causes restantes identifiées
 
-Le saut visible ne vient pas d’une seule cause :
+1. `InputMarkdownOverlay` est **absolu en `inset-0`**, mais dans `MessageInput` il reçoit une classe personnalisée (`py-0 min-h-[28px]`) qui **écrase son padding par défaut**.
+   - Résultat : l’overlay démarre au bord du wrapper alors que le textarea vit à l’intérieur d’un conteneur paddé (`px-4 pt-3 pb-1`).
+   - Le rendu Markdown n’est donc pas ancré exactement au même point que la vraie saisie.
 
-1. Le bouton **Send** est monté/démonté conditionnellement :
-   - état vide → pas de bouton
-   - après clic Markdown (`# `, `**`, etc.) → le champ devient non vide, donc le bouton apparaît
-   - résultat : le bloc droit change de largeur et toute la ligne se recalcule
+2. `adjustTextareaHeight()` garde encore un baseline desktop de **44px** hérité de l’ancien layout.
+   - Après insertion Markdown, le textarea repasse à `auto`, recalcule `scrollHeight`, puis remonte à 44px.
+   - Ce recalcul crée un saut vertical perceptible sur le premier clic.
 
-2. La zone Markdown centrale utilise une largeur animée (`max-w-[640px]`) dans un layout flex :
-   - à l’ouverture/fermeture ou après insertion, le navigateur recalcule la répartition de largeur
-   - le bloc droit peut être repoussé ou recompacté
+3. Le conteneur principal du composer utilise encore `transition-all`.
+   - Toute micro-variation de hauteur/largeur est animée, ce qui **amplifie visuellement** le moindre recalcul.
 
-3. Le clic sur les boutons Markdown doit continuer à préserver le focus du textarea, sinon cela ajoute un micro-saut de reflow/scroll.
+4. La toolbar Markdown est mieux contrainte qu’avant, mais son wrapper central reste animé avec `translate/opacity` dans un layout qui dépend encore d’un parent animé.
+   - Le vrai “décalage” perçu est surtout la combinaison overlay mal calé + textarea qui re-mesure.
 
-## Fix définitif
+## Correctif définitif
 
-### A — Stabiliser la largeur du bloc droit
+### A — Recaler parfaitement l’overlay sur le textarea
 
 Dans `src/components/chat/MessageInput.tsx` :
 
-- **Toujours rendre** le bouton Send dans le DOM
-- Ne plus utiliser :
-  - `(value.trim() || attachments.length > 0 || isMobile) && (...)`
-- Le remplacer par un bouton permanent avec 3 états :
-  - **actif** si message/pièces jointes/mobile
-  - **désactivé visuellement** si vide
-  - **disabled** si envoi impossible
+- Ne plus passer une classe qui neutralise le padding utile de l’overlay.
+- Faire correspondre **exactement** les métriques et offsets entre :
+  - wrapper du textarea
+  - `InputMarkdownOverlay`
+  - `textarea`
 
-Effet :
-- la largeur du bloc droit ne change plus jamais
-- cliquer sur un bouton Markdown n’ajoute plus brutalement un nouvel élément à droite
+Approche :
+- conserver le wrapper paddé actuel
+- faire porter à l’overlay **les mêmes paddings internes réels** que la zone de texte visible
+- ne pas laisser `InputMarkdownOverlay` s’étirer sur une zone différente du textarea
 
-### B — Réserver une largeur fixe au groupe droit
+Concrètement :
+- remplacer la prop `className={compact ? 'py-0 min-h-[28px]' : 'py-0 min-h-[28px]'}` par une classe alignée sur le composer réel
+- même `px`
+- même `pt/pb`
+- même `min-height`
+- même `text-sm`, `line-height`, `fontFamily`, `fontWeight`
 
-Toujours dans `MessageInput.tsx` :
+Effet attendu :
+- le Markdown rendu ne “bouge” plus par rapport au caret
+- plus de faux décalage visuel lors d’un clic sur une icône
 
-- Encapsuler `Sticker + Emoji + Send` dans un conteneur à largeur stable
-- Exemple de logique :
-  - desktop avec stickers : largeur prévue pour 3 actions
-  - mobile : largeur prévue pour 2 actions
-- Le groupe droit garde `shrink-0`
-- Le bouton Send garde sa place même quand il est inactif
+### B — Corriger l’auto-resize pour le nouveau composer
 
-Effet :
-- plus aucun déplacement horizontal des actions de droite
+Dans `MessageInput.tsx` :
 
-### C — Rendre la zone Markdown non-intrusive pour le layout
+- recalculer les constantes de hauteur minimale selon le nouveau layout vertical
+- supprimer la logique baseline 44px trop agressive si elle ne correspond plus au bloc textarea actuel
+- utiliser une hauteur minimale réellement basée sur :
+  - textarea seul
+  - et non l’ancienne ligne de composer horizontale
 
-Refactor de la barre d’actions en 3 zones réellement stables :
+Approche recommandée :
+- garder `textarea.style.height = 'auto'`
+- puis appliquer `Math.max(scrollHeight, minTextareaHeight)`
+- avec une valeur de min-height cohérente avec le `py-0 text-sm min-h-[28px]`
 
-```text
-[gauche fixe] [centre flexible mais contraint] [droite fixe]
-   + / chevron      toolbar markdown scrollable     sticker emoji send
-```
+Effet attendu :
+- plus de saut vertical au premier clic Markdown
+- la hauteur du textarea n’est plus réimposée artificiellement à une valeur issue de l’ancien layout
 
-Changements :
-- zone gauche : `shrink-0`
-- zone centre : `min-w-0 flex-1 overflow-hidden`
-- wrapper interne Markdown :
-  - `overflow-x-auto`
-  - pas de comportement qui pousse les siblings
-  - garder le scroll horizontal si besoin
-- zone droite : `shrink-0`
+### C — Retirer l’animation globale qui amplifie le bug
 
-En plus :
-- remplacer l’animation la plus agressive basée uniquement sur `max-width` par une ouverture plus stable :
-  - soit `w-0 -> w-auto` via wrapper externe + contenu interne
-  - soit `max-width` mais dans un conteneur dont les blocs voisins ont déjà leurs largeurs réservées
+Dans `MessageInput.tsx` :
 
-### D — Préserver définitivement le focus
+- remplacer `transition-all` sur le conteneur principal du composer par une transition ciblée
+- ex. seulement `transition-colors`, `transition-shadow`, ou aucune transition structurelle
 
-Conserver et homogénéiser sur **tous** les boutons Markdown :
+À ne plus animer :
+- hauteur
+- largeur
+- padding
+- border layout
 
-- `onMouseDown={(e) => e.preventDefault()}`
+Effet attendu :
+- les micro-ajustements restants ne seront plus visuellement exagérés
+- la barre semblera stable même pendant insertion Markdown
 
-Effet :
-- le textarea ne perd pas le focus
-- pas de scroll-into-view parasite
-- pas de re-mesure liée à une perte/reprise de focus
+### D — Stabiliser définitivement la barre d’actions
 
-### E — Vérifier les métriques overlay / textarea
+Le bouton Send permanent est une bonne base, mais il faut finaliser la stabilisation :
 
-Le décalage principal vient du layout, mais je sécurise aussi l’alignement visuel :
+- garder la structure en 3 zones
+- conserver le groupe droit à largeur réservée
+- garder `shrink-0` sur gauche et droite
+- garder le centre en `min-w-0 overflow-hidden`
+- éviter toute classe qui pourrait réintroduire une expansion implicite du parent
 
-- vérifier que le textarea et `InputMarkdownOverlay` gardent exactement :
-  - même font family
-  - même font size
-  - même line-height
-  - mêmes paddings horizontaux/verticaux dans cette version du composer
-- ne pas modifier le moteur Markdown, seulement l’alignement du composer si nécessaire
+Pour la toolbar Markdown :
+- conserver `onMouseDown={(e) => e.preventDefault()}` sur tous les boutons
+- garder le scroll horizontal interne si nécessaire
+- limiter les transitions à l’opacité/translation de la toolbar elle-même, pas du composer global
+
+### E — Si nécessaire, fiabiliser `InputMarkdownOverlay.tsx`
+
+Dans `src/components/chat/InputMarkdownOverlay.tsx` :
+
+- rendre la notion de padding plus explicite pour éviter que `className` remplace accidentellement l’alignement attendu
+- soit en séparant :
+  - structure absolue
+  - métriques texte
+  - spacing interne
+- soit en documentant/classant les variantes prévues pour `MessageInput`
+
+Le parsing Markdown ne change pas.
 
 ## Fichiers concernés
 
 ### 1. `src/components/chat/MessageInput.tsx`
 Modifications prévues :
-- rendre le bouton Send permanent
-- réserver la largeur du bloc droit
-- stabiliser la structure en 3 zones
-- conserver la toolbar Markdown complète
-- garder `onMouseDown preventDefault` partout
-- ajuster les classes flex/overflow pour éviter tout reflow visible
+- recalage overlay/textarea
+- correction auto-resize
+- suppression de `transition-all`
+- maintien du Send permanent
+- maintien du layout 3 zones
+- nettoyage des classes responsables de reflow visible
 
 ### 2. `src/components/chat/InputMarkdownOverlay.tsx`
-Seulement si nécessaire :
-- harmonisation fine des paddings/classe passés par `MessageInput`
-- aucun changement du parsing Markdown
+Modifications possibles :
+- sécuriser la gestion des paddings/offsets
+- éviter qu’une `className` incomplète désaligne l’overlay
+- aucun changement du moteur Markdown
 
 ## Résultat attendu
 
 Après correction :
-- cliquer sur n’importe quelle icône Markdown ne déplace plus la barre
-- le bouton Send ne “pop” plus à l’apparition du texte
-- Sticker / Emoji / Send restent parfaitement immobiles
-- la toolbar Markdown reste rétractable
-- aucun saut horizontal ni vertical sur desktop et mobile
+- cliquer sur une icône Markdown ne provoque plus aucun saut visible
+- le texte rendu par l’overlay reste exactement superposé au textarea
+- la barre d’actions reste immobile
+- le bouton Send ne modifie plus le layout
+- pas de régression mobile
+- pas de changement sur mentions, attachments, polls, follow bar, ni `src/lib/markdown.tsx`
 
 ## Détails techniques
 
-- Cause racine la plus probable : **montage conditionnel du bouton Send**
-- Cause secondaire : **animation de largeur de la toolbar au sein d’un flex non totalement contraint**
-- Approche retenue : **stabiliser le DOM et réserver l’espace**, plutôt que continuer à compenser visuellement le saut
-- Aucun changement backend, aucune migration, aucune dépendance
+La cause la plus probable du bug résiduel est maintenant :
+1. **overlay mal ancré par rapport au textarea**
+2. **auto-resize encore calé sur l’ancien baseline**
+3. **animation globale du composer qui rend le moindre recalcul visible**
 
-## Garantie de non-régression
-
-- Pas de modification de props de `MessageInput`
-- Pas de changement sur mentions, slowmode, attachments, polls, follow bar
-- Pas de changement sur `src/lib/markdown.tsx`
-- La toolbar Markdown garde tous les raccourcis visuels déjà ajoutés
+La correction définitive consiste donc à :
+- réaligner les métriques
+- supprimer les transitions structurelles
+- recalculer la hauteur sur la vraie géométrie du nouveau composer

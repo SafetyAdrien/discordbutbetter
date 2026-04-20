@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon } from 'lucide-react';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isAfter, isToday as isDateToday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface Channel {
   id: string;

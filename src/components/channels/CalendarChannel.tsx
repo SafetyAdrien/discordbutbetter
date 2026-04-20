@@ -319,6 +319,8 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

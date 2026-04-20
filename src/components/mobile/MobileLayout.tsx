@@ -5,6 +5,7 @@ import { MobileChannelListView } from './MobileChannelListView';
 import { MobileChatView } from './MobileChatView';
 import { MobileNotificationsView } from './MobileNotificationsView';
 import { MobileProfileView } from './MobileProfileView';
+import { MobileHomeView } from './MobileHomeView';
 import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
@@ -508,6 +509,13 @@ export function MobileLayout({
                 onCreateClick={() => setShowCreate(true)}
                 onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
                 onOpenDM={onOpenDM}
+                onShowFriends={onShowFriends}
+              />
+            )}
+            {activeTab === 'discuss' && (
+              <MobileHomeView
+                activeDMId={activeDMId}
+                onConversationSelect={onOpenDM}
                 onShowFriends={onShowFriends}
               />
             )}

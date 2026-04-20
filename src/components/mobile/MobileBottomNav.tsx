@@ -34,11 +34,14 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--surface-1))] backdrop-blur-2xl border-t border-border/30 pb-[env(safe-area-inset-bottom,0px)]"
       style={{ boxShadow: 'var(--shadow-elevation-2)' }}
+      aria-label="Navigation principale"
+      role="navigation"
     >
       <div className="flex items-center justify-around h-16 px-1">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           const badge = getBadge(id);
+          const badgeLabel = badge > 0 ? `, ${badge} non lu${badge > 1 ? 's' : ''}` : '';
 
           return (
             <button
@@ -47,6 +50,8 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
                 if (activeTab !== id) haptics.selection();
                 onTabChange(id);
               }}
+              aria-label={`${label}${badgeLabel}`}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all duration-300 relative min-w-[56px] min-h-[44px]',
               )}
@@ -65,7 +70,7 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )} />
                 {badge > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
+                  <span aria-hidden="true" className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}

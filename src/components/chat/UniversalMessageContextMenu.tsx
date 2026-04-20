@@ -14,6 +14,7 @@ import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useLongPress } from '@/hooks/useLongPress';
 import { DeleteMessageDialog } from './DeleteMessageDialog';
+import { MessagePreviewSheet } from '@/components/mobile/MessagePreviewSheet';
 
 // Émojis favoris pour le menu contextuel
 const CONTEXT_MENU_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -35,6 +36,10 @@ export interface UniversalMessageContextMenuProps {
   canManageMessages?: boolean;
   hasReactions?: boolean;
   canManageReactions?: boolean;
+  /** Optional preview metadata used by the mobile long-press sheet. */
+  previewAuthorName?: string;
+  previewAuthorAvatar?: string;
+  previewContent?: string;
   onReply: () => void;
   onAddReaction: (emoji: string) => void;
   onCopyText: () => void;
@@ -58,6 +63,9 @@ export function UniversalMessageContextMenu({
   canManageMessages = false,
   hasReactions = false,
   canManageReactions = false,
+  previewAuthorName,
+  previewAuthorAvatar,
+  previewContent,
   onReply,
   onAddReaction,
   onCopyText,
@@ -179,18 +187,33 @@ export function UniversalMessageContextMenu({
     <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />
   );
 
-  // Mobile: long press -> Sheet
+  // Mobile: long press -> Discord-style preview sheet with backdrop blur
   if (isMobile) {
     return (
       <>
-        <div {...longPressHandlers}>
+        <div {...longPressHandlers} style={{ touchAction: 'manipulation' }}>
           {children}
         </div>
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto p-4">
-            {renderActions(() => setSheetOpen(false))}
-          </SheetContent>
-        </Sheet>
+        <MessagePreviewSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          isOwnMessage={isOwnMessage}
+          isPinned={isPinned}
+          authorName={previewAuthorName}
+          authorAvatar={previewAuthorAvatar}
+          messageContent={previewContent}
+          onReply={onReply}
+          onAddReaction={canAddReactions ? onAddReaction : undefined}
+          onCopyLink={onCopyLink}
+          onCopyId={onCopyId}
+          onCopyText={onCopyText}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onCreateThread={onCreateThread}
+          onPin={onPin}
+          canAddReactions={canAddReactions}
+          canManageMessages={canManageMessages}
+        />
         {deleteDialog}
       </>
     );

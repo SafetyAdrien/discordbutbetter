@@ -28,6 +28,15 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
     const { isMobile } = useBreakpoint();
+    const queryClient = useQueryClient();
+
+    const { containerRef, pullDistance, progress, refreshing } =
+      usePullToRefresh<HTMLDivElement>({
+        onRefresh: async () => {
+          await queryClient.invalidateQueries({ queryKey: ['servers'] });
+        },
+        disabled: !isMobile,
+      });
 
     const filteredServers = servers.filter((server) =>
       server.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

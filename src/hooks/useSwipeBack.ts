@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { haptics } from '@/lib/haptics';
 
 interface SwipeBackOptions {
   onBack: () => void;
@@ -36,6 +37,7 @@ export function useSwipeBack({ onBack, threshold = 100, edgeWidth = 30 }: SwipeB
 
   const onTouchEnd = useCallback(() => {
     if (isSwipingRef.current && currentXRef.current > threshold) {
+      haptics.light();
       onBack();
     }
     startXRef.current = null;

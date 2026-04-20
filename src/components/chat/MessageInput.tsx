@@ -554,57 +554,15 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex items-stretch gap-2 rounded-2xl transition-all duration-300 w-full min-w-0 bg-[hsl(var(--input))] border border-border/50`} style={{ boxShadow: 'var(--shadow-elevation-2)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
-          <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={`self-center text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-2' : 'h-10 w-10 p-0'}`}
-              >
-                <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="w-48 p-1">
-              {canAttachFiles && (
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                  onClick={() => {
-                    setPlusMenuOpen(false);
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  <Image className="w-4 h-4" />
-                  <span>Ajouter une image</span>
-                </button>
-              )}
-              {(channelId || threadId) && canCreatePolls && (
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                  onClick={() => {
-                    setPlusMenuOpen(false);
-                    setPollModalOpen(true);
-                  }}
-                >
-                  <BarChart2 className="w-4 h-4" />
-                  <span>Créer un sondage</span>
-                </button>
-              )}
-              {!canAttachFiles && !canCreatePolls && (
-                <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
-              )}
-            </PopoverContent>
-          </Popover>
-          
-          {/* Textarea container */}
-          <div className={`relative flex-1 min-w-0 overflow-hidden flex items-center`}>
+        <div className={`flex flex-col w-full min-w-0 rounded-2xl transition-all duration-300 bg-[hsl(var(--input))] border border-border/50`} style={{ boxShadow: 'var(--shadow-elevation-2)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+          {/* Textarea container - full width on top */}
+          <div className={`relative w-full min-w-0 overflow-hidden ${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'}`}>
             {hasMarkdown && (
               <InputMarkdownOverlay
                 ref={overlayRef}
                 content={value}
                 compact={compact}
-                className={compact ? 'py-1 pr-2 min-h-[28px]' : 'py-3 pr-1 min-h-[44px]'}
+                className={compact ? 'py-0 min-h-[28px]' : 'py-0 min-h-[28px]'}
                 mentionData={{ members, roles, channels }}
               />
             )}
@@ -621,52 +579,97 @@ export function MessageInput({
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
               compact 
-                  ? `py-1 text-sm pr-2 min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `py-3 text-sm pr-1 min-h-[44px] max-h-[200px] overflow-y-auto`
+                  ? `py-0 text-sm min-h-[28px] max-h-[120px] overflow-y-auto` 
+                  : `py-0 text-sm min-h-[28px] max-h-[200px] overflow-y-auto`
               }`}
               style={hasMarkdown ? { fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 } : undefined}
               rows={1}
             />
           </div>
-          
-          <div className={`self-center flex items-center gap-0.5 ${compact ? 'pr-1' : 'pr-1.5'}`}>
-            {!isMobile && (
+
+          {/* Action bar - bottom */}
+          <div className={`flex items-center justify-between border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
+            <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-1.5' : 'h-9 w-9 p-0'}`}
+                >
+                  <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-48 p-1">
+                {canAttachFiles && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                    onClick={() => {
+                      setPlusMenuOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <Image className="w-4 h-4" />
+                    <span>Ajouter une image</span>
+                  </button>
+                )}
+                {(channelId || threadId) && canCreatePolls && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                    onClick={() => {
+                      setPlusMenuOpen(false);
+                      setPollModalOpen(true);
+                    }}
+                  >
+                    <BarChart2 className="w-4 h-4" />
+                    <span>Créer un sondage</span>
+                  </button>
+                )}
+                {!canAttachFiles && !canCreatePolls && (
+                  <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            <div className="flex items-center gap-0.5">
+              {!isMobile && (
+                <EmojiStickerPicker
+                  serverId={serverId}
+                  onEmojiSelect={insertEmoji}
+                  defaultTab="sticker"
+                  trigger={
+                    <button
+                      type="button"
+                      className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
+                    >
+                      <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                    </button>
+                  }
+                />
+              )}
               <EmojiStickerPicker
                 serverId={serverId}
                 onEmojiSelect={insertEmoji}
-                defaultTab="sticker"
+                defaultTab="emoji"
                 trigger={
                   <button
                     type="button"
                     className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
                   >
-                    <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                    <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
                 }
               />
-            )}
-            <EmojiStickerPicker
-              serverId={serverId}
-              onEmojiSelect={insertEmoji}
-              defaultTab="emoji"
-              trigger={
-                <button
-                  type="button"
-                  className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
+              {(value.trim() || attachments.length > 0 || isMobile) && (
+                <button 
+                  type="submit" 
+                  disabled={disabled || (!value.trim() && attachments.length === 0)}
+                  className={`ml-0.5 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]'}`}
                 >
-                  <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                  <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
                 </button>
-              }
-            />
-            {(value.trim() || attachments.length > 0 || isMobile) && (
-              <button 
-                type="submit" 
-                disabled={disabled || (!value.trim() && attachments.length === 0)}
-                className={`ml-0.5 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${!value.trim() && attachments.length === 0 ? 'opacity-30' : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]'}`}
-              >
-                <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </form>

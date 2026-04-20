@@ -542,17 +542,67 @@ const Index = () => {
     );
   }
 
+  // Channel list element (shared between desktop inline and tablet drawer)
+  const channelListEl = activeServer && serverForChannelList ? (
+    <ChannelList
+      server={serverForChannelList}
+      activeChannelId={activeChannelId}
+      onChannelSelect={(channelId) => {
+        setActiveChannelId(channelId);
+        if (activeServerId) {
+          setChannelForServer(activeServerId, channelId);
+        }
+        setActiveThreadId(null);
+        setThreadChannelId(null);
+        if (isTablet) setTabletChannelsOpen(false);
+      }}
+      onOpenServerSettings={(initialTab) => {
+        setServerSettingsInitialTab(initialTab);
+        setShowServerSettings(true);
+      }}
+      orphanChannels={(activeServer?.orphanChannels || channelsData?.orphanChannels || []) as import('@/hooks/useChannels').OrphanChannel[]}
+      activeThreadId={activeThreadId}
+      onThreadSelect={(threadId) => {
+        setActiveThreadId(threadId);
+        setThreadChannelId(activeChannelId);
+        if (isTablet) setTabletChannelsOpen(false);
+      }}
+      onOpenVoiceChat={(channelId) => {
+        setActiveChannelId(channelId);
+        if (activeServerId) {
+          setChannelForServer(activeServerId, channelId);
+        }
+        setActiveThreadId(null);
+        setThreadChannelId(null);
+        setVoiceChatChannelId(channelId);
+        if (isTablet) setTabletChannelsOpen(false);
+      }}
+      onOpenGlobalSearch={() => setShowGlobalSearch(true)}
+    />
+  ) : null;
+
+  const memberListEl = activeServer && channelForChat?.type !== 'voice' && !activeThreadId ? (
+    <MemberList
+      members={memberListData}
+      ownerId={activeServer.owner_id || ''}
+      serverId={activeServer.id}
+      onOpenDM={handleOpenDM}
+    />
+  ) : null;
+
   return (
-    <div className="h-screen flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
-      {/* Server List */}
-      <ServerList
-        servers={serverListData}
-        activeServerId={activeServerId}
-        onServerSelect={handleServerSelect}
-        onDiscoverClick={() => setShowDiscover(true)}
-        onCreateClick={() => setShowCreate(true)}
-        onOpenServerSettings={handleOpenServerSettings}
-      />
+    <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
+      {/* Server List - compact rail on tablet (64px) */}
+      <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>
+        <ServerList
+          servers={serverListData}
+          activeServerId={activeServerId}
+          onServerSelect={handleServerSelect}
+          onDiscoverClick={() => setShowDiscover(true)}
+          onCreateClick={() => setShowCreate(true)}
+          onOpenServerSettings={handleOpenServerSettings}
+        />
+      </div>
 
       {/* Home/DM View */}
       {isHomeView ? (
@@ -563,44 +613,37 @@ const Index = () => {
         />
       ) : activeServer && serverForChannelList ? (
         <>
-          {/* Channel List */}
-          <ChannelList
-            server={serverForChannelList}
-            activeChannelId={activeChannelId}
-            onChannelSelect={(channelId) => {
-              setActiveChannelId(channelId);
-              // Persist channel selection for this server
-              if (activeServerId) {
-                setChannelForServer(activeServerId, channelId);
-              }
-              // Fermer le thread quand on clique sur un salon
-              setActiveThreadId(null);
-              setThreadChannelId(null);
-            }}
-            onOpenServerSettings={(initialTab) => {
-              setServerSettingsInitialTab(initialTab);
-              setShowServerSettings(true);
-            }}
-            orphanChannels={(activeServer?.orphanChannels || channelsData?.orphanChannels || []) as import('@/hooks/useChannels').OrphanChannel[]}
-            activeThreadId={activeThreadId}
-            onThreadSelect={(threadId) => {
-              setActiveThreadId(threadId);
-              setThreadChannelId(activeChannelId); // Stocker le channel d'origine du thread
-            }}
-            onOpenVoiceChat={(channelId) => {
-              setActiveChannelId(channelId);
-              if (activeServerId) {
-                setChannelForServer(activeServerId, channelId);
-              }
-              setActiveThreadId(null);
-              setThreadChannelId(null);
-              setVoiceChatChannelId(channelId);
-            }}
-            onOpenGlobalSearch={() => setShowGlobalSearch(true)}
-          />
+          {/* Channel List inline (desktop only) */}
+          {!isTablet && channelListEl}
 
           {/* Main Content Area - resizable split when thread is open */}
-          <div className="flex-1 flex min-w-0 w-full overflow-x-hidden">
+          <div className="flex-1 flex min-w-0 w-full overflow-x-hidden relative">
+            {/* Tablet floating toggle buttons */}
+            {isTablet && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTabletChannelsOpen(true)}
+                  className="absolute top-2 left-2 z-30 h-9 w-9 bg-background/80 backdrop-blur-sm border border-border/40 shadow-sm"
+                  aria-label="Ouvrir les salons"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+                {memberListEl && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setTabletMembersOpen(true)}
+                    className="absolute top-2 right-2 z-30 h-9 w-9 bg-background/80 backdrop-blur-sm border border-border/40 shadow-sm"
+                    aria-label="Ouvrir les membres"
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                )}
+              </>
+            )}
+
             {channelForChat && (
               <div
                 className={`${activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') ? (threadFullscreen ? 'hidden' : 'min-w-[300px]') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}
@@ -697,35 +740,37 @@ const Index = () => {
             {/* Thread View - resizable split with chat */}
             {activeThreadId && (channelForChat?.type === 'text' || channelForChat?.type === 'announcement') && (
               <>
-              {/* Invisible resize handle */}
-              <div
-                className="w-1 shrink-0 cursor-ew-resize bg-transparent z-10 relative"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  threadResizing.current = true;
-                  const container = (e.currentTarget.parentElement as HTMLElement);
-                  const startX = e.clientX;
-                  const containerWidth = container.getBoundingClientRect().width;
-                  const startFlex = threadPanelFlex;
-                  const handleMouseMove = (ev: MouseEvent) => {
-                    if (!threadResizing.current) return;
-                    const delta = ev.clientX - startX;
-                    const deltaRatio = (delta / containerWidth) * 10;
-                    const newFlex = Math.max(2, Math.min(8, startFlex - deltaRatio));
-                    setThreadPanelFlex(Math.round(newFlex * 10) / 10);
-                  };
-                  const handleMouseUp = () => {
-                    threadResizing.current = false;
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                  };
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                }}
-              />
+              {/* Invisible resize handle (desktop only) */}
+              {!isTablet && (
+                <div
+                  className="w-1 shrink-0 cursor-ew-resize bg-transparent z-10 relative"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    threadResizing.current = true;
+                    const container = (e.currentTarget.parentElement as HTMLElement);
+                    const startX = e.clientX;
+                    const containerWidth = container.getBoundingClientRect().width;
+                    const startFlex = threadPanelFlex;
+                    const handleMouseMove = (ev: MouseEvent) => {
+                      if (!threadResizing.current) return;
+                      const delta = ev.clientX - startX;
+                      const deltaRatio = (delta / containerWidth) * 10;
+                      const newFlex = Math.max(2, Math.min(8, startFlex - deltaRatio));
+                      setThreadPanelFlex(Math.round(newFlex * 10) / 10);
+                    };
+                    const handleMouseUp = () => {
+                      threadResizing.current = false;
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
+              )}
               <div
                 className="min-w-[300px]"
-                style={threadFullscreen ? { flex: '1 1 0%' } : { flex: `${threadPanelFlex} 1 0%` }}
+                style={isTablet ? { flex: '1 1 0%' } : threadFullscreen ? { flex: '1 1 0%' } : { flex: `${threadPanelFlex} 1 0%` }}
               >
                 <ThreadView
                   threadId={activeThreadId}
@@ -737,7 +782,7 @@ const Index = () => {
                     setThreadChannelId(null);
                     setThreadFullscreen(false);
                   }}
-                  isFullscreen={threadFullscreen}
+                  isFullscreen={isTablet ? true : threadFullscreen}
                   onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
                 />
               </div>
@@ -745,17 +790,27 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Panel - Member List (only when no thread is open for text channels, and not on mobile) */}
-          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && !isMobile && (
-            <MemberList 
-              members={memberListData} 
-              ownerId={activeServer.owner_id || ''} 
-              serverId={activeServer.id}
-              onOpenDM={handleOpenDM}
-            />
-          )}
+          {/* Right Panel - Member List inline (desktop only) */}
+          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && !isTablet && memberListEl}
         </>
       ) : null}
+
+      {/* Tablet drawers */}
+      {isTablet && channelListEl && (
+        <Sheet open={tabletChannelsOpen} onOpenChange={setTabletChannelsOpen}>
+          <SheetContent side="left" className="p-0 w-[280px] sm:max-w-[280px] border-r">
+            <div className="h-full overflow-hidden">{channelListEl}</div>
+          </SheetContent>
+        </Sheet>
+      )}
+      {isTablet && memberListEl && (
+        <Sheet open={tabletMembersOpen} onOpenChange={setTabletMembersOpen}>
+          <SheetContent side="right" className="p-0 w-[280px] sm:max-w-[280px] border-l">
+            <div className="h-full overflow-hidden">{memberListEl}</div>
+          </SheetContent>
+        </Sheet>
+      )}
+
 
       {/* Modals */}
       {showDiscover && (

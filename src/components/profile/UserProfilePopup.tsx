@@ -589,7 +589,7 @@ export function UserProfilePopup({
   if (mode === 'card' && open) {
     return (
       <>
-        <Portal.Root>
+        {createPortal(
           <div 
             className="fixed inset-0 z-50"
             onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
@@ -612,8 +612,9 @@ export function UserProfilePopup({
                 <ProfileContent />
               </div>
             </div>
-          </div>
-        </Portal.Root>
+          </div>,
+          document.body
+        )}
         {serverProfileModal}
       </>
     );

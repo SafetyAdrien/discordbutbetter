@@ -166,23 +166,19 @@ export function MessageInput({
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Adjust textarea height and reset overlay scroll position
+  // Uses a single 28px baseline matching the textarea's min-h-[28px] class
+  // to prevent vertical jumps when toggling markdown content.
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const DESKTOP_MIN_HEIGHT = 44;
-    const COMPACT_MIN_HEIGHT = 28;
-    const DESKTOP_SINGLE_LINE_TOLERANCE = 6;
-    const minH = compact ? COMPACT_MIN_HEIGHT : DESKTOP_MIN_HEIGHT;
+    const MIN_HEIGHT = 28;
     textarea.style.height = 'auto';
     const sh = textarea.scrollHeight;
-    // For desktop single-line: clamp to baseline if scrollHeight is within tolerance (handles 43-46px browser variance)
-    const height = (!compact && sh <= DESKTOP_MIN_HEIGHT + DESKTOP_SINGLE_LINE_TOLERANCE) ? DESKTOP_MIN_HEIGHT : Math.max(sh, minH);
-    textarea.style.height = height + 'px';
-    // Sync overlay scroll
+    textarea.style.height = Math.max(sh, MIN_HEIGHT) + 'px';
     if (overlayRef.current) {
       overlayRef.current.scrollTop = textarea.scrollTop;
     }
-  }, [compact]);
+  }, []);
 
   useEffect(() => {
     adjustTextareaHeight();
@@ -611,7 +607,7 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex flex-col w-full min-w-0 rounded-2xl transition-all duration-300 bg-[hsl(var(--input))] border border-border/50`} style={{ boxShadow: 'var(--shadow-elevation-2)', transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+        <div className={`flex flex-col w-full min-w-0 rounded-2xl bg-[hsl(var(--input))] border border-border/50 transition-colors duration-200`} style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
           {/* Textarea container - full width on top */}
           <div className={`relative w-full min-w-0 overflow-hidden ${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'}`}>
             {hasMarkdown && (
@@ -619,7 +615,7 @@ export function MessageInput({
                 ref={overlayRef}
                 content={value}
                 compact={compact}
-                className={compact ? 'py-0 min-h-[28px]' : 'py-0 min-h-[28px]'}
+                className={`${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'} min-h-[28px]`}
                 mentionData={{ members, roles, channels }}
               />
             )}
@@ -632,12 +628,10 @@ export function MessageInput({
               onScroll={() => { if (overlayRef.current && textareaRef.current) overlayRef.current.scrollTop = textareaRef.current.scrollTop; }}
               placeholder={placeholder}
               disabled={disabled}
-              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal ${
+              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-sm min-h-[28px] ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
-              compact 
-                  ? `py-0 text-sm min-h-[28px] max-h-[120px] overflow-y-auto` 
-                  : `py-0 text-sm min-h-[28px] max-h-[200px] overflow-y-auto`
+                compact ? 'max-h-[120px] overflow-y-auto' : 'max-h-[200px] overflow-y-auto'
               }`}
               style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 }}
               rows={1}

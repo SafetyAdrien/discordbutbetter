@@ -1427,6 +1427,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 {DateSeparator}
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
+                    <SwipeToReplyRow
+                      enabled={isMobile}
+                      onReply={() => handleReply(message)}
+                      onDoubleTap={canAddReactions ? () => handleAddReaction(message.id, '❤️') : undefined}
+                    >
                     <div
                       ref={(el) => {
                         if (el) messageRefs.current.set(message.id, el);

@@ -141,7 +141,17 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
           </div>
 
           {/* Server Grid */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
+          <div
+            ref={containerRef}
+            className="relative flex-1 overflow-y-auto overscroll-contain scrollbar-thin p-4"
+          >
+            {isMobile && (
+              <MobilePullIndicator
+                pullDistance={pullDistance}
+                progress={progress}
+                refreshing={refreshing}
+              />
+            )}
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
               Serveurs en vedette
             </h3>

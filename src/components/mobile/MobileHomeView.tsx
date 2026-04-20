@@ -25,6 +25,16 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
   const [showSearch, setShowSearch] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const unreadCount = useUnreadNotificationsCount();
+  const queryClient = useQueryClient();
+
+  const { containerRef, pullDistance, progress, refreshing } = usePullToRefresh<HTMLDivElement>({
+    onRefresh: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dm-conversations'] }),
+        queryClient.invalidateQueries({ queryKey: ['friends'] }),
+      ]);
+    },
+  });
 
   // If a DM is selected, show the conversation full-screen
   if (activeDMId) {

@@ -496,7 +496,8 @@ export function MobileLayout({
 
         {/* Base tab views with swipe */}
         <div
-          className="h-full pb-[calc(56px+env(safe-area-inset-bottom,0px))]"
+          className="h-full"
+          style={{ paddingBottom: hideBottomNav ? 0 : 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
           {...(canSwipeTabs ? {
             onTouchStart: swipeTabs.onTouchStart,
             onTouchMove: swipeTabs.onTouchMove,

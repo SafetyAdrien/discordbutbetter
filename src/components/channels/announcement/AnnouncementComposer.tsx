@@ -185,6 +185,28 @@ export function AnnouncementComposer({
     }
   };
 
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    if (canMentionEveryone) {
+      const mentionType = detectEveryoneMention(`${title}\n${message}`);
+      if (mentionType) {
+        setPendingEveryoneMention(mentionType);
+        return;
+      }
+    }
+    void performSubmit();
+  };
+
+  const handleConfirmEveryone = () => {
+    setPendingEveryoneMention(null);
+    void performSubmit();
+  };
+
+  const handleEditEveryone = () => {
+    setPendingEveryoneMention(null);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

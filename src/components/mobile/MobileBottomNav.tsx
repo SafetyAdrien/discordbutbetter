@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
-import { Globe, Bell, User } from 'lucide-react';
+import { Globe, Bell, User, MessageCircle } from 'lucide-react';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { motion } from 'framer-motion';
 
-export type MobileTab = 'servers' | 'notifications' | 'profile';
+export type MobileTab = 'servers' | 'discuss' | 'notifications' | 'profile';
 
 interface MobileBottomNavProps {
   activeTab: MobileTab;
@@ -12,6 +12,7 @@ interface MobileBottomNavProps {
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
   { id: 'servers', label: 'Serveurs', icon: Globe },
+  { id: 'discuss', label: 'Discuter', icon: MessageCircle },
   { id: 'notifications', label: 'Notifs', icon: Bell },
   { id: 'profile', label: 'Vous', icon: User },
 ];
@@ -30,10 +31,10 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
       animate={{ y: 0 }}
       exit={{ y: 80 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--surface-1))] backdrop-blur-2xl border-t border-border/30 pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--surface-1))] backdrop-blur-2xl border-t border-border/30 pb-[env(safe-area-inset-bottom,0px)]"
       style={{ boxShadow: 'var(--shadow-elevation-2)' }}
     >
-      <div className="flex items-center justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-16 px-1">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           const badge = getBadge(id);
@@ -43,7 +44,7 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
               key={id}
               onClick={() => onTabChange(id)}
               className={cn(
-                'flex flex-col items-center gap-1 px-5 py-1.5 rounded-2xl transition-all duration-300 relative',
+                'flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all duration-300 relative min-w-[56px] min-h-[44px]',
               )}
               style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
             >

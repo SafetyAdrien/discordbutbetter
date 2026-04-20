@@ -122,8 +122,9 @@ export function MobileHomeView({ activeDMId, onConversationSelect, onShowFriends
         </button>
       </div>
 
-      {/* DM List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* DM List with pull-to-refresh */}
+      <div ref={containerRef} className="relative flex-1 overflow-y-auto overscroll-contain">
+        <MobilePullIndicator pullDistance={pullDistance} progress={progress} refreshing={refreshing} />
         <DMList activeConversationId={activeDMId} onConversationSelect={onConversationSelect} />
       </div>
 

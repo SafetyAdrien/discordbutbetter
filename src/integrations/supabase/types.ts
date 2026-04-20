@@ -2989,6 +2989,10 @@ export type Database = {
         Args: { _reason?: string; _server_id: string; _user_id: string }
         Returns: undefined
       }
+      can_mention_everyone: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_webhook_token: {
         Args: { _user_id: string; _webhook_id: string }
         Returns: boolean

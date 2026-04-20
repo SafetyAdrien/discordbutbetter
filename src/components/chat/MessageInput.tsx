@@ -90,7 +90,7 @@ export function MessageInput({
   showFollowBar = false,
   onFollowClick,
 }: MessageInputProps) {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,9 +104,13 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
-  const [markdownBarOpen, setMarkdownBarOpen] = useState(false);
+  // Markdown formatting bar: collapsed by default on mobile/tablet to save horizontal space
+  const [markdownBarOpen, setMarkdownBarOpen] = useState(!isMobile && !isTablet);
   const canSubmitMessage = !!value.trim() || attachments.length > 0;
-  const markdownButtonClass = `shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1' : 'p-1.5'}`;
+  // Bigger touch targets on mobile/tablet (min 40x40 for accessibility)
+  const markdownButtonClass = `shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${
+    compact ? 'p-1' : (isMobile || isTablet) ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-1.5'
+  }`;
   const rightActionsWidthClass = compact
     ? (isMobile ? 'w-[4.5rem]' : 'w-[6.75rem]')
     : (isMobile ? 'w-[4.75rem]' : 'w-[7.5rem]');

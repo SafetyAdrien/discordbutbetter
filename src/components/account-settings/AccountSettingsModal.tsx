@@ -34,7 +34,7 @@ const tabs = [
 ];
 
 export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsModalProps) {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
   const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab !== undefined ? initialTab : (isMobile ? null : 'account'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -181,24 +181,38 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
     );
   }
 
-  // Desktop - Material You elevated panels
+  // Desktop / Tablet - Material You elevated panels
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] rounded-3xl overflow-hidden" style={{ boxShadow: 'var(--shadow-elevation-3)' }}>
-        <div className="w-60 bg-[hsl(var(--surface-1))] flex flex-col border-r border-border/30">
+      <div
+        className={cn(
+          'relative flex w-full m-auto rounded-3xl overflow-hidden',
+          isTablet ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-5xl max-h-[90vh]'
+        )}
+        style={{ boxShadow: 'var(--shadow-elevation-3)' }}
+      >
+        <div className={cn(
+          'bg-[hsl(var(--surface-1))] flex flex-col border-r border-border/30',
+          isTablet ? 'w-52' : 'w-60'
+        )}>
           <div className="flex-1 overflow-y-auto">
             {renderNavList((tab) => setActiveTab(tab))}
           </div>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden bg-background">
-          <div className="h-14 px-6 flex items-center justify-between border-b border-border/30 flex-shrink-0">
-            <h1 className="text-lg font-semibold">{tabs.find(t => t.id === activeTab)?.label}</h1>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200">
+        <div className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
+          <div className={cn(
+            'flex items-center justify-between border-b border-border/30 flex-shrink-0',
+            isTablet ? 'h-12 px-4' : 'h-14 px-6'
+          )}>
+            <h1 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg')}>
+              {tabs.find(t => t.id === activeTab)?.label}
+            </h1>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200 shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className={cn('flex-1 overflow-y-auto', isTablet ? 'p-4' : 'p-6')}>
             <div className="max-w-2xl">{renderContent()}</div>
           </div>
         </div>

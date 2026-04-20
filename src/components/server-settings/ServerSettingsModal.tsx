@@ -50,7 +50,7 @@ export function ServerSettingsModal({
   onClose,
   initialTab,
 }: ServerSettingsModalProps) {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
   const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab ?? (isMobile ? null : 'profile'));
 
   const sections: Section[] = [
@@ -229,12 +229,21 @@ export function ServerSettingsModal({
     );
   }
 
-  // Desktop: Material You elevated modal
+  // Desktop / Tablet: Material You elevated modal
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-5xl m-auto max-h-[90vh] rounded-3xl overflow-hidden" style={{ boxShadow: 'var(--shadow-elevation-3)' }}>
-        <div className="w-60 bg-[hsl(var(--surface-1))] border-r border-border/30 flex flex-col">
+      <div
+        className={cn(
+          'relative flex w-full m-auto rounded-3xl overflow-hidden',
+          isTablet ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-5xl max-h-[90vh]'
+        )}
+        style={{ boxShadow: 'var(--shadow-elevation-3)' }}
+      >
+        <div className={cn(
+          'bg-[hsl(var(--surface-1))] border-r border-border/30 flex flex-col',
+          isTablet ? 'w-52' : 'w-60'
+        )}>
           <div className="p-4 border-b border-border/30">
             <h2 className="text-lg font-semibold truncate">{serverName}</h2>
             <p className="text-xs text-muted-foreground">Paramètres du serveur</p>
@@ -243,16 +252,19 @@ export function ServerSettingsModal({
             {renderNavList((tab) => setActiveTab(tab))}
           </div>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden bg-background">
-          <div className="h-14 px-6 flex items-center justify-between border-b border-border/30">
-            <h3 className={cn("font-semibold text-lg", activeTab === 'delete' && "text-destructive")}>
+        <div className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
+          <div className={cn(
+            'flex items-center justify-between border-b border-border/30',
+            isTablet ? 'h-12 px-4' : 'h-14 px-6'
+          )}>
+            <h3 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg', activeTab === 'delete' && 'text-destructive')}>
               {getCurrentTabLabel()}
             </h3>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200">
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200 shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className={cn('flex-1 overflow-y-auto', isTablet ? 'p-4' : 'p-6')}>
             {renderContent()}
           </div>
         </div>

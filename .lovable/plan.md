@@ -1,151 +1,116 @@
 
+
 ## Objectif
 
-Corriger définitivement le décalage visible du composer Markdown dans `MessageInput.tsx`. Le problème restant ne vient pas seulement de la toolbar : il y a encore un désalignement structurel entre le textarea, l’overlay Markdown, et l’auto-resize du composer.
+Compléter le système `@everyone` / `@here` avec :
+1. Ciblage par statut différencié
+2. Respect strict de la permission serveur `mention_everyone`
+3. **Popup d'avertissement obligatoire** avant l'envoi de tout message contenant `@everyone` ou `@here`
 
-## Causes restantes identifiées
+## Comportement final
 
-1. `InputMarkdownOverlay` est **absolu en `inset-0`**, mais dans `MessageInput` il reçoit une classe personnalisée (`py-0 min-h-[28px]`) qui **écrase son padding par défaut**.
-   - Résultat : l’overlay démarre au bord du wrapper alors que le textarea vit à l’intérieur d’un conteneur paddé (`px-4 pt-3 pb-1`).
-   - Le rendu Markdown n’est donc pas ancré exactement au même point que la vraie saisie.
+### Mentions et ciblage
 
-2. `adjustTextareaHeight()` garde encore un baseline desktop de **44px** hérité de l’ancien layout.
-   - Après insertion Markdown, le textarea repasse à `auto`, recalcule `scrollHeight`, puis remonte à 44px.
-   - Ce recalcul crée un saut vertical perceptible sur le premier clic.
+| Mention | Notifie qui |
+|---|---|
+| `@everyone` | Tous les membres du serveur (`online`, `idle`, `dnd`, `offline`) — sauf l'auteur |
+| `@here` | Uniquement les membres `online`, `idle`, `dnd` (exclut `offline`) — sauf l'auteur |
 
-3. Le conteneur principal du composer utilise encore `transition-all`.
-   - Toute micro-variation de hauteur/largeur est animée, ce qui **amplifie visuellement** le moindre recalcul.
+### Permission `mention_everyone`
 
-4. La toolbar Markdown est mieux contrainte qu’avant, mais son wrapper central reste animé avec `translate/opacity` dans un layout qui dépend encore d’un parent animé.
-   - Le vrai “décalage” perçu est surtout la combinaison overlay mal calé + textarea qui re-mesure.
+- **Désactivée** → `@everyone` et `@here` masqués dans l'autocomplétion **et** ignorés côté trigger SQL (le message s'envoie, mais aucune entrée dans `channel_mentions`).
+- **Activée** ou utilisateur owner/admin → mentions actives + popup d'avertissement déclenchée.
 
-## Correctif définitif
+### Popup d'avertissement (nouveau)
 
-### A — Recaler parfaitement l’overlay sur le textarea
+Avant chaque envoi d'un message contenant `@everyone` ou `@here` (avec permission valide) :
 
-Dans `src/components/chat/MessageInput.tsx` :
+**Titre** : "Mentionner tout le monde ?"
 
-- Ne plus passer une classe qui neutralise le padding utile de l’overlay.
-- Faire correspondre **exactement** les métriques et offsets entre :
-  - wrapper du textarea
-  - `InputMarkdownOverlay`
-  - `textarea`
+**Corps** : "Tu es sur le point de mentionner tout un groupe de personnes, souhaites-tu vraiment envoyer ou modifier ton message ?"
 
-Approche :
-- conserver le wrapper paddé actuel
-- faire porter à l’overlay **les mêmes paddings internes réels** que la zone de texte visible
-- ne pas laisser `InputMarkdownOverlay` s’étirer sur une zone différente du textarea
+**Boutons** :
+- **Publier** → envoie le message tel quel, déclenche les notifications
+- **Modifier le message** → annule l'envoi, le contenu reste dans le textarea, focus rendu pour édition
 
-Concrètement :
-- remplacer la prop `className={compact ? 'py-0 min-h-[28px]' : 'py-0 min-h-[28px]'}` par une classe alignée sur le composer réel
-- même `px`
-- même `pt/pb`
-- même `min-height`
-- même `text-sm`, `line-height`, `fontFamily`, `fontWeight`
+**Conditions de déclenchement** :
+- Détection regex `\B@(everyone|here)\b` dans le contenu
+- Uniquement si l'utilisateur a la permission `mention_everyone` (sinon les mentions sont silencieusement ignorées sans popup, comme du texte normal)
+- S'applique aux messages texte, threads, annonces — pas aux DMs (pas de `@everyone` en DM)
 
-Effet attendu :
-- le Markdown rendu ne “bouge” plus par rapport au caret
-- plus de faux décalage visuel lors d’un clic sur une icône
+## Modifications
 
-### B — Corriger l’auto-resize pour le nouveau composer
+### 1. Migration SQL
 
-Dans `MessageInput.tsx` :
+**Nouvelle fonction** `can_mention_everyone(_user_id uuid, _server_id uuid)` SECURITY DEFINER :
+- Owner principal/secondaire → `true`
+- Rôle avec `administrator` → `true`
+- Rôle avec `mention_everyone` → `true`
+- Sinon → `false`
 
-- recalculer les constantes de hauteur minimale selon le nouveau layout vertical
-- supprimer la logique baseline 44px trop agressive si elle ne correspond plus au bloc textarea actuel
-- utiliser une hauteur minimale réellement basée sur :
-  - textarea seul
-  - et non l’ancienne ligne de composer horizontale
+**Refonte** `detect_and_insert_mentions()` :
+- Vérifier la permission via `can_mention_everyone` avant d'insérer pour `@everyone` ou `@here`
+- `@everyone` → tous les membres du serveur (sauf auteur)
+- `@here` → membres avec `profiles.status IN ('online','idle','dnd')` (sauf auteur)
+- Le reste du trigger (mentions utilisateur, rôles) inchangé
 
-Approche recommandée :
-- garder `textarea.style.height = 'auto'`
-- puis appliquer `Math.max(scrollHeight, minTextareaHeight)`
-- avec une valeur de min-height cohérente avec le `py-0 text-sm min-h-[28px]`
+### 2. Nouveau composant `MentionEveryoneWarningModal.tsx`
 
-Effet attendu :
-- plus de saut vertical au premier clic Markdown
-- la hauteur du textarea n’est plus réimposée artificiellement à une valeur issue de l’ancien layout
+Modal léger basé sur `AlertDialog` shadcn :
+- Props : `open`, `mentionType: 'everyone' | 'here' | 'both'`, `onConfirm`, `onEdit`
+- Titre dynamique selon `mentionType`
+- 2 boutons : **Publier** (variant primary) et **Modifier le message** (variant secondary)
+- Pas de dismiss par clic extérieur (force le choix explicite)
 
-### C — Retirer l’animation globale qui amplifie le bug
+### 3. Intégration dans `MessageInput.tsx`
 
-Dans `MessageInput.tsx` :
+- Détection regex au moment du `handleSubmit`
+- Si match + permission → ouvrir le modal au lieu d'envoyer
+- Stocker temporairement le payload (content + attachments) dans un état local
+- **Publier** → exécute l'envoi original + ferme le modal
+- **Modifier** → ferme le modal, restitue le focus au textarea, contenu préservé
+- Préférence utilisateur ignorée (pas de "Ne plus afficher" pour le moment, comme demandé)
 
-- remplacer `transition-all` sur le conteneur principal du composer par une transition ciblée
-- ex. seulement `transition-colors`, `transition-shadow`, ou aucune transition structurelle
+### 4. Intégration dans `ThreadView.tsx`
 
-À ne plus animer :
-- hauteur
-- largeur
-- padding
-- border layout
+Même logique que `MessageInput` pour les messages envoyés dans les threads (réutilise le même modal).
 
-Effet attendu :
-- les micro-ajustements restants ne seront plus visuellement exagérés
-- la barre semblera stable même pendant insertion Markdown
+### 5. Intégration dans `AnnouncementComposer.tsx`
 
-### D — Stabiliser définitivement la barre d’actions
+Même logique pour les annonces (réutilise le même modal).
 
-Le bouton Send permanent est une bonne base, mais il faut finaliser la stabilisation :
+### 6. Permission resolution côté client
 
-- garder la structure en 3 zones
-- conserver le groupe droit à largeur réservée
-- garder `shrink-0` sur gauche et droite
-- garder le centre en `min-w-0 overflow-hidden`
-- éviter toute classe qui pourrait réintroduire une expansion implicite du parent
+Réutiliser `usePermissions` pour exposer `canMentionEveryone` au composer. Si déjà disponible via `MentionAutocomplete`, le hook est partagé. Sinon, ajout d'un sélecteur léger dans le composer parent.
 
-Pour la toolbar Markdown :
-- conserver `onMouseDown={(e) => e.preventDefault()}` sur tous les boutons
-- garder le scroll horizontal interne si nécessaire
-- limiter les transitions à l’opacité/translation de la toolbar elle-même, pas du composer global
+### 7. Mise à jour `src/constants/permissions.ts`
 
-### E — Si nécessaire, fiabiliser `InputMarkdownOverlay.tsx`
-
-Dans `src/components/chat/InputMarkdownOverlay.tsx` :
-
-- rendre la notion de padding plus explicite pour éviter que `className` remplace accidentellement l’alignement attendu
-- soit en séparant :
-  - structure absolue
-  - métriques texte
-  - spacing interne
-- soit en documentant/classant les variantes prévues pour `MessageInput`
-
-Le parsing Markdown ne change pas.
-
-## Fichiers concernés
-
-### 1. `src/components/chat/MessageInput.tsx`
-Modifications prévues :
-- recalage overlay/textarea
-- correction auto-resize
-- suppression de `transition-all`
-- maintien du Send permanent
-- maintien du layout 3 zones
-- nettoyage des classes responsables de reflow visible
-
-### 2. `src/components/chat/InputMarkdownOverlay.tsx`
-Modifications possibles :
-- sécuriser la gestion des paddings/offsets
-- éviter qu’une `className` incomplète désaligne l’overlay
-- aucun changement du moteur Markdown
-
-## Résultat attendu
-
-Après correction :
-- cliquer sur une icône Markdown ne provoque plus aucun saut visible
-- le texte rendu par l’overlay reste exactement superposé au textarea
-- la barre d’actions reste immobile
-- le bouton Send ne modifie plus le layout
-- pas de régression mobile
-- pas de changement sur mentions, attachments, polls, follow bar, ni `src/lib/markdown.tsx`
+Description de `mention_everyone` mise à jour :
+> "Permet de notifier tous les membres (`@everyone`) ou uniquement les membres en ligne (`@here`)"
 
 ## Détails techniques
 
-La cause la plus probable du bug résiduel est maintenant :
-1. **overlay mal ancré par rapport au textarea**
-2. **auto-resize encore calé sur l’ancien baseline**
-3. **animation globale du composer qui rend le moindre recalcul visible**
+- **Détection** : `/\B@(everyone|here)\b/` exécutée juste avant l'envoi (pas pendant la frappe pour éviter les déclenchements parasites)
+- **Permission checking côté client** : optimiste — on affiche le popup même si le client pense avoir la permission. Le trigger SQL reste la source de vérité.
+- **Pas de popup en DM** : les DMs n'ont pas de notion de `@everyone`
+- **Pas de popup pour l'édition de message** : seulement à l'envoi initial (cohérent avec Discord)
+- **Réutilisation** : un seul composant `MentionEveryoneWarningModal` partagé entre les 3 composers
+- **i18n** : strings en français (cohérent avec le reste de l'UI)
 
-La correction définitive consiste donc à :
-- réaligner les métriques
-- supprimer les transitions structurelles
-- recalculer la hauteur sur la vraie géométrie du nouveau composer
+## Fichiers modifiés / créés
+
+- `supabase/migrations/<nouveau>.sql` — fonction `can_mention_everyone` + refonte `detect_and_insert_mentions`
+- `src/constants/permissions.ts` — description mise à jour
+- `src/components/chat/MentionEveryoneWarningModal.tsx` — **nouveau composant**
+- `src/components/chat/MessageInput.tsx` — détection + intégration modal
+- `src/components/threads/ThreadView.tsx` — intégration modal
+- `src/components/channels/announcement/AnnouncementComposer.tsx` — intégration modal
+
+## Garantie de non-régression
+
+- Aucune modification du moteur Markdown (`src/lib/markdown.tsx`)
+- Aucune modification du système de mentions utilisateur/rôle/salon
+- Aucun changement sur le rendu visuel des mentions `@everyone` / `@here` (style jaune/orange déjà en place)
+- Notifications/badges fonctionnent automatiquement via la table `channel_mentions` existante
+- Pas d'impact sur les DMs ni le système de présence
+

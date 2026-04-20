@@ -415,6 +415,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         isOwnMessage={isOwnMessage}
                         isPinned={isMessagePinned(message.id)}
                         messageId={message.id}
+                        previewAuthorName={message.author?.display_name || message.author?.username}
+                        previewAuthorAvatar={message.author?.avatar_url || undefined}
+                        previewContent={message.content}
                         onReply={() => handleReply(message)}
                         onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                         onCopyText={() => handleCopyMessage(message.content)}

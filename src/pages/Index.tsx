@@ -19,6 +19,7 @@ import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { StageChannel } from '@/components/channels/StageChannel';
 import ThreadView from '@/components/threads/ThreadView';
 import { MobileLayout } from '@/components/mobile/MobileLayout';
+import { TabletLayout } from '@/components/tablet/TabletLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
@@ -39,7 +40,7 @@ import type { Server, Message, User } from '@/types/app';
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
   
   // Navigation state persistence
   const {

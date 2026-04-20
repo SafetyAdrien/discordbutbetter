@@ -26,6 +26,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSwipeTabs } from '@/hooks/useSwipeTabs';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
+import { useVisualViewport } from '@/hooks/useVisualViewport';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 

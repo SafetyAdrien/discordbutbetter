@@ -74,6 +74,8 @@ export interface DMConversationProps {
 }
 
 export function DMConversation({ conversationId, onBack }: DMConversationProps) {
+  const { isMobile } = useBreakpoint();
+  const swipeBack = useSwipeBack({ onBack: () => onBack?.() });
   const [messageInput, setMessageInput] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
@@ -257,6 +259,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onTouchStart={isMobile && onBack ? swipeBack.onTouchStart : undefined}
+      onTouchMove={isMobile && onBack ? swipeBack.onTouchMove : undefined}
+      onTouchEnd={isMobile && onBack ? swipeBack.onTouchEnd : undefined}
     >
       <AnimatePresence>
         {isDragging && <UploadDropOverlay channelName={displayName} />}

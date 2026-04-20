@@ -1912,7 +1912,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             username: m.username,
             avatar: m.avatar,
           }))}
-          roles={serverRoles.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
+          roles={serverRoles.filter((r) => !r.is_default).map((r) => ({ id: r.id, name: r.name, color: r.color }))}
           channels={allChannels}
           attachments={attachments}
           onAddFiles={addFiles}

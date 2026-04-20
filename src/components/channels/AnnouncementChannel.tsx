@@ -759,7 +759,7 @@ export function AnnouncementChannel({
                     className={cn(
                       "group message-hover px-2 -mx-2 relative",
                       showAuthor ? "pt-1" : "py-0",
-                      messageMentionsMe(message.content, user?.id, memberRoles?.get(user?.id ?? '')?.map(r => r.id) ?? []) && "message-mentioned",
+                      messageMentionsMe(message.content, user?.id, memberRoles?.get(user?.id ?? '')?.map(r => r.id) ?? []) && "message-mentioned !-mx-4 !px-6",
                     )}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
                     onMouseLeave={() => {

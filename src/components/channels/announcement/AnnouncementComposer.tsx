@@ -48,6 +48,7 @@ export function AnnouncementComposer({
   const [threadName, setThreadName] = useState('');
   const [headerImage, setHeaderImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [pendingEveryoneMention, setPendingEveryoneMention] = useState<EveryoneMentionType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headerImageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

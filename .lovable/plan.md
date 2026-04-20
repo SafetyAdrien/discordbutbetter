@@ -2,107 +2,139 @@
 
 ## Objectif
 
-Deux corrections visuelles ciblées sur le chat :
+Lorsqu'un message contient une **mention qui concerne l'utilisateur courant** (mention directe `<@MOI>`, mention d'un de ses rôles `<@&ROLE>`, ou mention globale `@everyone` / `@here`), styliser le message entier comme dans Discord :
 
-1. **Zone de message (hover) en angles droits** — actuellement les messages affichent un fond arrondi (`rounded-xl` via `var(--radius-xl)`) au survol. Le comportement Discord-like attendu : **angles parfaitement droits** sur la zone de hover.
-
-2. **Aperçu de mention de rôle stylisé** — ajouter une **bordure gauche colorée** (couleur du rôle) à la pastille de mention de rôle, comme déjà fait pour `@everyone`/`@here` et les self-mentions, avec un fond teinté à ~30 % d'opacité.
+- **Bordure gauche jaune** (4 px) couleur `#faa61a`
+- **Fond jaune teinté** à environ **30 % d'opacité** (`rgba(250, 166, 26, 0.10-0.15)`) couvrant toute la zone du message
+- Effet **persistant** (pas seulement au survol)
 
 ## Comportement final
 
-### 1. Zone de hover des messages
-
-| Avant | Après |
-|---|---|
-| `border-radius: var(--radius-xl)` (~12px) | `border-radius: 0` (angles droits) |
-| Coins arrondis sur le survol | Survol rectangulaire pleine largeur (Discord-like) |
-
-### 2. Pastille de mention de rôle
-
 ```
-┌─┬──────────────┐
-│█│ @NomDuRôle   │   ← bordure gauche 2px colorée + fond rgba(color, 0.3)
-└─┴──────────────┘
+┃ Adrien_Sama 00:09
+┃ @everyone Salut !       ← bordure gauche jaune + fond jaune translucide
 ```
 
-- Bordure gauche : `border-l-2` colorée avec la couleur du rôle
-- Fond : `rgba(color, 0.3)` (déjà en place)
-- Texte : couleur du rôle (déjà en place)
-
-Aligne visuellement le rôle sur le style `@everyone` / `@here` / self-mention pour une cohérence visuelle complète.
+| Type de mention | Concerné si | Styling appliqué |
+|---|---|---|
+| `<@MON_SNOWFLAKE>` | Toujours pour moi | Oui |
+| `<@&ROLE_SNOWFLAKE>` | Si je possède ce rôle | Oui |
+| `@everyone` (littéral) | Toujours | Oui |
+| `@here` (littéral) | Toujours | Oui |
+| Autres mentions | Pour les autres | Non — rendu normal |
 
 ## Modifications
 
-### Fichier 1 : `src/index.css`
+### 1. Nouveau utilitaire : `src/lib/mention-detection.ts`
 
-Localiser le bloc `.message-hover` (lignes ~329-336) et **retirer** la propriété `border-radius` :
+Fonction pure `messageMentionsMe(content, currentUserId, currentUserRoleIds)` qui retourne `true` si :
+
+```ts
+import { uuidToSnowflake } from './snowflake';
+
+export function messageMentionsMe(
+  content: string,
+  currentUserId: string | undefined,
+  currentUserRoleIds: string[] = []
+): boolean {
+  if (!content) return false;
+  
+  // @everyone / @here (literals)
+  if (/(?:^|\s)@(everyone|here)(?:\s|$|[.,!?])/.test(content)) return true;
+  
+  if (!currentUserId) return false;
+  
+  // User mention: <@SNOWFLAKE> or <@!SNOWFLAKE>
+  const mySnowflake = uuidToSnowflake(currentUserId);
+  const userMentionRegex = new RegExp(`<@!?(${currentUserId}|${mySnowflake})>`, 'i');
+  if (userMentionRegex.test(content)) return true;
+  
+  // Role mention: <@&ROLE_SNOWFLAKE>
+  for (const roleId of currentUserRoleIds) {
+    const roleSnowflake = uuidToSnowflake(roleId);
+    const roleRegex = new RegExp(`<@&(${roleId}|${roleSnowflake})>`, 'i');
+    if (roleRegex.test(content)) return true;
+  }
+  
+  return false;
+}
+```
+
+### 2. Nouvelle classe CSS dans `src/index.css`
+
+Ajouter sous `.message-hover` :
 
 ```css
-.message-hover {
-  @apply transition-all duration-150;
-  /* border-radius supprimé → angles droits */
+.message-mentioned {
+  background: rgba(250, 166, 26, 0.10);
+  box-shadow: inset 2px 0 0 0 #faa61a;
 }
 
-.message-hover:hover {
-  background: hsl(var(--surface-hover) / 0.25);
-  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.15);
+.message-mentioned:hover {
+  background: rgba(250, 166, 26, 0.15);
+  box-shadow: inset 2px 0 0 0 #faa61a;
 }
 ```
 
-Le bloc mobile (`@media max-width: 640px`) reste inchangé.
+Le `inset 2px 0 0 0` agit comme une bordure gauche sans modifier la largeur réelle, restant compatible avec le `box-shadow` du hover existant (les angles droits sont préservés).
 
-### Fichier 2 : `src/components/chat/ChatArea.tsx`
+### 3. Application dans les composers
 
-Retirer les classes `rounded-md`, `rounded-xl` accolées à `.message-hover` pour éviter qu'elles n'écrasent le CSS :
+**`src/components/chat/ChatArea.tsx`** :
 
-- Ligne 1115 : `"group message-hover rounded-md px-2 -mx-2 mb-1 relative"` → retirer `rounded-md`
-- Ligne 1256 : `"group message-hover rounded-xl px-4 pb-2 pt-1 mb-1"` → retirer `rounded-xl`
-- Ligne 1433 : `"group/message group message-hover rounded-xl px-4 pb-1 mb-1 relative"` → retirer `rounded-xl`
-
-Vérifier également `ThreadView.tsx`, `DMConversation.tsx`, `MobileChatView.tsx` pour les mêmes occurrences `message-hover rounded-*` éventuelles.
-
-### Fichier 3 : `src/components/chat/mentions/MentionComponents.tsx`
-
-Modifier `RoleMention` pour ajouter une bordure gauche colorée (style ligne 95-107) :
+- Récupérer `currentUserRoleIds` depuis `memberRoles?.get(user.id)` (déjà disponible dans le composant)
+- Pour chaque message rendu (lignes ~1115, ~1256, ~1433), calculer `const isMentioningMe = messageMentionsMe(message.content, user?.id, currentUserRoleIds)` et conditionnellement ajouter la classe :
 
 ```tsx
-<span
-  className="inline-flex items-center gap-0.5 pl-1.5 pr-1 rounded-[3px] cursor-default font-medium border-l-2 transition-colors duration-100"
-  style={{
-    backgroundColor: hexToRgba(roleColor || '#99aab5', 0.3),
-    color: roleColor || '#99aab5',
-    borderLeftColor: roleColor || '#99aab5',
-  }}
->
-  @{roleName}
-</span>
+className={cn(
+  "group/message group message-hover px-4 pb-1 mb-1 relative",
+  showAuthor ? "pt-1.5" : "py-0.5",
+  isMentioningMe && "message-mentioned",
+)}
 ```
 
-Changements précis :
-- Ajout de `border-l-2` 
-- Ajout de `borderLeftColor` dans le style inline (couleur du rôle, opacité pleine)
-- Padding asymétrique `pl-1.5 pr-1` pour compenser visuellement la bordure
+**`src/components/threads/ThreadView.tsx`** (ligne ~777) — même logique.
+
+**`src/components/channels/AnnouncementChannel.tsx`** (ligne ~759) — même logique.
+
+**`src/components/dm/DMConversation.tsx`** (ligne ~436) — pour les DM, seules les mentions utilisateur directes comptent (pas de rôles, pas de `@everyone` dans une DM 1-1, mais on applique la même fonction par cohérence).
+
+### 4. Récupération des rôles utilisateur
+
+Dans `ChatArea.tsx`, le hook `useMembers` retourne déjà `memberRoles` (Map<userId, Role[]>). Ajouter en haut du composant :
+
+```ts
+const currentUserRoleIds = useMemo(
+  () => (user ? memberRoles?.get(user.id)?.map(r => r.id) ?? [] : []),
+  [memberRoles, user]
+);
+```
+
+Idem dans `ThreadView` et `AnnouncementChannel`.
 
 ## Détails techniques
 
-- **Pas de migration SQL** — purement visuel.
-- **Pas de changement de format** — wire format `<@&SNOWFLAKE>` inchangé.
-- **`@everyone` / `@here`** déjà corrects (jaune avec bordure), **pas de modification**.
-- **Self-mention utilisateur** déjà avec bordure jaune, **pas de modification**.
-- Le `border-radius: 0` est cohérent avec le style Discord montré dans l'image 2 (zone de hover rectangulaire qui s'étend horizontalement).
-
-## Fichiers modifiés
-
-- `src/index.css` — suppression du `border-radius` sur `.message-hover`
-- `src/components/chat/ChatArea.tsx` — suppression des classes `rounded-*` redondantes
-- `src/components/chat/mentions/MentionComponents.tsx` — `RoleMention` : ajout de la bordure gauche colorée
-- (potentiellement) `ThreadView.tsx`, `DMConversation.tsx`, `MobileChatView.tsx` si même classes redondantes détectées
+- **Pas de migration SQL** — purement client-side, basé sur le contenu du message déjà chargé
+- **Pas de changement du moteur Markdown** — `src/lib/markdown.tsx` continue de rendre les pastilles colorées des mentions individuelles
+- **Performance** : la détection est O(n) sur le nombre de rôles de l'utilisateur courant (généralement < 10), exécutée une fois par rendu de message via `useMemo`/calcul direct
+- **Compatibilité** : fonctionne avec UUID et Snowflake (regex couvre les deux formats)
+- **Préserve les angles droits** : on utilise `box-shadow` (pas de `border-left`) pour ne pas décaler le contenu et rester cohérent avec la suppression du `border-radius` faite précédemment
+- **Self-mention déjà visible** : la pastille `@MonNom` reste stylisée en jaune (déjà en place dans `UserMention`)
 
 ## Garantie de non-régression
 
-- Aucun changement sur l'embed thread (rounded-bl-lg conservé)
-- Aucun changement sur les avatars, attachments, polls, reactions
-- Aucun changement sur les mentions utilisateur, salon, `@everyone`, `@here`, special
-- Le rendu Markdown reste identique
-- Pas de modification de la logique de hover (juste sa forme visuelle)
+- Aucun changement sur le rendu Markdown, les attachments, polls, reactions
+- Les messages **sans** mention de l'utilisateur courant restent strictement identiques (hover normal)
+- Le hover normal reste fonctionnel et superposé au style "mentionné"
+- Aucun impact sur les notifications/compteurs (séparés via `channel_mentions`)
+- Mobile : la classe `.message-mentioned` reste persistante (le `:hover` mobile désactivé n'affecte que le hover normal)
+
+## Fichiers modifiés
+
+- `src/lib/mention-detection.ts` — **nouveau** : fonction de détection
+- `src/index.css` — ajout des classes `.message-mentioned` et `.message-mentioned:hover`
+- `src/components/chat/ChatArea.tsx` — détection + classe conditionnelle (3 emplacements de rendu)
+- `src/components/threads/ThreadView.tsx` — idem
+- `src/components/channels/AnnouncementChannel.tsx` — idem
+- `src/components/dm/DMConversation.tsx` — idem (mentions utilisateur uniquement)
 

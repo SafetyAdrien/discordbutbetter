@@ -328,7 +328,6 @@
 
   .message-hover {
     @apply transition-all duration-150;
-    border-radius: var(--radius-xl);
   }
 
   .message-hover:hover {

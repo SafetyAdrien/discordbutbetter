@@ -1112,7 +1112,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         isMobile={isMobile}
                         onLongPress={() => setMobilePollSheetId(poll.id)}
                         className={cn(
-                          "group message-hover rounded-md px-2 -mx-2 mb-1 relative",
+                          "group message-hover px-2 -mx-2 mb-1 relative",
                           showAuthor ? "pt-1" : "py-0",
                         )}
                         onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
@@ -1253,7 +1253,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                     {DateSeparator}
                     <ContextMenu>
                       <ContextMenuTrigger asChild>
-                        <div className="group message-hover rounded-xl px-4 pb-2 pt-1 mb-1">
+                        <div className="group message-hover px-4 pb-2 pt-1 mb-1">
                           {/* System text line */}
                           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1430,7 +1430,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         if (el) messageRefs.current.set(message.id, el);
                       }}
                       className={cn(
-                        "group/message group message-hover rounded-xl px-4 pb-1 mb-1 relative",
+                        "group/message group message-hover px-4 pb-1 mb-1 relative",
                         showAuthor ? "pt-1.5" : "py-0.5",
                       )}
                       onMouseEnter={() => setHoveredMessageId(message.id)}

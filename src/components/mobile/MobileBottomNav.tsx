@@ -76,6 +76,13 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}
+                {voiceActive && id === 'servers' && (
+                  <span
+                    aria-label="Connecté en vocal"
+                    title="Connecté en vocal"
+                    className="absolute -bottom-0.5 -right-1 w-2 h-2 rounded-full bg-status-online ring-2 ring-[hsl(var(--surface-1))]"
+                  />
+                )}
               </div>
               <span className={cn(
                 "text-[10px] font-semibold transition-colors duration-200",

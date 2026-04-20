@@ -226,8 +226,7 @@ interface EveryoneMentionProps {
 
 export function EveryoneMention({ type }: EveryoneMentionProps) {
   return (
-    <span className="inline-flex items-center px-1 rounded-[3px] font-medium
-      bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a]">
+    <span className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-default">
       @{type}
     </span>
   );

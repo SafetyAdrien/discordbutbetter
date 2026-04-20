@@ -895,6 +895,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           )}
                         </div>
                       </div>
+                      </SwipeToReplyRow>
                     </UniversalMessageContextMenu>
                   );
                 })}

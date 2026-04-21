@@ -22,7 +22,7 @@ export interface ServerWithDetails {
     channels: {
       id: string;
       name: string;
-      type: 'text' | 'voice' | 'announcement' | 'forum' | null;
+      type: 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link' | null;
       description: string | null;
       position: number | null;
       icon_url: string | null;
@@ -31,11 +31,12 @@ export interface ServerWithDetails {
   orphanChannels?: {
     id: string;
     name: string;
-    type: 'text' | 'voice' | 'announcement' | 'forum' | null;
+    type: 'text' | 'voice' | 'announcement' | 'forum' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link' | null;
     description: string | null;
     position: number | null;
     category_id: null;
     server_id: string;
+    icon_url?: string | null;
   }[];
 }
 
@@ -75,6 +76,16 @@ export function useServers() {
     queryFn: async (): Promise<ServerWithDetails[]> => {
       if (!user) return [];
 
+      const cachedChannelsByServer = new Map(
+        (cachedServers ?? []).map((server) => [
+          server.id,
+          {
+            categories: server.categories ?? [],
+            orphanChannels: server.orphanChannels ?? [],
+          },
+        ])
+      );
+
       const { data, error } = await supabase
         .from('server_members')
         .select(`
@@ -87,29 +98,7 @@ export function useServers() {
             is_public,
             owner_id,
             secondary_owner_id,
-            created_at,
-            categories (
-              id,
-              name,
-              position,
-              channels (
-                id,
-                name,
-                type,
-                description,
-                position,
-                icon_url
-              )
-            ),
-            channels (
-              id,
-              name,
-              type,
-              description,
-              position,
-              category_id,
-              icon_url
-            )
+            created_at
           )
         `)
         .eq('user_id', user.id);
@@ -120,20 +109,7 @@ export function useServers() {
         ?.map((m) => m.server)
         .filter((s): s is NonNullable<typeof s> => s !== null)
         .map((server) => {
-          const allChannels = (server as any).channels || [];
-          const orphanChannels = allChannels
-            .filter((ch: any) => !ch.category_id)
-            .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
-            .map((ch: any) => ({
-              id: ch.id,
-              name: ch.name,
-              type: ch.type,
-              description: ch.description,
-              position: ch.position,
-              icon_url: ch.icon_url || null,
-              category_id: null as null,
-              server_id: server.id,
-            }));
+          const cachedChannels = cachedChannelsByServer.get(server.id);
 
           return {
             id: server.id,
@@ -145,15 +121,8 @@ export function useServers() {
             owner_id: server.owner_id,
             secondary_owner_id: server.secondary_owner_id,
             created_at: server.created_at,
-            categories: (server.categories || [])
-              .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
-              .map((cat: any) => ({
-                ...cat,
-                channels: (cat.channels || []).sort(
-                  (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
-                ),
-              })),
-            orphanChannels,
+            categories: cachedChannels?.categories || [],
+            orphanChannels: cachedChannels?.orphanChannels || [],
           };
         }) ?? [];
 
@@ -162,6 +131,9 @@ export function useServers() {
     enabled: !!user,
     initialData: cachedServers,
     initialDataUpdatedAt: cachedServers ? Date.now() : 0,
+    staleTime: cachedServers ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedServers ? false : true,
+    refetchOnWindowFocus: false,
   });
 
   // Persist to IndexedDB

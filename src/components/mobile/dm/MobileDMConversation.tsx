@@ -62,6 +62,8 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
   const [actionMessage, setActionMessage] = useState<DMMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [replyingTo, setReplyingTo] = useState<DMMessage | null>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

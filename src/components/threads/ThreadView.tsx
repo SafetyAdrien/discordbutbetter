@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { messageMentionsMe } from '@/lib/mention-detection';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle, Maximize2, Minimize2, Reply } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -995,15 +995,13 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
       {/* Reply indicator */}
       {replyingTo && (
-        <div className="px-4 py-2 bg-muted/50 border-t border-border flex items-center gap-2">
+        <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+          <Reply className="w-4 h-4 text-primary flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-muted-foreground">
-              Répondre à{' '}
-              <span className="font-semibold text-foreground">
-                {replyingTo.author?.display_name || 'Inconnu'}
-              </span>
+            <span className="text-xs text-primary font-semibold">
+              Réponse à @{replyingTo.author?.display_name || 'Inconnu'}
             </span>
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-sm text-muted-foreground truncate">
               {replyingTo.content}
             </p>
           </div>

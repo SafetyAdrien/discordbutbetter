@@ -71,7 +71,50 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
     expect(followBtn).toBeDisabled();
   });
 
-  it("appelle followChannel + sendSystemMessage + onSuccess après sélection complète", async () => {
+  // Helper qui exécute tout le flow Suivre dans le viewport courant
+  async function runFollowFlow() {
+    renderModal();
+    const user = userEvent.setup();
+
+    const [serverTrigger, channelTrigger] = screen.getAllByRole("combobox");
+    await user.click(serverTrigger);
+    await user.click(await screen.findByRole("option", { name: /Mon Serveur/i }));
+    await user.click(channelTrigger);
+    await user.click(await screen.findByRole("option", { name: /général/i }));
+
+    const followBtn = screen.getByRole("button", { name: /^Suivre$/i });
+    expect(followBtn).not.toBeDisabled();
+    await user.click(followBtn);
+
+    expect(followMutate).toHaveBeenCalledWith({
+      sourceChannelId: "source-channel",
+      targetChannelId: "channel-1",
+    });
+    expect(sendSystemMutate).toHaveBeenCalledWith({
+      targetChannelId: "channel-1",
+      sourceServerName: "Lovable Community",
+      sourceChannelName: "annonces",
+    });
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+  }
+
+  function setViewport(width: number, height: number) {
+    Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: width });
+    Object.defineProperty(window, "innerHeight", { writable: true, configurable: true, value: height });
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  it("[Desktop 1280×720] clic Suivre → followChannel + sendSystemMessage + onSuccess", async () => {
+    setViewport(1280, 720);
+    await runFollowFlow();
+  });
+
+  it("[Mobile 390×844] clic Suivre → followChannel + sendSystemMessage + onSuccess", async () => {
+    setViewport(390, 844);
+    await runFollowFlow();
+  });
+
+  it("(legacy) appelle followChannel + sendSystemMessage + onSuccess après sélection complète", async () => {
     renderModal();
     const user = userEvent.setup();
 

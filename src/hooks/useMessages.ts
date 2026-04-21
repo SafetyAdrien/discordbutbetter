@@ -177,9 +177,9 @@ export function useMessages(channelId: string | null) {
     },
     enabled: !!channelId && !!user,
     initialData: cachedMessages,
-    initialDataUpdatedAt: cachedMessages ? 0 : undefined,
-    staleTime: 0,
-    refetchOnMount: true,
+    initialDataUpdatedAt: cachedMessages ? Date.now() : 0,
+    staleTime: cachedMessages ? 60 * 1000 : 0,
+    refetchOnMount: cachedMessages ? false : true,
     refetchOnWindowFocus: false,
   });
 

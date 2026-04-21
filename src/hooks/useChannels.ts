@@ -144,9 +144,9 @@ export function useChannels(
     },
     enabled: !!serverId && !!user,
     initialData: cachedChannels,
-    initialDataUpdatedAt: cachedChannels ? 0 : undefined,
-    staleTime: 0,
-    refetchOnMount: true,
+    initialDataUpdatedAt: cachedChannels ? Date.now() : 0,
+    staleTime: cachedChannels ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedChannels ? false : true,
     refetchOnWindowFocus: false,
   });
 

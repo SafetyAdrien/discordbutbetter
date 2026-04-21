@@ -392,6 +392,24 @@ export function MobileLayout({
         );
       case 'stage':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><StageChannel {...commonProps} serverId={currentServer.id} /></FullScreenWrapper>;
+      case 'link': {
+        // Safety net: a link channel reached the chat view — open the external URL modal and bounce back
+        const url = (channelForChat.description as string | undefined) || '';
+        if (url) {
+          // Defer state update to avoid setState during render
+          setTimeout(() => {
+            setExternalLinkUrl(url);
+            handleBackToChannels();
+          }, 0);
+        }
+        return (
+          <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}>
+            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-6 text-center">
+              Ouverture du lien externe…
+            </div>
+          </FullScreenWrapper>
+        );
+      }
       default:
         return (
           <MobileChatView

@@ -359,10 +359,10 @@ export function MobileServersView({
             onConversationSelect={onOpenDM}
             onShowFriends={onShowFriends}
           />
-        ) : selectedServerId && selectedRawServer ? (
+        ) : selectedServerId && (selectedRawServer || servers.find(s => s.id === selectedServerId)) ? (
           <MobileChannelListView
             embedded
-            serverName={selectedRawServer.name}
+            serverName={(selectedRawServer?.name) || servers.find(s => s.id === selectedServerId)?.name || 'Serveur'}
             serverId={selectedServerId}
             categories={categoriesForList}
             orphanChannels={orphanChannelsForList}

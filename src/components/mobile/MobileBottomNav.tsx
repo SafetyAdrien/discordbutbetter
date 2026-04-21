@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Globe, Bell, User, MessageCircle } from 'lucide-react';
+import { Globe, Bell, User } from 'lucide-react';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';

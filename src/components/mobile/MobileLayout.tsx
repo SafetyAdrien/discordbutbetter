@@ -178,6 +178,8 @@ export function MobileLayout({
   const sendMessage = useSendMessage();
 
   const currentServer = rawServers.find(s => s.id === currentServerId);
+  const resolvedCategories = channelsData?.categories ?? currentServer?.categories ?? [];
+  const resolvedOrphanChannels = channelsData?.orphanChannels ?? currentServer?.orphanChannels ?? [];
 
   const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null) => {
     if (mobileView.type === 'chat') {
@@ -301,13 +303,13 @@ export function MobileLayout({
   // Active channel info
   const activeChannel = useMemo(() => {
     if (mobileView.type !== 'chat') return null;
-    if (!currentServer) return null;
+    if (!currentServerId) return null;
     const all = [
-      ...currentServer.categories.flatMap((c: any) => c.channels),
-      ...(currentServer.orphanChannels || []),
+      ...resolvedCategories.flatMap((c: any) => c.channels),
+      ...resolvedOrphanChannels,
     ];
     return all.find((ch: any) => ch.id === mobileView.channelId);
-  }, [mobileView, currentServer]);
+  }, [mobileView, currentServerId, resolvedCategories, resolvedOrphanChannels]);
 
   const channelForChat = activeChannel ? {
     id: activeChannel.id,
@@ -438,7 +440,7 @@ export function MobileLayout({
   };
 
   // Build categories for channel list
-  const categoriesForList = currentServer?.categories.map((cat: any) => ({
+  const categoriesForList = resolvedCategories.map((cat: any) => ({
     id: cat.id,
     name: cat.name,
     channels: cat.channels.map((ch: any) => ({
@@ -447,9 +449,9 @@ export function MobileLayout({
       type: ch.type || 'text',
       description: ch.description,
     })),
-  })) || [];
+  }));
 
-  const orphanChannelsForList = (currentServer?.orphanChannels || channelsData?.orphanChannels || []).map((ch: any) => ({
+  const orphanChannelsForList = resolvedOrphanChannels.map((ch: any) => ({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description,
   }));
 

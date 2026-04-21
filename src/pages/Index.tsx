@@ -306,8 +306,10 @@ const Index = () => {
         if (savedChannel) {
           setActiveChannelId(savedChannel.id);
         } else {
-          // Fallback to first text channel
-          const firstChannel = allChannels.find(ch => ch.type === 'text');
+          // Fallback to first available channel, prefer text-like channels when present
+          const firstChannel = allChannels.find(ch => ch.type === 'text')
+            || allChannels.find(ch => ch.type === 'announcement' || ch.type === 'forum' || ch.type === 'media')
+            || allChannels[0];
           if (firstChannel) {
             setActiveChannelId(firstChannel.id);
             setChannelForServer(activeServerId, firstChannel.id);

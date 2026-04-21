@@ -41,6 +41,8 @@ import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
 import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
 import { useDMMessageReactions, useToggleDMReaction } from '@/hooks/useDMReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { RepliedLine } from '@/components/chat/RepliedLine';
+import { Reply, X as XIcon } from 'lucide-react';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -82,11 +84,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState<DMMessage | null>(null);
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
   const [profileInitialTab, setProfileInitialTab] = useState<'about' | 'servers' | 'friends'>('about');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   const { user, profile } = useAuth();
   const isShiftPressed = useShiftKey();
@@ -195,8 +199,15 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleReply = (message: DMMessage) => {
-    // TODO: Implement reply
-    console.log('Reply to', message.id);
+    setReplyingTo(message);
+  };
+
+  const handleJumpToMessage = (id: string) => {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('message-mentioned');
+    setTimeout(() => el.classList.remove('message-mentioned'), 1500);
   };
 
   const handleStartEdit = (message: DMMessage) => {
@@ -403,7 +414,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       : '';
 
                     return (
-                      <div key={message.id}>
+                      <div
+                        key={message.id}
+                        ref={(el) => {
+                          if (el) messageRefs.current.set(message.id, el);
+                          else messageRefs.current.delete(message.id);
+                        }}
+                      >
                         {/* Date Separator */}
                         {showDateSeparator && (
                           <div className="flex items-center gap-4 my-2">
@@ -412,6 +429,34 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               {formatDate(currentDate)}
                             </span>
                             <div className="flex-1 h-px bg-border" />
+                          </div>
+                        )}
+                        {/* Replied line (Discord-like, faithful resolution) */}
+                        {message.repliedMessage && (
+                          <div className="-mb-0.5">
+                            <RepliedLine
+                              repliedMessage={{
+                                id: message.repliedMessage.id,
+                                content: message.repliedMessage.content,
+                                deleted: message.repliedMessage.deleted,
+                                attachments: (message.repliedMessage.attachments || []).map((a) => ({
+                                  id: a.id,
+                                  url: a.url,
+                                  name: a.name,
+                                  type: a.type,
+                                })),
+                                author: message.repliedMessage.author
+                                  ? {
+                                      id: message.repliedMessage.author.id,
+                                      username: message.repliedMessage.author.username,
+                                      displayName: message.repliedMessage.author.display_name,
+                                      avatar: message.repliedMessage.author.avatar_url || undefined,
+                                    }
+                                  : null,
+                              }}
+                              onJump={handleJumpToMessage}
+                              indent={48}
+                            />
                           </div>
                         )}
                         <UniversalMessageContextMenu
@@ -600,6 +645,43 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           {/* Typing Indicator */}
           <TypingIndicator conversationId={conversationId} />
 
+          {/* Reply preview (above input) */}
+          {replyingTo && (
+            <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+              <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <Avatar className="w-5 h-5 flex-shrink-0">
+                {replyingTo.author?.avatar_url && (
+                  <AvatarImage src={replyingTo.author.avatar_url} alt={replyingTo.author.display_name} />
+                )}
+                <AvatarFallback className="text-[9px] bg-primary/15 text-primary font-semibold">
+                  {(replyingTo.author?.display_name || '?').charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <span className="text-xs font-semibold flex-shrink-0 text-primary">
+                  @{replyingTo.author?.display_name || 'Utilisateur'}
+                </span>
+                <span
+                  className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
+                  style={{
+                    maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                  }}
+                >
+                  {(replyingTo.content || '').replace(/\s+/g, ' ').trim().slice(0, 64) ||
+                    (replyingTo.attachments.length > 0 ? '📎 Pièce jointe' : '')}
+                </span>
+              </div>
+              <button
+                onClick={() => setReplyingTo(null)}
+                className="p-1 hover:bg-muted rounded transition-colors"
+                aria-label="Annuler la réponse"
+              >
+                <XIcon className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          )}
+
           {/* Input */}
           <div className="px-4 pb-4 pt-2">
           <MessageInput
@@ -611,12 +693,14 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 conversationId,
                 content: messageInput.trim(),
                 attachments,
+                replyToId: replyingTo?.id ?? null,
               });
               setMessageInput('');
+              setReplyingTo(null);
               clearAttachments();
               stopTyping();
             }}
-            placeholder={`Envoyer un message à ${displayName}`}
+            placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}` : `Envoyer un message à ${displayName}`}
             disabled={sendMessage.isPending}
             isSending={sendMessage.isPending}
             onTypingStart={startTyping}

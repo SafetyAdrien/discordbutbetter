@@ -62,6 +62,8 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
   const [actionMessage, setActionMessage] = useState<DMMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [replyingTo, setReplyingTo] = useState<DMMessage | null>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -155,6 +157,27 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         isOwn,
         isPending: m.isPending,
         attachments: m.attachments,
+        repliedMessage: m.repliedMessage
+          ? {
+              id: m.repliedMessage.id,
+              content: m.repliedMessage.content,
+              deleted: m.repliedMessage.deleted,
+              attachments: (m.repliedMessage.attachments || []).map((a) => ({
+                id: a.id,
+                url: a.url,
+                name: a.name,
+                type: a.type,
+              })),
+              author: m.repliedMessage.author
+                ? {
+                    id: m.repliedMessage.author.id,
+                    username: m.repliedMessage.author.username,
+                    displayName: m.repliedMessage.author.display_name,
+                    avatar: m.repliedMessage.author.avatar_url || undefined,
+                  }
+                : null,
+            }
+          : null,
         author: m.author
           ? {
               id: m.author.id,
@@ -192,7 +215,13 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         isSpoiler: a.isSpoiler,
         previewUrl: URL.createObjectURL(a.file),
       }));
-      await sendMessage.mutateAsync({ conversationId, content, attachments: pending });
+      await sendMessage.mutateAsync({
+        conversationId,
+        content,
+        attachments: pending,
+        replyToId: replyingTo?.id ?? null,
+      });
+      setReplyingTo(null);
       stopTyping();
     } catch {
       /* toast handled in hook */
@@ -202,6 +231,14 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
   const handleToggleReaction = (messageId: string, emoji: string, _r: any) => {
     const list = reactionsData[messageId] || [];
     toggleReaction.mutate({ messageId, emoji, currentReactions: list });
+  };
+
+  const handleJumpToMessage = (id: string) => {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    el.classList.add('message-mentioned');
+    setTimeout(() => el.classList.remove('message-mentioned'), 1500);
   };
 
   const isMessagePinned = (id: string) => pinnedMessages.some((p) => p.message_id === id);
@@ -261,7 +298,13 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             </div>
           ) : (
             grouped.map(({ raw, bubble, showAvatar, showAuthorName, isLastOfBurst, showDateSeparator }) => (
-              <div key={raw.id}>
+              <div
+                key={raw.id}
+                ref={(el) => {
+                  if (el) messageRefs.current.set(raw.id, el);
+                  else messageRefs.current.delete(raw.id);
+                }}
+              >
                 {showDateSeparator && (
                   <div className="sticky top-0 z-10 my-2 flex items-center justify-center">
                     <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-[hsl(var(--surface-2))]/80 backdrop-blur rounded-full">
@@ -277,17 +320,14 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
                   isGroup={isGroup}
                   reactions={reactionsData[raw.id] || []}
                   currentUserId={user?.id ?? null}
-                  onReply={() => {
-                    setMessageInput((v) => (v ? v : `> ${raw.content.split('\n')[0]}\n`));
-                  }}
-                  onLongPress={(m) => {
-                    setActionMessage(raw);
-                  }}
+                  onReply={() => setReplyingTo(raw)}
+                  onLongPress={() => setActionMessage(raw)}
                   onToggleReaction={handleToggleReaction}
                   onAvatarTap={(uid) => {
                     setProfileUserId(uid);
                     setShowProfile(true);
                   }}
+                  onJumpToMessage={handleJumpToMessage}
                 />
               </div>
             ))
@@ -309,6 +349,34 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         </div>
       </div>
 
+      {/* Reply preview (above input) */}
+      {replyingTo && (
+        <div className="mx-3 mb-1 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-primary flex-shrink-0">
+              ↪ @{replyingTo.author?.display_name || 'Utilisateur'}
+            </span>
+            <span
+              className="text-[12px] text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
+              style={{
+                maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+              }}
+            >
+              {(replyingTo.content || '').replace(/\s+/g, ' ').trim().slice(0, 64) ||
+                (replyingTo.attachments.length > 0 ? '📎 Pièce jointe' : '')}
+            </span>
+          </div>
+          <button
+            onClick={() => setReplyingTo(null)}
+            className="p-1 -mr-1 rounded-full hover:bg-muted/50 transition-colors"
+            aria-label="Annuler la réponse"
+          >
+            <span className="text-muted-foreground text-sm">✕</span>
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="border-t border-border bg-[hsl(var(--surface-1))]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <MessageInput
@@ -319,7 +387,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             else stopTyping();
           }}
           onSend={(atts) => handleSend(atts)}
-          placeholder={`Message à ${displayName}`}
+          placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}` : `Message à ${displayName}`}
           isSending={sendMessage.isPending}
           onTypingStart={startTyping}
           onTypingStop={stopTyping}
@@ -339,9 +407,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
               isOwnMessage={actionMessage.author?.id === user?.id}
               isPinned={isMessagePinned(actionMessage.id)}
               onReply={() => {
-                setMessageInput((v) =>
-                  v ? v : `> ${actionMessage.content.split('\n')[0]}\n`,
-                );
+                setReplyingTo(actionMessage);
                 setActionMessage(null);
               }}
               onAddReaction={(emoji) => {

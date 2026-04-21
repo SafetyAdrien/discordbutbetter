@@ -9,9 +9,11 @@ import { MarkdownText } from '@/lib/markdown';
 import { MessageAttachments, type StoredAttachment } from '@/components/chat/MessageAttachments';
 import { LinkEmbeds } from '@/components/chat/LinkEmbed';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { RepliedLine } from '@/components/chat/RepliedLine';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { DMReaction } from '@/hooks/useDMReactions';
+import type { RepliedMessageRef } from '@/types/app';
 
 export interface BubbleMessage {
   id: string;
@@ -21,6 +23,7 @@ export interface BubbleMessage {
   isOwn: boolean;
   isPending?: boolean;
   attachments: StoredAttachment[];
+  repliedMessage?: RepliedMessageRef | null;
   author: {
     id: string;
     displayName: string;
@@ -41,6 +44,7 @@ interface Props {
   onLongPress: (m: BubbleMessage) => void;
   onToggleReaction: (messageId: string, emoji: string, reactions: DMReaction[]) => void;
   onAvatarTap?: (authorId: string) => void;
+  onJumpToMessage?: (messageId: string) => void;
 }
 
 const SWIPE_THRESHOLD = 64;
@@ -58,6 +62,7 @@ export function MobileMessageBubble({
   onLongPress,
   onToggleReaction,
   onAvatarTap,
+  onJumpToMessage,
 }: Props) {
   const reduced = useReducedMotion();
   const [translateX, setTranslateX] = useState(0);
@@ -212,6 +217,17 @@ export function MobileMessageBubble({
             <span className="text-[11px] text-muted-foreground font-medium mb-0.5 px-2">
               {message.author?.displayName}
             </span>
+          )}
+
+          {/* Replied line (Discord-like, faithful) */}
+          {message.repliedMessage && (
+            <div className={cn('w-full mb-0.5', message.isOwn ? 'self-end' : 'self-start')}>
+              <RepliedLine
+                repliedMessage={message.repliedMessage}
+                onJump={onJumpToMessage}
+                indent={message.isOwn ? 24 : 28}
+              />
+            </div>
           )}
 
           <button

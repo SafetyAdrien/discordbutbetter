@@ -24,6 +24,19 @@ export interface StoredAttachment {
   isSpoiler?: boolean;
 }
 
+export interface RepliedDMSnapshot {
+  id: string;
+  content: string;
+  attachments: StoredAttachment[];
+  deleted?: boolean;
+  author: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 export interface DMMessage {
   id: string;
   content: string;
@@ -31,6 +44,8 @@ export interface DMMessage {
   edited_at: string | null;
   attachments: StoredAttachment[];
   conversation_id: string;
+  reply_to_id?: string | null;
+  repliedMessage?: RepliedDMSnapshot | null;
   author: {
     id: string;
     username: string;
@@ -58,6 +73,7 @@ export function useDMMessages(conversationId: string | null) {
           edited_at,
           attachments,
           conversation_id,
+          reply_to_id,
           author:profiles!dm_messages_author_id_fkey (
             id,
             username,
@@ -70,11 +86,65 @@ export function useDMMessages(conversationId: string | null) {
         .limit(100);
 
       if (error) throw error;
-      
-      return (data as any[]).map(msg => ({
+
+      const baseMessages: DMMessage[] = (data as any[]).map((msg) => ({
         ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
       })) as DMMessage[];
+
+      // Resolve replied messages in a single batched query
+      const replyIds = Array.from(
+        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
+      );
+
+      let replyMap = new Map<string, RepliedDMSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('dm_messages')
+          .select(`
+            id,
+            content,
+            attachments,
+            author:profiles!dm_messages_author_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .in('id', replyIds);
+
+        if (replyData) {
+          for (const r of replyData as any[]) {
+            replyMap.set(r.id, {
+              id: r.id,
+              content: r.content || '',
+              attachments: Array.isArray(r.attachments) ? r.attachments : [],
+              author: r.author
+                ? {
+                    id: r.author.id,
+                    username: r.author.username,
+                    display_name: r.author.display_name,
+                    avatar_url: r.author.avatar_url,
+                  }
+                : null,
+            });
+          }
+        }
+      }
+
+      return baseMessages.map((m) => ({
+        ...m,
+        repliedMessage: m.reply_to_id
+          ? replyMap.get(m.reply_to_id) ?? {
+              id: m.reply_to_id,
+              content: '',
+              attachments: [],
+              deleted: true,
+              author: null,
+            }
+          : null,
+      }));
     },
     enabled: !!conversationId && !!user,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
@@ -115,6 +185,7 @@ export function useDMMessages(conversationId: string | null) {
               edited_at,
               attachments,
               conversation_id,
+              reply_to_id,
               author:profiles!dm_messages_author_id_fkey (
                 id,
                 username,
@@ -126,9 +197,52 @@ export function useDMMessages(conversationId: string | null) {
             .single();
 
           if (data) {
+            // Resolve replied snapshot if applicable
+            let repliedMessage: RepliedDMSnapshot | null = null;
+            if ((data as any).reply_to_id) {
+              const { data: r } = await supabase
+                .from('dm_messages')
+                .select(`
+                  id,
+                  content,
+                  attachments,
+                  author:profiles!dm_messages_author_id_fkey (
+                    id, username, display_name, avatar_url
+                  )
+                `)
+                .eq('id', (data as any).reply_to_id)
+                .maybeSingle();
+              if (r) {
+                repliedMessage = {
+                  id: r.id,
+                  content: r.content || '',
+                  attachments: Array.isArray(r.attachments) ? (r.attachments as any) : [],
+                  author: r.author
+                    ? {
+                        id: (r.author as any).id,
+                        username: (r.author as any).username,
+                        display_name: (r.author as any).display_name,
+                        avatar_url: (r.author as any).avatar_url,
+                      }
+                    : null,
+                };
+              } else {
+                repliedMessage = {
+                  id: (data as any).reply_to_id,
+                  content: '',
+                  attachments: [],
+                  deleted: true,
+                  author: null,
+                };
+              }
+            }
+
             const parsedData: DMMessage = {
-              ...data,
-              attachments: (Array.isArray(data.attachments) ? data.attachments : []) as unknown as StoredAttachment[]
+              ...(data as any),
+              attachments: (Array.isArray((data as any).attachments)
+                ? (data as any).attachments
+                : []) as unknown as StoredAttachment[],
+              repliedMessage,
             };
             queryClient.setQueryData<DMMessage[]>(
               ['dm-messages', conversationId],
@@ -247,10 +361,12 @@ export function useSendDMMessage() {
       conversationId,
       content,
       attachments = [],
+      replyToId,
     }: {
       conversationId: string;
       content: string;
       attachments?: PendingAttachment[];
+      replyToId?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -271,6 +387,7 @@ export function useSendDMMessage() {
           content: validated.content,
           author_id: user.id,
           attachments: uploadedAttachments.length > 0 ? (uploadedAttachments as unknown as any) : [],
+          reply_to_id: replyToId ?? null,
         })
         .select(`
           id,
@@ -279,6 +396,7 @@ export function useSendDMMessage() {
           edited_at,
           attachments,
           conversation_id,
+          reply_to_id,
           author:profiles!dm_messages_author_id_fkey (
             id,
             username,
@@ -289,12 +407,36 @@ export function useSendDMMessage() {
         .single();
 
       if (error) throw error;
+
+      // Resolve replied snapshot from cache (the original message is in the same channel)
+      let repliedMessage: RepliedDMSnapshot | null = null;
+      if (replyToId) {
+        const cached = queryClient.getQueryData<DMMessage[]>(['dm-messages', conversationId]);
+        const found = cached?.find((m) => m.id === replyToId);
+        if (found && found.author) {
+          repliedMessage = {
+            id: found.id,
+            content: found.content,
+            attachments: found.attachments,
+            author: {
+              id: found.author.id,
+              username: found.author.username,
+              display_name: found.author.display_name,
+              avatar_url: found.author.avatar_url,
+            },
+          };
+        }
+      }
+
       return {
-        ...data,
-        attachments: (Array.isArray(data.attachments) ? data.attachments : []) as unknown as StoredAttachment[]
+        ...(data as any),
+        attachments: (Array.isArray((data as any).attachments)
+          ? (data as any).attachments
+          : []) as unknown as StoredAttachment[],
+        repliedMessage,
       } as DMMessage;
     },
-    onMutate: async ({ conversationId, content, attachments = [] }) => {
+    onMutate: async ({ conversationId, content, attachments = [], replyToId }) => {
       await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
 
       const previousMessages = queryClient.getQueryData<DMMessage[]>([
@@ -313,6 +455,25 @@ export function useSendDMMessage() {
         isSpoiler: a.isSpoiler,
       }));
 
+      // Resolve replied snapshot optimistically from current cache
+      let optimisticReplied: RepliedDMSnapshot | null = null;
+      if (replyToId && previousMessages) {
+        const found = previousMessages.find((m) => m.id === replyToId);
+        if (found && found.author) {
+          optimisticReplied = {
+            id: found.id,
+            content: found.content,
+            attachments: found.attachments,
+            author: {
+              id: found.author.id,
+              username: found.author.username,
+              display_name: found.author.display_name,
+              avatar_url: found.author.avatar_url,
+            },
+          };
+        }
+      }
+
       const optimisticMessage: DMMessage = {
         id: `temp-${Date.now()}`,
         content,
@@ -320,6 +481,8 @@ export function useSendDMMessage() {
         edited_at: null,
         attachments: optimisticAttachments,
         conversation_id: conversationId,
+        reply_to_id: replyToId ?? null,
+        repliedMessage: optimisticReplied,
         author: profile ? {
           id: profile.id,
           username: profile.username,

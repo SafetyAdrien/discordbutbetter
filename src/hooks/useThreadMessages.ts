@@ -129,7 +129,7 @@ export const useSendThreadMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ threadId, content }: { threadId: string; content: string }) => {
+    mutationFn: async ({ threadId, content, replyToId }: { threadId: string; content: string; replyToId?: string | null }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       
@@ -137,23 +137,48 @@ export const useSendThreadMessage = () => {
         throw new Error('Message must be between 1 and 2000 characters');
       }
       
+      const insertPayload: any = {
+        thread_id: threadId,
+        author_id: user.id,
+        content: content.trim(),
+      };
+      if (replyToId) insertPayload.reply_to_id = replyToId;
+
       const { data, error } = await supabase
         .from('thread_messages')
-        .insert({
-          thread_id: threadId,
-          author_id: user.id,
-          content: content.trim(),
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ threadId, content }) => {
+    onMutate: async ({ threadId, content, replyToId }) => {
       await queryClient.cancelQueries({ queryKey: ['thread-messages', threadId] });
       const previous = queryClient.getQueryData(['thread-messages', threadId]);
-      
+      const prevList = (previous as ThreadMessage[] | undefined) || [];
+
+      // Snapshot the cited target for instant optimistic RepliedLine rendering
+      let repliedMessage: any = null;
+      if (replyToId) {
+        const target = prevList.find((m) => m.id === replyToId);
+        if (target) {
+          repliedMessage = {
+            id: target.id,
+            content: target.content || '',
+            attachments: target.attachments || [],
+            author: target.author
+              ? {
+                  id: target.author.id,
+                  username: target.author.username,
+                  display_name: target.author.display_name,
+                  avatar_url: target.author.avatar_url,
+                }
+              : null,
+          };
+        }
+      }
+
       queryClient.setQueryData(['thread-messages', threadId], (old: ThreadMessage[] = []) => [
         ...old,
         {
@@ -162,7 +187,9 @@ export const useSendThreadMessage = () => {
           content,
           created_at: new Date().toISOString(),
           author: null,
-        },
+          reply_to_id: replyToId ?? null,
+          repliedMessage,
+        } as ThreadMessage,
       ]);
       
       return { previous };

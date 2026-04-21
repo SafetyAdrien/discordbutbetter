@@ -75,15 +75,13 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
     renderModal();
     const user = userEvent.setup();
 
-    // 1. Sélectionner le serveur cible
-    const serverTrigger = screen.getByRole("combobox", { name: "" }) // first combobox
-      ?? screen.getAllByRole("combobox")[0];
+    // 1. Sélectionner le serveur cible (1er combobox)
+    const [serverTrigger, channelTrigger] = screen.getAllByRole("combobox");
     await user.click(serverTrigger);
     const serverOption = await screen.findByRole("option", { name: /Mon Serveur/i });
     await user.click(serverOption);
 
-    // 2. Sélectionner le salon cible
-    const channelTrigger = screen.getAllByRole("combobox")[1];
+    // 2. Sélectionner le salon cible (2e combobox, désormais activé)
     await user.click(channelTrigger);
     const channelOption = await screen.findByRole("option", { name: /général/i });
     await user.click(channelOption);

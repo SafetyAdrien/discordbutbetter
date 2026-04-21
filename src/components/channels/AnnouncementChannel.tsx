@@ -82,6 +82,8 @@ import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { RepliedLine } from "@/components/chat/RepliedLine";
+import { parseRepliedMessage } from "@/lib/parse-reply";
 
 interface Role {
   id: string;
@@ -217,6 +219,24 @@ export function AnnouncementChannel({
       sourceServerIcon: (m as any).source_server_icon || undefined,
       sourceChannelName: (m as any).source_channel_name || undefined,
       publishDismissed: (m as any).publish_dismissed || false,
+      // Real reply fields (Discord-like)
+      replyToId: (m as any).reply_to_id || null,
+      repliedMessage: (m as any).repliedMessage
+        ? {
+            id: (m as any).repliedMessage.id,
+            content: (m as any).repliedMessage.content,
+            deleted: (m as any).repliedMessage.deleted,
+            attachments: (m as any).repliedMessage.attachments || [],
+            author: (m as any).repliedMessage.author
+              ? {
+                  id: (m as any).repliedMessage.author.id,
+                  username: (m as any).repliedMessage.author.username,
+                  displayName: (m as any).repliedMessage.author.display_name,
+                  avatar: (m as any).repliedMessage.author.avatar_url || undefined,
+                }
+              : null,
+          }
+        : null,
     } as Message & { isPublishedMessage?: boolean; sourceServerId?: string; sourceServerName?: string; sourceServerIcon?: string; sourceChannelName?: string; publishDismissed?: boolean })),
     [messagesData]
   );

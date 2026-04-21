@@ -1,22 +1,32 @@
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Reply, Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Message } from "@/types/app";
+import type { Attachment, Message, RepliedMessageRef } from "@/types/app";
 
 interface RepliedLineProps {
-  authorName: string;
-  preview: string;
-  /** Optional resolved message for accurate avatar + jump target */
-  repliedMessage?: Message | null;
-  /** Map of displayName -> author lookup for best-effort avatar resolution */
+  /**
+   * Preferred path: the resolved snapshot of the cited message (via reply_to_id).
+   * When provided, gives faithful avatar, content, attachments, jump target.
+   */
+  repliedMessage?: RepliedMessageRef | null;
+
+  /** Legacy fallback: cited author display name parsed from markdown blockquote */
+  authorName?: string;
+  /** Legacy fallback: preview text parsed from markdown blockquote */
+  preview?: string;
+
+  /** Best-effort author lookup (legacy fallback) */
   authorLookup?: Map<string, { id: string; avatar?: string; displayName: string }>;
-  /** Map keyed by displayName + content for best-effort jump resolution */
-  onJump?: (messageId: string) => void;
+  /** Messages list for legacy jump resolution */
   messages?: Message[];
+  /** Jump callback */
+  onJump?: (messageId: string) => void;
+
   /** Visual indentation in px to align with the parent message avatar */
   indent?: number;
-  /** Optional role color for the cited author */
+  /** Optional role color for the cited author (semibold pseudo color) */
   authorColor?: string;
   className?: string;
 }
@@ -25,8 +35,8 @@ const MAX_PREVIEW_CHARS = 64;
 
 /**
  * Strip mentions/markdown to a clean inline preview.
- * - <@id> mentions become "@username" if resolvable, else "@user"
- * - <#id> channel mentions become "#channel"
+ * - <@id> mentions become "@membre"
+ * - <#id> channel mentions become "#salon"
  * - markdown chars are stripped
  */
 function cleanPreview(raw: string): string {
@@ -44,62 +54,101 @@ function cleanPreview(raw: string): string {
     .trim();
 }
 
+function describeAttachments(attachments: Attachment[]): { icon: JSX.Element; label: string } {
+  if (attachments.length === 1) {
+    const a = attachments[0];
+    if (a.type === "image") return { icon: <ImageIcon className="w-3 h-3" />, label: "Image" };
+    if (a.type === "video") return { icon: <VideoIcon className="w-3 h-3" />, label: "Vidéo" };
+    return { icon: <FileText className="w-3 h-3" />, label: a.name || "Fichier" };
+  }
+  return {
+    icon: <Paperclip className="w-3 h-3" />,
+    label: `${attachments.length} pièces jointes`,
+  };
+}
+
 export function RepliedLine({
+  repliedMessage,
   authorName,
   preview,
-  repliedMessage,
   authorLookup,
-  onJump,
   messages,
+  onJump,
   indent = 50,
   authorColor,
   className,
 }: RepliedLineProps) {
-  const cleaned = useMemo(() => cleanPreview(preview), [preview]);
-  const truncated = useMemo(() => {
-    if (cleaned.length <= MAX_PREVIEW_CHARS) return cleaned;
-    return cleaned.slice(0, MAX_PREVIEW_CHARS);
-  }, [cleaned]);
-  const isTruncated = cleaned.length > MAX_PREVIEW_CHARS;
+  // ---- Resolve display data ----
+  const isDeleted = repliedMessage?.deleted === true;
 
-  // Resolve author avatar best-effort
-  const resolved = useMemo(() => {
-    if (repliedMessage) {
+  // Author resolution (fidelity mode wins)
+  const resolvedAuthor = useMemo(() => {
+    if (repliedMessage?.author) {
       return {
         id: repliedMessage.author.id,
         avatar: repliedMessage.author.avatar,
         displayName: repliedMessage.author.displayName,
       };
     }
+    if (!authorName) return null;
     if (authorLookup) {
-      // Direct hit
       const direct = authorLookup.get(authorName);
       if (direct) return direct;
-      // Case-insensitive fallback
       for (const [key, val] of authorLookup) {
         if (key.toLowerCase() === authorName.toLowerCase()) return val;
       }
     }
     return null;
-  }, [authorName, repliedMessage, authorLookup]);
+  }, [repliedMessage, authorName, authorLookup]);
 
-  // Resolve jump target best-effort
+  const displayedAuthorName =
+    resolvedAuthor?.displayName ?? authorName ?? (isDeleted ? "Inconnu" : "Utilisateur");
+
+  // Content resolution
+  const rawPreview = useMemo(() => {
+    if (isDeleted) return "";
+    if (repliedMessage) {
+      const c = (repliedMessage.content || "").trim();
+      if (c) return cleanPreview(c);
+      const atts = repliedMessage.attachments ?? [];
+      if (atts.length > 0) return ""; // we render an attachment chip instead
+      return "";
+    }
+    return cleanPreview(preview ?? "");
+  }, [repliedMessage, preview, isDeleted]);
+
+  const attachmentInfo = useMemo(() => {
+    if (!repliedMessage || isDeleted) return null;
+    const atts = repliedMessage.attachments ?? [];
+    if (!atts.length) return null;
+    if ((repliedMessage.content || "").trim()) return null; // text wins
+    return describeAttachments(atts);
+  }, [repliedMessage, isDeleted]);
+
+  const truncated = useMemo(() => {
+    if (rawPreview.length <= MAX_PREVIEW_CHARS) return rawPreview;
+    return rawPreview.slice(0, MAX_PREVIEW_CHARS);
+  }, [rawPreview]);
+  const isTruncated = rawPreview.length > MAX_PREVIEW_CHARS;
+
+  // ---- Resolve jump target ----
   const jumpTargetId = useMemo(() => {
-    if (repliedMessage) return repliedMessage.id;
-    if (!messages) return null;
+    if (isDeleted) return null;
+    if (repliedMessage?.id) return repliedMessage.id;
+    // legacy: best-effort search by author display name + content
+    if (!messages || !authorName) return null;
     const needleAuthor = authorName.toLowerCase();
-    const needlePreview = cleaned.slice(0, 30).toLowerCase();
-    // Search recent messages first (reverse order)
+    const needlePreview = (preview ?? "").slice(0, 30).toLowerCase();
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
       if (m.author.displayName.toLowerCase() !== needleAuthor) continue;
       if (m.content.toLowerCase().includes(needlePreview)) return m.id;
     }
     return null;
-  }, [authorName, cleaned, repliedMessage, messages]);
+  }, [repliedMessage, messages, authorName, preview, isDeleted]);
 
-  const isClickable = Boolean(jumpTargetId && onJump);
-  const initial = (resolved?.displayName ?? authorName).charAt(0).toUpperCase();
+  const isClickable = Boolean(jumpTargetId && onJump && !isDeleted);
+  const initial = displayedAuthorName.charAt(0).toUpperCase();
 
   const handleClick = () => {
     if (jumpTargetId && onJump) onJump(jumpTargetId);
@@ -137,47 +186,77 @@ export function RepliedLine({
         />
       </svg>
 
-      {/* Mini avatar */}
+      {/* Reply arrow (Discord-like) */}
+      <Reply
+        aria-hidden="true"
+        className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 -scale-x-100"
+      />
+
+      {/* Mini avatar (real avatar in fidelity mode) */}
       <Avatar className="w-4 h-4 flex-shrink-0">
-        {resolved?.avatar && <AvatarImage src={resolved.avatar} alt={authorName} />}
-        <AvatarFallback className="text-[8px] bg-primary/15 text-primary font-semibold">
-          {initial}
+        {!isDeleted && resolvedAuthor?.avatar && (
+          <AvatarImage src={resolvedAuthor.avatar} alt={displayedAuthorName} />
+        )}
+        <AvatarFallback
+          className={cn(
+            "text-[8px] font-semibold",
+            isDeleted ? "bg-muted text-muted-foreground" : "bg-primary/15 text-primary",
+          )}
+        >
+          {isDeleted ? "?" : initial}
         </AvatarFallback>
       </Avatar>
 
-      {/* Author name */}
-      <span
-        className={cn(
-          "font-semibold text-[13px] flex-shrink-0 max-w-[140px] truncate",
-          isClickable && "group-hover/replied:underline",
-        )}
-        style={authorColor ? { color: authorColor } : undefined}
-      >
-        {resolved?.displayName ?? authorName}
-      </span>
+      {/* Author name (with @ prefix, role-colored) */}
+      {!isDeleted && (
+        <span
+          className={cn(
+            "font-semibold text-[13px] flex-shrink-0 max-w-[160px] truncate",
+            isClickable && "group-hover/replied:underline",
+          )}
+          style={authorColor ? { color: authorColor } : undefined}
+        >
+          @{displayedAuthorName}
+        </span>
+      )}
 
-      {/* Preview with fade-out mask (no ellipsis) */}
-      <span
-        className="text-[13px] text-muted-foreground min-w-0 whitespace-nowrap overflow-hidden"
-        style={{
-          maxWidth: "min(64ch, 70%)",
-          maskImage: isTruncated
-            ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
-            : undefined,
-          WebkitMaskImage: isTruncated
-            ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
-            : undefined,
-        }}
-      >
-        {truncated}
-      </span>
+      {/* Body: deleted, attachment chip, or text preview */}
+      {isDeleted ? (
+        <span className="text-[13px] text-muted-foreground italic">
+          Message original supprimé
+        </span>
+      ) : attachmentInfo ? (
+        <span className="text-[13px] text-muted-foreground italic flex items-center gap-1 min-w-0">
+          {attachmentInfo.icon}
+          <span className="truncate">{attachmentInfo.label}</span>
+        </span>
+      ) : (
+        <span
+          className="text-[13px] text-muted-foreground min-w-0 whitespace-nowrap overflow-hidden"
+          style={{
+            maxWidth: "min(64ch, 70%)",
+            maskImage: isTruncated
+              ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
+              : undefined,
+            WebkitMaskImage: isTruncated
+              ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
+              : undefined,
+          }}
+        >
+          {truncated}
+        </span>
+      )}
     </div>
   );
 
   if (!isClickable) {
     return (
       <div
-        aria-label={`Réponse à ${authorName}: ${cleaned}`}
+        aria-label={
+          isDeleted
+            ? "Message original supprimé"
+            : `Réponse à ${displayedAuthorName}: ${rawPreview}`
+        }
         className="group/replied mb-0.5"
       >
         {content}
@@ -191,7 +270,7 @@ export function RepliedLine({
         <button
           type="button"
           onClick={handleClick}
-          aria-label={`Réponse à ${authorName}: ${cleaned}. Aller au message original.`}
+          aria-label={`Réponse à ${displayedAuthorName}: ${rawPreview}. Aller au message original.`}
           className="group/replied mb-0.5 w-full text-left rounded-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
         >
           {content}
@@ -199,7 +278,7 @@ export function RepliedLine({
       </TooltipTrigger>
       {isTruncated && (
         <TooltipContent side="top" className="max-w-xs text-xs">
-          {cleaned}
+          {rawPreview}
         </TooltipContent>
       )}
     </Tooltip>

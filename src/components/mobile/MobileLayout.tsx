@@ -5,7 +5,7 @@ import { MobileChannelListView } from './MobileChannelListView';
 import { MobileChatView } from './MobileChatView';
 import { MobileNotificationsView } from './MobileNotificationsView';
 import { MobileProfileView } from './MobileProfileView';
-import { MobileHomeView } from './MobileHomeView';
+
 import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { VoicePiP } from './VoicePiP';
@@ -73,7 +73,7 @@ export function MobileLayout({
   // Restore persisted state on mount
   const [activeTab, setActiveTabLocal] = useState<MobileTab>(() => {
     const tab = persistedTab as MobileTab;
-    if (tab === 'servers' || tab === 'discuss' || tab === 'notifications' || tab === 'profile') return tab;
+    if (tab === 'servers' || tab === 'notifications' || tab === 'profile') return tab;
     return 'servers';
   });
   const [mobileView, setMobileViewLocal] = useState<MobileView>(() => {
@@ -461,7 +461,7 @@ export function MobileLayout({
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
 
   // Swipe between tabs
-  const TAB_ORDER: MobileTab[] = ['servers', 'discuss', 'notifications', 'profile'];
+  const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
 
   const handleSwipeTab = useCallback((newIndex: number) => {
@@ -581,13 +581,6 @@ export function MobileLayout({
                 onCreateClick={() => setShowCreate(true)}
                 onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
                 onOpenDM={onOpenDM}
-                onShowFriends={onShowFriends}
-              />
-            )}
-            {activeTab === 'discuss' && (
-              <MobileHomeView
-                activeDMId={activeDMId}
-                onConversationSelect={onOpenDM}
                 onShowFriends={onShowFriends}
               />
             )}

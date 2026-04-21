@@ -373,6 +373,14 @@ export function AnnouncementChannel({
     setReplyingTo(message);
   };
 
+  const scrollToMessage = (messageId: string) => {
+    const el = messageRefs.current.get(messageId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('message-mentioned');
+    setTimeout(() => el.classList.remove('message-mentioned'), 1500);
+  };
+
   const handleUserClick = (author: User) => {
     const roles = memberRoles?.get(author.id);
     setSelectedUser({ user: author, roles });
@@ -826,6 +834,39 @@ export function AnnouncementChannel({
                     {showAuthor ? (
                       <div className="relative">
                         {threadsByMessageId.has(message.id) && <ThreadSpine startY={44} />}
+
+                        {/* Real reply line (Discord-like) — preferred path */}
+                        {(() => {
+                          const repliedMsg = (message as any).repliedMessage;
+                          if (repliedMsg && !isEditing) {
+                            const topRole = repliedMsg.author
+                              ? memberRoles?.get(repliedMsg.author.id)?.[0]
+                              : undefined;
+                            return (
+                              <RepliedLine
+                                repliedMessage={repliedMsg}
+                                onJump={scrollToMessage}
+                                indent={56}
+                                authorColor={topRole?.color || undefined}
+                                authorRole={topRole ?? null}
+                                className="mb-1"
+                              />
+                            );
+                          }
+                          // Legacy fallback for old blockquote-stored citations
+                          const { reply } = parseRepliedMessage(message.content);
+                          if (!reply) return null;
+                          return (
+                            <RepliedLine
+                              authorName={reply.author}
+                              preview={reply.preview}
+                              messages={messages}
+                              onJump={scrollToMessage}
+                              indent={56}
+                              className="mb-1"
+                            />
+                          );
+                        })()}
 
                         <div className="flex gap-3 items-start">
                         {isPublishedFromOther ? (

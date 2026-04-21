@@ -665,9 +665,10 @@ export function MessageInput({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center min-h-0 ${compact ? 'p-1.5' : 'h-9 w-9 p-0'}`}
+                  aria-label="Ajouter une pièce jointe ou un sondage"
+                  className={`shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center min-h-0 ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
                 >
-                  <PlusCircle className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                  <PlusCircle className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-48 p-1">
@@ -741,7 +742,7 @@ export function MessageInput({
               </div>
             </div>
 
-            <div className={`flex items-center justify-end gap-0.5 shrink-0 ${rightActionsWidthClass}`}>
+            <div className={`flex items-center justify-end gap-1 shrink-0 ${rightActionsWidthClass}`}>
               {!isMobile && (
                 <EmojiStickerPicker
                   serverId={serverId}
@@ -750,9 +751,10 @@ export function MessageInput({
                   trigger={
                     <button
                       type="button"
-                      className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
+                      aria-label="Insérer un autocollant"
+                      className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
                     >
-                      <Sticker className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                      <Sticker className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
                     </button>
                   }
                 />
@@ -764,9 +766,10 @@ export function MessageInput({
                 trigger={
                   <button
                     type="button"
-                    className={`text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1.5' : 'h-9 w-9 p-0 min-h-0'}`}
+                    aria-label="Insérer un emoji"
+                    className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
                   >
-                    <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                    <Smile className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
                   </button>
                 }
               />
@@ -774,9 +777,9 @@ export function MessageInput({
                 type="submit"
                 disabled={disabled || !canSubmitMessage}
                 aria-label="Envoyer"
-                className={`ml-0.5 shrink-0 p-2 rounded-full transition-all duration-200 send-button-hover ${isSending ? 'animate-send-fly' : ''} ${canSubmitMessage ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]' : 'text-muted-foreground opacity-30 cursor-not-allowed'}`}
+                className={`ml-0.5 shrink-0 rounded-full transition-all duration-200 active:scale-90 send-button-hover flex items-center justify-center ${isSending ? 'animate-send-fly' : ''} ${compact ? 'h-8 w-8' : 'h-9 w-9'} ${canSubmitMessage ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]' : 'bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed'}`}
               >
-                <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+                <Send className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} strokeWidth={2.5} />
               </button>
             </div>
           </div>

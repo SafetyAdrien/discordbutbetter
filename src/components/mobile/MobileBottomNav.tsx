@@ -4,7 +4,7 @@ import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 
-export type MobileTab = 'servers' | 'discuss' | 'notifications' | 'profile';
+export type MobileTab = 'servers' | 'notifications' | 'profile';
 
 interface MobileBottomNavProps {
   activeTab: MobileTab;
@@ -15,7 +15,6 @@ interface MobileBottomNavProps {
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
   { id: 'servers', label: 'Serveurs', icon: Globe },
-  { id: 'discuss', label: 'Discuter', icon: MessageCircle },
   { id: 'notifications', label: 'Notifs', icon: Bell },
   { id: 'profile', label: 'Vous', icon: User },
 ];

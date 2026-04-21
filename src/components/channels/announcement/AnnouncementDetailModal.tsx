@@ -59,8 +59,8 @@ export function AnnouncementDetailModal({
   const toggleReaction = useToggleAnnouncementReaction();
   const deleteAnnouncement = useDeleteAnnouncement();
 
-  const handleAddComment = (content: string) => {
-    addComment.mutate({ announcementId: announcement.id, content });
+  const handleAddComment = (content: string, replyToId?: string | null) => {
+    addComment.mutate({ announcementId: announcement.id, content, replyToId });
   };
 
   const handleDeleteComment = (commentId: string) => {

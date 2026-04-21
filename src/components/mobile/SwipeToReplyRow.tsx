@@ -1,4 +1,4 @@
-import { ReactNode, useCallback } from 'react';
+import { ReactNode, forwardRef, useCallback } from 'react';
 import { Reply } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSwipeToReply } from '@/hooks/useSwipeToReply';
@@ -26,20 +26,24 @@ interface SwipeToReplyRowProps {
  * - Wraps the original visual row; the row keeps its own padding and styles.
  * - Honours `prefers-reduced-motion` by killing the transform animation.
  */
-export function SwipeToReplyRow({
-  enabled,
-  onReply,
-  onDoubleTap,
-  className,
-  children,
-}: SwipeToReplyRowProps) {
+export const SwipeToReplyRow = forwardRef<HTMLDivElement, SwipeToReplyRowProps>(function SwipeToReplyRow(
+  { enabled, onReply, onDoubleTap, className, children },
+  ref,
+) {
   const reduced = useReducedMotion();
   const handleReply = useCallback(() => onReply(), [onReply]);
   const swipe = useSwipeToReply({ onReply: handleReply, disabled: !enabled });
   const dbl = useDoubleTap({ onDoubleTap: onDoubleTap ?? (() => {}), disabled: !enabled || !onDoubleTap });
 
+  // IMPORTANT : forwarder la ref dans les deux branches pour que Radix
+  // ContextMenuTrigger asChild / Tooltip puissent attacher correctement
+  // leurs handlers. Sans ça, le clic-droit Desktop est cassé.
   if (!enabled) {
-    return <div className={className}>{children}</div>;
+    return (
+      <div ref={ref} className={className}>
+        {children}
+      </div>
+    );
   }
 
   // Compose touch handlers: swipe owns start/move/cancel; both listen to end.
@@ -50,6 +54,7 @@ export function SwipeToReplyRow({
 
   return (
     <div
+      ref={ref}
       className={cn('relative touch-pan-y select-none', className)}
       role="group"
       aria-roledescription="Glisser à droite pour répondre"
@@ -86,4 +91,4 @@ export function SwipeToReplyRow({
       </div>
     </div>
   );
-}
+});

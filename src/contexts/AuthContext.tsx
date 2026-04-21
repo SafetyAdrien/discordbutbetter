@@ -71,15 +71,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, nextSession) => {
+      if (!isMounted) return;
       applySession(nextSession);
     });
 
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      applySession(existingSession);
-    });
+    // Safety net: if getSession hangs (e.g. flaky mobile network), force loading=false after 4s
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 4000);
 
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession()
+      .then(({ data: { session: existingSession } }) => {
+        if (!isMounted) return;
+        clearTimeout(safetyTimer);
+        applySession(existingSession);
+      })
+      .catch((err) => {
+        console.error('[Auth] getSession failed:', err);
+        if (!isMounted) return;
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, [applySession]);
 
   useEffect(() => {

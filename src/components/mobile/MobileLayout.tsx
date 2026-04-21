@@ -187,9 +187,13 @@ export function MobileLayout({
     }
   };
 
-  const handleServerSelect = (serverId: string) => {
+  const handleServerSelect = useCallback((serverId: string) => {
     onServerSelect(serverId);
-  };
+    // Selecting a server from the base mobile servers tab should always clear any stale overlay.
+    if (mobileView.type !== 'tab') {
+      setMobileView({ type: 'tab' });
+    }
+  }, [onServerSelect, mobileView.type, setMobileView]);
 
   // Resolve a channel object from any loaded server (used to intercept link channels)
   const findChannel = useCallback((channelId: string) => {
@@ -201,7 +205,7 @@ export function MobileLayout({
     return null;
   }, [rawServers]);
 
-  const handleServerChannelSelect = (channelId: string, channelType: string) => {
+  const handleServerChannelSelect = (serverId: string, channelId: string, channelType: string) => {
     // Intercept link channels — open external link modal instead of navigating to a chat
     if (channelType === 'link') {
       const ch = findChannel(channelId);
@@ -209,8 +213,9 @@ export function MobileLayout({
       if (url) setExternalLinkUrl(url);
       return;
     }
-    const serverId = activeServerId || servers[0]?.id;
+
     if (serverId) {
+      onServerSelect(serverId);
       setMobileView({ type: 'chat', serverId, channelId, channelType, fromTab: true });
     }
   };

@@ -103,7 +103,7 @@ export function VoiceControls({
       )}
 
       {/* Controls */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <TooltipProvider>
           {/* Mic button with settings popover on chevron */}
           <div className="flex items-center flex-1">
@@ -113,23 +113,24 @@ export function VoiceControls({
                   size="sm"
                   variant={isMuted ? 'destructive' : 'ghost'}
                   className={cn(
-                    'flex-1 h-9 rounded-l-xl rounded-r-none',
+                    'flex-1 h-10 rounded-l-2xl rounded-r-none transition-all active:scale-95',
                     isMuted && 'bg-destructive/15 hover:bg-destructive/25 text-destructive',
-                    !hasMicrophoneAccess && 'opacity-50'
+                    !isMuted && 'bg-muted/40 hover:bg-muted/60',
+                    !hasMicrophoneAccess && 'opacity-50',
                   )}
                   onClick={onToggleMute}
                 >
-                  {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  {isMuted ? <MicOff className="w-[18px] h-[18px]" /> : <Mic className="w-[18px] h-[18px]" />}
                   {noiseSuppression !== 'off' && rnnoiseAvailable && (
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {!hasMicrophoneAccess 
-                  ? 'Microphone non disponible' 
-                  : isMuted 
-                    ? 'Activer le micro' 
+                {!hasMicrophoneAccess
+                  ? 'Microphone non disponible'
+                  : isMuted
+                    ? 'Activer le micro'
                     : 'Couper le micro'}
               </TooltipContent>
             </Tooltip>
@@ -151,7 +152,7 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-9 w-6 px-0 rounded-l-none rounded-r-xl border-l border-border/30"
+                className="h-10 w-7 px-0 rounded-l-none rounded-r-2xl border-l border-border/30 bg-muted/40 hover:bg-muted/60"
               >
                 <ChevronDown className="w-3 h-3" />
               </Button>
@@ -164,15 +165,17 @@ export function VoiceControls({
                 size="sm"
                 variant={isDeafened ? 'destructive' : 'ghost'}
                 className={cn(
-                  'flex-1 h-9 rounded-xl',
-                  isDeafened && 'bg-destructive/15 hover:bg-destructive/25 text-destructive'
+                  'flex-1 h-10 rounded-2xl transition-all active:scale-95',
+                  isDeafened
+                    ? 'bg-destructive/15 hover:bg-destructive/25 text-destructive'
+                    : 'bg-muted/40 hover:bg-muted/60',
                 )}
                 onClick={onToggleDeafen}
               >
                 {isDeafened ? (
-                  <HeadphoneOff className="w-4 h-4" />
+                  <HeadphoneOff className="w-[18px] h-[18px]" />
                 ) : (
-                  <Headphones className="w-4 h-4" />
+                  <Headphones className="w-[18px] h-[18px]" />
                 )}
               </Button>
             </TooltipTrigger>
@@ -186,10 +189,13 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant={isPushToTalkMode ? 'secondary' : 'ghost'}
-                className="flex-1 h-9 rounded-xl"
+                className={cn(
+                  'flex-1 h-10 rounded-2xl transition-all active:scale-95',
+                  !isPushToTalkMode && 'bg-muted/40 hover:bg-muted/60',
+                )}
                 onClick={togglePushToTalkMode}
               >
-                <Radio className="w-4 h-4" />
+                <Radio className="w-[18px] h-[18px]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -202,10 +208,10 @@ export function VoiceControls({
               <Button
                 size="sm"
                 variant="ghost"
-                className="flex-1 h-9 rounded-xl hover:bg-destructive/15 hover:text-destructive"
+                className="flex-1 h-10 rounded-2xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all active:scale-95"
                 onClick={onDisconnect}
               >
-                <PhoneOff className="w-4 h-4" />
+                <PhoneOff className="w-[18px] h-[18px]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Déconnexion</TooltipContent>

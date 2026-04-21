@@ -119,7 +119,7 @@ export function MobileDMHeader({
         </div>
       </button>
 
-      <div className="flex items-center gap-0.5 shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <button
           type="button"
           onClick={() => {
@@ -128,9 +128,9 @@ export function MobileDMHeader({
           }}
           disabled={callsDisabled}
           aria-label="Appel vocal"
-          className="w-11 h-11 flex items-center justify-center rounded-full active:bg-muted/60 disabled:opacity-40"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform disabled:opacity-40 disabled:bg-muted/40 disabled:text-muted-foreground"
         >
-          <Phone className="w-5 h-5" />
+          <Phone className="w-[18px] h-[18px]" strokeWidth={2.4} />
         </button>
         <button
           type="button"
@@ -140,9 +140,9 @@ export function MobileDMHeader({
           }}
           disabled={callsDisabled}
           aria-label="Appel vidéo"
-          className="w-11 h-11 flex items-center justify-center rounded-full active:bg-muted/60 disabled:opacity-40"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 transition-transform disabled:opacity-40 disabled:bg-muted/40 disabled:text-muted-foreground"
         >
-          <Video className="w-5 h-5" />
+          <Video className="w-[18px] h-[18px]" strokeWidth={2.4} />
         </button>
         <button
           type="button"
@@ -151,9 +151,9 @@ export function MobileDMHeader({
             onMore();
           }}
           aria-label="Plus d'options"
-          className="w-11 h-11 flex items-center justify-center rounded-full active:bg-muted/60"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-muted/50 text-foreground active:scale-95 transition-transform"
         >
-          <MoreVertical className="w-5 h-5" />
+          <MoreVertical className="w-[18px] h-[18px]" strokeWidth={2.4} />
         </button>
       </div>
     </header>

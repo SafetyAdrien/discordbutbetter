@@ -313,26 +313,30 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleVoiceCall}
                 disabled={startCall.isPending || !!activeCall}
+                className="rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:bg-muted/40 disabled:text-muted-foreground transition-all active:scale-95"
+                aria-label="Appel vocal"
               >
-                <Phone className="w-5 h-5" />
+                <Phone className="w-[18px] h-[18px]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Appel vocal</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleVideoCall}
                 disabled={startCall.isPending || !!activeCall}
+                className="rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:bg-muted/40 disabled:text-muted-foreground transition-all active:scale-95"
+                aria-label="Appel vidéo"
               >
-                <Video className="w-5 h-5" />
+                <Video className="w-[18px] h-[18px]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Appel vidéo</TooltipContent>

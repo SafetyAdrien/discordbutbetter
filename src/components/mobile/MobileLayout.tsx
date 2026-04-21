@@ -584,13 +584,6 @@ export function MobileLayout({
                 onShowFriends={onShowFriends}
               />
             )}
-            {activeTab === 'discuss' && (
-              <MobileHomeView
-                activeDMId={activeDMId}
-                onConversationSelect={onOpenDM}
-                onShowFriends={onShowFriends}
-              />
-            )}
             {activeTab === 'notifications' && <MobileNotificationsView />}
             {activeTab === 'profile' && (
               <MobileProfileView

@@ -419,7 +419,7 @@ export function MobileDMHomeView({
 
       {/* Modals */}
       {showNew && <NewDMSheet onClose={() => setShowNew(false)} onOpenDM={onConversationSelect} />}
-      {showSearch && <NewMessageModal onClose={() => setShowSearch(false)} onOpenDM={onConversationSelect} />}
+      
       {showCreateGroup && <CreateGroupModal onClose={() => setShowCreateGroup(false)} onOpenDM={onConversationSelect} />}
     </div>
   );

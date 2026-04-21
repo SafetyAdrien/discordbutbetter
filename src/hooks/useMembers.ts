@@ -124,6 +124,9 @@ export function useMembers(serverId: string | null) {
     enabled: !!serverId && !!user,
     initialData: cachedMembers,
     initialDataUpdatedAt: cachedMembers ? Date.now() : 0,
+    staleTime: cachedMembers ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedMembers ? false : true,
+    refetchOnWindowFocus: false,
     refetchInterval: hasRealtimeError ? 30000 : false,
   });
 

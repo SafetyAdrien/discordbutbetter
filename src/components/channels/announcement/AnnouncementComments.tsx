@@ -120,7 +120,7 @@ export function AnnouncementComments({ comments, onAddComment, onDeleteComment, 
   return (
     <div className="space-y-4">
       {/* Comments list */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {comments.map((comment) => (
           <div
             key={comment.id}

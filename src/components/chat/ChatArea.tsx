@@ -1496,8 +1496,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         if (el) messageRefs.current.set(message.id, el);
                       }}
                       className={cn(
-                        "group/message group message-hover px-4 pb-1 mb-1 relative",
-                        showAuthor ? (hasReply ? "pt-2" : "pt-1.5") : "py-0.5",
+                        "group/message group message-hover px-4 relative",
+                        showAuthor ? (hasReply ? "pt-2.5 pb-0" : "pt-2 pb-0") : "py-px",
                         messageMentionsMe(message.content, user?.id, memberRoles?.get(user?.id ?? '')?.map(r => r.id) ?? []) && "message-mentioned -mx-4 px-8",
                       )}
                       onMouseEnter={() => setHoveredMessageId(message.id)}
@@ -1548,7 +1548,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   ? memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null
                                   : null
                               }
-                              className="mb-1"
+                              className="mb-0.5"
                             />
                           )}
                           <div className="flex gap-3 items-start">

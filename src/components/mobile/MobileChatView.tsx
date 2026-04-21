@@ -163,14 +163,12 @@ export function MobileChatView({
       icon: Bell,
       onSelect: () => setDetailOpen(true),
     },
-    ...(canFollowAnnouncements
-      ? [{
-          id: 'follow',
-          label: 'Suivre cette annonce',
-          icon: Rss,
-          onSelect: () => setFollowModalOpen(true),
-        } as MobileMoreAction]
-      : []),
+    {
+      id: 'follow',
+      label: 'Suivre cette annonce',
+      icon: Rss,
+      onSelect: () => setFollowModalOpen(true),
+    } as MobileMoreAction,
   ];
 
   return (

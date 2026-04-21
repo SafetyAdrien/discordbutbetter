@@ -41,6 +41,13 @@ interface LoadingScreenProps {
 export default function LoadingScreen({ progress = 0, currentStep }: LoadingScreenProps) {
   const phrase = useMemo(() => motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)], []);
   const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
+  const reducedMotion = useReducedMotion();
+  const isMobile = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches,
+    []
+  );
+  const showParticles = !reducedMotion;
+  const particleCount = isMobile ? 14 : 30;
   const [dots, setDots] = useState('');
 
   useEffect(() => {

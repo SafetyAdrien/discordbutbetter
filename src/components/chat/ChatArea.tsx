@@ -297,7 +297,7 @@ interface Role {
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
-  onSendMessage: (content: string, attachments?: PendingAttachment[]) => void;
+  onSendMessage: (content: string, attachments?: PendingAttachment[], replyToId?: string | null) => void;
   memberRoles?: Map<string, Role[]>;
   onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
@@ -749,11 +749,26 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       setIsSending(true);
       setTimeout(() => setIsSending(false), 400);
 
-      // Include reply reference in message if replying
-      const content = replyingTo
-        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 80)}${replyingTo.content.length > 80 ? "..." : ""}\n\n${messageInput}`
-        : messageInput;
-      onSendMessage(content, attachments);
+      // Use real reply_to_id linking when available; fall back to legacy markdown citation
+      // (e.g. for poll citations which don't represent a real message id).
+      const replyTarget = replyingTo;
+      const isRealMessageReply =
+        !!replyTarget &&
+        // Heuristic: poll-citation IDs are valid uuids too, so we always send replyToId
+        // as long as we are replying to an actual message. Polls are wrapped via handleReplyToPoll
+        // and don't have a matching messages row — server will silently drop the FK if missing,
+        // but to stay safe we only attach reply_to_id when the target id is found in the loaded
+        // messages list.
+        messages.some((m) => m.id === replyTarget.id);
+
+      if (replyTarget && !isRealMessageReply) {
+        // Legacy fallback for non-message citations (e.g. polls)
+        const content = `> **${replyTarget.author.displayName}:** ${replyTarget.content.substring(0, 80)}${replyTarget.content.length > 80 ? "..." : ""}\n\n${messageInput}`;
+        onSendMessage(content, attachments, null);
+      } else {
+        onSendMessage(messageInput, attachments, isRealMessageReply ? replyTarget!.id : null);
+      }
+
       setMessageInput("");
       setReplyingTo(null);
       clearAttachments();

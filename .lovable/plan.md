@@ -1,53 +1,54 @@
 
 
-# Correctif des spinners infinis (chargement bloqué) sur mobile
+# Système de réponse Discord-like — uniformisation sur toutes les surfaces
 
-## Diagnostic
+## Constat
 
-Le spinner infini visible dans la capture provient de **`MobileLayout.renderChannelContent()`** (lignes 326-337). Il s'affiche dans l'overlay `chat` (z-20) lorsque la vue persistée (`mobileView`) est de type `chat` mais que :
+Le composant `RepliedLine` (ChatArea, DM, MobileMessageBubble, Annonces, Médias) produit déjà le rendu attendu : flèche + mini-avatar + `@auteur` (couleur de rôle) + aperçu, sur une ligne fine avec un connecteur en "L". **Mais 3 problèmes empêchent la cohérence :**
 
-- `currentServer` n'est pas trouvé dans `rawServers` (serveur supprimé, quitté, ou non encore rechargé), **OU**
-- `channelForChat` est `null` (le salon n'existe plus, n'a jamais été chargé, ou `useChannels` n'a pas encore résolu).
-
-Aucun mécanisme de récupération n'existe : la fallback boucle indéfiniment sur le spinner. Même problème en théorie pour `mobileView.type === 'thread'` et `channels` quand le serveur cible a disparu.
+1. **Threads (`ThreadView`)** : le contenu est rendu brut via `MarkdownText`, donc la citation `> **Auteur** : preview` apparaît comme un bloc Markdown (gros barre verticale grise), pas comme la ligne de réponse Discord.
+2. **`parseRepliedMessage`** exige `\n\n` (double saut) entre la citation et le corps, alors que `ThreadView` n'écrit qu'un seul `\n`. Le parser échouerait même si appelé.
+3. **Pas de pastille de rôle** (icône à droite du `@auteur`) dans `RepliedLine`, alors que la capture de référence la montre clairement (pastille `HYTL` à droite du pseudo).
 
 ## Correctifs
 
-### 1. `src/components/mobile/MobileLayout.tsx` — Récupération automatique sur état orphelin
+### 1. `src/lib/parse-reply.ts` — Tolérance au saut de ligne simple
+Étendre la regex pour accepter `\n` ou `\n\n` après la citation :  
+`/^>\s\*\*([^:*\n]+?)\*\*\s*[:：]\s([^\n]+)\n+([\s\S]+)$/`  
+Cela couvre le format produit par `ThreadView` (`> **Author** : preview\nbody`) et l'ancien format ChatArea (`\n\n`).
 
-Dans le `useEffect` de validation initiale, après que les serveurs sont chargés (`servers` non vide ET non en attente), vérifier que la `mobileView` persistée pointe vers un serveur/salon valide :
+### 2. `src/components/chat/RepliedLine.tsx` — Ajout pastille de rôle
+Nouvelle prop optionnelle `authorRoleIcon?: { iconUrl: string; name: string; color?: string | null }`.  
+Quand fournie, rendre `<RoleBadgePopover>` (taille mini : `w-3.5 h-3.5`) juste après le `@auteur`. Le composant existant `RoleBadgePopover` est réutilisé tel quel — seule la taille de l'icône est réduite via une variante prop ou wrapper inline.
 
-- Si `mobileView.type` est `chat`, `channels` ou `thread` ET que `mobileView.serverId` n'existe pas dans `rawServers` → reset à `{ type: 'tab' }`.
-- Si `mobileView.type === 'chat'` ET que `channelsData` est chargé pour ce serveur ET que `mobileView.channelId` n'existe pas dans cet arbre → reset à `{ type: 'channels', serverId }`.
-- Si `mobileView.type === 'thread'` ET que le salon parent n'existe plus → reset à `{ type: 'tab' }`.
+### 3. `src/components/threads/ThreadView.tsx` — Rendu Discord-like des réponses
+Au lieu de rendre `<MarkdownText content={message.content} />` directement (ligne 886), introduire :
+```ts
+const { reply, body } = parseRepliedMessage(message.content);
+```
+Puis :
+- Si `reply` détecté : afficher `<RepliedLine authorName={reply.author} preview={reply.preview} messages={items.filter(i => i.type==='message').map(i => i.data)} onJump={…} indent={32} authorColor={…} authorRoleIcon={…} />` au-dessus du `MarkdownText content={body}`.
+- Sinon : conserver le rendu actuel.
+La résolution de la couleur/badge passe par la map `memberRoles` déjà disponible dans `ThreadView`, en cherchant l'auteur cité par `display_name` dans `membersData`.
 
-Ajouter aussi un **timeout de sécurité** : si après 4 secondes le `renderChannelContent` est toujours en fallback (channelForChat/currentServer null), forcer `setMobileView({ type: 'tab' })`. Cela garantit qu'aucun spinner ne reste bloqué plus de quelques secondes, même en cas de réseau lent.
+### 4. `src/components/chat/ChatArea.tsx` — Brancher la pastille de rôle
+Aux deux emplacements existants de `<RepliedLine>` (lignes 1634 et 1772), ajouter `authorRoleIcon` calculé via `memberRoles.get(message.repliedMessage?.author?.id)?.[0]` lorsqu'`icon_url` existe.
 
-### 2. `src/components/mobile/MobileLayout.tsx` — Fallback explicite avec action
+### 5. `src/components/dm/DMConversation.tsx` & `src/components/mobile/dm/MobileMessageBubble.tsx`
+Pas de pastille de rôle en DM (les rôles n'existent pas hors serveur). Aucune modification fonctionnelle, sauf vérifier que `indent` reste cohérent avec l'avatar du bubble.
 
-Remplacer le spinner muet (lignes 326-337) par un état avec :
-- back button fonctionnel (déjà présent),
-- spinner pendant les 2 premières secondes,
-- ensuite un message "Salon introuvable" + bouton "Retour" qui appelle `setMobileView({ type: 'tab' })`.
-
-### 3. `src/components/mobile/MobileServersView.tsx` — Cohérence du serveur sélectionné
-
-Si `selectedServerId` ne correspond plus à aucun serveur dans `sortedServers` (serveur quitté/supprimé), reset automatique vers `sortedServers[0]?.id` ou `null` + `showDMs = true`. Étendre le `useEffect` ligne 190 pour gérer ce cas.
-
-### 4. `src/hooks/usePreloader.ts` — Robustesse de la navigation persistée
-
-Lorsque l'on hydrate `lastChannelId` au boot, s'il n'apparaît pas dans le cache des channels du `targetServerId`, ne PAS pré-positionner sur ce salon. Cela évite que `MobileLayout` démarre directement en mode `chat` sur un salon disparu.
+### 6. `src/components/channels/announcement/AnnouncementComments.tsx` & `src/components/channels/media/MediaComments.tsx`
+Brancher `authorRoleIcon` de la même façon que ChatArea quand l'auteur cité est membre du serveur courant (`memberRoles` accessible via `useMembers`).
 
 ## Résultat attendu
 
-- Plus jamais de spinner figé après suppression/déconnexion d'un serveur ou d'un salon.
-- Récupération automatique en moins de 4 secondes sur les états orphelins (timeout de sécurité).
-- Message clair + bouton retour si un salon devient introuvable.
-- Navigation persistée toujours valide après reconnexion.
+- **Threads** : la citation apparaît désormais comme la ligne fine Discord-like (flèche + mini-avatar + `@pseudo` coloré + aperçu), strictement identique à ChatArea/DM/Mobile.
+- **ChatArea, Annonces, Médias** : la pastille de rôle (icône d'icon_url) s'affiche à droite du `@pseudo` cité, exactement comme dans la capture de référence.
+- **Mobile (DM bubbles + chat serveur)** : déjà conforme, juste vérification d'alignement.
+- **Format texte stocké** : compatible avec et sans double saut de ligne — aucune migration de données nécessaire.
 
 ## Détails techniques
 
-- Validation initiale dans un nouveau `useEffect` exécuté après que `rawServers` est non vide, dépendances `[rawServers, channelsData, mobileView]`.
-- Le timeout de 4s est armé/désarmé via `useEffect` qui surveille `mobileView.type === 'chat' && !channelForChat`.
-- Toutes les transitions passent par `setMobileView` (donc déjà persistées via `persistMobileView`).
-- Aucune modification des hooks de données (`useChannels`, `useServers`) — uniquement de la logique de récupération côté `MobileLayout`/`MobileServersView`.
+- Aucune modification de schéma DB. Le système `reply_to_id` (snapshots `repliedMessage`) reste prioritaire ; le parsing markdown est le fallback historique étendu aux threads.
+- `RoleBadgePopover` réutilisé tel quel ; un wrapper `className` ajustera la taille pour l'usage compact.
+- Touche-aucun fichier auto-géré (`types.ts`, `client.ts`, `.env`).

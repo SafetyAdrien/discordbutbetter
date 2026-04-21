@@ -169,9 +169,13 @@ export function RepliedLine({
     if (jumpTargetId && onJump) onJump(jumpTargetId);
   };
 
-  // Connector L positioning: anchored 30px to the LEFT of the reply line origin.
-  // With indent=0, the curve sits in the parent message's avatar gutter.
-  const connectorLeft = indent - 30;
+  // Connector L positioning: the L is rooted in the avatar gutter of the
+  // message BELOW this line and curves up-right to meet this reply row.
+  // The SVG extends downward beyond the row (overflow-visible) to reach into
+  // the parent avatar's vertical zone.
+  // connectorLeft sits roughly at the center of the parent avatar (≈20px from left).
+  const connectorLeft = Math.max(0, indent - 36);
+  const connectorWidth = Math.max(28, indent - connectorLeft - 4);
 
   const content = (
     <div
@@ -183,24 +187,26 @@ export function RepliedLine({
       )}
       style={{ paddingLeft: indent }}
     >
-      {/* L-shaped connector — anchored from inside the parent avatar gutter up to this line */}
+      {/* L-shaped connector — rooted in the avatar gutter of the message BELOW,
+          curving up and to the right toward the mini-avatar of this reply row. */}
       <svg
         aria-hidden="true"
-        className="absolute pointer-events-none text-border"
+        className="absolute pointer-events-none text-border/70"
         style={{
           left: connectorLeft,
-          top: 6,
-          width: 28,
-          height: 18,
+          top: 10,
+          width: connectorWidth,
+          height: 24,
           overflow: "visible",
         }}
-        viewBox="0 0 28 18"
+        viewBox={`0 0 ${connectorWidth} 24`}
+        preserveAspectRatio="none"
         fill="none"
       >
         <path
-          d="M 4 18 L 4 8 Q 4 4 8 4 L 28 4"
+          d={`M 1 24 L 1 8 Q 1 1 8 1 L ${connectorWidth} 1`}
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="2"
           strokeLinecap="round"
           fill="none"
         />

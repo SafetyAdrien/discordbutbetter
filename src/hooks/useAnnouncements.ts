@@ -31,11 +31,20 @@ export interface Announcement {
   };
 }
 
+export interface RepliedCommentSnapshot {
+  id: string;
+  content: string;
+  deleted?: boolean;
+  author: { id: string; display_name: string; avatar_url: string | null } | null;
+}
+
 export interface AnnouncementComment {
   id: string;
   announcement_id: string;
   content: string;
   created_at: string;
+  reply_to_id?: string | null;
+  repliedComment?: RepliedCommentSnapshot | null;
   author: {
     id: string;
     display_name: string;
@@ -497,7 +506,57 @@ export function useAnnouncementComments(announcementId: string) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as unknown as AnnouncementComment[];
+      const comments = (data ?? []) as unknown as AnnouncementComment[];
+
+      // Batch-resolve replied comments
+      const replyIds = Array.from(
+        new Set(
+          comments
+            .map((c) => c.reply_to_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      let repliedMap = new Map<string, RepliedCommentSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: repliedData } = await supabase
+          .from('announcement_comments')
+          .select(`
+            id,
+            content,
+            author:profiles!author_id(id, display_name, avatar_url)
+          `)
+          .in('id', replyIds);
+
+        if (repliedData) {
+          for (const r of repliedData as unknown as Array<{
+            id: string;
+            content: string;
+            author: { id: string; display_name: string; avatar_url: string | null } | null;
+          }>) {
+            repliedMap.set(r.id, {
+              id: r.id,
+              content: r.content,
+              deleted: false,
+              author: r.author,
+            });
+          }
+        }
+      }
+
+      return comments.map((c) => {
+        if (!c.reply_to_id) return c;
+        const snap = repliedMap.get(c.reply_to_id);
+        return {
+          ...c,
+          repliedComment: snap ?? {
+            id: c.reply_to_id,
+            content: '',
+            deleted: true,
+            author: null,
+          },
+        };
+      });
     },
     enabled: !!announcementId,
   });
@@ -508,13 +567,14 @@ export function useAddAnnouncementComment() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: { announcementId: string; content: string }) => {
+    mutationFn: async (data: { announcementId: string; content: string; replyToId?: string | null }) => {
       const { data: result, error } = await supabase
         .from('announcement_comments')
         .insert({
           announcement_id: data.announcementId,
           author_id: user?.id,
           content: data.content,
+          reply_to_id: data.replyToId ?? null,
         })
         .select()
         .single();
@@ -526,24 +586,44 @@ export function useAddAnnouncementComment() {
       if (!user) return;
       
       await queryClient.cancelQueries({ queryKey: ['announcement-comments', data.announcementId] });
-      const previousComments = queryClient.getQueryData(['announcement-comments', data.announcementId]);
-      
+      const previousComments = queryClient.getQueryData<AnnouncementComment[]>(['announcement-comments', data.announcementId]);
+
+      // Resolve replied snapshot from existing cache for optimistic display
+      let repliedComment: RepliedCommentSnapshot | null = null;
+      if (data.replyToId && previousComments) {
+        const target = previousComments.find((c) => c.id === data.replyToId);
+        if (target) {
+          repliedComment = {
+            id: target.id,
+            content: target.content,
+            deleted: false,
+            author: {
+              id: target.author.id,
+              display_name: target.author.display_name,
+              avatar_url: target.author.avatar_url ?? null,
+            },
+          };
+        }
+      }
+
       const tempComment: AnnouncementComment = {
         id: `temp-${Date.now()}`,
         announcement_id: data.announcementId,
         content: data.content,
         created_at: new Date().toISOString(),
+        reply_to_id: data.replyToId ?? null,
+        repliedComment,
         author: {
           id: user.id,
           display_name: user.user_metadata?.display_name || 'Vous',
           avatar_url: user.user_metadata?.avatar_url,
         },
       };
-      
+
       queryClient.setQueryData(['announcement-comments', data.announcementId], (old: AnnouncementComment[] | undefined) =>
         old ? [...old, tempComment] : [tempComment]
       );
-      
+
       return { previousComments };
     },
     onError: (_, variables, context) => {

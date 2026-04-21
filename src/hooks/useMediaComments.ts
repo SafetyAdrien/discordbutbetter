@@ -4,12 +4,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+export interface RepliedMediaCommentSnapshot {
+  id: string;
+  content: string;
+  deleted?: boolean;
+  author: { id: string; display_name: string; avatar_url: string | null } | null;
+}
+
 export interface MediaComment {
   id: string;
   post_id: string;
   content: string;
   created_at: string;
   edited_at?: string | null;
+  reply_to_id?: string | null;
+  repliedComment?: RepliedMediaCommentSnapshot | null;
   author: {
     id: string;
     display_name: string;
@@ -57,7 +66,57 @@ export function useMediaComments(postId: string) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as unknown as MediaComment[];
+      const comments = (data ?? []) as unknown as MediaComment[];
+
+      // Batch-resolve replied comments
+      const replyIds = Array.from(
+        new Set(
+          comments
+            .map((c) => c.reply_to_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      const repliedMap = new Map<string, RepliedMediaCommentSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: repliedData } = await (supabase
+          .from('media_post_comments') as any)
+          .select(`
+            id,
+            content,
+            author:profiles!author_id(id, display_name, avatar_url)
+          `)
+          .in('id', replyIds);
+
+        if (repliedData) {
+          for (const r of repliedData as unknown as Array<{
+            id: string;
+            content: string;
+            author: { id: string; display_name: string; avatar_url: string | null } | null;
+          }>) {
+            repliedMap.set(r.id, {
+              id: r.id,
+              content: r.content,
+              deleted: false,
+              author: r.author,
+            });
+          }
+        }
+      }
+
+      return comments.map((c) => {
+        if (!c.reply_to_id) return c;
+        const snap = repliedMap.get(c.reply_to_id);
+        return {
+          ...c,
+          repliedComment: snap ?? {
+            id: c.reply_to_id,
+            content: '',
+            deleted: true,
+            author: null,
+          },
+        };
+      });
     },
     enabled: !!postId,
   });
@@ -68,13 +127,14 @@ export function useAddMediaComment() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: { postId: string; content: string }) => {
+    mutationFn: async (data: { postId: string; content: string; replyToId?: string | null }) => {
       const { data: result, error } = await (supabase
         .from('media_post_comments') as any)
         .insert({
           post_id: data.postId,
           author_id: user?.id,
           content: data.content,
+          reply_to_id: data.replyToId ?? null,
         })
         .select()
         .single();
@@ -86,13 +146,34 @@ export function useAddMediaComment() {
       if (!user) return;
 
       await queryClient.cancelQueries({ queryKey: ['media-comments', data.postId] });
-      const previousComments = queryClient.getQueryData(['media-comments', data.postId]);
+      const previousComments = queryClient.getQueryData<MediaComment[]>(['media-comments', data.postId]);
+
+      let repliedComment: RepliedMediaCommentSnapshot | null = null;
+      if (data.replyToId && previousComments) {
+        const target = previousComments.find((c) => c.id === data.replyToId);
+        if (target) {
+          repliedComment = {
+            id: target.id,
+            content: target.content,
+            deleted: false,
+            author: target.author
+              ? {
+                  id: target.author.id,
+                  display_name: target.author.display_name,
+                  avatar_url: target.author.avatar_url ?? null,
+                }
+              : null,
+          };
+        }
+      }
 
       const tempComment: MediaComment = {
         id: `temp-${Date.now()}`,
         post_id: data.postId,
         content: data.content,
         created_at: new Date().toISOString(),
+        reply_to_id: data.replyToId ?? null,
+        repliedComment,
         author: {
           id: user.id,
           display_name: user.user_metadata?.display_name || 'Vous',

@@ -1,20 +1,23 @@
-import { useState, useMemo } from 'react';
-import { Send, Trash2 } from 'lucide-react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { Send, Trash2, Reply, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MarkdownText } from '@/lib/markdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { RepliedLine } from '@/components/chat/RepliedLine';
 import {
   useMediaComments,
   useAddMediaComment,
   useDeleteMediaComment,
+  type MediaComment,
 } from '@/hooks/useMediaComments';
 import {
   useMediaCommentReactions,
   useToggleMediaCommentReaction,
 } from '@/hooks/useMediaCommentReactions';
+import type { RepliedMessageRef } from '@/types/app';
 
 interface MediaCommentsProps {
   postId: string;
@@ -36,9 +39,28 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString('fr-FR');
 }
 
+function toRepliedRef(c: NonNullable<MediaComment['repliedComment']>): RepliedMessageRef {
+  return {
+    id: c.id,
+    content: c.content,
+    deleted: c.deleted,
+    author: c.author
+      ? {
+          id: c.author.id,
+          username: c.author.display_name,
+          displayName: c.author.display_name,
+          avatar: c.author.avatar_url ?? undefined,
+        }
+      : null,
+  };
+}
+
 export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
   const { user, profile } = useAuth();
   const [newComment, setNewComment] = useState('');
+  const [replyingTo, setReplyingTo] = useState<MediaComment | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const { data: comments = [] } = useMediaComments(postId);
   const addComment = useAddMediaComment();
@@ -55,72 +77,104 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
 
   const handleSubmit = () => {
     if (!newComment.trim()) return;
-    addComment.mutate({ postId, content: newComment.trim() });
+    addComment.mutate({ postId, content: newComment.trim(), replyToId: replyingTo?.id ?? null });
     setNewComment('');
+    setReplyingTo(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
+    } else if (e.key === 'Escape' && replyingTo) {
+      e.preventDefault();
+      setReplyingTo(null);
     }
   };
 
+  const handleStartReply = useCallback((c: MediaComment) => {
+    setReplyingTo(c);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+
+  const handleJump = useCallback((id: string) => {
+    const el = commentRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('highlight-pulse');
+    setTimeout(() => el.classList.remove('highlight-pulse'), 1500);
+  }, []);
+
+  useEffect(() => {
+    if (replyingTo && !comments.find((c) => c.id === replyingTo.id)) {
+      setReplyingTo(null);
+    }
+  }, [comments, replyingTo]);
+
   return (
     <div className="space-y-4">
-      {/* New comment input */}
-      <div className="flex gap-3">
-        <Avatar className="w-8 h-8 flex-shrink-0">
-          <AvatarImage src={profile?.avatar_url || undefined} />
-          <AvatarFallback>{profile?.display_name?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 flex gap-2">
-          <Input
-            placeholder="Ajouter un commentaire..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={handleKeyDown}
-            maxLength={500}
-          />
-          <Button onClick={handleSubmit} disabled={!newComment.trim()} size="icon">
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
       {/* Comments list */}
       <div className="space-y-3">
         {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-3 group">
-            <Avatar className="w-8 h-8 flex-shrink-0">
-              <AvatarImage src={comment.author?.avatar_url || undefined} />
-              <AvatarFallback>{comment.author?.display_name?.[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">{comment.author?.display_name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatRelativeTime(comment.created_at)}
-                </span>
-                {comment.author?.id === user?.id && (
-                  <button
-                    onClick={() => deleteComment.mutate({ id: comment.id, postId })}
-                    className="ml-auto opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded transition-opacity"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                  </button>
-                )}
-              </div>
-              <div className="text-sm mt-1">
-                <MarkdownText content={comment.content} />
-              </div>
-              <div className="mt-2">
-                <ReactionBar
-                  reactions={reactionsData[comment.id] || []}
-                  onToggle={(emoji) => handleToggleReaction(comment.id, emoji)}
-                  serverId={serverId}
-                  size="sm"
-                />
+          <div
+            key={comment.id}
+            ref={(el) => {
+              if (el) commentRefs.current.set(comment.id, el);
+              else commentRefs.current.delete(comment.id);
+            }}
+            className="rounded-lg transition-colors"
+          >
+            {comment.repliedComment && (
+              <RepliedLine
+                repliedMessage={toRepliedRef(comment.repliedComment)}
+                onJump={handleJump}
+                indent={44}
+                className="mb-1"
+              />
+            )}
+            <div className="flex gap-3 group">
+              <Avatar className="w-8 h-8 flex-shrink-0">
+                <AvatarImage src={comment.author?.avatar_url || undefined} />
+                <AvatarFallback>{comment.author?.display_name?.[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 bg-muted/30 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{comment.author?.display_name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatRelativeTime(comment.created_at)}
+                  </span>
+                  <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleStartReply(comment)}
+                      className="p-1.5 hover:bg-accent rounded transition-colors"
+                      aria-label={`Répondre à ${comment.author?.display_name ?? 'utilisateur'}`}
+                      title="Répondre"
+                    >
+                      <Reply className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    {comment.author?.id === user?.id && (
+                      <button
+                        onClick={() => deleteComment.mutate({ id: comment.id, postId })}
+                        className="p-1.5 hover:bg-destructive/20 rounded transition-colors"
+                        aria-label="Supprimer le commentaire"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm mt-1">
+                  <MarkdownText content={comment.content} />
+                </div>
+                <div className="mt-2">
+                  <ReactionBar
+                    reactions={reactionsData[comment.id] || []}
+                    onToggle={(emoji) => handleToggleReaction(comment.id, emoji)}
+                    serverId={serverId}
+                    size="sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -131,6 +185,63 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
             Aucun commentaire pour le moment
           </p>
         )}
+      </div>
+
+      {/* Reply preview bar */}
+      {replyingTo && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/40 border border-border/60 text-xs">
+          <Reply className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 -scale-x-100" />
+          <Avatar className="w-4 h-4 flex-shrink-0">
+            <AvatarImage src={replyingTo.author?.avatar_url || undefined} />
+            <AvatarFallback className="text-[8px]">
+              {replyingTo.author?.display_name?.[0]?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="font-semibold flex-shrink-0">
+            Réponse à <span className="text-primary">@{replyingTo.author?.display_name}</span>
+          </span>
+          <span
+            className="text-muted-foreground whitespace-nowrap overflow-hidden min-w-0 flex-1"
+            style={{
+              maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+              WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+            }}
+          >
+            {replyingTo.content}
+          </span>
+          <button
+            onClick={() => setReplyingTo(null)}
+            className="p-1 hover:bg-accent rounded flex-shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+            aria-label="Annuler la réponse"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* New comment input */}
+      <div className="flex gap-3">
+        <Avatar className="w-8 h-8 flex-shrink-0">
+          <AvatarImage src={profile?.avatar_url || undefined} />
+          <AvatarFallback>{profile?.display_name?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 flex gap-2">
+          <Input
+            ref={inputRef}
+            placeholder={
+              replyingTo
+                ? `Répondre à @${replyingTo.author?.display_name}...`
+                : 'Ajouter un commentaire...'
+            }
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            onKeyDown={handleKeyDown}
+            maxLength={500}
+          />
+          <Button onClick={handleSubmit} disabled={!newComment.trim()} size="icon">
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -81,6 +81,7 @@ export type Database = {
           created_at: string | null
           edited_at: string | null
           id: string
+          reply_to_id: string | null
         }
         Insert: {
           announcement_id: string
@@ -89,6 +90,7 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
         }
         Update: {
           announcement_id?: string
@@ -97,6 +99,7 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
         }
         Relationships: [
           {
@@ -111,6 +114,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_comments_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "announcement_comments"
             referencedColumns: ["id"]
           },
         ]
@@ -1078,6 +1088,7 @@ export type Database = {
           edited_at: string | null
           id: string
           post_id: string
+          reply_to_id: string | null
         }
         Insert: {
           author_id?: string | null
@@ -1086,6 +1097,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           post_id: string
+          reply_to_id?: string | null
         }
         Update: {
           author_id?: string | null
@@ -1094,6 +1106,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           post_id?: string
+          reply_to_id?: string | null
         }
         Relationships: [
           {
@@ -1108,6 +1121,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "media_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_post_comments_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "media_post_comments"
             referencedColumns: ["id"]
           },
         ]

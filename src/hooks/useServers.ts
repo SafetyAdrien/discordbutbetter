@@ -45,6 +45,16 @@ export function useServers() {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
+  const getServerScore = (servers?: ServerWithDetails[]) => {
+    if (!servers) return -1;
+    return servers.reduce((sum, server) => {
+      const categoryCount = server.categories?.length ?? 0;
+      const channelCount = (server.categories ?? []).reduce((count, category) => count + category.channels.length, 0);
+      const orphanCount = server.orphanChannels?.length ?? 0;
+      return sum + 1 + categoryCount + channelCount + orphanCount;
+    }, 0);
+  };
+
   // Realtime subscription on servers table for name/icon/banner changes
   useEffect(() => {
     if (!user) return;
@@ -69,7 +79,12 @@ export function useServers() {
     };
   }, [user, queryClient]);
 
-  const cachedServers = user?.id ? cacheGetSync<ServerWithDetails[]>(`servers:${user.id}`) : undefined;
+  const queryCachedServers = queryClient.getQueryData<ServerWithDetails[]>(['servers']);
+  const persistedServers = user?.id ? cacheGetSync<ServerWithDetails[]>(`servers:${user.id}`) : undefined;
+  const cachedServers = [queryCachedServers, persistedServers].reduce<ServerWithDetails[] | undefined>(
+    (best, candidate) => (getServerScore(candidate) > getServerScore(best) ? candidate : best),
+    undefined
+  );
 
   const query = useQuery({
     queryKey: ['servers'],
@@ -130,9 +145,9 @@ export function useServers() {
     },
     enabled: !!user,
     initialData: cachedServers,
-    initialDataUpdatedAt: cachedServers ? Date.now() : 0,
-    staleTime: cachedServers ? 5 * 60 * 1000 : 0,
-    refetchOnMount: cachedServers ? false : true,
+    initialDataUpdatedAt: cachedServers ? 0 : undefined,
+    staleTime: 0,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 

@@ -38,6 +38,11 @@ export function useChannels(
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
+  const getChannelCount = (data?: { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }) => {
+    if (!data) return -1;
+    return data.categories.reduce((sum, category) => sum + category.channels.length, 0) + data.orphanChannels.length;
+  };
+
   // Realtime subscription for channels and categories
   useEffect(() => {
     if (!serverId || !user) return;
@@ -91,7 +96,17 @@ export function useChannels(
     };
   }, [serverId, user, queryClient]);
 
-  const cachedChannels = initialData ?? (serverId ? cacheGetSync<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(`channels:${serverId}`) : undefined);
+  const queryCachedChannels = serverId
+    ? queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId])
+    : undefined;
+  const persistedChannels = serverId
+    ? cacheGetSync<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(`channels:${serverId}`)
+    : undefined;
+  const cachedChannels = [queryCachedChannels, persistedChannels, initialData].reduce<
+    { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] } | undefined
+  >((best, candidate) => {
+    return getChannelCount(candidate) > getChannelCount(best) ? candidate : best;
+  }, undefined);
 
   const query = useQuery({
     queryKey: ['channels', serverId],
@@ -129,9 +144,9 @@ export function useChannels(
     },
     enabled: !!serverId && !!user,
     initialData: cachedChannels,
-    initialDataUpdatedAt: cachedChannels ? Date.now() : 0,
-    staleTime: cachedChannels ? 5 * 60 * 1000 : 0,
-    refetchOnMount: cachedChannels ? false : true,
+    initialDataUpdatedAt: cachedChannels ? 0 : undefined,
+    staleTime: 0,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 

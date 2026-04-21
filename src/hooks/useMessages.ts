@@ -68,7 +68,14 @@ export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const cachedMessages = channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined;
+   const queryCachedMessages = channelId
+     ? queryClient.getQueryData<MessageWithAuthor[]>(['messages', channelId])
+     : undefined;
+   const persistedMessages = channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined;
+   const cachedMessages = [queryCachedMessages, persistedMessages].reduce<MessageWithAuthor[] | undefined>(
+     (best, candidate) => ((candidate?.length ?? -1) > (best?.length ?? -1) ? candidate : best),
+     undefined
+   );
 
   const query = useQuery({
     queryKey: ['messages', channelId],
@@ -170,9 +177,9 @@ export function useMessages(channelId: string | null) {
     },
     enabled: !!channelId && !!user,
     initialData: cachedMessages,
-    initialDataUpdatedAt: cachedMessages ? Date.now() : 0,
-    staleTime: cachedMessages ? 5 * 60 * 1000 : 0,
-    refetchOnMount: cachedMessages ? false : true,
+    initialDataUpdatedAt: cachedMessages ? 0 : undefined,
+    staleTime: 0,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 

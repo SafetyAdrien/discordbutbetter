@@ -1574,9 +1574,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
-                                  <MarkdownText content={message.content} />
-                                </p>
+                                <>
+                                  {parsedReply && (
+                                    <RepliedLine
+                                      authorName={parsedReply.author}
+                                      preview={parsedReply.preview}
+                                      messages={messages}
+                                      onJump={scrollToMessage}
+                                      indent={0}
+                                      className="mb-1"
+                                    />
+                                  )}
+                                  <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
+                                    <MarkdownText content={parsedBody} />
+                                  </p>
+                                </>
                               )}
 
                               {/* Message Attachments */}
@@ -1694,9 +1706,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
-                                  <MarkdownText content={message.content} />
-                                </p>
+                                <>
+                                  {parsedReply && (
+                                    <RepliedLine
+                                      authorName={parsedReply.author}
+                                      preview={parsedReply.preview}
+                                      messages={messages}
+                                      onJump={scrollToMessage}
+                                      indent={0}
+                                      className="mb-1"
+                                    />
+                                  )}
+                                  <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
+                                    <MarkdownText content={parsedBody} />
+                                  </p>
+                                </>
                               )}
 
                               {/* Message Attachments for grouped messages */}

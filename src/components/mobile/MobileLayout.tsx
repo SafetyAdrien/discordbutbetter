@@ -325,52 +325,36 @@ export function MobileLayout({
     setChatFallbackElapsed(false);
     if (mobileView.type !== 'chat') return;
     if (channelForChat && currentServer) return;
-    const t = setTimeout(() => setChatFallbackElapsed(true), 2000);
+    const t = setTimeout(() => setChatFallbackElapsed(true), 2500);
     return () => clearTimeout(t);
   }, [mobileView.type, channelForChat, currentServer]);
 
-  // Safety timeout: if chat is stuck on fallback after 4s, force back to tab
-  useEffect(() => {
-    if (mobileView.type !== 'chat') return;
-    if (channelForChat && currentServer) return;
-    const t = setTimeout(() => {
-      setMobileView({ type: 'tab' });
-    }, 4000);
-    return () => clearTimeout(t);
-  }, [mobileView.type, channelForChat, currentServer, setMobileView]);
-
-  // Validate persisted view against loaded data — auto-recover on orphan state
+  // Validate persisted view against loaded data — auto-recover on confirmed orphan state.
+  // Conservative: only fire when servers list is loaded AND (for chat/thread) channelsData
+  // belongs to the right server AND has actually been populated.
   useEffect(() => {
     if (!rawServers || rawServers.length === 0) return;
     if (mobileView.type === 'tab') return;
 
     const sid = 'serverId' in mobileView ? mobileView.serverId : null;
     if (sid && !rawServers.some((s: any) => s.id === sid)) {
-      // Server gone — bounce to tab
       setMobileView({ type: 'tab' });
       return;
     }
 
-    if (mobileView.type === 'chat' && channelsData) {
+    // Only validate channel existence when channelsData is for THIS server
+    // and is non-empty (avoid false positives during loading).
+    if ((mobileView.type === 'chat' || mobileView.type === 'thread') && currentServerId === sid && channelsData) {
       const all = [
         ...(channelsData.categories || []).flatMap((c: any) => c.channels || []),
         ...(channelsData.orphanChannels || []),
       ];
-      if (!all.some((ch: any) => ch.id === mobileView.channelId)) {
-        setMobileView({ type: 'channels', serverId: mobileView.serverId });
-      }
-    }
-
-    if (mobileView.type === 'thread' && channelsData) {
-      const all = [
-        ...(channelsData.categories || []).flatMap((c: any) => c.channels || []),
-        ...(channelsData.orphanChannels || []),
-      ];
-      if (!all.some((ch: any) => ch.id === mobileView.channelId)) {
+      if (all.length > 0 && !all.some((ch: any) => ch.id === mobileView.channelId)) {
         setMobileView({ type: 'tab' });
       }
     }
-  }, [rawServers, channelsData, mobileView, setMobileView]);
+  }, [rawServers, channelsData, mobileView, currentServerId, setMobileView]);
+
 
   // Render chat content based on channel type
   const renderChannelContent = () => {

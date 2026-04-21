@@ -142,8 +142,10 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
       const tPrev = prev?.created_at ? new Date(prev.created_at).getTime() : 0;
       const t = m.created_at ? new Date(m.created_at).getTime() : 0;
       const tNext = next?.created_at ? new Date(next.created_at).getTime() : 0;
-      const burstStart = !sameAuthorAsPrev || (t - tPrev) > BURST_GAP_MS;
-      const burstEnd = !sameAuthorAsNext || (tNext - t) > BURST_GAP_MS;
+      const hasReply = Boolean(m.reply_to_id || m.repliedMessage);
+      const nextHasReply = Boolean(next && (next.reply_to_id || next.repliedMessage));
+      const burstStart = !sameAuthorAsPrev || (t - tPrev) > BURST_GAP_MS || hasReply;
+      const burstEnd = !sameAuthorAsNext || (tNext - t) > BURST_GAP_MS || nextHasReply;
 
       const showDateSeparator =
         !prev ||

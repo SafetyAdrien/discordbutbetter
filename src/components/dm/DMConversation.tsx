@@ -407,7 +407,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                     const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;
                     const showDateSeparator = !prevDate || currentDate.toDateString() !== prevDate.toDateString();
                     
-                    const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id;
+                    const hasReply = Boolean(message.reply_to_id || message.repliedMessage);
+                    const showAuthor = idx === 0 || messages[idx - 1]?.author?.id !== message.author?.id || hasReply;
                     const isOwnMessage = user?.id === message.author?.id;
                     const timestamp = message.created_at
                       ? format(new Date(message.created_at), 'HH:mm', { locale: fr })

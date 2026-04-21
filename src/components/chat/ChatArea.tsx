@@ -1471,14 +1471,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               }
             }
 
+            const { reply: parsedReply, body: parsedBody } = parseRepliedMessage(message.content);
+            const hasReply = Boolean(message.replyToId || message.repliedMessage) || Boolean(parsedReply);
             const showAuthor =
               !prevItem ||
               prevItem.type !== "message" ||
               (prevItem.data as Message).author.id !== message.author.id ||
-              item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
+              item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000 ||
+              hasReply;
             const isOwnMessage = user?.id === message.author.id;
             const isEditing = editingMessageId === message.id;
-            const { reply: parsedReply, body: parsedBody } = parseRepliedMessage(message.content);
             return (
               <div key={`msg-${message.id}`}>
                 {DateSeparator}

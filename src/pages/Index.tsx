@@ -277,22 +277,19 @@ const Index = () => {
     if (activeServerId) {
       const server = servers.find(s => s.id === activeServerId);
       if (server) {
+        const allChannels = [
+          ...resolvedCategories.flatMap(c => c.channels),
+          ...resolvedOrphanChannels,
+        ];
+
         // If we already have a persisted channel for this server from session restore, use it
         if (activeChannelId) {
-          const allChannels = [
-            ...server.categories.flatMap(c => c.channels),
-            ...(server.orphanChannels || channelsData?.orphanChannels || [])
-          ];
           const exists = allChannels.find(ch => ch.id === activeChannelId);
           if (exists) return; // already set and valid
         }
 
         // Try to restore last visited channel for this server
         const savedChannelId = getChannelForServer(activeServerId);
-        const allChannels = [
-          ...server.categories.flatMap(c => c.channels),
-          ...(server.orphanChannels || channelsData?.orphanChannels || [])
-        ];
         
         const savedChannel = savedChannelId 
           ? allChannels.find(ch => ch.id === savedChannelId)
@@ -310,7 +307,7 @@ const Index = () => {
         }
       }
     }
-  }, [activeServerId, servers, channelsData?.orphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeServerId, activeChannelId, servers, resolvedCategories, resolvedOrphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeServer = servers.find((s) => s.id === activeServerId);
   const resolvedCategories = channelsData?.categories ?? activeServer?.categories ?? [];

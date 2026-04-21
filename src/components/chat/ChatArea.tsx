@@ -1425,6 +1425,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
             const isOwnMessage = user?.id === message.author.id;
             const isEditing = editingMessageId === message.id;
+            const { reply: parsedReply, body: parsedBody } = parseRepliedMessage(message.content);
             return (
               <div key={`msg-${message.id}`}>
                 {DateSeparator}

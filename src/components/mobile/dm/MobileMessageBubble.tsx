@@ -44,6 +44,7 @@ interface Props {
   onLongPress: (m: BubbleMessage) => void;
   onToggleReaction: (messageId: string, emoji: string, reactions: DMReaction[]) => void;
   onAvatarTap?: (authorId: string) => void;
+  onJumpToMessage?: (messageId: string) => void;
 }
 
 const SWIPE_THRESHOLD = 64;

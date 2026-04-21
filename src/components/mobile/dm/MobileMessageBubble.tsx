@@ -9,9 +9,11 @@ import { MarkdownText } from '@/lib/markdown';
 import { MessageAttachments, type StoredAttachment } from '@/components/chat/MessageAttachments';
 import { LinkEmbeds } from '@/components/chat/LinkEmbed';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { RepliedLine } from '@/components/chat/RepliedLine';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { DMReaction } from '@/hooks/useDMReactions';
+import type { RepliedMessageRef } from '@/types/app';
 
 export interface BubbleMessage {
   id: string;
@@ -21,6 +23,7 @@ export interface BubbleMessage {
   isOwn: boolean;
   isPending?: boolean;
   attachments: StoredAttachment[];
+  repliedMessage?: RepliedMessageRef | null;
   author: {
     id: string;
     displayName: string;

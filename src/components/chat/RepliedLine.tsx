@@ -28,6 +28,8 @@ interface RepliedLineProps {
   indent?: number;
   /** Optional role color for the cited author (semibold pseudo color) */
   authorColor?: string;
+  /** Optional role badge icon to display next to the author name (Discord-like) */
+  authorRoleIcon?: { iconUrl: string; name: string; color?: string | null } | null;
   className?: string;
 }
 

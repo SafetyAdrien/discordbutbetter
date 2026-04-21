@@ -379,6 +379,7 @@ export function MobileServersView({
             orphanChannels={orphanChannelsForList}
             onBack={() => {}}
             onChannelSelect={(channelId, channelType) => {
+              if (!selectedServerId) return;
               onChannelSelect(selectedServerId, channelId, channelType);
             }}
             onOpenSettings={onOpenSettings}

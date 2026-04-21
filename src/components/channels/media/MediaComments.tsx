@@ -17,6 +17,7 @@ import {
   useMediaCommentReactions,
   useToggleMediaCommentReaction,
 } from '@/hooks/useMediaCommentReactions';
+import { useMembers } from '@/hooks/useMembers';
 import type { RepliedMessageRef } from '@/types/app';
 
 interface MediaCommentsProps {

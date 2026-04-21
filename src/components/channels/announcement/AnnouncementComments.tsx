@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
 import { useAnnouncementCommentReactions, useToggleCommentReaction } from '@/hooks/useCommentReactions';
+import { useMembers } from '@/hooks/useMembers';
 import type { AnnouncementComment } from '@/hooks/useAnnouncements';
 import type { RepliedMessageRef } from '@/types/app';
 import { cn } from '@/lib/utils';

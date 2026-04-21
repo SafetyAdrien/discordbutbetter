@@ -586,24 +586,44 @@ export function useAddAnnouncementComment() {
       if (!user) return;
       
       await queryClient.cancelQueries({ queryKey: ['announcement-comments', data.announcementId] });
-      const previousComments = queryClient.getQueryData(['announcement-comments', data.announcementId]);
-      
+      const previousComments = queryClient.getQueryData<AnnouncementComment[]>(['announcement-comments', data.announcementId]);
+
+      // Resolve replied snapshot from existing cache for optimistic display
+      let repliedComment: RepliedCommentSnapshot | null = null;
+      if (data.replyToId && previousComments) {
+        const target = previousComments.find((c) => c.id === data.replyToId);
+        if (target) {
+          repliedComment = {
+            id: target.id,
+            content: target.content,
+            deleted: false,
+            author: {
+              id: target.author.id,
+              display_name: target.author.display_name,
+              avatar_url: target.author.avatar_url ?? null,
+            },
+          };
+        }
+      }
+
       const tempComment: AnnouncementComment = {
         id: `temp-${Date.now()}`,
         announcement_id: data.announcementId,
         content: data.content,
         created_at: new Date().toISOString(),
+        reply_to_id: data.replyToId ?? null,
+        repliedComment,
         author: {
           id: user.id,
           display_name: user.user_metadata?.display_name || 'Vous',
           avatar_url: user.user_metadata?.avatar_url,
         },
       };
-      
+
       queryClient.setQueryData(['announcement-comments', data.announcementId], (old: AnnouncementComment[] | undefined) =>
         old ? [...old, tempComment] : [tempComment]
       );
-      
+
       return { previousComments };
     },
     onError: (_, variables, context) => {

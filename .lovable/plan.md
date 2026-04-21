@@ -1,99 +1,158 @@
 
+# Intégration complète des réponses Desktop/Tablette
 
-# Reprise complète : Bouton Suivre + RÉPONSES Desktop/Tablette + Sync DM/Server + Densité Discord-strict
+## Ce qui est réellement en place aujourd’hui
 
-## Constat des manques précédents
+L’intégration n’est que partielle :
 
-J'ai laissé en suspens 3 zones critiques :
-1. **Le bouton "Suivre"** : seul le header serveur Annonces a été touché — j'ai oublié la barre composer pour les non-rédacteurs ET le menu mobile.
-2. **L'alignement RÉPONSES** : le connecteur en L est mal calibré → la pointe basse ne tombe PAS au centre vertical de l'avatar (40px) du message du dessous, et la mini-ligne flotte sans être centrée face à la PP.
-3. **La sync Mobile→PC pour les réponses DM** : le `RepliedLine` Desktop ne reçoit ni `authorColor` ni `authorRole` → les pseudos cités dans les DM groupe sont gris sans badge, contrairement à mobile.
-4. **La densité Discord-strict** : `py-0.5` (4px) reste appliqué sur ChatArea/Threads/DM au lieu de `py-px` (2px).
+- `ChatArea.tsx` : réponse réellement intégrée avec `reply_to_id` + `repliedMessage` + `RepliedLine`.
+- `DMConversation.tsx` : réponse réellement intégrée aussi.
+- `AnnouncementChannel.tsx` : pas intégré. Le composer fabrique encore une fausse citation Markdown :
+  `> **Auteur:** extrait\n\nmessage`
+- `ThreadView.tsx` : pas intégré. Le reply est encore simulé via `parseRepliedMessage(message.content)` et une citation texte.
+- `SwipeToReplyRow` : activé uniquement avec `enabled={isMobile}` dans `ChatArea`, `DMConversation`, `ThreadView`. Donc aucune parité tablette/desktop.
+- `thread_messages` n’a pas encore de `reply_to_id`, donc un vrai système de réponse thread n’existe pas côté données.
 
-## Correctifs
+## Plan de correction
 
-### 1. Bouton "Suivre" — visibilité totale
+### 1. Unifier la règle produit
+Appliquer le même vrai système de réponse partout sur Desktop, Tablette et Mobile pour :
+- messages serveur classiques
+- DMs
+- annonces
+- threads
 
-**`AnnouncementChannel.tsx`** (header, ligne ~445) :
-- Retirer la condition `canFollowAnnouncements &&` qui gate le bouton "Suivre" du header. Le bouton devient visible pour TOUS les membres pouvant voir le salon.
+Règle cible :
+- cliquer “Répondre” ou glisser si supporté -> stocker une vraie cible
+- envoyer -> persister un lien réel (`reply_to_id`)
+- afficher -> rendre `RepliedLine` au-dessus du bloc message
+- saut -> `onJump` vers le message source
+- suppression source -> `deleted: true` avec fallback propre
 
-**`MobileChatView.tsx`** (More menu, ligne ~166) :
-- Retirer `canFollowAnnouncements &&` sur l'entrée "Suivre cette annonce" → visible pour tous.
+### 2. Corriger le vrai manque : `AnnouncementChannel.tsx`
+Remplacer la logique legacy :
 
-**Barre composer "Suivre #salon" (`AnnouncementComposer.tsx` + `MessageInput.tsx` `showFollowBar`)** :
-- Vérifier que `showFollowBar` se déclenche bien quand `!canSendMessages`. Si dans `AnnouncementChannel.tsx` la prop n'est plus passée (régression), la remettre : `showFollowBar={!canSendMessages && isAnnouncementChannel}`.
+- supprimer la concaténation Markdown dans `handleSubmit`
+- envoyer `replyToId: replyingTo?.id ?? null` à `sendMessageMutation`
+- afficher la réponse au-dessus du message avec `RepliedLine`, comme dans `ChatArea`
+- garder la barre de preview au-dessus du composer, mais la brancher sur la vraie cible
+- appliquer le même spacing/indent que le chat serveur desktop
 
-La permission `follow_announcements` reste enforced **côté serveur cible** dans `FollowChannelModal` (où l'utilisateur ajoute le suivi sur SON serveur), ce qui est correct.
+Résultat :
+- les réponses annonces ne dépendront plus d’un blockquote texte
+- le rendu desktop/tablette sera réellement intégré
 
-### 2. RÉPONSES Desktop/Tablette — alignement parfait du L
+### 3. Corriger le vrai manque : `ThreadView.tsx`
+Le thread n’a actuellement qu’un faux système. Il faut le convertir en vrai système.
 
-**`RepliedLine.tsx`** — recalibrage complet du SVG pour que :
-- La **base verticale** du L tombe pile au **centre horizontal** de l'avatar parent (20px depuis la gauche pour avatar 40px ChatArea/DM, 16px pour avatar 32px Threads/Comments).
-- La **pointe basse** du L atteigne le **centre vertical** de l'avatar parent (≈20px sous la mini-ligne pour un avatar 40px).
-- Le **bras horizontal** du L pointe vers le **centre vertical du mini-avatar 16px** de la ligne de réponse.
+#### Backend/data
+Créer une migration pour `public.thread_messages` :
+- ajouter `reply_to_id uuid references public.thread_messages(id) on delete set null`
+- ajouter l’index correspondant
 
-Calculs :
-- `connectorLeft = indent - 36` (centre avatar 40px : 20px depuis le bord gauche du flex + offset).
-- SVG : `top: 8`, `height: 26`, `width: connectorWidth`, `overflow: visible`.
-- Path : `M 1 26 L 1 9 Q 1 1 9 1 L ${connectorWidth} 1` — descend jusqu'à `y=26` (centre vertical de l'avatar 40px), courbe en haut-gauche, file horizontalement vers le mini-avatar.
+#### Types + hooks
+Mettre à jour :
+- `src/types/thread.ts`
+- `src/hooks/useThreadMessages.ts`
 
-**`ChatArea.tsx`** (ligne ~1500) :
-- Conserver `pt-2.5` quand `hasReply` (10px d'air au-dessus de la mini-ligne).
-- `RepliedLine` : `className="mb-1"` (4px entre mini-ligne et bloc avatar+contenu).
-- `indent={56}` reste correct (40 avatar + 12 gap + 4 offset).
+pour :
+- sélectionner `reply_to_id`
+- résoudre `repliedMessage` comme c’est déjà fait pour `messages` et `dm_messages`
+- gérer optimistic update avec snapshot de la cible
+- gérer le fallback `deleted: true`
 
-**`ThreadView.tsx`** + **`AnnouncementComments.tsx`** + **`MediaComments.tsx`** :
-- `indent={44}` (32 avatar + 8 gap + 4 offset).
-- `className="mb-1"` sur `RepliedLine`.
+#### UI thread
+Dans `ThreadView.tsx` :
+- supprimer la logique `parseRepliedMessage(message.content)` pour les vrais replies
+- rendre `RepliedLine` depuis `message.repliedMessage`
+- envoyer `replyToId: replyingTo?.id ?? null` dans `useSendThreadMessage`
+- garder `parseRepliedMessage` seulement en compat legacy pour anciens messages déjà stockés en blockquote
 
-**`DMConversation.tsx`** (ligne ~436) :
-- `indent={56}` (avatars 40px en DM serveur), `className="mb-1"`.
-- Wrapper externe : `pt-2.5` quand `hasReply`.
+Résultat :
+- desktop/tablette auront enfin de vraies réponses dans les threads
+- pas seulement un affichage simulé
 
-### 3. Sync Mobile→PC : DM Desktop reçoit la résolution complète
+### 4. Étendre la parité tablette/desktop pour l’action “Répondre”
+Aujourd’hui le swipe-to-reply est mobile-only dans :
+- `ChatArea.tsx`
+- `DMConversation.tsx`
+- `ThreadView.tsx`
 
-**`DMConversation.tsx`** (RepliedLine ~436-462) :
-- Construire un `dmAuthorLookup` à partir des participants du DM (1:1 OU groupe).
-- Passer `authorRole={null}` pour les DM (pas de rôles serveur), mais `authorColor` si le profil cité a une couleur d'accent stockée.
-- Pour les **DM groupe**, si le membre cité avait un rôle dans un serveur partagé → ne PAS passer le badge (les DM n'affichent jamais les rôles serveur, comportement Discord).
-- L'objectif : que le pseudo du `RepliedLine` Desktop affiche le **vrai displayName + vraie couleur** du participant cité, pas un fallback gris.
+Il faut décider une vraie parité desktop/tablette :
+- Tablette : activer la gestuelle tactile aussi sur `isTablet`
+- Desktop souris : ne pas forcer le swipe, mais garantir que l’action “Répondre” hover/context menu marche partout
+- ne plus présenter comme “intégré partout” tant que `enabled` reste mobile-only
 
-### 4. Densité Discord-strict — appliquée partout
+Correction concrète :
+- remplacer `enabled={isMobile}` par `enabled={isMobile || isTablet}` là où la surface est tactile
+- conserver le bouton hover + menu contextuel sur desktop
 
-**Règle universelle** :
-- Messages groupés (même auteur < 5min) : **2px** de gap vertical total.
-- Nouveau auteur : **8px** de gap vertical.
-- Avec citation (RepliedLine au-dessus) : **10px** au-dessus de la mini-ligne.
+### 5. Harmoniser `RepliedLine` sur toutes les surfaces desktop/tablette
+Utiliser la même structure de rendu partout :
+- `RepliedLine`
+- bloc avatar + auteur + timestamp
+- contenu message
 
-**`ChatArea.tsx`** wrapper externe (ligne ~1499) :
-- `mb-1` → `mb-0`, `pb-1` → `pb-0`, `py-0.5` → `py-px` (2px total).
-- `pt-1.5` (nouveau auteur) → `pt-2` (8px).
-- `pt-2` (hasReply) → `pt-2.5` (10px).
+Ajustements à unifier :
+- `indent={56}` pour avatar 40px
+- `indent={44}` pour avatar 32px
+- `className="mb-1"` ou valeur unique décidée une fois pour toutes
+- wrapper message avec `pt-2.5` quand reply visible
+- même densité entre messages groupés et non groupés
 
-**`ThreadView.tsx`** (ligne ~833-836) :
-- `py-1` → `py-px`, `pt-2` quand `showAuthor`.
+Cibles :
+- `ChatArea.tsx`
+- `DMConversation.tsx`
+- `AnnouncementChannel.tsx`
+- `ThreadView.tsx`
 
-**`DMConversation.tsx`** (ligne ~384) :
-- `space-y-0.5` → `space-y-px` sur le conteneur de la liste de messages.
-- Sur chaque wrapper de message : `pt-2` quand `showAuthor`, `pt-2.5` quand `hasReply`.
+### 6. Compatibilité ascendante
+Ne pas casser les anciens messages déjà envoyés avec citation texte.
 
-**`AnnouncementComments.tsx`** + **`MediaComments.tsx`** :
-- `space-y-3` → `space-y-2` pour densifier les commentaires.
+Règle :
+- si `repliedMessage` existe -> rendu intégré prioritaire
+- sinon, si ancien format blockquote détecté -> fallback lecture seule via `parseRepliedMessage`
+- pour les nouvelles réponses, ne plus jamais sérialiser la citation dans `content`
 
-**`MobileMessageBubble.tsx`** : déjà compact, pas de changement.
+### 7. Vérification fonctionnelle à faire après implémentation
+Tester explicitement sur Desktop et Tablette :
+
+#### Serveur classique
+- répondre à un message
+- voir `RepliedLine`
+- cliquer pour jump
+- message groupé / non groupé
+
+#### DM
+- reply depuis bouton hover
+- affichage immédiat après envoi
+- jump et fallback deleted
+
+#### Annonces
+- reply sur desktop
+- plus aucun blockquote injecté dans le contenu
+- `RepliedLine` visible dans la liste
+
+#### Threads
+- reply sur desktop/tablette
+- persistance réelle en base
+- anciens messages legacy encore lisibles
 
 ## Résultat attendu
 
-1. **Bouton "Suivre"** visible pour TOUS dans le header Annonces (Desktop + Mobile More menu) + barre composer "Suivre #salon" pour les non-rédacteurs.
-2. **Système de réponse fonctionnel sur Desktop/Tablette** (ChatArea, DM Server, DM Groupe, Threads, Comments) avec connecteur en L **pixel-perfect centré** sur la PP de l'avatar du dessous + bras horizontal aligné sur le mini-avatar.
-3. **DM Desktop affiche correctement** le pseudo coloré du participant cité (parité mobile).
-4. **Densité Discord-strict** : 2px entre groupés / 8px entre auteurs / 10px au-dessus d'une mini-ligne — cohérente partout.
+Après correction, le système de réponses sera réellement intégré sur Desktop/Tablette au lieu d’être seulement partiellement présent :
+
+- Serveur : vrai système
+- DM : vrai système
+- Annonces : vrai système
+- Threads : vrai système
+- Tablette : action reply disponible aussi
+- Anciens messages legacy encore affichés sans casse
 
 ## Détails techniques
 
-- Aucun changement DB, aucun fichier auto-généré touché.
-- Le calcul `connectorLeft = indent - 36` fonctionne pour `indent=56` (avatar 40) et `indent=44` (avatar 32) car la gouttière reste alignée sur le centre horizontal de l'avatar parent.
-- Aucune modification du regex `parseRepliedMessage` ni du schéma `repliedMessage`.
-- Permission `follow_announcements` reste enforced côté serveur cible via le RPC dans `FollowChannelModal` — la sécurité n'est PAS dégradée, seule l'UI s'ouvre à tous.
-- Le SVG est `overflow: visible` pour déborder sur la zone de l'avatar du dessous sans casser le flow flex.
-
+- `AnnouncementChannel.tsx` est actuellement encore en mode faux reply Markdown.
+- `ThreadView.tsx` est actuellement encore en mode faux reply via `parseRepliedMessage`.
+- `thread_messages` n’a pas encore `reply_to_id`, donc aucune vraie intégration thread n’est possible sans migration.
+- `ChatArea.tsx` et `DMConversation.tsx` servent déjà de référence d’implémentation correcte.
+- Aucun fichier auto-géré à modifier.

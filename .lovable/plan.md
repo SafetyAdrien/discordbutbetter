@@ -1,111 +1,80 @@
 
 
-# Refonte du système de réponse — Discord-like fidèle
+# Correction : afficher le profil complet pour les messages-réponses groupés
 
-Passer d'un parsing fragile basé sur une citation markdown (`> **Author:** ...`) à un **vrai lien de réponse en base** (`reply_to_id`), permettant de résoudre fidèlement le **profil utilisateur** cité (avatar exact, pseudo serveur, couleur de rôle, badges) et de garantir un **saut au message** précis.
+## Le problème
 
-## Ce que l'utilisateur verra
+Dans le flux du chat, quand l'utilisateur **A** envoie un message normal, puis envoie tout de suite après une **réponse** à un autre message, le 2ᵉ message est actuellement *groupé* sous le 1ᵉʳ (sans avatar, sans nom, juste le texte) parce que la logique `showAuthor` ne vérifie que :
+1. Auteur identique au message précédent
+2. Écart < 5 minutes
 
-### Ligne de réponse au-dessus du message — style Discord exact
-
-```text
-   ↪ [avatar] @Adrien_Sama  Message original tronqué…
-[Avatar 40] Adrien_Sama  •  8:54
-            Mon message de réponse.
+Résultat visuel actuel (incorrect) :
+```
+🟣 Adrien_Sama  •  10:30
+   Salut tout le monde !
+   ┌─ @Marie  Comment ça va ?
+   Très bien merci !          ← réponse "noyée", pas de profil visible
 ```
 
-- **Connecteur courbe** ┌─ partant du centre de l'avatar principal vers la mini-ligne
-- **Mini-avatar 16×16** = **vrai avatar du message original** (résolu via `reply_to_id`), pas une initiale générique
-- **Pseudo** = **server profile** si en serveur (nickname + couleur de rôle la plus haute), sinon `display_name`, sinon `username`
-- **Préfixe `@`** + couleur du rôle (ex. Adrien_Sama bleu si rôle bleu)
-- **Aperçu** = **vrai contenu** du message cité (plus de troncature côté envoi : on a la source) — limité à 64 caractères avec **fade-out CSS** (pas d'ellipsis), tooltip au survol pour le contenu complet
-- **Indicateur média** si le message original n'a pas de texte mais des pièces jointes : `📎 Image` / `📎 Vidéo` / `📎 Fichier` / `📎 N pièces jointes`
-- **Sondage** : `📊 {question du sondage}`
-- **Tap/clic** → scroll précis vers `reply_to_id` + highlight pulsant 1.5s (mécanisme `messageRefs` existant)
-- **Message supprimé** : `Message original supprimé` en italique, avatar gris, non cliquable
+Résultat attendu (Discord-like) :
+```
+🟣 Adrien_Sama  •  10:30
+   Salut tout le monde !
 
-### Au-dessus de l'input (`ReplyReference`)
-- Même mini-avatar + même couleur de rôle + même contenu réel
-- Bouton ✕ pour annuler — inchangé fonctionnellement
+   ┌─ @Marie  Comment ça va ?
+🟣 Adrien_Sama  •  10:30
+   Très bien merci !          ← profil complet réaffiché car c'est une réponse
+```
 
-### Migration douce
-- Les **anciens messages** stockés au format `> **Author:** ...\n\n{body}` continuent d'être rendus correctement (fallback parsing existant), mais sans avatar fidèle ni jump précis
-- Les **nouveaux messages** envoyés avec un reply utilisent `reply_to_id` → expérience pleine
+## Ce qui change
+
+**Règle ajoutée** : un message qui contient une **réponse** (`reply_to_id` non nul OU citation legacy parsée) **force toujours `showAuthor = true`**, même si l'auteur et l'horaire correspondraient à un regroupement.
+
+C'est le comportement natif de Discord : chaque réponse démarre son propre bloc avec avatar + pseudo + heure, pour que le contexte de la conversation soit immédiatement lisible.
+
+## Cas couverts (tous corrigés)
+
+| Scénario | Avant | Après |
+|---|---|---|
+| Message normal → message normal (même auteur, < 5 min) | groupé ✓ | groupé ✓ (inchangé) |
+| Message normal → **réponse** (même auteur, < 5 min) | groupé ❌ | profil complet ✅ |
+| Réponse → réponse (même auteur, < 5 min) | groupé ❌ | profils complets ✅ |
+| Réponse → message normal (même auteur) | groupé ✓ | groupé ✓ (inchangé) |
 
 ## Détails techniques
 
-### 1. Migration DB
-```sql
-ALTER TABLE public.messages
-  ADD COLUMN reply_to_id uuid REFERENCES public.messages(id) ON DELETE SET NULL;
+### Fichiers modifiés
 
-CREATE INDEX idx_messages_reply_to_id ON public.messages(reply_to_id);
+**`src/components/chat/ChatArea.tsx`** (ligne ~1474) — étendre la logique `showAuthor` pour la branche des messages :
+
+```ts
+const hasReply = Boolean(message.replyToId || message.repliedMessage)
+  || Boolean(parseRepliedMessage(message.content).reply);
+
+const showAuthor =
+  !prevItem ||
+  prevItem.type !== "message" ||
+  (prevItem.data as Message).author.id !== message.author.id ||
+  item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000 ||
+  hasReply;  // ← Nouvelle règle
 ```
-- `ON DELETE SET NULL` → la suppression du message original transforme la réponse en "Message original supprimé"
-- Pas de RLS additionnelle (hérite de `messages`)
 
-### 2. Hook `useMessages`
-- Étendre la sélection : `reply_to_id`
-- Ajouter une 2e requête (ou inclusion via une seconde fetch ciblée par IDs) qui charge les messages référencés **avec leur auteur** :
-  ```ts
-  const replyIds = [...new Set(messages.map(m => m.reply_to_id).filter(Boolean))];
-  // SELECT id, content, attachments, author:profiles(...) FROM messages WHERE id IN (replyIds)
-  ```
-- Construire une `Map<messageId, RepliedMessage>` injectée dans le contexte de rendu
-- Un message référencé qui n'existe plus (NULL retour) → marqué `deleted: true`
+Le `parseRepliedMessage` est déjà importé et utilisé ligne 1481 — on peut soit déplacer l'appel avant le calcul de `showAuthor`, soit utiliser le résultat existant. Choix : déplacer le `parseRepliedMessage` 2 lignes plus haut (avant `showAuthor`) pour réutiliser une seule fois.
 
-### 3. Résolution du profil cité (fidélité maximale)
-Hook utilitaire `useReplyAuthorProfile(authorId, serverId)` qui combine :
-1. **`useMembers(serverId)`** → priorité au `server_profile` (nickname + avatar serveur)
-2. **`useRoles(serverId)` + member.roles** → calcule la couleur du rôle le plus haut
-3. Fallback : `profiles` global déjà joint dans le message référencé
+**`src/components/dm/DMConversation.tsx`** — appliquer la même règle à la logique de regroupement DM (même pattern `showAuthor` à corriger).
 
-### 4. Envoi
-`ChatArea.handleSend` :
-- Avant : préfixe `> **${name}:** ${preview}\n\n${input}`
-- Après : envoie `content = messageInput` + ajoute `reply_to_id: replyingTo.id` à l'INSERT
-- Mutation `useSendMessage` accepte `replyToId?: string`
+**`src/components/mobile/dm/MobileMessageBubble.tsx`** + **`src/components/mobile/dm/MobileDMConversation.tsx`** — vérifier et étendre la logique de regroupement mobile pour appliquer la même règle (un message-réponse n'est jamais bullé/groupé avec le précédent).
 
-### 5. Composant `RepliedLine` — refactor
-**Nouvelle prop principale** : `repliedMessage: RepliedMessage | null` (résolue via `reply_to_id`).
-- Si présente → utilise avatar exact, content exact, jump exact via `id`
-- Préview : si `content` vide et `attachments.length > 0`, formate `📎 ${type}` / `📎 ${count} pièces jointes`
-- Si poll détecté (futur) → `📊 ...`
-- Pseudo coloré via `authorColor` injecté par le parent (calculé depuis les rôles serveur)
-- Préfixe `@` + couleur (Discord-like)
-- Connecteur SVG : conservé
+**`src/components/mobile/MobileChatView.tsx`** — appliquer la même règle si une logique de regroupement existe pour le chat mobile serveur.
 
-**Fallback legacy** : si `reply_to_id` est null mais que le contenu match l'ancien pattern `> **X:** ...`, garder le rendu actuel (best-effort).
+### Hors scope (non touché)
 
-### 6. `ReplyReference` (input preview)
-- Même refactor : utilise `replyingTo.author` directement (déjà disponible avec avatar) + applique `useReplyAuthorProfile` pour la couleur
+- `RepliedLine.tsx` : aucun changement, le composant fait son travail correctement
+- Threads : la logique de citation simulée reste inchangée (cf. memory `mem://features/threads/reply-logic-simulated`)
+- Annonces / Médias : les commentaires n'ont pas de regroupement par auteur, non concerné
+- Aucune migration DB, aucun changement de hook
 
-### 7. Fichiers
-**Migration**
-- Nouveau fichier `supabase/migrations/{ts}_add_reply_to_id_to_messages.sql`
-
-**Modifiés**
-- `src/hooks/useMessages.ts` — ajouter `reply_to_id`, charger les `repliedMessages`, exposer la map
-- `src/hooks/useDMMessages.ts` — même traitement (DMs supportent aussi les replies)
-- `src/components/chat/ChatArea.tsx` — passer `repliedMessage` à `RepliedLine`, retirer la concaténation markdown à l'envoi, utiliser `useReplyAuthorProfile`
-- `src/components/dm/DMConversation.tsx` & `src/components/mobile/dm/MobileDMConversation.tsx` — idem
-- `src/components/mobile/dm/MobileMessageBubble.tsx` — idem
-- `src/components/chat/RepliedLine.tsx` — pivote sur `repliedMessage`, ajoute formattage attachments + couleur de rôle + préfixe `@`
-- `src/lib/parse-reply.ts` — conservé pour fallback legacy uniquement
-
-### 8. Edge cases
-- **Suppression** : `ON DELETE SET NULL` + état "Message supprimé" rendu
-- **Édition du message original** : la réponse affiche automatiquement le nouveau contenu (toujours fetché par ID) — fidèle à Discord
-- **Réponse cross-channel** : non autorisée (le INSERT vérifie côté UI que `reply_to_id` appartient au même `channel_id`)
-- **Threads** : inchangé (cf. memory `mem://features/threads/reply-logic-simulated` — citation simulée préservée à l'intérieur des fils)
-
-### 9. Performance
-- Les replies sont batché en une seule requête `IN (...)` après le fetch principal
-- Mis en cache via React Query (`['messages', channelId, 'replied']`)
-- Aucune requête supplémentaire au render
-
-### 10. Accessibilité
-- Inchangé : aria-label complet, focus-visible, tooltip pour contenu long, contraste AA
-
-**Migration DB requise.**
+### Performance & accessibilité
+- Coût additionnel négligeable : un seul appel `parseRepliedMessage` par message (déjà fait ailleurs dans le render)
+- Améliore l'accessibilité : chaque réponse a désormais son propre point d'ancrage avec contexte d'auteur explicite (lecteur d'écran)
 

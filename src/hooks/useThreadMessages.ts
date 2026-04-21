@@ -59,7 +59,57 @@ export const useThreadMessages = (threadId: string | undefined) => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as ThreadMessage[];
+
+      const baseMessages = (data || []) as ThreadMessage[];
+
+      // Resolve replied snapshots in a single batched query
+      const replyIds = Array.from(
+        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
+      );
+
+      if (replyIds.length === 0) return baseMessages;
+
+      const { data: replyData } = await supabase
+        .from('thread_messages')
+        .select(`
+          id, content, attachments,
+          author:profiles!thread_messages_author_id_fkey(id, username, display_name, avatar_url)
+        `)
+        .in('id', replyIds);
+
+      const replyMap = new Map<string, any>();
+      if (replyData) {
+        for (const r of replyData as any[]) {
+          replyMap.set(r.id, {
+            id: r.id,
+            content: r.content || '',
+            attachments: Array.isArray(r.attachments) ? r.attachments : [],
+            author: r.author
+              ? {
+                  id: r.author.id,
+                  username: r.author.username,
+                  display_name: r.author.display_name,
+                  avatar_url: r.author.avatar_url,
+                }
+              : null,
+          });
+        }
+      }
+
+      return baseMessages.map((m) => {
+        if (!m.reply_to_id) return m;
+        const snap = replyMap.get(m.reply_to_id);
+        return {
+          ...m,
+          repliedMessage: snap ?? {
+            id: m.reply_to_id,
+            content: '',
+            attachments: [],
+            deleted: true,
+            author: null,
+          },
+        };
+      });
     },
     enabled: !!threadId,
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),

@@ -87,6 +87,7 @@ export function MobileLayout({
   const [showCreate, setShowCreate] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
+  const [externalLinkUrl, setExternalLinkUrl] = useState<string | null>(null);
 
   const openServerSettings = (serverId: string, initialTab?: string) => {
     setSettingsInitialTab(initialTab);

@@ -181,7 +181,7 @@ export function RepliedLine({
     <div
       className={cn(
         "relative flex items-center gap-1.5 text-[13px] leading-tight select-none",
-        "min-h-[20px] overflow-visible",
+        "min-h-[18px] overflow-visible",
         isClickable && "cursor-pointer",
         className,
       )}
@@ -194,7 +194,7 @@ export function RepliedLine({
         className="absolute pointer-events-none text-border/70"
         style={{
           left: connectorLeft,
-          top: 10,
+          top: 14,
           width: connectorWidth,
           height: 24,
           overflow: "visible",

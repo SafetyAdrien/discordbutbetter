@@ -73,6 +73,7 @@ export function useDMMessages(conversationId: string | null) {
           edited_at,
           attachments,
           conversation_id,
+          reply_to_id,
           author:profiles!dm_messages_author_id_fkey (
             id,
             username,
@@ -85,11 +86,65 @@ export function useDMMessages(conversationId: string | null) {
         .limit(100);
 
       if (error) throw error;
-      
-      return (data as any[]).map(msg => ({
+
+      const baseMessages: DMMessage[] = (data as any[]).map((msg) => ({
         ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
       })) as DMMessage[];
+
+      // Resolve replied messages in a single batched query
+      const replyIds = Array.from(
+        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
+      );
+
+      let replyMap = new Map<string, RepliedDMSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('dm_messages')
+          .select(`
+            id,
+            content,
+            attachments,
+            author:profiles!dm_messages_author_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .in('id', replyIds);
+
+        if (replyData) {
+          for (const r of replyData as any[]) {
+            replyMap.set(r.id, {
+              id: r.id,
+              content: r.content || '',
+              attachments: Array.isArray(r.attachments) ? r.attachments : [],
+              author: r.author
+                ? {
+                    id: r.author.id,
+                    username: r.author.username,
+                    display_name: r.author.display_name,
+                    avatar_url: r.author.avatar_url,
+                  }
+                : null,
+            });
+          }
+        }
+      }
+
+      return baseMessages.map((m) => ({
+        ...m,
+        repliedMessage: m.reply_to_id
+          ? replyMap.get(m.reply_to_id) ?? {
+              id: m.reply_to_id,
+              content: '',
+              attachments: [],
+              deleted: true,
+              author: null,
+            }
+          : null,
+      }));
     },
     enabled: !!conversationId && !!user,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),

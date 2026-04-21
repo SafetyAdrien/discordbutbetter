@@ -600,6 +600,7 @@ const Index = () => {
   ) : null;
 
   return (
+    <Suspense fallback={<LoadingScreen progress={preloader.progress} currentStep={preloader.currentStep} />}>
     <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
       {/* Server List - compact rail on tablet (64px) */}
       <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>

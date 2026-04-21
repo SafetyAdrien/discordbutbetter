@@ -63,14 +63,19 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                 {isActive && (
                   <motion.div
                     layoutId="mobile-tab-pill"
-                    className="absolute -inset-x-3 -inset-y-1 rounded-full bg-primary/12"
+                    className="absolute -inset-x-3 -inset-y-1.5 rounded-2xl bg-primary/15"
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
-                <Icon className={cn(
-                  "w-5 h-5 relative z-10 transition-colors duration-200",
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                )} />
+                <Icon
+                  className={cn(
+                    'w-[22px] h-[22px] relative z-10 transition-all duration-200',
+                    isActive ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                  strokeWidth={isActive ? 2.5 : 2.25}
+                  fill={isActive ? 'currentColor' : 'none'}
+                  fillOpacity={isActive ? 0.18 : 0}
+                />
                 {badge > 0 && (
                   <span aria-hidden="true" className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
                     {badge > 99 ? '99+' : badge}
@@ -85,8 +90,8 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                 )}
               </div>
               <span className={cn(
-                "text-[10px] font-semibold transition-colors duration-200",
-                isActive ? 'text-primary' : 'text-muted-foreground'
+                'text-[10px] font-semibold transition-colors duration-200 relative z-10',
+                isActive ? 'text-primary' : 'text-muted-foreground',
               )}>{label}</span>
             </button>
           );

@@ -821,7 +821,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             indent={44}
                             authorColor={topRole?.color || undefined}
                             authorRole={topRole ?? null}
-                            className="mb-0.5"
+                            className="mb-1"
                           />
                         );
                       })()}
@@ -832,7 +832,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       >
                       <div 
                         className={cn(
-                          'flex gap-3 px-2 py-1 message-hover relative',
+                          'flex gap-3 px-2 py-px message-hover relative',
                           showAuthor ? 'pt-2' : '',
                           messageMentionsMe(message.content, user?.id, membersData.find(m => m.user?.id === user?.id)?.roles?.map((r: any) => r.id) ?? []) && 'message-mentioned !-mx-4 !px-6',
                         )}

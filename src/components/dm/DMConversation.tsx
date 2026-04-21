@@ -381,7 +381,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         <div className="flex-1 flex flex-col min-h-0">
           {/* Messages */}
           <ScrollArea className="flex-1 min-h-0">
-            <div className="flex flex-col justify-end min-h-full p-4 space-y-0.5">
+            <div className="flex flex-col justify-end min-h-full p-4 space-y-px">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -434,7 +434,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         )}
                         {/* Replied line (Discord-like, faithful resolution) */}
                         {message.repliedMessage && (
-                          <div className="-mb-0.5">
+                          <div className={cn("pt-1.5", showAuthor ? "" : "pt-2.5") }>
                             <RepliedLine
                               repliedMessage={{
                                 id: message.repliedMessage.id,
@@ -457,6 +457,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               }}
                               onJump={handleJumpToMessage}
                               indent={56}
+                              className="mb-1"
                             />
                           </div>
                         )}

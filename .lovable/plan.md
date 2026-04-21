@@ -1,158 +1,77 @@
 
-# Intégration complète des réponses Desktop/Tablette
 
-## Ce qui est réellement en place aujourd’hui
+# Audit honnête : ce qui est intégré et ce qui bug réellement
 
-L’intégration n’est que partielle :
+## État RÉEL du code (vérifié fichier par fichier)
 
-- `ChatArea.tsx` : réponse réellement intégrée avec `reply_to_id` + `repliedMessage` + `RepliedLine`.
-- `DMConversation.tsx` : réponse réellement intégrée aussi.
-- `AnnouncementChannel.tsx` : pas intégré. Le composer fabrique encore une fausse citation Markdown :
-  `> **Auteur:** extrait\n\nmessage`
-- `ThreadView.tsx` : pas intégré. Le reply est encore simulé via `parseRepliedMessage(message.content)` et une citation texte.
-- `SwipeToReplyRow` : activé uniquement avec `enabled={isMobile}` dans `ChatArea`, `DMConversation`, `ThreadView`. Donc aucune parité tablette/desktop.
-- `thread_messages` n’a pas encore de `reply_to_id`, donc un vrai système de réponse thread n’existe pas côté données.
+| Surface | replyToId envoyé | RepliedLine rendu | Statut |
+|---|---|---|---|
+| ChatArea (serveurs) | ✅ ligne 790 | ✅ ligne 1535 | Intégré |
+| DMConversation | ✅ ligne 698 | ✅ ligne 438 | Intégré |
+| AnnouncementChannel | ✅ ligne 364 | ✅ ligne 848 | Intégré |
+| ThreadView | ✅ ligne 331 | ✅ ligne 809 | Intégré |
+| Table `messages`, `dm_messages`, `thread_messages` | ✅ colonne `reply_to_id` présente | — | OK |
 
-## Plan de correction
+**Donc le code EST en place.** Si tu ne vois rien sur Desktop, ce n'est pas que la fonctionnalité est absente — c'est qu'un **bug d'intégration** la rend invisible/inopérante. Voici les vrais bugs identifiés.
 
-### 1. Unifier la règle produit
-Appliquer le même vrai système de réponse partout sur Desktop, Tablette et Mobile pour :
-- messages serveur classiques
-- DMs
-- annonces
-- threads
+## Bug #1 (CRITIQUE) — Erreur React `forwardRef` qui casse l'interaction
 
-Règle cible :
-- cliquer “Répondre” ou glisser si supporté -> stocker une vraie cible
-- envoyer -> persister un lien réel (`reply_to_id`)
-- afficher -> rendre `RepliedLine` au-dessus du bloc message
-- saut -> `onJump` vers le message source
-- suppression source -> `deleted: true` avec fallback propre
+La console montre :
+```
+Warning: Function components cannot be given refs.
+Check the render method of `UniversalMessageActions`.
+Tooltip → div → UniversalMessageActions → SwipeToReplyRow → ContextMenuTrigger asChild
+```
 
-### 2. Corriger le vrai manque : `AnnouncementChannel.tsx`
-Remplacer la logique legacy :
+Cause : `<ContextMenuTrigger asChild>` passe une `ref` à son enfant direct `SwipeToReplyRow`, mais `SwipeToReplyRow` n'utilise PAS `forwardRef`. La ref est perdue. Conséquence : Radix ContextMenu / Tooltip enfants peuvent dysfonctionner, et le wrapper hover bug par intermittence (visible dans le replay : "Reaction buttons are added → removed" en 500ms).
 
-- supprimer la concaténation Markdown dans `handleSubmit`
-- envoyer `replyToId: replyingTo?.id ?? null` à `sendMessageMutation`
-- afficher la réponse au-dessus du message avec `RepliedLine`, comme dans `ChatArea`
-- garder la barre de preview au-dessus du composer, mais la brancher sur la vraie cible
-- appliquer le même spacing/indent que le chat serveur desktop
+**Correctif** : convertir `SwipeToReplyRow` en `forwardRef<HTMLDivElement, ...>` qui transmet la ref au `<div>` racine. Idem pour `UniversalMessageActions` si appelé via `asChild` ailleurs.
 
-Résultat :
-- les réponses annonces ne dépendront plus d’un blockquote texte
-- le rendu desktop/tablette sera réellement intégré
+## Bug #2 — Le bouton Reply existe mais le hover est instable
 
-### 3. Corriger le vrai manque : `ThreadView.tsx`
-Le thread n’a actuellement qu’un faux système. Il faut le convertir en vrai système.
+`UniversalMessageActions` ligne 110-188 contient bien un bouton `<Reply>` au hover (ligne 152). Il s'affiche quand `isVisible={hoveredMessageId === message.id}`. Mais à cause du Bug #1, le hover state se déclenche/se reset rapidement, donnant l'impression que rien n'apparaît.
 
-#### Backend/data
-Créer une migration pour `public.thread_messages` :
-- ajouter `reply_to_id uuid references public.thread_messages(id) on delete set null`
-- ajouter l’index correspondant
+**Correctif** : une fois Bug #1 fixé, le bouton Reply hover sera stable. Action `onReply={() => handleReply(message)}` → `setReplyingTo(message)` → MessageInput affiche la bannière → envoi → `RepliedLine` rendu.
 
-#### Types + hooks
-Mettre à jour :
-- `src/types/thread.ts`
-- `src/hooks/useThreadMessages.ts`
+## Bug #3 — Bannière de réponse au-dessus du composer Desktop
 
-pour :
-- sélectionner `reply_to_id`
-- résoudre `repliedMessage` comme c’est déjà fait pour `messages` et `dm_messages`
-- gérer optimistic update avec snapshot de la cible
-- gérer le fallback `deleted: true`
+Vérifier dans `ChatArea.tsx` ligne 1992 que la bannière `replyingTo` (avec aperçu auteur/contenu et bouton X) s'affiche bien. Identique pour `DMConversation.tsx` ligne 651, `ThreadView.tsx` ligne 997, `AnnouncementChannel.tsx` ligne 1160. Si la bannière n'apparaît pas, le clic Reply n'a pas d'effet visible → impression que "ça ne marche pas".
 
-#### UI thread
-Dans `ThreadView.tsx` :
-- supprimer la logique `parseRepliedMessage(message.content)` pour les vrais replies
-- rendre `RepliedLine` depuis `message.repliedMessage`
-- envoyer `replyToId: replyingTo?.id ?? null` dans `useSendThreadMessage`
-- garder `parseRepliedMessage` seulement en compat legacy pour anciens messages déjà stockés en blockquote
+**Correctif** : s'assurer que la bannière a un styling visible (background contrasté, border-top, padding) sur Desktop. Aujourd'hui c'est `bg-muted/50` qui peut être quasi-invisible selon le thème.
 
-Résultat :
-- desktop/tablette auront enfin de vraies réponses dans les threads
-- pas seulement un affichage simulé
+## Bug #4 — `RepliedLine` invisible si `repliedMessage` est null à l'arrivée Realtime
 
-### 4. Étendre la parité tablette/desktop pour l’action “Répondre”
-Aujourd’hui le swipe-to-reply est mobile-only dans :
-- `ChatArea.tsx`
-- `DMConversation.tsx`
-- `ThreadView.tsx`
+Quand un AUTRE utilisateur répond à mon message, le flux Realtime de `useMessages` (ligne 207-289) refait une query pour résoudre `repliedMessage`. Si ce fetch échoue silencieusement (RLS, race), le message arrive SANS `repliedMessage` → `RepliedLine` ne s'affiche pas, alors que le `reply_to_id` est en BDD.
 
-Il faut décider une vraie parité desktop/tablette :
-- Tablette : activer la gestuelle tactile aussi sur `isTablet`
-- Desktop souris : ne pas forcer le swipe, mais garantir que l’action “Répondre” hover/context menu marche partout
-- ne plus présenter comme “intégré partout” tant que `enabled` reste mobile-only
+**Correctif** : ajouter un fallback `{ deleted: true, ... }` côté Realtime quand `replyData` est null, identique au code de `queryFn`. Et logger un warn si le fetch échoue (pas silencieux).
 
-Correction concrète :
-- remplacer `enabled={isMobile}` par `enabled={isMobile || isTablet}` là où la surface est tactile
-- conserver le bouton hover + menu contextuel sur desktop
+## Bug #5 — Sync Mobile/Desktop : action "Répondre" manquante dans le context menu Desktop
 
-### 5. Harmoniser `RepliedLine` sur toutes les surfaces desktop/tablette
-Utiliser la même structure de rendu partout :
-- `RepliedLine`
-- bloc avatar + auteur + timestamp
-- contenu message
+Vérification : `ContextMenuContent` dans ChatArea/DM/Thread n'inclut PAS systématiquement un item "Répondre". L'utilisateur clic-droit Desktop → pas d'option Reply → seul le bouton hover est disponible → frustrant si Bug #1 cache le hover.
 
-Ajustements à unifier :
-- `indent={56}` pour avatar 40px
-- `indent={44}` pour avatar 32px
-- `className="mb-1"` ou valeur unique décidée une fois pour toutes
-- wrapper message avec `pt-2.5` quand reply visible
-- même densité entre messages groupés et non groupés
+**Correctif** : ajouter `<ContextMenuItem onClick={() => handleReply(message)}><Reply /> Répondre</ContextMenuItem>` en TÊTE du context menu sur les 4 surfaces.
 
-Cibles :
-- `ChatArea.tsx`
-- `DMConversation.tsx`
-- `AnnouncementChannel.tsx`
-- `ThreadView.tsx`
+## Plan d'action
 
-### 6. Compatibilité ascendante
-Ne pas casser les anciens messages déjà envoyés avec citation texte.
-
-Règle :
-- si `repliedMessage` existe -> rendu intégré prioritaire
-- sinon, si ancien format blockquote détecté -> fallback lecture seule via `parseRepliedMessage`
-- pour les nouvelles réponses, ne plus jamais sérialiser la citation dans `content`
-
-### 7. Vérification fonctionnelle à faire après implémentation
-Tester explicitement sur Desktop et Tablette :
-
-#### Serveur classique
-- répondre à un message
-- voir `RepliedLine`
-- cliquer pour jump
-- message groupé / non groupé
-
-#### DM
-- reply depuis bouton hover
-- affichage immédiat après envoi
-- jump et fallback deleted
-
-#### Annonces
-- reply sur desktop
-- plus aucun blockquote injecté dans le contenu
-- `RepliedLine` visible dans la liste
-
-#### Threads
-- reply sur desktop/tablette
-- persistance réelle en base
-- anciens messages legacy encore lisibles
-
-## Résultat attendu
-
-Après correction, le système de réponses sera réellement intégré sur Desktop/Tablette au lieu d’être seulement partiellement présent :
-
-- Serveur : vrai système
-- DM : vrai système
-- Annonces : vrai système
-- Threads : vrai système
-- Tablette : action reply disponible aussi
-- Anciens messages legacy encore affichés sans casse
+1. **Convertir `SwipeToReplyRow` en `forwardRef`** (`/src/components/mobile/SwipeToReplyRow.tsx`) — transmet la ref au `<div>` racine.
+2. **Convertir `UniversalMessageActions` en `forwardRef`** si la console le réclame (le warning vient de là).
+3. **Ajouter un item "Répondre" en tête du context menu** dans :
+   - `ChatArea.tsx`
+   - `DMConversation.tsx`
+   - `ThreadView.tsx`
+   - `AnnouncementChannel.tsx`
+4. **Renforcer la bannière `replyingTo`** au-dessus du composer (background `bg-surface-3` + border, padding visible).
+5. **Robustifier le fallback Realtime** dans `useMessages.ts` (et idem `useDMMessages`, `useThreadMessages`) : toujours produire un `repliedMessage` même si le fetch échoue.
+6. **Test fonctionnel manuel** : sur Desktop 1280px →
+   - Hover sur message → bouton Reply visible et stable.
+   - Clic Reply → bannière apparaît au-dessus du composer.
+   - Envoi → `RepliedLine` apparaît au-dessus du nouveau message.
+   - Clic-droit message → entrée "Répondre" en tête du menu.
 
 ## Détails techniques
 
-- `AnnouncementChannel.tsx` est actuellement encore en mode faux reply Markdown.
-- `ThreadView.tsx` est actuellement encore en mode faux reply via `parseRepliedMessage`.
-- `thread_messages` n’a pas encore `reply_to_id`, donc aucune vraie intégration thread n’est possible sans migration.
-- `ChatArea.tsx` et `DMConversation.tsx` servent déjà de référence d’implémentation correcte.
-- Aucun fichier auto-géré à modifier.
+- Le warning `forwardRef` est la **vraie cause** du dysfonctionnement perçu — pas une absence de code.
+- Aucun changement BDD (les colonnes existent).
+- Aucun fichier auto-généré touché.
+- Si après ces 6 fixes tu ne vois toujours rien, ouvrir la console et copier l'erreur exacte au moment du clic Reply.
+

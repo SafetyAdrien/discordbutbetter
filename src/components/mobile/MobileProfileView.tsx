@@ -3,11 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
-  Moon,
   Pencil,
-  Circle,
-  MinusCircle,
-  EyeOff,
   LogOut,
   ChevronRight,
   Sparkles,
@@ -18,11 +14,17 @@ import {
   Copy,
   Check,
   QrCode,
+  Users,
+  Server,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
-import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { supabase } from '@/integrations/supabase/client';
+import { MobileStatusSheet } from './profile/MobileStatusSheet';
+import { MobileEditProfileView } from './profile/MobileEditProfileView';
+import { MobileQRCodeView } from './profile/MobileQRCodeView';
+import { MobileFavoriteFriendsView } from './profile/MobileFavoriteFriendsView';
+import { MobileServersListView } from './profile/MobileServersListView';
+import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView';
+import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
@@ -30,22 +32,43 @@ import { uuidToSnowflake } from '@/lib/snowflake';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
 
-const STATUS_OPTIONS = [
-  { value: 'online', label: 'En ligne', icon: Circle, color: 'text-[hsl(var(--online))]', fill: 'fill-[hsl(var(--online))]' },
-  { value: 'idle', label: 'Inactif', icon: Circle, color: 'text-[hsl(var(--idle))]', fill: 'fill-[hsl(var(--idle))]' },
-  { value: 'dnd', label: 'Ne pas déranger', icon: MinusCircle, color: 'text-[hsl(var(--dnd))]', fill: '' },
-  { value: 'offline', label: 'Invisible', icon: EyeOff, color: 'text-[hsl(var(--offline))]', fill: '' },
-] as const;
+type Subpage =
+  | null
+  | 'edit-profile'
+  | 'qr-code'
+  | 'friends'
+  | 'servers'
+  | 'notifications'
+  | 'appearance'
+  | 'privacy';
 
-export function MobileProfileView() {
+const STATUS_LABELS: Record<string, string> = {
+  online: 'En ligne',
+  idle: 'Inactif',
+  dnd: 'Ne pas déranger',
+  offline: 'Invisible',
+};
+
+interface MobileProfileViewProps {
+  onOpenDM?: (conversationId: string) => void;
+  onSelectServer?: (serverId: string) => void;
+  onCreateServer?: () => void;
+  onDiscover?: () => void;
+}
+
+export function MobileProfileView({
+  onOpenDM,
+  onSelectServer,
+  onCreateServer,
+  onDiscover,
+}: MobileProfileViewProps = {}) {
   const { profile, user, signOut } = useAuth();
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
   const [showSettings, setShowSettings] = useState(false);
-  const [_settingsTab, setSettingsTab] = useState<'account' | 'profile'>('account');
-  const [showStatus, setShowStatus] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
+  const [showStatusSheet, setShowStatusSheet] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [subpage, setSubpage] = useState<Subpage>(null);
 
   const acceptedFriends = friends.filter((f: any) => f.status === 'accepted').length;
   const serverCount = servers.length;
@@ -57,16 +80,8 @@ export function MobileProfileView() {
     offline: 'bg-[hsl(var(--offline))]',
   };
 
-  const handleStatusChange = async (status: 'online' | 'idle' | 'dnd' | 'offline') => {
-    if (!user?.id) return;
+  const handleOpenSettings = () => {
     haptics.light();
-    await supabase.from('profiles').update({ status }).eq('id', user.id);
-    setStatusOpen(false);
-  };
-
-  const handleOpenSettings = (tab: 'account' | 'profile') => {
-    haptics.light();
-    setSettingsTab(tab);
     setShowSettings(true);
   };
 
@@ -85,16 +100,16 @@ export function MobileProfileView() {
     await signOut();
   };
 
-  const currentStatus = STATUS_OPTIONS.find((s) => s.value === (profile?.status || 'offline'));
   const initial = profile?.display_name?.charAt(0)?.toUpperCase() || '?';
+  const currentStatus = profile?.status || 'offline';
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* Header */}
       <header className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
         <h1 className="font-semibold text-base">Toi</h1>
         <button
-          onClick={() => handleOpenSettings('account')}
+          onClick={handleOpenSettings}
           className="w-9 h-9 rounded-full flex items-center justify-center -mr-2 active:bg-muted/60 transition-colors"
           aria-label="Paramètres"
         >
@@ -115,15 +130,22 @@ export function MobileProfileView() {
               style={{
                 background: profile?.theme_color
                   ? `linear-gradient(135deg, ${profile.theme_color}, hsl(var(--primary)))`
-                  : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow, var(--primary))))',
+                  : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.6))',
               }}
             />
           )}
 
-          {/* Avatar overlap */}
+          {/* Avatar + Edit btn */}
           <div className="px-4 -mt-12 relative">
             <div className="flex items-end justify-between">
-              <div className="relative">
+              <button
+                onClick={() => {
+                  haptics.light();
+                  setShowStatusSheet(true);
+                }}
+                className="relative active:opacity-80 transition-opacity"
+                aria-label="Changer le statut"
+              >
                 <Avatar className="w-24 h-24 ring-[5px] ring-background">
                   <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
@@ -133,14 +155,16 @@ export function MobileProfileView() {
                 <div
                   className={cn(
                     'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                    statusColors[profile?.status || 'offline'],
+                    statusColors[currentStatus]
                   )}
-                  aria-label={`Statut : ${currentStatus?.label}`}
                 />
-              </div>
+              </button>
 
               <button
-                onClick={() => handleOpenSettings('profile')}
+                onClick={() => {
+                  haptics.light();
+                  setSubpage('edit-profile');
+                }}
                 className="mb-2 px-4 h-9 rounded-full bg-muted/60 text-sm font-medium active:bg-muted transition-colors flex items-center gap-1.5"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -150,12 +174,32 @@ export function MobileProfileView() {
           </div>
         </section>
 
-        {/* Identity card */}
+        {/* Identity card with status trigger on display name */}
         <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h2 className="font-bold text-xl truncate">{profile?.display_name || 'Utilisateur'}</h2>
+              <button
+                onClick={() => {
+                  haptics.light();
+                  setShowStatusSheet(true);
+                }}
+                className="flex items-center gap-2 max-w-full text-left active:opacity-70 transition-opacity"
+                aria-label="Changer le statut"
+              >
+                <h2 className="font-bold text-xl truncate">
+                  {profile?.display_name || 'Utilisateur'}
+                </h2>
+                <div className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-muted/60">
+                  <div
+                    className={cn('w-2 h-2 rounded-full', statusColors[currentStatus])}
+                  />
+                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                </div>
+              </button>
               <p className="text-sm text-muted-foreground truncate">@{profile?.username}</p>
+              <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                {STATUS_LABELS[currentStatus]}
+              </p>
               {profile?.pronouns && (
                 <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
               )}
@@ -187,76 +231,31 @@ export function MobileProfileView() {
 
           {/* Stats */}
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-muted/40 px-3 py-2.5 text-center">
+            <button
+              onClick={() => {
+                haptics.light();
+                setSubpage('friends');
+              }}
+              className="rounded-xl bg-muted/40 px-3 py-2.5 text-center active:bg-muted/60 transition-colors"
+            >
               <div className="font-semibold text-base leading-none">{acceptedFriends}</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {acceptedFriends > 1 ? 'Amis' : 'Ami'}
               </div>
-            </div>
-            <div className="rounded-xl bg-muted/40 px-3 py-2.5 text-center">
+            </button>
+            <button
+              onClick={() => {
+                haptics.light();
+                setSubpage('servers');
+              }}
+              className="rounded-xl bg-muted/40 px-3 py-2.5 text-center active:bg-muted/60 transition-colors"
+            >
               <div className="font-semibold text-base leading-none">{serverCount}</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {serverCount > 1 ? 'Serveurs' : 'Serveur'}
               </div>
-            </div>
+            </button>
           </div>
-        </section>
-
-        {/* Status switcher — full row */}
-        <section className="mx-4 mt-3 rounded-2xl bg-card border border-border/50 overflow-hidden">
-          <Popover open={statusOpen} onOpenChange={setStatusOpen}>
-            <PopoverTrigger asChild>
-              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors">
-                <div
-                  className={cn(
-                    'w-9 h-9 rounded-full flex items-center justify-center',
-                    'bg-muted/40',
-                  )}
-                >
-                  <div className={cn('w-3 h-3 rounded-full', statusColors[profile?.status || 'offline'])} />
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">{currentStatus?.label || 'Hors ligne'}</div>
-                  <div className="text-xs text-muted-foreground">Toucher pour changer</div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-1" align="end" side="bottom">
-              {STATUS_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleStatusChange(opt.value)}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors active:bg-muted',
-                      profile?.status === opt.value && 'bg-muted/60',
-                    )}
-                  >
-                    <Icon className={cn('w-4 h-4', opt.color, opt.fill)} />
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </PopoverContent>
-          </Popover>
-
-          <div className="h-px bg-border/40 mx-4" />
-
-          <button
-            onClick={() => {
-              haptics.light();
-              setShowStatus(true);
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
-          >
-            <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">
-              <Moon className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 text-left text-sm font-medium">Statut personnalisé</div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
         </section>
 
         {/* Account section */}
@@ -265,19 +264,31 @@ export function MobileProfileView() {
           <RowItem
             icon={<Pencil className="w-4 h-4 text-muted-foreground" />}
             label="Modifier le profil"
-            onClick={() => handleOpenSettings('profile')}
+            onClick={() => setSubpage('edit-profile')}
           />
           <Divider />
           <RowItem
             icon={<QrCode className="w-4 h-4 text-muted-foreground" />}
             label="Mon code QR"
-            onClick={() => toast.info('Bientôt disponible')}
+            onClick={() => setSubpage('qr-code')}
+          />
+          <Divider />
+          <RowItem
+            icon={<Users className="w-4 h-4 text-muted-foreground" />}
+            label="Amis"
+            onClick={() => setSubpage('friends')}
+          />
+          <Divider />
+          <RowItem
+            icon={<Server className="w-4 h-4 text-muted-foreground" />}
+            label="Serveurs"
+            onClick={() => setSubpage('servers')}
           />
           <Divider />
           <RowItem
             icon={<Sparkles className="w-4 h-4 text-muted-foreground" />}
             label="Boost & avantages"
-            onClick={() => handleOpenSettings('account')}
+            onClick={handleOpenSettings}
           />
         </section>
 
@@ -287,19 +298,19 @@ export function MobileProfileView() {
           <RowItem
             icon={<Bell className="w-4 h-4 text-muted-foreground" />}
             label="Notifications"
-            onClick={() => handleOpenSettings('account')}
+            onClick={() => setSubpage('notifications')}
           />
           <Divider />
           <RowItem
             icon={<Palette className="w-4 h-4 text-muted-foreground" />}
             label="Apparence"
-            onClick={() => handleOpenSettings('account')}
+            onClick={() => setSubpage('appearance')}
           />
           <Divider />
           <RowItem
             icon={<Shield className="w-4 h-4 text-muted-foreground" />}
             label="Confidentialité & sécurité"
-            onClick={() => handleOpenSettings('account')}
+            onClick={() => setSubpage('privacy')}
           />
         </section>
 
@@ -315,7 +326,7 @@ export function MobileProfileView() {
           <RowItem
             icon={<Settings className="w-4 h-4 text-muted-foreground" />}
             label="Paramètres avancés"
-            onClick={() => handleOpenSettings('account')}
+            onClick={handleOpenSettings}
           />
         </section>
 
@@ -336,7 +347,76 @@ export function MobileProfileView() {
       </div>
 
       {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />}
-      {showStatus && <CustomStatusModal open={showStatus} onOpenChange={setShowStatus} />}
+
+      <MobileStatusSheet open={showStatusSheet} onOpenChange={setShowStatusSheet} />
+
+      {/* Sub-pages stack */}
+      <AnimatePresence>
+        {subpage === 'edit-profile' && (
+          <MobileEditProfileView key="edit" onBack={() => setSubpage(null)} />
+        )}
+        {subpage === 'qr-code' && (
+          <MobileQRCodeView key="qr" onBack={() => setSubpage(null)} />
+        )}
+        {subpage === 'friends' && onOpenDM && (
+          <MobileFavoriteFriendsView
+            key="friends"
+            onBack={() => setSubpage(null)}
+            onOpenDM={onOpenDM}
+          />
+        )}
+        {subpage === 'servers' && (
+          <MobileServersListView
+            key="servers"
+            onBack={() => setSubpage(null)}
+            onSelectServer={(id) => {
+              setSubpage(null);
+              onSelectServer?.(id);
+            }}
+            onCreateServer={() => {
+              setSubpage(null);
+              onCreateServer?.();
+            }}
+            onDiscover={() => {
+              setSubpage(null);
+              onDiscover?.();
+            }}
+          />
+        )}
+        {subpage === 'notifications' && (
+          <MobileSettingsRedirectView
+            key="notif-settings"
+            variant="notifications"
+            onBack={() => setSubpage(null)}
+            onOpenFullSettings={() => {
+              setSubpage(null);
+              setShowSettings(true);
+            }}
+          />
+        )}
+        {subpage === 'appearance' && (
+          <MobileSettingsRedirectView
+            key="appearance-settings"
+            variant="appearance"
+            onBack={() => setSubpage(null)}
+            onOpenFullSettings={() => {
+              setSubpage(null);
+              setShowSettings(true);
+            }}
+          />
+        )}
+        {subpage === 'privacy' && (
+          <MobileSettingsRedirectView
+            key="privacy-settings"
+            variant="privacy"
+            onBack={() => setSubpage(null)}
+            onOpenFullSettings={() => {
+              setSubpage(null);
+              setShowSettings(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -364,7 +444,10 @@ function RowItem({
 }) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        haptics.light();
+        onClick();
+      }}
       className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
     >
       <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">{icon}</div>

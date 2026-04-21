@@ -530,7 +530,18 @@ export function MobileLayout({
               />
             )}
             {activeTab === 'notifications' && <MobileNotificationsView />}
-            {activeTab === 'profile' && <MobileProfileView />}
+            {activeTab === 'profile' && (
+              <MobileProfileView
+                onOpenDM={onOpenDM}
+                onSelectServer={(id) => {
+                  onServerSelect(id);
+                  setMobileView({ type: 'channels', serverId: id });
+                  setActiveTab('servers');
+                }}
+                onCreateServer={() => setShowCreate(true)}
+                onDiscover={() => setShowDiscover(true)}
+              />
+            )}
           </div>
         </div>
       </div>

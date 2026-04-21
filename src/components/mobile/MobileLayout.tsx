@@ -15,6 +15,7 @@ import { ForumChannel } from '@/components/channels/ForumChannel';
 import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
+import { ExternalLinkWarningModal } from '@/components/modals/ExternalLinkWarningModal';
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
@@ -86,6 +87,7 @@ export function MobileLayout({
   const [showCreate, setShowCreate] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
+  const [externalLinkUrl, setExternalLinkUrl] = useState<string | null>(null);
 
   const openServerSettings = (serverId: string, initialTab?: string) => {
     setSettingsInitialTab(initialTab);
@@ -187,7 +189,24 @@ export function MobileLayout({
     onServerSelect(serverId);
   };
 
+  // Resolve a channel object from any loaded server (used to intercept link channels)
+  const findChannel = useCallback((channelId: string) => {
+    for (const s of rawServers) {
+      const all = [...s.categories.flatMap((c: any) => c.channels), ...(s.orphanChannels || [])];
+      const found = all.find((ch: any) => ch.id === channelId);
+      if (found) return found;
+    }
+    return null;
+  }, [rawServers]);
+
   const handleServerChannelSelect = (channelId: string, channelType: string) => {
+    // Intercept link channels — open external link modal instead of navigating to a chat
+    if (channelType === 'link') {
+      const ch = findChannel(channelId);
+      const url = ch?.description || '';
+      if (url) setExternalLinkUrl(url);
+      return;
+    }
     const serverId = activeServerId || servers[0]?.id;
     if (serverId) {
       setMobileView({ type: 'chat', serverId, channelId, channelType, fromTab: true });
@@ -195,6 +214,12 @@ export function MobileLayout({
   };
 
   const handleChannelSelect = (channelId: string, channelType: string) => {
+    if (channelType === 'link') {
+      const ch = findChannel(channelId);
+      const url = ch?.description || '';
+      if (url) setExternalLinkUrl(url);
+      return;
+    }
     if (mobileView.type === 'channels') {
       setMobileView({ type: 'chat', serverId: mobileView.serverId, channelId, channelType });
     }
@@ -367,6 +392,24 @@ export function MobileLayout({
         );
       case 'stage':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><StageChannel {...commonProps} serverId={currentServer.id} /></FullScreenWrapper>;
+      case 'link': {
+        // Safety net: a link channel reached the chat view — open the external URL modal and bounce back
+        const url = (channelForChat.description as string | undefined) || '';
+        if (url) {
+          // Defer state update to avoid setState during render
+          setTimeout(() => {
+            setExternalLinkUrl(url);
+            handleBackToChannels();
+          }, 0);
+        }
+        return (
+          <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}>
+            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-6 text-center">
+              Ouverture du lien externe…
+            </div>
+          </FullScreenWrapper>
+        );
+      }
       default:
         return (
           <MobileChatView
@@ -639,6 +682,13 @@ export function MobileLayout({
           />
         ) : null;
       })()}
+
+      {externalLinkUrl && (
+        <ExternalLinkWarningModal
+          url={externalLinkUrl}
+          onClose={() => setExternalLinkUrl(null)}
+        />
+      )}
     </div>
   );
 }

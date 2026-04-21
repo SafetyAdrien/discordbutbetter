@@ -48,7 +48,7 @@ interface MobileChatViewProps {
   channel: {
     id: string;
     name: string;
-    type: 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage';
+    type: 'text' | 'voice' | 'forum' | 'announcement' | 'media' | 'calendar' | 'tasks' | 'stage' | 'link';
     description?: string;
     server_id?: string;
   };

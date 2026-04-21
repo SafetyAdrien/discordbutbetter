@@ -298,7 +298,13 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             </div>
           ) : (
             grouped.map(({ raw, bubble, showAvatar, showAuthorName, isLastOfBurst, showDateSeparator }) => (
-              <div key={raw.id}>
+              <div
+                key={raw.id}
+                ref={(el) => {
+                  if (el) messageRefs.current.set(raw.id, el);
+                  else messageRefs.current.delete(raw.id);
+                }}
+              >
                 {showDateSeparator && (
                   <div className="sticky top-0 z-10 my-2 flex items-center justify-center">
                     <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-[hsl(var(--surface-2))]/80 backdrop-blur rounded-full">
@@ -314,17 +320,14 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
                   isGroup={isGroup}
                   reactions={reactionsData[raw.id] || []}
                   currentUserId={user?.id ?? null}
-                  onReply={() => {
-                    setMessageInput((v) => (v ? v : `> ${raw.content.split('\n')[0]}\n`));
-                  }}
-                  onLongPress={(m) => {
-                    setActionMessage(raw);
-                  }}
+                  onReply={() => setReplyingTo(raw)}
+                  onLongPress={() => setActionMessage(raw)}
                   onToggleReaction={handleToggleReaction}
                   onAvatarTap={(uid) => {
                     setProfileUserId(uid);
                     setShowProfile(true);
                   }}
+                  onJumpToMessage={handleJumpToMessage}
                 />
               </div>
             ))

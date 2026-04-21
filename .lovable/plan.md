@@ -1,77 +1,58 @@
 
 
-# Audit honnête : ce qui est intégré et ce qui bug réellement
+# Correction : bouton "Suivre" partout + RepliedLine Desktop identique au Mobile
 
-## État RÉEL du code (vérifié fichier par fichier)
+## Diagnostic exact
 
-| Surface | replyToId envoyé | RepliedLine rendu | Statut |
-|---|---|---|---|
-| ChatArea (serveurs) | ✅ ligne 790 | ✅ ligne 1535 | Intégré |
-| DMConversation | ✅ ligne 698 | ✅ ligne 438 | Intégré |
-| AnnouncementChannel | ✅ ligne 364 | ✅ ligne 848 | Intégré |
-| ThreadView | ✅ ligne 331 | ✅ ligne 809 | Intégré |
-| Table `messages`, `dm_messages`, `thread_messages` | ✅ colonne `reply_to_id` présente | — | OK |
+### Bug #1 — Bouton "Suivre" invisible sur Mobile
+Sur Desktop (`AnnouncementChannel.tsx` ligne 474-481), le bouton "Suivre" est rendu directement dans le header à côté du nom du salon. C'est l'emplacement attendu (image 1).
 
-**Donc le code EST en place.** Si tu ne vois rien sur Desktop, ce n'est pas que la fonctionnalité est absente — c'est qu'un **bug d'intégration** la rend invisible/inopérante. Voici les vrais bugs identifiés.
+Sur Mobile (`MobileChatView.tsx` lignes 166-171), il a été déplacé dans le menu kebab `MobileMoreActionsSheet` → invisible au premier coup d'œil.
 
-## Bug #1 (CRITIQUE) — Erreur React `forwardRef` qui casse l'interaction
+### Bug #2 (CRITIQUE) — RepliedLine ne s'affiche jamais sur Desktop
+Tout le pipeline est en place côté hooks et composant (`useMessages` résout bien `repliedMessage`, `ChatArea` rend bien `<RepliedLine>` ligne 1534). MAIS dans `src/pages/Index.tsx` lignes 477-500, le mapper `messagesData` reconstruit chaque message **sans copier les champs `replyToId` ni `repliedMessage`** :
 
-La console montre :
-```
-Warning: Function components cannot be given refs.
-Check the render method of `UniversalMessageActions`.
-Tooltip → div → UniversalMessageActions → SwipeToReplyRow → ContextMenuTrigger asChild
+```ts
+const messagesData: Message[] = messages.map((m) => ({
+  id, content, attachments, isSystemMessage, is_system,
+  edited_at, author, timestamp,
+  // ❌ replyToId et repliedMessage perdus ici
+}));
 ```
 
-Cause : `<ContextMenuTrigger asChild>` passe une `ref` à son enfant direct `SwipeToReplyRow`, mais `SwipeToReplyRow` n'utilise PAS `forwardRef`. La ref est perdue. Conséquence : Radix ContextMenu / Tooltip enfants peuvent dysfonctionner, et le wrapper hover bug par intermittence (visible dans le replay : "Reaction buttons are added → removed" en 500ms).
+Conséquence : sur Desktop/Tablette, `message.repliedMessage` est toujours `undefined` quand il arrive dans `ChatArea`, donc la condition `(message.repliedMessage || parsedReply)` ligne 1534 est fausse → aucune `RepliedLine` rendue. C'est exactement ce que montre l'image 3 (4 messages "Test" plats, sans aucun fil de réponse au-dessus), à comparer avec l'image 2 (Mobile) où le `RepliedLine` apparaît systématiquement.
 
-**Correctif** : convertir `SwipeToReplyRow` en `forwardRef<HTMLDivElement, ...>` qui transmet la ref au `<div>` racine. Idem pour `UniversalMessageActions` si appelé via `asChild` ailleurs.
+## Plan de correction
 
-## Bug #2 — Le bouton Reply existe mais le hover est instable
+### 1. Restaurer le bouton "Suivre" sur Mobile à sa place d'origine
+Dans `src/components/mobile/MobileChatView.tsx` :
+- Ajouter un bouton "Suivre" inline dans le header compact, visible uniquement quand `isAnnouncement && canFollowAnnouncements`.
+- Position : entre le bloc titre et le bouton membres, taille adaptée mobile (`px-2 py-1 text-xs`, même style que Desktop : `border border-border/60 bg-muted/40`).
+- Retirer l'entrée `'follow'` du tableau `moreActions` (lignes 166-171) pour ne pas dupliquer dans le kebab.
+- Garder le `FollowChannelModal` déjà présent (lignes 384-404).
 
-`UniversalMessageActions` ligne 110-188 contient bien un bouton `<Reply>` au hover (ligne 152). Il s'affiche quand `isVisible={hoveredMessageId === message.id}`. Mais à cause du Bug #1, le hover state se déclenche/se reset rapidement, donnant l'impression que rien n'apparaît.
+Sur Desktop/Tablette, le bouton est déjà en place dans `AnnouncementChannel.tsx` ligne 474-481 → aucun changement.
 
-**Correctif** : une fois Bug #1 fixé, le bouton Reply hover sera stable. Action `onReply={() => handleReply(message)}` → `setReplyingTo(message)` → MessageInput affiche la bannière → envoi → `RepliedLine` rendu.
+### 2. Corriger le mapper `messagesData` dans `src/pages/Index.tsx`
+Ajouter les deux champs manquants dans l'objet retourné par `messages.map((m) => ({...}))` lignes 477-500 :
 
-## Bug #3 — Bannière de réponse au-dessus du composer Desktop
+```ts
+replyToId: (m as any).reply_to_id ?? null,
+repliedMessage: (m as any).repliedMessage ?? null,
+```
 
-Vérifier dans `ChatArea.tsx` ligne 1992 que la bannière `replyingTo` (avec aperçu auteur/contenu et bouton X) s'affiche bien. Identique pour `DMConversation.tsx` ligne 651, `ThreadView.tsx` ligne 997, `AnnouncementChannel.tsx` ligne 1160. Si la bannière n'apparaît pas, le clic Reply n'a pas d'effet visible → impression que "ça ne marche pas".
+Résultat immédiat : sur Desktop/Tablette, chaque message qui a un `reply_to_id` en BDD verra sa `RepliedLine` rendue exactement comme sur Mobile (mêmes connecteur en L, mini-avatar, nom @auteur, preview du contenu cité), avec le même `indent={56}`, le même clic-pour-jump, le même fallback `deleted: true`.
 
-**Correctif** : s'assurer que la bannière a un styling visible (background contrasté, border-top, padding) sur Desktop. Aujourd'hui c'est `bg-muted/50` qui peut être quasi-invisible selon le thème.
-
-## Bug #4 — `RepliedLine` invisible si `repliedMessage` est null à l'arrivée Realtime
-
-Quand un AUTRE utilisateur répond à mon message, le flux Realtime de `useMessages` (ligne 207-289) refait une query pour résoudre `repliedMessage`. Si ce fetch échoue silencieusement (RLS, race), le message arrive SANS `repliedMessage` → `RepliedLine` ne s'affiche pas, alors que le `reply_to_id` est en BDD.
-
-**Correctif** : ajouter un fallback `{ deleted: true, ... }` côté Realtime quand `replyData` est null, identique au code de `queryFn`. Et logger un warn si le fetch échoue (pas silencieux).
-
-## Bug #5 — Sync Mobile/Desktop : action "Répondre" manquante dans le context menu Desktop
-
-Vérification : `ContextMenuContent` dans ChatArea/DM/Thread n'inclut PAS systématiquement un item "Répondre". L'utilisateur clic-droit Desktop → pas d'option Reply → seul le bouton hover est disponible → frustrant si Bug #1 cache le hover.
-
-**Correctif** : ajouter `<ContextMenuItem onClick={() => handleReply(message)}><Reply /> Répondre</ContextMenuItem>` en TÊTE du context menu sur les 4 surfaces.
-
-## Plan d'action
-
-1. **Convertir `SwipeToReplyRow` en `forwardRef`** (`/src/components/mobile/SwipeToReplyRow.tsx`) — transmet la ref au `<div>` racine.
-2. **Convertir `UniversalMessageActions` en `forwardRef`** si la console le réclame (le warning vient de là).
-3. **Ajouter un item "Répondre" en tête du context menu** dans :
-   - `ChatArea.tsx`
-   - `DMConversation.tsx`
-   - `ThreadView.tsx`
-   - `AnnouncementChannel.tsx`
-4. **Renforcer la bannière `replyingTo`** au-dessus du composer (background `bg-surface-3` + border, padding visible).
-5. **Robustifier le fallback Realtime** dans `useMessages.ts` (et idem `useDMMessages`, `useThreadMessages`) : toujours produire un `repliedMessage` même si le fetch échoue.
-6. **Test fonctionnel manuel** : sur Desktop 1280px →
-   - Hover sur message → bouton Reply visible et stable.
-   - Clic Reply → bannière apparaît au-dessus du composer.
-   - Envoi → `RepliedLine` apparaît au-dessus du nouveau message.
-   - Clic-droit message → entrée "Répondre" en tête du menu.
+### 3. Vérification fonctionnelle
+- Mobile : le bouton "Suivre" apparaît dans le header d'un salon `announcement` à côté du titre.
+- Desktop : envoyer une réponse → la `RepliedLine` s'affiche au-dessus du nouveau message, identique à l'image 2.
+- Desktop : recharger la page → les anciennes réponses (avec `reply_to_id` en base) affichent maintenant la `RepliedLine` (avant ce fix : invisibles, comme image 3).
+- Aucune régression sur les threads, DMs, annonces (déjà corrects).
 
 ## Détails techniques
 
-- Le warning `forwardRef` est la **vraie cause** du dysfonctionnement perçu — pas une absence de code.
-- Aucun changement BDD (les colonnes existent).
-- Aucun fichier auto-généré touché.
-- Si après ces 6 fixes tu ne vois toujours rien, ouvrir la console et copier l'erreur exacte au moment du clic Reply.
+- Aucune modification BDD. La colonne `reply_to_id` existe déjà sur `messages`.
+- Aucun fichier auto-généré modifié (`types.ts`, `client.ts` intacts).
+- Le type `Message` dans `src/types/app.ts` expose déjà `replyToId` et `repliedMessage` (lignes 65-67) — il manquait juste de les remplir dans le mapper.
+- Le hook `useMessages` produit déjà la forme correcte (`reply_to_id` + `repliedMessage` résolu par batch) — le bug est purement dans la couche d'adaptation `Index.tsx`.
 

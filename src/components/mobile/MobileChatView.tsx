@@ -163,12 +163,6 @@ export function MobileChatView({
       icon: Bell,
       onSelect: () => setDetailOpen(true),
     },
-    {
-      id: 'follow',
-      label: 'Suivre cette annonce',
-      icon: Rss,
-      onSelect: () => setFollowModalOpen(true),
-    } as MobileMoreAction,
   ];
 
   return (
@@ -204,6 +198,20 @@ export function MobileChatView({
             )}
           </div>
         </button>
+
+        {/* Follow button — restored to header for parity with desktop */}
+        {canFollowAnnouncements && (
+          <button
+            type="button"
+            onClick={() => setFollowModalOpen(true)}
+            className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border border-border/60 bg-muted/40 active:bg-muted transition-colors min-h-[32px]"
+            aria-label="Suivre cette annonce"
+            title="Suivre"
+          >
+            <Rss className="w-3.5 h-3.5" />
+            <span>Suivre</span>
+          </button>
+        )}
 
         {/* Members count - opens member sheet */}
         <Sheet open={membersOpen} onOpenChange={setMembersOpen}>

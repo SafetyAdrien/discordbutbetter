@@ -174,6 +174,11 @@ export function RepliedLine({
   // The SVG extends downward beyond the row (overflow-visible) to reach into
   // the parent avatar's vertical zone.
   // connectorLeft sits roughly at the center of the parent avatar (≈20px from left).
+  // Pixel-perfect alignment:
+  // - connectorLeft positions the vertical bar at the horizontal center of the
+  //   parent avatar below (20px for 40px avatar → indent-36; 16px for 32px avatar → indent-28).
+  // - The SVG extends BELOW this row (overflow-visible) so the bottom of the L
+  //   reaches the vertical center of the parent avatar.
   const connectorLeft = Math.max(0, indent - 36);
   const connectorWidth = Math.max(28, indent - connectorLeft - 4);
 
@@ -187,24 +192,24 @@ export function RepliedLine({
       )}
       style={{ paddingLeft: indent }}
     >
-      {/* L-shaped connector — rooted in the avatar gutter of the message BELOW,
-          curving up and to the right toward the mini-avatar of this reply row. */}
+      {/* L-shaped connector — vertical bar centered on parent avatar (below),
+          horizontal arm pointing to the mini-avatar of this reply row. */}
       <svg
         aria-hidden="true"
         className="absolute pointer-events-none text-border/70"
         style={{
           left: connectorLeft,
-          top: 14,
+          top: 8,
           width: connectorWidth,
-          height: 24,
+          height: 26,
           overflow: "visible",
         }}
-        viewBox={`0 0 ${connectorWidth} 24`}
+        viewBox={`0 0 ${connectorWidth} 26`}
         preserveAspectRatio="none"
         fill="none"
       >
         <path
-          d={`M 1 24 L 1 8 Q 1 1 8 1 L ${connectorWidth} 1`}
+          d={`M 1 26 L 1 9 Q 1 1 9 1 L ${connectorWidth} 1`}
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"

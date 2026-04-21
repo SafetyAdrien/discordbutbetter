@@ -1,6 +1,6 @@
 import { useServers } from '@/hooks/useServers';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Compass, Crown } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { useAuth } from '@/contexts/AuthContext';
 import { haptics } from '@/lib/haptics';
@@ -8,11 +8,9 @@ import { haptics } from '@/lib/haptics';
 interface Props {
   onBack: () => void;
   onSelectServer: (serverId: string) => void;
-  onCreateServer: () => void;
-  onDiscover: () => void;
 }
 
-export function MobileServersListView({ onBack, onSelectServer, onCreateServer, onDiscover }: Props) {
+export function MobileServersListView({ onBack, onSelectServer }: Props) {
   const { user } = useAuth();
   const { data: servers = [] } = useServers();
 
@@ -21,28 +19,6 @@ export function MobileServersListView({ onBack, onSelectServer, onCreateServer, 
 
   return (
     <MobileProfileSubpage title="Mes serveurs" onBack={onBack}>
-      {/* Quick actions */}
-      <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
-        <ActionRow
-          icon={<Plus className="w-4 h-4" />}
-          label="Créer un serveur"
-          onClick={() => {
-            haptics.light();
-            onCreateServer();
-          }}
-        />
-        <div className="h-px bg-border/40 mx-4" />
-        <ActionRow
-          icon={<Compass className="w-4 h-4" />}
-          label="Découvrir des serveurs"
-          onClick={() => {
-            haptics.light();
-            onDiscover();
-          }}
-        />
-      </section>
-
-      {/* Owned servers */}
       {ownedServers.length > 0 && (
         <>
           <SectionHeader>
@@ -55,7 +31,6 @@ export function MobileServersListView({ onBack, onSelectServer, onCreateServer, 
         </>
       )}
 
-      {/* Joined servers */}
       {joinedServers.length > 0 && (
         <>
           <SectionHeader>Serveurs rejoints ({joinedServers.length})</SectionHeader>
@@ -77,28 +52,6 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
     <h3 className="px-6 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
       {children}
     </h3>
-  );
-}
-
-function ActionRow({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
-    >
-      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-primary/10 text-primary">
-        {icon}
-      </div>
-      <span className="flex-1 text-left text-sm font-medium">{label}</span>
-    </button>
   );
 }
 

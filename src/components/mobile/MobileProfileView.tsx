@@ -373,14 +373,6 @@ export function MobileProfileView({
               setSubpage(null);
               onSelectServer?.(id);
             }}
-            onCreateServer={() => {
-              setSubpage(null);
-              onCreateServer?.();
-            }}
-            onDiscover={() => {
-              setSubpage(null);
-              onDiscover?.();
-            }}
           />
         )}
         {subpage === 'notifications' && (

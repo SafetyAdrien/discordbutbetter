@@ -128,7 +128,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
   return (
     <div className="space-y-4">
       {/* Comments list */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {comments.map((comment) => (
           <div
             key={comment.id}

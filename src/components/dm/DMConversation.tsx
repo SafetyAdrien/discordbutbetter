@@ -414,7 +414,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       : '';
 
                     return (
-                      <div key={message.id}>
+                      <div
+                        key={message.id}
+                        ref={(el) => {
+                          if (el) messageRefs.current.set(message.id, el);
+                          else messageRefs.current.delete(message.id);
+                        }}
+                      >
                         {/* Date Separator */}
                         {showDateSeparator && (
                           <div className="flex items-center gap-4 my-2">
@@ -423,6 +429,34 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               {formatDate(currentDate)}
                             </span>
                             <div className="flex-1 h-px bg-border" />
+                          </div>
+                        )}
+                        {/* Replied line (Discord-like, faithful resolution) */}
+                        {message.repliedMessage && (
+                          <div className="-mb-0.5">
+                            <RepliedLine
+                              repliedMessage={{
+                                id: message.repliedMessage.id,
+                                content: message.repliedMessage.content,
+                                deleted: message.repliedMessage.deleted,
+                                attachments: (message.repliedMessage.attachments || []).map((a) => ({
+                                  id: a.id,
+                                  url: a.url,
+                                  name: a.name,
+                                  type: a.type,
+                                })),
+                                author: message.repliedMessage.author
+                                  ? {
+                                      id: message.repliedMessage.author.id,
+                                      username: message.repliedMessage.author.username,
+                                      displayName: message.repliedMessage.author.display_name,
+                                      avatar: message.repliedMessage.author.avatar_url || undefined,
+                                    }
+                                  : null,
+                              }}
+                              onJump={handleJumpToMessage}
+                              indent={48}
+                            />
                           </div>
                         )}
                         <UniversalMessageContextMenu

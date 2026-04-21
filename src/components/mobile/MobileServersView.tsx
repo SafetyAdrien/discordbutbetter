@@ -38,7 +38,7 @@ interface MobileServersViewProps {
   rawServers: any[];
   activeDMId: string | null;
   onServerSelect: (serverId: string) => void;
-  onChannelSelect: (channelId: string, channelType: string) => void;
+  onChannelSelect: (serverId: string, channelId: string, channelType: string) => void;
   onDiscoverClick: () => void;
   onCreateClick: () => void;
   onOpenSettings?: (initialTab?: string) => void;
@@ -367,7 +367,9 @@ export function MobileServersView({
             categories={categoriesForList}
             orphanChannels={orphanChannelsForList}
             onBack={() => {}}
-            onChannelSelect={onChannelSelect}
+            onChannelSelect={(channelId, channelType) => {
+              onChannelSelect(selectedServerId, channelId, channelType);
+            }}
             onOpenSettings={onOpenSettings}
           />
         ) : (

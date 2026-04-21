@@ -189,7 +189,24 @@ export function MobileLayout({
     onServerSelect(serverId);
   };
 
+  // Resolve a channel object from any loaded server (used to intercept link channels)
+  const findChannel = useCallback((channelId: string) => {
+    for (const s of rawServers) {
+      const all = [...s.categories.flatMap((c: any) => c.channels), ...(s.orphanChannels || [])];
+      const found = all.find((ch: any) => ch.id === channelId);
+      if (found) return found;
+    }
+    return null;
+  }, [rawServers]);
+
   const handleServerChannelSelect = (channelId: string, channelType: string) => {
+    // Intercept link channels — open external link modal instead of navigating to a chat
+    if (channelType === 'link') {
+      const ch = findChannel(channelId);
+      const url = ch?.description || '';
+      if (url) setExternalLinkUrl(url);
+      return;
+    }
     const serverId = activeServerId || servers[0]?.id;
     if (serverId) {
       setMobileView({ type: 'chat', serverId, channelId, channelType, fromTab: true });
@@ -197,6 +214,12 @@ export function MobileLayout({
   };
 
   const handleChannelSelect = (channelId: string, channelType: string) => {
+    if (channelType === 'link') {
+      const ch = findChannel(channelId);
+      const url = ch?.description || '';
+      if (url) setExternalLinkUrl(url);
+      return;
+    }
     if (mobileView.type === 'channels') {
       setMobileView({ type: 'chat', serverId: mobileView.serverId, channelId, channelType });
     }

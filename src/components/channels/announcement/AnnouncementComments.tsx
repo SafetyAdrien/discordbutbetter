@@ -139,11 +139,7 @@ export function AnnouncementComments({ comments, onAddComment, onDeleteComment, 
                   onJump={handleJump}
                   indent={44}
                   authorColor={topRole?.color || undefined}
-                  authorRoleIcon={
-                    topRole?.icon_url
-                      ? { iconUrl: topRole.icon_url, name: topRole.name, color: topRole.color }
-                      : null
-                  }
+                  authorRole={topRole ?? null}
                   className="mb-1"
                 />
               );

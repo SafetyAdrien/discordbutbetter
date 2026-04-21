@@ -147,11 +147,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
                   onJump={handleJump}
                   indent={44}
                   authorColor={topRole?.color || undefined}
-                  authorRoleIcon={
-                    topRole?.icon_url
-                      ? { iconUrl: topRole.icon_url, name: topRole.name, color: topRole.color }
-                      : null
-                  }
+                  authorRole={topRole ?? null}
                   className="mb-1"
                 />
               );

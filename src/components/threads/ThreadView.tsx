@@ -913,7 +913,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             </div>
                           ) : (
                             <div className="text-sm text-foreground break-words">
-                              <MarkdownText content={message.content} />
+                              {(() => {
+                                const { reply, body } = parseRepliedMessage(message.content);
+                                if (!reply) {
+                                  return <MarkdownText content={message.content} />;
+                                }
+                                // Resolve cited author + role badge from membersData
+                                const cited = replyAuthorLookup.get(reply.author);
+                                const citedRoles = cited ? memberRoles.get(cited.id) : undefined;
+                                const topRole = citedRoles?.[0];
+                                return (
+                                  <>
+                                    <RepliedLine
+                                      authorName={reply.author}
+                                      preview={reply.preview}
+                                      authorLookup={replyAuthorLookup}
+                                      indent={0}
+                                      authorColor={topRole?.color || undefined}
+                                      authorRoleIcon={
+                                        topRole?.icon_url
+                                          ? { iconUrl: topRole.icon_url, name: topRole.name, color: topRole.color }
+                                          : null
+                                      }
+                                      className="mb-1"
+                                    />
+                                    <MarkdownText content={body} />
+                                  </>
+                                );
+                              })()}
                             </div>
                           )}
                           {(reactionsData[message.id]?.length ?? 0) > 0 && (

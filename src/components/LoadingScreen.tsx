@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ParticleBackground } from '@/components/effects/ParticleBackground';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const motivationalPhrases = [
   "Là où les communautés prennent vie.",
@@ -40,6 +41,13 @@ interface LoadingScreenProps {
 export default function LoadingScreen({ progress = 0, currentStep }: LoadingScreenProps) {
   const phrase = useMemo(() => motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)], []);
   const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
+  const reducedMotion = useReducedMotion();
+  const isMobile = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches,
+    []
+  );
+  const showParticles = !reducedMotion;
+  const particleCount = isMobile ? 14 : 30;
   const [dots, setDots] = useState('');
 
   useEffect(() => {
@@ -56,8 +64,10 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
       aria-busy="true"
       aria-label={currentStep ? `Chargement, ${currentStep}` : 'Chargement de l\'application'}
     >
-      {/* Canvas particle background */}
-      <ParticleBackground count={40} speed={0.3} />
+      {/* Canvas particle background — disabled if reduced-motion, lighter on mobile */}
+      {showParticles && (
+        <ParticleBackground count={particleCount} speed={0.25} connectLines={!isMobile} />
+      )}
 
       {/* Logo with pulse animation */}
       <div className="relative z-10">

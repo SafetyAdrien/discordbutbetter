@@ -223,6 +223,25 @@ export function RepliedLine({
         </span>
       )}
 
+      {/* Role badge icon (Discord-like pill next to author name) */}
+      {!isDeleted && authorRoleIcon?.iconUrl && (
+        <span
+          className="flex-shrink-0 inline-flex items-center"
+          title={authorRoleIcon.name}
+          aria-label={`Rôle: ${authorRoleIcon.name}`}
+        >
+          {authorRoleIcon.iconUrl.startsWith("http") ? (
+            <img
+              src={authorRoleIcon.iconUrl}
+              alt={authorRoleIcon.name}
+              className="w-3.5 h-3.5 object-contain"
+            />
+          ) : (
+            <span className="text-[13px] leading-none">{authorRoleIcon.iconUrl}</span>
+          )}
+        </span>
+      )}
+
       {/* Body: deleted, attachment chip, or text preview */}
       {isDeleted ? (
         <span className="text-[13px] text-muted-foreground italic">

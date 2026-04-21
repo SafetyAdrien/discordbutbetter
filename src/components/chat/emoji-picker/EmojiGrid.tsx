@@ -1,7 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface EmojiSection {
   id: string;
@@ -64,7 +63,11 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
   }
 
   return (
-    <ScrollArea style={{ height }} viewportRef={scrollRef as any}>
+    <div
+      ref={scrollRef}
+      style={{ height }}
+      className="overflow-y-auto overflow-x-hidden custom-scrollbar"
+    >
       <div className="px-2 pb-3 space-y-3">
         {sections.map((section) => (
           <div
@@ -131,6 +134,6 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
           </div>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 });

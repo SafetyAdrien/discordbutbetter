@@ -975,7 +975,7 @@ export function AnnouncementChannel({
                                       </div>
                                     )}
                                     <p className="text-foreground break-words font-ginto">
-                                      <MarkdownText content={message.content} />
+                                      <MarkdownText content={parseRepliedMessage(message.content).body} />
                                     </p>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
@@ -1067,7 +1067,7 @@ export function AnnouncementChannel({
                                       </div>
                                     )}
                                     <p className="text-foreground break-words font-ginto">
-                                      <MarkdownText content={message.content} />
+                                      <MarkdownText content={parseRepliedMessage(message.content).body} />
                                       {message.edited_at && (
                                         <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                       )}

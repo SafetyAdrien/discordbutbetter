@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Reply, Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
+import { Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import type { Attachment, Message, RepliedMessageRef } from "@/types/app";
@@ -211,12 +211,6 @@ export function RepliedLine({
           fill="none"
         />
       </svg>
-
-      {/* Reply arrow (Discord-like) */}
-      <Reply
-        aria-hidden="true"
-        className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 -scale-x-100"
-      />
 
       {/* Mini avatar (real avatar in fidelity mode) */}
       <Avatar className="w-4 h-4 flex-shrink-0">

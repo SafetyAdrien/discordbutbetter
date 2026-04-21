@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { VoiceProvider } from "@/contexts/VoiceContext";
 import { PresenceProvider } from "@/contexts/PresenceContext";
-import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Invite from "./pages/Invite";
@@ -38,7 +37,6 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-              <PWAInstallPrompt />
             </BrowserRouter>
           </TooltipProvider>
         </VoiceProvider>

@@ -4,17 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDMConversations } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useFavoriteFriendIds, useToggleFavoriteFriend } from '@/hooks/useFavoriteFriends';
-import { useDMCalls } from '@/hooks/useDMCalls';
 import { useDMLocalSet } from '@/lib/dm-local-prefs';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 import { MobileDMListItem, type MobileDMListItemData } from './MobileDMListItem';
 import { MobileDMActionSheet } from './MobileDMActionSheet';
 import { NewDMSheet } from '@/components/dm/NewDMSheet';
-import { NewMessageModal } from '@/components/dm/NewMessageModal';
 import { CreateGroupModal } from '@/components/dm/CreateGroupModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Inbox, MessageCircle, MessageSquarePlus, Search, Star, Users, UsersRound, X } from 'lucide-react';
+import { MessageCircle, MessageSquarePlus, Search, Star, UsersRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
@@ -24,8 +22,6 @@ type FilterId = 'all' | 'unread' | 'groups' | 'favorites';
 interface Props {
   activeDMId: string | null;
   onConversationSelect: (id: string) => void;
-  onShowFriends: () => void;
-  onShowInbox: () => void;
   onOpenProfile?: () => void;
 }
 
@@ -35,8 +31,6 @@ const WEEK_MS = 7 * TODAY_MS;
 export function MobileDMHomeView({
   activeDMId: _activeDMId,
   onConversationSelect,
-  onShowFriends,
-  onShowInbox,
   onOpenProfile,
 }: Props) {
   const { user, profile } = useAuth();
@@ -51,7 +45,6 @@ export function MobileDMHomeView({
   const [filter, setFilter] = useState<FilterId>('all');
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [actionItem, setActionItem] = useState<MobileDMListItemData | null>(null);
   const fabHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -223,41 +216,6 @@ export function MobileDMHomeView({
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-semibold leading-tight">Messages</h1>
           <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>
-        </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              haptics.selection();
-              onShowInbox();
-            }}
-            aria-label="Boîte de réception"
-            className="w-11 h-11 rounded-full active:bg-muted/60 flex items-center justify-center relative"
-          >
-            <Inbox className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.selection();
-              onShowFriends();
-            }}
-            aria-label="Amis"
-            className="w-11 h-11 rounded-full active:bg-muted/60 flex items-center justify-center"
-          >
-            <Users className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.selection();
-              setShowSearch(true);
-            }}
-            aria-label="Rechercher une conversation"
-            className="w-11 h-11 rounded-full active:bg-muted/60 flex items-center justify-center"
-          >
-            <Search className="w-5 h-5" />
-          </button>
         </div>
       </header>
 
@@ -459,7 +417,7 @@ export function MobileDMHomeView({
 
       {/* Modals */}
       {showNew && <NewDMSheet onClose={() => setShowNew(false)} onOpenDM={onConversationSelect} />}
-      {showSearch && <NewMessageModal onClose={() => setShowSearch(false)} onOpenDM={onConversationSelect} />}
+      
       {showCreateGroup && <CreateGroupModal onClose={() => setShowCreateGroup(false)} onOpenDM={onConversationSelect} />}
     </div>
   );

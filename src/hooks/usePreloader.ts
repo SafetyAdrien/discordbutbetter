@@ -1,9 +1,9 @@
+/* @refresh reset */
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
-import { useNavigationState } from '@/hooks/useNavigationState';
 
 interface PreloadStep {
   label: string;
@@ -26,6 +26,27 @@ function writeCache(key: string, data: unknown): void {
   cacheSetAsync(key, data);
 }
 
+function readPersistedNavigationState(): { activeServerId: string | null; activeChannelId: string | null } {
+  if (typeof window === 'undefined') {
+    return { activeServerId: null, activeChannelId: null };
+  }
+
+  try {
+    const saved = window.localStorage.getItem('discord_navigation_state');
+    if (!saved) {
+      return { activeServerId: null, activeChannelId: null };
+    }
+
+    const parsed = JSON.parse(saved);
+    return {
+      activeServerId: parsed?.activeServerId ?? null,
+      activeChannelId: parsed?.activeChannelId ?? null,
+    };
+  } catch {
+    return { activeServerId: null, activeChannelId: null };
+  }
+}
+
 /**
  * Lean preloader: hydrates only what's needed for instant first render.
  * - Profile + server order (cached first)
@@ -42,9 +63,9 @@ export function usePreloader(
 ): PreloaderResult {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const navState = useNavigationState();
-  const lastServerId = navState.activeServerId;
-  const lastChannelId = navState.activeChannelId;
+  const persistedNavigation = useMemo(() => readPersistedNavigationState(), []);
+  const lastServerId = persistedNavigation.activeServerId;
+  const lastChannelId = persistedNavigation.activeChannelId;
 
   const [serversLoaded, setServersLoaded] = useState<boolean>(false);
   const [profileLoaded, setProfileLoaded] = useState<boolean>(false);

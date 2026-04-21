@@ -219,41 +219,6 @@ export function MobileDMHomeView({
           <h1 className="text-base font-semibold leading-tight">Messages</h1>
           <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              haptics.selection();
-              onShowInbox();
-            }}
-            aria-label="Boîte de réception"
-            className="w-11 h-11 rounded-full active:bg-muted/60 flex items-center justify-center relative"
-          >
-            <Inbox className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.selection();
-              onShowFriends();
-            }}
-            aria-label="Amis"
-            className="w-11 h-11 rounded-full active:bg-muted/60 flex items-center justify-center"
-          >
-            <Users className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.selection();
-              setShowSearch(true);
-            }}
-            aria-label="Rechercher une conversation"
-            className="w-11 h-11 rounded-full active:bg-muted/60 flex items-center justify-center"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        </div>
       </header>
 
       {/* Search bar */}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -16,6 +17,7 @@ import {
   QrCode,
   Users,
   Server,
+  Download,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
@@ -31,6 +33,7 @@ import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 type Subpage =
   | null
@@ -63,6 +66,8 @@ export function MobileProfileView({
   onDiscover,
 }: MobileProfileViewProps = {}) {
   const { profile, user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { isInstalled: isPwaInstalled } = usePWAInstall();
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
   const [showSettings, setShowSettings] = useState(false);
@@ -317,6 +322,19 @@ export function MobileProfileView({
         {/* Support section */}
         <SectionHeader>Support</SectionHeader>
         <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
+          {!isPwaInstalled && (
+            <>
+              <RowItem
+                icon={<Download className="w-4 h-4 text-muted-foreground" />}
+                label="Installer l'application"
+                onClick={() => {
+                  haptics.light();
+                  navigate('/install');
+                }}
+              />
+              <Divider />
+            </>
+          )}
           <RowItem
             icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
             label="Aide & FAQ"

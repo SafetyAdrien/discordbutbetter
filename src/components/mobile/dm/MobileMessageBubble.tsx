@@ -62,6 +62,7 @@ export function MobileMessageBubble({
   onLongPress,
   onToggleReaction,
   onAvatarTap,
+  onJumpToMessage,
 }: Props) {
   const reduced = useReducedMotion();
   const [translateX, setTranslateX] = useState(0);

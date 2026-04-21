@@ -219,6 +219,17 @@ export function MobileMessageBubble({
             </span>
           )}
 
+          {/* Replied line (Discord-like, faithful) */}
+          {message.repliedMessage && (
+            <div className={cn('w-full mb-0.5', message.isOwn ? 'self-end' : 'self-start')}>
+              <RepliedLine
+                repliedMessage={message.repliedMessage}
+                onJump={onJumpToMessage}
+                indent={message.isOwn ? 24 : 28}
+              />
+            </div>
+          )}
+
           <button
             type="button"
             onTouchStart={handleTouchStart}

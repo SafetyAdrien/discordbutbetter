@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ParticleBackground } from '@/components/effects/ParticleBackground';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const motivationalPhrases = [
   "Là où les communautés prennent vie.",

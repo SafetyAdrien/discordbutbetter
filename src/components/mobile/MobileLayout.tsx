@@ -682,6 +682,13 @@ export function MobileLayout({
           />
         ) : null;
       })()}
+
+      {externalLinkUrl && (
+        <ExternalLinkWarningModal
+          url={externalLinkUrl}
+          onClose={() => setExternalLinkUrl(null)}
+        />
+      )}
     </div>
   );
 }

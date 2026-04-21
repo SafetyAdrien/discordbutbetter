@@ -756,10 +756,12 @@ export function AnnouncementChannel({
               }
             }
             
+            const hasReply = Boolean((message as any).repliedMessage) || Boolean(parseRepliedMessage(message.content).reply);
             const showAuthor =
               !prevMessage ||
               prevMessage.author.id !== message.author.id ||
-              message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000;
+              message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000 ||
+              hasReply;
             const isOwnMessage = user?.id === message.author.id;
             const isEditing = editingMessageId === message.id;
             

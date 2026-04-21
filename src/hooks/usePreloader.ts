@@ -42,15 +42,17 @@ export function usePreloader(
 ): PreloaderResult {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { activeServerId: lastServerId, activeChannelId: lastChannelId } = useNavigationState();
+  const navState = useNavigationState();
+  const lastServerId = navState.activeServerId;
+  const lastChannelId = navState.activeChannelId;
 
-  const [serversLoaded, setServersLoaded] = useState(false);
-  const [profileLoaded, setProfileLoaded] = useState(false);
-  const [activeChannelsLoaded, setActiveChannelsLoaded] = useState(false);
-  const [activeMessagesLoaded, setActiveMessagesLoaded] = useState(false);
-  const [minTimePassed, setMinTimePassed] = useState(false);
+  const [serversLoaded, setServersLoaded] = useState<boolean>(false);
+  const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
+  const [activeChannelsLoaded, setActiveChannelsLoaded] = useState<boolean>(false);
+  const [activeMessagesLoaded, setActiveMessagesLoaded] = useState<boolean>(false);
+  const [minTimePassed, setMinTimePassed] = useState<boolean>(false);
 
-  const hasStarted = useRef(false);
+  const hasStarted = useRef<boolean>(false);
 
   // Adaptive min loading: instant if cache exists
   useEffect(() => {

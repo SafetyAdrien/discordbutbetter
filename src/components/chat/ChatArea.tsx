@@ -1700,6 +1700,27 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       ) : (
                         <div className="relative">
                           {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
+                          {(message.repliedMessage || parsedReply) && !isEditing && (
+                            <RepliedLine
+                              repliedMessage={message.repliedMessage ?? null}
+                              authorName={parsedReply?.author}
+                              preview={parsedReply?.preview}
+                              messages={messages}
+                              onJump={scrollToMessage}
+                              indent={56}
+                              authorColor={
+                                message.repliedMessage?.author
+                                  ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
+                                  : undefined
+                              }
+                              authorRole={
+                                message.repliedMessage?.author
+                                  ? memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null
+                                  : null
+                              }
+                              className="mb-0.5"
+                            />
+                          )}
                           <div className="flex gap-3 items-start">
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -1773,27 +1794,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </div>
                               ) : (
                                 <>
-                                  {(message.repliedMessage || parsedReply) && (
-                                    <RepliedLine
-                                      repliedMessage={message.repliedMessage ?? null}
-                                      authorName={parsedReply?.author}
-                                      preview={parsedReply?.preview}
-                                      messages={messages}
-                                      onJump={scrollToMessage}
-                                      indent={0}
-                                      authorColor={
-                                        message.repliedMessage?.author
-                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
-                                          : undefined
-                                      }
-                                      authorRole={
-                                        message.repliedMessage?.author
-                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null
-                                          : null
-                                      }
-                                      className="mb-1"
-                                    />
-                                  )}
                                   <p className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
                                     <MarkdownText content={parsedBody} />
                                   </p>

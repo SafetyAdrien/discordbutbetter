@@ -456,7 +456,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                   : null,
                               }}
                               onJump={handleJumpToMessage}
-                              indent={48}
+                              indent={56}
                             />
                           </div>
                         )}

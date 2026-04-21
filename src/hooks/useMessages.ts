@@ -84,6 +84,7 @@ export function useMessages(channelId: string | null) {
           edited_at,
           attachments,
           channel_id,
+          reply_to_id,
           source_server_id,
           source_server_name,
           source_server_icon,
@@ -106,10 +107,66 @@ export function useMessages(channelId: string | null) {
 
       if (error) throw error;
 
-      return (data as any[]).map(msg => ({
+      const baseMessages: MessageWithAuthor[] = (data as any[]).map((msg) => ({
         ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
       })) as MessageWithAuthor[];
+
+      // Resolve replied messages in a single batched query
+      const replyIds = Array.from(
+        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
+      );
+
+      let replyMap = new Map<string, RepliedMessageSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('messages')
+          .select(`
+            id,
+            content,
+            attachments,
+            author:profiles!messages_author_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .in('id', replyIds);
+
+        if (replyData) {
+          for (const r of replyData as any[]) {
+            replyMap.set(r.id, {
+              id: r.id,
+              content: r.content || '',
+              attachments: Array.isArray(r.attachments) ? r.attachments : [],
+              author: r.author
+                ? {
+                    id: r.author.id,
+                    username: r.author.username,
+                    display_name: r.author.display_name,
+                    avatar_url: r.author.avatar_url,
+                  }
+                : null,
+            });
+          }
+        }
+      }
+
+      return baseMessages.map((m) => {
+        if (!m.reply_to_id) return m;
+        const snap = replyMap.get(m.reply_to_id);
+        return {
+          ...m,
+          repliedMessage: snap ?? {
+            id: m.reply_to_id,
+            content: '',
+            attachments: [],
+            deleted: true,
+            author: null,
+          },
+        };
+      });
     },
     enabled: !!channelId && !!user,
     initialData: cachedMessages,

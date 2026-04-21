@@ -1643,6 +1643,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
                                           : undefined
                                       }
+                                      authorRoleIcon={(() => {
+                                        const r = message.repliedMessage?.author
+                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]
+                                          : undefined;
+                                        return r?.icon_url
+                                          ? { iconUrl: r.icon_url, name: r.name, color: r.color }
+                                          : null;
+                                      })()}
                                       className="mb-1"
                                     />
                                   )}
@@ -1781,6 +1789,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
                                           : undefined
                                       }
+                                      authorRoleIcon={(() => {
+                                        const r = message.repliedMessage?.author
+                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]
+                                          : undefined;
+                                        return r?.icon_url
+                                          ? { iconUrl: r.icon_url, name: r.name, color: r.color }
+                                          : null;
+                                      })()}
                                       className="mb-1"
                                     />
                                   )}

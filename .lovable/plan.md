@@ -1,160 +1,114 @@
 
 
-# Refonte mobile des Messages Privés
+# Modernisation des icônes (Mobile / Tablette / Desktop) + conteneur emoji/stickers
 
-Refonte complète, mobile-first, accessible et user-friendly de l'interface DM (liste + conversation 1:1 et groupes), inspirée des standards iMessage/WhatsApp tout en restant cohérente avec le langage visuel de l'app.
+Refonte visuelle cohérente : tous les icônes adoptent un style **moderne, plein, arrondi** sur les 3 plateformes, et le picker emoji/autocollants reçoit un nouveau conteneur premium (sections rapides, catégories visuelles, animations).
 
 ## Ce que l'utilisateur verra
 
-### 1. Page d'accueil Messages (`MobileHomeView`)
+### A. Système d'icônes unifié
 
-**Header redesigné**
-- Titre "Messages" + sous-titre dynamique ("12 conversations · 3 non lues")
-- Avatar utilisateur à gauche (tap → profil)
-- Actions à droite : Recherche · Nouveau message · Créer un groupe
-- Hauteur agrandie pour respirer (56px)
+**Avant** : icônes Lucide en trait fin (stroke 2, caps droits), inconsistance avec les Streamline déjà filled.
 
-**Barre de recherche persistante**
-- Sous le header, plein largeur, placeholder "Rechercher une conversation…"
-- Filtre instantané : nom, @username, dernier message
-- Bouton clear (×)
+**Après** : 
+- **Stroke arrondi** partout (`stroke-linecap: round`, `stroke-linejoin: round`)
+- **Stroke épaissi** (2.25 par défaut) pour un rendu plus présent
+- **Variante "filled"** automatique pour les icônes d'état (actives, sélectionnées, primaires)
+- **Tailles standardisées** : `xs` 14px · `sm` 16px · `md` 20px · `lg` 24px · `xl` 28px
+- **Coins doux** sur tous les boutons d'icônes (passage à `rounded-2xl`/`rounded-full` selon contexte)
+- **Conteneurs colorés doux** (icône sur pastille `bg-primary/10`) pour les actions principales
 
-**Pills de filtres** (sticky)
-- `Tous` · `Non lus` (badge rouge) · `Groupes` · `Favoris`
-- Badge compteur sur "Non lus"
+**Composant central** : `<Icon />` wrapper qui prend un icône Lucide + une variante (`outline` | `filled` | `duotone`) et applique le style global.
 
-**Liste organisée en sections**
-- ⭐ **Favoris** — amis favoris épinglés (réutilise `useFavoriteFriendIds`)
-- 📅 **Aujourd'hui** — conversations actives < 24h
-- **Cette semaine**
-- **Plus ancien**
-- Tri par dernier message dans chaque section
-- Si filtre ≠ "Tous" : liste plate triée par récence
+**Application visible** :
+- **Bottom nav mobile** : icônes plus rondes, version filled quand actif (style iOS/Material You)
+- **Voice controls** (mic, casque, raccrocher) : pastilles circulaires plus généreuses
+- **Message input** : actions (+, image, sondage, gif, sticker, emoji, send) en cercles doux
+- **Header conversation** : appel/vidéo/menu en boutons ronds remplis
+- **DM list** : icônes statut/groupe/mute avec rendu plein
+- **Sidebar serveurs/canaux** : hash, voix, megaphone — déjà Streamline, harmonisés (même épaisseur, même radius optique)
+- **Modals/dialogs** : close (×) toujours rond, retour (‹) avec stroke arrondi
 
-**Cards de conversation enrichies**
-- Avatar 52px avec ring de statut coloré (online/idle/dnd/offline) + badge "groupe" pour les groupes (icône superposée)
-- Display name en bold + custom_status si présent
-- Aperçu dernier message avec préfixe auteur ("Toi: …" ou "Alice: …")
-- Indicateur "📎 Pièce jointe" / "🎤 Audio" / "📷 Image" quand applicable
-- Timestamp à droite (compact + couleur primaire si non lu)
-- Badge non lu rond à droite (style Discord)
-- Indicateur "frappe en cours…" en temps réel sous le nom (remplace l'aperçu)
-- État muet : icône cloche barrée discrète
+### B. Conteneur Emoji & Stickers — refonte premium
 
-**Interactions natives**
-- **Tap** → ouvre la conversation
-- **Swipe-left** révèle 2 actions : 🔕 Mute (toggle) | 🗑️ Archiver
-- **Swipe-right** : Marquer comme lu (haptic success)
-- **Long-press** (500ms) → bottom sheet `MobileDMActionSheet` : Voir profil · Appel vocal · Appel vidéo · Mettre en favori · Marquer (non) lu · Couper notifications · Bloquer · Supprimer la conversation
+**Layout repensé** :
+- Header avec **2 onglets segmentés** (pill toggle) au lieu de tabs basiques : `😀 Emojis` · `🎨 Autocollants`
+- Compteur d'emojis disponibles à droite ("324 emojis · 12 du serveur")
 
-**FAB Nouveau message** (existant, repositionné)
-- Position respect safe-area, avec libellé contextuel "Nouveau"
-- Long-press → "Créer un groupe" en raccourci
+**Recherche améliorée** :
+- Barre arrondie pleine largeur, icône search filled, chip "Effacer" quand rempli
+- Recherche réelle (filtrage par nom, alias) — actuellement le filtrage retourne tous les emojis
+- État "Aucun résultat" illustré
 
-**État vide**
-- Illustration + CTA "Démarre une conversation"
+**Navigation rapide par catégories**
+- **Barre verticale** à gauche (desktop) ou **scrollable horizontale** sticky en haut (mobile) avec icône par catégorie : 🕐 Récents · 😀 Smileys · 🐶 Animaux · 🍔 Nourriture · ⚽ Sport · 🚗 Transport · 💡 Objets · 🔣 Symboles · 🏳️ Drapeaux + 🌟 Serveur
+- Tap = scroll instantané vers la section
+- Active : pastille primary avec icône fill
 
-**Pull-to-refresh** (existant) — préservé
+**Récents & Fréquents**
+- Nouvelle section "Récemment utilisés" (12 derniers, persistés en `localStorage`)
+- Affichée en premier
+- Clear via bouton "Effacer l'historique"
 
-### 2. Conversation (`DMConversation` mobile)
+**Grille emoji modernisée**
+- Tailles harmonisées : 36×36 (mobile) / 32×32 (desktop)
+- Tap haptic léger
+- Hover : zoom subtil + tooltip avec nom
+- Long-press emoji du serveur (mobile) : prévisualisation en plein écran
 
-**Header tappable enrichi**
-- Avatar 40px + ring statut + badge "appel actif" si en cours
-- Display name + sous-ligne dynamique :
-  - "En ligne" / "Inactif depuis 5min" / "Vu il y a 2h"
-  - "frappe en cours…" pendant la frappe (anim)
-  - "3 membres" pour les groupes
-- Tap → ouvre `DMUserInfoPanel` en bottom sheet
-- Actions à droite : 📞 Appel · 🎥 Vidéo · ⋮ Plus (épinglés, recherche, médias, mute, bloquer)
+**Onglet Autocollants**
+- Grille 3 colonnes (mobile) / 4 (desktop) avec aspect-square
+- Vignette plus grande, padding plus aéré, ombre douce au hover
+- État vide illustré (sticker icon filled, message + lien vers paramètres serveur si admin)
 
-**Messages style bulles**
-- **Mes messages** : alignés à droite, bulle primaire arrondie (`rounded-2xl rounded-br-md`)
-- **Messages reçus** : alignés à gauche, bulle surface-2 (`rounded-2xl rounded-bl-md`)
-- **Groupes** : avatar petit + nom au-dessus de la 1ère bulle d'une rafale
-- Regroupement intelligent (rafales < 5min sans avatar répété)
-- Date sticky en haut du scroll (Aujourd'hui, Hier, 12 mars)
-- Timestamp sous la bulle au tap (révélé) + accusé de réception (✓ envoyé, ✓✓ lu)
+**Conteneur global**
+- Mobile : Drawer arrondi haut (`rounded-t-3xl`), poignée visible
+- Desktop : Popover avec `rounded-2xl`, ombre `shadow-elevation-3`, largeur 380px
+- Animation d'apparition douce (fade + slide-up)
+- Respect `prefers-reduced-motion`
 
-**Réactions inline**
-- Pill compact sous la bulle, tap pour toggle, long-press pour ouvrir le viewer
+### C. Cohérence cross-plateforme
 
-**Pièces jointes**
-- Images en grid arrondi (max 4 visibles + "+N")
-- Audio : waveform + bouton play
-- Liens : embed compact
-
-**Swipe-to-reply renforcé** (existant `SwipeToReplyRow`)
-- Seuil augmenté + haptic au franchissement + icône reply qui glisse
-
-**Long-press message**
-- Ouvre `UniversalMessageActions` en bottom sheet (existant) : Répondre · Réagir · Copier · Épingler · Modifier · Supprimer · Signaler
-
-**Indicateur de frappe**
-- Bulle "…" animée à gauche, avec avatar mini
-
-**Galerie médias** (nouveau)
-- Action "Médias" dans le ⋮ → bottom sheet plein écran avec grid de toutes les images/vidéos partagées
-
-**Input message**
-- Sticky en bas, respect safe-area + clavier visuel (`useVisualViewport`)
-- Bouton + (pièces jointes), emoji, micro (audio futur), envoi
-- Comportement Enter = nouvelle ligne, envoi via bouton (cf. memory existante)
-
-**Accessibilité globale**
-- Tous les boutons ≥ 44×44px
-- `aria-label` complet sur les actions icônes
-- Haptics : `selection` au swipe, `light` au tap action, `success` à l'envoi/lu
-- Respect `prefers-reduced-motion` (pas d'anim de bulles si activé)
-- Contraste AAA sur timestamps et compteurs
+- Mêmes tailles d'icônes par contexte sur mobile/tablette/desktop (la pastille s'adapte)
+- Mêmes radius (mappés sur les tokens `--radius-*` existants)
+- Mêmes haptics sur mobile
+- Mêmes états hover/active/disabled
 
 ## Détails techniques
 
 **Fichiers créés**
-- `src/components/mobile/dm/MobileDMHomeView.tsx` — refonte de `MobileHomeView`
-- `src/components/mobile/dm/MobileDMConversation.tsx` — wrapper mobile autour des hooks existants, rendu bulles
-- `src/components/mobile/dm/MobileDMListItem.tsx` — card swipeable réutilisable
-- `src/components/mobile/dm/MobileDMActionSheet.tsx` — bottom sheet long-press
-- `src/components/mobile/dm/MobileDMHeader.tsx` — header tappable conversation
-- `src/components/mobile/dm/MobileMessageBubble.tsx` — composant bulle avec regroupement
-- `src/components/mobile/dm/MobileDMMediaGallery.tsx` — galerie médias plein écran
+- `src/components/ui/icon.tsx` — wrapper `<Icon icon={Heart} variant="filled" size="md" />` ; encapsule Lucide + applique `strokeWidth=2.25`, `strokeLinecap="round"`, `strokeLinejoin="round"` ; pour `variant="filled"` ajoute `fill="currentColor"` quand l'icône le supporte (cœur, étoile, etc.) ou bascule sur la version solide quand disponible
+- `src/lib/icon-config.ts` — tokens centralisés (tailles, stroke widths, classes de pastille)
+- `src/components/chat/emoji-picker/EmojiPickerHeader.tsx` — onglets segmentés + recherche
+- `src/components/chat/emoji-picker/EmojiCategoryNav.tsx` — barre catégories (vertical desktop, horizontal mobile)
+- `src/components/chat/emoji-picker/EmojiGrid.tsx` — grille avec virtualisation simple par section
+- `src/components/chat/emoji-picker/StickerGrid.tsx` — grille stickers
+- `src/components/chat/emoji-picker/useRecentEmojis.ts` — hook localStorage (clé `recent-emojis`, 24 max, dédoublonnage)
 
 **Fichiers modifiés**
-- `src/components/mobile/MobileHomeView.tsx` — délègue à `MobileDMHomeView`
-- `src/components/mobile/MobileLayout.tsx` — route le rendu DM mobile vers le nouveau composant (DMConversation desktop reste intact)
+- `src/components/chat/EmojiStickerPicker.tsx` — refonte complète, orchestre les nouveaux sous-composants
+- `src/index.css` — règles globales pour `.lucide` : `stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round;` (override par défaut, sans casser les usages explicites)
+- `src/components/mobile/MobileBottomNav.tsx` — icônes filled quand actif (variantes Lucide solides ou cn fill class)
+- `src/components/layout/VoiceControls.tsx` — pastilles agrandies, radius doublé
+- `src/components/chat/MessageInput.tsx` — boutons d'action en cercles uniformes (même taille tactile 36×36)
+- `src/components/mobile/dm/MobileDMHeader.tsx` — actions header en pastilles circulaires
+- `src/components/dm/DMConversation.tsx` (header desktop) — même cohérence
 
-**Données — hooks réutilisés**
-- `useDMConversations`, `useDMMessages`, `useUnreadCounts`, `useTypingIndicator`, `useFavoriteFriendIds`, `useDMMessageReactions`, `useDMPinnedMessages`, `useDMCalls`
-- Aucune nouvelle migration DB
-
-**Mute / Archive**
-- État stocké en `localStorage` côté client dans un premier temps (`dm-muted:userId`, `dm-archived:userId`) — clé : Set<conversationId>
-- Permet d'éviter une migration immédiate ; migration possible plus tard vers `dm_user_settings`
-
-**Bucketing par activité**
-- `useMemo` sur `conversations` triées par `lastMessage.created_at`
-- Buckets : favoris (croisé avec `useFavoriteFriendIds`), <24h, <7j, plus ancien
-
-**Groupement de messages (rafales)**
-- Calcul `useMemo` : même auteur + < 5 min depuis le précédent → masquer avatar + nom
-- Premier de rafale : afficher avatar + display_name (groupes uniquement)
-
-**Swipe**
-- Réutilise pattern de `SwipeToReplyRow` / `MobileFriendCard` (touch events, seuil 80px, rubber-band)
-- Lock direction après 8px pour préserver scroll vertical
-
-**Long-press**
-- Hook existant `useLongPress` (500ms, scroll-tolérant)
-
-**Frappe en temps réel**
-- `useTypingIndicator(null, conversationId)` (existant) → exposer dans la liste DM via un nouveau petit hook `useDMTypingMap()` qui s'abonne à un canal Realtime global "typing" filtré par conversation_id
-
-**Statut de présence**
-- `useProfilesRealtime` (existant) garantit la mise à jour du ring statut en live
+**Approche globale (sans toucher 146 fichiers)**
+- L'override CSS sur `.lucide` (classe injectée par lucide-react sur chaque SVG) applique automatiquement le stroke arrondi à TOUS les usages existants
+- Les fichiers modifiés sont uniquement ceux où on veut **plus** que le stroke arrondi (pastilles, fill, taille spéciale)
+- Aucune migration ni refactor de masse nécessaire
 
 **Performance**
-- `useMemo` sur le bucketing/filtrage
-- Pas de virtualisation (listes typiquement < 200 items)
-- Rendu conditionnel : DMConversation desktop intacte, le composant mobile ne se monte que si `isMobile`
+- Pas de nouveaux paquets ; on continue sur lucide-react
+- `useRecentEmojis` : lectures synchrones localStorage, écriture debounced
+- Catégorie sticky sur scroll : `IntersectionObserver` (un seul observer par picker)
 
-**Aucune modification DB requise.**
+**Accessibilité**
+- `aria-label` sur tous les boutons d'icône
+- Contraste AA minimum sur les pastilles
+- Navigation clavier : flèches dans la grille emoji, Escape ferme, Enter sélectionne
+- Touch targets ≥ 44×44 px sur mobile
+
+**Aucune migration DB requise.**
 

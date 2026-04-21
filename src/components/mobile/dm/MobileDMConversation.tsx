@@ -457,7 +457,8 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
                 status: (participant.status as any) || 'offline',
                 bio: participant.bio || undefined,
               }}
-              onClose={() => setShowInfo(false)}
+              open={showInfo}
+              onOpenChange={setShowInfo}
             />
           </div>
         </AdaptiveSheet>
@@ -544,7 +545,8 @@ function ProfileLoader({ userId, onClose }: { userId: string; onClose: () => voi
         status: (data.status as any) || 'offline',
         bio: data.bio || undefined,
       }}
-      onClose={onClose}
+      open={true}
+      onOpenChange={(o) => { if (!o) onClose(); }}
     />
   );
 }

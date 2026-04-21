@@ -145,9 +145,9 @@ export function useServers() {
     },
     enabled: !!user,
     initialData: cachedServers,
-    initialDataUpdatedAt: cachedServers ? 0 : undefined,
-    staleTime: 0,
-    refetchOnMount: true,
+    initialDataUpdatedAt: cachedServers ? Date.now() : 0,
+    staleTime: cachedServers ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedServers ? false : true,
     refetchOnWindowFocus: false,
   });
 

@@ -64,8 +64,10 @@ export default function LoadingScreen({ progress = 0, currentStep }: LoadingScre
       aria-busy="true"
       aria-label={currentStep ? `Chargement, ${currentStep}` : 'Chargement de l\'application'}
     >
-      {/* Canvas particle background */}
-      <ParticleBackground count={40} speed={0.3} />
+      {/* Canvas particle background — disabled if reduced-motion, lighter on mobile */}
+      {showParticles && (
+        <ParticleBackground count={particleCount} speed={0.25} connectLines={!isMobile} />
+      )}
 
       {/* Logo with pulse animation */}
       <div className="relative z-10">

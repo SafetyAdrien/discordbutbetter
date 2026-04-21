@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useChannels } from '@/hooks/useChannels';
 
 import { MobileChannelListView } from './MobileChannelListView';
 import { MobileHomeView } from './MobileHomeView';
@@ -249,15 +250,21 @@ export function MobileServersView({
 
   const selectedRawServer = rawServers.find(s => s.id === selectedServerId);
 
-  const categoriesForList = selectedRawServer?.categories.map((cat: any) => ({
+  // Cache-first: prefer hydrated channels from useChannels over potentially-empty rawServers tree
+  const { data: channelsData } = useChannels(selectedServerId);
+
+  const resolvedCategoriesSrc = channelsData?.categories ?? selectedRawServer?.categories ?? [];
+  const resolvedOrphansSrc = channelsData?.orphanChannels ?? selectedRawServer?.orphanChannels ?? [];
+
+  const categoriesForList = resolvedCategoriesSrc.map((cat: any) => ({
     id: cat.id,
     name: cat.name,
-    channels: cat.channels.map((ch: any) => ({
-    id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
-  })),
-})) || [];
+    channels: (cat.channels || []).map((ch: any) => ({
+      id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
+    })),
+  }));
 
-  const orphanChannelsForList = (selectedRawServer?.orphanChannels || []).map((ch: any) => ({
+  const orphanChannelsForList = (resolvedOrphansSrc || []).map((ch: any) => ({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
   }));
 
@@ -352,10 +359,10 @@ export function MobileServersView({
             onConversationSelect={onOpenDM}
             onShowFriends={onShowFriends}
           />
-        ) : selectedServerId && selectedRawServer ? (
+        ) : selectedServerId && (selectedRawServer || servers.find(s => s.id === selectedServerId)) ? (
           <MobileChannelListView
             embedded
-            serverName={selectedRawServer.name}
+            serverName={(selectedRawServer?.name) || servers.find(s => s.id === selectedServerId)?.name || 'Serveur'}
             serverId={selectedServerId}
             categories={categoriesForList}
             orphanChannels={orphanChannelsForList}

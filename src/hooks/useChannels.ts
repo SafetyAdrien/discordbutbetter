@@ -130,7 +130,9 @@ export function useChannels(
     enabled: !!serverId && !!user,
     initialData: cachedChannels,
     initialDataUpdatedAt: cachedChannels ? Date.now() : 0,
-    staleTime: 0,
+    staleTime: cachedChannels ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedChannels ? false : true,
+    refetchOnWindowFocus: false,
   });
 
   // Persist channels cache to sessionStorage

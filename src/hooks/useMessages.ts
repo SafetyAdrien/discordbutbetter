@@ -171,6 +171,9 @@ export function useMessages(channelId: string | null) {
     enabled: !!channelId && !!user,
     initialData: cachedMessages,
     initialDataUpdatedAt: cachedMessages ? Date.now() : 0,
+    staleTime: cachedMessages ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedMessages ? false : true,
+    refetchOnWindowFocus: false,
   });
 
   // Persist to IndexedDB

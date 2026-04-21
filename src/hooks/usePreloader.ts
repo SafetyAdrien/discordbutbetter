@@ -399,33 +399,7 @@ export function usePreloader(
       const serverMsgPromise = (async () => {
         try {
           const recentChannels = readCache<string[]>('recent-channels') || [];
-          const channelIdsToLoad = new Set<string>(recentChannels.slice(0, 30));
-
-          for (const sid of serverIds) {
-            const channelData = queryClient.getQueryData(['channels', sid]) as any;
-            if (channelData) {
-              const textTypes = ['text', 'announcement'];
-              let found = false;
-              for (const cat of (channelData.categories || [])) {
-                for (const ch of (cat.channels || [])) {
-                  if (textTypes.includes(ch.type)) {
-                    channelIdsToLoad.add(ch.id);
-                    found = true;
-                    break;
-                  }
-                }
-                if (found) break;
-              }
-              if (!found) {
-                for (const ch of (channelData.orphanChannels || [])) {
-                  if (textTypes.includes(ch.type)) {
-                    channelIdsToLoad.add(ch.id);
-                    break;
-                  }
-                }
-              }
-            }
-          }
+          const channelIdsToLoad = new Set<string>(recentChannels.slice(0, 8));
 
           await Promise.all([...channelIdsToLoad].map(async (chId) => {
             const cached = readCache<any>(`messages:${chId}`);
@@ -757,7 +731,7 @@ export function usePreloader(
     })();
 
     // Run all groups in parallel
-    Promise.all([profilePromise, membersPromise, permissionsPromise, channelPermsPromise, messagesPhase, friendsPromise, notificationsPromise, unreadCountsPromise, assetsPromise])
+      Promise.all([profilePromise, channelsPromise, membersPromise, permissionsPromise, channelPermsPromise, dmsPromise, messagesPhase, friendsPromise, notificationsPromise, unreadCountsPromise, assetsPromise])
       .then(() => {
         writeCache('preloader-done', '1');
       });

@@ -272,32 +272,37 @@ const Index = () => {
     setThreadChannelId(null);
   }, [activeServerId, servers, serversLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const activeServer = servers.find((s) => s.id === activeServerId);
+  const resolvedCategories = channelsData?.categories ?? activeServer?.categories ?? [];
+  const resolvedOrphanChannels = channelsData?.orphanChannels ?? activeServer?.orphanChannels ?? [];
+  const activeChannel = resolvedCategories
+    .flatMap((c) => c.channels)
+    .find((ch) => ch.id === activeChannelId)
+    || resolvedOrphanChannels.find((ch) => ch.id === activeChannelId);
+
   // Update active channel when server changes - restore last visited or first text channel
   useEffect(() => {
     if (activeServerId) {
       const server = servers.find(s => s.id === activeServerId);
       if (server) {
+        const allChannels = [
+          ...resolvedCategories.flatMap(c => c.channels),
+          ...resolvedOrphanChannels,
+        ];
+
         // If we already have a persisted channel for this server from session restore, use it
         if (activeChannelId) {
-          const allChannels = [
-            ...server.categories.flatMap(c => c.channels),
-            ...(server.orphanChannels || channelsData?.orphanChannels || [])
-          ];
           const exists = allChannels.find(ch => ch.id === activeChannelId);
           if (exists) return; // already set and valid
         }
 
         // Try to restore last visited channel for this server
         const savedChannelId = getChannelForServer(activeServerId);
-        const allChannels = [
-          ...server.categories.flatMap(c => c.channels),
-          ...(server.orphanChannels || channelsData?.orphanChannels || [])
-        ];
-        
-        const savedChannel = savedChannelId 
+
+        const savedChannel = savedChannelId
           ? allChannels.find(ch => ch.id === savedChannelId)
           : null;
-        
+
         if (savedChannel) {
           setActiveChannelId(savedChannel.id);
         } else {
@@ -310,28 +315,21 @@ const Index = () => {
         }
       }
     }
-  }, [activeServerId, servers, channelsData?.orphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const activeServer = servers.find((s) => s.id === activeServerId);
-  const activeChannel = activeServer?.categories
-    .flatMap((c) => c.channels)
-    .find((ch) => ch.id === activeChannelId) 
-    || activeServer?.orphanChannels?.find((ch) => ch.id === activeChannelId)
-    || channelsData?.orphanChannels?.find((ch) => ch.id === activeChannelId);
+  }, [activeServerId, activeChannelId, servers, resolvedCategories, resolvedOrphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prepare channels and members for search modal
   const searchChannels = useMemo(() => {
     if (!activeServer) return [];
     const allChannels = [
-      ...activeServer.categories.flatMap(cat => cat.channels),
-      ...(activeServer.orphanChannels || channelsData?.orphanChannels || [])
+      ...resolvedCategories.flatMap(cat => cat.channels),
+      ...resolvedOrphanChannels
     ];
     return allChannels.map(ch => ({
       id: ch.id,
       name: ch.name,
       type: ch.type || 'text'
     }));
-  }, [activeServer, channelsData]);
+  }, [activeServer, resolvedCategories, resolvedOrphanChannels]);
 
   const searchMembers = useMemo(() => {
     return members.map(m => ({
@@ -440,7 +438,7 @@ const Index = () => {
     bannerUrl: activeServer.banner_url || undefined,
     description: activeServer.description || undefined,
     createdAt: activeServer.created_at || undefined,
-    categories: activeServer.categories.map(cat => ({
+    categories: resolvedCategories.map(cat => ({
       id: cat.id,
       name: cat.name,
       channels: cat.channels.map(ch => ({
@@ -560,7 +558,7 @@ const Index = () => {
         setServerSettingsInitialTab(initialTab);
         setShowServerSettings(true);
       }}
-      orphanChannels={(activeServer?.orphanChannels || channelsData?.orphanChannels || []) as import('@/hooks/useChannels').OrphanChannel[]}
+      orphanChannels={resolvedOrphanChannels as import('@/hooks/useChannels').OrphanChannel[]}
       activeThreadId={activeThreadId}
       onThreadSelect={(threadId) => {
         setActiveThreadId(threadId);

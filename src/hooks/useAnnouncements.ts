@@ -31,11 +31,20 @@ export interface Announcement {
   };
 }
 
+export interface RepliedCommentSnapshot {
+  id: string;
+  content: string;
+  deleted?: boolean;
+  author: { id: string; display_name: string; avatar_url: string | null } | null;
+}
+
 export interface AnnouncementComment {
   id: string;
   announcement_id: string;
   content: string;
   created_at: string;
+  reply_to_id?: string | null;
+  repliedComment?: RepliedCommentSnapshot | null;
   author: {
     id: string;
     display_name: string;

@@ -1,114 +1,118 @@
 
 
-# Modernisation des icônes (Mobile / Tablette / Desktop) + conteneur emoji/stickers
+# Refonte du système de réponse — Style natif (Discord/Telegram)
 
-Refonte visuelle cohérente : tous les icônes adoptent un style **moderne, plein, arrondi** sur les 3 plateformes, et le picker emoji/autocollants reçoit un nouveau conteneur premium (sections rapides, catégories visuelles, animations).
+Aligner visuellement le système de réponse sur le standard montré dans la capture d'écran : afficher la réponse comme une **petite ligne distincte au-dessus du message**, avec un connecteur courbe (┌─), un mini-avatar, le pseudo de l'auteur cité et un résumé tronqué — au lieu du blockquote markdown actuel.
 
 ## Ce que l'utilisateur verra
 
-### A. Système d'icônes unifié
+### Avant
+La réponse est affichée comme une citation markdown (`> **Adrien_Sama:** Message…`) noyée dans le contenu, occupant plusieurs lignes et brisant la lisibilité.
 
-**Avant** : icônes Lucide en trait fin (stroke 2, caps droits), inconsistance avec les Streamline déjà filled.
+### Après
+Au-dessus de chaque message-réponse :
 
-**Après** : 
-- **Stroke arrondi** partout (`stroke-linecap: round`, `stroke-linejoin: round`)
-- **Stroke épaissi** (2.25 par défaut) pour un rendu plus présent
-- **Variante "filled"** automatique pour les icônes d'état (actives, sélectionnées, primaires)
-- **Tailles standardisées** : `xs` 14px · `sm` 16px · `md` 20px · `lg` 24px · `xl` 28px
-- **Coins doux** sur tous les boutons d'icônes (passage à `rounded-2xl`/`rounded-full` selon contexte)
-- **Conteneurs colorés doux** (icône sur pastille `bg-primary/10`) pour les actions principales
+```text
+  ┌─ 🟣 Adrien_Sama  Message de réponse…
+🟣 Adrien_Sama  •  8:54
+   Message répondue.
+```
 
-**Composant central** : `<Icon />` wrapper qui prend un icône Lucide + une variante (`outline` | `filled` | `duotone`) et applique le style global.
+**Composants visuels du `replied-line`** :
+- **Connecteur en L arrondi** (`┌─`) en SVG : trait fin (1.5px), couleur `border`, partant du centre de l'avatar du message principal jusqu'à la ligne de réponse
+- **Mini-avatar** (16×16, rounded-full) de l'auteur cité, aligné sur l'indentation de l'avatar principal
+- **Pseudo cliquable** de l'auteur cité (couleur du rôle si applicable, sinon `text-foreground/80`, semibold, taille 13px)
+- **Aperçu du contenu** :
+  - Texte simple, taille 13px, couleur `text-muted-foreground`
+  - Markdown des mentions, emojis, et formatage **désactivé** (texte brut nettoyé) sauf rendu inline ultra-léger des mentions `<@user>` → `@pseudo`
+  - **Tronqué à 64 caractères max** sans ellipsis trois-points : coupe nette + fade-out CSS via `mask-image: linear-gradient(to right, black 90%, transparent)` (effet identique à la liste des membres pour les noms de salons)
+  - Tooltip au survol révélant le contenu complet
+- **Indicateur de média** si le message cité contient une pièce jointe : icône 📎 + libellé "Pièce jointe" / "Image" / "Vidéo" en italique
+- **Tap/clic** sur la ligne → scroll vers le message original avec highlight pulsant 1.5s (réutilise le mécanisme existant `messageRefs`)
+- **Message supprimé** : affichage "Message original supprimé" en italique, mini-avatar en placeholder gris, pas cliquable
 
-**Application visible** :
-- **Bottom nav mobile** : icônes plus rondes, version filled quand actif (style iOS/Material You)
-- **Voice controls** (mic, casque, raccrocher) : pastilles circulaires plus généreuses
-- **Message input** : actions (+, image, sondage, gif, sticker, emoji, send) en cercles doux
-- **Header conversation** : appel/vidéo/menu en boutons ronds remplis
-- **DM list** : icônes statut/groupe/mute avec rendu plein
-- **Sidebar serveurs/canaux** : hash, voix, megaphone — déjà Streamline, harmonisés (même épaisseur, même radius optique)
-- **Modals/dialogs** : close (×) toujours rond, retour (‹) avec stroke arrondi
+**Préservé** :
+- Le `ReplyReference` (preview au-dessus de l'input avant envoi) — déjà visuellement correct, ajustement mineur de cohérence
+- Le `SwipeToReplyRow`, le menu contextuel, et tout le flux de déclenchement de réponse
 
-### B. Conteneur Emoji & Stickers — refonte premium
+### Cas couverts
+- **Premier d'une rafale** (avec avatar) : connecteur ancré au centre de l'avatar
+- **Message groupé** (sans avatar) : connecteur ancré sur la marge gauche, à la même indentation
+- **Réponse à un message avec pièce jointe sans texte** : "📎 Image" / "📎 2 pièces jointes"
+- **Réponse à un sondage** : "📊 Question du sondage…"
+- **Réponse à un message de soi-même** : pseudo en couleur primaire (Adrien_Sama bleu dans la capture)
 
-**Layout repensé** :
-- Header avec **2 onglets segmentés** (pill toggle) au lieu de tabs basiques : `😀 Emojis` · `🎨 Autocollants`
-- Compteur d'emojis disponibles à droite ("324 emojis · 12 du serveur")
-
-**Recherche améliorée** :
-- Barre arrondie pleine largeur, icône search filled, chip "Effacer" quand rempli
-- Recherche réelle (filtrage par nom, alias) — actuellement le filtrage retourne tous les emojis
-- État "Aucun résultat" illustré
-
-**Navigation rapide par catégories**
-- **Barre verticale** à gauche (desktop) ou **scrollable horizontale** sticky en haut (mobile) avec icône par catégorie : 🕐 Récents · 😀 Smileys · 🐶 Animaux · 🍔 Nourriture · ⚽ Sport · 🚗 Transport · 💡 Objets · 🔣 Symboles · 🏳️ Drapeaux + 🌟 Serveur
-- Tap = scroll instantané vers la section
-- Active : pastille primary avec icône fill
-
-**Récents & Fréquents**
-- Nouvelle section "Récemment utilisés" (12 derniers, persistés en `localStorage`)
-- Affichée en premier
-- Clear via bouton "Effacer l'historique"
-
-**Grille emoji modernisée**
-- Tailles harmonisées : 36×36 (mobile) / 32×32 (desktop)
-- Tap haptic léger
-- Hover : zoom subtil + tooltip avec nom
-- Long-press emoji du serveur (mobile) : prévisualisation en plein écran
-
-**Onglet Autocollants**
-- Grille 3 colonnes (mobile) / 4 (desktop) avec aspect-square
-- Vignette plus grande, padding plus aéré, ombre douce au hover
-- État vide illustré (sticker icon filled, message + lien vers paramètres serveur si admin)
-
-**Conteneur global**
-- Mobile : Drawer arrondi haut (`rounded-t-3xl`), poignée visible
-- Desktop : Popover avec `rounded-2xl`, ombre `shadow-elevation-3`, largeur 380px
-- Animation d'apparition douce (fade + slide-up)
-- Respect `prefers-reduced-motion`
-
-### C. Cohérence cross-plateforme
-
-- Mêmes tailles d'icônes par contexte sur mobile/tablette/desktop (la pastille s'adapte)
-- Mêmes radius (mappés sur les tokens `--radius-*` existants)
-- Mêmes haptics sur mobile
-- Mêmes états hover/active/disabled
+### Cohérence multi-plateformes
+- **Desktop** (`ChatArea`) : indentation 50px (alignée sur l'avatar 40px + gap 12px)
+- **Mobile** (`MobileChatView` / `ChatArea` mobile) : même indentation, taille tactile ≥ 32px sur la zone cliquable
+- **Threads** (`ThreadView`) : même rendu, mais dans threads le système de citation "simulé" déjà existant (cf. memory `mem://features/threads/reply-logic-simulated`) **reste inchangé** — la nouvelle UI s'applique uniquement aux salons textuels classiques
 
 ## Détails techniques
 
-**Fichiers créés**
-- `src/components/ui/icon.tsx` — wrapper `<Icon icon={Heart} variant="filled" size="md" />` ; encapsule Lucide + applique `strokeWidth=2.25`, `strokeLinecap="round"`, `strokeLinejoin="round"` ; pour `variant="filled"` ajoute `fill="currentColor"` quand l'icône le supporte (cœur, étoile, etc.) ou bascule sur la version solide quand disponible
-- `src/lib/icon-config.ts` — tokens centralisés (tailles, stroke widths, classes de pastille)
-- `src/components/chat/emoji-picker/EmojiPickerHeader.tsx` — onglets segmentés + recherche
-- `src/components/chat/emoji-picker/EmojiCategoryNav.tsx` — barre catégories (vertical desktop, horizontal mobile)
-- `src/components/chat/emoji-picker/EmojiGrid.tsx` — grille avec virtualisation simple par section
-- `src/components/chat/emoji-picker/StickerGrid.tsx` — grille stickers
-- `src/components/chat/emoji-picker/useRecentEmojis.ts` — hook localStorage (clé `recent-emojis`, 24 max, dédoublonnage)
+### Stockage de la réponse — sans nouvelle colonne DB
+Le format markdown actuel (`> **Author:** content…\n\n{body}`) est conservé en base, mais désormais **parsé côté client** pour extraire les métadonnées et rendre le composant `RepliedLine` au lieu du blockquote standard.
 
-**Fichiers modifiés**
-- `src/components/chat/EmojiStickerPicker.tsx` — refonte complète, orchestre les nouveaux sous-composants
-- `src/index.css` — règles globales pour `.lucide` : `stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round;` (override par défaut, sans casser les usages explicites)
-- `src/components/mobile/MobileBottomNav.tsx` — icônes filled quand actif (variantes Lucide solides ou cn fill class)
-- `src/components/layout/VoiceControls.tsx` — pastilles agrandies, radius doublé
-- `src/components/chat/MessageInput.tsx` — boutons d'action en cercles uniformes (même taille tactile 36×36)
-- `src/components/mobile/dm/MobileDMHeader.tsx` — actions header en pastilles circulaires
-- `src/components/dm/DMConversation.tsx` (header desktop) — même cohérence
+**Pattern de détection** (regex) :
+```
+^> \*\*(?<authorName>[^:*]+):\*\* (?<preview>.+?)(?:\.\.\.)?\n\n(?<body>[\s\S]+)$
+```
 
-**Approche globale (sans toucher 146 fichiers)**
-- L'override CSS sur `.lucide` (classe injectée par lucide-react sur chaque SVG) applique automatiquement le stroke arrondi à TOUS les usages existants
-- Les fichiers modifiés sont uniquement ceux où on veut **plus** que le stroke arrondi (pastilles, fill, taille spéciale)
-- Aucune migration ni refactor de masse nécessaire
+Si le pattern match en première position du contenu :
+1. Extraire `authorName`, `preview`, `body`
+2. Rendre `<RepliedLine author={authorName} preview={preview} onJump={…} />`
+3. Rendre `<MarkdownText content={body} />` à la place du contenu complet
 
-**Performance**
-- Pas de nouveaux paquets ; on continue sur lucide-react
-- `useRecentEmojis` : lectures synchrones localStorage, écriture debounced
-- Catégorie sticky sur scroll : `IntersectionObserver` (un seul observer par picker)
+Si pas de match → comportement actuel (blockquote markdown standard pour les vraies citations utilisateur).
 
-**Accessibilité**
-- `aria-label` sur tous les boutons d'icône
-- Contraste AA minimum sur les pastilles
-- Navigation clavier : flèches dans la grille emoji, Escape ferme, Enter sélectionne
-- Touch targets ≥ 44×44 px sur mobile
+**Limitation acceptée** : on ne peut pas (sans nouvelle colonne) récupérer l'avatar exact ni l'ID du message cité. Mitigations :
+- Avatar : recherché via `memberRoles`/profils chargés en mémoire en matchant `displayName` (best-effort, fallback sur initiale)
+- Jump-to-message : recherche dans la liste des messages chargés par contenu+auteur (best-effort, sinon ligne non cliquable avec tooltip "Message hors de portée")
+
+**Évolution future propre (non incluse mais préparée)** : ajouter `reply_to_id uuid REFERENCES messages(id)` pour un lien fort. Le composant `RepliedLine` est déjà conçu pour accepter directement un `repliedMessage: Message` en prop (résolution exacte avatar + jump fiable).
+
+### Fichiers créés
+- `src/components/chat/RepliedLine.tsx` — composant ligne de réponse :
+  - Props : `authorName`, `preview`, `repliedMessage?` (optionnel pour résolution future), `onJump?`
+  - Connecteur SVG `┌─` (path : `M 20 24 Q 20 12 32 12`)
+  - Truncation : `maxLength = 64`, fade-out via `mask-image`
+  - Mini-avatar via lookup dans le contexte markdown
+- `src/lib/parse-reply.ts` — utilitaire pur :
+  - `parseRepliedMessage(content: string): { reply: { author: string; preview: string } | null; body: string }`
+  - Regex unique, return safe si pas de match
+
+### Fichiers modifiés
+- `src/components/chat/ChatArea.tsx` :
+  - Importer `parseRepliedMessage` + `RepliedLine`
+  - Dans le rendu message (showAuthor `true` ET `false`), avant la `<p>` de contenu, parser et afficher `<RepliedLine />` si applicable
+  - Passer `body` au lieu de `message.content` à `MarkdownText`
+  - Ajustement : nettoyer le format envoyé à `onSendMessage` pour limiter le preview à **80 caractères** (au lieu de 100) afin de garantir un rendu propre — **non bloquant**, le composant tronque à 64
+- `src/components/chat/ChatArea.tsx` — `ReplyReference` (preview input) :
+  - Ajouter le mini-connecteur `┌─` pour cohérence visuelle avec la version affichée
+  - Truncation harmonisée à 64 caractères avec fade-out
+- `src/components/dm/DMConversation.tsx` (et version mobile) :
+  - Même intégration de `RepliedLine` pour les DMs (même format markdown sous-jacent)
+- `src/components/threads/ThreadView.tsx` :
+  - **Inchangé** (cf. memory `reply-logic-simulated`)
+
+### Truncation "style liste membres"
+Réutilise le pattern utilisé pour les noms de salons dans `MemberList` : pas de `text-overflow: ellipsis` (pas de `…`), mais un masque CSS qui fait disparaître les derniers caractères en fondu :
+
+```css
+mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+```
+
+Combiné à `overflow: hidden` + `white-space: nowrap` + `max-width` calculé. Largeur cible : `min(64ch, 380px)` desktop, `min(48ch, 70vw)` mobile.
+
+### Performance
+- Parsing regex O(n) sur le contenu, exécuté une seule fois au render (mémoïsable via `useMemo` si profilage le suggère)
+- Pas de requête supplémentaire ; tout résolu depuis les données déjà en cache (`memberRoles`, `messages`)
+- Pas d'impact sur les hooks existants (`useMessages`, `usePinnedMessages`, `useDMMessages`)
+
+### Accessibilité
+- `aria-label="Réponse à {auteur}: {preview}"` sur la ligne
+- Bouton clavier-focusable, Enter = jump
+- Contraste AA sur le texte tronqué (`text-muted-foreground` ≈ 4.6:1)
+- Connecteur SVG marqué `aria-hidden`
 
 **Aucune migration DB requise.**
 

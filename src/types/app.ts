@@ -38,6 +38,19 @@ export interface Channel {
   server_id?: string;
 }
 
+export interface RepliedMessageRef {
+  id: string;
+  content: string;
+  attachments?: Attachment[];
+  deleted?: boolean;
+  author: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatar?: string;
+  } | null;
+}
+
 export interface Message {
   id: string;
   content: string;
@@ -48,6 +61,10 @@ export interface Message {
   reactions?: Reaction[];
   isSystemMessage?: boolean;
   is_system?: boolean;
+  /** Snowflake/uuid of the message this one replies to (channel-level) */
+  replyToId?: string | null;
+  /** Resolved replied message snapshot (joined client-side) */
+  repliedMessage?: RepliedMessageRef | null;
 }
 
 export interface Attachment {

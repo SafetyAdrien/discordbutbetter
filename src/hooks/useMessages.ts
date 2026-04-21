@@ -24,6 +24,19 @@ export interface StoredAttachment {
   isSpoiler?: boolean;
 }
 
+export interface RepliedMessageSnapshot {
+  id: string;
+  content: string;
+  attachments: StoredAttachment[];
+  deleted?: boolean;
+  author: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 export interface MessageWithAuthor {
   id: string;
   content: string;
@@ -38,6 +51,8 @@ export interface MessageWithAuthor {
   is_published_message?: boolean | null;
   publish_dismissed?: boolean | null;
   is_system?: boolean;
+  reply_to_id?: string | null;
+  repliedMessage?: RepliedMessageSnapshot | null;
   author: {
     id: string;
     username: string;

@@ -190,6 +190,17 @@ export function MobileServersView({
   useEffect(() => {
     if (!selectedServerId && !showDMs && sortedServers.length > 0) {
       setSelectedServerId(sortedServers[0].id);
+      return;
+    }
+    // Recover when the selected server has disappeared (left/deleted)
+    if (selectedServerId && sortedServers.length > 0 && !sortedServers.some(s => s.id === selectedServerId)) {
+      setSelectedServerId(sortedServers[0].id);
+      return;
+    }
+    // No servers left at all → show DMs
+    if (sortedServers.length === 0 && selectedServerId) {
+      setSelectedServerId(null);
+      setShowDMs(true);
     }
   }, [sortedServers, selectedServerId, showDMs]);
 

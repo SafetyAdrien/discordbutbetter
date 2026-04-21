@@ -319,6 +319,59 @@ export function MobileLayout({
     server_id: currentServerId || undefined,
   } : null;
 
+  // Track how long the chat fallback has been visible (for explicit "not found" message)
+  const [chatFallbackElapsed, setChatFallbackElapsed] = useState(false);
+  useEffect(() => {
+    setChatFallbackElapsed(false);
+    if (mobileView.type !== 'chat') return;
+    if (channelForChat && currentServer) return;
+    const t = setTimeout(() => setChatFallbackElapsed(true), 2000);
+    return () => clearTimeout(t);
+  }, [mobileView.type, channelForChat, currentServer]);
+
+  // Safety timeout: if chat is stuck on fallback after 4s, force back to tab
+  useEffect(() => {
+    if (mobileView.type !== 'chat') return;
+    if (channelForChat && currentServer) return;
+    const t = setTimeout(() => {
+      setMobileView({ type: 'tab' });
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [mobileView.type, channelForChat, currentServer, setMobileView]);
+
+  // Validate persisted view against loaded data — auto-recover on orphan state
+  useEffect(() => {
+    if (!rawServers || rawServers.length === 0) return;
+    if (mobileView.type === 'tab') return;
+
+    const sid = 'serverId' in mobileView ? mobileView.serverId : null;
+    if (sid && !rawServers.some((s: any) => s.id === sid)) {
+      // Server gone — bounce to tab
+      setMobileView({ type: 'tab' });
+      return;
+    }
+
+    if (mobileView.type === 'chat' && channelsData) {
+      const all = [
+        ...(channelsData.categories || []).flatMap((c: any) => c.channels || []),
+        ...(channelsData.orphanChannels || []),
+      ];
+      if (!all.some((ch: any) => ch.id === mobileView.channelId)) {
+        setMobileView({ type: 'channels', serverId: mobileView.serverId });
+      }
+    }
+
+    if (mobileView.type === 'thread' && channelsData) {
+      const all = [
+        ...(channelsData.categories || []).flatMap((c: any) => c.channels || []),
+        ...(channelsData.orphanChannels || []),
+      ];
+      if (!all.some((ch: any) => ch.id === mobileView.channelId)) {
+        setMobileView({ type: 'tab' });
+      }
+    }
+  }, [rawServers, channelsData, mobileView, setMobileView]);
+
   // Render chat content based on channel type
   const renderChannelContent = () => {
     if (mobileView.type !== 'chat') return null;
@@ -330,8 +383,20 @@ export function MobileLayout({
               <ChevronLeftIcon className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            {!chatFallbackElapsed ? (
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Salon introuvable</p>
+                <button
+                  onClick={() => setMobileView({ type: 'tab' })}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
+                >
+                  Retour
+                </button>
+              </>
+            )}
           </div>
         </div>
       );

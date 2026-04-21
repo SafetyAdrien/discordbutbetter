@@ -24,6 +24,19 @@ export interface StoredAttachment {
   isSpoiler?: boolean;
 }
 
+export interface RepliedDMSnapshot {
+  id: string;
+  content: string;
+  attachments: StoredAttachment[];
+  deleted?: boolean;
+  author: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 export interface DMMessage {
   id: string;
   content: string;
@@ -31,6 +44,8 @@ export interface DMMessage {
   edited_at: string | null;
   attachments: StoredAttachment[];
   conversation_id: string;
+  reply_to_id?: string | null;
+  repliedMessage?: RepliedDMSnapshot | null;
   author: {
     id: string;
     username: string;

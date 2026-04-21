@@ -64,6 +64,7 @@ import { ReactionBar } from '@/components/chat/ReactionBar';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { RepliedLine } from '@/components/chat/RepliedLine';
 import { parseRepliedMessage } from '@/lib/parse-reply';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
@@ -83,7 +84,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
   const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
   const [mobilePollSheetId, setMobilePollSheetId] = useState<string | null>(null);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT;
+  const { isMobile, isTablet } = useBreakpoint();
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -324,19 +325,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     if (!messageContent.trim()) return;
     
     try {
-      let content = messageContent;
-      // Prepend reply citation if replying
-      if (replyingTo) {
-        const replyAuthor = replyingTo.author?.display_name || 'Inconnu';
-        const replyPreview = replyingTo.content.length > 50 
-          ? replyingTo.content.slice(0, 50) + '...' 
-          : replyingTo.content;
-        content = `> **${replyAuthor}** : ${replyPreview}\n${content}`;
-      }
-      
       await sendMessage.mutateAsync({
         threadId,
-        content,
+        content: messageContent,
+        replyToId: replyingTo?.id ?? null,
       });
       setMessageContent('');
       setReplyingTo(null);
@@ -808,6 +800,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       }) : undefined}
                     >
                       {(() => {
+                        // Prefer real reply snapshot (reply_to_id resolved). Fallback: legacy markdown blockquote.
+                        if (message.repliedMessage) {
+                          const cited = message.repliedMessage;
+                          const citedRoles = cited.author ? memberRoles.get(cited.author.id) : undefined;
+                          const topRole = citedRoles?.[0];
+                          return (
+                            <RepliedLine
+                              repliedMessage={{
+                                id: cited.id,
+                                content: cited.content,
+                                deleted: cited.deleted,
+                                attachments: cited.attachments || [],
+                                author: cited.author
+                                  ? {
+                                      id: cited.author.id,
+                                      username: cited.author.username,
+                                      displayName: cited.author.display_name,
+                                      avatar: cited.author.avatar_url || undefined,
+                                    }
+                                  : null,
+                              }}
+                              indent={44}
+                              authorColor={topRole?.color || undefined}
+                              authorRole={topRole ?? null}
+                              className="mb-1"
+                            />
+                          );
+                        }
                         const { reply } = parseRepliedMessage(message.content);
                         if (!reply) return null;
                         const cited = replyAuthorLookup.get(reply.author);
@@ -826,7 +846,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         );
                       })()}
                       <SwipeToReplyRow
-                        enabled={isMobile}
+                        enabled={isMobile || isTablet}
                         onReply={() => setReplyingTo(message)}
                         onDoubleTap={() => handleAddReaction(message.id, '❤️')}
                       >

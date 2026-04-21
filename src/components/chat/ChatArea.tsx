@@ -408,7 +408,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   },
   ref,
 ) {
-  const isMobile = window.innerWidth < 768;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isTablet = typeof window !== 'undefined' && window.innerWidth >= 768 && window.innerWidth < 1024;
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState("");
   const [selectedUser, setSelectedUser] = useState<{
@@ -1487,7 +1488,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
                     <SwipeToReplyRow
-                      enabled={isMobile}
+                      enabled={isMobile || isTablet}
                       onReply={() => handleReply(message)}
                       onDoubleTap={canAddReactions ? () => handleAddReaction(message.id, '❤️') : undefined}
                     >

@@ -82,6 +82,8 @@ import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { RepliedLine } from "@/components/chat/RepliedLine";
+import { parseRepliedMessage } from "@/lib/parse-reply";
 
 interface Role {
   id: string;
@@ -217,6 +219,24 @@ export function AnnouncementChannel({
       sourceServerIcon: (m as any).source_server_icon || undefined,
       sourceChannelName: (m as any).source_channel_name || undefined,
       publishDismissed: (m as any).publish_dismissed || false,
+      // Real reply fields (Discord-like)
+      replyToId: (m as any).reply_to_id || null,
+      repliedMessage: (m as any).repliedMessage
+        ? {
+            id: (m as any).repliedMessage.id,
+            content: (m as any).repliedMessage.content,
+            deleted: (m as any).repliedMessage.deleted,
+            attachments: (m as any).repliedMessage.attachments || [],
+            author: (m as any).repliedMessage.author
+              ? {
+                  id: (m as any).repliedMessage.author.id,
+                  username: (m as any).repliedMessage.author.username,
+                  displayName: (m as any).repliedMessage.author.display_name,
+                  avatar: (m as any).repliedMessage.author.avatar_url || undefined,
+                }
+              : null,
+          }
+        : null,
     } as Message & { isPublishedMessage?: boolean; sourceServerId?: string; sourceServerName?: string; sourceServerIcon?: string; sourceChannelName?: string; publishDismissed?: boolean })),
     [messagesData]
   );
@@ -338,10 +358,11 @@ export function AnnouncementChannel({
     if (messageInput.trim()) {
       setIsSending(true);
       setTimeout(() => setIsSending(false), 400);
-      const content = replyingTo
-        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 80)}${replyingTo.content.length > 80 ? "..." : ""}\n\n${messageInput}`
-        : messageInput;
-      sendMessageMutation.mutate({ channelId: channel.id, content });
+      sendMessageMutation.mutate({
+        channelId: channel.id,
+        content: messageInput,
+        replyToId: replyingTo?.id ?? null,
+      });
       setMessageInput("");
       setReplyingTo(null);
       stopTyping();
@@ -350,6 +371,14 @@ export function AnnouncementChannel({
 
   const handleReply = (message: Message) => {
     setReplyingTo(message);
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    const el = messageRefs.current.get(messageId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('message-mentioned');
+    setTimeout(() => el.classList.remove('message-mentioned'), 1500);
   };
 
   const handleUserClick = (author: User) => {
@@ -727,10 +756,12 @@ export function AnnouncementChannel({
               }
             }
             
+            const hasReply = Boolean((message as any).repliedMessage) || Boolean(parseRepliedMessage(message.content).reply);
             const showAuthor =
               !prevMessage ||
               prevMessage.author.id !== message.author.id ||
-              message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000;
+              message.timestamp.getTime() - prevMessage.timestamp.getTime() > 300000 ||
+              hasReply;
             const isOwnMessage = user?.id === message.author.id;
             const isEditing = editingMessageId === message.id;
             
@@ -805,6 +836,39 @@ export function AnnouncementChannel({
                     {showAuthor ? (
                       <div className="relative">
                         {threadsByMessageId.has(message.id) && <ThreadSpine startY={44} />}
+
+                        {/* Real reply line (Discord-like) — preferred path */}
+                        {(() => {
+                          const repliedMsg = (message as any).repliedMessage;
+                          if (repliedMsg && !isEditing) {
+                            const topRole = repliedMsg.author
+                              ? memberRoles?.get(repliedMsg.author.id)?.[0]
+                              : undefined;
+                            return (
+                              <RepliedLine
+                                repliedMessage={repliedMsg}
+                                onJump={scrollToMessage}
+                                indent={56}
+                                authorColor={topRole?.color || undefined}
+                                authorRole={topRole ?? null}
+                                className="mb-1"
+                              />
+                            );
+                          }
+                          // Legacy fallback for old blockquote-stored citations
+                          const { reply } = parseRepliedMessage(message.content);
+                          if (!reply) return null;
+                          return (
+                            <RepliedLine
+                              authorName={reply.author}
+                              preview={reply.preview}
+                              messages={messages}
+                              onJump={scrollToMessage}
+                              indent={56}
+                              className="mb-1"
+                            />
+                          );
+                        })()}
 
                         <div className="flex gap-3 items-start">
                         {isPublishedFromOther ? (
@@ -911,7 +975,7 @@ export function AnnouncementChannel({
                                       </div>
                                     )}
                                     <p className="text-foreground break-words font-ginto">
-                                      <MarkdownText content={message.content} />
+                                      <MarkdownText content={parseRepliedMessage(message.content).body} />
                                     </p>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
@@ -1003,7 +1067,7 @@ export function AnnouncementChannel({
                                       </div>
                                     )}
                                     <p className="text-foreground break-words font-ginto">
-                                      <MarkdownText content={message.content} />
+                                      <MarkdownText content={parseRepliedMessage(message.content).body} />
                                       {message.edited_at && (
                                         <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                       )}

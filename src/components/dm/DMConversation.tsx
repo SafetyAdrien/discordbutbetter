@@ -76,7 +76,7 @@ export interface DMConversationProps {
 }
 
 export function DMConversation({ conversationId, onBack }: DMConversationProps) {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
   const swipeBack = useSwipeBack({ onBack: () => onBack?.() });
   const [messageInput, setMessageInput] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -495,7 +495,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         }) : undefined}
                       >
                         <SwipeToReplyRow
-                          enabled={isMobile}
+                          enabled={isMobile || isTablet}
                           onReply={() => handleReply(message)}
                           onDoubleTap={() => handleAddReaction(message.id, '❤️')}
                         >

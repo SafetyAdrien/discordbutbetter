@@ -2461,6 +2461,7 @@ export type Database = {
           created_at: string
           edited_at: string | null
           id: string
+          reply_to_id: string | null
           thread_id: string
         }
         Insert: {
@@ -2470,6 +2471,7 @@ export type Database = {
           created_at?: string
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
           thread_id: string
         }
         Update: {
@@ -2479,6 +2481,7 @@ export type Database = {
           created_at?: string
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
           thread_id?: string
         }
         Relationships: [
@@ -2487,6 +2490,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "thread_messages"
             referencedColumns: ["id"]
           },
           {

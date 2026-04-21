@@ -39,6 +39,19 @@ export interface Thread {
   participant_count?: number;
 }
 
+export interface ThreadRepliedSnapshot {
+  id: string;
+  content: string;
+  attachments: any[];
+  deleted?: boolean;
+  author: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 export interface ThreadMessage {
   id: string;
   thread_id: string;
@@ -47,6 +60,8 @@ export interface ThreadMessage {
   created_at: string;
   edited_at: string | null;
   attachments: any[];
+  reply_to_id?: string | null;
+  repliedMessage?: ThreadRepliedSnapshot | null;
   author?: {
     id: string;
     username: string;

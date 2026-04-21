@@ -21,8 +21,8 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-// @ts-expect-error - jsdom polyfill
-global.ResizeObserver = ResizeObserverStub;
+(globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver =
+  ResizeObserverStub;
 
 // jsdom: scrollIntoView stub
 Element.prototype.scrollIntoView = function () {};

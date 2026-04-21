@@ -215,7 +215,13 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         isSpoiler: a.isSpoiler,
         previewUrl: URL.createObjectURL(a.file),
       }));
-      await sendMessage.mutateAsync({ conversationId, content, attachments: pending });
+      await sendMessage.mutateAsync({
+        conversationId,
+        content,
+        attachments: pending,
+        replyToId: replyingTo?.id ?? null,
+      });
+      setReplyingTo(null);
       stopTyping();
     } catch {
       /* toast handled in hook */
@@ -225,6 +231,14 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
   const handleToggleReaction = (messageId: string, emoji: string, _r: any) => {
     const list = reactionsData[messageId] || [];
     toggleReaction.mutate({ messageId, emoji, currentReactions: list });
+  };
+
+  const handleJumpToMessage = (id: string) => {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    el.classList.add('message-mentioned');
+    setTimeout(() => el.classList.remove('message-mentioned'), 1500);
   };
 
   const isMessagePinned = (id: string) => pinnedMessages.some((p) => p.message_id === id);

@@ -866,6 +866,7 @@ const Index = () => {
         />
       )}
     </div>
+    </Suspense>
   );
 };
 

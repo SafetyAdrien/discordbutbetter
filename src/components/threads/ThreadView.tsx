@@ -62,6 +62,8 @@ import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useThreadReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
+import { RepliedLine } from '@/components/chat/RepliedLine';
+import { parseRepliedMessage } from '@/lib/parse-reply';
 
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {

@@ -378,6 +378,26 @@
     border-color: inherit;
     background-color: inherit;
   }
+
+  /* === MODERN ICON SYSTEM ===
+     Apply rounded, slightly thicker stroke to all Lucide icons globally.
+     Lucide injects the `.lucide` class on every SVG it renders, so this
+     reaches every existing usage without per-file refactors. Components
+     that need explicit fill/stroke can still override these properties. */
+  svg.lucide {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.25;
+  }
+
+  /* Hide horizontal scrollbars on emoji category strips while keeping scroll. */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @layer utilities {

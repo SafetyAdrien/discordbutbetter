@@ -157,6 +157,27 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         isOwn,
         isPending: m.isPending,
         attachments: m.attachments,
+        repliedMessage: m.repliedMessage
+          ? {
+              id: m.repliedMessage.id,
+              content: m.repliedMessage.content,
+              deleted: m.repliedMessage.deleted,
+              attachments: (m.repliedMessage.attachments || []).map((a) => ({
+                id: a.id,
+                url: a.url,
+                name: a.name,
+                type: a.type,
+              })),
+              author: m.repliedMessage.author
+                ? {
+                    id: m.repliedMessage.author.id,
+                    username: m.repliedMessage.author.username,
+                    displayName: m.repliedMessage.author.display_name,
+                    avatar: m.repliedMessage.author.avatar_url || undefined,
+                  }
+                : null,
+            }
+          : null,
         author: m.author
           ? {
               id: m.author.id,

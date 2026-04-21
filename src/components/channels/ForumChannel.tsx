@@ -109,6 +109,10 @@ export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumCha
       <div className="flex-1 overflow-y-auto">
         {threads.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <div className="flex items-center gap-2 px-3 py-2 mb-6 rounded-md bg-muted/40 border border-border/60 text-xs text-muted-foreground max-w-md">
+              <Info className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Le système de réponse sera disponible avec la prochaine version des posts forum.</span>
+            </div>
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
               <StreamlineForum className="text-muted-foreground/50" size={40} />
             </div>

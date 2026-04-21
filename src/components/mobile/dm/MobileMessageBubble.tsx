@@ -147,16 +147,7 @@ export function MobileMessageBubble({
   const editedTs =
     message.editedAt && format(new Date(message.editedAt), "d MMM HH:mm", { locale: fr });
 
-  const grouped = (() => {
-    const map = new Map<string, { count: number; reactedByMe: boolean }>();
-    reactions.forEach((r) => {
-      const cur = map.get(r.emoji) || { count: 0, reactedByMe: false };
-      cur.count += 1;
-      if (currentUserId && r.user_id === currentUserId) cur.reactedByMe = true;
-      map.set(r.emoji, cur);
-    });
-    return Array.from(map.entries()).map(([emoji, info]) => ({ emoji, ...info }));
-  })();
+  const hasReactions = reactions.length > 0;
 
   return (
     <div
@@ -242,29 +233,27 @@ export function MobileMessageBubble({
             aria-label={`Message de ${message.author?.displayName ?? 'vous'}`}
           >
             {message.content && (
-              <MarkdownText text={message.content} />
+              <MarkdownText content={message.content} />
             )}
             {message.attachments.length > 0 && (
               <div className={cn(message.content ? 'mt-2' : '')}>
-                <MessageAttachments
-                  attachments={message.attachments}
-                  isOwnMessage={message.isOwn}
-                  className="!max-w-full"
-                />
+                <MessageAttachments attachments={message.attachments} />
               </div>
             )}
             {message.content && (
-              <LinkEmbeds content={message.content} className="mt-2" />
+              <div className="mt-2">
+                <LinkEmbeds content={message.content} />
+              </div>
             )}
           </button>
 
-          {grouped.length > 0 && (
+          {hasReactions && (
             <div className={cn('mt-1', message.isOwn ? 'self-end' : 'self-start')}>
               <ReactionBar
-                reactions={grouped}
-                onReactionClick={(emoji) => onToggleReaction(message.id, emoji, reactions)}
-                onAddReaction={() => onToggleReaction(message.id, '👍', reactions)}
+                reactions={reactions.map((r) => ({ user_id: r.user_id, emoji: r.emoji }))}
+                onToggle={(emoji) => onToggleReaction(message.id, emoji, reactions)}
                 size="sm"
+                showAddButton={false}
               />
             </div>
           )}

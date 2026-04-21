@@ -496,6 +496,8 @@ const Index = () => {
         status: m.author?.status || 'offline',
       },
       timestamp: new Date(m.created_at || Date.now()),
+      replyToId: (m as any).reply_to_id ?? null,
+      repliedMessage: (m as any).repliedMessage ?? null,
     };
   });
 

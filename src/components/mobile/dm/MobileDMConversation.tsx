@@ -349,6 +349,34 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         </div>
       </div>
 
+      {/* Reply preview (above input) */}
+      {replyingTo && (
+        <div className="mx-3 mb-1 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-primary flex-shrink-0">
+              ↪ @{replyingTo.author?.display_name || 'Utilisateur'}
+            </span>
+            <span
+              className="text-[12px] text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
+              style={{
+                maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+              }}
+            >
+              {(replyingTo.content || '').replace(/\s+/g, ' ').trim().slice(0, 64) ||
+                (replyingTo.attachments.length > 0 ? '📎 Pièce jointe' : '')}
+            </span>
+          </div>
+          <button
+            onClick={() => setReplyingTo(null)}
+            className="p-1 -mr-1 rounded-full hover:bg-muted/50 transition-colors"
+            aria-label="Annuler la réponse"
+          >
+            <span className="text-muted-foreground text-sm">✕</span>
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="border-t border-border bg-[hsl(var(--surface-1))]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <MessageInput
@@ -359,7 +387,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             else stopTyping();
           }}
           onSend={(atts) => handleSend(atts)}
-          placeholder={`Message à ${displayName}`}
+          placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}` : `Message à ${displayName}`}
           isSending={sendMessage.isPending}
           onTypingStart={startTyping}
           onTypingStop={stopTyping}

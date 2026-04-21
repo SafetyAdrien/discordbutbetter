@@ -343,9 +343,9 @@ const Index = () => {
     }));
   }, [members]);
 
-  const handleSendMessage = (content: string, attachments?: any[]) => {
+  const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null) => {
     if (!activeChannelId) return;
-    sendMessage.mutate({ channelId: activeChannelId, content, attachments: attachments || [] });
+    sendMessage.mutate({ channelId: activeChannelId, content, attachments: attachments || [], replyToId: replyToId ?? null });
   };
 
   const handleJoinServer = (serverId: string) => {

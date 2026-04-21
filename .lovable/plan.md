@@ -1,31 +1,53 @@
 
 
-# Suppression des 3 boutons inutiles dans l'en-tête des MP
+# Correctif des spinners infinis (chargement bloqué) sur mobile
 
-## Changement
+## Diagnostic
 
-### `src/components/mobile/dm/MobileDMHomeView.tsx`
+Le spinner infini visible dans la capture provient de **`MobileLayout.renderChannelContent()`** (lignes 326-337). Il s'affiche dans l'overlay `chat` (z-20) lorsque la vue persistée (`mobileView`) est de type `chat` mais que :
 
-Supprimer le bloc `<div className="flex items-center gap-0.5 shrink-0">` (lignes 227-261) contenant les 3 boutons :
-- Boîte de réception (`Inbox`)
-- Amis (`Users`)
-- Rechercher (`Search` du header)
+- `currentServer` n'est pas trouvé dans `rawServers` (serveur supprimé, quitté, ou non encore rechargé), **OU**
+- `channelForChat` est `null` (le salon n'existe plus, n'a jamais été chargé, ou `useChannels` n'a pas encore résolu).
 
-Justification :
-- Les notifications/inbox sont déjà accessibles via l'onglet Notifs du menu de navigation du bas.
-- La recherche est déjà disponible via la barre de recherche située juste en-dessous de l'en-tête.
-- Le bouton Amis fait double emploi avec d'autres points d'accès.
+Aucun mécanisme de récupération n'existe : la fallback boucle indéfiniment sur le spinner. Même problème en théorie pour `mobileView.type === 'thread'` et `channels` quand le serveur cible a disparu.
 
-## Nettoyage associé
+## Correctifs
 
-- Retirer `Inbox`, `Users`, `Search` (s'il n'est plus utilisé ailleurs) des imports `lucide-react`. **Note** : `Search` reste utilisé dans la barre de recherche (ligne 267), donc on le garde. Seuls `Inbox` et `Users` sont retirés des imports.
-- Supprimer l'état `showSearch` et son setter `setShowSearch` (devenus inutiles).
-- Retirer les props devenues inutilisées : `onShowFriends`, `onShowInbox` de l'interface `Props` et de la signature du composant.
-- Mettre à jour les composants parents qui passent ces props (`MobileHomeView.tsx` et toute autre référence) pour ne plus les transmettre, et nettoyer la logique `showInbox` devenue morte dans `MobileHomeView`.
+### 1. `src/components/mobile/MobileLayout.tsx` — Récupération automatique sur état orphelin
+
+Dans le `useEffect` de validation initiale, après que les serveurs sont chargés (`servers` non vide ET non en attente), vérifier que la `mobileView` persistée pointe vers un serveur/salon valide :
+
+- Si `mobileView.type` est `chat`, `channels` ou `thread` ET que `mobileView.serverId` n'existe pas dans `rawServers` → reset à `{ type: 'tab' }`.
+- Si `mobileView.type === 'chat'` ET que `channelsData` est chargé pour ce serveur ET que `mobileView.channelId` n'existe pas dans cet arbre → reset à `{ type: 'channels', serverId }`.
+- Si `mobileView.type === 'thread'` ET que le salon parent n'existe plus → reset à `{ type: 'tab' }`.
+
+Ajouter aussi un **timeout de sécurité** : si après 4 secondes le `renderChannelContent` est toujours en fallback (channelForChat/currentServer null), forcer `setMobileView({ type: 'tab' })`. Cela garantit qu'aucun spinner ne reste bloqué plus de quelques secondes, même en cas de réseau lent.
+
+### 2. `src/components/mobile/MobileLayout.tsx` — Fallback explicite avec action
+
+Remplacer le spinner muet (lignes 326-337) par un état avec :
+- back button fonctionnel (déjà présent),
+- spinner pendant les 2 premières secondes,
+- ensuite un message "Salon introuvable" + bouton "Retour" qui appelle `setMobileView({ type: 'tab' })`.
+
+### 3. `src/components/mobile/MobileServersView.tsx` — Cohérence du serveur sélectionné
+
+Si `selectedServerId` ne correspond plus à aucun serveur dans `sortedServers` (serveur quitté/supprimé), reset automatique vers `sortedServers[0]?.id` ou `null` + `showDMs = true`. Étendre le `useEffect` ligne 190 pour gérer ce cas.
+
+### 4. `src/hooks/usePreloader.ts` — Robustesse de la navigation persistée
+
+Lorsque l'on hydrate `lastChannelId` au boot, s'il n'apparaît pas dans le cache des channels du `targetServerId`, ne PAS pré-positionner sur ce salon. Cela évite que `MobileLayout` démarre directement en mode `chat` sur un salon disparu.
 
 ## Résultat attendu
 
-- L'en-tête des MP ne contient plus que l'avatar + le titre/sous-titre.
-- La barre de recherche reste fonctionnelle juste en-dessous.
-- Aucun bouton redondant ; navigation cohérente avec le menu du bas.
+- Plus jamais de spinner figé après suppression/déconnexion d'un serveur ou d'un salon.
+- Récupération automatique en moins de 4 secondes sur les états orphelins (timeout de sécurité).
+- Message clair + bouton retour si un salon devient introuvable.
+- Navigation persistée toujours valide après reconnexion.
 
+## Détails techniques
+
+- Validation initiale dans un nouveau `useEffect` exécuté après que `rawServers` est non vide, dépendances `[rawServers, channelsData, mobileView]`.
+- Le timeout de 4s est armé/désarmé via `useEffect` qui surveille `mobileView.type === 'chat' && !channelForChat`.
+- Toutes les transitions passent par `setMobileView` (donc déjà persistées via `persistMobileView`).
+- Aucune modification des hooks de données (`useChannels`, `useServers`) — uniquement de la logique de récupération côté `MobileLayout`/`MobileServersView`.

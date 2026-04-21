@@ -14,7 +14,7 @@ import { NewDMSheet } from '@/components/dm/NewDMSheet';
 import { NewMessageModal } from '@/components/dm/NewMessageModal';
 import { CreateGroupModal } from '@/components/dm/CreateGroupModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Inbox, MessageCircle, MessageSquarePlus, Search, Star, Users, UsersRound, X } from 'lucide-react';
+import { MessageCircle, MessageSquarePlus, Search, Star, UsersRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';

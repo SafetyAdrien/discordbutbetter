@@ -506,7 +506,57 @@ export function useAnnouncementComments(announcementId: string) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as unknown as AnnouncementComment[];
+      const comments = (data ?? []) as unknown as AnnouncementComment[];
+
+      // Batch-resolve replied comments
+      const replyIds = Array.from(
+        new Set(
+          comments
+            .map((c) => c.reply_to_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      let repliedMap = new Map<string, RepliedCommentSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: repliedData } = await supabase
+          .from('announcement_comments')
+          .select(`
+            id,
+            content,
+            author:profiles!author_id(id, display_name, avatar_url)
+          `)
+          .in('id', replyIds);
+
+        if (repliedData) {
+          for (const r of repliedData as unknown as Array<{
+            id: string;
+            content: string;
+            author: { id: string; display_name: string; avatar_url: string | null } | null;
+          }>) {
+            repliedMap.set(r.id, {
+              id: r.id,
+              content: r.content,
+              deleted: false,
+              author: r.author,
+            });
+          }
+        }
+      }
+
+      return comments.map((c) => {
+        if (!c.reply_to_id) return c;
+        const snap = repliedMap.get(c.reply_to_id);
+        return {
+          ...c,
+          repliedComment: snap ?? {
+            id: c.reply_to_id,
+            content: '',
+            deleted: true,
+            author: null,
+          },
+        };
+      });
     },
     enabled: !!announcementId,
   });
@@ -517,13 +567,14 @@ export function useAddAnnouncementComment() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: { announcementId: string; content: string }) => {
+    mutationFn: async (data: { announcementId: string; content: string; replyToId?: string | null }) => {
       const { data: result, error } = await supabase
         .from('announcement_comments')
         .insert({
           announcement_id: data.announcementId,
           author_id: user?.id,
           content: data.content,
+          reply_to_id: data.replyToId ?? null,
         })
         .select()
         .single();

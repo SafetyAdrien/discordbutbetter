@@ -15,11 +15,13 @@ export function useServerUnreadCounts() {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Subscribe to realtime message inserts — separate channels per table
+  const cachedKey = user?.id ? `server-unread:${user.id}` : null;
+  const cachedData = cachedKey ? cacheGetSync<Record<string, ServerUnreadInfo>>(cachedKey) : undefined;
+
+  // Realtime — debounced
   useEffect(() => {
     if (!user) return;
 
-    // Cache all user's channel IDs for client-side filtering
     let userChannelIds: Set<string> | null = null;
     supabase
       .from('server_members')
@@ -41,16 +43,15 @@ export function useServerUnreadCounts() {
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           const newMsg = payload.new as { author_id: string; channel_id: string };
-          // Client-side filter: only process messages from user's servers
           if (userChannelIds && !userChannelIds.has(newMsg.channel_id)) return;
-          
+
           if (newMsg.author_id !== user.id) {
             soundEffects.playMessageNotification();
           }
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-          }, 500);
+          }, 800);
         }
       )
       .subscribe();
@@ -64,7 +65,7 @@ export function useServerUnreadCounts() {
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-          }, 500);
+          }, 800);
         }
       )
       .subscribe();
@@ -78,11 +79,9 @@ export function useServerUnreadCounts() {
 
   const query = useQuery({
     queryKey: ['server-unread-counts', user?.id],
-    placeholderData: () => cacheGetSync(`server-unread:${user?.id}`),
     queryFn: async (): Promise<Record<string, ServerUnreadInfo>> => {
       if (!user) return {};
 
-      // Get user's servers
       const { data: memberships } = await supabase
         .from('server_members')
         .select('server_id')
@@ -91,7 +90,7 @@ export function useServerUnreadCounts() {
       const serverIds = memberships?.map(m => m.server_id) || [];
       if (serverIds.length === 0) return {};
 
-      // Get read states for each server
+      // Read states (single query)
       const { data: readStates } = await supabase
         .from('server_read_states')
         .select('server_id, last_read_at')
@@ -103,33 +102,26 @@ export function useServerUnreadCounts() {
         readStateMap[rs.server_id] = rs.last_read_at || new Date(0).toISOString();
       });
 
-      // Get channels per server
+      // Channels per server (single query)
       const { data: allChannels } = await supabase
         .from('channels')
         .select('id, server_id')
         .in('server_id', serverIds);
 
-      const serverChannelsMap: Record<string, string[]> = {};
-      allChannels?.forEach(c => {
-        if (!serverChannelsMap[c.server_id]) {
-          serverChannelsMap[c.server_id] = [];
-        }
-        serverChannelsMap[c.server_id].push(c.id);
-      });
-
-      // Get all mentions for user
-      const allChannelIds = allChannels?.map(c => c.id) || [];
-      const { data: mentions } = await supabase
-        .from('channel_mentions')
-        .select('channel_id')
-        .eq('user_id', user.id)
-        .in('channel_id', allChannelIds);
-
-      // Map channel_id to server_id for mentions
       const channelToServer: Record<string, string> = {};
       allChannels?.forEach(c => {
         channelToServer[c.id] = c.server_id;
       });
+
+      // Mentions (single query)
+      const allChannelIds = allChannels?.map(c => c.id) || [];
+      const { data: mentions } = allChannelIds.length > 0
+        ? await supabase
+            .from('channel_mentions')
+            .select('channel_id')
+            .eq('user_id', user.id)
+            .in('channel_id', allChannelIds)
+        : { data: [] as { channel_id: string }[] };
 
       const serverMentionCounts: Record<string, number> = {};
       mentions?.forEach(m => {
@@ -139,44 +131,58 @@ export function useServerUnreadCounts() {
         }
       });
 
-      // Count unread messages per server
-      const result: Record<string, ServerUnreadInfo> = {};
+      // BATCHED: one query for all unread messages across all user's channels
+      // Use the OLDEST last_read_at as filter, then bucket per server using channel_id mapping
+      const oldestRead = serverIds.reduce((oldest, sid) => {
+        const ts = readStateMap[sid] || new Date(0).toISOString();
+        return ts < oldest ? ts : oldest;
+      }, new Date().toISOString());
 
-      await Promise.all(
-        serverIds.map(async (serverId) => {
-          const lastReadAt = readStateMap[serverId] || new Date(0).toISOString();
-          const channelIds = serverChannelsMap[serverId] || [];
-          
-          if (channelIds.length === 0) return;
-
-          const { count } = await supabase
+      const { data: unreadMessages } = allChannelIds.length > 0
+        ? await supabase
             .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .in('channel_id', channelIds)
-            .gt('created_at', lastReadAt)
-            .neq('author_id', user.id);
+            .select('channel_id, created_at')
+            .in('channel_id', allChannelIds)
+            .gt('created_at', oldestRead)
+            .neq('author_id', user.id)
+            .limit(5000)
+        : { data: [] as { channel_id: string; created_at: string }[] };
 
-          const hasUnread = (count || 0) > 0;
-          const mentionCount = serverMentionCounts[serverId] || 0;
+      const serverHasUnread: Record<string, boolean> = {};
+      unreadMessages?.forEach(msg => {
+        const serverId = channelToServer[msg.channel_id];
+        if (!serverId) return;
+        const lastRead = readStateMap[serverId] || new Date(0).toISOString();
+        if ((msg.created_at || '') > lastRead) {
+          serverHasUnread[serverId] = true;
+        }
+      });
 
-          if (hasUnread || mentionCount > 0) {
-            result[serverId] = { hasUnread, mentionCount };
-          }
-        })
-      );
+      const result: Record<string, ServerUnreadInfo> = {};
+      for (const serverId of serverIds) {
+        const hasUnread = !!serverHasUnread[serverId];
+        const mentionCount = serverMentionCounts[serverId] || 0;
+        if (hasUnread || mentionCount > 0) {
+          result[serverId] = { hasUnread, mentionCount };
+        }
+      }
 
       return result;
     },
     enabled: !!user,
-    refetchInterval: 60000,
+    initialData: cachedData,
+    initialDataUpdatedAt: cachedData ? Date.now() : 0,
+    staleTime: cachedData ? 2 * 60 * 1000 : 0,
+    refetchOnMount: cachedData ? false : true,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
-  // Persist to sessionStorage
   useEffect(() => {
-    if (query.data && user?.id && !query.isPlaceholderData) {
-      cacheSetAsync(`server-unread:${user.id}`, query.data);
+    if (query.data && cachedKey && !query.isPlaceholderData) {
+      cacheSetAsync(cachedKey, query.data);
     }
-  }, [query.data, user?.id, query.isPlaceholderData]);
+  }, [query.data, cachedKey, query.isPlaceholderData]);
 
   const markAsRead = useMutation({
     mutationFn: async (serverId: string) => {

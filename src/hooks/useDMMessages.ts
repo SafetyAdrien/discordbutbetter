@@ -185,6 +185,7 @@ export function useDMMessages(conversationId: string | null) {
               edited_at,
               attachments,
               conversation_id,
+              reply_to_id,
               author:profiles!dm_messages_author_id_fkey (
                 id,
                 username,
@@ -196,9 +197,52 @@ export function useDMMessages(conversationId: string | null) {
             .single();
 
           if (data) {
+            // Resolve replied snapshot if applicable
+            let repliedMessage: RepliedDMSnapshot | null = null;
+            if ((data as any).reply_to_id) {
+              const { data: r } = await supabase
+                .from('dm_messages')
+                .select(`
+                  id,
+                  content,
+                  attachments,
+                  author:profiles!dm_messages_author_id_fkey (
+                    id, username, display_name, avatar_url
+                  )
+                `)
+                .eq('id', (data as any).reply_to_id)
+                .maybeSingle();
+              if (r) {
+                repliedMessage = {
+                  id: r.id,
+                  content: r.content || '',
+                  attachments: Array.isArray(r.attachments) ? (r.attachments as any) : [],
+                  author: r.author
+                    ? {
+                        id: (r.author as any).id,
+                        username: (r.author as any).username,
+                        display_name: (r.author as any).display_name,
+                        avatar_url: (r.author as any).avatar_url,
+                      }
+                    : null,
+                };
+              } else {
+                repliedMessage = {
+                  id: (data as any).reply_to_id,
+                  content: '',
+                  attachments: [],
+                  deleted: true,
+                  author: null,
+                };
+              }
+            }
+
             const parsedData: DMMessage = {
-              ...data,
-              attachments: (Array.isArray(data.attachments) ? data.attachments : []) as unknown as StoredAttachment[]
+              ...(data as any),
+              attachments: (Array.isArray((data as any).attachments)
+                ? (data as any).attachments
+                : []) as unknown as StoredAttachment[],
+              repliedMessage,
             };
             queryClient.setQueryData<DMMessage[]>(
               ['dm-messages', conversationId],

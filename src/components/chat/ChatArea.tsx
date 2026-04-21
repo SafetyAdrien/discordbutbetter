@@ -98,6 +98,8 @@ import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 import { ReactionBar } from "@/components/chat/ReactionBar";
+import { RepliedLine } from "@/components/chat/RepliedLine";
+import { parseRepliedMessage } from "@/lib/parse-reply";
 
 // Reply Reference Component
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {

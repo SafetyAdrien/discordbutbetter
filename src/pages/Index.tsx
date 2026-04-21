@@ -313,25 +313,26 @@ const Index = () => {
   }, [activeServerId, servers, channelsData?.orphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeServer = servers.find((s) => s.id === activeServerId);
-  const activeChannel = activeServer?.categories
+  const resolvedCategories = channelsData?.categories ?? activeServer?.categories ?? [];
+  const resolvedOrphanChannels = channelsData?.orphanChannels ?? activeServer?.orphanChannels ?? [];
+  const activeChannel = resolvedCategories
     .flatMap((c) => c.channels)
-    .find((ch) => ch.id === activeChannelId) 
-    || activeServer?.orphanChannels?.find((ch) => ch.id === activeChannelId)
-    || channelsData?.orphanChannels?.find((ch) => ch.id === activeChannelId);
+    .find((ch) => ch.id === activeChannelId)
+    || resolvedOrphanChannels.find((ch) => ch.id === activeChannelId);
 
   // Prepare channels and members for search modal
   const searchChannels = useMemo(() => {
     if (!activeServer) return [];
     const allChannels = [
-      ...activeServer.categories.flatMap(cat => cat.channels),
-      ...(activeServer.orphanChannels || channelsData?.orphanChannels || [])
+      ...resolvedCategories.flatMap(cat => cat.channels),
+      ...resolvedOrphanChannels
     ];
     return allChannels.map(ch => ({
       id: ch.id,
       name: ch.name,
       type: ch.type || 'text'
     }));
-  }, [activeServer, channelsData]);
+  }, [activeServer, resolvedCategories, resolvedOrphanChannels]);
 
   const searchMembers = useMemo(() => {
     return members.map(m => ({
@@ -440,7 +441,7 @@ const Index = () => {
     bannerUrl: activeServer.banner_url || undefined,
     description: activeServer.description || undefined,
     createdAt: activeServer.created_at || undefined,
-    categories: activeServer.categories.map(cat => ({
+    categories: resolvedCategories.map(cat => ({
       id: cat.id,
       name: cat.name,
       channels: cat.channels.map(ch => ({
@@ -560,7 +561,7 @@ const Index = () => {
         setServerSettingsInitialTab(initialTab);
         setShowServerSettings(true);
       }}
-      orphanChannels={(activeServer?.orphanChannels || channelsData?.orphanChannels || []) as import('@/hooks/useChannels').OrphanChannel[]}
+      orphanChannels={resolvedOrphanChannels as import('@/hooks/useChannels').OrphanChannel[]}
       activeThreadId={activeThreadId}
       onThreadSelect={(threadId) => {
         setActiveThreadId(threadId);

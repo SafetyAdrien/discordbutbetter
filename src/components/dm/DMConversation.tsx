@@ -645,6 +645,43 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           {/* Typing Indicator */}
           <TypingIndicator conversationId={conversationId} />
 
+          {/* Reply preview (above input) */}
+          {replyingTo && (
+            <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+              <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <Avatar className="w-5 h-5 flex-shrink-0">
+                {replyingTo.author?.avatar_url && (
+                  <AvatarImage src={replyingTo.author.avatar_url} alt={replyingTo.author.display_name} />
+                )}
+                <AvatarFallback className="text-[9px] bg-primary/15 text-primary font-semibold">
+                  {(replyingTo.author?.display_name || '?').charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <span className="text-xs font-semibold flex-shrink-0 text-primary">
+                  @{replyingTo.author?.display_name || 'Utilisateur'}
+                </span>
+                <span
+                  className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
+                  style={{
+                    maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                  }}
+                >
+                  {(replyingTo.content || '').replace(/\s+/g, ' ').trim().slice(0, 64) ||
+                    (replyingTo.attachments.length > 0 ? '📎 Pièce jointe' : '')}
+                </span>
+              </div>
+              <button
+                onClick={() => setReplyingTo(null)}
+                className="p-1 hover:bg-muted rounded transition-colors"
+                aria-label="Annuler la réponse"
+              >
+                <XIcon className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          )}
+
           {/* Input */}
           <div className="px-4 pb-4 pt-2">
           <MessageInput
@@ -656,12 +693,14 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 conversationId,
                 content: messageInput.trim(),
                 attachments,
+                replyToId: replyingTo?.id ?? null,
               });
               setMessageInput('');
+              setReplyingTo(null);
               clearAttachments();
               stopTyping();
             }}
-            placeholder={`Envoyer un message à ${displayName}`}
+            placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}` : `Envoyer un message à ${displayName}`}
             disabled={sendMessage.isPending}
             isSending={sendMessage.isPending}
             onTypingStart={startTyping}

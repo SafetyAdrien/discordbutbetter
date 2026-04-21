@@ -3,7 +3,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Reply, Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import type { Attachment, Message, RepliedMessageRef } from "@/types/app";
+
+interface RoleForBadge {
+  id: string;
+  name: string;
+  color?: string | null;
+  icon_url?: string | null;
+  description?: string | null;
+}
 
 interface RepliedLineProps {
   /**
@@ -28,7 +37,9 @@ interface RepliedLineProps {
   indent?: number;
   /** Optional role color for the cited author (semibold pseudo color) */
   authorColor?: string;
-  /** Optional role badge icon to display next to the author name (Discord-like) */
+  /** Optional full role object — rendered via RoleBadgePopover (Discord-like pill) */
+  authorRole?: RoleForBadge | null;
+  /** @deprecated kept for backward-compat — prefer authorRole */
   authorRoleIcon?: { iconUrl: string; name: string; color?: string | null } | null;
   className?: string;
 }
@@ -78,6 +89,7 @@ export function RepliedLine({
   onJump,
   indent = 50,
   authorColor,
+  authorRole,
   authorRoleIcon,
   className,
 }: RepliedLineProps) {
@@ -157,25 +169,30 @@ export function RepliedLine({
     if (jumpTargetId && onJump) onJump(jumpTargetId);
   };
 
+  // Connector L positioning: anchored 30px to the LEFT of the reply line origin.
+  // With indent=0, the curve sits in the parent message's avatar gutter.
+  const connectorLeft = indent - 30;
+
   const content = (
     <div
       className={cn(
         "relative flex items-center gap-1.5 text-[13px] leading-tight select-none",
-        "min-h-[20px]",
+        "min-h-[20px] overflow-visible",
         isClickable && "cursor-pointer",
         className,
       )}
       style={{ paddingLeft: indent }}
     >
-      {/* L-shaped connector — anchored from inside the avatar column up to this line */}
+      {/* L-shaped connector — anchored from inside the parent avatar gutter up to this line */}
       <svg
         aria-hidden="true"
         className="absolute pointer-events-none text-border"
         style={{
-          left: indent - 30,
+          left: connectorLeft,
           top: 6,
           width: 28,
           height: 18,
+          overflow: "visible",
         }}
         viewBox="0 0 28 18"
         fill="none"
@@ -223,8 +240,15 @@ export function RepliedLine({
         </span>
       )}
 
-      {/* Role badge icon (Discord-like pill next to author name) */}
-      {!isDeleted && authorRoleIcon?.iconUrl && (
+      {/* Role badge — preferred path: full RoleBadgePopover (compact) */}
+      {!isDeleted && authorRole?.icon_url && (
+        <span className="flex-shrink-0 inline-flex items-center [&_button>img]:!w-3.5 [&_button>img]:!h-3.5 [&_button>span]:!text-[14px]">
+          <RoleBadgePopover role={authorRole} />
+        </span>
+      )}
+
+      {/* Legacy fallback: plain icon (kept for non-server contexts) */}
+      {!isDeleted && !authorRole?.icon_url && authorRoleIcon?.iconUrl && (
         <span
           className="flex-shrink-0 inline-flex items-center"
           title={authorRoleIcon.name}
@@ -279,7 +303,7 @@ export function RepliedLine({
             ? "Message original supprimé"
             : `Réponse à ${displayedAuthorName}: ${rawPreview}`
         }
-        className="group/replied mb-0.5"
+        className="group/replied mb-0.5 overflow-visible"
       >
         {content}
       </div>
@@ -293,7 +317,7 @@ export function RepliedLine({
           type="button"
           onClick={handleClick}
           aria-label={`Réponse à ${displayedAuthorName}: ${rawPreview}. Aller au message original.`}
-          className="group/replied mb-0.5 w-full text-left rounded-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+          className="group/replied mb-0.5 w-full text-left rounded-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 overflow-visible"
         >
           {content}
         </button>

@@ -1643,18 +1643,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
                                           : undefined
                                       }
-                                      authorRoleIcon={(() => {
-                                        const r = message.repliedMessage?.author
-                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]
-                                          : undefined;
-                                        return r?.icon_url
-                                          ? { iconUrl: r.icon_url, name: r.name, color: r.color }
-                                          : null;
-                                      })()}
+                                      authorRole={
+                                        message.repliedMessage?.author
+                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null
+                                          : null
+                                      }
                                       className="mb-1"
                                     />
                                   )}
-                                  <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
+                                  <p className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
                                     <MarkdownText content={parsedBody} />
                                   </p>
                                 </>
@@ -1789,18 +1786,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
                                           : undefined
                                       }
-                                      authorRoleIcon={(() => {
-                                        const r = message.repliedMessage?.author
-                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]
-                                          : undefined;
-                                        return r?.icon_url
-                                          ? { iconUrl: r.icon_url, name: r.name, color: r.color }
-                                          : null;
-                                      })()}
+                                      authorRole={
+                                        message.repliedMessage?.author
+                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null
+                                          : null
+                                      }
                                       className="mb-1"
                                     />
                                   )}
-                                  <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
+                                  <p className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
                                     <MarkdownText content={parsedBody} />
                                   </p>
                                 </>

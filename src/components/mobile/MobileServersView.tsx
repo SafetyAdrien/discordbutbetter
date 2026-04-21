@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useChannels } from '@/hooks/useChannels';
 
 import { MobileChannelListView } from './MobileChannelListView';
 import { MobileHomeView } from './MobileHomeView';

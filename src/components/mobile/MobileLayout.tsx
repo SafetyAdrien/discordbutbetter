@@ -5,7 +5,7 @@ import { MobileChannelListView } from './MobileChannelListView';
 import { MobileChatView } from './MobileChatView';
 import { MobileNotificationsView } from './MobileNotificationsView';
 import { MobileProfileView } from './MobileProfileView';
-import { MobileHomeView } from './MobileHomeView';
+
 import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { VoicePiP } from './VoicePiP';

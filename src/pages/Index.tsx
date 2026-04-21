@@ -272,6 +272,14 @@ const Index = () => {
     setThreadChannelId(null);
   }, [activeServerId, servers, serversLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const activeServer = servers.find((s) => s.id === activeServerId);
+  const resolvedCategories = channelsData?.categories ?? activeServer?.categories ?? [];
+  const resolvedOrphanChannels = channelsData?.orphanChannels ?? activeServer?.orphanChannels ?? [];
+  const activeChannel = resolvedCategories
+    .flatMap((c) => c.channels)
+    .find((ch) => ch.id === activeChannelId)
+    || resolvedOrphanChannels.find((ch) => ch.id === activeChannelId);
+
   // Update active channel when server changes - restore last visited or first text channel
   useEffect(() => {
     if (activeServerId) {
@@ -290,11 +298,11 @@ const Index = () => {
 
         // Try to restore last visited channel for this server
         const savedChannelId = getChannelForServer(activeServerId);
-        
-        const savedChannel = savedChannelId 
+
+        const savedChannel = savedChannelId
           ? allChannels.find(ch => ch.id === savedChannelId)
           : null;
-        
+
         if (savedChannel) {
           setActiveChannelId(savedChannel.id);
         } else {
@@ -308,14 +316,6 @@ const Index = () => {
       }
     }
   }, [activeServerId, activeChannelId, servers, resolvedCategories, resolvedOrphanChannels, getChannelForServer, setChannelForServer]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const activeServer = servers.find((s) => s.id === activeServerId);
-  const resolvedCategories = channelsData?.categories ?? activeServer?.categories ?? [];
-  const resolvedOrphanChannels = channelsData?.orphanChannels ?? activeServer?.orphanChannels ?? [];
-  const activeChannel = resolvedCategories
-    .flatMap((c) => c.channels)
-    .find((ch) => ch.id === activeChannelId)
-    || resolvedOrphanChannels.find((ch) => ch.id === activeChannelId);
 
   // Prepare channels and members for search modal
   const searchChannels = useMemo(() => {

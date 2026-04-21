@@ -407,9 +407,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
               isOwnMessage={actionMessage.author?.id === user?.id}
               isPinned={isMessagePinned(actionMessage.id)}
               onReply={() => {
-                setMessageInput((v) =>
-                  v ? v : `> ${actionMessage.content.split('\n')[0]}\n`,
-                );
+                setReplyingTo(actionMessage);
                 setActionMessage(null);
               }}
               onAddReaction={(emoji) => {

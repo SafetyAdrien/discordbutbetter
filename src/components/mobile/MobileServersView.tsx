@@ -250,15 +250,21 @@ export function MobileServersView({
 
   const selectedRawServer = rawServers.find(s => s.id === selectedServerId);
 
-  const categoriesForList = selectedRawServer?.categories.map((cat: any) => ({
+  // Cache-first: prefer hydrated channels from useChannels over potentially-empty rawServers tree
+  const { data: channelsData } = useChannels(selectedServerId);
+
+  const resolvedCategoriesSrc = channelsData?.categories ?? selectedRawServer?.categories ?? [];
+  const resolvedOrphansSrc = channelsData?.orphanChannels ?? selectedRawServer?.orphanChannels ?? [];
+
+  const categoriesForList = resolvedCategoriesSrc.map((cat: any) => ({
     id: cat.id,
     name: cat.name,
-    channels: cat.channels.map((ch: any) => ({
-    id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
-  })),
-})) || [];
+    channels: (cat.channels || []).map((ch: any) => ({
+      id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
+    })),
+  }));
 
-  const orphanChannelsForList = (selectedRawServer?.orphanChannels || []).map((ch: any) => ({
+  const orphanChannelsForList = (resolvedOrphansSrc || []).map((ch: any) => ({
     id: ch.id, name: ch.name, type: ch.type || 'text', description: ch.description, icon_url: ch.icon_url ?? null,
   }));
 

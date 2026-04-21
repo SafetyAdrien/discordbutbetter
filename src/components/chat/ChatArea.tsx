@@ -102,17 +102,37 @@ import { RepliedLine } from "@/components/chat/RepliedLine";
 import { parseRepliedMessage } from "@/lib/parse-reply";
 
 // Reply Reference Component (preview shown above input before sending)
-function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
+function ReplyReference({
+  replyTo,
+  onClear,
+  authorColor,
+}: {
+  replyTo: Message;
+  onClear: () => void;
+  authorColor?: string;
+}) {
   const MAX = 64;
   const cleaned = (replyTo.content || "").replace(/\s+/g, " ").trim();
   const truncated = cleaned.length > MAX ? cleaned.slice(0, MAX) : cleaned;
   const isTruncated = cleaned.length > MAX;
+  const initial = (replyTo.author.displayName || "?").charAt(0).toUpperCase();
   return (
     <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-3 border-primary shadow-sm">
       <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      <Avatar className="w-5 h-5 flex-shrink-0">
+        {replyTo.author.avatar && (
+          <AvatarImage src={replyTo.author.avatar} alt={replyTo.author.displayName} />
+        )}
+        <AvatarFallback className="text-[9px] bg-primary/15 text-primary font-semibold">
+          {initial}
+        </AvatarFallback>
+      </Avatar>
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        <span className="text-xs text-primary font-medium flex-shrink-0">
-          Réponse à {replyTo.author.displayName}
+        <span
+          className="text-xs font-semibold flex-shrink-0"
+          style={{ color: authorColor || "hsl(var(--primary))" }}
+        >
+          @{replyTo.author.displayName}
         </span>
         <span
           className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"

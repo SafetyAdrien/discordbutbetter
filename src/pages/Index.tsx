@@ -534,18 +534,20 @@ const Index = () => {
   // Mobile layout
   if (isMobile) {
     return (
-      <MobileLayout
-        servers={serverListData}
-        activeServerId={activeServerId}
-        activeDMId={activeDMId}
-        onServerSelect={handleServerSelect}
-        onOpenDM={handleOpenDM}
-        onShowFriends={handleShowFriends}
-        onJoinServer={handleJoinServer}
-        onCreateServer={handleCreateServer}
-        discoverableServers={discoverableServers}
-        rawServers={servers}
-      />
+      <Suspense fallback={<LoadingScreen progress={preloader.progress} currentStep={preloader.currentStep} />}>
+        <MobileLayout
+          servers={serverListData}
+          activeServerId={activeServerId}
+          activeDMId={activeDMId}
+          onServerSelect={handleServerSelect}
+          onOpenDM={handleOpenDM}
+          onShowFriends={handleShowFriends}
+          onJoinServer={handleJoinServer}
+          onCreateServer={handleCreateServer}
+          discoverableServers={discoverableServers}
+          rawServers={servers}
+        />
+      </Suspense>
     );
   }
 

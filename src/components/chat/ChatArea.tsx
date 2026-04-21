@@ -98,15 +98,35 @@ import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 import { ReactionBar } from "@/components/chat/ReactionBar";
+import { RepliedLine } from "@/components/chat/RepliedLine";
+import { parseRepliedMessage } from "@/lib/parse-reply";
 
-// Reply Reference Component
+// Reply Reference Component (preview shown above input before sending)
 function ReplyReference({ replyTo, onClear }: { replyTo: Message; onClear: () => void }) {
+  const MAX = 64;
+  const cleaned = (replyTo.content || "").replace(/\s+/g, " ").trim();
+  const truncated = cleaned.length > MAX ? cleaned.slice(0, MAX) : cleaned;
+  const isTruncated = cleaned.length > MAX;
   return (
     <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-3 border-primary shadow-sm">
       <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <span className="text-xs text-primary font-medium">Réponse à {replyTo.author.displayName}</span>
-        <p className="text-sm text-muted-foreground truncate">{replyTo.content}</p>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span className="text-xs text-primary font-medium flex-shrink-0">
+          Réponse à {replyTo.author.displayName}
+        </span>
+        <span
+          className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
+          style={{
+            maskImage: isTruncated
+              ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
+              : undefined,
+            WebkitMaskImage: isTruncated
+              ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
+              : undefined,
+          }}
+        >
+          {truncated}
+        </span>
       </div>
       <button onClick={onClear} className="p-1 hover:bg-muted rounded transition-colors">
         <X className="w-4 h-4 text-muted-foreground" />
@@ -731,7 +751,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       // Include reply reference in message if replying
       const content = replyingTo
-        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}`
+        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 80)}${replyingTo.content.length > 80 ? "..." : ""}\n\n${messageInput}`
         : messageInput;
       onSendMessage(content, attachments);
       setMessageInput("");
@@ -1423,6 +1443,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               item.timestamp.getTime() - prevItem.timestamp.getTime() > 300000;
             const isOwnMessage = user?.id === message.author.id;
             const isEditing = editingMessageId === message.id;
+            const { reply: parsedReply, body: parsedBody } = parseRepliedMessage(message.content);
             return (
               <div key={`msg-${message.id}`}>
                 {DateSeparator}
@@ -1571,9 +1592,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
-                                  <MarkdownText content={message.content} />
-                                </p>
+                                <>
+                                  {parsedReply && (
+                                    <RepliedLine
+                                      authorName={parsedReply.author}
+                                      preview={parsedReply.preview}
+                                      messages={messages}
+                                      onJump={scrollToMessage}
+                                      indent={0}
+                                      className="mb-1"
+                                    />
+                                  )}
+                                  <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
+                                    <MarkdownText content={parsedBody} />
+                                  </p>
+                                </>
                               )}
 
                               {/* Message Attachments */}
@@ -1691,9 +1724,21 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
-                                  <MarkdownText content={message.content} />
-                                </p>
+                                <>
+                                  {parsedReply && (
+                                    <RepliedLine
+                                      authorName={parsedReply.author}
+                                      preview={parsedReply.preview}
+                                      messages={messages}
+                                      onJump={scrollToMessage}
+                                      indent={0}
+                                      className="mb-1"
+                                    />
+                                  )}
+                                  <p className="text-foreground break-words max-w-full font-ginto overflow-hidden leading-[1.375rem]">
+                                    <MarkdownText content={parsedBody} />
+                                  </p>
+                                </>
                               )}
 
                               {/* Message Attachments for grouped messages */}

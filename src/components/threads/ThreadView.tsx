@@ -62,6 +62,8 @@ import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useThreadReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
+import { RepliedLine } from '@/components/chat/RepliedLine';
+import { parseRepliedMessage } from '@/lib/parse-reply';
 
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
@@ -155,6 +157,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       color: r.color || undefined
     }));
   }, [serverRoles]);
+
+  // Build memberRoles map (userId -> roles[]) for reply role badges (Discord-like)
+  const memberRoles = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; name: string; color?: string | null; icon_url?: string | null }>>();
+    for (const m of membersData) {
+      const uid = m.user?.id || m.id;
+      const roles = ((m as any).roles ?? []) as Array<{ id: string; name: string; color?: string | null; icon_url?: string | null; position?: number | null }>;
+      // Sort by position desc so the highest role is first
+      const sorted = [...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+      map.set(uid, sorted);
+    }
+    return map;
+  }, [membersData]);
+
+  // Build a lightweight authorLookup (displayName -> {id, avatar, displayName}) for legacy reply parsing
+  const replyAuthorLookup = useMemo(() => {
+    const map = new Map<string, { id: string; avatar?: string; displayName: string }>();
+    for (const m of membersData) {
+      const dn = m.user?.display_name || m.nickname || '';
+      if (!dn) continue;
+      map.set(dn, {
+        id: m.user?.id || m.id,
+        displayName: dn,
+        avatar: m.user?.avatar_url || undefined,
+      });
+    }
+    return map;
+  }, [membersData]);
   
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);
@@ -883,7 +913,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             </div>
                           ) : (
                             <div className="text-sm text-foreground break-words">
-                              <MarkdownText content={message.content} />
+                              {(() => {
+                                const { reply, body } = parseRepliedMessage(message.content);
+                                if (!reply) {
+                                  return <MarkdownText content={message.content} />;
+                                }
+                                // Resolve cited author + role badge from membersData
+                                const cited = replyAuthorLookup.get(reply.author);
+                                const citedRoles = cited ? memberRoles.get(cited.id) : undefined;
+                                const topRole = citedRoles?.[0];
+                                return (
+                                  <>
+                                    <RepliedLine
+                                      authorName={reply.author}
+                                      preview={reply.preview}
+                                      authorLookup={replyAuthorLookup}
+                                      indent={0}
+                                      authorColor={topRole?.color || undefined}
+                                      authorRoleIcon={
+                                        topRole?.icon_url
+                                          ? { iconUrl: topRole.icon_url, name: topRole.name, color: topRole.color }
+                                          : null
+                                      }
+                                      className="mb-1"
+                                    />
+                                    <MarkdownText content={body} />
+                                  </>
+                                );
+                              })()}
                             </div>
                           )}
                           {(reactionsData[message.id]?.length ?? 0) > 0 && (

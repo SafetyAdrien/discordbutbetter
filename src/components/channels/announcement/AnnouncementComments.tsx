@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
 import { useAnnouncementCommentReactions, useToggleCommentReaction } from '@/hooks/useCommentReactions';
+import { useMembers } from '@/hooks/useMembers';
 import type { AnnouncementComment } from '@/hooks/useAnnouncements';
 import type { RepliedMessageRef } from '@/types/app';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,19 @@ export function AnnouncementComments({ comments, onAddComment, onDeleteComment, 
   const [replyingTo, setReplyingTo] = useState<AnnouncementComment | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const { data: membersData = [] } = useMembers(serverId || '');
+  const memberTopRole = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; color?: string | null; icon_url?: string | null }>();
+    for (const m of membersData) {
+      const uid = (m as any).user?.id || (m as any).id;
+      const roles = (((m as any).roles ?? []) as Array<{ id: string; name: string; color?: string | null; icon_url?: string | null; position?: number | null }>)
+        .slice()
+        .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+      if (roles[0]) map.set(uid, roles[0]);
+    }
+    return map;
+  }, [membersData]);
 
   const commentIds = useMemo(() => comments.map(c => c.id), [comments]);
   const { data: reactionsData = {} } = useAnnouncementCommentReactions(commentIds);
@@ -116,14 +130,24 @@ export function AnnouncementComments({ comments, onAddComment, onDeleteComment, 
             }}
             className="rounded-lg transition-colors"
           >
-            {comment.repliedComment && (
-              <RepliedLine
-                repliedMessage={toRepliedRef(comment.repliedComment)}
-                onJump={handleJump}
-                indent={44}
-                className="mb-1"
-              />
-            )}
+            {comment.repliedComment && (() => {
+              const citedAuthorId = comment.repliedComment.author?.id;
+              const topRole = citedAuthorId ? memberTopRole.get(citedAuthorId) : undefined;
+              return (
+                <RepliedLine
+                  repliedMessage={toRepliedRef(comment.repliedComment)}
+                  onJump={handleJump}
+                  indent={44}
+                  authorColor={topRole?.color || undefined}
+                  authorRoleIcon={
+                    topRole?.icon_url
+                      ? { iconUrl: topRole.icon_url, name: topRole.name, color: topRole.color }
+                      : null
+                  }
+                  className="mb-1"
+                />
+              );
+            })()}
             <div className="flex gap-3 group">
               <Avatar className="w-8 h-8 flex-shrink-0">
                 <AvatarImage src={comment.author.avatar_url || undefined} />

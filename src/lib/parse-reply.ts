@@ -15,11 +15,13 @@ export interface ParsedReply {
   body: string;
 }
 
-// Matches:  > **Author:** preview text\n\n<body>
+// Matches:  > **Author:** preview text\n<body>  OR  > **Author** : preview text\n<body>
 // - Author cannot contain ":" or "*"
+// - Colon may be inside or outside the bold marker
+// - Allows ASCII ":" or fullwidth "："
 // - Preview is the rest of the first line
-// - Body is everything after the first blank line
-const REPLY_PATTERN = /^>\s\*\*([^:*\n]+?):\*\*\s([^\n]+)\n\n([\s\S]+)$/;
+// - Body is everything after one or more newlines
+const REPLY_PATTERN = /^>\s\*\*([^:*\n]+?)\*\*\s*[:：]\s([^\n]+)\n+([\s\S]+)$/;
 
 export function parseRepliedMessage(content: string): ParsedReply {
   if (!content) return { reply: null, body: content ?? "" };

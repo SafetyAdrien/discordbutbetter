@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useServerEmojis, useServerStickers } from '@/hooks/useServerAssets';
 import { EMOJI_CATEGORIES } from '@/data/emojis';
-import { Search, Smile, Sticker } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { EmojiPickerHeader } from './emoji-picker/EmojiPickerHeader';
+import { EmojiCategoryNav, type CategoryEntry } from './emoji-picker/EmojiCategoryNav';
+import { EmojiGrid, type EmojiGridHandle, type EmojiSection } from './emoji-picker/EmojiGrid';
+import { StickerGrid } from './emoji-picker/StickerGrid';
+import { useRecentEmojis } from './emoji-picker/useRecentEmojis';
 
 interface EmojiStickerPickerProps {
   serverId: string | null;
@@ -22,128 +23,146 @@ export function EmojiStickerPicker({
   onEmojiSelect,
   onStickerSelect,
   trigger,
-  defaultTab = 'emoji'
+  defaultTab = 'emoji',
 }: EmojiStickerPickerProps) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'emoji' | 'sticker'>(defaultTab);
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('recent');
+  const gridRef = useRef<EmojiGridHandle>(null);
+
   const { data: serverEmojis = [] } = useServerEmojis(serverId);
   const { data: serverStickers = [] } = useServerStickers(serverId);
   const { isMobile } = useBreakpoint();
+  const { recent, push: pushRecent, clear: clearRecent } = useRecentEmojis();
 
-  const handleEmojiClick = (emoji: string) => {
-    onEmojiSelect(emoji);
-    setOpen(false);
-  };
+  const totalEmojis = useMemo(
+    () => EMOJI_CATEGORIES.reduce((acc, c) => acc + c.emojis.length, 0) + serverEmojis.length,
+    [serverEmojis.length],
+  );
 
-  const handleStickerClick = (stickerUrl: string, stickerName: string) => {
-    if (onStickerSelect) {
-      onStickerSelect(stickerUrl, stickerName);
+  const sections: EmojiSection[] = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const out: EmojiSection[] = [];
+
+    // Recent
+    if (!q && recent.length > 0) {
+      out.push({
+        id: 'recent',
+        label: 'Récemment utilisés',
+        items: recent.map((char) => ({ kind: 'unicode' as const, char })),
+      });
     }
+
+    // Server emojis
+    const filteredServer = serverEmojis.filter(
+      (e) => !q || e.name.toLowerCase().includes(q),
+    );
+    if (filteredServer.length > 0) {
+      out.push({
+        id: 'server',
+        label: 'Emojis du serveur',
+        items: filteredServer.map((e) => ({
+          kind: 'custom' as const,
+          id: e.id,
+          name: e.name,
+          url: e.url,
+          insertText: `:${e.name}:`,
+        })),
+      });
+    }
+
+    // Standard categories
+    EMOJI_CATEGORIES.forEach((cat) => {
+      // Without alias data, search matches by category name only.
+      const matchesCat = !q || cat.name.toLowerCase().includes(q);
+      if (!matchesCat && q) return;
+      out.push({
+        id: cat.name,
+        label: cat.name,
+        items: cat.emojis.map((char) => ({ kind: 'unicode' as const, char })),
+      });
+    });
+
+    return out;
+  }, [search, recent, serverEmojis]);
+
+  const categories: CategoryEntry[] = useMemo(() => {
+    const list: CategoryEntry[] = [];
+    if (recent.length > 0) list.push({ id: 'recent', label: 'Récents' });
+    if (serverEmojis.length > 0) list.push({ id: 'server', label: 'Serveur' });
+    EMOJI_CATEGORIES.forEach((c) => list.push({ id: c.name, label: c.name }));
+    return list;
+  }, [recent.length, serverEmojis.length]);
+
+  const filteredStickers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return serverStickers.filter((s) => !q || s.name.toLowerCase().includes(q));
+  }, [search, serverStickers]);
+
+  const handleEmojiPick = (insert: string) => {
+    // Only push unicode chars to recents (avoid :name: shortcodes).
+    if (!insert.startsWith(':')) pushRecent(insert);
+    onEmojiSelect(insert);
     setOpen(false);
   };
 
-  const filteredCategories = EMOJI_CATEGORIES.map(category => ({
-    ...category,
-    emojis: search ? category.emojis.filter(() => true) : category.emojis
-  }));
+  const handleStickerPick = (url: string, name: string) => {
+    onStickerSelect?.(url, name);
+    setOpen(false);
+  };
 
-  const filteredServerEmojis = serverEmojis.filter(emoji =>
-    !search || emoji.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const filteredStickers = serverStickers.filter(sticker =>
-    !search || sticker.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const gridHeight = isMobile ? Math.round(window.innerHeight * 0.45) : 280;
 
   const pickerContent = (
-    <Tabs defaultValue={defaultTab} className="w-full">
-      <div className="flex items-center border-b border-white/10 px-2">
-        <TabsList className="bg-transparent h-10 p-0 gap-1">
-          <TabsTrigger value="emoji" className="data-[state=active]:bg-white/10 rounded px-3 py-1.5 gap-1.5">
-            <Smile className="w-4 h-4" />
-            Emojis
-          </TabsTrigger>
-          <TabsTrigger value="sticker" className="data-[state=active]:bg-white/10 rounded px-3 py-1.5 gap-1.5">
-            <Sticker className="w-4 h-4" />
-            Autocollants
-          </TabsTrigger>
-        </TabsList>
-      </div>
+    <div className="w-full">
+      <EmojiPickerHeader
+        tab={tab}
+        onTabChange={setTab}
+        search={search}
+        onSearchChange={setSearch}
+        totalCount={totalEmojis}
+        serverCount={serverEmojis.length}
+      />
 
-      <div className="p-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher..."
-            className="pl-8 bg-input border-none h-8 text-sm"
+      {tab === 'emoji' ? (
+        <>
+          <EmojiCategoryNav
+            categories={categories}
+            activeId={activeCategory}
+            onSelect={(id) => {
+              setActiveCategory(id);
+              gridRef.current?.scrollToSection(id);
+            }}
+            orientation="horizontal"
           />
-        </div>
-      </div>
-
-      <TabsContent value="emoji" className="m-0">
-        <ScrollArea className={isMobile ? "h-[50vh]" : "h-[280px]"}>
-          <div className="px-2 pb-2 space-y-3">
-            {filteredServerEmojis.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase px-1 mb-2">Emojis du serveur</h4>
-                <div className="grid grid-cols-8 gap-0.5">
-                  {filteredServerEmojis.map((emoji) => (
-                    <button key={emoji.id} onClick={() => handleEmojiClick(`:${emoji.name}:`)} className="w-9 h-9 flex items-center justify-center rounded hover:bg-white/10 transition-colors" title={`:${emoji.name}:`}>
-                      <img src={emoji.url} alt={emoji.name} className="w-6 h-6 object-contain" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {filteredCategories.map((category) => (
-              <div key={category.name}>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase px-1 mb-2">{category.name}</h4>
-                <div className="grid grid-cols-8 gap-0.5">
-                  {category.emojis.slice(0, search ? 24 : undefined).map((emoji, idx) => (
-                    <button key={`${category.name}-${idx}`} onClick={() => handleEmojiClick(emoji)} className="w-9 h-9 flex items-center justify-center rounded hover:bg-white/10 transition-colors text-xl">
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </TabsContent>
-
-      <TabsContent value="sticker" className="m-0">
-        <ScrollArea className={isMobile ? "h-[50vh]" : "h-[280px]"}>
-          <div className="px-2 pb-2">
-            {filteredStickers.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2">
-                {filteredStickers.map((sticker) => (
-                  <button key={sticker.id} onClick={() => handleStickerClick(sticker.url, sticker.name)} className="aspect-square rounded-lg hover:bg-white/10 transition-colors p-2 flex items-center justify-center" title={sticker.name}>
-                    <img src={sticker.url} alt={sticker.name} className="max-w-full max-h-full object-contain" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[200px] text-center text-muted-foreground">
-                <Sticker className="w-12 h-12 mb-2 opacity-50" />
-                <p className="text-sm">Aucun autocollant disponible</p>
-                <p className="text-xs mt-1">Les administrateurs peuvent ajouter des autocollants dans les paramètres du serveur</p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </TabsContent>
-    </Tabs>
+          <EmojiGrid
+            ref={gridRef}
+            sections={sections}
+            onPick={handleEmojiPick}
+            onClearRecent={clearRecent}
+            height={gridHeight}
+            isMobile={isMobile}
+          />
+        </>
+      ) : (
+        <StickerGrid
+          stickers={filteredStickers}
+          onPick={handleStickerPick}
+          height={gridHeight + 32}
+          isMobile={isMobile}
+        />
+      )}
+    </div>
   );
 
-  // Mobile: use Drawer from bottom
   if (isMobile) {
     return (
       <>
         <div onClick={() => setOpen(true)}>{trigger}</div>
         <Drawer open={open} onOpenChange={setOpen}>
-          <DrawerContent className="p-0 bg-popover">
+          <DrawerContent className="p-0 bg-popover rounded-t-3xl">
+            <div className="mx-auto mt-1.5 mb-1 h-1 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
             {pickerContent}
           </DrawerContent>
         </Drawer>
@@ -151,11 +170,15 @@ export function EmojiStickerPicker({
     );
   }
 
-  // Desktop: Popover
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent side="top" align="end" className="w-[352px] p-0 bg-popover border-none shadow-xl">
+      <PopoverContent
+        side="top"
+        align="end"
+        className="w-[380px] p-0 bg-popover border-0 rounded-2xl overflow-hidden"
+        style={{ boxShadow: 'var(--shadow-elevation-3)' }}
+      >
         {pickerContent}
       </PopoverContent>
     </Popover>

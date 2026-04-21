@@ -324,19 +324,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     if (!messageContent.trim()) return;
     
     try {
-      let content = messageContent;
-      // Prepend reply citation if replying
-      if (replyingTo) {
-        const replyAuthor = replyingTo.author?.display_name || 'Inconnu';
-        const replyPreview = replyingTo.content.length > 50 
-          ? replyingTo.content.slice(0, 50) + '...' 
-          : replyingTo.content;
-        content = `> **${replyAuthor}** : ${replyPreview}\n${content}`;
-      }
-      
       await sendMessage.mutateAsync({
         threadId,
-        content,
+        content: messageContent,
+        replyToId: replyingTo?.id ?? null,
       });
       setMessageContent('');
       setReplyingTo(null);

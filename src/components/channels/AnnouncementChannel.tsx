@@ -339,7 +339,7 @@ export function AnnouncementChannel({
       setIsSending(true);
       setTimeout(() => setIsSending(false), 400);
       const content = replyingTo
-        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 100)}${replyingTo.content.length > 100 ? "..." : ""}\n\n${messageInput}`
+        ? `> **${replyingTo.author.displayName}:** ${replyingTo.content.substring(0, 80)}${replyingTo.content.length > 80 ? "..." : ""}\n\n${messageInput}`
         : messageInput;
       sendMessageMutation.mutate({ channelId: channel.id, content });
       setMessageInput("");

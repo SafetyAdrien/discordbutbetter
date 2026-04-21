@@ -160,7 +160,25 @@ export function usePreloader(
 
     // === ESSENTIAL: messages for active channel (cache only, no fetch — useMessages handles fetch) ===
     (async () => {
-      if (!targetChannelId) {
+      if (!targetChannelId || !targetServerId) {
+        setActiveMessagesLoaded(true);
+        return;
+      }
+      // Validate that this channel still exists in the cached channels tree for the target server.
+      // Otherwise we'd boot the user directly into a vanished channel and trigger an infinite spinner.
+      const channelsCached = readCache<any>(`channels:${targetServerId}`);
+      let channelExists = false;
+      if (channelsCached) {
+        const all = [
+          ...((channelsCached.categories || []).flatMap((c: any) => c.channels || [])),
+          ...(channelsCached.orphanChannels || []),
+        ];
+        channelExists = all.some((ch: any) => ch.id === targetChannelId);
+      } else {
+        // No cache yet — assume valid; MobileLayout will recover if it turns out to be gone
+        channelExists = true;
+      }
+      if (!channelExists) {
         setActiveMessagesLoaded(true);
         return;
       }

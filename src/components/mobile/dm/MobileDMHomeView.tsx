@@ -24,8 +24,6 @@ type FilterId = 'all' | 'unread' | 'groups' | 'favorites';
 interface Props {
   activeDMId: string | null;
   onConversationSelect: (id: string) => void;
-  onShowFriends: () => void;
-  onShowInbox: () => void;
   onOpenProfile?: () => void;
 }
 
@@ -35,8 +33,6 @@ const WEEK_MS = 7 * TODAY_MS;
 export function MobileDMHomeView({
   activeDMId: _activeDMId,
   onConversationSelect,
-  onShowFriends,
-  onShowInbox,
   onOpenProfile,
 }: Props) {
   const { user, profile } = useAuth();
@@ -51,7 +47,6 @@ export function MobileDMHomeView({
   const [filter, setFilter] = useState<FilterId>('all');
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [actionItem, setActionItem] = useState<MobileDMListItemData | null>(null);
   const fabHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);

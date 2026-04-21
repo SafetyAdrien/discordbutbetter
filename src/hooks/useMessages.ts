@@ -210,6 +210,7 @@ export function useMessages(channelId: string | null) {
               attachments,
               channel_id,
               is_system,
+              reply_to_id,
               author:profiles!messages_author_id_fkey (
                 id,
                 username,
@@ -223,15 +224,54 @@ export function useMessages(channelId: string | null) {
             .single();
 
           if (data) {
-            const parsedData = {
-              ...data,
-              attachments: Array.isArray(data.attachments) ? data.attachments : []
+            // Resolve replied message snapshot if needed
+            let repliedMessage: RepliedMessageSnapshot | null = null;
+            if ((data as any).reply_to_id) {
+              const { data: replyData } = await supabase
+                .from('messages')
+                .select(`
+                  id, content, attachments,
+                  author:profiles!messages_author_id_fkey (
+                    id, username, display_name, avatar_url
+                  )
+                `)
+                .eq('id', (data as any).reply_to_id)
+                .maybeSingle();
+              if (replyData) {
+                const r = replyData as any;
+                repliedMessage = {
+                  id: r.id,
+                  content: r.content || '',
+                  attachments: Array.isArray(r.attachments) ? r.attachments : [],
+                  author: r.author
+                    ? {
+                        id: r.author.id,
+                        username: r.author.username,
+                        display_name: r.author.display_name,
+                        avatar_url: r.author.avatar_url,
+                      }
+                    : null,
+                };
+              } else {
+                repliedMessage = {
+                  id: (data as any).reply_to_id,
+                  content: '',
+                  attachments: [],
+                  deleted: true,
+                  author: null,
+                };
+              }
+            }
+
+            const parsedData: MessageWithAuthor = {
+              ...(data as any),
+              attachments: Array.isArray((data as any).attachments) ? (data as any).attachments : [],
+              repliedMessage,
             };
             queryClient.setQueryData(
               ['messages', channelId],
               (old: MessageWithAuthor[] | undefined) => {
                 if (!old) return [parsedData];
-                // Check if message already exists
                 if (old.some((m) => m.id === parsedData.id)) return old;
                 return [...old, parsedData];
               }

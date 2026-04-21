@@ -82,11 +82,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState<DMMessage | null>(null);
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
   const [profileInitialTab, setProfileInitialTab] = useState<'about' | 'servers' | 'friends'>('about');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   const { user, profile } = useAuth();
   const isShiftPressed = useShiftKey();

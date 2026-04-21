@@ -78,6 +78,7 @@ export function RepliedLine({
   onJump,
   indent = 50,
   authorColor,
+  authorRoleIcon,
   className,
 }: RepliedLineProps) {
   // ---- Resolve display data ----

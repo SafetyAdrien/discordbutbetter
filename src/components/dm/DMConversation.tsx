@@ -197,8 +197,15 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleReply = (message: DMMessage) => {
-    // TODO: Implement reply
-    console.log('Reply to', message.id);
+    setReplyingTo(message);
+  };
+
+  const handleJumpToMessage = (id: string) => {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('message-mentioned');
+    setTimeout(() => el.classList.remove('message-mentioned'), 1500);
   };
 
   const handleStartEdit = (message: DMMessage) => {

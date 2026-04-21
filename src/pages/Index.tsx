@@ -1,32 +1,25 @@
-import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DMPage } from '@/components/dm/DMPage';
-
-// Lazy-loaded modals (rarely opened — keep out of initial bundle)
-const DiscoverModal = lazy(() => import('@/components/modals/DiscoverModal').then(m => ({ default: m.DiscoverModal })));
-const CreateServerModal = lazy(() => import('@/components/modals/CreateServerModal').then(m => ({ default: m.CreateServerModal })));
-const ServerSettingsModal = lazy(() => import('@/components/server-settings/ServerSettingsModal').then(m => ({ default: m.ServerSettingsModal })));
-const KeyboardShortcutsModal = lazy(() => import('@/components/modals/KeyboardShortcutsModal').then(m => ({ default: m.KeyboardShortcutsModal })));
-const GlobalSearchModal = lazy(() => import('@/components/modals/GlobalSearchModal').then(m => ({ default: m.GlobalSearchModal })));
-
-// Lazy-loaded channel types (only one is rendered at a time, none on mobile route)
-const MediaChannel = lazy(() => import('@/components/channels/MediaChannel').then(m => ({ default: m.MediaChannel })));
-const ForumChannel = lazy(() => import('@/components/channels/ForumChannel').then(m => ({ default: m.ForumChannel })));
-const TasksChannel = lazy(() => import('@/components/channels/TasksChannel').then(m => ({ default: m.TasksChannel })));
-const CalendarChannel = lazy(() => import('@/components/channels/CalendarChannel').then(m => ({ default: m.CalendarChannel })));
-const AnnouncementChannel = lazy(() => import('@/components/channels/AnnouncementChannel').then(m => ({ default: m.AnnouncementChannel })));
-const VoiceChannelView = lazy(() => import('@/components/channels/VoiceChannelView').then(m => ({ default: m.VoiceChannelView })));
-const StageChannel = lazy(() => import('@/components/channels/StageChannel').then(m => ({ default: m.StageChannel })));
-const ThreadView = lazy(() => import('@/components/threads/ThreadView'));
-
-// Lazy-loaded device-specific layouts — never load the wrong one
-const MobileLayout = lazy(() => import('@/components/mobile/MobileLayout').then(m => ({ default: m.MobileLayout })));
-// TabletLayout is unused in render but kept lazy in case it gets re-enabled
-// const TabletLayout = lazy(() => import('@/components/tablet/TabletLayout').then(m => ({ default: m.TabletLayout })));
+import { DiscoverModal } from '@/components/modals/DiscoverModal';
+import { CreateServerModal } from '@/components/modals/CreateServerModal';
+import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
+import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
+import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
+import { MediaChannel } from '@/components/channels/MediaChannel';
+import { ForumChannel } from '@/components/channels/ForumChannel';
+import { TasksChannel } from '@/components/channels/TasksChannel';
+import { CalendarChannel } from '@/components/channels/CalendarChannel';
+import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
+import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
+import { StageChannel } from '@/components/channels/StageChannel';
+import ThreadView from '@/components/threads/ThreadView';
+import { MobileLayout } from '@/components/mobile/MobileLayout';
+import { TabletLayout } from '@/components/tablet/TabletLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
@@ -534,20 +527,18 @@ const Index = () => {
   // Mobile layout
   if (isMobile) {
     return (
-      <Suspense fallback={<LoadingScreen progress={preloader.progress} currentStep={preloader.currentStep} />}>
-        <MobileLayout
-          servers={serverListData}
-          activeServerId={activeServerId}
-          activeDMId={activeDMId}
-          onServerSelect={handleServerSelect}
-          onOpenDM={handleOpenDM}
-          onShowFriends={handleShowFriends}
-          onJoinServer={handleJoinServer}
-          onCreateServer={handleCreateServer}
-          discoverableServers={discoverableServers}
-          rawServers={servers}
-        />
-      </Suspense>
+      <MobileLayout
+        servers={serverListData}
+        activeServerId={activeServerId}
+        activeDMId={activeDMId}
+        onServerSelect={handleServerSelect}
+        onOpenDM={handleOpenDM}
+        onShowFriends={handleShowFriends}
+        onJoinServer={handleJoinServer}
+        onCreateServer={handleCreateServer}
+        discoverableServers={discoverableServers}
+        rawServers={servers}
+      />
     );
   }
 
@@ -600,7 +591,6 @@ const Index = () => {
   ) : null;
 
   return (
-    <Suspense fallback={<LoadingScreen progress={preloader.progress} currentStep={preloader.currentStep} />}>
     <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
       {/* Server List - compact rail on tablet (64px) */}
       <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>
@@ -866,7 +856,6 @@ const Index = () => {
         />
       )}
     </div>
-    </Suspense>
   );
 };
 

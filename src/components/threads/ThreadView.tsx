@@ -157,6 +157,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       color: r.color || undefined
     }));
   }, [serverRoles]);
+
+  // Build memberRoles map (userId -> roles[]) for reply role badges (Discord-like)
+  const memberRoles = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; name: string; color?: string | null; icon_url?: string | null }>>();
+    for (const m of membersData) {
+      const uid = m.user?.id || m.id;
+      const roles = ((m as any).roles ?? []) as Array<{ id: string; name: string; color?: string | null; icon_url?: string | null; position?: number | null }>;
+      // Sort by position desc so the highest role is first
+      const sorted = [...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+      map.set(uid, sorted);
+    }
+    return map;
+  }, [membersData]);
+
+  // Build a lightweight authorLookup (displayName -> {id, avatar, displayName}) for legacy reply parsing
+  const replyAuthorLookup = useMemo(() => {
+    const map = new Map<string, { id: string; avatar?: string; displayName: string }>();
+    for (const m of membersData) {
+      const dn = m.user?.display_name || m.nickname || '';
+      if (!dn) continue;
+      map.set(dn, {
+        id: m.user?.id || m.id,
+        displayName: dn,
+        avatar: m.user?.avatar_url || undefined,
+      });
+    }
+    return map;
+  }, [membersData]);
   
   // Typing indicator for threads
   const { startTyping, stopTyping } = useTypingIndicator(null, null, threadId);

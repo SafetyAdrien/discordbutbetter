@@ -1608,13 +1608,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </div>
                               ) : (
                                 <>
-                                  {parsedReply && (
+                                  {(message.repliedMessage || parsedReply) && (
                                     <RepliedLine
-                                      authorName={parsedReply.author}
-                                      preview={parsedReply.preview}
+                                      repliedMessage={message.repliedMessage ?? null}
+                                      authorName={parsedReply?.author}
+                                      preview={parsedReply?.preview}
                                       messages={messages}
                                       onJump={scrollToMessage}
                                       indent={0}
+                                      authorColor={
+                                        message.repliedMessage?.author
+                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
+                                          : undefined
+                                      }
                                       className="mb-1"
                                     />
                                   )}
@@ -1740,13 +1746,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </div>
                               ) : (
                                 <>
-                                  {parsedReply && (
+                                  {(message.repliedMessage || parsedReply) && (
                                     <RepliedLine
-                                      authorName={parsedReply.author}
-                                      preview={parsedReply.preview}
+                                      repliedMessage={message.repliedMessage ?? null}
+                                      authorName={parsedReply?.author}
+                                      preview={parsedReply?.preview}
                                       messages={messages}
                                       onJump={scrollToMessage}
                                       indent={0}
+                                      authorColor={
+                                        message.repliedMessage?.author
+                                          ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
+                                          : undefined
+                                      }
                                       className="mb-1"
                                     />
                                   )}

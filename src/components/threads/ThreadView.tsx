@@ -799,6 +799,34 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       }) : undefined}
                     >
                       {(() => {
+                        // Prefer real reply snapshot (reply_to_id resolved). Fallback: legacy markdown blockquote.
+                        if (message.repliedMessage) {
+                          const cited = message.repliedMessage;
+                          const citedRoles = cited.author ? memberRoles.get(cited.author.id) : undefined;
+                          const topRole = citedRoles?.[0];
+                          return (
+                            <RepliedLine
+                              repliedMessage={{
+                                id: cited.id,
+                                content: cited.content,
+                                deleted: cited.deleted,
+                                attachments: cited.attachments || [],
+                                author: cited.author
+                                  ? {
+                                      id: cited.author.id,
+                                      username: cited.author.username,
+                                      displayName: cited.author.display_name,
+                                      avatar: cited.author.avatar_url || undefined,
+                                    }
+                                  : null,
+                              }}
+                              indent={44}
+                              authorColor={topRole?.color || undefined}
+                              authorRole={topRole ?? null}
+                              className="mb-1"
+                            />
+                          );
+                        }
                         const { reply } = parseRepliedMessage(message.content);
                         if (!reply) return null;
                         const cited = replyAuthorLookup.get(reply.author);
@@ -817,7 +845,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         );
                       })()}
                       <SwipeToReplyRow
-                        enabled={isMobile}
+                        enabled={isMobile || isTablet}
                         onReply={() => setReplyingTo(message)}
                         onDoubleTap={() => handleAddReaction(message.id, '❤️')}
                       >

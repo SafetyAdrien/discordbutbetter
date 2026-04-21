@@ -461,7 +461,7 @@ export function MobileLayout({
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
 
   // Swipe between tabs
-  const TAB_ORDER: MobileTab[] = ['servers', 'discuss', 'notifications', 'profile'];
+  const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
 
   const handleSwipeTab = useCallback((newIndex: number) => {

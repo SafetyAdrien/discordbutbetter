@@ -756,6 +756,7 @@ export type Database = {
           created_at: string | null
           edited_at: string | null
           id: string
+          reply_to_id: string | null
         }
         Insert: {
           attachments?: Json | null
@@ -765,6 +766,7 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
         }
         Update: {
           attachments?: Json | null
@@ -774,6 +776,7 @@ export type Database = {
           created_at?: string | null
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
         }
         Relationships: [
           {
@@ -788,6 +791,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "dm_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -1269,6 +1279,7 @@ export type Database = {
           is_system: boolean
           original_message_id: string | null
           publish_dismissed: boolean | null
+          reply_to_id: string | null
           source_channel_name: string | null
           source_server_icon: string | null
           source_server_id: string | null
@@ -1287,6 +1298,7 @@ export type Database = {
           is_system?: boolean
           original_message_id?: string | null
           publish_dismissed?: boolean | null
+          reply_to_id?: string | null
           source_channel_name?: string | null
           source_server_icon?: string | null
           source_server_id?: string | null
@@ -1305,6 +1317,7 @@ export type Database = {
           is_system?: boolean
           original_message_id?: string | null
           publish_dismissed?: boolean | null
+          reply_to_id?: string | null
           source_channel_name?: string | null
           source_server_icon?: string | null
           source_server_id?: string | null
@@ -1329,6 +1342,13 @@ export type Database = {
           {
             foreignKeyName: "messages_original_message_id_fkey"
             columns: ["original_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
             isOneToOne: false
             referencedRelation: "messages"
             referencedColumns: ["id"]

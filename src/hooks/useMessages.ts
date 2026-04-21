@@ -24,6 +24,19 @@ export interface StoredAttachment {
   isSpoiler?: boolean;
 }
 
+export interface RepliedMessageSnapshot {
+  id: string;
+  content: string;
+  attachments: StoredAttachment[];
+  deleted?: boolean;
+  author: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 export interface MessageWithAuthor {
   id: string;
   content: string;
@@ -38,6 +51,8 @@ export interface MessageWithAuthor {
   is_published_message?: boolean | null;
   publish_dismissed?: boolean | null;
   is_system?: boolean;
+  reply_to_id?: string | null;
+  repliedMessage?: RepliedMessageSnapshot | null;
   author: {
     id: string;
     username: string;
@@ -69,6 +84,7 @@ export function useMessages(channelId: string | null) {
           edited_at,
           attachments,
           channel_id,
+          reply_to_id,
           source_server_id,
           source_server_name,
           source_server_icon,
@@ -91,10 +107,66 @@ export function useMessages(channelId: string | null) {
 
       if (error) throw error;
 
-      return (data as any[]).map(msg => ({
+      const baseMessages: MessageWithAuthor[] = (data as any[]).map((msg) => ({
         ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : []
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
       })) as MessageWithAuthor[];
+
+      // Resolve replied messages in a single batched query
+      const replyIds = Array.from(
+        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
+      );
+
+      let replyMap = new Map<string, RepliedMessageSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('messages')
+          .select(`
+            id,
+            content,
+            attachments,
+            author:profiles!messages_author_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .in('id', replyIds);
+
+        if (replyData) {
+          for (const r of replyData as any[]) {
+            replyMap.set(r.id, {
+              id: r.id,
+              content: r.content || '',
+              attachments: Array.isArray(r.attachments) ? r.attachments : [],
+              author: r.author
+                ? {
+                    id: r.author.id,
+                    username: r.author.username,
+                    display_name: r.author.display_name,
+                    avatar_url: r.author.avatar_url,
+                  }
+                : null,
+            });
+          }
+        }
+      }
+
+      return baseMessages.map((m) => {
+        if (!m.reply_to_id) return m;
+        const snap = replyMap.get(m.reply_to_id);
+        return {
+          ...m,
+          repliedMessage: snap ?? {
+            id: m.reply_to_id,
+            content: '',
+            attachments: [],
+            deleted: true,
+            author: null,
+          },
+        };
+      });
     },
     enabled: !!channelId && !!user,
     initialData: cachedMessages,
@@ -138,6 +210,7 @@ export function useMessages(channelId: string | null) {
               attachments,
               channel_id,
               is_system,
+              reply_to_id,
               author:profiles!messages_author_id_fkey (
                 id,
                 username,
@@ -151,15 +224,54 @@ export function useMessages(channelId: string | null) {
             .single();
 
           if (data) {
-            const parsedData = {
-              ...data,
-              attachments: Array.isArray(data.attachments) ? data.attachments : []
+            // Resolve replied message snapshot if needed
+            let repliedMessage: RepliedMessageSnapshot | null = null;
+            if ((data as any).reply_to_id) {
+              const { data: replyData } = await supabase
+                .from('messages')
+                .select(`
+                  id, content, attachments,
+                  author:profiles!messages_author_id_fkey (
+                    id, username, display_name, avatar_url
+                  )
+                `)
+                .eq('id', (data as any).reply_to_id)
+                .maybeSingle();
+              if (replyData) {
+                const r = replyData as any;
+                repliedMessage = {
+                  id: r.id,
+                  content: r.content || '',
+                  attachments: Array.isArray(r.attachments) ? r.attachments : [],
+                  author: r.author
+                    ? {
+                        id: r.author.id,
+                        username: r.author.username,
+                        display_name: r.author.display_name,
+                        avatar_url: r.author.avatar_url,
+                      }
+                    : null,
+                };
+              } else {
+                repliedMessage = {
+                  id: (data as any).reply_to_id,
+                  content: '',
+                  attachments: [],
+                  deleted: true,
+                  author: null,
+                };
+              }
+            }
+
+            const parsedData: MessageWithAuthor = {
+              ...(data as any),
+              attachments: Array.isArray((data as any).attachments) ? (data as any).attachments : [],
+              repliedMessage,
             };
             queryClient.setQueryData(
               ['messages', channelId],
               (old: MessageWithAuthor[] | undefined) => {
                 if (!old) return [parsedData];
-                // Check if message already exists
                 if (old.some((m) => m.id === parsedData.id)) return old;
                 return [...old, parsedData];
               }
@@ -274,10 +386,12 @@ export function useSendMessage() {
       channelId,
       content,
       attachments = [],
+      replyToId,
     }: {
       channelId: string;
       content: string;
       attachments?: PendingAttachment[];
+      replyToId?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -293,14 +407,17 @@ export function useSendMessage() {
         uploadedAttachments = await uploadAttachments(user.id, attachments);
       }
 
+      const insertPayload: any = {
+        channel_id: channelId,
+        content: validated.content,
+        author_id: user.id,
+        attachments: uploadedAttachments.length > 0 ? (uploadedAttachments as unknown as any) : [],
+      };
+      if (replyToId) insertPayload.reply_to_id = replyToId;
+
       const { data, error } = await supabase
         .from('messages')
-        .insert({
-          channel_id: channelId,
-          content: validated.content,
-          author_id: user.id,
-          attachments: uploadedAttachments.length > 0 ? (uploadedAttachments as unknown as any) : [],
-        })
+        .insert(insertPayload)
         .select(`
           id,
           content,
@@ -308,6 +425,7 @@ export function useSendMessage() {
           edited_at,
           attachments,
           channel_id,
+          reply_to_id,
           author:profiles!messages_author_id_fkey (
             id,
             username,
@@ -320,12 +438,53 @@ export function useSendMessage() {
         .single();
 
       if (error) throw error;
+
+      // Resolve replied snapshot for the inserted message
+      let repliedMessage: RepliedMessageSnapshot | null = null;
+      if (replyToId) {
+        const { data: replyData } = await supabase
+          .from('messages')
+          .select(`
+            id, content, attachments,
+            author:profiles!messages_author_id_fkey (
+              id, username, display_name, avatar_url
+            )
+          `)
+          .eq('id', replyToId)
+          .maybeSingle();
+        if (replyData) {
+          const r = replyData as any;
+          repliedMessage = {
+            id: r.id,
+            content: r.content || '',
+            attachments: Array.isArray(r.attachments) ? r.attachments : [],
+            author: r.author
+              ? {
+                  id: r.author.id,
+                  username: r.author.username,
+                  display_name: r.author.display_name,
+                  avatar_url: r.author.avatar_url,
+                }
+              : null,
+          };
+        } else {
+          repliedMessage = {
+            id: replyToId,
+            content: '',
+            attachments: [],
+            deleted: true,
+            author: null,
+          };
+        }
+      }
+
       return {
         ...data,
-        attachments: (Array.isArray(data.attachments) ? data.attachments : []) as unknown as StoredAttachment[]
+        attachments: (Array.isArray(data.attachments) ? data.attachments : []) as unknown as StoredAttachment[],
+        repliedMessage,
       } as MessageWithAuthor;
     },
-    onMutate: async ({ channelId, content, attachments = [] }) => {
+    onMutate: async ({ channelId, content, attachments = [], replyToId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
 
@@ -340,12 +499,33 @@ export function useSendMessage() {
         id: a.id,
         url: a.previewUrl,
         name: a.name,
-        type: a.file.type.startsWith('image/') ? 'image' : 
+        type: a.file.type.startsWith('image/') ? 'image' :
               a.file.type.startsWith('video/') ? 'video' : 'file',
         size: a.file.size,
         description: a.description || undefined,
         isSpoiler: a.isSpoiler,
       }));
+
+      // Optimistic replied snapshot from cache
+      let optimisticReplied: RepliedMessageSnapshot | null = null;
+      if (replyToId && previousMessages) {
+        const src = previousMessages.find((m) => m.id === replyToId);
+        if (src) {
+          optimisticReplied = {
+            id: src.id,
+            content: src.content || '',
+            attachments: src.attachments || [],
+            author: src.author
+              ? {
+                  id: src.author.id,
+                  username: src.author.username,
+                  display_name: src.author.display_name,
+                  avatar_url: src.author.avatar_url,
+                }
+              : null,
+          };
+        }
+      }
 
       // Optimistically add the message
       const optimisticMessage: MessageWithAuthor = {
@@ -355,6 +535,8 @@ export function useSendMessage() {
         edited_at: null,
         attachments: optimisticAttachments,
         channel_id: channelId,
+        reply_to_id: replyToId ?? null,
+        repliedMessage: optimisticReplied,
         author: profile
           ? {
               id: profile.id,

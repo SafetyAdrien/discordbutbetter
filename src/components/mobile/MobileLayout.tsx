@@ -177,9 +177,9 @@ export function MobileLayout({
 
   const currentServer = rawServers.find(s => s.id === currentServerId);
 
-  const handleSendMessage = (content: string, attachments?: any[]) => {
+  const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null) => {
     if (mobileView.type === 'chat') {
-      sendMessage.mutate({ channelId: mobileView.channelId, content, attachments: attachments || [] });
+      sendMessage.mutate({ channelId: mobileView.channelId, content, attachments: attachments || [], replyToId: replyToId ?? null });
     }
   };
 
@@ -246,6 +246,23 @@ export function MobileLayout({
     attachments: m.attachments || [],
     isSystemMessage: m.author === null,
     edited_at: m.edited_at,
+    replyToId: m.reply_to_id ?? null,
+    repliedMessage: m.repliedMessage
+      ? {
+          id: m.repliedMessage.id,
+          content: m.repliedMessage.content,
+          attachments: m.repliedMessage.attachments || [],
+          deleted: m.repliedMessage.deleted,
+          author: m.repliedMessage.author
+            ? {
+                id: m.repliedMessage.author.id,
+                username: m.repliedMessage.author.username,
+                displayName: m.repliedMessage.author.display_name,
+                avatar: m.repliedMessage.author.avatar_url || undefined,
+              }
+            : null,
+        }
+      : null,
     author: m.author === null ? {
       id: 'system', username: 'system', displayName: 'Système', status: 'online' as const,
     } : {

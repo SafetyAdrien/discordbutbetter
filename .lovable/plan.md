@@ -1,54 +1,68 @@
 
 
-# Système de réponse Discord-like — uniformisation sur toutes les surfaces
+# Correctif fidèle du système de réponse Discord-like
 
-## Constat
+## Vrais problèmes (ce que j'ai raté)
 
-Le composant `RepliedLine` (ChatArea, DM, MobileMessageBubble, Annonces, Médias) produit déjà le rendu attendu : flèche + mini-avatar + `@auteur` (couleur de rôle) + aperçu, sur une ligne fine avec un connecteur en "L". **Mais 3 problèmes empêchent la cohérence :**
+D'après la capture de référence, deux défauts visuels rendent le résultat actuel **non-conforme** :
 
-1. **Threads (`ThreadView`)** : le contenu est rendu brut via `MarkdownText`, donc la citation `> **Auteur** : preview` apparaît comme un bloc Markdown (gros barre verticale grise), pas comme la ligne de réponse Discord.
-2. **`parseRepliedMessage`** exige `\n\n` (double saut) entre la citation et le corps, alors que `ThreadView` n'écrit qu'un seul `\n`. Le parser échouerait même si appelé.
-3. **Pas de pastille de rôle** (icône à droite du `@auteur`) dans `RepliedLine`, alors que la capture de référence la montre clairement (pastille `HYTL` à droite du pseudo).
+### 1. Le connecteur en L est invisible
+Dans `ChatArea`, `RepliedLine` est rendu avec `indent={0}` à l'intérieur du conteneur `<div className="flex-1 min-w-0 overflow-hidden">`. Le SVG du connecteur est positionné à `left: indent - 30 = -30px` — donc **hors** du conteneur parent, qui a `overflow-hidden`. Résultat : la flèche/courbe en L est clippée et invisible.
+
+Sur la capture de référence, le connecteur **sort visuellement vers la gauche** dans la gouttière de l'avatar parent, juste comme Discord.
+
+### 2. Le badge de rôle n'est pas un "pill" interactif
+J'ai branché un simple `<img w-3.5 h-3.5>` au lieu de réutiliser **`RoleBadgePopover`** (le composant déjà utilisé pour le username au-dessus, ligne 1559 de ChatArea). Du coup :
+- pas de tooltip au survol
+- pas de popover détaillé du rôle au clic
+- visuel incohérent avec la ligne du message principal
 
 ## Correctifs
 
-### 1. `src/lib/parse-reply.ts` — Tolérance au saut de ligne simple
-Étendre la regex pour accepter `\n` ou `\n\n` après la citation :  
-`/^>\s\*\*([^:*\n]+?)\*\*\s*[:：]\s([^\n]+)\n+([\s\S]+)$/`  
-Cela couvre le format produit par `ThreadView` (`> **Author** : preview\nbody`) et l'ancien format ChatArea (`\n\n`).
+### A. `src/components/chat/RepliedLine.tsx`
+**Réécriture du rendu du connecteur L** pour qu'il soit toujours visible, même quand `indent=0` :
+- Utiliser `position: relative` sur le conteneur parent et déplacer le SVG en `position: absolute` avec `left: -30px` ET `pointer-events: none`.
+- Ajouter `overflow-visible` explicite sur le conteneur de RepliedLine pour court-circuiter l'`overflow-hidden` hérité.
+- Le SVG dessine la courbe partant de bas à gauche (sortant dans la gouttière) jusqu'à droite vers le mini-avatar.
 
-### 2. `src/components/chat/RepliedLine.tsx` — Ajout pastille de rôle
-Nouvelle prop optionnelle `authorRoleIcon?: { iconUrl: string; name: string; color?: string | null }`.  
-Quand fournie, rendre `<RoleBadgePopover>` (taille mini : `w-3.5 h-3.5`) juste après le `@auteur`. Le composant existant `RoleBadgePopover` est réutilisé tel quel — seule la taille de l'icône est réduite via une variante prop ou wrapper inline.
+**Remplacer le rendu manuel du badge de rôle** par le composant `RoleBadgePopover` existant :
+- Importer `RoleBadgePopover`.
+- Quand `authorRoleIcon` (renommé `authorRole`) est fourni, instancier `<RoleBadgePopover role={authorRole} />`.
+- Ajouter une prop CSS de réduction (`scale-75` ou wrapper `[&>button>img]:w-3.5 [&>button>img]:h-3.5`) pour la taille compacte.
 
-### 3. `src/components/threads/ThreadView.tsx` — Rendu Discord-like des réponses
-Au lieu de rendre `<MarkdownText content={message.content} />` directement (ligne 886), introduire :
-```ts
-const { reply, body } = parseRepliedMessage(message.content);
+### B. `src/components/chat/ChatArea.tsx`
+- Aux deux emplacements (lignes 1633 et 1779), changer la prop `authorRoleIcon={...}` en `authorRole={memberRoles?.get(...)?.[0] ?? null}` (passer l'objet rôle complet, pas un sous-objet manuel) pour permettre à `RoleBadgePopover` d'afficher le tooltip + popover.
+- Garantir que le conteneur parent **autour** de `RepliedLine` n'a pas `overflow-hidden` qui clippe la gouttière. Si besoin, wrapper dans `<div className="overflow-visible">` ou retirer `overflow-hidden` du parent direct quand un `RepliedLine` est présent.
+
+### C. `src/components/threads/ThreadView.tsx`
+- Idem : passer `authorRole={topRole ?? null}` au lieu de l'objet manuel.
+- Vérifier que le conteneur du message dans ThreadView n'a pas non plus `overflow-hidden` au-dessus.
+
+### D. `src/components/channels/announcement/AnnouncementComments.tsx` & `src/components/channels/media/MediaComments.tsx`
+- Même mise à jour : passer `authorRole={role}` complet à `RepliedLine`.
+- Vérifier `overflow-visible` sur le conteneur parent du commentaire.
+
+### E. DM (`DMConversation.tsx`, `MobileMessageBubble.tsx`)
+- Pas de rôle ⇒ pas de badge à passer (déjà conforme).
+- Vérifier que la gouttière à gauche reste visible (pas de clip).
+
+## Résultat attendu (strictement la capture)
+
 ```
-Puis :
-- Si `reply` détecté : afficher `<RepliedLine authorName={reply.author} preview={reply.preview} messages={items.filter(i => i.type==='message').map(i => i.data)} onJump={…} indent={32} authorColor={…} authorRoleIcon={…} />` au-dessus du `MarkdownText content={body}`.
-- Sinon : conserver le rendu actuel.
-La résolution de la couleur/badge passe par la map `memberRoles` déjà disponible dans `ThreadView`, en cherchant l'auteur cité par `display_name` dans `membersData`.
+↰ [avatar] @Adrien_Sama [HYTL pill] Message de réponse.
+   [Avatar parent] Adrien_Sama 08:54
+                   Message répondu.
+```
 
-### 4. `src/components/chat/ChatArea.tsx` — Brancher la pastille de rôle
-Aux deux emplacements existants de `<RepliedLine>` (lignes 1634 et 1772), ajouter `authorRoleIcon` calculé via `memberRoles.get(message.repliedMessage?.author?.id)?.[0]` lorsqu'`icon_url` existe.
-
-### 5. `src/components/dm/DMConversation.tsx` & `src/components/mobile/dm/MobileMessageBubble.tsx`
-Pas de pastille de rôle en DM (les rôles n'existent pas hors serveur). Aucune modification fonctionnelle, sauf vérifier que `indent` reste cohérent avec l'avatar du bubble.
-
-### 6. `src/components/channels/announcement/AnnouncementComments.tsx` & `src/components/channels/media/MediaComments.tsx`
-Brancher `authorRoleIcon` de la même façon que ChatArea quand l'auteur cité est membre du serveur courant (`memberRoles` accessible via `useMembers`).
-
-## Résultat attendu
-
-- **Threads** : la citation apparaît désormais comme la ligne fine Discord-like (flèche + mini-avatar + `@pseudo` coloré + aperçu), strictement identique à ChatArea/DM/Mobile.
-- **ChatArea, Annonces, Médias** : la pastille de rôle (icône d'icon_url) s'affiche à droite du `@pseudo` cité, exactement comme dans la capture de référence.
-- **Mobile (DM bubbles + chat serveur)** : déjà conforme, juste vérification d'alignement.
-- **Format texte stocké** : compatible avec et sans double saut de ligne — aucune migration de données nécessaire.
+- Connecteur L visible, qui descend depuis la zone de l'avatar du message principal vers la ligne de réponse.
+- Pseudo coloré avec couleur de rôle.
+- Badge `HYTL` rendu via `RoleBadgePopover` (cliquable, hover-tooltip).
+- Comportement strictement identique sur ChatArea, ThreadView, AnnouncementComments, MediaComments — et inchangé sur DM/Mobile (sans rôle).
 
 ## Détails techniques
 
-- Aucune modification de schéma DB. Le système `reply_to_id` (snapshots `repliedMessage`) reste prioritaire ; le parsing markdown est le fallback historique étendu aux threads.
-- `RoleBadgePopover` réutilisé tel quel ; un wrapper `className` ajustera la taille pour l'usage compact.
-- Touche-aucun fichier auto-géré (`types.ts`, `client.ts`, `.env`).
+- Aucun changement de schéma ni de regex `parse-reply` (déjà conforme depuis l'itération précédente).
+- `RoleBadgePopover` est réutilisé tel quel ; un wrapper CSS local le redimensionne en taille compacte sans modifier le composant.
+- Le conteneur `flex-1 min-w-0 overflow-hidden` de ChatArea sera adapté avec `overflow-visible` uniquement sur la ligne de la réponse, pour ne pas casser le truncate du nom d'auteur.
+- Aucun fichier auto-géré touché.
+

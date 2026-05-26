@@ -42,6 +42,7 @@ import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks
 import { useDMMessageReactions, useToggleDMReaction } from '@/hooks/useDMReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
+import { ReplyBanner } from '@/components/chat/ReplyBanner';
 import { Reply, X as XIcon } from 'lucide-react';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
@@ -649,39 +650,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
           {/* Reply preview (above input) */}
           {replyingTo && (
-            <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
-              <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <Avatar className="w-5 h-5 flex-shrink-0">
-                {replyingTo.author?.avatar_url && (
-                  <AvatarImage src={replyingTo.author.avatar_url} alt={replyingTo.author.display_name} />
-                )}
-                <AvatarFallback className="text-[9px] bg-primary/15 text-primary font-semibold">
-                  {(replyingTo.author?.display_name || '?').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <span className="text-xs font-semibold flex-shrink-0 text-primary">
-                  @{replyingTo.author?.display_name || 'Utilisateur'}
-                </span>
-                <span
-                  className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
-                  style={{
-                    maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
-                    WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent)',
-                  }}
-                >
-                  {(replyingTo.content || '').replace(/\s+/g, ' ').trim().slice(0, 64) ||
-                    (replyingTo.attachments.length > 0 ? '📎 Pièce jointe' : '')}
-                </span>
-              </div>
-              <button
-                onClick={() => setReplyingTo(null)}
-                className="p-1 hover:bg-muted rounded transition-colors"
-                aria-label="Annuler la réponse"
-              >
-                <XIcon className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
+            <ReplyBanner
+              authorName={replyingTo.author?.display_name || 'Utilisateur'}
+              authorAvatar={replyingTo.author?.avatar_url}
+              content={replyingTo.content}
+              attachmentsCount={replyingTo.attachments?.length ?? 0}
+              onClear={() => setReplyingTo(null)}
+            />
           )}
 
           {/* Input */}

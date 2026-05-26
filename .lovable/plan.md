@@ -1,58 +1,62 @@
 
 
-# Correction : bouton "Suivre" partout + RepliedLine Desktop identique au Mobile
+# Parité Desktop/Mobile : système de réponse identique
 
-## Diagnostic exact
+## Référence Mobile (ce qu'on doit reproduire)
 
-### Bug #1 — Bouton "Suivre" invisible sur Mobile
-Sur Desktop (`AnnouncementChannel.tsx` ligne 474-481), le bouton "Suivre" est rendu directement dans le header à côté du nom du salon. C'est l'emplacement attendu (image 1).
+`MobileMessageBubble.tsx` ligne 222-231 et `MobileDMConversation.tsx` ligne 651-680 définissent le standard :
+- **RepliedLine** : connecteur en L + mini-avatar 16px + `@auteur` (couleur rôle) + preview tronqué + clic-pour-jump.
+- **Bannière de composer** : fond `bg-[hsl(var(--surface-3))]` + barre gauche `border-l-[3px] border-primary` + icône Reply + mini-avatar 5×5 + `@auteur` en couleur primary + preview 64 chars + bouton X.
+- **Action "Répondre"** : disponible via `MessagePreviewSheet` au long-press (équivalent du clic-droit Desktop).
 
-Sur Mobile (`MobileChatView.tsx` lignes 166-171), il a été déplacé dans le menu kebab `MobileMoreActionsSheet` → invisible au premier coup d'œil.
+## État actuel par surface Desktop
 
-### Bug #2 (CRITIQUE) — RepliedLine ne s'affiche jamais sur Desktop
-Tout le pipeline est en place côté hooks et composant (`useMessages` résout bien `repliedMessage`, `ChatArea` rend bien `<RepliedLine>` ligne 1534). MAIS dans `src/pages/Index.tsx` lignes 477-500, le mapper `messagesData` reconstruit chaque message **sans copier les champs `replyToId` ni `repliedMessage`** :
-
-```ts
-const messagesData: Message[] = messages.map((m) => ({
-  id, content, attachments, isSystemMessage, is_system,
-  edited_at, author, timestamp,
-  // ❌ replyToId et repliedMessage perdus ici
-}));
-```
-
-Conséquence : sur Desktop/Tablette, `message.repliedMessage` est toujours `undefined` quand il arrive dans `ChatArea`, donc la condition `(message.repliedMessage || parsedReply)` ligne 1534 est fausse → aucune `RepliedLine` rendue. C'est exactement ce que montre l'image 3 (4 messages "Test" plats, sans aucun fil de réponse au-dessus), à comparer avec l'image 2 (Mobile) où le `RepliedLine` apparaît systématiquement.
+| Surface | RepliedLine | Bannière composer | Action Répondre |
+|---|---|---|---|
+| `ChatArea.tsx` | ✅ ligne 1534 | ⚠️ `border-l-3` (au lieu de `border-l-[3px]`) ligne 120 | ✅ |
+| `DMConversation.tsx` | ⚠️ ligne 436 — pas de `authorColor`/`authorRole` (incohérent) | ✅ ligne 651 | ✅ |
+| `ThreadView.tsx` | ⚠️ ligne 809 — `indent={44}` (mobile=28, desktop std=56) | ⚠️ ligne 998 — pas de mini-avatar, structure différente | ✅ |
+| `AnnouncementChannel.tsx` | ❓ à vérifier dans le rendu post | ⚠️ ligne 1160 — pas de mini-avatar, pas d'`@auteur` coloré | ✅ |
 
 ## Plan de correction
 
-### 1. Restaurer le bouton "Suivre" sur Mobile à sa place d'origine
-Dans `src/components/mobile/MobileChatView.tsx` :
-- Ajouter un bouton "Suivre" inline dans le header compact, visible uniquement quand `isAnnouncement && canFollowAnnouncements`.
-- Position : entre le bloc titre et le bouton membres, taille adaptée mobile (`px-2 py-1 text-xs`, même style que Desktop : `border border-border/60 bg-muted/40`).
-- Retirer l'entrée `'follow'` du tableau `moreActions` (lignes 166-171) pour ne pas dupliquer dans le kebab.
-- Garder le `FollowChannelModal` déjà présent (lignes 384-404).
+### 1. Extraire un composant partagé `<ReplyBanner>` réutilisable
 
-Sur Desktop/Tablette, le bouton est déjà en place dans `AnnouncementChannel.tsx` ligne 474-481 → aucun changement.
+Créer `src/components/chat/ReplyBanner.tsx` qui reproduit fidèlement le bloc visuel de `MobileDMConversation` ligne 651-680 :
+- Props : `authorName`, `authorAvatar`, `authorColor`, `content`, `attachmentsCount`, `onClear`.
+- Style : `mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm`.
+- Contenu : icône Reply + Avatar 5×5 + `@auteur` coloré + preview tronqué 64 chars + bouton X.
 
-### 2. Corriger le mapper `messagesData` dans `src/pages/Index.tsx`
-Ajouter les deux champs manquants dans l'objet retourné par `messages.map((m) => ({...}))` lignes 477-500 :
+### 2. Remplacer les bannières dans les 4 surfaces Desktop par `<ReplyBanner>`
 
-```ts
-replyToId: (m as any).reply_to_id ?? null,
-repliedMessage: (m as any).repliedMessage ?? null,
-```
+- `ChatArea.tsx` : remplacer le composant local `ReplyReference` (lignes 105-156) par `<ReplyBanner>`.
+- `DMConversation.tsx` : remplacer le bloc inline ligne 651-680 par `<ReplyBanner>`.
+- `ThreadView.tsx` : remplacer le bloc inline ligne 998-1015 par `<ReplyBanner>` (corrige l'absence de mini-avatar).
+- `AnnouncementChannel.tsx` : remplacer le bloc inline ligne 1160-1176 par `<ReplyBanner>` (ajoute mini-avatar + couleur).
 
-Résultat immédiat : sur Desktop/Tablette, chaque message qui a un `reply_to_id` en BDD verra sa `RepliedLine` rendue exactement comme sur Mobile (mêmes connecteur en L, mini-avatar, nom @auteur, preview du contenu cité), avec le même `indent={56}`, le même clic-pour-jump, le même fallback `deleted: true`.
+### 3. Harmoniser les paramètres `RepliedLine` au-dessus des messages
 
-### 3. Vérification fonctionnelle
-- Mobile : le bouton "Suivre" apparaît dans le header d'un salon `announcement` à côté du titre.
-- Desktop : envoyer une réponse → la `RepliedLine` s'affiche au-dessus du nouveau message, identique à l'image 2.
-- Desktop : recharger la page → les anciennes réponses (avec `reply_to_id` en base) affichent maintenant la `RepliedLine` (avant ce fix : invisibles, comme image 3).
-- Aucune régression sur les threads, DMs, annonces (déjà corrects).
+- `DMConversation.tsx` ligne 438 : ajouter `authorColor` et `authorRole` (depuis `memberRoles` si disponible — sinon laisser `undefined`, c'est cohérent en DM 1:1).
+- `ThreadView.tsx` lignes 824/841 : conserver `indent={44}` (le thread a une jauge plus étroite — c'est intentionnel, validé par `ThreadSpine`). Pas de changement.
+- `ChatArea.tsx` : déjà conforme (`indent={56}`, `authorColor`, `authorRole`).
+
+### 4. Confirmer l'action "Répondre" dans le menu contextuel Desktop
+
+`UniversalMessageContextMenu.tsx` ligne 264-267 expose déjà `<ContextMenuItem onClick={onReply}>Répondre</ContextMenuItem>` en tête. Vérifier que les 4 surfaces passent bien `onReply` au composant — `ChatArea` ✅, `ThreadView` ✅, `DMConversation` ✅, `AnnouncementChannel` ✅. Aucun changement requis.
+
+### 5. Validation
+
+- Desktop salon serveur : envoyer une réponse → bannière + RepliedLine identiques au mobile.
+- Desktop DM : idem, avec mini-avatar dans la bannière (manquait avant).
+- Desktop thread : idem, avec mini-avatar dans la bannière (manquait avant).
+- Desktop annonce : idem, avec mini-avatar + couleur auteur (manquaient avant).
+- Clic-droit message → "Répondre" en tête du menu sur les 4 surfaces.
 
 ## Détails techniques
 
-- Aucune modification BDD. La colonne `reply_to_id` existe déjà sur `messages`.
-- Aucun fichier auto-généré modifié (`types.ts`, `client.ts` intacts).
-- Le type `Message` dans `src/types/app.ts` expose déjà `replyToId` et `repliedMessage` (lignes 65-67) — il manquait juste de les remplir dans le mapper.
-- Le hook `useMessages` produit déjà la forme correcte (`reply_to_id` + `repliedMessage` résolu par batch) — le bug est purement dans la couche d'adaptation `Index.tsx`.
+- Aucune migration BDD. Le pipeline `reply_to_id` + `repliedMessage` est déjà câblé partout.
+- Aucun fichier auto-généré modifié.
+- Le composant `RepliedLine.tsx` reste inchangé : il est déjà partagé et fait référence.
+- Le composant `<ReplyBanner>` centralise le visuel pour éviter toute future divergence Mobile/Desktop.
+- Tests existants `RepliedLine.test.tsx` et `UniversalMessageContextMenu.test.tsx` restent valides.
 

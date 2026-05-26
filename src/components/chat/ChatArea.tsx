@@ -1938,10 +1938,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && (
-          <ReplyReference
-            replyTo={replyingTo}
-            onClear={() => setReplyingTo(null)}
+          <ReplyBanner
+            authorName={replyingTo.author.displayName}
+            authorAvatar={replyingTo.author.avatar}
             authorColor={memberRoles?.get(replyingTo.author.id)?.[0]?.color || undefined}
+            content={replyingTo.content}
+            attachmentsCount={replyingTo.attachments?.length ?? 0}
+            onClear={() => setReplyingTo(null)}
           />
         )}
         <MessageInput

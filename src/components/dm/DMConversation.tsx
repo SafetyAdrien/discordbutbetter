@@ -42,6 +42,7 @@ import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks
 import { useDMMessageReactions, useToggleDMReaction } from '@/hooks/useDMReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
+import { ReplyBanner } from '@/components/chat/ReplyBanner';
 import { Reply, X as XIcon } from 'lucide-react';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { useSwipeBack } from '@/hooks/useSwipeBack';

@@ -63,6 +63,7 @@ import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useT
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { RepliedLine } from '@/components/chat/RepliedLine';
+import { ReplyBanner } from '@/components/chat/ReplyBanner';
 import { parseRepliedMessage } from '@/lib/parse-reply';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
@@ -995,24 +996,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
       {/* Reply indicator */}
       {replyingTo && (
-        <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
-          <Reply className="w-4 h-4 text-primary flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-xs text-primary font-semibold">
-              Réponse à @{replyingTo.author?.display_name || 'Inconnu'}
-            </span>
-            <p className="text-sm text-muted-foreground truncate">
-              {replyingTo.content}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="iconSm"
-            onClick={() => setReplyingTo(null)}
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+        <ReplyBanner
+          authorName={replyingTo.author?.display_name || 'Inconnu'}
+          authorAvatar={replyingTo.author?.avatar_url}
+          content={replyingTo.content}
+          onClear={() => setReplyingTo(null)}
+        />
       )}
 
       {/* Input */}

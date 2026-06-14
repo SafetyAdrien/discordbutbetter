@@ -497,7 +497,25 @@ const Index = () => {
       },
       timestamp: new Date(m.created_at || Date.now()),
       replyToId: (m as any).reply_to_id ?? null,
-      repliedMessage: (m as any).repliedMessage ?? null,
+      repliedMessage: (m as any).repliedMessage
+        ? {
+            id: (m as any).repliedMessage.id,
+            content: (m as any).repliedMessage.content ?? '',
+            attachments: (m as any).repliedMessage.attachments ?? [],
+            deleted: (m as any).repliedMessage.deleted === true,
+            author: (m as any).repliedMessage.author
+              ? {
+                  id: (m as any).repliedMessage.author.id,
+                  username: (m as any).repliedMessage.author.username,
+                  displayName:
+                    (m as any).repliedMessage.author.display_name ||
+                    (m as any).repliedMessage.author.username ||
+                    'Utilisateur',
+                  avatar: (m as any).repliedMessage.author.avatar_url || undefined,
+                }
+              : null,
+          }
+        : null,
     };
   });
 

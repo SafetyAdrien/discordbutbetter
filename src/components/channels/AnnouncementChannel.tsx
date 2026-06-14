@@ -323,6 +323,49 @@ export function AnnouncementChannel({
   const pinMessage = usePinMessage();
   const unpinMessage = useUnpinMessage();
 
+  // Publish serverId + maps to the markdown context so RoleMention can
+  // open RoleInfoPopup inside announcement channels (instant after refresh).
+  useEffect(() => {
+    if (!channel.server_id) return;
+    const prev = getMarkdownContext();
+
+    const usersMap = new Map<string, { displayName: string; avatarUrl?: string; bio?: string }>();
+    membersData.forEach((m) => {
+      const displayName =
+        m.serverProfile?.display_name || m.nickname || m.user.display_name || m.user.username;
+      usersMap.set(m.user.id, {
+        displayName,
+        avatarUrl: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,
+        bio: m.serverProfile?.bio || m.user.bio || undefined,
+      });
+    });
+
+    const rolesMap = new Map<string, { name: string; color: string }>();
+    serverRoles.forEach((r) => {
+      rolesMap.set(r.id, { name: r.name, color: r.color || '#99aab5' });
+    });
+
+    const channelsMap = new Map<string, { name: string; serverId?: string }>();
+    channelsData?.categories.forEach((cat) => {
+      cat.channels.forEach((ch) => {
+        channelsMap.set(ch.id, { name: ch.name, serverId: channel.server_id });
+      });
+    });
+
+    setMarkdownContext({
+      ...prev,
+      currentUserId: user?.id,
+      serverId: channel.server_id,
+      users: usersMap,
+      roles: rolesMap,
+      channels: channelsMap,
+    });
+
+    return () => {
+      setMarkdownContext(prev);
+    };
+  }, [channel.server_id, user?.id, membersData, serverRoles, channelsData]);
+
   // Reactions
   const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
   const { data: reactionsData } = useMessageReactions(messageIds);

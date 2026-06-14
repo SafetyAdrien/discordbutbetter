@@ -47,7 +47,8 @@ import { ThreadMessage } from '@/types/thread';
 import { Message } from '@/types/app';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { MarkdownText } from '@/lib/markdown';
+import { MarkdownText, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
+import { registerSnowflakeMappings } from '@/lib/snowflake';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
@@ -290,6 +291,58 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       lastMessageCountRef.current = 0;
     }
   }, [threadId, channelId]);
+
+  // Publish serverId + maps to the markdown context so RoleMention can
+  // open RoleInfoPopup inside threads (instantly, even after a refresh).
+  useEffect(() => {
+    if (!serverId) return;
+    const prev = getMarkdownContext();
+
+    const usersMap = new Map<string, { displayName: string; avatarUrl?: string; bio?: string }>();
+    const userIds: string[] = [];
+    membersData.forEach((m) => {
+      const displayName =
+        m.serverProfile?.display_name || m.nickname || m.user.display_name || m.user.username;
+      usersMap.set(m.user.id, {
+        displayName,
+        avatarUrl: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,
+        bio: m.serverProfile?.bio || m.user.bio || undefined,
+      });
+      userIds.push(m.user.id);
+    });
+
+    const rolesMap = new Map<string, { name: string; color: string }>();
+    const roleIds: string[] = [];
+    serverRoles.forEach((r) => {
+      rolesMap.set(r.id, { name: r.name, color: r.color || '#99aab5' });
+      roleIds.push(r.id);
+    });
+
+    const channelsMap = new Map<string, { name: string; serverId?: string }>();
+    const channelIds: string[] = [];
+    channelsData?.categories.forEach((cat) => {
+      cat.channels.forEach((ch) => {
+        channelsMap.set(ch.id, { name: ch.name, serverId });
+        channelIds.push(ch.id);
+      });
+    });
+
+    registerSnowflakeMappings([...userIds, ...roleIds, ...channelIds]);
+
+    setMarkdownContext({
+      ...prev,
+      currentUserId: user?.id,
+      serverId,
+      users: usersMap,
+      roles: rolesMap,
+      channels: channelsMap,
+    });
+
+    return () => {
+      setMarkdownContext(prev);
+    };
+  }, [serverId, user?.id, membersData, serverRoles, channelsData]);
+
 
   // Check if user is at bottom of scroll
   const handleScroll = useCallback(() => {

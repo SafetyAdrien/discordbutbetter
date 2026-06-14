@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Hash, BookOpen, Search, List, MessageSquare } from 'lucide-react';
 import { RoleInfoPopup } from '@/components/profile/RoleInfoPopup';
+import { EveryoneHerePopup } from '@/components/profile/EveryoneHerePopup';
 
 // ============================================
 // USER MENTION COMPONENT

@@ -74,7 +74,7 @@ export function useMessages(channelId: string | null) {
   const query = useQuery({
     queryKey: ['messages', channelId],
     placeholderData: () => (channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined),
-    queryFn: async (): Promise<MessageWithAuthor[]> => {
+    queryFn: () => timeAsync(`query:messages(${channelId ?? 'none'})`, async (): Promise<MessageWithAuthor[]> => {
       if (!channelId) return [];
 
       const { data, error } = await supabase
@@ -169,7 +169,7 @@ export function useMessages(channelId: string | null) {
           },
         };
       });
-    },
+    }),
     enabled: !!channelId && !!user && cacheReady,
     staleTime: 0,
     refetchOnMount: 'always',

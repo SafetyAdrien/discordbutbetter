@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useSyncExternalStore } from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
 import { 
   UserMention, 
@@ -56,7 +56,7 @@ export interface MarkdownContext {
 // ============================================
 // CONTEXT
 // ============================================
-const MarkdownReactContext = createContext<MarkdownContext>({});
+const MarkdownReactContext = createContext<MarkdownContext | null>(null);
 
 export function useMarkdownContext() {
   return useContext(MarkdownReactContext);
@@ -70,7 +70,7 @@ export function MarkdownProvider({ children, value }: { children: ReactNode; val
   );
 }
 
-// Legacy global context for compatibility during transition
+// Global store for cases where Provider isn't used (legacy compatibility)
 let globalMarkdownContext: MarkdownContext = {};
 let globalMarkdownContextVersion = 0;
 const globalMarkdownContextListeners = new Set<() => void>();
@@ -78,15 +78,24 @@ const globalMarkdownContextListeners = new Set<() => void>();
 export function setMarkdownContext(ctx: MarkdownContext) {
   globalMarkdownContext = ctx;
   globalMarkdownContextVersion += 1;
-  globalMarkdownContextListeners.forEach((listener) => listener());
+  globalMarkdownContextListeners.forEach((l) => l());
 }
 
 export function getMarkdownContext(): MarkdownContext {
   return globalMarkdownContext;
 }
 
+function subscribeGlobal(l: () => void) {
+  globalMarkdownContextListeners.add(l);
+  return () => globalMarkdownContextListeners.delete(l);
+}
+
+function getGlobalSnapshot() {
+  return globalMarkdownContextVersion;
+}
+
 // ============================================
-// PATTERNS & TOKENIZATION
+// PARSING LOGIC (TRIMMED FOR BREVITY IN TOOL CALL BUT FULL CONTENT PRESERVED)
 // ============================================
 const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
   { regex: /\*\*\*(.+?)\*\*\*/g, type: 'boldItalic' },
@@ -266,9 +275,6 @@ function parseBlocks(content: string): BlockToken[] {
   return blocks;
 }
 
-// ============================================
-// RENDERING
-// ============================================
 function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownContext): React.ReactNode {
   const renderContent = (content: string | MarkdownToken[]): React.ReactNode => {
     if (typeof content === 'string') return content;
@@ -355,7 +361,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
   }
 }
 
-export function parseMarkdown(content: string, context: MarkdownContext = {}): React.ReactNode {
+export function parseMarkdown(content: string, context: MarkdownContext = globalMarkdownContext): React.ReactNode {
   const hasBlockElements = /^(\\[#>\-*_]|#{1,3} |-# |> |>>> |\d+\. |[-*] |-{3,}|\*{3,}|_{3,})/m.test(content) || content.includes('```');
   if (!hasBlockElements) {
     const lines = content.split('\n');
@@ -399,21 +405,10 @@ export function parseMarkdown(content: string, context: MarkdownContext = {}): R
 // ============================================
 export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string }>(
   ({ content, className }, ref) => {
-    // Try to get from React Context first
-    let context = useMarkdownContext();
-    
-    // Fallback to legacy global context if React Context is empty (during transition)
-    const [globalCtx, setGlobalCtx] = React.useState(globalMarkdownContext);
-    React.useEffect(() => {
-      if (Object.keys(context).length > 0) return;
-      const sub = () => setGlobalCtx({ ...globalMarkdownContext });
-      globalMarkdownContextListeners.add(sub);
-      return () => { globalMarkdownContextListeners.delete(sub); };
-    }, [context]);
-
-    const activeContext = Object.keys(context).length > 0 ? context : globalCtx;
-
-    return <div ref={ref} className={className}>{parseMarkdown(content, activeContext)}</div>;
+    const reactContext = useMarkdownContext();
+    useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
+    const activeContext = reactContext || globalMarkdownContext;
+    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, activeContext)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

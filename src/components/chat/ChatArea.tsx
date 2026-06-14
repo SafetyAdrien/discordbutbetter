@@ -99,7 +99,6 @@ import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 import { ReactionBar } from "@/components/chat/ReactionBar";
 import { RepliedLine } from "@/components/chat/RepliedLine";
-import { parseRepliedMessage } from "@/lib/parse-reply";
 
 import { ReplyBanner } from "@/components/chat/ReplyBanner";
 
@@ -128,7 +127,7 @@ function PollActions({
   onCopyLink: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onReply: () => void;
+  onReply?: () => void;
   onAddReaction: (emoji: string) => void;
   isOwnPoll: boolean;
   isPollExpired?: boolean;
@@ -209,14 +208,16 @@ function PollActions({
       </Popover>
 
       {/* 3. Répondre */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
-            <Reply className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">Répondre</TooltipContent>
-      </Tooltip>
+      {onReply && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <Reply className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Répondre</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* 4. Menu Plus d'options */}
       <DropdownMenu onOpenChange={onDropdownOpenChange}>

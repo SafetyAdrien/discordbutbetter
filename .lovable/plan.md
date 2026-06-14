@@ -1,62 +1,72 @@
+# Popup riche au clic sur une mention de rôle
 
+Objectif: quand l'utilisateur clique sur une mention `@role` rendue par `RoleMention`, ouvrir un Popover qui affiche un en-tête du rôle, un compteur online/offline, les permissions clés (badges), la liste défilable des membres ayant ce rôle, et deux actions rapides (filtrer la liste des membres par ce rôle, copier l'ID Snowflake du rôle).
 
-# Parité Desktop/Mobile : système de réponse identique
+## Surface et déclencheur
 
-## Référence Mobile (ce qu'on doit reproduire)
+- Activé partout où `RoleMention` est rendu (chat serveur, threads, annonces, groupes DM si applicable) — via `src/lib/markdown.tsx`.
+- Ouverture sur **clic simple** (le Tooltip de survol actuel reste comme aperçu rapide nom+couleur).
+- Mobile et desktop: même Popover Radix; sur mobile petit, on conserve le Popover (compact, non plein écran) pour rester proche du Discord-like.
 
-`MobileMessageBubble.tsx` ligne 222-231 et `MobileDMConversation.tsx` ligne 651-680 définissent le standard :
-- **RepliedLine** : connecteur en L + mini-avatar 16px + `@auteur` (couleur rôle) + preview tronqué + clic-pour-jump.
-- **Bannière de composer** : fond `bg-[hsl(var(--surface-3))]` + barre gauche `border-l-[3px] border-primary` + icône Reply + mini-avatar 5×5 + `@auteur` en couleur primary + preview 64 chars + bouton X.
-- **Action "Répondre"** : disponible via `MessagePreviewSheet` au long-press (équivalent du clic-droit Desktop).
+## Nouveau composant
 
-## État actuel par surface Desktop
+`src/components/profile/RoleInfoPopup.tsx`
+- Props: `roleId`, `serverId`, `children` (le trigger = la pill `RoleMention`).
+- Utilise `Popover` (`@/components/ui/popover`) avec un contenu ~320px de large.
+- Contenu:
+  1. **Header** — pastille de couleur du rôle + icône (si `icon_url`) + nom (couleur = `role.color`), bouton "Copier l'ID" en haut-droite (icône `Copy`, copie le Snowflake via `uuidToSnowflake`).
+  2. **Stats** — ligne avec compteur total et répartition `● online`, `● idle`, `● dnd`, `○ offline` (utilise `PresenceContext` ou les statuts déjà résolus dans `useMembers`).
+  3. **Permissions clés** — badges horizontaux pour un sous-ensemble important: `administrator`, `manage_server`, `manage_channels`, `manage_roles`, `kick_members`, `ban_members`, `mention_everyone`, `manage_messages`. Masquées si aucune. Tooltip = libellé long.
+  4. **Membres** — `ScrollArea` max-h 240px, lignes `Avatar 24px + displayName + dot statut`. Tri: online d'abord, puis alpha. Clic sur un membre = ouvre `FullUserProfileModal` ou `UserProfilePopup` (réutilise l'API existante via un callback `onMemberClick`).
+  5. **Footer actions** — bouton `Filtrer les membres par ce rôle` (icône `Filter`) → applique le filtre dans `MemberList`. Bouton `Mentionner` est exclu (non demandé).
 
-| Surface | RepliedLine | Bannière composer | Action Répondre |
-|---|---|---|---|
-| `ChatArea.tsx` | ✅ ligne 1534 | ⚠️ `border-l-3` (au lieu de `border-l-[3px]`) ligne 120 | ✅ |
-| `DMConversation.tsx` | ⚠️ ligne 436 — pas de `authorColor`/`authorRole` (incohérent) | ✅ ligne 651 | ✅ |
-| `ThreadView.tsx` | ⚠️ ligne 809 — `indent={44}` (mobile=28, desktop std=56) | ⚠️ ligne 998 — pas de mini-avatar, structure différente | ✅ |
-| `AnnouncementChannel.tsx` | ❓ à vérifier dans le rendu post | ⚠️ ligne 1160 — pas de mini-avatar, pas d'`@auteur` coloré | ✅ |
+## Câblage des données
 
-## Plan de correction
+- Récupérer le rôle via `useRoles(serverId)` (déjà disponible). Pas de nouvelle requête.
+- Récupérer les membres via `useMembers(serverId)` + filtrer par `member.roles.includes(roleId)` (la forme existe déjà dans le hook).
+- Statut online/idle/dnd/offline: lire via `usePresence` / `PresenceContext` ou champ `status` déjà exposé dans `useMembers`.
+- Pas de migration BDD. Aucune nouvelle table.
 
-### 1. Extraire un composant partagé `<ReplyBanner>` réutilisable
+## Intégration dans `RoleMention`
 
-Créer `src/components/chat/ReplyBanner.tsx` qui reproduit fidèlement le bloc visuel de `MobileDMConversation` ligne 651-680 :
-- Props : `authorName`, `authorAvatar`, `authorColor`, `content`, `attachmentsCount`, `onClear`.
-- Style : `mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm`.
-- Contenu : icône Reply + Avatar 5×5 + `@auteur` coloré + preview tronqué 64 chars + bouton X.
+`src/components/chat/mentions/MentionComponents.tsx`:
+- Ajouter une prop optionnelle `serverId?: string` à `RoleMention`.
+- Si `serverId` est fourni, envelopper la pill dans `<RoleInfoPopup roleId={...} serverId={...}>…</RoleInfoPopup>`. Sinon, fallback au comportement actuel (juste tooltip).
+- Conserver le Tooltip existant uniquement en survol prolongé; sur clic, ouvrir le Popover.
 
-### 2. Remplacer les bannières dans les 4 surfaces Desktop par `<ReplyBanner>`
+`src/lib/markdown.tsx` (ligne 555):
+- Passer `serverId` (déjà disponible dans le contexte de rendu markdown via `currentServerId` / `serverContext`) à `RoleMention`.
 
-- `ChatArea.tsx` : remplacer le composant local `ReplyReference` (lignes 105-156) par `<ReplyBanner>`.
-- `DMConversation.tsx` : remplacer le bloc inline ligne 651-680 par `<ReplyBanner>`.
-- `ThreadView.tsx` : remplacer le bloc inline ligne 998-1015 par `<ReplyBanner>` (corrige l'absence de mini-avatar).
-- `AnnouncementChannel.tsx` : remplacer le bloc inline ligne 1160-1176 par `<ReplyBanner>` (ajoute mini-avatar + couleur).
+## Filtrer la liste des membres
 
-### 3. Harmoniser les paramètres `RepliedLine` au-dessus des messages
+État partagé léger pour transporter le filtre du popup vers `MemberList`:
+- Ajouter un store minimal `src/hooks/useMemberRoleFilter.ts` (zustand léger ou simple custom hook avec un `useSyncExternalStore` global, comme déjà fait ailleurs dans le projet) exposant `{ roleId, setRoleId, clear }`.
+- `MemberList.tsx`: si `roleId` filtre actif, n'affiche que les membres ayant ce rôle + bandeau top "Filtré par @RoleName ✕" pour reset.
+- Sur mobile, `MemberList` est dans l'onglet membres; même comportement, le bandeau reste sticky.
 
-- `DMConversation.tsx` ligne 438 : ajouter `authorColor` et `authorRole` (depuis `memberRoles` si disponible — sinon laisser `undefined`, c'est cohérent en DM 1:1).
-- `ThreadView.tsx` lignes 824/841 : conserver `indent={44}` (le thread a une jauge plus étroite — c'est intentionnel, validé par `ThreadSpine`). Pas de changement.
-- `ChatArea.tsx` : déjà conforme (`indent={56}`, `authorColor`, `authorRole`).
+## Copier l'ID
 
-### 4. Confirmer l'action "Répondre" dans le menu contextuel Desktop
+- Utilise `uuidToSnowflake(roleId)` (cf. `src/lib/snowflake.ts`) + `navigator.clipboard.writeText(...)` + toast `sonner` "ID copié".
 
-`UniversalMessageContextMenu.tsx` ligne 264-267 expose déjà `<ContextMenuItem onClick={onReply}>Répondre</ContextMenuItem>` en tête. Vérifier que les 4 surfaces passent bien `onReply` au composant — `ChatArea` ✅, `ThreadView` ✅, `DMConversation` ✅, `AnnouncementChannel` ✅. Aucun changement requis.
+## Accessibilité / Style
 
-### 5. Validation
-
-- Desktop salon serveur : envoyer une réponse → bannière + RepliedLine identiques au mobile.
-- Desktop DM : idem, avec mini-avatar dans la bannière (manquait avant).
-- Desktop thread : idem, avec mini-avatar dans la bannière (manquait avant).
-- Desktop annonce : idem, avec mini-avatar + couleur auteur (manquaient avant).
-- Clic-droit message → "Répondre" en tête du menu sur les 4 surfaces.
+- `role="dialog"` géré par Popover Radix. Focus auto sur le premier élément focusable.
+- Couleurs: header utilise `role.color` (fallback `#99aab5`). Reste du popup en tokens sémantiques (`bg-popover`, `text-foreground`, `border-border` — déjà conforme aux conventions du projet).
+- Aucune classe interdite (`text-white`, `bg-black`) introduite.
 
 ## Détails techniques
 
-- Aucune migration BDD. Le pipeline `reply_to_id` + `repliedMessage` est déjà câblé partout.
-- Aucun fichier auto-généré modifié.
-- Le composant `RepliedLine.tsx` reste inchangé : il est déjà partagé et fait référence.
-- Le composant `<ReplyBanner>` centralise le visuel pour éviter toute future divergence Mobile/Desktop.
-- Tests existants `RepliedLine.test.tsx` et `UniversalMessageContextMenu.test.tsx` restent valides.
+- Aucun fichier auto-généré modifié (`client.ts`, `types.ts`, `.env`).
+- Aucune migration. `useRoles`, `useMembers`, `usePresence` déjà câblés.
+- Réutilise `Popover`, `ScrollArea`, `Avatar`, `Badge`, `Button`, `Tooltip` existants.
+- Performance: les listes longues sont rares pour un rôle; pas de virtualization nécessaire en V1 (cap visuel via ScrollArea).
+- Tests: ajout d'un test léger `RoleInfoPopup.test.tsx` (rendu header + filtre déclenche `setRoleId`).
 
+## Fichiers touchés
+
+- créé: `src/components/profile/RoleInfoPopup.tsx`
+- créé: `src/hooks/useMemberRoleFilter.ts`
+- créé: `src/components/profile/__tests__/RoleInfoPopup.test.tsx`
+- édité: `src/components/chat/mentions/MentionComponents.tsx` (envelopper `RoleMention`)
+- édité: `src/lib/markdown.tsx` (passer `serverId` à `RoleMention`)
+- édité: `src/components/layout/MemberList.tsx` (lire le filtre + bandeau reset)

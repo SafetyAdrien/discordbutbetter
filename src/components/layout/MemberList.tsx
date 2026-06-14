@@ -56,6 +56,8 @@ import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
 import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
+import { useMemberRoleFilterListener } from "@/hooks/useMemberRoleFilter";
+import { X as XIcon } from "lucide-react";
 interface Role {
   id: string;
   name: string;
@@ -346,6 +348,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const clearRoleFilters = () => {
     setSelectedRoleFilters([]);
   };
+
+  // Listen to external requests to filter by a role (from RoleInfoPopup)
+  useMemberRoleFilterListener((roleId) => {
+    setSelectedRoleFilters([roleId]);
+  });
 
   // Parse search query for prefixes
   const parseSearchQuery = (query: string) => {
@@ -693,6 +700,32 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           </div>
         </div>
         <Separator className="mt-3" />
+        {selectedRoleFilters.length > 0 && (
+          <div className="px-2 pt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Filtré par</span>
+            {selectedRoleFilters.map((rid) => {
+              const r = allRoles.find((rr) => rr.id === rid);
+              if (!r) return null;
+              return (
+                <button
+                  key={rid}
+                  onClick={() => handleRoleFilterToggle(rid)}
+                  className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[11px] font-medium bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                  style={{ color: r.color || undefined }}
+                >
+                  @{r.name}
+                  <XIcon className="w-3 h-3" />
+                </button>
+              );
+            })}
+            <button
+              onClick={clearRoleFilters}
+              className="text-[11px] text-muted-foreground hover:text-foreground ml-1"
+            >
+              Tout effacer
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
           {groupedMembers.map((group, index) => (
             <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-2">

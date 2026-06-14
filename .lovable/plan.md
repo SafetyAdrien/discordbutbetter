@@ -1,72 +1,57 @@
-# Popup riche au clic sur une mention de rôle
+# Plan: Persistance et instantanéité des nouvelles fonctionnalités
 
-Objectif: quand l'utilisateur clique sur une mention `@role` rendue par `RoleMention`, ouvrir un Popover qui affiche un en-tête du rôle, un compteur online/offline, les permissions clés (badges), la liste défilable des membres ayant ce rôle, et deux actions rapides (filtrer la liste des membres par ce rôle, copier l'ID Snowflake du rôle).
+## Constat
 
-## Surface et déclencheur
+Audit du cache cache-first (`cacheGetSync` / `placeholderData`) :
 
-- Activé partout où `RoleMention` est rendu (chat serveur, threads, annonces, groupes DM si applicable) — via `src/lib/markdown.tsx`.
-- Ouverture sur **clic simple** (le Tooltip de survol actuel reste comme aperçu rapide nom+couleur).
-- Mobile et desktop: même Popover Radix; sur mobile petit, on conserve le Popover (compact, non plein écran) pour rester proche du Discord-like.
+- `useMessages`, `useThreadMessages`, `useDMMessages`, `useThreads`, `useDMs`, `useMembers`, `useServerRoles` → **déjà cache-first** ✓
+- Les messages persistent `repliedMessage` (snapshot complet : auteur, contenu, pièces jointes) dans le cache → **la RepliedLine s'affiche déjà instantanément après refresh** ✓
+- IndexedDB + miroir localStorage + warmCache au boot → ✓
 
-## Nouveau composant
+**Trois trous restants empêchent la nouvelle popup de rôle de fonctionner après un refresh selon la surface :**
 
-`src/components/profile/RoleInfoPopup.tsx`
-- Props: `roleId`, `serverId`, `children` (le trigger = la pill `RoleMention`).
-- Utilise `Popover` (`@/components/ui/popover`) avec un contenu ~320px de large.
-- Contenu:
-  1. **Header** — pastille de couleur du rôle + icône (si `icon_url`) + nom (couleur = `role.color`), bouton "Copier l'ID" en haut-droite (icône `Copy`, copie le Snowflake via `uuidToSnowflake`).
-  2. **Stats** — ligne avec compteur total et répartition `● online`, `● idle`, `● dnd`, `○ offline` (utilise `PresenceContext` ou les statuts déjà résolus dans `useMembers`).
-  3. **Permissions clés** — badges horizontaux pour un sous-ensemble important: `administrator`, `manage_server`, `manage_channels`, `manage_roles`, `kick_members`, `ban_members`, `mention_everyone`, `manage_messages`. Masquées si aucune. Tooltip = libellé long.
-  4. **Membres** — `ScrollArea` max-h 240px, lignes `Avatar 24px + displayName + dot statut`. Tri: online d'abord, puis alpha. Clic sur un membre = ouvre `FullUserProfileModal` ou `UserProfilePopup` (réutilise l'API existante via un callback `onMemberClick`).
-  5. **Footer actions** — bouton `Filtrer les membres par ce rôle` (icône `Filter`) → applique le filtre dans `MemberList`. Bouton `Mentionner` est exclu (non demandé).
+1. **`markdownContext.serverId` n'est positionné que dans `ChatArea`** — pas dans `AnnouncementChannel` ni `ThreadView`. Après un refresh direct sur un salon d'annonces ou un thread, `RoleMention` reçoit `serverId=undefined` et retombe sur l'ancien Tooltip au lieu d'ouvrir `RoleInfoPopup`.
+2. **`markdownContext` est un singleton mutable** : si l'utilisateur navigue d'un serveur à l'autre sans repasser par `ChatArea`, l'ancien `serverId` reste collé → mauvaises données rôles.
+3. **Le filtre `useMemberRoleFilter` est purement en mémoire** : un refresh efface le filtre actif et la bannière "Filtré par @Rôle" dans `MemberList`. À minima, persister par serveur via `sessionStorage` pour rester "instant après refresh" tant qu'on garde l'onglet.
 
-## Câblage des données
+## Changements
 
-- Récupérer le rôle via `useRoles(serverId)` (déjà disponible). Pas de nouvelle requête.
-- Récupérer les membres via `useMembers(serverId)` + filtrer par `member.roles.includes(roleId)` (la forme existe déjà dans le hook).
-- Statut online/idle/dnd/offline: lire via `usePresence` / `PresenceContext` ou champ `status` déjà exposé dans `useMembers`.
-- Pas de migration BDD. Aucune nouvelle table.
+### 1. Propager `serverId` partout dans le contexte markdown
 
-## Intégration dans `RoleMention`
+- `src/components/threads/ThreadView.tsx` : appeler `setMarkdownContext({ ...getMarkdownContext(), serverId: thread.server_id, currentUserId: user?.id })` dans un `useEffect` au montage / quand `thread.server_id` change. Restaurer le contexte précédent au démontage.
+- `src/components/channels/AnnouncementChannel.tsx` : idem avec `channel.server_id` (l'import existe déjà mais n'est jamais appelé).
+- `src/components/dm/DMConversation.tsx` : forcer `serverId: undefined` au montage pour éviter qu'un ancien `serverId` collé déclenche `RoleInfoPopup` dans un DM (où il n'y a pas de rôles).
 
-`src/components/chat/mentions/MentionComponents.tsx`:
-- Ajouter une prop optionnelle `serverId?: string` à `RoleMention`.
-- Si `serverId` est fourni, envelopper la pill dans `<RoleInfoPopup roleId={...} serverId={...}>…</RoleInfoPopup>`. Sinon, fallback au comportement actuel (juste tooltip).
-- Conserver le Tooltip existant uniquement en survol prolongé; sur clic, ouvrir le Popover.
+### 2. Maps `roles` / `users` / `channels` dans les surfaces autres que ChatArea
 
-`src/lib/markdown.tsx` (ligne 555):
-- Passer `serverId` (déjà disponible dans le contexte de rendu markdown via `currentServerId` / `serverContext`) à `RoleMention`.
+Pour que `RoleMention` ait le nom + la couleur même hors `ChatArea` :
 
-## Filtrer la liste des membres
+- `ThreadView` et `AnnouncementChannel` : construire les `rolesMap` / `usersMap` / `channelsMap` à partir de `useServerRoles(server_id)` / `useMembers(server_id)` / `useChannels(server_id)` (toutes cache-first), et les pousser via `setMarkdownContext` au même endroit que `serverId`.
 
-État partagé léger pour transporter le filtre du popup vers `MemberList`:
-- Ajouter un store minimal `src/hooks/useMemberRoleFilter.ts` (zustand léger ou simple custom hook avec un `useSyncExternalStore` global, comme déjà fait ailleurs dans le projet) exposant `{ roleId, setRoleId, clear }`.
-- `MemberList.tsx`: si `roleId` filtre actif, n'affiche que les membres ayant ce rôle + bandeau top "Filtré par @RoleName ✕" pour reset.
-- Sur mobile, `MemberList` est dans l'onglet membres; même comportement, le bandeau reste sticky.
+### 3. Persister le filtre rôle de `MemberList`
 
-## Copier l'ID
+- `src/hooks/useMemberRoleFilter.ts` : ajouter une persistance `sessionStorage` par `serverId` (clé `member-role-filter:<serverId>`) en plus du pub/sub existant. Exporter `getPersistedRoleFilter(serverId)` et `setPersistedRoleFilter(serverId, roleIds)`.
+- `src/components/layout/MemberList.tsx` : initialiser l'état des filtres actifs depuis `getPersistedRoleFilter(serverId)` au montage, écrire dans `sessionStorage` à chaque ajout / retrait / clear.
 
-- Utilise `uuidToSnowflake(roleId)` (cf. `src/lib/snowflake.ts`) + `navigator.clipboard.writeText(...)` + toast `sonner` "ID copié".
+### 4. Forcer un purge cache pour les clients existants
 
-## Accessibilité / Style
-
-- `role="dialog"` géré par Popover Radix. Focus auto sur le premier élément focusable.
-- Couleurs: header utilise `role.color` (fallback `#99aab5`). Reste du popup en tokens sémantiques (`bg-popover`, `text-foreground`, `border-border` — déjà conforme aux conventions du projet).
-- Aucune classe interdite (`text-white`, `bg-black`) introduite.
+- `src/lib/cache.ts` : passer `CACHE_SCHEMA_VERSION` de `2` à `3`. Chaque client purge memory + localStorage + IndexedDB au prochain chargement, puis warmCache repeuple proprement depuis le serveur — garantit que les anciens caches sans `repliedMessage` ou avec des `rolesMap` partiels soient invalidés.
 
 ## Détails techniques
 
-- Aucun fichier auto-généré modifié (`client.ts`, `types.ts`, `.env`).
-- Aucune migration. `useRoles`, `useMembers`, `usePresence` déjà câblés.
-- Réutilise `Popover`, `ScrollArea`, `Avatar`, `Badge`, `Button`, `Tooltip` existants.
-- Performance: les listes longues sont rares pour un rôle; pas de virtualization nécessaire en V1 (cap visuel via ScrollArea).
-- Tests: ajout d'un test léger `RoleInfoPopup.test.tsx` (rendu header + filtre déclenche `setRoleId`).
+- Pattern `setMarkdownContext({ ...getMarkdownContext(), ... })` déjà utilisé dans `UserProfilePopup`, `DMUserInfoPanel`, `FullUserProfileModal` pour la `variant: 'bio'` → on suit la même convention pour ne pas écraser les autres champs (`onUserClick`, etc.).
+- Restauration au démontage : capturer `const prev = getMarkdownContext()` dans le `useEffect`, retourner `() => setMarkdownContext(prev)`.
+- `useMemberRoleFilter` reste rétro-compatible : les appelants actuels (`requestMemberRoleFilter`, `useMemberRoleFilterListener`) ne changent pas.
+- Aucune migration DB, aucun edge function, aucun changement de schéma — uniquement front + bump de version de cache.
 
 ## Fichiers touchés
 
-- créé: `src/components/profile/RoleInfoPopup.tsx`
-- créé: `src/hooks/useMemberRoleFilter.ts`
-- créé: `src/components/profile/__tests__/RoleInfoPopup.test.tsx`
-- édité: `src/components/chat/mentions/MentionComponents.tsx` (envelopper `RoleMention`)
-- édité: `src/lib/markdown.tsx` (passer `serverId` à `RoleMention`)
-- édité: `src/components/layout/MemberList.tsx` (lire le filtre + bandeau reset)
+- `src/lib/markdown.tsx` (aucune modif structurelle, juste vérifié)
+- `src/components/threads/ThreadView.tsx`
+- `src/components/channels/AnnouncementChannel.tsx`
+- `src/components/dm/DMConversation.tsx`
+- `src/hooks/useMemberRoleFilter.ts`
+- `src/components/layout/MemberList.tsx`
+- `src/lib/cache.ts` (bump version)
+
+Aucun fichier auto-généré ni `supabase/config.toml` touché.

@@ -29,7 +29,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Message } from '@/types/app';
-import { MarkdownText } from '@/lib/markdown';
+import { MarkdownText, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { LinkEmbeds } from '@/components/chat/LinkEmbed';
 import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
@@ -161,6 +161,20 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     if (conversationId) {
       markAsRead.mutate(conversationId);
     }
+  }, [conversationId]);
+
+  // Clear server-scoped fields from the markdown context: DMs have no roles,
+  // so RoleMention must not inherit a stale serverId from another surface.
+  useEffect(() => {
+    const prev = getMarkdownContext();
+    setMarkdownContext({
+      ...prev,
+      serverId: undefined,
+      roles: undefined,
+    });
+    return () => {
+      setMarkdownContext(prev);
+    };
   }, [conversationId]);
 
   useEffect(() => {

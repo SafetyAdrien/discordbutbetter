@@ -886,22 +886,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             />
                           );
                         }
-                        const { reply } = parseRepliedMessage(message.content);
-                        if (!reply) return null;
-                        const cited = replyAuthorLookup.get(reply.author);
-                        const citedRoles = cited ? memberRoles.get(cited.id) : undefined;
-                        const topRole = citedRoles?.[0];
-                        return (
-                          <RepliedLine
-                            authorName={reply.author}
-                            preview={reply.preview}
-                            authorLookup={replyAuthorLookup}
-                            indent={44}
-                            authorColor={topRole?.color || undefined}
-                            authorRole={topRole ?? null}
-                            className="mb-1"
-                          />
-                        );
+                        return null;
                       })()}
                       <SwipeToReplyRow
                         enabled={isMobile || isTablet}

@@ -413,8 +413,7 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
 
     const activeContext = Object.keys(context).length > 0 ? context : globalCtx;
 
-    // Use div instead of span to allow block elements inside (valid HTML)
-    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, activeContext)}</div>;
+    return <div ref={ref} className={className}>{parseMarkdown(content, activeContext)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

@@ -1018,9 +1018,9 @@ export function AnnouncementChannel({
                                         <MessageAttachments attachments={[headerImage]} />
                                       </div>
                                     )}
-                                    <p className="text-foreground break-words font-ginto">
+                                    <div className="text-foreground break-words font-ginto">
                                       <MarkdownText content={parseRepliedMessage(message.content).body} />
-                                    </p>
+                                    </div>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
                                     )}
@@ -1110,12 +1110,12 @@ export function AnnouncementChannel({
                                         <MessageAttachments attachments={[headerImage]} />
                                       </div>
                                     )}
-                                    <p className="text-foreground break-words font-ginto">
+                                    <div className="text-foreground break-words font-ginto">
                                       <MarkdownText content={parseRepliedMessage(message.content).body} />
                                       {message.edited_at && (
                                         <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                       )}
-                                    </p>
+                                    </div>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
                                     )}

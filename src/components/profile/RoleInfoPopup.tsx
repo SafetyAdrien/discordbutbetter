@@ -90,15 +90,7 @@ export function RoleInfoPopup({ roleId, serverId, children }: RoleInfoPopupProps
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
-          className="cursor-pointer"
-        >
-          {children}
-        </span>
+        {children}
       </PopoverTrigger>
       <PopoverContent
         side="top"

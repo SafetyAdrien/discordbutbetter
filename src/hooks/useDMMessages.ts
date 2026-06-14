@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { useCacheReady } from '@/hooks/useCacheReady';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -58,6 +59,7 @@ export interface DMMessage {
 export function useDMMessages(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const cacheReady = useCacheReady();
 
   const query = useQuery({
     queryKey: ['dm-messages', conversationId],
@@ -146,7 +148,7 @@ export function useDMMessages(conversationId: string | null) {
           : null,
       }));
     },
-    enabled: !!conversationId && !!user,
+    enabled: !!conversationId && !!user && cacheReady,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
     staleTime: 0,
     refetchOnMount: 'always',

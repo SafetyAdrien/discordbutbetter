@@ -20,8 +20,42 @@ const SYNC_STORAGE_PREFIX = `${DB_NAME}:${STORE_NAME}:`;
  * on next load. We persist the last-seen version in localStorage; on mismatch
  * we wipe memory + localStorage mirror + IndexedDB before warmCache() runs.
  */
-const CACHE_SCHEMA_VERSION = 4;
+const CACHE_SCHEMA_VERSION = 5;
 const CACHE_VERSION_KEY = `${DB_NAME}:schema-version`;
+
+/**
+ * Cache readiness gate: resolves only AFTER the schema-version purge has run
+ * (and IDB has been warmed). Every message-rendering hook must await this
+ * before issuing its query so we never paint stale rows from a previous schema.
+ */
+let cacheReadyResolve: () => void;
+const cacheReadyPromise = new Promise<void>((resolve) => {
+  cacheReadyResolve = resolve;
+});
+let cacheReadyFlag = false;
+const cacheReadyListeners = new Set<() => void>();
+
+export function isCacheReady(): boolean {
+  return cacheReadyFlag;
+}
+
+export function whenCacheReady(): Promise<void> {
+  return cacheReadyPromise;
+}
+
+export function subscribeCacheReady(listener: () => void): () => void {
+  cacheReadyListeners.add(listener);
+  return () => cacheReadyListeners.delete(listener);
+}
+
+function markCacheReady(): void {
+  if (cacheReadyFlag) return;
+  cacheReadyFlag = true;
+  cacheReadyResolve();
+  cacheReadyListeners.forEach((l) => {
+    try { l(); } catch {}
+  });
+}
 
 const memoryCache = new Map<string, any>();
 
@@ -179,26 +213,31 @@ async function enforceCacheSchemaVersion(): Promise<void> {
  * is wiped first so users always pull fresh data after a deploy.
  */
 export async function warmCache(): Promise<void> {
-  await enforceCacheSchemaVersion();
-
   try {
-    const db = await getDB();
-    return new Promise<void>((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.openCursor();
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (cursor) {
-          memoryCache.set(cursor.key as string, cursor.value);
-          cursor.continue();
-        }
-      };
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
-  } catch {
-    // IDB unavailable — sync mirror + memory cache still work
+    await enforceCacheSchemaVersion();
+
+    try {
+      const db = await getDB();
+      await new Promise<void>((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (cursor) {
+            memoryCache.set(cursor.key as string, cursor.value);
+            cursor.continue();
+          }
+        };
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      });
+    } catch {
+      // IDB unavailable — sync mirror + memory cache still work
+    }
+  } finally {
+    // Always flip the gate, even on failure, so the UI never hangs.
+    markCacheReady();
   }
 }
 

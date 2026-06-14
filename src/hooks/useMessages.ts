@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { useCacheReady } from '@/hooks/useCacheReady';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -67,6 +68,7 @@ export interface MessageWithAuthor {
 export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const cacheReady = useCacheReady();
 
   const query = useQuery({
     queryKey: ['messages', channelId],
@@ -167,7 +169,7 @@ export function useMessages(channelId: string | null) {
         };
       });
     },
-    enabled: !!channelId && !!user,
+    enabled: !!channelId && !!user && cacheReady,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,

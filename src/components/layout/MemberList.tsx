@@ -297,6 +297,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   useEffect(() => {
     setFilterSelectedIndex(0);
   }, [searchQuery, showFilters]);
+
+  // Re-hydrate role filters when changing server (component may not unmount)
+  useEffect(() => {
+    setSelectedRoleFiltersRaw(getPersistedRoleFilter(serverId));
+  }, [serverId]);
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showFilters || availableFilters.length === 0) return;
     switch (e.key) {

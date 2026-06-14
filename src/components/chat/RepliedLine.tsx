@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
-import type { Attachment, Message, RepliedMessageRef } from "@/types/app";
+import type { Attachment, RepliedMessageRef } from "@/types/app";
 
 interface RoleForBadge {
   id: string;

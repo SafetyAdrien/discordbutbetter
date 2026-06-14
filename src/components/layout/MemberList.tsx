@@ -368,7 +368,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   };
 
   // Listen to external requests to filter by a role (from RoleInfoPopup)
-  useMemberRoleFilterListener((roleId) => {
+  useMemberRoleFilterListener((roleId, requestedServerId) => {
+    if (requestedServerId && requestedServerId !== serverId) return;
     setSelectedRoleFilters([roleId]);
   });
 

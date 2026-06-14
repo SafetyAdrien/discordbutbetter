@@ -330,6 +330,7 @@ export function AnnouncementChannel({
     const prev = getMarkdownContext();
 
     const usersMap = new Map<string, { displayName: string; avatarUrl?: string; bio?: string }>();
+    const userIds: string[] = [];
     membersData.forEach((m) => {
       const displayName =
         m.serverProfile?.display_name || m.nickname || m.user.display_name || m.user.username;
@@ -338,19 +339,30 @@ export function AnnouncementChannel({
         avatarUrl: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,
         bio: m.serverProfile?.bio || m.user.bio || undefined,
       });
+      userIds.push(m.user.id);
     });
 
     const rolesMap = new Map<string, { name: string; color: string }>();
+    const roleIds: string[] = [];
     serverRoles.forEach((r) => {
       rolesMap.set(r.id, { name: r.name, color: r.color || '#99aab5' });
+      roleIds.push(r.id);
     });
 
     const channelsMap = new Map<string, { name: string; serverId?: string }>();
+    const channelIds: string[] = [];
     channelsData?.categories.forEach((cat) => {
       cat.channels.forEach((ch) => {
         channelsMap.set(ch.id, { name: ch.name, serverId: channel.server_id });
+        channelIds.push(ch.id);
       });
     });
+    channelsData?.orphanChannels?.forEach((ch) => {
+      channelsMap.set(ch.id, { name: ch.name, serverId: channel.server_id });
+      channelIds.push(ch.id);
+    });
+
+    registerSnowflakeMappings([...userIds, ...roleIds, ...channelIds]);
 
     setMarkdownContext({
       ...prev,
@@ -1018,9 +1030,9 @@ export function AnnouncementChannel({
                                         <MessageAttachments attachments={[headerImage]} />
                                       </div>
                                     )}
-                                    <p className="text-foreground break-words font-ginto">
+                                    <div className="text-foreground break-words font-ginto">
                                       <MarkdownText content={parseRepliedMessage(message.content).body} />
-                                    </p>
+                                    </div>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
                                     )}
@@ -1110,12 +1122,12 @@ export function AnnouncementChannel({
                                         <MessageAttachments attachments={[headerImage]} />
                                       </div>
                                     )}
-                                    <p className="text-foreground break-words font-ginto">
+                                    <div className="text-foreground break-words font-ginto">
                                       <MarkdownText content={parseRepliedMessage(message.content).body} />
                                       {message.edited_at && (
                                         <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                       )}
-                                    </p>
+                                    </div>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
                                     )}

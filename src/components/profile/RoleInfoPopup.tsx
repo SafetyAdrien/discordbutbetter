@@ -83,7 +83,7 @@ export function RoleInfoPopup({ roleId, serverId, children }: RoleInfoPopupProps
   };
 
   const handleFilter = () => {
-    requestMemberRoleFilter(roleId);
+    requestMemberRoleFilter(roleId, serverId);
     setOpen(false);
   };
 

@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Hash, BookOpen, Search, List, MessageSquare } from 'lucide-react';
@@ -79,8 +78,6 @@ interface RoleMentionProps {
 export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMentionProps) {
   const pill = (
     <span
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
       role="button"
       tabIndex={0}
       className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white"
@@ -90,7 +87,11 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
   );
 
   if (serverId) {
-    return <RoleInfoPopup roleId={roleId} serverId={serverId}>{pill}</RoleInfoPopup>;
+    return (
+      <RoleInfoPopup roleId={roleId} serverId={serverId}>
+        {pill}
+      </RoleInfoPopup>
+    );
   }
 
   return (
@@ -139,7 +140,7 @@ export function ChannelMention({ channelId, channelName, serverId, onNavigate }:
 }
 
 // ============================================
-// SPECIAL MENTION COMPONENTS (guide, browse, customize)
+// SPECIAL MENTION COMPONENTS
 // ============================================
 interface SpecialMentionProps {
   type: 'guide' | 'browse' | 'customize';
@@ -153,6 +154,7 @@ const SPECIAL_CONFIGS = {
 
 export function SpecialMention({ type }: SpecialMentionProps) {
   const config = SPECIAL_CONFIGS[type];
+  if (!config) return null;
   const Icon = config.icon;
 
   return (

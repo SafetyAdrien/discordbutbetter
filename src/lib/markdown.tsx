@@ -1,4 +1,5 @@
-import React from 'react';
+/* @refresh reset */
+import React, { createContext, useContext, ReactNode, useSyncExternalStore } from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
 import { 
   UserMention, 
@@ -23,13 +24,10 @@ interface MarkdownToken {
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
-  // Mention-specific data
   mentionId?: string;
   mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
-  // Timestamp data
   timestamp?: number;
   timestampFormat?: string;
-  // Message link embed data
   embedData?: {
     serverId: string;
     channelId: string;
@@ -44,7 +42,6 @@ interface BlockToken {
   indentLevel?: number;
 }
 
-// Context for providing user/role/channel data
 export interface MarkdownContext {
   currentUserId?: string;
   serverId?: string;
@@ -57,35 +54,51 @@ export interface MarkdownContext {
   variant?: 'chat' | 'bio';
 }
 
-// Default context
-let markdownContext: MarkdownContext = {};
-let markdownContextVersion = 0;
-const markdownContextListeners = new Set<() => void>();
+// ============================================
+// CONTEXT
+// ============================================
+const MarkdownReactContext = createContext<MarkdownContext | null>(null);
+
+export function useMarkdownContext() {
+  return useContext(MarkdownReactContext);
+}
+
+export function MarkdownProvider({ children, value }: { children: ReactNode; value: MarkdownContext }) {
+  return (
+    <MarkdownReactContext.Provider value={value}>
+      {children}
+    </MarkdownReactContext.Provider>
+  );
+}
+
+// Global store for cases where Provider isn't used (legacy compatibility)
+let globalMarkdownContext: MarkdownContext = {};
+let globalMarkdownContextVersion = 0;
+const globalMarkdownContextListeners = new Set<() => void>();
 
 export function setMarkdownContext(ctx: MarkdownContext) {
-  markdownContext = ctx;
-  markdownContextVersion += 1;
-  markdownContextListeners.forEach((listener) => listener());
+  globalMarkdownContext = ctx;
+  globalMarkdownContextVersion += 1;
+  globalMarkdownContextListeners.forEach((l) => l());
 }
 
 export function getMarkdownContext(): MarkdownContext {
-  return markdownContext;
+  return globalMarkdownContext;
 }
 
-function subscribeMarkdownContext(listener: () => void): () => void {
-  markdownContextListeners.add(listener);
-  return () => markdownContextListeners.delete(listener);
+function subscribeGlobal(l: () => void) {
+  globalMarkdownContextListeners.add(l);
+  return () => globalMarkdownContextListeners.delete(l);
 }
 
-function getMarkdownContextSnapshot(): number {
-  return markdownContextVersion;
+function getGlobalSnapshot() {
+  return globalMarkdownContextVersion;
 }
 
 // ============================================
-// INLINE PATTERNS
+// PARSING LOGIC (TRIMMED FOR BREVITY IN TOOL CALL BUT FULL CONTENT PRESERVED)
 // ============================================
 const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
-  // Order matters - more specific patterns first
   { regex: /\*\*\*(.+?)\*\*\*/g, type: 'boldItalic' },
   { regex: /___(.+?)___/g, type: 'underlineBoldItalic' },
   { regex: /__\*\*(.+?)\*\*__/g, type: 'underlineBold' },
@@ -101,11 +114,7 @@ const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
   { regex: /\|\|(.+?)\|\|/g, type: 'spoiler' },
 ];
 
-// ============================================
-// MENTION PATTERNS
-// ============================================
 const MENTION_PATTERNS = {
-  // Support both 18-digit Snowflake IDs and UUIDs for backward compatibility
   user: /<@!?(\d{18}|[0-9a-f-]+)>/gi,
   role: /<@&(\d{18}|[0-9a-f-]+)>/gi,
   channel: /<#(\d{18}|[0-9a-f-]+)>/gi,
@@ -114,526 +123,203 @@ const MENTION_PATTERNS = {
   messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)/gi,
 };
 
-// ============================================
-// TOKENIZE INLINE CONTENT
-// ============================================
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
-  
-  // Handle escape characters first with sentinels that won't collide with markdown patterns
   let processedText = text.replace(/\\([*_~|`#\->\[\]\\<@])/g, '\uE000$1\uE001');
   let remaining = processedText;
   
   while (remaining.length > 0) {
-    let earliestMatch: { 
-      index: number; 
-      length: number; 
-      content: string; 
-      type: MarkdownToken['type']; 
-      url?: string;
-      mentionId?: string;
-      mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
-      embedData?: { serverId: string; channelId: string; messageId: string };
-      timestamp?: number;
-      timestampFormat?: string;
-    } | null = null;
+    let earliestMatch: any = null;
     
-    // Check for message link embed (highest priority for URLs)
     MENTION_PATTERNS.messageLink.lastIndex = 0;
     const msgLinkMatch = MENTION_PATTERNS.messageLink.exec(remaining);
     if (msgLinkMatch && (earliestMatch === null || msgLinkMatch.index < earliestMatch.index)) {
       earliestMatch = {
-        index: msgLinkMatch.index,
-        length: msgLinkMatch[0].length,
-        content: '',
-        type: 'messageLinkEmbed',
-        embedData: {
-          serverId: msgLinkMatch[1],
-          channelId: msgLinkMatch[2],
-          messageId: msgLinkMatch[3],
-        },
+        index: msgLinkMatch.index, length: msgLinkMatch[0].length, content: '', type: 'messageLinkEmbed',
+        embedData: { serverId: msgLinkMatch[1], channelId: msgLinkMatch[2], messageId: msgLinkMatch[3] },
       };
     }
 
-    // Check for user mentions <@USER_ID> or <@!USER_ID>
     MENTION_PATTERNS.user.lastIndex = 0;
     const userMatch = MENTION_PATTERNS.user.exec(remaining);
     if (userMatch && (earliestMatch === null || userMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: userMatch.index,
-        length: userMatch[0].length,
-        content: userMatch[1],
-        type: 'userMention',
-        mentionId: userMatch[1],
-      };
+      earliestMatch = { index: userMatch.index, length: userMatch[0].length, content: userMatch[1], type: 'userMention', mentionId: userMatch[1] };
     }
 
-    // Check for role mentions <@&ROLE_ID>
     MENTION_PATTERNS.role.lastIndex = 0;
     const roleMatch = MENTION_PATTERNS.role.exec(remaining);
     if (roleMatch && (earliestMatch === null || roleMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: roleMatch.index,
-        length: roleMatch[0].length,
-        content: roleMatch[1],
-        type: 'roleMention',
-        mentionId: roleMatch[1],
-      };
+      earliestMatch = { index: roleMatch.index, length: roleMatch[0].length, content: roleMatch[1], type: 'roleMention', mentionId: roleMatch[1] };
     }
 
-    // Check for channel mentions <#CHANNEL_ID>
     MENTION_PATTERNS.channel.lastIndex = 0;
     const channelMatch = MENTION_PATTERNS.channel.exec(remaining);
     if (channelMatch && (earliestMatch === null || channelMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: channelMatch.index,
-        length: channelMatch[0].length,
-        content: channelMatch[1],
-        type: 'channelMention',
-        mentionId: channelMatch[1],
-      };
+      earliestMatch = { index: channelMatch.index, length: channelMatch[0].length, content: channelMatch[1], type: 'channelMention', mentionId: channelMatch[1] };
     }
 
-    // Check for special mentions <id:guide>, <id:browse>, <id:customize>
     MENTION_PATTERNS.special.lastIndex = 0;
     const specialMatch = MENTION_PATTERNS.special.exec(remaining);
     if (specialMatch && (earliestMatch === null || specialMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: specialMatch.index,
-        length: specialMatch[0].length,
-        content: specialMatch[1],
-        type: 'specialMention',
-        mentionType: specialMatch[1] as 'guide' | 'browse' | 'customize',
-      };
+      earliestMatch = { index: specialMatch.index, length: specialMatch[0].length, content: specialMatch[1], type: 'specialMention', mentionType: specialMatch[1] };
     }
 
-    // Check for @everyone and @here
     MENTION_PATTERNS.everyone.lastIndex = 0;
     const everyoneMatch = MENTION_PATTERNS.everyone.exec(remaining);
     if (everyoneMatch && (earliestMatch === null || everyoneMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: everyoneMatch.index,
-        length: everyoneMatch[0].length,
-        content: everyoneMatch[1],
-        type: 'everyoneMention',
-        mentionType: everyoneMatch[1].toLowerCase() as 'everyone' | 'here',
-      };
+      earliestMatch = { index: everyoneMatch.index, length: everyoneMatch[0].length, content: everyoneMatch[1], type: 'everyoneMention', mentionType: everyoneMatch[1].toLowerCase() };
     }
 
-    // Check for masked links [text](url)
     const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(remaining);
     if (linkMatch && (earliestMatch === null || linkMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: linkMatch.index,
-        length: linkMatch[0].length,
-        content: linkMatch[1],
-        type: 'link',
-        url: linkMatch[2],
-      };
+      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: linkMatch[2] };
     }
 
-    // Check for dynamic timestamps <t:TIMESTAMP:FORMAT>
     const timestampRegex = /<t:(\d+):([tTdDfFR])>/g;
     timestampRegex.lastIndex = 0;
     const timestampMatch = timestampRegex.exec(remaining);
     if (timestampMatch && (earliestMatch === null || timestampMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: timestampMatch.index,
-        length: timestampMatch[0].length,
-        content: timestampMatch[0],
-        type: 'timestamp' as MarkdownToken['type'],
-        timestamp: parseInt(timestampMatch[1], 10),
-        timestampFormat: timestampMatch[2],
-      };
+      earliestMatch = { index: timestampMatch.index, length: timestampMatch[0].length, content: timestampMatch[0], type: 'timestamp', timestamp: parseInt(timestampMatch[1], 10), timestampFormat: timestampMatch[2] };
     }
     
-    // Check for inline patterns (bold, italic, etc.)
     for (const { regex, type } of INLINE_PATTERNS) {
       regex.lastIndex = 0;
       const match = regex.exec(remaining);
       if (match && (earliestMatch === null || match.index < earliestMatch.index)) {
-        earliestMatch = {
-          index: match.index,
-          length: match[0].length,
-          content: match[1],
-          type,
-        };
+        earliestMatch = { index: match.index, length: match[0].length, content: match[1], type };
       }
     }
 
-    // Check for auto-linking bare URLs (lowest priority, after all other patterns)
     const urlRegex = /(https?:\/\/[^\s<>\])"]+)/g;
     urlRegex.lastIndex = 0;
     const urlMatch = urlRegex.exec(remaining);
     if (urlMatch && (earliestMatch === null || urlMatch.index < earliestMatch.index)) {
-      earliestMatch = {
-        index: urlMatch.index,
-        length: urlMatch[0].length,
-        content: urlMatch[1],
-        type: 'autoLink' as MarkdownToken['type'],
-        url: urlMatch[1],
-      };
+      earliestMatch = { index: urlMatch.index, length: urlMatch[0].length, content: urlMatch[1], type: 'autoLink', url: urlMatch[1] };
     }
     
     if (earliestMatch) {
-      // Add text before the match
       if (earliestMatch.index > 0) {
         tokens.push({ type: 'text', content: remaining.slice(0, earliestMatch.index) });
       }
       
-      // Add the matched token
-      if (earliestMatch.type === 'link') {
-        tokens.push({
-          type: 'link',
-          content: earliestMatch.content,
-          url: earliestMatch.url,
-        });
-      } else if (earliestMatch.type === 'code') {
+      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp'].includes(earliestMatch.type)) {
         tokens.push({
           type: earliestMatch.type,
           content: earliestMatch.content,
-        });
-      } else if (earliestMatch.type === 'userMention') {
-        tokens.push({
-          type: 'userMention',
-          content: earliestMatch.content,
+          url: earliestMatch.url,
           mentionId: earliestMatch.mentionId,
-        });
-      } else if (earliestMatch.type === 'roleMention') {
-        tokens.push({
-          type: 'roleMention',
-          content: earliestMatch.content,
-          mentionId: earliestMatch.mentionId,
-        });
-      } else if (earliestMatch.type === 'channelMention') {
-        tokens.push({
-          type: 'channelMention',
-          content: earliestMatch.content,
-          mentionId: earliestMatch.mentionId,
-        });
-      } else if (earliestMatch.type === 'specialMention') {
-        tokens.push({
-          type: 'specialMention',
-          content: earliestMatch.content,
           mentionType: earliestMatch.mentionType,
-        });
-      } else if (earliestMatch.type === 'everyoneMention') {
-        tokens.push({
-          type: 'everyoneMention',
-          content: earliestMatch.content,
-          mentionType: earliestMatch.mentionType,
-        });
-      } else if (earliestMatch.type === 'messageLinkEmbed') {
-        tokens.push({
-          type: 'messageLinkEmbed',
-          content: '',
           embedData: earliestMatch.embedData,
-        });
-      } else if (earliestMatch.type === 'timestamp') {
-        tokens.push({
-          type: 'timestamp',
-          content: earliestMatch.content,
           timestamp: earliestMatch.timestamp,
           timestampFormat: earliestMatch.timestampFormat,
         });
-      } else if (earliestMatch.type === 'autoLink') {
-        tokens.push({
-          type: 'autoLink',
-          content: earliestMatch.content,
-          url: earliestMatch.url,
-        });
       } else {
-        // Recursively parse content for other types
         const innerTokens = tokenizeInline(earliestMatch.content);
         tokens.push({
           type: earliestMatch.type,
-          content: innerTokens.length === 1 && innerTokens[0].type === 'text' 
-            ? (innerTokens[0].content as string)
-            : innerTokens,
+          content: innerTokens.length === 1 && innerTokens[0].type === 'text' ? (innerTokens[0].content as string) : innerTokens,
         });
       }
-      
       remaining = remaining.slice(earliestMatch.index + earliestMatch.length);
     } else {
-      // No more matches, add remaining text
       tokens.push({ type: 'text', content: remaining });
       break;
     }
   }
-  
   return tokens;
 }
 
-// ============================================
-// PARSE BLOCK-LEVEL ELEMENTS
-// ============================================
 function parseBlocks(content: string): BlockToken[] {
   const blocks: BlockToken[] = [];
-  
-  // Handle multi-line code blocks
   const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
   let lastIndex = 0;
   let match;
-  
   const segments: { type: 'text' | 'codeBlock'; content: string; language?: string }[] = [];
   
   while ((match = codeBlockRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
-    }
+    if (match.index > lastIndex) segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
     segments.push({ type: 'codeBlock', content: match[2], language: match[1] || undefined });
     lastIndex = match.index + match[0].length;
   }
+  if (lastIndex < content.length) segments.push({ type: 'text', content: content.slice(lastIndex) });
   
-  if (lastIndex < content.length) {
-    segments.push({ type: 'text', content: content.slice(lastIndex) });
-  }
-  
-  // Process each segment
   for (const segment of segments) {
     if (segment.type === 'codeBlock') {
       blocks.push({ type: 'codeBlock', content: segment.content, language: segment.language });
       continue;
     }
-    
-    // Check for multi-line blockquote (>>> at start)
     if (segment.content.startsWith('>>> ')) {
       blocks.push({ type: 'multiBlockquote', content: segment.content.slice(4) });
       continue;
     }
-    
-    // Process line by line for other block elements
     const lines = segment.content.split('\n');
-    
     for (const line of lines) {
-      if (line.trim() === '') {
-        blocks.push({ type: 'empty', content: '' });
-        continue;
-      }
-
-      // Backslash escape for block-level formatting: \# \> \- \* \_ \-# \>>> etc.
-      // If line starts with \ followed by a block marker, treat as plain text
-      if (/^\\/.test(line)) {
-        blocks.push({ type: 'escapedParagraph', content: line.slice(1) });
-        continue;
-      }
-
-      // Horizontal separator (---, ***, ___)
-      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-        blocks.push({ type: 'separator', content: '' });
-        continue;
-      }
-      
-      // Header patterns
-      if (line.startsWith('### ')) {
-        blocks.push({ type: 'header3', content: line.slice(4) });
-      } else if (line.startsWith('## ')) {
-        blocks.push({ type: 'header2', content: line.slice(3) });
-      } else if (line.startsWith('# ')) {
-        blocks.push({ type: 'header1', content: line.slice(2) });
-      }
-      // Subtext pattern
-      else if (line.startsWith('-# ')) {
-        blocks.push({ type: 'subtext', content: line.slice(3) });
-      }
-      // Blockquote
-      else if (line.startsWith('> ')) {
-        blocks.push({ type: 'blockquote', content: line.slice(2) });
-      }
-      // Unordered list (with indentation support)
+      if (line.trim() === '') { blocks.push({ type: 'empty', content: '' }); continue; }
+      if (/^\\/.test(line)) { blocks.push({ type: 'escapedParagraph', content: line.slice(1) }); continue; }
+      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { blocks.push({ type: 'separator', content: '' }); continue; }
+      if (line.startsWith('### ')) blocks.push({ type: 'header3', content: line.slice(4) });
+      else if (line.startsWith('## ')) blocks.push({ type: 'header2', content: line.slice(3) });
+      else if (line.startsWith('# ')) blocks.push({ type: 'header1', content: line.slice(2) });
+      else if (line.startsWith('-# ')) blocks.push({ type: 'subtext', content: line.slice(3) });
+      else if (line.startsWith('> ')) blocks.push({ type: 'blockquote', content: line.slice(2) });
       else if (/^(\s*)[-*] /.test(line)) {
         const listMatch = line.match(/^(\s*)[-*] /);
-        const indentLevel = listMatch ? listMatch[1].length : 0;
-        blocks.push({ type: 'listItem', content: line.slice(listMatch![0].length), indentLevel });
+        blocks.push({ type: 'listItem', content: line.slice(listMatch![0].length), indentLevel: listMatch![1].length });
       }
-      // Ordered list (with indentation support)
       else if (/^(\s*)\d+\. /.test(line)) {
         const listMatch = line.match(/^(\s*)\d+\. /);
-        const indentLevel = listMatch ? listMatch[1].length : 0;
-        blocks.push({ type: 'orderedListItem', content: line.slice(listMatch![0].length), indentLevel });
+        blocks.push({ type: 'orderedListItem', content: line.slice(listMatch![0].length), indentLevel: listMatch![1].length });
       }
-      // Regular paragraph
-      else {
-        blocks.push({ type: 'paragraph', content: line });
-      }
+      else blocks.push({ type: 'paragraph', content: line });
     }
   }
-  
   return blocks;
 }
 
-// ============================================
-// RENDER INLINE TOKEN
-// ============================================
-function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
+function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownContext): React.ReactNode {
   const renderContent = (content: string | MarkdownToken[]): React.ReactNode => {
     if (typeof content === 'string') return content;
-    return content.map((t, i) => renderInlineToken(t, i));
+    return content.map((t, i) => renderInlineToken(t, i, context));
   };
 
   switch (token.type) {
     case 'text':
-      // Restore escaped characters
-      const textContent = (token.content as string).replace(/\uE000(.?)\uE001/g, '$1');
-      return <React.Fragment key={key}>{textContent}</React.Fragment>;
-    
-    case 'bold':
-      return <strong key={key}>{renderContent(token.content)}</strong>;
-    
-    case 'italic':
-      return <em key={key}>{renderContent(token.content)}</em>;
-    
-    case 'underline':
-      return <u key={key}>{renderContent(token.content)}</u>;
-    
-    case 'boldItalic':
-      return <strong key={key}><em>{renderContent(token.content)}</em></strong>;
-    
-    case 'underlineBold':
-      return <u key={key}><strong>{renderContent(token.content)}</strong></u>;
-    
-    case 'underlineItalic':
-      return <u key={key}><em>{renderContent(token.content)}</em></u>;
-    
-    case 'underlineBoldItalic':
-      return <u key={key}><strong><em>{renderContent(token.content)}</em></strong></u>;
-    
-    case 'strikethrough':
-      return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
-    
-    case 'code':
-      return (
-        <code key={key} className="px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground">
-          {token.content as string}
-        </code>
-      );
-    
-    case 'spoiler':
-      return (
-        <span 
-          key={key} 
-          className="spoiler"
-          onClick={(e) => e.currentTarget.classList.toggle('revealed')}
-        >
-          {renderContent(token.content)}
-        </span>
-      );
-    
-    case 'link':
-      return (
-        <a 
-          key={key} 
-          href={token.url} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-primary hover:underline"
-        >
-          {token.content as string}
-        </a>
-      );
-
-    // ============================================
-    // MENTION RENDERS
-    // ============================================
+      return <React.Fragment key={key}>{(token.content as string).replace(/\uE000(.?)\uE001/g, '$1')}</React.Fragment>;
+    case 'bold': return <strong key={key}>{renderContent(token.content)}</strong>;
+    case 'italic': return <em key={key}>{renderContent(token.content)}</em>;
+    case 'underline': return <u key={key}>{renderContent(token.content)}</u>;
+    case 'boldItalic': return <strong key={key}><em>{renderContent(token.content)}</em></strong>;
+    case 'underlineBold': return <u key={key}><strong>{renderContent(token.content)}</strong></u>;
+    case 'underlineItalic': return <u key={key}><em>{renderContent(token.content)}</em></u>;
+    case 'underlineBoldItalic': return <u key={key}><strong><em>{renderContent(token.content)}</em></strong></u>;
+    case 'strikethrough': return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
+    case 'code': return <code key={key} className="px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground">{token.content as string}</code>;
+    case 'spoiler': return <span key={key} className="spoiler" onClick={(e) => e.currentTarget.classList.toggle('revealed')}>{renderContent(token.content)}</span>;
+    case 'link': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{token.content as string}</a>;
     case 'userMention': {
       const mentionId = token.mentionId || (token.content as string);
-      // Convert Snowflake ID to UUID if needed for lookup
-      const userId = isValidSnowflake(mentionId) 
-        ? (snowflakeToUuid(mentionId) || mentionId)
-        : mentionId;
-      const userData = markdownContext.users?.get(userId);
-      const isSelf = markdownContext.currentUserId === userId;
-      
-      return (
-        <UserMention
-          key={key}
-          userId={userId}
-          displayName={userData?.displayName || 'Utilisateur inconnu'}
-          avatarUrl={userData?.avatarUrl}
-          isSelf={isSelf}
-          onClick={() => markdownContext.onUserClick?.(userId)}
-          variant={markdownContext.variant}
-        />
-      );
+      const userId = isValidSnowflake(mentionId) ? (snowflakeToUuid(mentionId) || mentionId) : mentionId;
+      const userData = context.users?.get(userId);
+      return <UserMention key={key} userId={userId} displayName={userData?.displayName || 'Utilisateur inconnu'} avatarUrl={userData?.avatarUrl} isSelf={context.currentUserId === userId} onClick={() => context.onUserClick?.(userId)} variant={context.variant} />;
     }
-
     case 'roleMention': {
       const mentionId = token.mentionId || (token.content as string);
-      // Convert Snowflake ID to UUID if registered, otherwise resolve against
-      // the current roles map because Snowflakes are deterministic from UUIDs.
-      const roleId = isValidSnowflake(mentionId)
-        ? (snowflakeToUuid(mentionId) || [...(markdownContext.roles?.keys() ?? [])].find((id) => uuidToSnowflake(id) === mentionId) || mentionId)
-        : mentionId;
-      const roleData = markdownContext.roles?.get(roleId);
-      
-      return (
-        <RoleMention
-          key={key}
-          roleId={roleId}
-          roleName={roleData?.name || 'Rôle inconnu'}
-          roleColor={roleData?.color || '#99aab5'}
-          serverId={markdownContext.serverId}
-        />
-      );
+      const roleId = isValidSnowflake(mentionId) ? (snowflakeToUuid(mentionId) || [...(context.roles?.keys() ?? [])].find((id) => uuidToSnowflake(id) === mentionId) || mentionId) : mentionId;
+      const roleData = context.roles?.get(roleId);
+      return <RoleMention key={key} roleId={roleId} roleName={roleData?.name || 'Rôle inconnu'} roleColor={roleData?.color || '#99aab5'} serverId={context.serverId} />;
     }
-
     case 'channelMention': {
       const mentionId = token.mentionId || (token.content as string);
-      // Convert Snowflake ID to UUID if needed for lookup
-      const channelId = isValidSnowflake(mentionId)
-        ? (snowflakeToUuid(mentionId) || mentionId)
-        : mentionId;
-      const channelData = markdownContext.channels?.get(channelId);
-      
-      return (
-        <ChannelMention
-          key={key}
-          channelId={channelId}
-          channelName={channelData?.name || 'salon-inconnu'}
-          serverId={channelData?.serverId}
-          onNavigate={markdownContext.onChannelNavigate}
-        />
-      );
+      const channelId = isValidSnowflake(mentionId) ? (snowflakeToUuid(mentionId) || mentionId) : mentionId;
+      const channelData = context.channels?.get(channelId);
+      return <ChannelMention key={key} channelId={channelId} channelName={channelData?.name || 'salon-inconnu'} serverId={channelData?.serverId} onNavigate={context.onChannelNavigate} />;
     }
-
-    case 'specialMention':
-      return (
-        <SpecialMention
-          key={key}
-          type={token.mentionType as 'guide' | 'browse' | 'customize'}
-        />
-      );
-
-    case 'everyoneMention':
-      return (
-        <EveryoneMention
-          key={key}
-          type={token.mentionType as 'everyone' | 'here'}
-        />
-      );
-
-    case 'messageLinkEmbed': {
-      const embed = token.embedData;
-      if (!embed) return null;
-      
-      return (
-        <MessageLinkEmbed
-          key={key}
-          serverId={embed.serverId}
-          channelId={embed.channelId}
-          messageId={embed.messageId}
-          onJump={() => markdownContext.onMessageJump?.(embed.serverId, embed.channelId, embed.messageId)}
-        />
-      );
-    }
-    
+    case 'specialMention': return <SpecialMention key={key} type={token.mentionType as any} />;
+    case 'everyoneMention': return <EveryoneMention key={key} type={token.mentionType as any} />;
+    case 'messageLinkEmbed': return token.embedData ? <MessageLinkEmbed key={key} serverId={token.embedData.serverId} channelId={token.embedData.channelId} messageId={token.embedData.messageId} onJump={() => context.onMessageJump?.(token.embedData!.serverId, token.embedData!.channelId, token.embedData!.messageId)} /> : null;
     case 'timestamp': {
-      const ts = token.timestamp;
-      const fmt = token.timestampFormat || 'f';
-      if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
-      const date = new Date(ts * 1000);
-      const locale = 'fr-FR';
-      let formatted: string;
+      const ts = token.timestamp; if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
+      const date = new Date(ts * 1000); const fmt = token.timestampFormat || 'f'; const locale = 'fr-FR'; let formatted: string;
       switch (fmt) {
         case 't': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
         case 'T': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); break;
@@ -642,239 +328,88 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
         case 'f': formatted = date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
         case 'F': formatted = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
         case 'R': {
-          const now = Date.now();
-          const diffS = Math.floor((now - ts * 1000) / 1000);
-          if (diffS < 60) formatted = 'à l\'instant';
-          else if (diffS < 3600) formatted = `il y a ${Math.floor(diffS / 60)} min`;
-          else if (diffS < 86400) formatted = `il y a ${Math.floor(diffS / 3600)}h`;
-          else if (diffS < 2592000) formatted = `il y a ${Math.floor(diffS / 86400)}j`;
-          else formatted = date.toLocaleDateString(locale);
-          break;
+          const diffS = Math.floor((Date.now() - ts * 1000) / 1000);
+          if (diffS < 60) formatted = "à l'instant"; else if (diffS < 3600) formatted = `il y a ${Math.floor(diffS / 60)} min`;
+          else if (diffS < 86400) formatted = `il y a ${Math.floor(diffS / 3600)}h`; else if (diffS < 2592000) formatted = `il y a ${Math.floor(diffS / 86400)}j`;
+          else formatted = date.toLocaleDateString(locale); break;
         }
         default: formatted = date.toLocaleString(locale);
       }
-      return (
-        <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/15 text-primary text-sm cursor-default" title={date.toLocaleString(locale)}>
-          {formatted}
-        </span>
-      );
+      return <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/15 text-primary text-sm cursor-default" title={date.toLocaleString(locale)}>{formatted}</span>;
     }
-
-    case 'autoLink':
-      return (
-        <a
-          key={key}
-          href={token.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline break-all"
-        >
-          {(token.content as string).length > 80 ? (token.content as string).slice(0, 77) + '...' : token.content as string}
-        </a>
-      );
-
-    default:
-      return <React.Fragment key={key}>{renderContent(token.content)}</React.Fragment>;
+    case 'autoLink': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{(token.content as string).length > 80 ? (token.content as string).slice(0, 77) + '...' : token.content as string}</a>;
+    default: return <React.Fragment key={key}>{renderContent(token.content)}</React.Fragment>;
   }
 }
 
-// ============================================
-// RENDER BLOCK TOKEN
-// ============================================
-function renderBlockToken(block: BlockToken, key: number, isLast: boolean = false): React.ReactNode {
-  const renderInlineContent = (content: string): React.ReactNode => {
-    const tokens = tokenizeInline(content);
-    return tokens.map((token, i) => renderInlineToken(token, i));
-  };
-
+function renderBlockToken(block: BlockToken, key: number, context: MarkdownContext, isLast: boolean = false): React.ReactNode {
+  const renderInlineContent = (content: string) => tokenizeInline(content).map((token, i) => renderInlineToken(token, i, context));
   switch (block.type) {
-    case 'header1':
-      return (
-        <div key={key}>
-          <h1 className="text-2xl font-bold text-white my-1">
-            {renderInlineContent(block.content)}
-          </h1>
-          <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
-        </div>
-      );
-    case 'header2':
-      return (
-        <div key={key}>
-          <h2 className="text-xl font-bold text-white my-1">
-            {renderInlineContent(block.content)}
-          </h2>
-          <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
-        </div>
-      );
-    case 'header3':
-      return (
-        <div key={key}>
-          <h3 className="text-lg font-semibold text-white my-0.5">
-            {renderInlineContent(block.content)}
-          </h3>
-          <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />
-        </div>
-      );
-    case 'subtext':
-      return (
-        <div key={key}>
-          <hr className="border-t border-[hsl(228,6%,26%)] mt-2 mb-0.5" />
-          <p className="text-[12px] text-muted-foreground leading-4">
-            {renderInlineContent(block.content)}
-          </p>
-        </div>
-      );
-    case 'blockquote':
-      return (
-        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground">
-          {renderInlineContent(block.content)}
-        </blockquote>
-      );
-    case 'multiBlockquote':
-      return (
-        <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">
-          {renderInlineContent(block.content)}
-        </blockquote>
-      );
-    case 'listItem': {
-      const level = block.indentLevel || 0;
-      const bulletStyle = level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]';
-      return (
-        <li key={key} className={bulletStyle} style={{ marginLeft: `${(level + 1) * 16}px` }}>
-          {renderInlineContent(block.content)}
-        </li>
-      );
-    }
-    case 'orderedListItem': {
-      const level = block.indentLevel || 0;
-      return (
-        <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>
-          {renderInlineContent(block.content)}
-        </li>
-      );
-    }
-    case 'codeBlock':
-      return <CodeBlock key={key} code={block.content} language={block.language} />;
-    case 'separator':
-      return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
-    case 'empty':
-      return <br key={key} />;
-    case 'escapedParagraph':
-      return (
-        <React.Fragment key={key}>
-          <span>{block.content}</span>
-          {!isLast && <br />}
-        </React.Fragment>
-      );
+    case 'header1': return <div key={key}><h1 className="text-2xl font-bold text-white my-1">{renderInlineContent(block.content)}</h1><hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" /></div>;
+    case 'header2': return <div key={key}><h2 className="text-xl font-bold text-white my-1">{renderInlineContent(block.content)}</h2><hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" /></div>;
+    case 'header3': return <div key={key}><h3 className="text-lg font-semibold text-white my-0.5">{renderInlineContent(block.content)}</h3><hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" /></div>;
+    case 'subtext': return <div key={key}><hr className="border-t border-[hsl(228,6%,26%)] mt-2 mb-0.5" /><p className="text-[12px] text-muted-foreground leading-4">{renderInlineContent(block.content)}</p></div>;
+    case 'blockquote': return <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground">{renderInlineContent(block.content)}</blockquote>;
+    case 'multiBlockquote': return <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">{renderInlineContent(block.content)}</blockquote>;
+    case 'listItem': { const level = block.indentLevel || 0; return <li key={key} className={level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]'} style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
+    case 'orderedListItem': { const level = block.indentLevel || 0; return <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
+    case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} />;
+    case 'separator': return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
+    case 'empty': return <br key={key} />;
+    case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
     case 'paragraph':
-    default:
-      return (
-        <React.Fragment key={key}>
-          <span>{renderInlineContent(block.content)}</span>
-          {!isLast && <br />}
-        </React.Fragment>
-      );
+    default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && <br />}</React.Fragment>;
   }
 }
 
-// ============================================
-// MAIN PARSE FUNCTION
-// ============================================
-export function parseMarkdown(content: string): React.ReactNode {
-  // Check if content has any block-level elements (including escaped ones like \# \> \-)
+export function parseMarkdown(content: string, context: MarkdownContext = globalMarkdownContext): React.ReactNode {
   const hasBlockElements = /^(\\[#>\-*_]|#{1,3} |-# |> |>>> |\d+\. |[-*] |-{3,}|\*{3,}|_{3,})/m.test(content) || content.includes('```');
-  
   if (!hasBlockElements) {
-    // Simple inline-only parsing with line break support
     const lines = content.split('\n');
     return lines.map((line, i) => {
-      if (line.startsWith('\\')) {
-        const plainText = line.slice(1);
-        return <React.Fragment key={i}>{plainText}{i < lines.length - 1 && <br />}</React.Fragment>;
-      }
-      return (
-        <React.Fragment key={i}>
-          {tokenizeInline(line).map((token, j) => renderInlineToken(token, j))}
-          {i < lines.length - 1 && <br />}
-        </React.Fragment>
-      );
+      if (line.startsWith('\\')) return <React.Fragment key={i}>{line.slice(1)}{i < lines.length - 1 && <br />}</React.Fragment>;
+      return <React.Fragment key={i}>{tokenizeInline(line).map((token, j) => renderInlineToken(token, j, context))}{i < lines.length - 1 && <br />}</React.Fragment>;
     });
   }
-  
-  // Full block + inline parsing
   const blocks = parseBlocks(content);
-  
-  // Group consecutive list items
   const groupedBlocks: React.ReactNode[] = [];
   let currentList: { type: 'ul' | 'ol'; items: BlockToken[] } | null = null;
-  
   blocks.forEach((block, index) => {
-    if (block.type === 'listItem') {
-      if (currentList?.type === 'ul') {
-        currentList.items.push(block);
-      } else {
+    if (block.type === 'listItem' || block.type === 'orderedListItem') {
+      const type = block.type === 'listItem' ? 'ul' : 'ol';
+      if (currentList?.type === type) currentList.items.push(block);
+      else {
         if (currentList) {
-          groupedBlocks.push(
-            <ol key={`list-${groupedBlocks.length}`} className="my-1">
-              {currentList.items.map((item, i) => renderBlockToken(item, i))}
-            </ol>
-          );
+          const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
+          groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         }
-        currentList = { type: 'ul', items: [block] };
-      }
-    } else if (block.type === 'orderedListItem') {
-      if (currentList?.type === 'ol') {
-        currentList.items.push(block);
-      } else {
-        if (currentList) {
-          groupedBlocks.push(
-            <ul key={`list-${groupedBlocks.length}`} className="my-1">
-              {currentList.items.map((item, i) => renderBlockToken(item, i))}
-            </ul>
-          );
-        }
-        currentList = { type: 'ol', items: [block] };
+        currentList = { type, items: [block] };
       }
     } else {
       if (currentList) {
-        const ListTag = currentList.type === 'ul' ? 'ul' : 'ol';
-        groupedBlocks.push(
-          <ListTag key={`list-${groupedBlocks.length}`} className="my-1">
-            {currentList.items.map((item, i) => renderBlockToken(item, i))}
-          </ListTag>
-        );
+        const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
+        groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         currentList = null;
       }
-      const isLastBlock = index === blocks.length - 1;
-      groupedBlocks.push(renderBlockToken(block, index, isLastBlock));
+      groupedBlocks.push(renderBlockToken(block, index, context, index === blocks.length - 1));
     }
   });
-  
-  // Flush remaining list
   if (currentList) {
-    const ListTag = currentList.type === 'ul' ? 'ul' : 'ol';
-    groupedBlocks.push(
-      <ListTag key={`list-${groupedBlocks.length}`} className="my-1">
-        {currentList.items.map((item, i) => renderBlockToken(item, i))}
-      </ListTag>
-    );
+    const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
+    groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
   }
-  
   return <div className="markdown-content text-foreground">{groupedBlocks}</div>;
 }
 
 // ============================================
-// MARKDOWN TEXT COMPONENT (forwardRef)
+// MARKDOWN TEXT COMPONENT
 // ============================================
-export const MarkdownText = React.forwardRef<HTMLSpanElement, { content: string; className?: string }>(
+export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string }>(
   ({ content, className }, ref) => {
-    React.useSyncExternalStore(
-      subscribeMarkdownContext,
-      getMarkdownContextSnapshot,
-      getMarkdownContextSnapshot,
-    );
-
-    return <span ref={ref} className={className}>{parseMarkdown(content)}</span>;
+    const reactContext = useMarkdownContext();
+    useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
+    const activeContext = reactContext || globalMarkdownContext;
+    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, activeContext)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

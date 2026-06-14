@@ -8,7 +8,7 @@ import { useEffect } from 'react';
  * survives a refresh while the tab is open — keeping the UI instantly
  * consistent with the user's last action.
  */
-type Listener = (roleId: string) => void;
+type Listener = (roleId: string, serverId?: string) => void;
 const listeners = new Set<Listener>();
 
 const STORAGE_PREFIX = 'member-role-filter:';
@@ -42,8 +42,8 @@ export function setPersistedRoleFilter(serverId: string | null | undefined, role
   }
 }
 
-export function requestMemberRoleFilter(roleId: string) {
-  listeners.forEach((l) => l(roleId));
+export function requestMemberRoleFilter(roleId: string, serverId?: string) {
+  listeners.forEach((l) => l(roleId, serverId));
 }
 
 export function useMemberRoleFilterListener(cb: Listener) {

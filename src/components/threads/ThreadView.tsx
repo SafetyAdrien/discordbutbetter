@@ -326,6 +326,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         channelIds.push(ch.id);
       });
     });
+    channelsData?.orphanChannels?.forEach((ch) => {
+      channelsMap.set(ch.id, { name: ch.name, serverId });
+      channelIds.push(ch.id);
+    });
 
     registerSnowflakeMappings([...userIds, ...roleIds, ...channelIds]);
 

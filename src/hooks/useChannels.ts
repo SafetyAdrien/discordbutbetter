@@ -43,6 +43,9 @@ export function useChannels(
     return data.categories.reduce((sum, category) => sum + category.channels.length, 0) + data.orphanChannels.length;
   };
 
+  const hasAnyChannel = (data?: { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }) =>
+    !!data && getChannelCount(data) > 0;
+
   // Realtime subscription for channels and categories
   useEffect(() => {
     if (!serverId || !user) return;
@@ -107,8 +110,8 @@ export function useChannels(
   >((best, candidate) => {
     return getChannelCount(candidate) > getChannelCount(best) ? candidate : best;
   }, undefined);
-  const cachedChannelCount = getChannelCount(bestCachedChannels);
-  const cachedChannels = cachedChannelCount > 0 ? bestCachedChannels : undefined;
+  const hasUsableCachedChannels = hasAnyChannel(bestCachedChannels);
+  const cachedChannels = hasUsableCachedChannels ? bestCachedChannels : undefined;
 
   const query = useQuery({
     queryKey: ['channels', serverId],
@@ -147,8 +150,8 @@ export function useChannels(
     enabled: !!serverId && !!user,
     initialData: cachedChannels,
     initialDataUpdatedAt: cachedChannels ? Date.now() : 0,
-    staleTime: cachedChannelCount > 0 ? 5 * 60 * 1000 : 0,
-    refetchOnMount: cachedChannelCount > 0 ? false : true,
+    staleTime: hasUsableCachedChannels ? 5 * 60 * 1000 : 0,
+    refetchOnMount: hasUsableCachedChannels ? false : true,
     refetchOnWindowFocus: false,
   });
 

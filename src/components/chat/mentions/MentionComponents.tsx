@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Hash, BookOpen, Search, List, MessageSquare } from 'lucide-react';
+import { RoleInfoPopup } from '@/components/profile/RoleInfoPopup';
 
 // ============================================
 // USER MENTION COMPONENT
@@ -85,8 +86,6 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
   );
 
   if (serverId) {
-    // Lazy import via dynamic require avoided — static import is fine
-    const { RoleInfoPopup } = require('@/components/profile/RoleInfoPopup');
     return <RoleInfoPopup roleId={roleId} serverId={serverId}>{pill}</RoleInfoPopup>;
   }
 

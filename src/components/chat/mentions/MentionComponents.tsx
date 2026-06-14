@@ -246,8 +246,6 @@ export function EveryoneMention({ type, serverId }: EveryoneMentionProps) {
 
   if (!serverId) return trigger;
 
-  // Lazy import to avoid circular deps at module init
-  const { EveryoneHerePopup } = require('@/components/profile/EveryoneHerePopup');
   return (
     <EveryoneHerePopup type={type} serverId={serverId}>
       {trigger}

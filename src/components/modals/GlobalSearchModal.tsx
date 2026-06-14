@@ -24,7 +24,7 @@ import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/use
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { MarkdownText } from '@/lib/markdown';
+import { MarkdownText, MarkdownProvider, MarkdownContext } from '@/lib/markdown';
 
 interface GlobalSearchModalProps {
   open: boolean;
@@ -35,7 +35,6 @@ interface GlobalSearchModalProps {
   onNavigateToMessage?: (channelId: string, messageId: string) => void;
 }
 
-// Search filter prefixes configuration
 const searchPrefixes = [
   { prefix: 'de:', label: 'de la personne', icon: User, type: 'user' as const },
   { prefix: 'mentions:', label: 'mentionner quelqu\'un', icon: AtSign, type: 'user' as const },
@@ -48,7 +47,6 @@ const searchPrefixes = [
   { prefix: 'auteur:', label: 'type d\'auteur', icon: UserCircle, type: 'authorType' as const },
 ];
 
-// Autocomplete suggestion component
 function AutocompleteSuggestions({
   type,
   query,
@@ -202,7 +200,6 @@ function AutocompleteSuggestions({
   return null;
 }
 
-// Filter tags display
 function FilterTags({
   filters,
   onRemove,
@@ -265,7 +262,12 @@ export function GlobalSearchModal({
 
   const { mutate: search, data: results, isPending } = useGlobalSearch(serverId);
 
-  // Parse query for active prefix
+  const markdownContext = useMemo<MarkdownContext>(() => ({
+    serverId: serverId || undefined,
+    users: new Map(members.map(m => [m.id, { displayName: m.displayName, avatarUrl: m.avatar }])),
+    channels: new Map(channels.map(c => [c.id, { name: c.name, serverId: serverId || undefined }])),
+  }), [serverId, members, channels]);
+
   const detectActivePrefix = useCallback((value: string) => {
     for (const prefixConfig of searchPrefixes) {
       const regex = new RegExp(`${prefixConfig.prefix}(\\S*)$`);
@@ -281,7 +283,6 @@ export function GlobalSearchModal({
     return null;
   }, []);
 
-  // Handle input change
   const handleInputChange = (value: string) => {
     setQuery(value);
     const active = detectActivePrefix(value);
@@ -289,7 +290,6 @@ export function GlobalSearchModal({
     setShowPrefixSuggestions(!active && !value.trim());
   };
 
-  // Handle autocomplete selection
   const handleAutocompleteSelect = (value: string) => {
     if (activeAutocomplete) {
       const newQuery = query.replace(
@@ -302,7 +302,6 @@ export function GlobalSearchModal({
     }
   };
 
-  // Handle prefix selection
   const handlePrefixSelect = (prefix: string) => {
     setQuery(prev => prev + prefix);
     setShowPrefixSuggestions(false);
@@ -318,12 +317,10 @@ export function GlobalSearchModal({
     }
   };
 
-  // Parse query and build filters
   const parseAndSearch = useCallback(() => {
     const parsedFilters: SearchFiltersType = {};
     let remaining = query;
 
-    // Parse each prefix
     const prefixMap: Record<string, keyof SearchFiltersType> = {
       'de:': 'from',
       'mentions:': 'mentions',
@@ -349,7 +346,6 @@ export function GlobalSearchModal({
       }
     }
 
-    // Remaining text is free search
     if (remaining.trim()) {
       parsedFilters.contains = parsedFilters.contains 
         ? `${parsedFilters.contains} ${remaining.trim()}`
@@ -357,30 +353,25 @@ export function GlobalSearchModal({
     }
 
     setFilters(parsedFilters);
-    
     if (Object.keys(parsedFilters).length > 0) {
       search({ query: remaining.trim(), filters: parsedFilters });
     }
   }, [query, search]);
 
-  // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query.trim()) {
         parseAndSearch();
       }
     }, 300);
-
     return () => clearTimeout(timer);
   }, [query, parseAndSearch]);
 
-  // Handle filter removal
   const handleRemoveFilter = (key: keyof SearchFiltersType) => {
     const newFilters = { ...filters };
     delete newFilters[key];
     setFilters(newFilters);
     
-    // Also remove from query text
     const prefixMap: Record<keyof SearchFiltersType, string> = {
       from: 'de:',
       mentions: 'mentions:',
@@ -399,7 +390,6 @@ export function GlobalSearchModal({
     }
   };
 
-  // Format date for display
   const formatDate = (dateStr: string) => {
     try {
       return format(new Date(dateStr), 'dd MMM yyyy, HH:mm', { locale: fr });
@@ -424,37 +414,26 @@ export function GlobalSearchModal({
         </DialogHeader>
 
         <div className="px-4 py-3 border-b border-border">
-          {/* Filter tags */}
           <FilterTags filters={filters} onRemove={handleRemoveFilter} />
-
-          {/* Search input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               ref={inputRef}
               value={query}
               onChange={(e) => handleInputChange(e.target.value)}
-              
               onBlur={() => setTimeout(() => setShowPrefixSuggestions(false), 150)}
               placeholder="Rechercher des messages..."
               className="pl-9 pr-4 h-10 bg-input"
-              
             />
-
-            {/* Prefix suggestions - inline on mobile, absolute dropdown on desktop */}
             {showPrefixSuggestions && (
               <div className={cn(
                 "bg-popover border border-border rounded-lg shadow-lg overflow-hidden",
-                isMobile
-                  ? "mt-2"
-                  : "absolute z-50 top-full left-0 right-0 mt-1"
+                isMobile ? "mt-2" : "absolute z-50 top-full left-0 right-0 mt-1"
               )}>
                 <p className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
                   Options de recherche
                 </p>
-                <div className={cn(
-                  isMobile && "grid grid-cols-2 gap-0"
-                )}>
+                <div className={cn(isMobile && "grid grid-cols-2 gap-0")}>
                   {searchPrefixes.map(prefixConfig => {
                     const Icon = prefixConfig.icon;
                     return (
@@ -475,8 +454,6 @@ export function GlobalSearchModal({
                 </div>
               </div>
             )}
-
-            {/* Autocomplete suggestions */}
             {activeAutocomplete && (
               <AutocompleteSuggestions
                 type={activeAutocomplete.type}
@@ -489,7 +466,6 @@ export function GlobalSearchModal({
           </div>
         </div>
 
-        {/* Results */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
             {isPending ? (
@@ -498,33 +474,35 @@ export function GlobalSearchModal({
               </div>
             ) : results && results.length > 0 ? (
               <div className="space-y-3">
-                {results.map(message => (
-                  <button
-                    key={message.id}
-                    onClick={() => onNavigateToMessage?.(message.channel_id, message.id)}
-                    className="w-full text-left p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Avatar className="w-5 h-5">
-                        <AvatarImage src={message.author?.avatar_url || undefined} />
-                        <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                          {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium">{message.author?.display_name || 'Inconnu'}</span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Hash className="w-3 h-3" />
-                        {message.channel?.name || 'Salon'}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {formatDate(message.created_at || '')}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2 font-ginto">
-                      <MarkdownText content={message.content} />
-                    </p>
-                  </button>
-                ))}
+                <MarkdownProvider value={markdownContext}>
+                  {results.map(message => (
+                    <button
+                      key={message.id}
+                      onClick={() => onNavigateToMessage?.(message.channel_id, message.id)}
+                      className="w-full text-left p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Avatar className="w-5 h-5">
+                          <AvatarImage src={message.author?.avatar_url || undefined} />
+                          <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                            {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{message.author?.display_name || 'Inconnu'}</span>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Hash className="w-3 h-3" />
+                          {message.channel?.name || 'Salon'}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {formatDate(message.created_at || '')}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground line-clamp-2 font-ginto">
+                        <MarkdownText content={message.content} />
+                      </div>
+                    </button>
+                  ))}
+                </MarkdownProvider>
               </div>
             ) : query.trim() && !isPending ? (
               <div className="text-center py-8 text-muted-foreground">

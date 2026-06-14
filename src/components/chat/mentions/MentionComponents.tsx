@@ -72,32 +72,33 @@ interface RoleMentionProps {
   roleId: string;
   roleName: string;
   roleColor: string;
+  serverId?: string;
 }
 
-export function RoleMention({ roleId, roleName, roleColor }: RoleMentionProps) {
-  // Convert hex to rgba for background
-  const hexToRgba = (hex: string, alpha: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
+export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMentionProps) {
+  const pill = (
+    <span
+      className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white"
+    >
+      @{roleName}
+    </span>
+  );
+
+  if (serverId) {
+    // Lazy import via dynamic require avoided — static import is fine
+    const { RoleInfoPopup } = require('@/components/profile/RoleInfoPopup');
+    return <RoleInfoPopup roleId={roleId} serverId={serverId}>{pill}</RoleInfoPopup>;
+  }
 
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-default font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white"
-          >
-            @{roleName}
-          </span>
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{pill}</TooltipTrigger>
         <TooltipContent side="top" className="bg-popover border-border p-2">
           <div className="flex items-center gap-2">
-            <div 
-              className="w-4 h-4 rounded-full" 
-              style={{ backgroundColor: roleColor || '#99aab5' }} 
+            <div
+              className="w-4 h-4 rounded-full"
+              style={{ backgroundColor: roleColor || '#99aab5' }}
             />
             <div>
               <p className="font-semibold" style={{ color: roleColor || '#99aab5' }}>{roleName}</p>

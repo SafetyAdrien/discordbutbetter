@@ -119,7 +119,7 @@ export function PerfOverlay() {
         )}
       </div>
       <footer style={{ padding: '4px 10px', borderTop: '1px solid hsl(var(--border, 0 0% 20%))', opacity: 0.6 }}>
-        Ctrl+Shift+P to toggle · window.__perfReport()
+        Alt+Shift+P to toggle · window.__perfReport()
       </footer>
     </div>
   );

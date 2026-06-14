@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { VoiceProvider } from "@/contexts/VoiceContext";
 import { PresenceProvider } from "@/contexts/PresenceContext";
+import { PerfOverlay } from "@/components/dev/PerfOverlay";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Invite from "./pages/Invite";
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            <PerfOverlay />
           </TooltipProvider>
         </VoiceProvider>
       </PresenceProvider>

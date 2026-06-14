@@ -213,23 +213,28 @@ async function enforceCacheSchemaVersion(): Promise<void> {
  * is wiped first so users always pull fresh data after a deploy.
  */
 export async function warmCache(): Promise<void> {
+  const { markPerf, measurePerf, recordPerf } = await import('@/lib/perf');
+  markPerf('warmCache:start');
+
   // Step 1 (BLOCKING, very fast): ensure the schema-version purge ran.
-  // This is the only thing that must finish before we render messages,
-  // otherwise we risk painting rows from a previous schema.
   try {
+    const t0 = performance.now();
     await enforceCacheSchemaVersion();
+    recordPerf('warmCache:schemaEnforce', performance.now() - t0);
   } catch {
     // ignore
   } finally {
     markCacheReady();
+    markPerf('warmCache:ready');
+    measurePerf('warmCache:total(blocking)', 'warmCache:start', 'warmCache:ready');
   }
 
-  // Step 2 (NON-BLOCKING): hydrate the in-memory cache from IndexedDB in
-  // the background. Queries already started — IDB hydration just speeds up
-  // subsequent synchronous reads via cacheGetSync().
+  // Step 2 (NON-BLOCKING): hydrate IndexedDB into memory in background.
   void (async () => {
+    const t0 = performance.now();
     try {
       const db = await getDB();
+      let count = 0;
       await new Promise<void>((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
@@ -238,14 +243,16 @@ export async function warmCache(): Promise<void> {
           const cursor = req.result;
           if (cursor) {
             memoryCache.set(cursor.key as string, cursor.value);
+            count += 1;
             cursor.continue();
           }
         };
         tx.oncomplete = () => resolve();
         tx.onerror = () => resolve();
       });
+      recordPerf(`warmCache:idbHydrate(${count})`, performance.now() - t0);
     } catch {
-      // IDB unavailable — sync mirror + memory cache still work
+      recordPerf('warmCache:idbHydrate(failed)', performance.now() - t0);
     }
   })();
 }

@@ -47,6 +47,7 @@ interface BlockToken {
 // Context for providing user/role/channel data
 export interface MarkdownContext {
   currentUserId?: string;
+  serverId?: string;
   users?: Map<string, { displayName: string; avatarUrl?: string }>;
   roles?: Map<string, { name: string; color: string }>;
   channels?: Map<string, { name: string; serverId?: string }>;
@@ -557,6 +558,7 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
           roleId={roleId}
           roleName={roleData?.name || 'Rôle inconnu'}
           roleColor={roleData?.color || '#99aab5'}
+          serverId={markdownContext.serverId}
         />
       );
     }

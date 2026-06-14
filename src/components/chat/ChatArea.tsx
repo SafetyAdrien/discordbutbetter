@@ -590,6 +590,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     setMarkdownContext({
       currentUserId: user?.id,
+      serverId: channel.server_id,
       users: usersMap,
       roles: rolesMap,
       channels: channelsMap,

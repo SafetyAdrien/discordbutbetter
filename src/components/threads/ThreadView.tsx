@@ -887,6 +887,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           );
                         }
                         return null;
+                      })()}
                       <SwipeToReplyRow
                         enabled={isMobile || isTablet}
                         onReply={() => setReplyingTo(message)}

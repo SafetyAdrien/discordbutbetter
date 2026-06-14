@@ -143,7 +143,7 @@ export function useServers() {
         }) ?? [];
 
       return servers;
-    },
+    }),
     enabled: !!user,
     initialData: cachedServers,
     initialDataUpdatedAt: cachedServers ? Date.now() : 0,

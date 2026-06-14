@@ -56,7 +56,11 @@ import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
 import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
-import { useMemberRoleFilterListener } from "@/hooks/useMemberRoleFilter";
+import {
+  useMemberRoleFilterListener,
+  getPersistedRoleFilter,
+  setPersistedRoleFilter,
+} from "@/hooks/useMemberRoleFilter";
 import { X as XIcon } from "lucide-react";
 interface Role {
   id: string;
@@ -260,7 +264,16 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isClosingFilters, setIsClosingFilters] = useState(false);
-  const [selectedRoleFilters, setSelectedRoleFilters] = useState<string[]>([]);
+  const [selectedRoleFilters, setSelectedRoleFiltersRaw] = useState<string[]>(() =>
+    getPersistedRoleFilter(serverId),
+  );
+  const setSelectedRoleFilters: typeof setSelectedRoleFiltersRaw = (value) => {
+    setSelectedRoleFiltersRaw((prev) => {
+      const next = typeof value === 'function' ? (value as (p: string[]) => string[])(prev) : value;
+      setPersistedRoleFilter(serverId, next);
+      return next;
+    });
+  };
   const [filterSelectedIndex, setFilterSelectedIndex] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
 

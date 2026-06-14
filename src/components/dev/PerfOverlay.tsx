@@ -30,7 +30,7 @@ export function PerfOverlay() {
   // Keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
+      if (e.altKey && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         setOpen((v) => !v);
       }

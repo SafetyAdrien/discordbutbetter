@@ -28,16 +28,17 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
     <Popover>
       <TooltipProvider>
         <Tooltip>
-          <PopoverTrigger asChild>
-            <TooltipTrigger asChild>
-              <button 
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
                 className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform inline-flex items-center self-center translate-y-[0px]"
                 onClick={(e) => e.stopPropagation()}
               >
                 {iconElement}
               </button>
-            </TooltipTrigger>
-          </PopoverTrigger>
+            </PopoverTrigger>
+          </TooltipTrigger>
           <TooltipContent side="top" className="bg-popover border-none px-2 py-1">
             <p className="text-white text-xs font-medium">{role.name}</p>
           </TooltipContent>

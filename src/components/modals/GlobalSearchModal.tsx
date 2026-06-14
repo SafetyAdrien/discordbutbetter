@@ -476,12 +476,15 @@ export function GlobalSearchModal({
               <div className="space-y-3">
                 <MarkdownProvider value={markdownContext}>
                   {results.map(message => (
-                    <button
+                    <div
                       key={message.id}
-                      onClick={() => onNavigateToMessage?.(message.channel_id, message.id)}
-                      className="w-full text-left p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors"
+                      className="w-full text-left p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors cursor-pointer"
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToMessage?.(message.channel_id, message.id)}
+                        className="flex items-center gap-2 mb-1 w-full text-left"
+                      >
                         <Avatar className="w-5 h-5">
                           <AvatarImage src={message.author?.avatar_url || undefined} />
                           <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
@@ -496,11 +499,11 @@ export function GlobalSearchModal({
                         <span className="text-xs text-muted-foreground ml-auto">
                           {formatDate(message.created_at || '')}
                         </span>
-                      </div>
+                      </button>
                       <div className="text-sm text-muted-foreground line-clamp-2 font-ginto">
                         <MarkdownText content={message.content} />
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </MarkdownProvider>
               </div>

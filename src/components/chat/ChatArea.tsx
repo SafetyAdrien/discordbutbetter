@@ -1421,8 +1421,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               }
             }
 
-            const { reply: parsedReply, body: parsedBody } = parseRepliedMessage(message.content);
-            const hasReply = Boolean(message.replyToId || message.repliedMessage) || Boolean(parsedReply);
+            const { body: parsedBody } = parseRepliedMessage(message.content);
+            const hasReply = Boolean(message.replyToId || message.repliedMessage);
             const showAuthor =
               !prevItem ||
               prevItem.type !== "message" ||
@@ -1480,11 +1480,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       {showAuthor ? (
                         <div className="relative">
                           {threadsByMessageId.has(message.id) && <ThreadSpine startY={44} />}
-                          {(message.repliedMessage || parsedReply) && !isEditing && (
+                          {message.repliedMessage && !isEditing && (
                             <RepliedLine
-                              repliedMessage={message.repliedMessage ?? null}
-                              authorName={parsedReply?.author}
-                              preview={parsedReply?.preview}
+                              repliedMessage={message.repliedMessage}
                               messages={messages}
                               onJump={scrollToMessage}
                               indent={56}

@@ -559,9 +559,10 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
 
     case 'roleMention': {
       const mentionId = token.mentionId || (token.content as string);
-      // Convert Snowflake ID to UUID if needed for lookup
+      // Convert Snowflake ID to UUID if registered, otherwise resolve against
+      // the current roles map because Snowflakes are deterministic from UUIDs.
       const roleId = isValidSnowflake(mentionId)
-        ? (snowflakeToUuid(mentionId) || mentionId)
+        ? (snowflakeToUuid(mentionId) || [...(markdownContext.roles?.keys() ?? [])].find((id) => uuidToSnowflake(id) === mentionId) || mentionId)
         : mentionId;
       const roleData = markdownContext.roles?.get(roleId);
       

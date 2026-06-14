@@ -16,10 +16,10 @@ interface RoleForBadge {
 
 interface RepliedLineProps {
   /**
-   * Preferred path: the resolved snapshot of the cited message (via reply_to_id).
+   * Resolved snapshot of the cited message (via reply_to_id).
    * When provided, gives faithful avatar, content, attachments, jump target.
    */
-  repliedMessage?: RepliedMessageRef | null;
+  repliedMessage: RepliedMessageRef | null;
 
   /** Jump callback */
   onJump?: (messageId: string) => void;
@@ -222,7 +222,7 @@ export function RepliedLine({
         </span>
       )}
 
-      {/* Legacy fallback: plain icon (kept for non-server contexts) */}
+      {/* Plain icon fallback for non-server contexts */}
       {!isDeleted && !authorRole?.icon_url && authorRoleIcon?.iconUrl && (
         <span
           className="flex-shrink-0 inline-flex items-center"

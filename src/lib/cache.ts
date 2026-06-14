@@ -213,9 +213,21 @@ async function enforceCacheSchemaVersion(): Promise<void> {
  * is wiped first so users always pull fresh data after a deploy.
  */
 export async function warmCache(): Promise<void> {
+  // Step 1 (BLOCKING, very fast): ensure the schema-version purge ran.
+  // This is the only thing that must finish before we render messages,
+  // otherwise we risk painting rows from a previous schema.
   try {
     await enforceCacheSchemaVersion();
+  } catch {
+    // ignore
+  } finally {
+    markCacheReady();
+  }
 
+  // Step 2 (NON-BLOCKING): hydrate the in-memory cache from IndexedDB in
+  // the background. Queries already started — IDB hydration just speeds up
+  // subsequent synchronous reads via cacheGetSync().
+  void (async () => {
     try {
       const db = await getDB();
       await new Promise<void>((resolve) => {
@@ -235,10 +247,7 @@ export async function warmCache(): Promise<void> {
     } catch {
       // IDB unavailable — sync mirror + memory cache still work
     }
-  } finally {
-    // Always flip the gate, even on failure, so the UI never hangs.
-    markCacheReady();
-  }
+  })();
 }
 
 /**

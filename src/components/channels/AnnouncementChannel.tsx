@@ -54,7 +54,7 @@ import { ThreadSpine } from "@/components/threads/ThreadSpine";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { TypingIndicator } from "@/components/typing/TypingIndicator";
-import { MarkdownText, setMarkdownContext } from "@/lib/markdown";
+import { MarkdownText, setMarkdownContext, getMarkdownContext } from "@/lib/markdown";
 import { registerSnowflakeMappings } from "@/lib/snowflake";
 import { useMessages, useSendMessage, useEditMessage, useDeleteMessage } from "@/hooks/useMessages";
 import { usePinnedMessages, usePinMessage, useUnpinMessage } from "@/hooks/usePinnedMessages";

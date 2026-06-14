@@ -68,118 +68,13 @@ export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-   const queryCachedMessages = channelId
-     ? queryClient.getQueryData<MessageWithAuthor[]>(['messages', channelId])
-     : undefined;
-   const persistedMessages = channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined;
-   const cachedMessages = [queryCachedMessages, persistedMessages].reduce<MessageWithAuthor[] | undefined>(
-     (best, candidate) => ((candidate?.length ?? -1) > (best?.length ?? -1) ? candidate : best),
-     undefined
-   );
-
   const query = useQuery({
     queryKey: ['messages', channelId],
-    queryFn: async (): Promise<MessageWithAuthor[]> => {
-      if (!channelId) return [];
-
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          id,
-          content,
-          created_at,
-          edited_at,
-          attachments,
-          channel_id,
-          reply_to_id,
-          source_server_id,
-          source_server_name,
-          source_server_icon,
-          source_channel_name,
-          is_published_message,
-          publish_dismissed,
-          is_system,
-          author:profiles!messages_author_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url,
-            status,
-            custom_status
-          )
-        `)
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true })
-        .limit(100);
-
-      if (error) throw error;
-
-      const baseMessages: MessageWithAuthor[] = (data as any[]).map((msg) => ({
-        ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
-      })) as MessageWithAuthor[];
-
-      // Resolve replied messages in a single batched query
-      const replyIds = Array.from(
-        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
-      );
-
-      let replyMap = new Map<string, RepliedMessageSnapshot>();
-      if (replyIds.length > 0) {
-        const { data: replyData } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            content,
-            attachments,
-            author:profiles!messages_author_id_fkey (
-              id,
-              username,
-              display_name,
-              avatar_url
-            )
-          `)
-          .in('id', replyIds);
-
-        if (replyData) {
-          for (const r of replyData as any[]) {
-            replyMap.set(r.id, {
-              id: r.id,
-              content: r.content || '',
-              attachments: Array.isArray(r.attachments) ? r.attachments : [],
-              author: r.author
-                ? {
-                    id: r.author.id,
-                    username: r.author.username,
-                    display_name: r.author.display_name,
-                    avatar_url: r.author.avatar_url,
-                  }
-                : null,
-            });
-          }
-        }
-      }
-
-      return baseMessages.map((m) => {
-        if (!m.reply_to_id) return m;
-        const snap = replyMap.get(m.reply_to_id);
-        return {
-          ...m,
-          repliedMessage: snap ?? {
-            id: m.reply_to_id,
-            content: '',
-            attachments: [],
-            deleted: true,
-            author: null,
-          },
-        };
-      });
-    },
+    placeholderData: () => (channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined),
+...
     enabled: !!channelId && !!user,
-    initialData: cachedMessages,
-    initialDataUpdatedAt: cachedMessages ? Date.now() : 0,
-    staleTime: cachedMessages ? 60 * 1000 : 0,
-    refetchOnMount: cachedMessages ? false : true,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 

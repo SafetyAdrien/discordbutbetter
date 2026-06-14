@@ -84,7 +84,6 @@ import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { RepliedLine } from "@/components/chat/RepliedLine";
-import { parseRepliedMessage } from "@/lib/parse-reply";
 
 interface Role {
   id: string;
@@ -812,7 +811,7 @@ export function AnnouncementChannel({
               }
             }
             
-            const hasReply = Boolean((message as any).repliedMessage) || Boolean(parseRepliedMessage(message.content).reply);
+            const hasReply = Boolean((message as any).repliedMessage);
             const showAuthor =
               !prevMessage ||
               prevMessage.author.id !== message.author.id ||
@@ -911,19 +910,7 @@ export function AnnouncementChannel({
                               />
                             );
                           }
-                          // Legacy fallback for old blockquote-stored citations
-                          const { reply } = parseRepliedMessage(message.content);
-                          if (!reply) return null;
-                          return (
-                            <RepliedLine
-                              authorName={reply.author}
-                              preview={reply.preview}
-                              messages={messages}
-                              onJump={scrollToMessage}
-                              indent={56}
-                              className="mb-1"
-                            />
-                          );
+                          return null;
                         })()}
 
                         <div className="flex gap-3 items-start">

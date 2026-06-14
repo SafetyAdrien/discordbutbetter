@@ -228,12 +228,28 @@ export function MessageLinkEmbed({
 // ============================================
 interface EveryoneMentionProps {
   type: 'everyone' | 'here';
+  serverId?: string;
 }
 
-export function EveryoneMention({ type }: EveryoneMentionProps) {
-  return (
-    <span className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-default">
+export function EveryoneMention({ type, serverId }: EveryoneMentionProps) {
+  const trigger = (
+    <button
+      type="button"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-pointer align-baseline"
+    >
       @{type}
-    </span>
+    </button>
+  );
+
+  if (!serverId) return trigger;
+
+  // Lazy import to avoid circular deps at module init
+  const { EveryoneHerePopup } = require('@/components/profile/EveryoneHerePopup');
+  return (
+    <EveryoneHerePopup type={type} serverId={serverId}>
+      {trigger}
+    </EveryoneHerePopup>
   );
 }

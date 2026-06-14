@@ -8,7 +8,7 @@ import {
   MessageLinkEmbed,
   EveryoneMention 
 } from '@/components/chat/mentions/MentionComponents';
-import { snowflakeToUuid, isValidSnowflake } from '@/lib/snowflake';
+import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
 
 // ============================================
 // TYPES
@@ -59,13 +59,26 @@ export interface MarkdownContext {
 
 // Default context
 let markdownContext: MarkdownContext = {};
+let markdownContextVersion = 0;
+const markdownContextListeners = new Set<() => void>();
 
 export function setMarkdownContext(ctx: MarkdownContext) {
   markdownContext = ctx;
+  markdownContextVersion += 1;
+  markdownContextListeners.forEach((listener) => listener());
 }
 
 export function getMarkdownContext(): MarkdownContext {
   return markdownContext;
+}
+
+function subscribeMarkdownContext(listener: () => void): () => void {
+  markdownContextListeners.add(listener);
+  return () => markdownContextListeners.delete(listener);
+}
+
+function getMarkdownContextSnapshot(): number {
+  return markdownContextVersion;
 }
 
 // ============================================
@@ -546,9 +559,10 @@ function renderInlineToken(token: MarkdownToken, key: number): React.ReactNode {
 
     case 'roleMention': {
       const mentionId = token.mentionId || (token.content as string);
-      // Convert Snowflake ID to UUID if needed for lookup
+      // Convert Snowflake ID to UUID if registered, otherwise resolve against
+      // the current roles map because Snowflakes are deterministic from UUIDs.
       const roleId = isValidSnowflake(mentionId)
-        ? (snowflakeToUuid(mentionId) || mentionId)
+        ? (snowflakeToUuid(mentionId) || [...(markdownContext.roles?.keys() ?? [])].find((id) => uuidToSnowflake(id) === mentionId) || mentionId)
         : mentionId;
       const roleData = markdownContext.roles?.get(roleId);
       
@@ -854,6 +868,12 @@ export function parseMarkdown(content: string): React.ReactNode {
 // ============================================
 export const MarkdownText = React.forwardRef<HTMLSpanElement, { content: string; className?: string }>(
   ({ content, className }, ref) => {
+    React.useSyncExternalStore(
+      subscribeMarkdownContext,
+      getMarkdownContextSnapshot,
+      getMarkdownContextSnapshot,
+    );
+
     return <span ref={ref} className={className}>{parseMarkdown(content)}</span>;
   }
 );

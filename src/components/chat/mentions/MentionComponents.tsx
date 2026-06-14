@@ -79,6 +79,10 @@ interface RoleMentionProps {
 export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMentionProps) {
   const pill = (
     <span
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      role="button"
+      tabIndex={0}
       className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white"
     >
       @{roleName}

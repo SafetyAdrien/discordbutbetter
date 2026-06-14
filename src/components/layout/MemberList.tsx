@@ -56,6 +56,8 @@ import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
 import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
+import { useMemberRoleFilterListener } from "@/hooks/useMemberRoleFilter";
+import { X as XIcon } from "lucide-react";
 interface Role {
   id: string;
   name: string;
@@ -346,6 +348,11 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const clearRoleFilters = () => {
     setSelectedRoleFilters([]);
   };
+
+  // Listen to external requests to filter by a role (from RoleInfoPopup)
+  useMemberRoleFilterListener((roleId) => {
+    setSelectedRoleFilters([roleId]);
+  });
 
   // Parse search query for prefixes
   const parseSearchQuery = (query: string) => {

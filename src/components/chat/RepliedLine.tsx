@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
-import type { Attachment, Message, RepliedMessageRef } from "@/types/app";
+import type { Attachment, RepliedMessageRef } from "@/types/app";
 
 interface RoleForBadge {
   id: string;
@@ -16,20 +16,11 @@ interface RoleForBadge {
 
 interface RepliedLineProps {
   /**
-   * Preferred path: the resolved snapshot of the cited message (via reply_to_id).
+   * Resolved snapshot of the cited message (via reply_to_id).
    * When provided, gives faithful avatar, content, attachments, jump target.
    */
-  repliedMessage?: RepliedMessageRef | null;
+  repliedMessage: RepliedMessageRef | null;
 
-  /** Legacy fallback: cited author display name parsed from markdown blockquote */
-  authorName?: string;
-  /** Legacy fallback: preview text parsed from markdown blockquote */
-  preview?: string;
-
-  /** Best-effort author lookup (legacy fallback) */
-  authorLookup?: Map<string, { id: string; avatar?: string; displayName: string }>;
-  /** Messages list for legacy jump resolution */
-  messages?: Message[];
   /** Jump callback */
   onJump?: (messageId: string) => void;
 
@@ -82,10 +73,6 @@ function describeAttachments(attachments: Attachment[]): { icon: JSX.Element; la
 
 export function RepliedLine({
   repliedMessage,
-  authorName,
-  preview,
-  authorLookup,
-  messages,
   onJump,
   indent = 50,
   authorColor,
@@ -96,7 +83,7 @@ export function RepliedLine({
   // ---- Resolve display data ----
   const isDeleted = repliedMessage?.deleted === true;
 
-  // Author resolution (fidelity mode wins)
+  // Author resolution from the resolved reply snapshot only.
   const resolvedAuthor = useMemo(() => {
     if (repliedMessage?.author) {
       return {
@@ -105,19 +92,11 @@ export function RepliedLine({
         displayName: repliedMessage.author.displayName,
       };
     }
-    if (!authorName) return null;
-    if (authorLookup) {
-      const direct = authorLookup.get(authorName);
-      if (direct) return direct;
-      for (const [key, val] of authorLookup) {
-        if (key.toLowerCase() === authorName.toLowerCase()) return val;
-      }
-    }
     return null;
-  }, [repliedMessage, authorName, authorLookup]);
+  }, [repliedMessage]);
 
   const displayedAuthorName =
-    resolvedAuthor?.displayName ?? authorName ?? (isDeleted ? "Inconnu" : "Utilisateur");
+    resolvedAuthor?.displayName ?? (isDeleted ? "Inconnu" : "Utilisateur");
 
   // Content resolution
   const rawPreview = useMemo(() => {
@@ -129,8 +108,8 @@ export function RepliedLine({
       if (atts.length > 0) return ""; // we render an attachment chip instead
       return "";
     }
-    return cleanPreview(preview ?? "");
-  }, [repliedMessage, preview, isDeleted]);
+    return "";
+  }, [repliedMessage, isDeleted]);
 
   const attachmentInfo = useMemo(() => {
     if (!repliedMessage || isDeleted) return null;
@@ -150,17 +129,8 @@ export function RepliedLine({
   const jumpTargetId = useMemo(() => {
     if (isDeleted) return null;
     if (repliedMessage?.id) return repliedMessage.id;
-    // legacy: best-effort search by author display name + content
-    if (!messages || !authorName) return null;
-    const needleAuthor = authorName.toLowerCase();
-    const needlePreview = (preview ?? "").slice(0, 30).toLowerCase();
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.author.displayName.toLowerCase() !== needleAuthor) continue;
-      if (m.content.toLowerCase().includes(needlePreview)) return m.id;
-    }
     return null;
-  }, [repliedMessage, messages, authorName, preview, isDeleted]);
+  }, [repliedMessage, isDeleted]);
 
   const isClickable = Boolean(jumpTargetId && onJump && !isDeleted);
   const initial = displayedAuthorName.charAt(0).toUpperCase();
@@ -252,7 +222,7 @@ export function RepliedLine({
         </span>
       )}
 
-      {/* Legacy fallback: plain icon (kept for non-server contexts) */}
+      {/* Plain icon fallback for non-server contexts */}
       {!isDeleted && !authorRole?.icon_url && authorRoleIcon?.iconUrl && (
         <span
           className="flex-shrink-0 inline-flex items-center"

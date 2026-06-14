@@ -3,9 +3,12 @@ import { warmCache, purgeAllCaches } from "./lib/cache";
 import App from "./App.tsx";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+async function bootstrap() {
+  await warmCache();
+  createRoot(document.getElementById("root")!).render(<App />);
+}
 
-void warmCache();
+void bootstrap();
 
 /**
  * Hard-refresh shortcuts (Ctrl/Cmd+R, Ctrl/Cmd+Shift+R, Ctrl+F5) must wipe

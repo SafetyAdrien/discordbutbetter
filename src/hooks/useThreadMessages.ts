@@ -113,6 +113,9 @@ export const useThreadMessages = (threadId: string | undefined) => {
     },
     enabled: !!threadId,
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   // Persist to IndexedDB

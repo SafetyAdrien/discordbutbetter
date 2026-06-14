@@ -148,6 +148,9 @@ export function useDMMessages(conversationId: string | null) {
     },
     enabled: !!conversationId && !!user,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   // Persist to IndexedDB

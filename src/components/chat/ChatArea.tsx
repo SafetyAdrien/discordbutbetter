@@ -99,7 +99,6 @@ import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 import { ReactionBar } from "@/components/chat/ReactionBar";
 import { RepliedLine } from "@/components/chat/RepliedLine";
-import { parseRepliedMessage } from "@/lib/parse-reply";
 
 import { ReplyBanner } from "@/components/chat/ReplyBanner";
 
@@ -128,7 +127,7 @@ function PollActions({
   onCopyLink: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onReply: () => void;
+  onReply?: () => void;
   onAddReaction: (emoji: string) => void;
   isOwnPoll: boolean;
   isPollExpired?: boolean;
@@ -209,14 +208,16 @@ function PollActions({
       </Popover>
 
       {/* 3. Répondre */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
-            <Reply className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">Répondre</TooltipContent>
-      </Tooltip>
+      {onReply && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <Reply className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Répondre</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* 4. Menu Plus d'options */}
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
@@ -719,25 +720,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       setIsSending(true);
       setTimeout(() => setIsSending(false), 400);
 
-      // Use real reply_to_id linking when available; fall back to legacy markdown citation
-      // (e.g. for poll citations which don't represent a real message id).
       const replyTarget = replyingTo;
-      const isRealMessageReply =
-        !!replyTarget &&
-        // Heuristic: poll-citation IDs are valid uuids too, so we always send replyToId
-        // as long as we are replying to an actual message. Polls are wrapped via handleReplyToPoll
-        // and don't have a matching messages row — server will silently drop the FK if missing,
-        // but to stay safe we only attach reply_to_id when the target id is found in the loaded
-        // messages list.
-        messages.some((m) => m.id === replyTarget.id);
-
-      if (replyTarget && !isRealMessageReply) {
-        // Legacy fallback for non-message citations (e.g. polls)
-        const content = `> **${replyTarget.author.displayName}:** ${replyTarget.content.substring(0, 80)}${replyTarget.content.length > 80 ? "..." : ""}\n\n${messageInput}`;
-        onSendMessage(content, attachments, null);
-      } else {
-        onSendMessage(messageInput, attachments, isRealMessageReply ? replyTarget!.id : null);
-      }
+      const replyToId = replyTarget && messages.some((m) => m.id === replyTarget.id) ? replyTarget.id : null;
+      onSendMessage(messageInput, attachments, replyToId);
 
       setMessageInput("");
       setReplyingTo(null);
@@ -747,21 +732,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   const handleReply = (message: Message) => {
     setReplyingTo(message);
-  };
-  const handleReplyToPoll = (poll: Poll) => {
-    // Créer un pseudo-message de réponse référençant le sondage
-    setReplyingTo({
-      id: poll.id,
-      content: `📊 ${poll.question}`,
-      author: {
-        id: poll.author?.id || "",
-        displayName: poll.author?.display_name || "Utilisateur inconnu",
-        username: poll.author?.username || "unknown",
-        avatar: poll.author?.avatar_url || undefined,
-      },
-      timestamp: new Date(poll.created_at),
-      edited_at: null,
-    } as Message);
   };
   const handleUserClick = (author: User) => {
     const roles = memberRoles?.get(author.id);
@@ -1134,7 +1104,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             onCopyLink={() => handleCopyPollLink(poll.id)}
                             onEdit={() => setEditingPoll(poll)}
                             onDelete={() => handleDeletePoll(poll)}
-                            onReply={() => handleReplyToPoll(poll)}
+                            onReply={undefined}
                             onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                             isOwnPoll={isOwnPoll}
                             isPollExpired={isPollExpired}
@@ -1421,7 +1391,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               }
             }
 
-            const { body: parsedBody } = parseRepliedMessage(message.content);
             const hasReply = Boolean(message.replyToId || message.repliedMessage);
             const showAuthor =
               !prevItem ||
@@ -1483,7 +1452,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           {message.repliedMessage && !isEditing && (
                             <RepliedLine
                               repliedMessage={message.repliedMessage}
-                              messages={messages}
                               onJump={scrollToMessage}
                               indent={56}
                               authorColor={
@@ -1600,7 +1568,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               ) : (
                                 <>
                                   <div className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
-                                    <MarkdownText content={parsedBody} />
+                                    <MarkdownText content={message.content} />
                                   </div>
                                 </>
                               )}
@@ -1723,7 +1691,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               ) : (
                                 <>
                                   <div className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
-                                    <MarkdownText content={parsedBody} />
+                                    <MarkdownText content={message.content} />
                                   </div>
                                 </>
                               )}

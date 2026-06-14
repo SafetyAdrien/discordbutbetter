@@ -65,7 +65,6 @@ import { ReactionBar } from '@/components/chat/ReactionBar';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { RepliedLine } from '@/components/chat/RepliedLine';
 import { ReplyBanner } from '@/components/chat/ReplyBanner';
-import { parseRepliedMessage } from '@/lib/parse-reply';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const MOBILE_BREAKPOINT = 768;
@@ -858,7 +857,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       }) : undefined}
                     >
                       {(() => {
-                        // Prefer real reply snapshot (reply_to_id resolved). Fallback: legacy markdown blockquote.
+                        // Real reply snapshot only (reply_to_id resolved).
                         if (message.repliedMessage) {
                           const cited = message.repliedMessage;
                           const citedRoles = cited.author ? memberRoles.get(cited.author.id) : undefined;
@@ -994,7 +993,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             </div>
                           ) : (
                             <div className="text-sm text-foreground break-words">
-                              <MarkdownText content={parseRepliedMessage(message.content).body} />
+                              <MarkdownText content={message.content} />
                             </div>
                           )}
                           {(reactionsData[message.id]?.length ?? 0) > 0 && (

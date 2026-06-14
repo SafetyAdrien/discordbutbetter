@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { recordPerf, markPerf, measurePerf } from '@/lib/perf';
 
 interface PreloadStep {
   label: string;
@@ -96,6 +97,7 @@ export function usePreloader(
   useEffect(() => {
     if (!serversLoaded || !user || hasStarted.current) return;
     hasStarted.current = true;
+    markPerf('preloader:start');
 
     const serverIds = servers.map(s => s.id);
     const targetServerId = (lastServerId && serverIds.includes(lastServerId))
@@ -103,69 +105,48 @@ export function usePreloader(
       : serverIds[0];
     const targetChannelId = lastChannelId || null;
 
-    // === ESSENTIAL: profile (cached -> network if missing) ===
-    (async () => {
-      const cached = readCache<any>(`profile:${user.id}`);
-      if (cached) {
-        queryClient.setQueryData(['profile', user.id], cached);
-        queryClient.setQueryData(['server-order', user.id], cached.server_order || []);
-        setProfileLoaded(true);
-        // Background refresh
-        supabase
+    // === PROFILE: cache-first, mark loaded immediately, refresh in background ===
+    const cachedProfile = readCache<any>(`profile:${user.id}`);
+    if (cachedProfile) {
+      queryClient.setQueryData(['profile', user.id], cachedProfile);
+      queryClient.setQueryData(['server-order', user.id], cachedProfile.server_order || []);
+    }
+    setProfileLoaded(true);
+    // Background profile refresh — does NOT block UI ready.
+    void (async () => {
+      const t0 = performance.now();
+      try {
+        const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single()
-          .then(({ data: profile }) => {
-            if (profile) {
-              queryClient.setQueryData(['profile', user.id], profile);
-              queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
-              writeCache(`profile:${user.id}`, profile);
-            }
-          });
-      } else {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          if (profile) {
-            queryClient.setQueryData(['profile', user.id], profile);
-            queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
-            writeCache(`profile:${user.id}`, profile);
-          }
-        } catch {}
-        setProfileLoaded(true);
-      }
+          .single();
+        if (profile) {
+          queryClient.setQueryData(['profile', user.id], profile);
+          queryClient.setQueryData(['server-order', user.id], profile.server_order || []);
+          writeCache(`profile:${user.id}`, profile);
+        }
+      } catch {}
+      recordPerf('preloader:profile-refresh', performance.now() - t0);
     })();
 
-    // === ESSENTIAL: channels for active server only ===
-    (async () => {
-      if (!targetServerId) {
-        setActiveChannelsLoaded(true);
-        return;
+    // === ACTIVE-SERVER CHANNELS: cache hydrate, mark loaded immediately ===
+    if (targetServerId) {
+      const cachedChannels = readCache<any>(`channels:${targetServerId}`);
+      if (cachedChannels) {
+        queryClient.setQueryData(['channels', targetServerId], cachedChannels);
       }
-      const cached = readCache<any>(`channels:${targetServerId}`);
-      if (cached) {
-        queryClient.setQueryData(['channels', targetServerId], cached);
-        setActiveChannelsLoaded(true);
-        // Background refresh
-        fetchChannelsForServer(targetServerId, queryClient);
-        return;
-      }
-      await fetchChannelsForServer(targetServerId, queryClient);
-      setActiveChannelsLoaded(true);
-    })();
+      // Background refresh (non-blocking) — keeps cache fresh.
+      void (async () => {
+        const t0 = performance.now();
+        await fetchChannelsForServer(targetServerId, queryClient);
+        recordPerf(`preloader:channels-refresh(${targetServerId})`, performance.now() - t0);
+      })();
+    }
+    setActiveChannelsLoaded(true);
 
-    // === ESSENTIAL: messages for active channel (cache only, no fetch — useMessages handles fetch) ===
-    (async () => {
-      if (!targetChannelId || !targetServerId) {
-        setActiveMessagesLoaded(true);
-        return;
-      }
-      // Validate that this channel still exists in the cached channels tree for the target server.
-      // Otherwise we'd boot the user directly into a vanished channel and trigger an infinite spinner.
+    // === ACTIVE-CHANNEL MESSAGES: cache-only, immediate ===
+    if (targetChannelId && targetServerId) {
       const channelsCached = readCache<any>(`channels:${targetServerId}`);
       let channelExists = false;
       if (channelsCached) {
@@ -175,65 +156,66 @@ export function usePreloader(
         ];
         channelExists = all.some((ch: any) => ch.id === targetChannelId);
       } else {
-        // No cache yet — assume valid; MobileLayout will recover if it turns out to be gone
         channelExists = true;
       }
-      if (!channelExists) {
-        setActiveMessagesLoaded(true);
-        return;
+      if (channelExists) {
+        const cachedMsgs = readCache<any>(`messages:${targetChannelId}`);
+        if (cachedMsgs) {
+          queryClient.setQueryData(['messages', targetChannelId], cachedMsgs);
+        }
       }
-      const cached = readCache<any>(`messages:${targetChannelId}`);
-      if (cached) {
-        queryClient.setQueryData(['messages', targetChannelId], cached);
-      }
-      setActiveMessagesLoaded(true);
-    })();
+    }
+    setActiveMessagesLoaded(true);
 
-    // === DEFERRED (background, non-blocking) ===
-    // Hydrate other servers' channels from cache only
-    setTimeout(() => {
+    markPerf('preloader:ready');
+    measurePerf('preloader:total', 'preloader:start', 'preloader:ready');
+
+    // === DEFERRED hydration of secondary data — staggered via requestIdleCallback ===
+    const idle = (cb: () => void, fallbackMs: number) => {
+      if (typeof (window as any).requestIdleCallback === 'function') {
+        (window as any).requestIdleCallback(cb, { timeout: fallbackMs + 200 });
+      } else {
+        setTimeout(cb, fallbackMs);
+      }
+    };
+
+    // Slice 1: other servers' channels (low cost, sync cache reads)
+    idle(() => {
+      const t0 = performance.now();
       for (const sid of serverIds) {
         if (sid === targetServerId) continue;
         const cached = readCache<any>(`channels:${sid}`);
-        if (cached) {
-          queryClient.setQueryData(['channels', sid], cached);
-        }
+        if (cached) queryClient.setQueryData(['channels', sid], cached);
       }
+      recordPerf('preloader:hydrate:other-channels', performance.now() - t0);
+    }, 50);
 
-      // Hydrate members from cache for all servers
+    // Slice 2: members + roles + channel-perms
+    idle(() => {
+      const t0 = performance.now();
       for (const sid of serverIds) {
-        const cached = readCache<any>(`members:${sid}`);
-        if (cached) {
-          queryClient.setQueryData(['members', sid], cached);
-        }
-      }
-
-      // Hydrate roles from cache
-      for (const sid of serverIds) {
-        const cached = readCache<any>(`roles:${sid}`);
-        if (cached) {
-          queryClient.setQueryData(['roles', sid], cached);
-        }
-      }
-
-      // Hydrate channel-perms from cache
-      for (const sid of serverIds) {
-        const cached = readCache<any>(`channel-perms:${sid}:${user.id}`);
-        if (cached) {
+        const m = readCache<any>(`members:${sid}`);
+        if (m) queryClient.setQueryData(['members', sid], m);
+        const r = readCache<any>(`roles:${sid}`);
+        if (r) queryClient.setQueryData(['roles', sid], r);
+        const p = readCache<any>(`channel-perms:${sid}:${user.id}`);
+        if (p) {
           queryClient.setQueryData(['server-channel-permissions', sid, user.id], {
-            viewable: new Set<string>(cached.viewable),
-            connectable: new Set<string>(cached.connectable),
+            viewable: new Set<string>(p.viewable),
+            connectable: new Set<string>(p.connectable),
           });
         }
       }
+      recordPerf('preloader:hydrate:members-roles-perms', performance.now() - t0);
+    }, 150);
 
-      // Hydrate DM conversations
+    // Slice 3: DM/unread/friends/notifications
+    idle(() => {
+      const t0 = performance.now();
       const dmCached = readCache<any>(`dm-conversations:${user.id}`);
       if (dmCached && Array.isArray(dmCached) && dmCached.length > 0) {
         queryClient.setQueryData(['dm-conversations', user.id], dmCached);
       }
-
-      // Hydrate unread counts
       const unreadCached = readCache<any>(`unread-counts:${user.id}`);
       if (unreadCached) queryClient.setQueryData(['unread-counts', user.id], unreadCached);
       const serverUnreadCached = readCache<any>(`server-unread:${user.id}`);
@@ -242,23 +224,25 @@ export function usePreloader(
         const chUnread = readCache<any>(`channel-unread:${sid}:${user.id}`);
         if (chUnread) queryClient.setQueryData(['channel-unread-counts', sid, user.id], chUnread);
       }
+      const friendsCached = readCache<any>(`friends:${user.id}`);
+      if (friendsCached) queryClient.setQueryData(['friends', user.id], friendsCached);
+      const notifCached = readCache<any>(`notifications:${user.id}`);
+      if (notifCached) queryClient.setQueryData(['notifications'], notifCached);
+      recordPerf('preloader:hydrate:dm-unread-friends', performance.now() - t0);
+    }, 300);
 
-      // Hydrate server emojis/stickers
+    // Slice 4: emojis/stickers
+    idle(() => {
+      const t0 = performance.now();
       for (const sid of serverIds) {
         const emojisCached = readCache<any>(`server-emojis:${sid}`);
         if (emojisCached) queryClient.setQueryData(['server-emojis', sid], emojisCached);
         const stickersCached = readCache<any>(`server-stickers:${sid}`);
         if (stickersCached) queryClient.setQueryData(['server-stickers', sid], stickersCached);
       }
-
-      // Hydrate friends + notifications from cache
-      const friendsCached = readCache<any>(`friends:${user.id}`);
-      if (friendsCached) queryClient.setQueryData(['friends', user.id], friendsCached);
-      const notifCached = readCache<any>(`notifications:${user.id}`);
-      if (notifCached) queryClient.setQueryData(['notifications'], notifCached);
-
       writeCache('preloader-done', '1');
-    }, 100);
+      recordPerf('preloader:hydrate:emojis-stickers', performance.now() - t0);
+    }, 500);
   }, [serversLoaded, user, servers, queryClient, lastServerId, lastChannelId]);
 
   const steps: PreloadStep[] = useMemo(() => [

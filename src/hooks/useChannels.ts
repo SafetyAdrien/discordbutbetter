@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { timeAsync } from '@/lib/perf';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -115,7 +116,7 @@ export function useChannels(
 
   const query = useQuery({
     queryKey: ['channels', serverId],
-    queryFn: async (): Promise<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }> => {
+    queryFn: () => timeAsync(`query:channels(${serverId ?? 'none'})`, async (): Promise<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }> => {
       if (!serverId) return { categories: [], orphanChannels: [] };
 
       const { data: categories, error: catError } = await supabase
@@ -146,7 +147,7 @@ export function useChannels(
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
       return { categories: categorizedChannels, orphanChannels };
-    },
+    }),
     enabled: !!serverId && !!user,
     initialData: cachedChannels,
     initialDataUpdatedAt: cachedChannels ? Date.now() : 0,

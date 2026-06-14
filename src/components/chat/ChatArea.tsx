@@ -1104,7 +1104,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             onCopyLink={() => handleCopyPollLink(poll.id)}
                             onEdit={() => setEditingPoll(poll)}
                             onDelete={() => handleDeletePoll(poll)}
-                            onReply={() => handleReplyToPoll(poll)}
+                            onReply={undefined}
                             onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                             isOwnPoll={isOwnPoll}
                             isPollExpired={isPollExpired}
@@ -1391,7 +1391,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               }
             }
 
-            const { body: parsedBody } = parseRepliedMessage(message.content);
             const hasReply = Boolean(message.replyToId || message.repliedMessage);
             const showAuthor =
               !prevItem ||
@@ -1570,7 +1569,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               ) : (
                                 <>
                                   <div className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
-                                    <MarkdownText content={parsedBody} />
+                                    <MarkdownText content={message.content} />
                                   </div>
                                 </>
                               )}
@@ -1693,7 +1692,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               ) : (
                                 <>
                                   <div className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
-                                    <MarkdownText content={parsedBody} />
+                                    <MarkdownText content={message.content} />
                                   </div>
                                 </>
                               )}

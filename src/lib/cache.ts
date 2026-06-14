@@ -15,6 +15,14 @@ const STORE_NAME = 'kv';
 const DB_VERSION = 1;
 const SYNC_STORAGE_PREFIX = `${DB_NAME}:${STORE_NAME}:`;
 
+/**
+ * Bump this whenever you need to force every client to drop their local cache
+ * on next load. We persist the last-seen version in localStorage; on mismatch
+ * we wipe memory + localStorage mirror + IndexedDB before warmCache() runs.
+ */
+const CACHE_SCHEMA_VERSION = 2;
+const CACHE_VERSION_KEY = `${DB_NAME}:schema-version`;
+
 const memoryCache = new Map<string, any>();
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -118,10 +126,61 @@ function getDB(): Promise<IDBDatabase> {
 }
 
 /**
+ * Wipe every cache layer (memory, localStorage mirror, IndexedDB store).
+ * Resolves once IDB is cleared so warmCache() can safely run afterwards.
+ */
+export async function purgeAllCaches(): Promise<void> {
+  memoryCache.clear();
+  clearSyncMirror();
+
+  if (!idbAvailable) return;
+
+  try {
+    const db = await getDB();
+    await new Promise<void>((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+        tx.onabort = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * On cold boot, drop every cache layer if the persisted schema version is
+ * older than CACHE_SCHEMA_VERSION. Must be awaited before warmCache().
+ */
+async function enforceCacheSchemaVersion(): Promise<void> {
+  if (!canUseLocalStorage()) return;
+
+  try {
+    const stored = window.localStorage.getItem(CACHE_VERSION_KEY);
+    const storedVersion = stored ? parseInt(stored, 10) : 0;
+    if (storedVersion >= CACHE_SCHEMA_VERSION) return;
+
+    await purgeAllCaches();
+    window.localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_SCHEMA_VERSION));
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Warm the in-memory cache from IndexedDB.
  * Call this once on app startup; it now runs in background.
+ * If the persisted cache schema version is out of date, every cache layer
+ * is wiped first so users always pull fresh data after a deploy.
  */
 export async function warmCache(): Promise<void> {
+  await enforceCacheSchemaVersion();
+
   try {
     const db = await getDB();
     return new Promise<void>((resolve) => {

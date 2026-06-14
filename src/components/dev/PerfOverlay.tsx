@@ -30,7 +30,7 @@ export function PerfOverlay() {
   // Keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
+      if (e.altKey && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         setOpen((v) => !v);
       }
@@ -119,7 +119,7 @@ export function PerfOverlay() {
         )}
       </div>
       <footer style={{ padding: '4px 10px', borderTop: '1px solid hsl(var(--border, 0 0% 20%))', opacity: 0.6 }}>
-        Ctrl+Shift+P to toggle · window.__perfReport()
+        Alt+Shift+P to toggle · window.__perfReport()
       </footer>
     </div>
   );

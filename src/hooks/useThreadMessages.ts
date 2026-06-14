@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { useCacheReady } from '@/hooks/useCacheReady';
 import { ThreadMessage } from '@/types/thread';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
@@ -9,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const useThreadMessages = (threadId: string | undefined) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const cacheReady = useCacheReady();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   
   // Real-time subscription — skip own INSERTs (handled by optimistic update)
@@ -111,7 +113,7 @@ export const useThreadMessages = (threadId: string | undefined) => {
         };
       });
     },
-    enabled: !!threadId,
+    enabled: !!threadId && cacheReady,
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
     staleTime: 0,
     refetchOnMount: 'always',

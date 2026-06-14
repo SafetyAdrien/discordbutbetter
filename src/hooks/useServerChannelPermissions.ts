@@ -20,9 +20,9 @@ export function useServerChannelPermissions(serverId: string | null) {
 
   const query = useQuery({
     queryKey: ['server-channel-permissions', serverId, user?.id],
-    queryFn: async (): Promise<ServerChannelPermissions> => {
+    queryFn: async (): Promise<{ viewable: Set<string>; connectable: Set<string>; tracked: Set<string> } | null> => {
       if (!serverId || !user?.id) {
-        return { viewable: new Set(), connectable: new Set() };
+        return null;
       }
 
       const { data, error } = await supabase.rpc('get_server_channel_permissions', {
@@ -32,19 +32,22 @@ export function useServerChannelPermissions(serverId: string | null) {
 
       if (error) {
         console.error('[useServerChannelPermissions] Error:', error);
-        // Default to all visible/connectable on error to not lock users out
-        return { viewable: new Set<string>(), connectable: new Set<string>() };
+        // Return null so consumers fall back to "visible by default"
+        // (empty Sets would hide every channel — Set.has() returns false, never undefined).
+        return null;
       }
 
       const viewable = new Set<string>();
       const connectable = new Set<string>();
+      const tracked = new Set<string>();
 
       (data || []).forEach((row: { channel_id: string; can_view: boolean; can_connect: boolean }) => {
+        tracked.add(row.channel_id);
         if (row.can_view) viewable.add(row.channel_id);
         if (row.can_connect) connectable.add(row.channel_id);
       });
 
-      return { viewable, connectable };
+      return { viewable, connectable, tracked };
     },
     enabled: !!serverId && !!user?.id,
     staleTime: 0, // Always refetch on invalidation for instant permission updates
@@ -54,19 +57,20 @@ export function useServerChannelPermissions(serverId: string | null) {
   // Stable helper functions
   const isVisible = useCallback(
     (channelId: string) => {
-      // During loading, default to visible to prevent flash
-      if (query.isLoading) return true;
-      return query.data?.viewable.has(channelId) ?? true;
+      // During loading or on error (data === null), default to visible
+      if (query.isLoading || !query.data) return true;
+      // If channel isn't yet tracked by the RPC (cache lag / freshly created), default to visible
+      if (!query.data.tracked.has(channelId)) return true;
+      return query.data.viewable.has(channelId);
     },
     [query.isLoading, query.data]
   );
 
   const isLocked = useCallback(
     (channelId: string) => {
-      // During loading, default to unlocked
-      if (query.isLoading) return false;
-      // Locked = NOT connectable
-      return !(query.data?.connectable.has(channelId) ?? true);
+      if (query.isLoading || !query.data) return false;
+      if (!query.data.tracked.has(channelId)) return false;
+      return !query.data.connectable.has(channelId);
     },
     [query.isLoading, query.data]
   );

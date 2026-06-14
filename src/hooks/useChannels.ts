@@ -102,11 +102,13 @@ export function useChannels(
   const persistedChannels = serverId
     ? cacheGetSync<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(`channels:${serverId}`)
     : undefined;
-  const cachedChannels = [queryCachedChannels, persistedChannels, initialData].reduce<
+  const bestCachedChannels = [queryCachedChannels, persistedChannels, initialData].reduce<
     { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] } | undefined
   >((best, candidate) => {
     return getChannelCount(candidate) > getChannelCount(best) ? candidate : best;
   }, undefined);
+  const cachedChannelCount = getChannelCount(bestCachedChannels);
+  const cachedChannels = cachedChannelCount > 0 ? bestCachedChannels : undefined;
 
   const query = useQuery({
     queryKey: ['channels', serverId],
@@ -145,8 +147,8 @@ export function useChannels(
     enabled: !!serverId && !!user,
     initialData: cachedChannels,
     initialDataUpdatedAt: cachedChannels ? Date.now() : 0,
-    staleTime: cachedChannels ? 5 * 60 * 1000 : 0,
-    refetchOnMount: cachedChannels ? false : true,
+    staleTime: cachedChannelCount > 0 ? 5 * 60 * 1000 : 0,
+    refetchOnMount: cachedChannelCount > 0 ? false : true,
     refetchOnWindowFocus: false,
   });
 

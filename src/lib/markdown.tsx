@@ -8,7 +8,7 @@ import {
   MessageLinkEmbed,
   EveryoneMention 
 } from '@/components/chat/mentions/MentionComponents';
-import { snowflakeToUuid, isValidSnowflake } from '@/lib/snowflake';
+import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
 
 // ============================================
 // TYPES

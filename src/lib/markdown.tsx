@@ -315,7 +315,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
       return <ChannelMention key={key} channelId={channelId} channelName={channelData?.name || 'salon-inconnu'} serverId={channelData?.serverId} onNavigate={context.onChannelNavigate} />;
     }
     case 'specialMention': return <SpecialMention key={key} type={token.mentionType as any} />;
-    case 'everyoneMention': return <EveryoneMention key={key} type={token.mentionType as any} />;
+    case 'everyoneMention': return <EveryoneMention key={key} type={token.mentionType as any} serverId={context.serverId} />;
     case 'messageLinkEmbed': return token.embedData ? <MessageLinkEmbed key={key} serverId={token.embedData.serverId} channelId={token.embedData.channelId} messageId={token.embedData.messageId} onJump={() => context.onMessageJump?.(token.embedData!.serverId, token.embedData!.channelId, token.embedData!.messageId)} /> : null;
     case 'timestamp': {
       const ts = token.timestamp; if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;

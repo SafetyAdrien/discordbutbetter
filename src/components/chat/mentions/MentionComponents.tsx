@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Hash, BookOpen, Search, List, MessageSquare } from 'lucide-react';
 import { RoleInfoPopup } from '@/components/profile/RoleInfoPopup';
+import { EveryoneHerePopup } from '@/components/profile/EveryoneHerePopup';
 
 // ============================================
 // USER MENTION COMPONENT
@@ -228,12 +229,26 @@ export function MessageLinkEmbed({
 // ============================================
 interface EveryoneMentionProps {
   type: 'everyone' | 'here';
+  serverId?: string;
 }
 
-export function EveryoneMention({ type }: EveryoneMentionProps) {
-  return (
-    <span className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-default">
+export function EveryoneMention({ type, serverId }: EveryoneMentionProps) {
+  const trigger = (
+    <button
+      type="button"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-pointer align-baseline"
+    >
       @{type}
-    </span>
+    </button>
+  );
+
+  if (!serverId) return trigger;
+
+  return (
+    <EveryoneHerePopup type={type} serverId={serverId}>
+      {trigger}
+    </EveryoneHerePopup>
   );
 }

@@ -20,7 +20,7 @@ const SYNC_STORAGE_PREFIX = `${DB_NAME}:${STORE_NAME}:`;
  * on next load. We persist the last-seen version in localStorage; on mismatch
  * we wipe memory + localStorage mirror + IndexedDB before warmCache() runs.
  */
-const CACHE_SCHEMA_VERSION = 2;
+const CACHE_SCHEMA_VERSION = 3;
 const CACHE_VERSION_KEY = `${DB_NAME}:schema-version`;
 
 const memoryCache = new Map<string, any>();

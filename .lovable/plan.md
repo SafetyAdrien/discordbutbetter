@@ -1,26 +1,9 @@
-Objectif : rendre le déplacement des catégories ouvertes fiable, même quand elles contiennent plusieurs salons et occupent une grande hauteur.
+## Objectif
+Corriger le déplacement des catégories ouvertes pour que le drop modifie réellement l'ordre, au lieu de laisser la catégorie à sa position initiale.
 
-Plan :
-1. Séparer la zone de tri des catégories de leur contenu ouvert
-   - Garder uniquement l’en-tête de catégorie comme élément sortable mesuré par dnd-kit.
-   - Laisser les salons enfants affichés visuellement sous la catégorie, sans agrandir la zone de collision sortable de la catégorie.
-
-2. Ajouter une zone de drop dédiée pour les catégories ouvertes
-   - Maintenir le drag sur l’en-tête de catégorie.
-   - Éviter que les salons internes ou la grande hauteur du bloc ouvert interceptent le drop.
-   - Conserver le comportement actuel pour le drag de salons entre catégories.
-
-3. Corriger le calcul final de réordonnancement
-   - Utiliser la catégorie réellement survolée et la position `before/after` au moment du drop.
-   - Si le drop revient sur la catégorie active ou produit le même ordre, ne pas déclencher de mutation inutile.
-   - S’assurer que déplacer une catégorie ouverte vers le haut ou vers le bas modifie bien `orderedIds`.
-
-4. Vérifier en preview
-   - Tester catégorie ouverte vers catégorie ouverte.
-   - Tester catégorie ouverte vers catégorie fermée.
-   - Vérifier que le drag de salons entre catégories reste fonctionnel.
-
-Fichiers concernés :
-- `src/components/layout/ChannelList.tsx`
-
-Aucun changement backend prévu.
+## Plan
+1. Remplacer la détection actuelle basée sur `over` par un calcul explicite de la cible catégorie sous le pointeur au moment du drop.
+2. Pour un drag de catégorie, ignorer les salons enfants et ne considérer que les en-têtes `.dnd-item` des autres catégories.
+3. Calculer `before/after` avec la position verticale réelle du pointeur sur l'en-tête cible, puis reconstruire `orderedIds` depuis l'ordre visible actuel.
+4. Ne pas lancer de mutation si l'ordre calculé est identique, sinon appeler `reorderCategories` avec le nouvel ordre.
+5. Conserver la logique existante de drag des salons vers/dans les catégories.

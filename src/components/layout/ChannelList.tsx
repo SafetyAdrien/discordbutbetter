@@ -282,6 +282,8 @@ function SortableCategory({
       <div
         ref={setNodeRef}
         style={style}
+        data-dnd-type="category"
+        data-category-id={category.id}
         className={cn(
           "relative dnd-item",
           isDragging && "dnd-item-dragging"
@@ -908,6 +910,55 @@ export function ChannelList({
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
   const dropModeRef = useRef<"before" | "after" | "inside">("after");
+  const getDragClientY = useCallback((event: DragOverEvent | DragEndEvent) => {
+    const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
+    if (!activatorEvent) return null;
+
+    if ("clientY" in activatorEvent) {
+      return activatorEvent.clientY + event.delta.y;
+    }
+
+    if (!("touches" in activatorEvent)) return null;
+
+    const touch = activatorEvent.touches[0] || activatorEvent.changedTouches[0];
+    return touch ? touch.clientY + event.delta.y : null;
+  }, []);
+
+  const getCategoryDropTarget = useCallback((activeCategoryId: string, event: DragOverEvent | DragEndEvent) => {
+    const clientY = getDragClientY(event);
+    if (clientY === null) return null;
+
+    const categoryHeaders = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-dnd-type="category"][data-category-id]')
+    )
+      .map((element) => ({
+        id: element.dataset.categoryId,
+        rect: element.getBoundingClientRect()
+      }))
+      .filter((item): item is { id: string; rect: DOMRect } => !!item.id && item.id !== activeCategoryId)
+      .sort((a, b) => a.rect.top - b.rect.top);
+
+    if (categoryHeaders.length === 0) return null;
+
+    const target = categoryHeaders.reduce((closest, current) => {
+      const currentDistance =
+        clientY < current.rect.top ? current.rect.top - clientY :
+        clientY > current.rect.bottom ? clientY - current.rect.bottom :
+        0;
+      const closestDistance =
+        clientY < closest.rect.top ? closest.rect.top - clientY :
+        clientY > closest.rect.bottom ? clientY - closest.rect.bottom :
+        0;
+
+      return currentDistance < closestDistance ? current : closest;
+    }, categoryHeaders[0]);
+
+    const midpoint = target.rect.top + target.rect.height / 2;
+    return {
+      overCatId: target.id,
+      position: clientY < midpoint ? "before" as const : "after" as const
+    };
+  }, [getDragClientY]);
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();
@@ -1131,13 +1182,30 @@ export function ChannelList({
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over, delta } = event;
+    const activeIdStr = active.id.toString();
+
+    if (activeIdStr.startsWith("category-")) {
+      const activeCatId = activeIdStr.replace("category-", "");
+      const target = getCategoryDropTarget(activeCatId, event);
+      if (!target) {
+        setOverId(null);
+        return;
+      }
+
+      dropPositionRef.current = target.position;
+      dropModeRef.current = target.position;
+      setDropPosition(target.position);
+      setDropMode(target.position);
+      setOverId(`category-${target.overCatId}`);
+      return;
+    }
+
     if (!over || over.id === active.id) {
       setOverId(null);
       dropModeRef.current = "after";
       setDropMode("after");
       return;
     }
-    const activeIdStr = active.id.toString();
     const overIdStr = over.id.toString();
 
     // Strict type validation for drop indicator
@@ -1207,21 +1275,28 @@ export function ChannelList({
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
-    if (!over || active.id === over.id) return;
     const activeIdStr = active.id as string;
-    const overIdStr = over.id as string;
+    const overIdStr = over?.id as string | undefined;
 
     // Handle category reordering with precise position
-    if (activeIdStr.startsWith("category-") && overIdStr.startsWith("category-")) {
+    if (activeIdStr.startsWith("category-")) {
       const activeCatId = activeIdStr.replace("category-", "");
-      const overCatId = overIdStr.replace("category-", "");
+      const resolvedTarget = getCategoryDropTarget(activeCatId, event) ??
+        (overIdStr?.startsWith("category-") && overIdStr !== activeIdStr ? {
+          overCatId: overIdStr.replace("category-", ""),
+          position: currentDropPosition
+        } : null);
+
+      if (!resolvedTarget) return;
+
+      const overCatId = resolvedTarget.overCatId;
       const oldIndex = server.categories.findIndex((c) => c.id === activeCatId);
       const overIndex = server.categories.findIndex((c) => c.id === overCatId);
       if (oldIndex !== -1 && overIndex !== -1) {
         // Remove active category and insert at precise position based on dropPosition
         const activeCategory = server.categories[oldIndex];
         const newCategories = server.categories.filter((c) => c.id !== activeCatId);
-        let insertIndex = currentDropPosition === "before" ? overIndex : overIndex + 1;
+        let insertIndex = resolvedTarget.position === "before" ? overIndex : overIndex + 1;
         // Adjust if we removed an element before the insertion point
         if (oldIndex < overIndex) {
           insertIndex--;
@@ -1229,6 +1304,7 @@ export function ChannelList({
         insertIndex = Math.max(0, Math.min(insertIndex, newCategories.length));
         newCategories.splice(insertIndex, 0, activeCategory);
         const orderedIds = newCategories.map((cat) => cat.id);
+        if (orderedIds.every((id, index) => id === server.categories[index]?.id)) return;
         requestAnimationFrame(() => {
           reorderCategories.mutate({
             serverId: server.id,
@@ -1236,7 +1312,10 @@ export function ChannelList({
           });
         });
       }
+      return;
     }
+
+    if (!over || !overIdStr || active.id === over.id) return;
 
     // Handle channel reordering (inter-category support)
     if (activeIdStr.startsWith("channel-")) {

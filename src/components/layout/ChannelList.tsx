@@ -1297,7 +1297,7 @@ export function ChannelList({
               // Remove the active channel from the array
               const newChannels = targetChannels.filter((ch) => ch.id !== activeChannelId);
               // Calculate insertion index based on dropPosition
-              let insertIndex = dropPosition === "before" ? overIndex : overIndex + 1;
+              let insertIndex = currentDropPosition === "before" ? overIndex : overIndex + 1;
               // Adjust if we removed an element before the insertion point
               if (oldIndex < overIndex) {
                 insertIndex--;

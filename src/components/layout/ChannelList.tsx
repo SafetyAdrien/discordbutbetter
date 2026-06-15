@@ -910,6 +910,53 @@ export function ChannelList({
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
   const dropModeRef = useRef<"before" | "after" | "inside">("after");
+  const getDragClientY = useCallback((event: DragOverEvent | DragEndEvent) => {
+    const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
+    if (!activatorEvent) return null;
+
+    if ("clientY" in activatorEvent) {
+      return activatorEvent.clientY + event.delta.y;
+    }
+
+    const touch = activatorEvent.touches[0] || activatorEvent.changedTouches[0];
+    return touch ? touch.clientY + event.delta.y : null;
+  }, []);
+
+  const getCategoryDropTarget = useCallback((activeCategoryId: string, event: DragOverEvent | DragEndEvent) => {
+    const clientY = getDragClientY(event);
+    if (clientY === null) return null;
+
+    const categoryHeaders = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-dnd-type="category"][data-category-id]')
+    )
+      .map((element) => ({
+        id: element.dataset.categoryId,
+        rect: element.getBoundingClientRect()
+      }))
+      .filter((item): item is { id: string; rect: DOMRect } => !!item.id && item.id !== activeCategoryId)
+      .sort((a, b) => a.rect.top - b.rect.top);
+
+    if (categoryHeaders.length === 0) return null;
+
+    const target = categoryHeaders.reduce((closest, current) => {
+      const currentDistance =
+        clientY < current.rect.top ? current.rect.top - clientY :
+        clientY > current.rect.bottom ? clientY - current.rect.bottom :
+        0;
+      const closestDistance =
+        clientY < closest.rect.top ? closest.rect.top - clientY :
+        clientY > closest.rect.bottom ? clientY - closest.rect.bottom :
+        0;
+
+      return currentDistance < closestDistance ? current : closest;
+    }, categoryHeaders[0]);
+
+    const midpoint = target.rect.top + target.rect.height / 2;
+    return {
+      overCatId: target.id,
+      position: clientY < midpoint ? "before" as const : "after" as const
+    };
+  }, [getDragClientY]);
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();

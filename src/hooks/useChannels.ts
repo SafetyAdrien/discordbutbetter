@@ -584,21 +584,14 @@ export function useDeleteChannel() {
       
       return { previousChannels, previousServers, serverId };
     },
-    onError: (_, { serverId }, context) => {
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', serverId], context.previousChannels);
-      }
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
+    onError: () => {
+      // No rollback — keep the optimistic deletion. Realtime will reconcile if needed.
       toast.error('Erreur lors de la suppression');
     },
-    onSettled: (_, __, { serverId }) => {
+    onSettled: () => {
       setTimeout(() => {
         mutationLockRef.current = false;
       }, 500);
-      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Salon supprimé');

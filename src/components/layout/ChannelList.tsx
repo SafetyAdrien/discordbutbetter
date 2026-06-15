@@ -1221,7 +1221,7 @@ export function ChannelList({
         // Remove active category and insert at precise position based on dropPosition
         const activeCategory = server.categories[oldIndex];
         const newCategories = server.categories.filter((c) => c.id !== activeCatId);
-        let insertIndex = dropPosition === "before" ? overIndex : overIndex + 1;
+        let insertIndex = currentDropPosition === "before" ? overIndex : overIndex + 1;
         // Adjust if we removed an element before the insertion point
         if (oldIndex < overIndex) {
           insertIndex--;

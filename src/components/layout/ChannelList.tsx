@@ -1317,7 +1317,7 @@ export function ChannelList({
             const filteredChannels = targetChannels.filter((ch) => ch.id !== activeChannelId);
             const overIdx = filteredChannels.findIndex((ch) => ch.id === overChannelId);
             // Calculate insertion index based on dropPosition
-            const insertIdx = dropPosition === "before" ? overIdx : overIdx + 1;
+            const insertIdx = currentDropPosition === "before" ? overIdx : overIdx + 1;
             const newOrder = [
             ...filteredChannels.slice(0, insertIdx),
             activeChannel,

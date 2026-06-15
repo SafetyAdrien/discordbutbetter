@@ -1094,7 +1094,18 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    dropPositionRef.current = "after";
+    dropModeRef.current = "after";
     setActiveId(event.active.id as string);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setOverId(null);
+    dropPositionRef.current = "after";
+    dropModeRef.current = "after";
+    setDropPosition("after");
+    setDropMode("after");
   };
 
   // Custom collision detection that filters by dragged item type

@@ -109,6 +109,7 @@ import { Search } from "lucide-react";
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
   DragEndEvent,
   DragStartEvent,
   DragOverEvent,
@@ -1114,20 +1115,17 @@ export function ChannelList({
     const activeIdStr = active.id.toString();
     const isCategory = activeIdStr.startsWith("category-");
 
-    // Use closestCenter as base detection
-    const collisions = closestCenter(args);
-
-    // Filter collisions to only allow same-type drops
-    return collisions.filter((collision) => {
-      const collidedId = collision.id.toString();
-      if (isCategory) {
-        // Categories can only be dropped on other categories
-        return collidedId.startsWith("category-");
-      } else {
-        // Channels can be dropped on channels OR on category headers (to add to category)
-        return collidedId.startsWith("channel-") || collidedId.startsWith("category-");
-      }
+    const droppableContainers = args.droppableContainers.filter((container) => {
+      const collidedId = container.id.toString();
+      if (collidedId === activeIdStr) return false;
+      if (isCategory) return collidedId.startsWith("category-");
+      return collidedId.startsWith("channel-") || collidedId.startsWith("category-");
     });
+
+    // Pointer-first detection is critical for opened categories: their rectangles are tall,
+    // so closestCenter can keep resolving to the original category instead of the hovered block.
+    const pointerCollisions = pointerWithin({ ...args, droppableContainers });
+    return pointerCollisions.length > 0 ? pointerCollisions : closestCenter({ ...args, droppableContainers });
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over, delta } = event;

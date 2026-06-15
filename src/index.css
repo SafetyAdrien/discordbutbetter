@@ -791,11 +791,23 @@
 
   /* === DND OPTIMIZED UTILITIES === */
   .dnd-item {
-    @apply transition-[transform,opacity] duration-200 ease-out will-change-transform;
+    @apply will-change-transform;
+    transition: transform 150ms ease;
   }
-  
+
   .dnd-item-dragging {
-    @apply opacity-30;
+    opacity: 0 !important;
+    background: rgba(88, 101, 242, 0.08) !important;
+    border-radius: 4px;
+  }
+
+  /* Drop indicator fade-in 80ms */
+  .dnd-drop-indicator-line {
+    opacity: 0;
+    transition: opacity 80ms linear;
+  }
+  .dnd-drop-indicator-line[data-visible="true"] {
+    opacity: 1;
   }
   
   .resize-handle {

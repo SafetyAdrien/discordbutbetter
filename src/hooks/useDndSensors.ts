@@ -17,7 +17,7 @@ export function useDndSensors(options?: {
   activationDistance?: number;
   touchDelay?: number;
 }) {
-  const { activationDistance = 5, touchDelay = 200 } = options || {};
+  const { activationDistance = 4, touchDelay = 200 } = options || {};
 
   return useSensors(
     useSensor(PointerSensor, {

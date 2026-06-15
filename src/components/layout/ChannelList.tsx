@@ -1617,7 +1617,8 @@ export function ChannelList({
               modifiers={[restrictToVerticalAxis]}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}>
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}>
 
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {visibleOrphanChannels.length > 0 &&

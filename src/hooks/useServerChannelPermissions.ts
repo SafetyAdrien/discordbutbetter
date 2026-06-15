@@ -69,7 +69,7 @@ export function useServerChannelPermissions(serverId: string | null) {
   const isLocked = useCallback(
     (channelId: string) => {
       if (query.isLoading || !query.data) return false;
-      if (!query.data.tracked.has(channelId)) return false;
+      if (!query.data.tracked || !query.data.tracked.has(channelId)) return false;
       return !query.data.connectable.has(channelId);
     },
     [query.isLoading, query.data]

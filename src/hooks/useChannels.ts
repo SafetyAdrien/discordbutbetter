@@ -31,6 +31,65 @@ export interface OrphanChannel extends ChannelWithCategory {}
 // Shared ref to prevent Realtime conflicts during mutations
 export const mutationLockRef = { current: false };
 
+/**
+ * Swap a temporary channel id for its real id across all caches.
+ * Used after an optimistic insert/duplicate succeeds — avoids a refetch
+ * (and the associated flicker) by patching the data we already have.
+ */
+function swapTempChannelId(
+  queryClient: ReturnType<typeof useQueryClient>,
+  serverId: string,
+  tempId: string,
+  realId: string,
+  patch?: Partial<ChannelWithCategory>,
+  userId?: string,
+) {
+  const swap = (ch: any) => (ch?.id === tempId ? { ...ch, ...patch, id: realId } : ch);
+
+  // ['channels', serverId]
+  const channels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+  if (channels) {
+    queryClient.setQueryData(['channels', serverId], {
+      categories: channels.categories.map((cat) => ({ ...cat, channels: cat.channels.map(swap) })),
+      orphanChannels: channels.orphanChannels.map(swap),
+    });
+  }
+
+  // ['servers', ...]
+  const serversQueries = queryClient.getQueriesData<any[]>({ queryKey: ['servers'] });
+  for (const [key, serversData] of serversQueries) {
+    if (!Array.isArray(serversData)) continue;
+    queryClient.setQueryData(key, serversData.map((s: any) => {
+      if (s.id !== serverId) return s;
+      return {
+        ...s,
+        categories: (s.categories || []).map((cat: any) => ({
+          ...cat,
+          channels: (cat.channels || []).map(swap),
+        })),
+        orphanChannels: (s.orphanChannels || []).map(swap),
+      };
+    }));
+  }
+
+  // Permissions cache
+  if (userId) {
+    const permKey = ['server-channel-permissions', serverId, userId];
+    const perms = queryClient.getQueryData<{ viewable: Set<string>; connectable: Set<string>; tracked?: Set<string> }>(permKey);
+    if (perms) {
+      const next = {
+        viewable: new Set(perms.viewable),
+        connectable: new Set(perms.connectable),
+        tracked: perms.tracked ? new Set(perms.tracked) : undefined,
+      };
+      if (next.viewable.delete(tempId)) next.viewable.add(realId);
+      if (next.connectable.delete(tempId)) next.connectable.add(realId);
+      if (next.tracked?.delete(tempId)) next.tracked.add(realId);
+      queryClient.setQueryData(permKey, next);
+    }
+  }
+}
+
 export function useChannels(
   serverId: string | null,
   initialData?: { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }
@@ -377,29 +436,26 @@ export function useCreateChannel() {
         }
       }
       
-      return { previousChannels, previousServers, serverId };
+      return { previousChannels, previousServers, serverId, tempId };
     },
-    onError: (error: any, __, context) => {
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+    onSuccess: (data, { serverId }, context) => {
+      // Swap temp id for the real one across all caches — no refetch, no flicker.
+      if (context?.tempId && data?.id) {
+        swapTempChannelId(queryClient, serverId, context.tempId, data.id, data as Partial<ChannelWithCategory>, user?.id);
       }
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
+      toast.success('Salon créé');
+    },
+    onError: (error: any) => {
+      // No rollback — keep the optimistic state. Realtime will reconcile if the
+      // server diverges. Only surface the error to the user.
       const errorMessage = error?.message || error?.code || 'Erreur inconnue';
       console.error('[useCreateChannel] Error:', error);
       toast.error(`Erreur lors de la création: ${errorMessage}`);
     },
-    onSettled: (_, __, { serverId }) => {
+    onSettled: () => {
       setTimeout(() => {
         mutationLockRef.current = false;
       }, 500);
-      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', serverId] });
-    },
-    onSuccess: () => {
-      toast.success('Salon créé');
     },
   });
 }
@@ -528,21 +584,14 @@ export function useDeleteChannel() {
       
       return { previousChannels, previousServers, serverId };
     },
-    onError: (_, { serverId }, context) => {
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', serverId], context.previousChannels);
-      }
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
+    onError: () => {
+      // No rollback — keep the optimistic deletion. Realtime will reconcile if needed.
       toast.error('Erreur lors de la suppression');
     },
-    onSettled: (_, __, { serverId }) => {
+    onSettled: () => {
       setTimeout(() => {
         mutationLockRef.current = false;
       }, 500);
-      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
       toast.success('Salon supprimé');
@@ -959,24 +1008,18 @@ export function useDuplicateChannel() {
         }
       }
 
-      return { previousChannels, previousServersQueries, serverId };
+      return { previousChannels, previousServersQueries, serverId, tempId };
     },
     onSuccess: (data, _vars, context) => {
       const sid = context?.serverId || data.serverId;
-      queryClient.invalidateQueries({ queryKey: ['channels', sid] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+      // Swap the temp duplicate id for the real one across all caches — no refetch.
+      if (context?.tempId && data?.id) {
+        swapTempChannelId(queryClient, sid, context.tempId, data.id, data as Partial<ChannelWithCategory>, user?.id);
+      }
       toast.success('Salon dupliqué avec succès');
     },
-    onError: (_err, _vars, context) => {
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
-      }
-      if (context?.previousServersQueries) {
-        for (const [queryKey, data] of context.previousServersQueries) {
-          queryClient.setQueryData(queryKey, data);
-        }
-      }
+    onError: () => {
+      // No rollback — keep the optimistic duplicate visible. Realtime will reconcile.
       toast.error('Erreur lors de la duplication du salon');
     },
     onSettled: () => {

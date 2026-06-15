@@ -39,7 +39,7 @@ import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked"
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
 
-import { useState, useCallback, useMemo, useRef, forwardRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -1004,24 +1004,33 @@ export function ChannelList({
     return orphanChannels.filter((ch) => shouldShowChannel(ch.id));
   }, [orphanChannels, shouldShowChannel]);
 
+  const orderedServerCategories = useMemo(() => {
+    if (!optimisticCategoryOrder) return server.categories;
+
+    const orderIndex = new Map(optimisticCategoryOrder.map((id, index) => [id, index]));
+    return [...server.categories].sort((a, b) => {
+      const aIndex = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return aIndex - bIndex;
+    });
+  }, [server.categories, optimisticCategoryOrder]);
+
+  useEffect(() => {
+    if (!optimisticCategoryOrder) return;
+    if (optimisticCategoryOrder.every((id, index) => id === server.categories[index]?.id)) {
+      setOptimisticCategoryOrder(null);
+    }
+  }, [server.categories, optimisticCategoryOrder]);
+
   // Filter categories and their channels by visibility
   const visibleCategories = useMemo(() => {
-    const filteredCategories = server.categories.
+    return orderedServerCategories.
     map((category) => ({
       ...category,
       channels: category.channels.filter((ch) => shouldShowChannel(ch.id))
     })).
     filter((category) => canManageChannels || category.channels.length > 0); // Show empty categories to admins only
-
-    if (!optimisticCategoryOrder) return filteredCategories;
-
-    const orderIndex = new Map(optimisticCategoryOrder.map((id, index) => [id, index]));
-    return [...filteredCategories].sort((a, b) => {
-      const aIndex = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-      const bIndex = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
-      return aIndex - bIndex;
-    });
-  }, [server.categories, shouldShowChannel, canManageChannels, optimisticCategoryOrder]);
+  }, [orderedServerCategories, shouldShowChannel, canManageChannels]);
 
   // Fetch channel unread info (hasUnread + mentionCount)
   const { channelUnreadInfo } = useChannelUnreadCounts(server.id);
@@ -1300,12 +1309,12 @@ export function ChannelList({
       if (!resolvedTarget) return;
 
       const overCatId = resolvedTarget.overCatId;
-      const oldIndex = server.categories.findIndex((c) => c.id === activeCatId);
-      const overIndex = server.categories.findIndex((c) => c.id === overCatId);
+      const oldIndex = orderedServerCategories.findIndex((c) => c.id === activeCatId);
+      const overIndex = orderedServerCategories.findIndex((c) => c.id === overCatId);
       if (oldIndex !== -1 && overIndex !== -1) {
         // Remove active category and insert at precise position based on dropPosition
-        const activeCategory = server.categories[oldIndex];
-        const newCategories = server.categories.filter((c) => c.id !== activeCatId);
+        const activeCategory = orderedServerCategories[oldIndex];
+        const newCategories = orderedServerCategories.filter((c) => c.id !== activeCatId);
         let insertIndex = resolvedTarget.position === "before" ? overIndex : overIndex + 1;
         // Adjust if we removed an element before the insertion point
         if (oldIndex < overIndex) {
@@ -1314,7 +1323,7 @@ export function ChannelList({
         insertIndex = Math.max(0, Math.min(insertIndex, newCategories.length));
         newCategories.splice(insertIndex, 0, activeCategory);
         const orderedIds = newCategories.map((cat) => cat.id);
-        if (orderedIds.every((id, index) => id === server.categories[index]?.id)) return;
+        if (orderedIds.every((id, index) => id === orderedServerCategories[index]?.id)) return;
         setOptimisticCategoryOrder(orderedIds);
         reorderCategories.mutate({
           serverId: server.id,

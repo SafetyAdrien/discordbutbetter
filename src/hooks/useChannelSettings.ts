@@ -154,22 +154,15 @@ export function useUpdateChannel() {
       
       return { previousDetails, previousChannels, previousServers, channelId, serverId };
     },
-    onError: (_, { channelId, serverId }, context) => {
-      if (context?.previousDetails) {
-        queryClient.setQueryData(['channel-details', channelId], context.previousDetails);
-      }
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', serverId], context.previousChannels);
-      }
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
+    onError: () => {
+      // No rollback — keep the optimistic rename. Realtime + the channel-details
+      // subscription will reconcile if the server diverges.
       toast.error('Erreur lors de la mise à jour');
     },
-    onSettled: (_, __, { channelId, serverId }) => {
-      queryClient.invalidateQueries({ queryKey: ['channel-details', channelId] });
-      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
+    onSettled: () => {
+      // Intentionally do not invalidate: the optimistic patch + Realtime
+      // subscription on `channels` already keeps every tab in sync without
+      // causing a refetch flicker on the originating tab.
     },
     onSuccess: () => {
       toast.success('Salon mis à jour');

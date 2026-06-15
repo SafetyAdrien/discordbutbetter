@@ -60,7 +60,7 @@ export function useServerChannelPermissions(serverId: string | null) {
       // During loading or on error (data === null), default to visible
       if (query.isLoading || !query.data) return true;
       // If channel isn't yet tracked by the RPC (cache lag / freshly created), default to visible
-      if (!query.data.tracked.has(channelId)) return true;
+      if (!query.data.tracked || !query.data.tracked.has(channelId)) return true;
       return query.data.viewable.has(channelId);
     },
     [query.isLoading, query.data]
@@ -69,7 +69,7 @@ export function useServerChannelPermissions(serverId: string | null) {
   const isLocked = useCallback(
     (channelId: string) => {
       if (query.isLoading || !query.data) return false;
-      if (!query.data.tracked.has(channelId)) return false;
+      if (!query.data.tracked || !query.data.tracked.has(channelId)) return false;
       return !query.data.connectable.has(channelId);
     },
     [query.isLoading, query.data]

@@ -436,29 +436,26 @@ export function useCreateChannel() {
         }
       }
       
-      return { previousChannels, previousServers, serverId };
+      return { previousChannels, previousServers, serverId, tempId };
     },
-    onError: (error: any, __, context) => {
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
+    onSuccess: (data, { serverId }, context) => {
+      // Swap temp id for the real one across all caches — no refetch, no flicker.
+      if (context?.tempId && data?.id) {
+        swapTempChannelId(queryClient, serverId, context.tempId, data.id, data as Partial<ChannelWithCategory>, user?.id);
       }
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
+      toast.success('Salon créé');
+    },
+    onError: (error: any) => {
+      // No rollback — keep the optimistic state. Realtime will reconcile if the
+      // server diverges. Only surface the error to the user.
       const errorMessage = error?.message || error?.code || 'Erreur inconnue';
       console.error('[useCreateChannel] Error:', error);
       toast.error(`Erreur lors de la création: ${errorMessage}`);
     },
-    onSettled: (_, __, { serverId }) => {
+    onSettled: () => {
       setTimeout(() => {
         mutationLockRef.current = false;
       }, 500);
-      queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', serverId] });
-    },
-    onSuccess: () => {
-      toast.success('Salon créé');
     },
   });
 }

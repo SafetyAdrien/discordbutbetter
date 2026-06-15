@@ -31,6 +31,65 @@ export interface OrphanChannel extends ChannelWithCategory {}
 // Shared ref to prevent Realtime conflicts during mutations
 export const mutationLockRef = { current: false };
 
+/**
+ * Swap a temporary channel id for its real id across all caches.
+ * Used after an optimistic insert/duplicate succeeds — avoids a refetch
+ * (and the associated flicker) by patching the data we already have.
+ */
+function swapTempChannelId(
+  queryClient: ReturnType<typeof useQueryClient>,
+  serverId: string,
+  tempId: string,
+  realId: string,
+  patch?: Partial<ChannelWithCategory>,
+  userId?: string,
+) {
+  const swap = (ch: any) => (ch?.id === tempId ? { ...ch, ...patch, id: realId } : ch);
+
+  // ['channels', serverId]
+  const channels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
+  if (channels) {
+    queryClient.setQueryData(['channels', serverId], {
+      categories: channels.categories.map((cat) => ({ ...cat, channels: cat.channels.map(swap) })),
+      orphanChannels: channels.orphanChannels.map(swap),
+    });
+  }
+
+  // ['servers', ...]
+  const serversQueries = queryClient.getQueriesData<any[]>({ queryKey: ['servers'] });
+  for (const [key, serversData] of serversQueries) {
+    if (!Array.isArray(serversData)) continue;
+    queryClient.setQueryData(key, serversData.map((s: any) => {
+      if (s.id !== serverId) return s;
+      return {
+        ...s,
+        categories: (s.categories || []).map((cat: any) => ({
+          ...cat,
+          channels: (cat.channels || []).map(swap),
+        })),
+        orphanChannels: (s.orphanChannels || []).map(swap),
+      };
+    }));
+  }
+
+  // Permissions cache
+  if (userId) {
+    const permKey = ['server-channel-permissions', serverId, userId];
+    const perms = queryClient.getQueryData<{ viewable: Set<string>; connectable: Set<string>; tracked?: Set<string> }>(permKey);
+    if (perms) {
+      const next = {
+        viewable: new Set(perms.viewable),
+        connectable: new Set(perms.connectable),
+        tracked: perms.tracked ? new Set(perms.tracked) : undefined,
+      };
+      if (next.viewable.delete(tempId)) next.viewable.add(realId);
+      if (next.connectable.delete(tempId)) next.connectable.add(realId);
+      if (next.tracked?.delete(tempId)) next.tracked.add(realId);
+      queryClient.setQueryData(permKey, next);
+    }
+  }
+}
+
 export function useChannels(
   serverId: string | null,
   initialData?: { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }

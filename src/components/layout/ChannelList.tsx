@@ -277,7 +277,7 @@ function SortableCategory({
   };
   return (
     <>
-      {/* En-tête de catégorie (zone draggable uniquement) */}
+      {/* Bloc complet de catégorie: les salons restent attachés pendant le drag */}
       <div
         ref={setNodeRef}
         style={style}
@@ -352,10 +352,10 @@ function SortableCategory({
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-      </div>
 
-      {/* Salons enfants (en dehors de la zone draggable pour une meilleure détection de collision) */}
-      {!isCollapsed && <div className="mb-2">{children}</div>}
+        {/* Salons enfants inclus dans le bloc sortable pour déplacer une catégorie ouverte comme un seul élément */}
+        {!isCollapsed && <div className="mb-2">{children}</div>}
+      </div>
 
       {/* Delete Category Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

@@ -282,6 +282,8 @@ function SortableCategory({
       <div
         ref={setNodeRef}
         style={style}
+        data-dnd-type="category"
+        data-category-id={category.id}
         className={cn(
           "relative dnd-item",
           isDragging && "dnd-item-dragging"

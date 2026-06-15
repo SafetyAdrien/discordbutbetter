@@ -1008,24 +1008,18 @@ export function useDuplicateChannel() {
         }
       }
 
-      return { previousChannels, previousServersQueries, serverId };
+      return { previousChannels, previousServersQueries, serverId, tempId };
     },
     onSuccess: (data, _vars, context) => {
       const sid = context?.serverId || data.serverId;
-      queryClient.invalidateQueries({ queryKey: ['channels', sid] });
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['server-channel-permissions', sid] });
+      // Swap the temp duplicate id for the real one across all caches — no refetch.
+      if (context?.tempId && data?.id) {
+        swapTempChannelId(queryClient, sid, context.tempId, data.id, data as Partial<ChannelWithCategory>, user?.id);
+      }
       toast.success('Salon dupliqué avec succès');
     },
-    onError: (_err, _vars, context) => {
-      if (context?.previousChannels) {
-        queryClient.setQueryData(['channels', context.serverId], context.previousChannels);
-      }
-      if (context?.previousServersQueries) {
-        for (const [queryKey, data] of context.previousServersQueries) {
-          queryClient.setQueryData(queryKey, data);
-        }
-      }
+    onError: () => {
+      // No rollback — keep the optimistic duplicate visible. Realtime will reconcile.
       toast.error('Erreur lors de la duplication du salon');
     },
     onSettled: () => {

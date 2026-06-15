@@ -795,7 +795,7 @@
   }
   
   .dnd-item-dragging {
-    @apply opacity-30 scale-[0.98] bg-muted/20 rounded-md;
+    @apply opacity-30;
   }
   
   .resize-handle {

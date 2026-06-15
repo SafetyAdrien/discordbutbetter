@@ -1849,35 +1849,20 @@ threads={threadsByChannel[channel.id] || []}
 
               {/* Drag Overlay - Semi-transparent ghost following cursor */}
               <DragOverlay dropAnimation={null}>
-
                 {activeId &&
-                <div
-                  className={cn(
-                    // Optimized backdrop with GPU acceleration
-                    "bg-card/95 backdrop-optimized border border-[#5865f2]/50 rounded-md px-3 py-2",
-                    "gpu-accelerated will-change-transform",
-                    "shadow-lg shadow-black/30",
-                    "scale-105 cursor-grabbing"
-                  )}>
-
+                <div className="cursor-grabbing">
                     {activeId.startsWith("category-") &&
-                  <div className="flex items-center gap-2">
-                        <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-foreground tracking-wide">
-                          {server.categories.find((c) => `category-${c.id}` === activeId)?.name}
-                        </span>
-                      </div>
+                  <span className="text-xs font-semibold text-foreground tracking-wide">
+                        {server.categories.find((c) => `category-${c.id}` === activeId)?.name}
+                      </span>
                   }
                     {activeId.startsWith("channel-") &&
                   (() => {
                     const channel = findChannelById(activeId.replace("channel-", ""));
-                    const FallbackIcon = channel ? channelIcons[channel.type] : StreamlineHash;
                     return (
-                      <div className="flex items-center gap-2 text-sm text-foreground">
-                            <FallbackIcon className="w-4 h-4 text-[#5865f2]" />
-                            <span className="font-medium">{channel?.name || "Channel"}</span>
-                          </div>);
-
+                      <span className="text-sm font-medium text-foreground">
+                            {channel?.name || "Channel"}
+                          </span>);
                   })()}
                   </div>
                 }

@@ -901,6 +901,10 @@ export function ChannelList({
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
   const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
+  // Synchronous refs mirroring dropPosition/dropMode so handleDragEnd reads fresh values
+  // (avoids stale closure when React batches setState between dragOver and dragEnd)
+  const dropPositionRef = useRef<"before" | "after">("after");
+  const dropModeRef = useRef<"before" | "after" | "inside">("after");
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();

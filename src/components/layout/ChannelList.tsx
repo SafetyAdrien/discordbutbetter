@@ -67,6 +67,7 @@ import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSetti
 import { EditCategoryModal } from "@/components/category-settings/EditCategoryModal";
 import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
+import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
@@ -1005,11 +1006,10 @@ export function ChannelList({
       toast.error("Erreur lors de la suppression");
     }
   };
+  const [duplicateTarget, setDuplicateTarget] = useState<{ id: string; name: string } | null>(null);
   const handleDuplicateChannel = (channelId: string) => {
-    duplicateChannel.mutate({
-      channelId,
-      serverId: server.id
-    });
+    const channel = findChannelById(channelId);
+    setDuplicateTarget({ id: channelId, name: channel?.name ?? "" });
   };
   const handleDeleteCategory = async (categoryId: string) => {
     try {
@@ -1828,6 +1828,20 @@ threads={threadsByChannel[channel.id] || []}
       }
 
       {showCreateCategory && <CreateCategoryModal serverId={server.id} onClose={() => setShowCreateCategory(false)} />}
+
+      <DuplicateChannelModal
+        open={!!duplicateTarget}
+        defaultName={duplicateTarget?.name ?? ""}
+        isPending={duplicateChannel.isPending}
+        onOpenChange={(open) => { if (!open) setDuplicateTarget(null); }}
+        onConfirm={(name) => {
+          if (!duplicateTarget) return;
+          duplicateChannel.mutate(
+            { channelId: duplicateTarget.id, serverId: server.id, name },
+            { onSuccess: () => setDuplicateTarget(null) }
+          );
+        }}
+      />
 
       {externalLinkModal &&
       <ExternalLinkWarningModal

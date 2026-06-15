@@ -294,7 +294,7 @@ function SortableCategory({
         )}
 
         {/* Drop Indicator - Absolute positioned */}
-        {showDropIndicator && !showInsideHighlight && <DropIndicator isVisible={true} position={dropPosition} />}
+        {!showInsideHighlight && <DropIndicator isVisible={showDropIndicator} position={dropPosition} variant="category" />}
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -672,7 +672,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           )}>
 
           {/* Drop Indicator - Absolute positioned */}
-          {showDropIndicator && <DropIndicator isVisible={true} position={dropPosition} />}
+          <DropIndicator isVisible={showDropIndicator} position={dropPosition} variant="channel" />
 
           <ContextMenu>
             <ContextMenuTrigger asChild>
@@ -1845,25 +1845,38 @@ threads={threadsByChannel[channel.id] || []}
                 )}
               </SortableContext>
 
-              {/* Drag Overlay - Semi-transparent ghost following cursor */}
+              {/* Drag Overlay - Discord-style ghost: faithful copy at 0.85 opacity with soft shadow */}
               <DragOverlay dropAnimation={null}>
-                {activeId &&
-                <div className="cursor-grabbing">
-                    {activeId.startsWith("category-") &&
-                  <span className="text-xs font-semibold text-foreground tracking-wide">
-                        {server.categories.find((c) => `category-${c.id}` === activeId)?.name}
-                      </span>
-                  }
-                    {activeId.startsWith("channel-") &&
-                  (() => {
-                    const channel = findChannelById(activeId.replace("channel-", ""));
+                {activeId && (() => {
+                  const ghostStyle: React.CSSProperties = {
+                    opacity: 0.85,
+                    background: "#2B2D31",
+                    borderRadius: 4,
+                    boxShadow: "1px 2px 8px rgba(0,0,0,0.3)",
+                    cursor: "grabbing",
+                  };
+                  if (activeId.startsWith("category-")) {
+                    const cat = server.categories.find((c) => `category-${c.id}` === activeId);
                     return (
-                      <span className="text-sm font-medium text-foreground">
-                            {channel?.name || "Channel"}
-                          </span>);
-                  })()}
-                  </div>
-                }
+                      <div style={ghostStyle} className="flex items-center gap-1.5 px-3 py-1.5 w-full">
+                        <ChevronDown className="w-3 h-3 text-[#949BA4]" />
+                        <span className="font-ginto text-[12px] font-semibold uppercase tracking-wide text-[#949BA4]">
+                          {cat?.name ?? "Catégorie"}
+                        </span>
+                      </div>
+                    );
+                  }
+                  const channel = findChannelById(activeId.replace("channel-", ""));
+                  const Icon = channel ? channelIcons[(channel.type || "text") as ChannelType] : StreamlineHash;
+                  return (
+                    <div style={ghostStyle} className="flex items-center gap-2 px-2 py-1.5 ml-2">
+                      <Icon className="w-5 h-5 text-[#949BA4] shrink-0" />
+                      <span className="text-sm font-medium text-[#F2F3F5] truncate">
+                        {channel?.name ?? "Salon"}
+                      </span>
+                    </div>
+                  );
+                })()}
               </DragOverlay>
             </DndContext>
           </div>

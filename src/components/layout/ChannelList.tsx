@@ -1273,21 +1273,28 @@ export function ChannelList({
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
-    if (!over || active.id === over.id) return;
     const activeIdStr = active.id as string;
-    const overIdStr = over.id as string;
+    const overIdStr = over?.id as string | undefined;
 
     // Handle category reordering with precise position
-    if (activeIdStr.startsWith("category-") && overIdStr.startsWith("category-")) {
+    if (activeIdStr.startsWith("category-")) {
       const activeCatId = activeIdStr.replace("category-", "");
-      const overCatId = overIdStr.replace("category-", "");
+      const resolvedTarget = getCategoryDropTarget(activeCatId, event) ??
+        (overIdStr?.startsWith("category-") && overIdStr !== activeIdStr ? {
+          overCatId: overIdStr.replace("category-", ""),
+          position: currentDropPosition
+        } : null);
+
+      if (!resolvedTarget) return;
+
+      const overCatId = resolvedTarget.overCatId;
       const oldIndex = server.categories.findIndex((c) => c.id === activeCatId);
       const overIndex = server.categories.findIndex((c) => c.id === overCatId);
       if (oldIndex !== -1 && overIndex !== -1) {
         // Remove active category and insert at precise position based on dropPosition
         const activeCategory = server.categories[oldIndex];
         const newCategories = server.categories.filter((c) => c.id !== activeCatId);
-        let insertIndex = currentDropPosition === "before" ? overIndex : overIndex + 1;
+        let insertIndex = resolvedTarget.position === "before" ? overIndex : overIndex + 1;
         // Adjust if we removed an element before the insertion point
         if (oldIndex < overIndex) {
           insertIndex--;
@@ -1295,6 +1302,7 @@ export function ChannelList({
         insertIndex = Math.max(0, Math.min(insertIndex, newCategories.length));
         newCategories.splice(insertIndex, 0, activeCategory);
         const orderedIds = newCategories.map((cat) => cat.id);
+        if (orderedIds.every((id, index) => id === server.categories[index]?.id)) return;
         requestAnimationFrame(() => {
           reorderCategories.mutate({
             serverId: server.id,
@@ -1302,7 +1310,10 @@ export function ChannelList({
           });
         });
       }
+      return;
     }
+
+    if (!over || !overIdStr || active.id === over.id) return;
 
     // Handle channel reordering (inter-category support)
     if (activeIdStr.startsWith("channel-")) {

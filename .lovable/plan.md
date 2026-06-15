@@ -1,41 +1,24 @@
-## Suppression de la micro-animation de fin de drag des catégories
+## Plan
 
-### Contexte
-L'utilisateur souhaite que le réordonnement des catégories soit totalement instantané, sans la moindre animation visible à la fin du drag.
+### Objective
+Lors d'un drag (salons et catégories), l'élément visuel en déplacement ne doit afficher **que le texte** : aucun background color, aucune border color, aucune ombre, aucun scale, aucun backdrop.
 
-### Diagnostic
-La micro-animation résiduelle provient du **layout transition par défaut de `@dnd-kit/sortable`** : quand une catégorie est déposée, dnd-kit anime le glissement des autres catégories vers leur nouvelle position avec une transition CSS implicite (~200-250 ms). Même si `dropAnimation={null}` est défini sur le `DragOverlay`, le `useSortable` appliqué à chaque item continue de produire cette animation de réorganisation.
+### Changes
 
-### Modifications prévues
+#### 1. `src/components/layout/ChannelList.tsx` — DragOverlay simplifié
+Remplacer le wrapper du `DragOverlay` (lignes ~1854-1861) par un conteneur minimal sans style visuel :
+- Supprimer `bg-card/95`, `backdrop-optimized`, `border border-[#5865f2]/50`, `rounded-md`, `px-3 py-2`, `shadow-lg`, `shadow-black/30`, `scale-105`.
+- Conserver uniquement les éléments textuels (nom de catégorie ou nom de salon + icône selon la demande de l'utilisateur — à confirmer si l'icône est conservée ou non).
 
-#### 1. Désactiver la transition de layout sur les catégories (`ChannelList.tsx`)
-Dans le `useSortable` des catégories (header), passer explicitement `transition: null` dans les options du hook :
-
-```tsx
-const { ... } = useSortable({
-  id: `category-${category.id}`,
-  data: { type: "category", categoryId: category.id },
-  transition: null, // ← supprime l'animation de réorganisation
-});
-```
-
-En conséquence, supprimer la ligne `transition: undefined` de l'objet `style` inline qui ne sert plus.
-
-#### 2. Nettoyer les transitions inline des headers de catégorie
-Retirer les transitions CSS inline sur le header de catégorie qui peuvent produire un effet visuel résiduel pendant le drag/release :
-- `transition: 'color 300ms ...'` (ligne ~306)
-- `transition: 'transform 300ms ...'` sur le chevron (ligne ~316)
-
-Remplacer par des classes Tailwind statiques ou simplement supprimer la propriété `style` concernée.
-
-#### 3. Nettoyage CSS
-Supprimer la classe `.dnd-sortable-transition` de `src/index.css` (lignes 54-57) qui n'est utilisée nulle part et ne sert plus.
+#### 2. `src/index.css` — Classe `.dnd-item-dragging` nettoyée
+Modifier la classe `.dnd-item-dragging` (lignes 797-799) pour retirer tout background/border :  
+- Supprimer `bg-muted/20` et `rounded-md`.  
+- Conserver `opacity-30` et `scale-[0.98]` pour que l'élément d'origine reste visible comme "placeholder" dans la liste, mais sans fond ni bordure.
 
 ### Résultat attendu
-- À la fin du drag d'une catégorie, les éléments se repositionnent **immédiatement** sans interpolation.
-- Aucune micro-animation de couleur, rotation de chevron, ou transform n'est visible.
-- Le comportement des salons (channels) n'est **pas** modifié — ils conservent leur propre logique DnD.
+- Drag de catégorie : uniquement le nom de la catégorie visible sous le curseur.
+- Drag de salon : uniquement le nom du salon (et éventuellement son icône) visible sous le curseur.
+- L'élément laissé dans la liste garde une opacité réduite mais aucun fond ni bordure.
 
-### Fichiers concernés
-- `src/components/layout/ChannelList.tsx`
-- `src/index.css`
+### Question de clarification
+Faut-il également supprimer **l'icône** du salon dans le DragOverlay, ou seul le background/border est concerné et l'icône peut rester ?

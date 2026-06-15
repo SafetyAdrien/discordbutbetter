@@ -265,16 +265,17 @@ function SortableCategory({
 
 }: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: `category-${category.id}`,
     data: {
       type: "category",
       categoryId: category.id
-    }
+    },
+    transition: null
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: undefined // Let Tailwind handle transitions
+    transition: 'none'
   };
   return (
     <>
@@ -302,8 +303,7 @@ function SortableCategory({
             <div
               {...attributes}
               {...listeners}
-              className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default"
-              style={{ transition: 'color 300ms cubic-bezier(0.2, 0, 0, 1)' }}>
+              className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
 
               <button
                 onClick={(e) => {
@@ -312,8 +312,7 @@ function SortableCategory({
                 }}
                 className="flex items-center gap-px flex-1">
 
-                <ChevronDown className={cn("w-3 h-3", isCollapsed && "-rotate-90")}
-                  style={{ transition: 'transform 300ms cubic-bezier(0.2, 0, 0, 1)' }} />
+                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")} />
                 <span className="tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
                   {category.name}
                 </span>

@@ -1832,14 +1832,13 @@ threads={threadsByChannel[channel.id] || []}
       <DuplicateChannelModal
         open={!!duplicateTarget}
         defaultName={duplicateTarget?.name ?? ""}
-        isPending={duplicateChannel.isPending}
+        isPending={false}
         onOpenChange={(open) => { if (!open) setDuplicateTarget(null); }}
         onConfirm={(name) => {
           if (!duplicateTarget) return;
-          duplicateChannel.mutate(
-            { channelId: duplicateTarget.id, serverId: server.id, name },
-            { onSuccess: () => setDuplicateTarget(null) }
-          );
+          const target = duplicateTarget;
+          setDuplicateTarget(null);
+          duplicateChannel.mutate({ channelId: target.id, serverId: server.id, name });
         }}
       />
 

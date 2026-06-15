@@ -1180,13 +1180,30 @@ export function ChannelList({
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over, delta } = event;
+    const activeIdStr = active.id.toString();
+
+    if (activeIdStr.startsWith("category-")) {
+      const activeCatId = activeIdStr.replace("category-", "");
+      const target = getCategoryDropTarget(activeCatId, event);
+      if (!target) {
+        setOverId(null);
+        return;
+      }
+
+      dropPositionRef.current = target.position;
+      dropModeRef.current = target.position;
+      setDropPosition(target.position);
+      setDropMode(target.position);
+      setOverId(`category-${target.overCatId}`);
+      return;
+    }
+
     if (!over || over.id === active.id) {
       setOverId(null);
       dropModeRef.current = "after";
       setDropMode("after");
       return;
     }
-    const activeIdStr = active.id.toString();
     const overIdStr = over.id.toString();
 
     // Strict type validation for drop indicator

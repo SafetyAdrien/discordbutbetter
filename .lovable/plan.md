@@ -1,26 +1,33 @@
-Constat: l’app affiche encore d’anciennes données parce que certains hooks réutilisent le cache local comme donnée fraîche. L’ancien système de reply par citation Markdown est aussi toujours rendu visuellement via `parseRepliedMessage`, même quand la nouvelle réponse par `reply_to_id` existe.
+# Mini popup de duplication de salon
 
-Plan d’implémentation:
+## Objectif
+Quand l'utilisateur clique sur "Dupliquer" dans le menu contextuel d'un salon, afficher une petite popup permettant de modifier (ou non) le nom du nouveau salon avant la création.
 
-1. Forcer l’expiration des caches obsolètes
-   - Augmenter la version globale du cache local pour purger IndexedDB/localStorage au prochain chargement.
-   - Garder la purge ciblée compatible avec l’architecture `warmCache` existante.
+## Comportement
+- Pré-remplie avec `<nom original>` (sans suffixe — l'utilisateur décide).
+- Champ texte avec focus auto + sélection du texte.
+- Bouton **Dupliquer** (validation Enter) → lance la mutation avec le nom saisi.
+- Bouton **Annuler** (Escape) → ferme sans rien faire.
+- Validation : nom non vide, trim, max 100 caractères (cohérent avec les autres modaux salon).
 
-2. Rendre les messages toujours capables de se rafraîchir
-   - Modifier le chargement des messages de salons pour ne plus considérer `initialData` cache comme donnée fraîche pendant 60s.
-   - Utiliser le cache seulement comme affichage temporaire, puis refetch systématique au montage.
-   - Appliquer la même logique aux messages DM si nécessaire pour éviter les anciennes conversations figées.
+## Fichiers à modifier
 
-3. Supprimer l’ancien rendu reply visible
-   - Dans les salons, afficher `RepliedLine` uniquement quand `reply_to_id` / `repliedMessage` existe réellement.
-   - Ne plus afficher les anciennes citations Markdown comme une reply riche.
-   - Continuer à nettoyer le corps du message avec `parseRepliedMessage(...).body` pour que les anciens messages ne montrent pas le blocquote brut.
+### 1. `src/components/modals/DuplicateChannelModal.tsx` (nouveau)
+Petit composant Dialog (shadcn) inspiré de `EditCategoryModal` / `CreateChannelModal` :
+- Props : `open`, `onOpenChange`, `defaultName`, `onConfirm(name)`, `isPending`.
+- Un seul `Input` + footer 2 boutons.
+- Tokens sémantiques uniquement, pas de couleurs custom.
 
-4. Aligner threads et DMs
-   - Vérifier les surfaces qui utilisent encore le fallback legacy (`ThreadView`, DM si concerné).
-   - Conserver les replies modernes, mais retirer l’affichage riche basé uniquement sur l’ancien format Markdown.
+### 2. `src/hooks/useChannels.ts` — `useDuplicateChannel`
+Ajouter un paramètre optionnel `name?: string` à la mutation. Si fourni et non vide, il remplace `original.name` dans l'`insert`. Sinon comportement actuel inchangé.
 
-5. Validation
-   - Vérifier dans l’aperçu que les anciens messages ne montrent plus la reply obsolète.
-   - Vérifier qu’une nouvelle réponse moderne affiche toujours la ligne de réponse correcte.
-   - Vérifier qu’un refresh ne garde plus des anciennes données bloquées.
+### 3. `src/components/layout/ChannelList.tsx`
+- Nouvel état local : `duplicateTarget: { id: string; name: string } | null`.
+- `handleDuplicateChannel(id)` : au lieu d'appeler directement la mutation, ouvre la popup en stockant l'id + nom courant.
+- Au confirm de la popup : appelle `duplicateChannel.mutate({ channelId, serverId, name })` puis ferme.
+- Monter `<DuplicateChannelModal />` une fois en bas du composant.
+
+## Aucun changement
+- Pas de migration DB.
+- Pas de modification de la logique de positionnement, des overrides de permissions, ni des invalidations de cache.
+- Pas de nouveau raccourci clavier global.

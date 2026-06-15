@@ -746,9 +746,11 @@ export function useDuplicateChannel() {
     mutationFn: async ({
       channelId,
       serverId,
+      name: overrideName,
     }: {
       channelId: string;
       serverId: string;
+      name?: string;
     }) => {
       // Fetch the original channel
       const { data: original, error: fetchError } = await supabase
@@ -798,13 +800,15 @@ export function useDuplicateChannel() {
         }
       }
 
+      const finalName = overrideName?.trim() || original.name;
+
       // Create duplicate with icon_url
       const { data, error } = await supabase
         .from('channels')
         .insert({
           server_id: serverId,
           category_id: original.category_id,
-          name: original.name,
+          name: finalName,
           type: original.type,
           description: original.description,
           icon_url: original.icon_url,

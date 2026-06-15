@@ -901,6 +901,10 @@ export function ChannelList({
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
   const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
+  // Synchronous refs mirroring dropPosition/dropMode so handleDragEnd reads fresh values
+  // (avoids stale closure when React batches setState between dragOver and dragEnd)
+  const dropPositionRef = useRef<"before" | "after">("after");
+  const dropModeRef = useRef<"before" | "after" | "inside">("after");
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
   const updateCategory = useUpdateCategory();
@@ -1090,7 +1094,18 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    dropPositionRef.current = "after";
+    dropModeRef.current = "after";
     setActiveId(event.active.id as string);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setOverId(null);
+    dropPositionRef.current = "after";
+    dropModeRef.current = "after";
+    setDropPosition("after");
+    setDropMode("after");
   };
 
   // Custom collision detection that filters by dragged item type
@@ -1118,6 +1133,7 @@ export function ChannelList({
     const { active, over, delta } = event;
     if (!over || over.id === active.id) {
       setOverId(null);
+      dropModeRef.current = "after";
       setDropMode("after");
       return;
     }
@@ -1157,19 +1173,27 @@ export function ChannelList({
         const topZone = overRect.top + overRect.height * 0.15;
         const bottomZone = overRect.top + overRect.height * 0.85;
         if (clientY < topZone) {
+          dropPositionRef.current = "before";
+          dropModeRef.current = "before";
           setDropPosition("before");
           setDropMode("before");
         } else if (clientY > bottomZone) {
+          dropPositionRef.current = "after";
+          dropModeRef.current = "after";
           setDropPosition("after");
           setDropMode("after");
         } else {
+          dropModeRef.current = "inside";
+          dropPositionRef.current = "after"; // fallback, not used visually
           setDropMode("inside");
-          setDropPosition("after"); // fallback, not used visually
+          setDropPosition("after");
         }
       } else {
         // Symmetric 50/50 zones for channels: works equally well dragging up or down
         const middleY = overRect.top + overRect.height * 0.5;
         const position: "before" | "after" = clientY < middleY ? "before" : "after";
+        dropPositionRef.current = position;
+        dropModeRef.current = position;
         setDropPosition(position);
         setDropMode(position);
       }
@@ -1177,6 +1201,9 @@ export function ChannelList({
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
+    // Snapshot ref values synchronously — handleDragOver writes them; state may be stale here
+    const currentDropPosition = dropPositionRef.current;
+    const currentDropMode = dropModeRef.current;
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
@@ -1194,7 +1221,7 @@ export function ChannelList({
         // Remove active category and insert at precise position based on dropPosition
         const activeCategory = server.categories[oldIndex];
         const newCategories = server.categories.filter((c) => c.id !== activeCatId);
-        let insertIndex = dropPosition === "before" ? overIndex : overIndex + 1;
+        let insertIndex = currentDropPosition === "before" ? overIndex : overIndex + 1;
         // Adjust if we removed an element before the insertion point
         if (oldIndex < overIndex) {
           insertIndex--;
@@ -1270,7 +1297,7 @@ export function ChannelList({
               // Remove the active channel from the array
               const newChannels = targetChannels.filter((ch) => ch.id !== activeChannelId);
               // Calculate insertion index based on dropPosition
-              let insertIndex = dropPosition === "before" ? overIndex : overIndex + 1;
+              let insertIndex = currentDropPosition === "before" ? overIndex : overIndex + 1;
               // Adjust if we removed an element before the insertion point
               if (oldIndex < overIndex) {
                 insertIndex--;
@@ -1290,7 +1317,7 @@ export function ChannelList({
             const filteredChannels = targetChannels.filter((ch) => ch.id !== activeChannelId);
             const overIdx = filteredChannels.findIndex((ch) => ch.id === overChannelId);
             // Calculate insertion index based on dropPosition
-            const insertIdx = dropPosition === "before" ? overIdx : overIdx + 1;
+            const insertIdx = currentDropPosition === "before" ? overIdx : overIdx + 1;
             const newOrder = [
             ...filteredChannels.slice(0, insertIdx),
             activeChannel,
@@ -1312,7 +1339,7 @@ export function ChannelList({
         if (targetCategory) {
           const existingIds = targetCategory.channels.filter((ch) => ch.id !== activeChannelId).map((ch) => ch.id);
           
-          if (dropMode === "inside" || dropMode === "after") {
+          if (currentDropMode === "inside" || currentDropMode === "after") {
             // "inside" or "after" category header → add at end of category
             reorderChannels.mutate({
               serverId: server.id,
@@ -1590,7 +1617,8 @@ export function ChannelList({
               modifiers={[restrictToVerticalAxis]}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}>
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}>
 
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {visibleOrphanChannels.length > 0 &&

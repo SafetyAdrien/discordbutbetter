@@ -1339,7 +1339,7 @@ export function ChannelList({
         if (targetCategory) {
           const existingIds = targetCategory.channels.filter((ch) => ch.id !== activeChannelId).map((ch) => ch.id);
           
-          if (dropMode === "inside" || dropMode === "after") {
+          if (currentDropMode === "inside" || currentDropMode === "after") {
             // "inside" or "after" category header → add at end of category
             reorderChannels.mutate({
               serverId: server.id,

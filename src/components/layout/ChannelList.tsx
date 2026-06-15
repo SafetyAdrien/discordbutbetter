@@ -906,6 +906,7 @@ export function ChannelList({
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
   const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
+  const [optimisticCategoryOrder, setOptimisticCategoryOrder] = useState<string[] | null>(null);
   // Synchronous refs mirroring dropPosition/dropMode so handleDragEnd reads fresh values
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
@@ -1005,13 +1006,22 @@ export function ChannelList({
 
   // Filter categories and their channels by visibility
   const visibleCategories = useMemo(() => {
-    return server.categories.
+    const filteredCategories = server.categories.
     map((category) => ({
       ...category,
       channels: category.channels.filter((ch) => shouldShowChannel(ch.id))
     })).
     filter((category) => canManageChannels || category.channels.length > 0); // Show empty categories to admins only
-  }, [server.categories, shouldShowChannel, canManageChannels]);
+
+    if (!optimisticCategoryOrder) return filteredCategories;
+
+    const orderIndex = new Map(optimisticCategoryOrder.map((id, index) => [id, index]));
+    return [...filteredCategories].sort((a, b) => {
+      const aIndex = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return aIndex - bIndex;
+    });
+  }, [server.categories, shouldShowChannel, canManageChannels, optimisticCategoryOrder]);
 
   // Fetch channel unread info (hasUnread + mentionCount)
   const { channelUnreadInfo } = useChannelUnreadCounts(server.id);
@@ -1305,11 +1315,12 @@ export function ChannelList({
         newCategories.splice(insertIndex, 0, activeCategory);
         const orderedIds = newCategories.map((cat) => cat.id);
         if (orderedIds.every((id, index) => id === server.categories[index]?.id)) return;
-        requestAnimationFrame(() => {
-          reorderCategories.mutate({
-            serverId: server.id,
-            orderedIds
-          });
+        setOptimisticCategoryOrder(orderedIds);
+        reorderCategories.mutate({
+          serverId: server.id,
+          orderedIds
+        }, {
+          onError: () => setOptimisticCategoryOrder(null)
         });
       }
       return;

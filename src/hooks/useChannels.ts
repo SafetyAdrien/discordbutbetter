@@ -839,7 +839,7 @@ export function useDuplicateChannel() {
 
       return { ...data, serverId };
     },
-    onMutate: async ({ channelId, serverId }) => {
+    onMutate: async ({ channelId, serverId, name: overrideName }) => {
       mutationLockRef.current = true;
 
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
@@ -865,7 +865,8 @@ export function useDuplicateChannel() {
 
       const newPosition = (original?.position ?? 0) + 1;
       const tempId = `temp-dup-${Date.now()}`;
-      const tempChannel = original ? { ...original, id: tempId, position: newPosition, created_at: new Date().toISOString() } : null;
+      const finalName = overrideName?.trim() || original?.name;
+      const tempChannel = original ? { ...original, id: tempId, name: finalName, position: newPosition, created_at: new Date().toISOString() } : null;
 
       // 1) Update ['channels', serverId] cache
       if (previousChannels && original && tempChannel) {
@@ -903,7 +904,7 @@ export function useDuplicateChannel() {
       if (original && tempChannel) {
         const simpleTempChannel = {
           id: tempId,
-          name: original.name,
+          name: finalName,
           type: original.type,
           description: original.description,
           position: newPosition,

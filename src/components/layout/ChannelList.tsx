@@ -1201,6 +1201,9 @@ export function ChannelList({
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
+    // Snapshot ref values synchronously — handleDragOver writes them; state may be stale here
+    const currentDropPosition = dropPositionRef.current;
+    const currentDropMode = dropModeRef.current;
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);

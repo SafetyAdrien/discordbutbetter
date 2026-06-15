@@ -918,6 +918,8 @@ export function ChannelList({
       return activatorEvent.clientY + event.delta.y;
     }
 
+    if (!("touches" in activatorEvent)) return null;
+
     const touch = activatorEvent.touches[0] || activatorEvent.changedTouches[0];
     return touch ? touch.clientY + event.delta.y : null;
   }, []);

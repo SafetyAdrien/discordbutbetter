@@ -249,6 +249,10 @@ export function AnnouncementChannel({
   // Get owner/admin status (already loaded from server context - instant)
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
   const isAdminOrOwner = isGod || hasServerPermission('administrator');
+  const canManageRoles = isAdminOrOwner || hasServerPermission('manage_roles');
+  const selectedUserMemberId = selectedUser
+    ? membersData.find((member) => member.user.id === selectedUser.user.id)?.id
+    : undefined;
 
   // Check permissions — same as text channels + announcement extras
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
@@ -1231,6 +1235,11 @@ export function AnnouncementChannel({
           roles={selectedUser.roles}
           open={!!selectedUser}
           onOpenChange={(open) => !open && setSelectedUser(null)}
+          serverId={channel.server_id}
+          ownerId={currentServer?.owner_id || undefined}
+          secondaryOwnerId={currentServer?.secondary_owner_id || undefined}
+          memberId={selectedUserMemberId}
+          canManageRoles={canManageRoles}
         />
       )}
 

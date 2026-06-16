@@ -300,7 +300,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
   if (!text) return '\u200B';
 
   // Regex to match inline patterns - order matters (longest/most specific first)
-  const inlineRegex = /(\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`(.+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
+  const inlineRegex = /(\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`([^`\n]+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
   
   const parts: ReactNode[] = [];
   let lastIndex = 0;

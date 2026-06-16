@@ -10,7 +10,7 @@ import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
-import { cn, normalizeForSearch } from "@/lib/utils";
+import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { uuidToSnowflake } from "@/lib/snowflake";
@@ -56,14 +56,7 @@ interface MentionAutocompleteProps {
   members?: MentionMember[];
   roles?: MentionRole[];
   channels?: MentionChannel[];
-  /**
-   * Called when an item is picked.
-   * @param insertText  The short, human-readable form to insert in the textarea (e.g. `@Adrien Moulin`).
-   * @param displayText Human display label (e.g. `Adrien Moulin`).
-   * @param token       The protocol token to be used at send time (e.g. `<@SNOWFLAKE>`).
-   *                    For @everyone / @here, this is the same as insertText.
-   */
-  onSelect: (insertText: string, displayText: string, token: string) => void;
+  onSelect: (mention: string, displayText: string) => void;
   onClose: () => void;
   selectedIndex: number;
   onIndexChange: (index: number) => void;
@@ -131,22 +124,22 @@ export function MentionAutocomplete({
 
   const handleSelectMember = (member: MentionMember) => {
     const snowflakeId = uuidToSnowflake(member.id);
-    onSelect(`@${member.displayName}`, member.displayName, `<@${snowflakeId}>`);
+    onSelect(`<@${snowflakeId}>`, member.displayName);
   };
 
   const handleSelectRole = (role: MentionRole) => {
     if (role.id === "everyone" || role.id === "here") {
-      const tok = `@${role.name}`;
-      onSelect(tok, tok, tok);
+      onSelect(`@${role.name}`, `@${role.name}`);
     } else {
       const snowflakeId = uuidToSnowflake(role.id);
-      onSelect(`@${role.name}`, `@${role.name}`, `<@&${snowflakeId}>`);
+      onSelect(`<@&${snowflakeId}>`, `@${role.name}`);
     }
   };
 
   const handleSelectChannel = (channel: MentionChannel) => {
     const snowflakeId = uuidToSnowflake(channel.id);
-    onSelect(`#${channel.name}`, `#${channel.name}`, `<#${snowflakeId}>`);
+    const formattedName = formatChannelName(channel.name, channel.type);
+    onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
   };
 
   return (

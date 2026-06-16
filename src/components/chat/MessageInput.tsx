@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { flushSync } from 'react-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
@@ -97,13 +96,11 @@ export function MessageInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const mentionData = useMemo(() => ({ members, roles, channels }), [members, roles, channels]);
-
   const hasMarkdown = useMemo(() => {
     if (!value) return false;
     const lines = parseLines(value);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value, mentionData);
-  }, [value, mentionData]);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value);
+  }, [value]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
@@ -344,58 +341,25 @@ export function MessageInput({
 
   const sendAfterMentionRef = useRef(false);
   const handleSendMessageRef = useRef<(() => void) | null>(null);
-  // Tracks pending mentions inserted via autocomplete: short form -> protocol token.
-  // Serialized to <@SNOWFLAKE> on send so the textarea keeps a compact human-readable form
-  // (no transparent-character gap between badge and cursor).
-  const pendingMentionsRef = useRef<Array<{ display: string; token: string }>>([]);
-
-  const handleMentionSelect = useCallback((insertText: string, _displayText: string, token: string) => {
+  const handleMentionSelect = useCallback((mention: string, _displayText: string) => {
     if (!mentionState || !textareaRef.current) return;
-
+    
     const before = value.slice(0, mentionState.startIndex);
     const after = value.slice(textareaRef.current.selectionStart);
-    const newValue = before + insertText + ' ' + after;
-
-    // Only register a pending mention when storage differs from display
-    if (insertText !== token) {
-      pendingMentionsRef.current.push({ display: insertText, token });
-    }
-
+    const newValue = before + mention + ' ' + after;
+    
     onChange(newValue);
     setMentionState(null);
-
+    
     // Set cursor position after the mention
     setTimeout(() => {
       if (textareaRef.current) {
-        const newPos = mentionState.startIndex + insertText.length + 1;
+        const newPos = mentionState.startIndex + mention.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
       }
     }, 0);
   }, [mentionState, value, onChange]);
-
-  // Drop pending mentions whose display text no longer appears in the input
-  // (covers manual deletion / clearing of the textarea).
-  useEffect(() => {
-    if (pendingMentionsRef.current.length === 0) return;
-    const remaining: Array<{ display: string; token: string }> = [];
-    let working = value;
-    // Process longest first so "@Adrien Moulin" isn't shadowed by "@Adrien"
-    const sorted = [...pendingMentionsRef.current].sort((a, b) => b.display.length - a.display.length);
-    // For each pending entry, consume one occurrence from the working text if present
-    for (const entry of sorted) {
-      const idx = working.indexOf(entry.display);
-      if (idx !== -1) {
-        remaining.push(entry);
-        working = working.slice(0, idx) + working.slice(idx + entry.display.length);
-      }
-    }
-    if (remaining.length !== pendingMentionsRef.current.length) {
-      // Restore original insertion order among the survivors
-      const surviveSet = new Set(remaining);
-      pendingMentionsRef.current = pendingMentionsRef.current.filter(e => surviveSet.has(e));
-    }
-  }, [value]);
 
   // Get filtered suggestions count for keyboard navigation
   const getSuggestionsCount = useCallback(() => {
@@ -496,31 +460,9 @@ export function MessageInput({
       description: a.description,
       isSpoiler: a.isSpoiler,
     }));
-
-    // Serialize short-form mentions (@Adrien Moulin) back to protocol tokens (<@SNOWFLAKE>)
-    // so what's sent stays compatible with the server-side mention pipeline.
-    // Longest display names first to avoid replacing a sub-name (e.g. @Adrien inside @Adrien Moulin).
-    const pending = pendingMentionsRef.current;
-    if (pending.length > 0) {
-      const sorted = [...pending].sort((a, b) => b.display.length - a.display.length);
-      let serialized = value;
-      for (const { display, token } of sorted) {
-        const idx = serialized.indexOf(display);
-        if (idx !== -1) {
-          serialized = serialized.slice(0, idx) + token + serialized.slice(idx + display.length);
-        }
-      }
-      if (serialized !== value) {
-        // Commit synchronously so parent state holds the serialized value
-        // before onSend() reads it.
-        flushSync(() => onChange(serialized));
-      }
-      pendingMentionsRef.current = [];
-    }
-
     onSend(attachmentData.length > 0 ? attachmentData : undefined);
     onClearAttachments?.();
-  }, [attachments, onSend, onClearAttachments, value, onChange]);
+  }, [attachments, onSend, onClearAttachments]);
 
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {

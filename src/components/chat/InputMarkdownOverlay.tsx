@@ -80,15 +80,9 @@ export function hasInlineMarkdown(content: string): boolean {
   return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
 }
 
-export function hasInlineMentions(content: string, mentionData?: MentionLookupData): boolean {
+export function hasInlineMentions(content: string): boolean {
   if (!content) return false;
-  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content)) return true;
-  if (mentionData) {
-    if (mentionData.members?.some(m => content.includes(`@${m.displayName}`))) return true;
-    if (mentionData.roles?.some(r => content.includes(`@${r.name}`))) return true;
-    if (mentionData.channels?.some(c => content.includes(`#${c.name}`))) return true;
-  }
-  return false;
+  return /<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content);
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
@@ -116,56 +110,11 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   return 'normal';
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// Render mention badges inline - resolves Snowflake IDs to display names AND short-form mentions
+// Render mention badges inline - resolves Snowflake IDs to display names
 function renderMentionsInline(text: string, mentionData?: MentionLookupData): string | ReactNode[] {
-  if (!text) return text;
-
-  // Build a unified regex covering both protocol tokens and short-form names
-  const patterns: string[] = [
-    '<@&(\\d{18})>',   // group 1: role snowflake
-    '<@(\\d{18})>',    // group 2: user snowflake
-    '<#(\\d{18})>',    // group 3: channel snowflake
-    '@everyone',
-    '@here',
-  ];
-
-  const members = mentionData?.members ?? [];
-  const roles = mentionData?.roles ?? [];
-  const channels = mentionData?.channels ?? [];
-
-  // Sort by name length desc to avoid sub-name shadowing (e.g. "Adrien" inside "Adrien Moulin")
-  const sortedMembers = [...members].sort((a, b) => b.displayName.length - a.displayName.length);
-  const sortedRoles = [...roles].sort((a, b) => b.name.length - a.name.length);
-  const sortedChannels = [...channels].sort((a, b) => b.name.length - a.name.length);
-
-  const memberAlt = sortedMembers.map(m => escapeRegex(m.displayName)).join('|');
-  const roleAlt = sortedRoles.map(r => escapeRegex(r.name)).join('|');
-  const channelAlt = sortedChannels.map(c => escapeRegex(c.name)).join('|');
-
-  // Short-form: @<member-name>, @<role-name>, #<channel-name>
-  // Use lookahead to avoid catching partial matches followed by word chars
-  if (memberAlt) patterns.push(`@(${memberAlt})(?![\\w\\u00C0-\\u024F])`);   // group 4
-  if (roleAlt) patterns.push(`@(${roleAlt})(?![\\w\\u00C0-\\u024F])`);       // group 5 (or 4)
-  if (channelAlt) patterns.push(`#(${channelAlt})(?![\\w\\u00C0-\\u024F-])`); // group 6 (or 4/5)
-
-  // Build regex carefully tracking group offsets
-  const mentionRegex = new RegExp('(' + patterns.join('|') + ')', 'g');
-
-  // We need to identify which alternative matched. Use indexed groups:
-  // 1=outer, 2=roleSnow, 3=userSnow, 4=chSnow, 5=memberShort, 6=roleShort, 7=channelShort
-  // Adjust based on which short patterns are present.
-  let memberGroupIdx = -1;
-  let roleGroupIdx = -1;
-  let channelGroupIdx = -1;
-  let nextGroup = 5; // after the 4 base groups (outer + 3 snowflake captures)
-  if (memberAlt) { memberGroupIdx = nextGroup++; }
-  if (roleAlt) { roleGroupIdx = nextGroup++; }
-  if (channelAlt) { channelGroupIdx = nextGroup++; }
-
+  if (!text || !mentionData) return text;
+  
+  const mentionRegex = /(<@&(\d{18})>|<@(\d{18})>|<#(\d{18})>|@everyone|@here)/g;
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -179,12 +128,6 @@ function renderMentionsInline(text: string, mentionData?: MentionLookupData): st
     }
 
     const full = match[0];
-    const roleSnow = match[2];
-    const userSnow = match[3];
-    const channelSnow = match[4];
-    const memberShort = memberGroupIdx > 0 ? match[memberGroupIdx] : undefined;
-    const roleShort = roleGroupIdx > 0 ? match[roleGroupIdx] : undefined;
-    const channelShort = channelGroupIdx > 0 ? match[channelGroupIdx] : undefined;
 
     if (full === '@everyone' || full === '@here') {
       parts.push(
@@ -192,18 +135,20 @@ function renderMentionsInline(text: string, mentionData?: MentionLookupData): st
           {full}
         </span>
       );
-    } else if (userSnow !== undefined) {
-      const uuid = snowflakeToUuid(userSnow);
-      const member = uuid ? members.find(m => m.id === uuid) : undefined;
+    } else if (match[3] !== undefined) {
+      // User mention <@SNOWFLAKE>
+      const uuid = snowflakeToUuid(match[3]);
+      const member = uuid ? mentionData.members?.find(m => m.id === uuid) : undefined;
       const displayName = member ? `@${member.displayName}` : full;
       parts.push(
         <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
           {displayName}
         </span>
       );
-    } else if (roleSnow !== undefined) {
-      const uuid = snowflakeToUuid(roleSnow);
-      const role = uuid ? roles.find(r => r.id === uuid) : undefined;
+    } else if (match[2] !== undefined) {
+      // Role mention <@&SNOWFLAKE>
+      const uuid = snowflakeToUuid(match[2]);
+      const role = uuid ? mentionData.roles?.find(r => r.id === uuid) : undefined;
       const roleColor = role?.color || '#99aab5';
       const displayName = role ? `@${role.name}` : full;
       parts.push(
@@ -211,33 +156,14 @@ function renderMentionsInline(text: string, mentionData?: MentionLookupData): st
           {displayName}
         </span>
       );
-    } else if (channelSnow !== undefined) {
-      const uuid = snowflakeToUuid(channelSnow);
-      const channel = uuid ? channels.find(c => c.id === uuid) : undefined;
+    } else if (match[4] !== undefined) {
+      // Channel mention <#SNOWFLAKE>
+      const uuid = snowflakeToUuid(match[4]);
+      const channel = uuid ? mentionData.channels?.find(c => c.id === uuid) : undefined;
       const displayName = channel ? `#${channel.name}` : full;
       parts.push(
         <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
           {displayName}
-        </span>
-      );
-    } else if (memberShort !== undefined) {
-      parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
-          {`@${memberShort}`}
-        </span>
-      );
-    } else if (roleShort !== undefined) {
-      const role = roles.find(r => r.name === roleShort);
-      const roleColor = role?.color || '#99aab5';
-      parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>
-          {`@${roleShort}`}
-        </span>
-      );
-    } else if (channelShort !== undefined) {
-      parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
-          {`#${channelShort}`}
         </span>
       );
     } else {

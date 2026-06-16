@@ -83,25 +83,21 @@ export function RepliedLine({
   // Arm of the L should end just before the mini-avatar of this row (indent - 4).
   const endX = Math.max(avatarCenter + 28, indent - 4);
 
-  const content = (
-    <div
-      className={cn(
-        "relative flex items-center gap-1.5 text-[13px] leading-tight select-none",
-        "min-h-[18px] overflow-visible",
-        isClickable && "cursor-pointer",
-        className,
-      )}
-      style={{ paddingLeft: indent }}
-    >
-      <ReplyLine avatarCenter={avatarCenter} endX={endX} />
-      <RepliedContent
-        repliedMessage={repliedMessage}
-        authorColor={authorColor}
-        authorRole={authorRole}
-        authorRoleIcon={authorRoleIcon}
-        isClickable={isClickable}
-      />
-    </div>
+  // Arm of the L should end just before the mini-avatar of this row (indent - 4).
+  const wrapperClasses = cn(
+    "relative text-[13px] leading-tight select-none",
+    "min-h-[18px] overflow-visible",
+    className,
+  );
+
+  const repliedContentNode = (
+    <RepliedContent
+      repliedMessage={repliedMessage}
+      authorColor={authorColor}
+      authorRole={authorRole}
+      authorRoleIcon={authorRoleIcon}
+      isClickable={isClickable}
+    />
   );
 
   if (!isClickable) {
@@ -114,7 +110,12 @@ export function RepliedLine({
         }
         className="group/replied mb-0.5 overflow-visible"
       >
-        {content}
+        <div className={wrapperClasses} style={{ paddingLeft: indent }}>
+          <ReplyLine avatarCenter={avatarCenter} endX={endX} />
+          <div className="inline-flex items-center gap-1.5 min-w-0 max-w-full">
+            {repliedContentNode}
+          </div>
+        </div>
       </div>
     );
   }
@@ -122,14 +123,19 @@ export function RepliedLine({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={handleClick}
-          aria-label={`Réponse à ${displayedAuthorName}: ${rawPreview}. Aller au message original.`}
-          className="group/replied mb-0.5 w-full text-left rounded-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 overflow-visible"
-        >
-          {content}
-        </button>
+        <div className="group/replied mb-0.5 overflow-visible">
+          <div className={wrapperClasses} style={{ paddingLeft: indent }}>
+            <ReplyLine avatarCenter={avatarCenter} endX={endX} />
+            <button
+              type="button"
+              onClick={handleClick}
+              aria-label={`Réponse à ${displayedAuthorName}: ${rawPreview}. Aller au message original.`}
+              className="inline-flex items-center gap-1.5 min-w-0 max-w-full text-left rounded-sm cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+            >
+              {repliedContentNode}
+            </button>
+          </div>
+        </div>
       </TooltipTrigger>
       {isTruncated && (
         <TooltipContent side="top" className="max-w-xs text-xs">
@@ -138,4 +144,5 @@ export function RepliedLine({
       )}
     </Tooltip>
   );
+
 }

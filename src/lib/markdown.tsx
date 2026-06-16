@@ -294,7 +294,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'underlineItalic': return <u key={key}><em>{renderContent(token.content)}</em></u>;
     case 'underlineBoldItalic': return <u key={key}><strong><em>{renderContent(token.content)}</em></strong></u>;
     case 'strikethrough': return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
-    case 'code': return <code key={key} className={cn("px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground", context.variant === 'chat' && "border border-[hsl(var(--border)/0.8)]")}>{token.content as string}</code>;
+    case 'code': return <code key={key} className={cn("px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground", context.variant === 'chat' && "border border-[hsl(var(--border)/1)]")}>{token.content as string}</code>;
     case 'spoiler': return <span key={key} className="spoiler" onClick={(e) => e.currentTarget.classList.toggle('revealed')}>{renderContent(token.content)}</span>;
     case 'link': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{token.content as string}</a>;
     case 'userMention': {

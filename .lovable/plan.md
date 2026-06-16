@@ -1,21 +1,25 @@
-## Correction des espacements messages
+# Plan — Purge cache & ré-aligner les anciens messages
 
-Mes ajustements précédents ont créé trop d'espace vertical entre le nom d'auteur et la première ligne de contenu. La cible Discord (image 2) montre :
-- Le texte `@everyone` colle quasiment au nom `Adrien_Sama` (gap vertical ~0px, géré uniquement par le line-height naturel).
-- L'avatar est proche du texte horizontalement (gap modéré, pas large).
-- Petit espace au-dessus du nom (`pt-[17px]` — OK, à conserver).
+## Constat
+- Le layout des messages est défini en JSX/CSS dans les composants (`ChatArea`, `DMConversation`, `ThreadView`, `AnnouncementChannel`). Le code mis à jour s'applique donc à TOUS les messages au prochain rendu, anciens comme nouveaux.
+- Si certains "anciens messages" gardent visuellement un ancien layout, c'est parce que `src/lib/cache.ts` ressert des snapshots persistés (IndexedDB + miroir localStorage) hydratés AVANT que React ne re-render. Le mécanisme prévu pour ça est `CACHE_SCHEMA_VERSION` : à chaque incrément, `enforceCacheSchemaVersion()` purge memory + localStorage + IndexedDB au démarrage.
+- Actuellement `CACHE_SCHEMA_VERSION = 5`. On l'incrémente pour forcer tous les clients à repartir de zéro.
 
-### Changements dans `src/components/chat/ChatArea.tsx`
+## Changement
+**Fichier:** `src/lib/cache.ts`
+- Passer `CACHE_SCHEMA_VERSION` de `5` à `6`.
 
-| Élément | État après dernière édition | Correction |
-|---|---|---|
-| `mt-[2px]` sur `<div>` du `MarkdownText` (lignes 1570, 1693) | crée gap visible sous le nom | **supprimer** (`mt-0`) |
-| `gap-4` sur la rangée avatar + contenu (lignes 1470, 1620) | trop large | revenir à `gap-3` |
-| `mt-[2px]` sur l'`Avatar` | OK | conserver |
-| `pt-[17px]` premier-du-groupe | OK | conserver |
-| `indent={56}` du RepliedLine | avec gap-3, avatar w-10 → 40+12=52, donc mettre `indent={52}` pour rester aligné | passer à `indent={52}` |
+C'est tout. Au prochain chargement chez chaque utilisateur :
+1. `warmCache()` détecte un schéma périmé.
+2. `purgeAllCaches()` vide mémoire + miroir localStorage + IndexedDB.
+3. Les hooks React Query refetch depuis Supabase.
+4. Les messages sont rendus par le code à jour → layout unifié `-mx-4 pl-[21px] pr-8` partout, bordure jaune uniquement sur les mentions.
 
-Résultat attendu : nom + 1ʳᵉ ligne collés (comme Discord), espace au-dessus du groupe conservé, gap avatar/texte modéré.
+## Détails techniques
+- Pas de migration de données : on n'altère ni la DB ni les schémas, on purge juste le cache client.
+- Les sessions auth Supabase ne sont pas touchées (clés stockées sous un autre préfixe).
+- Pas d'impact pour un utilisateur déjà sur la version 6 (no-op).
 
-### Fichiers touchés
-- `src/components/chat/ChatArea.tsx` uniquement
+## Vérification
+- Recharger l'app → DevTools → Application → IndexedDB `nexuschat-cache` doit être vide juste après le boot, puis se remplir avec les données récentes.
+- Les anciens messages dans un salon textuel affichent le même alignement gauche/droite que les messages avec mention (sans la bordure jaune).

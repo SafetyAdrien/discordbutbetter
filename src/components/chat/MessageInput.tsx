@@ -519,7 +519,7 @@ export function MessageInput({
         handleSendMessage();
       }
     }
-  }, [value, mentionState, getSuggestionsCount, mentionSelectedIndex, attachments.length, onChange, isMobile, handleSendMessage]);
+  }, [value, mentionState, getSuggestionsCount, mentionSelectedIndex, attachments.length, onChange, isMobile]);
 
   // Cooldown timer for slowmode
   useEffect(() => {

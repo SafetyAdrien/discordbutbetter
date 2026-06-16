@@ -728,6 +728,7 @@ export function MessageInput({
                 compact={compact}
                 className={`${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'} min-h-[28px]`}
                 mentionData={{ members, roles, channels }}
+                mentionEntries={mentionEntriesRef.current}
               />
             )}
             <textarea

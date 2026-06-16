@@ -189,8 +189,14 @@ export async function purgeAllCaches(): Promise<void> {
 
 /**
  * On cold boot, drop every cache layer if the persisted schema version is
- * older than CACHE_SCHEMA_VERSION. Must be awaited before warmCache().
+ * older than CACHE_SCHEMA_VERSION. After purging, we also clear browser
+ * Cache Storage (service worker / fetch caches) and trigger a one-shot
+ * auto-reload so the running session immediately picks up the latest JS
+ * bundle + freshly refetched data without requiring the user to refresh.
+ * A sessionStorage guard prevents reload loops.
  */
+const AUTO_RELOAD_GUARD_KEY = `${DB_NAME}:auto-reload-done`;
+
 async function enforceCacheSchemaVersion(): Promise<void> {
   if (!canUseLocalStorage()) return;
 
@@ -201,10 +207,36 @@ async function enforceCacheSchemaVersion(): Promise<void> {
 
     await purgeAllCaches();
     window.localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_SCHEMA_VERSION));
+
+    // Clear Cache Storage too (service worker / HTTP fetch caches).
+    try {
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      // ignore
+    }
+
+    // First-time migration this session → force one reload so the running
+    // app instantly renders with the new layout/data instead of waiting for
+    // the user to manually refresh.
+    try {
+      const guard = window.sessionStorage.getItem(AUTO_RELOAD_GUARD_KEY);
+      if (!guard && storedVersion > 0) {
+        window.sessionStorage.setItem(AUTO_RELOAD_GUARD_KEY, '1');
+        window.location.reload();
+        // Block further boot until the reload happens.
+        await new Promise(() => {});
+      }
+    } catch {
+      // ignore — fall through to normal boot
+    }
   } catch {
     // ignore
   }
 }
+
 
 /**
  * Warm the in-memory cache from IndexedDB.

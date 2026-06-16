@@ -66,7 +66,7 @@ interface CodeBlockProps {
   variant?: 'chat' | 'bio';
 }
 
-export function CodeBlock({ code, language }: CodeBlockProps) {
+export function CodeBlock({ code, language, variant }: CodeBlockProps) {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 

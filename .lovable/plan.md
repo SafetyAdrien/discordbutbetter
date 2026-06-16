@@ -1,32 +1,32 @@
-## Contexte
-Le fichier `src/components/chat/RepliedLine.tsx` contient actuellement trois composants : `ReplyLine`, `RepliedContent`, et `RepliedLine` (wrapper). L'utilisateur demande de séparer davantage `ReplyLine` pour pouvoir le sélectionner et l'importer indépendamment, **sans déplacer son rendu visuel d'un seul pixel**.
-
 ## Objectif
-Refactorer le fichier `RepliedLine.tsx` en le divisant en trois fichiers dédiés, tout en préservant le rendu, les styles, les props, et la compatibilité des imports existants.
 
-## Étapes
+Aligner le rendu des mentions de salons (`<#…>`) sur celui des mentions utilisateurs (`<@…>`), à la fois dans le conteneur de rédaction (overlay du textarea) et dans les messages envoyés. Les mentions de rôles utilisent déjà le même style ; aucune autre logique métier n'est modifiée.
 
-### 1. Créer `src/components/chat/ReplyLine.tsx`
-- Extraire l'interface `ReplyLineProps` et le composant `ReplyLine`.
-- Garder les styles inline et les classes Tailwind identiques (`absolute`, `pointer-events-none`, `text-border/70`, `data-reply-line`, `reply-line`).
-- Garder la logique SVG inchangée (`left`, `top: 8`, `width`, `height: 26`, `viewBox`, `path d`).
+## Changements
 
-### 2. Créer `src/components/chat/RepliedContent.tsx`
-- Extraire l'interface `RepliedContentProps`, le composant `RepliedContent`, et les helpers `cleanPreview` / `describeAttachments`.
-- Garder `MAX_PREVIEW_CHARS = 64`.
-- Préserver tous les styles, les classes conditionnelles, et le rendu de l'avatar, du pseudo, du badge rôle, et du preview/attachment.
-- Garder `data-replied-content` et `className="replied-content"`.
+### 1. `src/components/chat/mentions/MentionComponents.tsx` — `ChannelMention`
+Remplacer le style gris actuel (`bg-[rgba(79,84,92,0.48)] text-[#c4c9ce]`) par le style identique aux mentions utilisateurs :
+- Fond : `bg-primary/30`
+- Texte : `text-[#dee0fc]`
+- Hover : `hover:bg-primary hover:text-white`
+- Conservation de l'icône `Hash` (taille `w-3.5 h-3.5`) pour distinguer visuellement qu'il s'agit d'un salon, mais palette unifiée.
 
-### 3. Mettre à jour `src/components/chat/RepliedLine.tsx`
-- Supprimer les définitions internes de `ReplyLine`, `RepliedContent`, `cleanPreview`, et `describeAttachments`.
-- Importer `ReplyLine` depuis `./ReplyLine` et `RepliedContent` depuis `./RepliedContent`.
-- Conserver l'interface `RepliedLineProps` et le wrapper `RepliedLine` inchangés.
-- Ajouter des **re-exports** (`export { ReplyLine, RepliedContent }`) depuis `RepliedLine.tsx` pour ne **pas casser** les imports existants qui ciblent `@/components/chat/RepliedLine`.
+### 2. `src/components/chat/InputMarkdownOverlay.tsx` — `renderMentionsInline`
+Dans la branche `match[4]` (mention de salon), remplacer :
+```tsx
+style={{ backgroundColor: 'rgba(79,84,92,0.48)', color: '#c4c9ce' }}
+```
+par les classes :
+```tsx
+className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]"
+```
+pour que l'overlay de l'input affiche les mentions de salons exactement comme les mentions utilisateurs (badge violet clair). Le `#` reste devant le nom du salon (pas d'icône SVG dans l'overlay car celui-ci doit conserver les métriques de glyphes du textarea).
 
-### 4. Vérifier l'absence de régression visuelle
-- Aucune valeur CSS, prop par défaut, ou calcul de position (`avatarCenter`, `endX`, `indent`, `paddingLeft`) ne doit changer.
-- Le DOM généré par le wrapper `RepliedLine` doit rester strictement identique (même structure, mêmes classes, mêmes attributs `data-*`).
+### 3. Vérification
+- `MessageInput.tsx` passe déjà `mentionData={{ members, roles, channels }}` à `InputMarkdownOverlay` (ligne 640) — aucune modification nécessaire ici.
+- Les mentions `@everyone` / `@here` (orange) et les rôles (couleur du rôle) restent inchangées.
 
-### 5. Build & tests
-- Lancer le build TypeScript pour confirmer l'absence d'erreur d'import.
-- Vérifier que `src/components/chat/__tests__/RepliedLine.test.tsx` passe toujours (les imports depuis `@/components/chat/RepliedLine` restent valides grâce aux re-exports).
+## Hors périmètre
+
+- Aucun changement de logique d'envoi, d'autocomplete, ou de parsing.
+- Aucun changement de tokens design globaux.

@@ -131,7 +131,7 @@ export function ChannelMention({ channelId, channelName, serverId, onNavigate }:
     <span
       onClick={() => onNavigate?.(channelId, serverId)}
       className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
-        bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white
+        bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white
         transition-colors duration-100"
     >
       <Hash className="w-3.5 h-3.5" />

@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, hasInlineMentions, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, hasInlineMentions, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';

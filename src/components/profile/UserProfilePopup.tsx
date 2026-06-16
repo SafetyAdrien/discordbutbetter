@@ -685,6 +685,24 @@ export function UserProfilePopup({
     />
   );
 
+  const fullBioModal = (
+    <FullUserProfileModal
+      open={fullBioOpen}
+      onOpenChange={setFullBioOpen}
+      user={{
+        id: user.id,
+        display_name: user.displayName,
+        username: user.username,
+        avatar_url: user.avatar ?? null,
+        banner_url: user.banner ?? null,
+        bio: user.bio ?? null,
+        status: user.status,
+        created_at: user.createdAt ?? null,
+      }}
+      onNavigateToDM={onOpenDM}
+    />
+  );
+
   // Mode Card - affichage en carte latérale
   if (mode === 'card' && open) {
     return (

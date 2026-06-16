@@ -280,7 +280,7 @@ interface ChatAreaProps {
   onSelectThread?: (threadId: string) => void;
   activeThreadId?: string | null;
   onCloseThread?: () => void;
-  members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
+  members?: Array<{ id: string; memberId?: string; displayName: string; username: string; avatar?: string; bio?: string }>;
   onChannelSelect?: (channelId: string) => void;
 }
 // Long-press wrapper for polls on mobile
@@ -650,6 +650,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // Get owner/admin status (already loaded from server context - instant)
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
   const isAdminOrOwner = isGod || hasServerPermission("administrator");
+  const canManageRoles = isAdminOrOwner || hasServerPermission("manage_roles");
+  const selectedUserMemberId = selectedUser
+    ? members.find((member) => member.id === selectedUser.user.id)?.memberId
+    : undefined;
 
   // Check multiple chat permissions reactively
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
@@ -2178,6 +2182,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         onOpenChange={(open) => !open && setSelectedUser(null)}
         roles={selectedUser?.roles}
         onOpenDM={onOpenDM}
+        serverId={channel.server_id}
+        memberId={selectedUserMemberId}
+        canManageRoles={canManageRoles}
       />
 
       {/* Create Thread from Message Modal */}

@@ -336,6 +336,7 @@ const Index = () => {
   const searchMembers = useMemo(() => {
     return members.map(m => ({
       id: m.user.id,
+      memberId: m.id,
       username: m.user.username,
       displayName: m.serverProfile?.display_name || m.nickname || m.user.display_name,
       avatar: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,

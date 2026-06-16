@@ -501,7 +501,7 @@ export function GlobalSearchModal({
                         </span>
                       </button>
                       <div className="text-sm text-muted-foreground line-clamp-2 font-ginto">
-                        <MarkdownText content={message.content} />
+                        <MarkdownText variant="chat" content={message.content} />
                       </div>
                     </div>
                   ))}

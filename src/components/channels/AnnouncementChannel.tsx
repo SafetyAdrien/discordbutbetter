@@ -1018,9 +1018,9 @@ export function AnnouncementChannel({
                                         <MessageAttachments attachments={[headerImage]} />
                                       </div>
                                     )}
-                                    <div className="text-foreground break-words font-ginto">
-                                      <MarkdownText content={message.content} />
-                                    </div>
+                                     <div className="text-foreground break-words font-ginto">
+                                       <MarkdownText variant="chat" content={message.content} />
+                                     </div>
                                     {otherAttachments.length > 0 && (
                                       <MessageAttachments attachments={otherAttachments} />
                                     )}
@@ -1110,9 +1110,9 @@ export function AnnouncementChannel({
                                         <MessageAttachments attachments={[headerImage]} />
                                       </div>
                                     )}
-                                    <div className="text-foreground break-words font-ginto">
-                                      <MarkdownText content={message.content} />
-                                      {message.edited_at && (
+                                     <div className="text-foreground break-words font-ginto">
+                                       <MarkdownText variant="chat" content={message.content} />
+                                       {message.edited_at && (
                                         <span className="text-[.625rem] text-muted-foreground/40 ml-1">(modifié)</span>
                                       )}
                                     </div>

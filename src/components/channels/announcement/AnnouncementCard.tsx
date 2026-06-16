@@ -78,7 +78,7 @@ export function AnnouncementCard({ announcement, onClick }: AnnouncementCardProp
             </h3>
           )}
           <div className="text-sm text-muted-foreground line-clamp-2">
-            <MarkdownText content={announcement.content} />
+            <MarkdownText variant="chat" content={announcement.content} />
           </div>
         </div>
 

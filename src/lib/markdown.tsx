@@ -1,6 +1,7 @@
 /* @refresh reset */
 import React, { createContext, useContext, ReactNode, useSyncExternalStore } from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
+import { cn } from '@/lib/utils';
 import { 
   UserMention, 
   RoleMention, 
@@ -293,7 +294,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'underlineItalic': return <u key={key}><em>{renderContent(token.content)}</em></u>;
     case 'underlineBoldItalic': return <u key={key}><strong><em>{renderContent(token.content)}</em></strong></u>;
     case 'strikethrough': return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
-    case 'code': return <code key={key} className="px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground">{token.content as string}</code>;
+    case 'code': return <code key={key} className={cn("px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground", context.variant === 'chat' && "border-[3px] border-[hsl(var(--border)/0.5)]")}>{token.content as string}</code>;
     case 'spoiler': return <span key={key} className="spoiler" onClick={(e) => e.currentTarget.classList.toggle('revealed')}>{renderContent(token.content)}</span>;
     case 'link': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{token.content as string}</a>;
     case 'userMention': {
@@ -353,7 +354,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
     case 'multiBlockquote': return <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">{renderInlineContent(block.content)}</blockquote>;
     case 'listItem': { const level = block.indentLevel || 0; return <li key={key} className={level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]'} style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
     case 'orderedListItem': { const level = block.indentLevel || 0; return <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
-    case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} />;
+    case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} variant={context.variant} />;
     case 'separator': return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
     case 'empty': return <br key={key} />;
     case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
@@ -404,12 +405,13 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
 // ============================================
 // MARKDOWN TEXT COMPONENT
 // ============================================
-export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string }>(
-  ({ content, className }, ref) => {
+export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string; variant?: 'chat' | 'bio' }>(
+  ({ content, className, variant }, ref) => {
     const reactContext = useMarkdownContext();
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
-    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, activeContext)}</div>;
+    const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
+    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

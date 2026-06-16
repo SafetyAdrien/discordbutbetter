@@ -186,7 +186,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
                   </div>
                 </div>
                 <div className="text-sm mt-1">
-                  <MarkdownText content={comment.content} />
+                  <MarkdownText variant="chat" content={comment.content} />
                 </div>
                 <div className="mt-2">
                   <ReactionBar

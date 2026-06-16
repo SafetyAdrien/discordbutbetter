@@ -993,9 +993,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               </div>
                             </div>
                           ) : (
-                            <div className="text-sm text-foreground break-words">
-                              <MarkdownText content={message.content} />
-                            </div>
+                           <div className="text-sm text-foreground break-words">
+                             <MarkdownText variant="chat" content={message.content} />
+                           </div>
                           )}
                           {(reactionsData[message.id]?.length ?? 0) > 0 && (
                             <div className="mt-1">

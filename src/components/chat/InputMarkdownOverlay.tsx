@@ -377,16 +377,17 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
 }
 
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
-  ({ content, compact = false, className, mentionData }, ref) => {
+  ({ content, compact = false, className, mentionData, mentionEntries }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
     const hasMarkdown = useMemo(() => 
-      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content),
-      [lines, content]
+      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content, mentionEntries),
+      [lines, content, mentionEntries]
     );
 
     if (!hasMarkdown) return null;
 
     const defaultPadding = compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]';
+    const consumer: MentionConsumer = { entries: mentionEntries ?? [], idx: 0 };
 
     return (
       <div
@@ -405,7 +406,7 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
           >
             {line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter'
               ? (line.text || '\u200B')
-              : renderInlineMarkdown(line.text, mentionData)
+              : renderInlineMarkdown(line.text, mentionData, consumer)
             }
           </div>
         ))}

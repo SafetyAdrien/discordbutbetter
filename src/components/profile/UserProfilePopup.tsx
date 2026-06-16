@@ -8,22 +8,34 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil, Volume2, VolumeX, Plus, Sparkles, Shield, Star, Crown, Heart, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { MemberWithProfile } from '@/hooks/useMembers';
+import { MemberWithProfile, membersMutationLockRef } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
+import { lockPermissionsMutation } from '@/hooks/usePermissionsRealtime';
+import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
+import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
+
+const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
+  staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },
+  partner: { icon: Star, label: 'Partenaire', color: '#5865F2' },
+  hypesquad: { icon: Sparkles, label: 'HypeSquad', color: '#F47B67' },
+  bug_hunter: { icon: Zap, label: 'Bug Hunter', color: '#3BA55C' },
+  early_supporter: { icon: Heart, label: 'Soutien de la première heure', color: '#FF73FA' },
+  owner: { icon: Crown, label: 'Propriétaire', color: '#FAA61A' },
+};
 
 
 
@@ -139,6 +151,8 @@ export function UserProfilePopup({
   const { voiceState } = useVoice();
   const { getUserVolume, setUserVolume } = useVoiceUserSettings();
   const [localVolume, setLocalVolume] = useState<number | null>(null);
+  const [fullBioOpen, setFullBioOpen] = useState(false);
+  const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
   const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
@@ -249,16 +263,59 @@ export function UserProfilePopup({
 
   const ActivityIcon = (user as any).activity_type ? activityIcons[(user as any).activity_type] : null;
 
+  const userBadges: string[] = Array.isArray((user as any).badges) ? (user as any).badges : [];
+  const bioText = user.bio ?? '';
+  const bioIsLong = bioText.length > 180;
+  const truncatedBio = bioIsLong ? bioText.slice(0, 180).trimEnd() + '…' : bioText;
+  const language = (user as any).language ?? (user as any).locale ?? null;
+
+  const handleRemoveRole = async (roleId: string, roleName: string) => {
+    if (!serverId || !memberId || removingRoleId) return;
+    setRemovingRoleId(roleId);
+    membersMutationLockRef.current = true;
+    lockPermissionsMutation(600);
+
+    const previousMembers = queryClient.getQueryData(['members', serverId]);
+    queryClient.setQueryData(['members', serverId], (old: MemberWithProfile[] | undefined) =>
+      old?.map((m) =>
+        m.id !== memberId
+          ? m
+          : { ...m, roles: (m.roles ?? []).filter((r: any) => r.id !== roleId) }
+      )
+    );
+
+    try {
+      const { error } = await supabase
+        .from('member_roles')
+        .delete()
+        .eq('member_id', memberId)
+        .eq('role_id', roleId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+    } catch (err: any) {
+      if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);
+      toast.error(`Impossible de retirer le rôle ${roleName}`, {
+        description: err?.message,
+      });
+    } finally {
+      setRemovingRoleId(null);
+      setTimeout(() => {
+        membersMutationLockRef.current = false;
+      }, 350);
+    }
+  };
+
   const ProfileContent = forwardRef<HTMLDivElement>((_, ref) => (
-    <div ref={ref}>
+    <div ref={ref} className="font-ginto">
       {/* Banner */}
       <div className="relative">
-        <div 
-          className="h-24 w-full bg-[hsl(var(--primary))]"
+        <div
+          className="h-[88px] w-full bg-[hsl(var(--primary))]"
           style={getBannerStyle()}
         />
-        
-        {/* Header Actions - Message & Friend or Edit */}
+
+        {/* Header Actions */}
         {isOwnProfile && serverId ? (
           <div className="absolute top-2 right-2 flex items-center gap-2">
             <Tooltip delayDuration={0}>
@@ -267,7 +324,7 @@ export function UserProfilePopup({
                   onClick={() => setServerProfileEditOpen(true)}
                   className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
                 >
-                  <Pencil className="w-5 h-5" />
+                  <Pencil className="w-4 h-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Modifier le profil serveur</TooltipContent>
@@ -275,7 +332,6 @@ export function UserProfilePopup({
           </div>
         ) : !isOwnProfile ? (
           <div className="absolute top-2 right-2 flex items-center gap-2">
-            {/* Message Icon */}
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
@@ -284,37 +340,36 @@ export function UserProfilePopup({
                   className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
                 >
                   {isCreatingDM ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : dmCreated ? (
-                    <Check className="w-5 h-5" />
+                    <Check className="w-4 h-4" />
                   ) : (
-                    <MessageSquare className="w-5 h-5" />
+                    <MessageSquare className="w-4 h-4" />
                   )}
                 </button>
               </TooltipTrigger>
               <TooltipContent>{dmCreated ? 'Conversation ouverte' : 'Envoyer un message'}</TooltipContent>
             </Tooltip>
 
-            {/* Friend Icon */}
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
                   onClick={!isFriend && !isPending ? handleAddFriend : undefined}
                   disabled={isSendingRequest || isFriend}
                   className={cn(
-                    "p-1.5 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]",
-                    isFriend ? "text-[hsl(var(--online))]" : "text-white hover:scale-110",
-                    !isFriend && !isPending && "cursor-pointer"
+                    'p-1.5 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]',
+                    isFriend ? 'text-[hsl(var(--online))]' : 'text-white hover:scale-110',
+                    !isFriend && !isPending && 'cursor-pointer'
                   )}
                 >
                   {isSendingRequest ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : isFriend ? (
-                    <UserCheck className="w-5 h-5" />
+                    <UserCheck className="w-4 h-4" />
                   ) : isPending ? (
-                    <Clock className="w-5 h-5" />
+                    <Clock className="w-4 h-4" />
                   ) : (
-                    <UserPlus className="w-5 h-5" />
+                    <UserPlus className="w-4 h-4" />
                   )}
                 </button>
               </TooltipTrigger>
@@ -326,12 +381,12 @@ export function UserProfilePopup({
         ) : null}
       </div>
 
-      {/* Profile Content */}
-      <div className="px-4 pb-4">
-        {/* Avatar */}
-        <div className="relative -mt-12 mb-3">
+      {/* Body */}
+      <div className="px-3 pb-3">
+        {/* Avatar row with floating custom status bubble */}
+        <div className="relative -mt-10 mb-2 flex items-end gap-2">
           <div className="relative inline-block">
-            <Avatar className="w-20 h-20 border-4 border-card">
+            <Avatar className="w-[72px] h-[72px] border-[5px] border-card">
               <AvatarImage src={user.avatar} alt={user.displayName} />
               <AvatarFallback className="bg-primary/20 text-primary text-2xl">
                 {user.displayName.charAt(0).toUpperCase()}
@@ -339,201 +394,246 @@ export function UserProfilePopup({
             </Avatar>
             <div
               className={cn(
-                'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-card',
+                'absolute bottom-0.5 right-0.5 w-[18px] h-[18px] rounded-full border-[4px] border-card',
                 statusColors[user.status]
               )}
             />
           </div>
+
+          {user.customStatus && (
+            <div className="relative mb-1 max-w-[200px] rounded-2xl bg-popover px-3 py-1.5 text-xs text-foreground/90 shadow-md border border-border/40">
+              <span className="absolute -left-1 bottom-2 h-2 w-2 rotate-45 bg-popover border-l border-b border-border/40" />
+              <span className="block truncate">{user.customStatus}</span>
+            </div>
+          )}
         </div>
 
-        {/* User Info */}
-        <div className="space-y-3">
+        {/* Inner card */}
+        <div className="rounded-lg bg-background/40 p-3 space-y-2.5">
+          {/* Name + pronouns */}
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-xl font-bold text-foreground">{user.displayName}</h3>
-              {/* Pronouns Badge */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-base font-bold text-foreground leading-tight">
+                {user.displayName}
+              </h3>
               {(user as any).pronouns && (
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
-                      {(user as any).pronouns}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Pronoms de l'utilisateur</TooltipContent>
-                </Tooltip>
+                <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-muted text-muted-foreground">
+                  {(user as any).pronouns}
+                </span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">{user.username.toLowerCase()}</p>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+              <span>{user.username.toLowerCase()}</span>
+              {language && (
+                <>
+                  <span className="opacity-60">·</span>
+                  <span className="uppercase">{language}</span>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Activity / Rich Presence */}
+          {/* Badges row */}
+          {userBadges.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              {userBadges.map((key) => {
+                const def = BADGE_ICONS[key];
+                if (!def) return null;
+                const Icon = def.icon;
+                return (
+                  <Tooltip key={key} delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="inline-flex items-center justify-center w-5 h-5 rounded"
+                        style={{ color: def.color }}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{def.label}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Activity */}
           {(user as any).activity_type && (user as any).activity_text && ActivityIcon && (
-            <div className="flex items-center gap-2 text-sm">
-              <ActivityIcon className="w-4 h-4 text-primary" />
+            <div className="flex items-center gap-1.5 text-xs">
+              <ActivityIcon className="w-3.5 h-3.5 text-primary" />
               <span className="text-muted-foreground">
                 {activityLabels[(user as any).activity_type]}
               </span>
-              <span className="font-medium text-foreground">
-                {(user as any).activity_type === 'streaming' ? (
-                  <a href={(user as any).activity_text} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    {(user as any).activity_text}
-                  </a>
-                ) : (
-                  (user as any).activity_text
-                )}
+              <span className="font-medium text-foreground truncate">
+                {(user as any).activity_text}
               </span>
             </div>
           )}
 
-          {user.customStatus && (
-            <p className="text-sm text-foreground/80 italic">"{user.customStatus}"</p>
-          )}
-
-          {user.createdAt && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              <span>Membre depuis le {formatMemberSince(user.createdAt)}</span>
-            </div>
-          )}
-
-          {/* Afficher la section Rôles si l'utilisateur a des rôles OU si on peut les gérer */}
-          {((displayRoles && displayRoles.length > 0) || (canManageRoles && serverId && memberId && assignableRoles.length > 0)) && (
-            <>
-              <div className="border-t border-border" />
-              <div ref={rolesSectionRef}>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide">
-                    Rôles
-                  </h4>
-                  {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
-                    <button
-                      onClick={() => setShowRolePanel(true)}
-                      className="text-xs text-primary hover:underline transition-colors"
-                    >
-                      Gérer les rôles
-                    </button>
-                  )}
-                </div>
-                {displayRoles && displayRoles.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {displayRoles.map((role) => (
-                      <div
-                        key={role.id}
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
-                        style={{
-                          backgroundColor: role.color ? `${role.color}20` : 'hsl(var(--muted))',
-                          borderLeft: `3px solid ${role.color || 'hsl(var(--muted-foreground))'}`,
-                          color: role.color || 'hsl(var(--foreground))',
-                        }}
-                      >
-                        {role.icon_url ? (
-                          role.icon_url.startsWith('http') ? (
-                            <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />
-                          ) : (
-                            <span className="text-xs">{role.icon_url}</span>
-                          )
-                        ) : (
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
-                          />
-                        )}
-                        {role.name}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground/50">Aucun rôle assigné</p>
-                )}
-              </div>
-            </>
-          )}
-
-          <div className="border-t border-border" />
-
+          {/* Bio */}
           <div>
-            <h4 className="text-xs font-semibold text-muted-foreground tracking-wide mb-1">
+            <h4 className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase mb-1">
               À Propos de Moi
             </h4>
-            {user.bio ? (
-              <div className="text-sm text-foreground/90 prose prose-invert prose-sm max-w-none">
-                {(() => {
-                  const prevCtx = getMarkdownContext();
-                  setMarkdownContext({ ...prevCtx, variant: 'bio' });
-                  const result = parseMarkdown(user.bio);
-                  setMarkdownContext(prevCtx);
-                  return result;
-                })()}
-              </div>
+            {bioText ? (
+              <>
+                <div className="text-xs text-foreground/90 prose prose-invert prose-sm max-w-none line-clamp-3">
+                  {(() => {
+                    const prevCtx = getMarkdownContext();
+                    setMarkdownContext({ ...prevCtx, variant: 'bio' });
+                    const result = parseMarkdown(truncatedBio);
+                    setMarkdownContext(prevCtx);
+                    return result;
+                  })()}
+                </div>
+                {bioIsLong && (
+                  <button
+                    onClick={() => setFullBioOpen(true)}
+                    className="mt-1 text-[11px] text-primary hover:underline"
+                  >
+                    Voir la bio complète
+                  </button>
+                )}
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground/50">
+              <p className="text-xs text-muted-foreground/50">
                 Aucune biographie définie.
               </p>
             )}
           </div>
 
-          {/* Volume Slider — shown when in voice with this user */}
-          {isInVoiceWithTarget && (
-            <>
-              <div className="border-t border-border" />
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wide flex items-center gap-1.5">
-                    {displayVolume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                    Volume utilisateur
-                  </h4>
-                  <span className="text-xs text-muted-foreground">{displayVolume}%</span>
-                </div>
-                <Slider
-                  value={[displayVolume]}
-                  max={200}
-                  step={5}
-                  onValueChange={(v) => setLocalVolume(v[0])}
-                  onValueCommit={(v) => {
-                    setUserVolume.mutate({ targetUserId: user.id, volume: v[0] });
-                    setLocalVolume(null);
-                  }}
-                  className="w-full"
-                />
-                {displayVolume > 100 && (
-                  <p className="text-xs text-orange-400 mt-1">Volume amplifié au-delà de 100%</p>
+          {/* Roles */}
+          {((displayRoles && displayRoles.length > 0) ||
+            (canManageRoles && serverId && memberId && assignableRoles.length > 0)) && (
+            <div ref={rolesSectionRef}>
+              <h4 className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase mb-1.5">
+                Rôles
+              </h4>
+              <div className="flex flex-wrap gap-1">
+                {displayRoles.map((role) => (
+                  <div
+                    key={role.id}
+                    className="group/role inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded text-[11px] font-medium bg-muted/40 border border-border/40"
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
+                    />
+                    <span style={{ color: role.color || undefined }} className="truncate max-w-[120px]">
+                      {role.name}
+                    </span>
+                    {canManageRoles && (
+                      <button
+                        onClick={() => handleRemoveRole(role.id, role.name)}
+                        disabled={removingRoleId === role.id}
+                        className="ml-0.5 p-0.5 rounded opacity-0 group-hover/role:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
+                        aria-label={`Retirer ${role.name}`}
+                      >
+                        {removingRoleId === role.id ? (
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <X className="w-2.5 h-2.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
+                  <button
+                    onClick={() => setShowRolePanel(true)}
+                    className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/40 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Ajouter un rôle"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
                 )}
               </div>
-            </>
+            </div>
           )}
+
+          {/* Volume Slider — voice */}
+          {isInVoiceWithTarget && (
+            <div className="pt-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <h4 className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center gap-1.5">
+                  {displayVolume === 0 ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                  Volume
+                </h4>
+                <span className="text-[10px] text-muted-foreground">{displayVolume}%</span>
+              </div>
+              <Slider
+                value={[displayVolume]}
+                max={200}
+                step={5}
+                onValueChange={(v) => setLocalVolume(v[0])}
+                onValueCommit={(v) => {
+                  setUserVolume.mutate({ targetUserId: user.id, volume: v[0] });
+                  setLocalVolume(null);
+                }}
+                className="w-full"
+              />
+              {displayVolume > 100 && (
+                <p className="text-[10px] text-orange-400 mt-1">Volume amplifié au-delà de 100%</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="mt-2.5 space-y-2">
+          {isOwnProfile && serverId ? (
+            <Button
+              onClick={() => setServerProfileEditOpen(true)}
+              className="w-full h-9 rounded-md"
+              size="sm"
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Modifier le profil
+            </Button>
+          ) : !isOwnProfile ? (
+            <Button
+              onClick={handleSendMessage}
+              disabled={isCreatingDM}
+              className="w-full h-9 rounded-md"
+              size="sm"
+            >
+              {isCreatingDM ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <MessageSquare className="w-4 h-4 mr-2" />
+              )}
+              Envoyer un message
+            </Button>
+          ) : null}
 
           {showKickBan && (canKick || canBan) && (
-            <>
-              <div className="border-t border-border" />
-              <div className="flex gap-2">
-                {canKick && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
-                    onClick={handleKick}
-                    disabled={kickMember.isPending}
-                  >
-                    <UserMinus className="w-4 h-4 mr-2" />
-                    Expulser
-                  </Button>
-                )}
-                {canBan && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                    onClick={handleBan}
-                    disabled={banMember.isPending}
-                  >
-                    <Ban className="w-4 h-4 mr-2" />
-                    Bannir
-                  </Button>
-                )}
-              </div>
-            </>
+            <div className="flex gap-2">
+              {canKick && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-8 text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
+                  onClick={handleKick}
+                  disabled={kickMember.isPending}
+                >
+                  <UserMinus className="w-3.5 h-3.5 mr-1.5" />
+                  Expulser
+                </Button>
+              )}
+              {canBan && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-8 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={handleBan}
+                  disabled={banMember.isPending}
+                >
+                  <Ban className="w-3.5 h-3.5 mr-1.5" />
+                  Bannir
+                </Button>
+              )}
+            </div>
           )}
-
         </div>
       </div>
     </div>
@@ -585,6 +685,24 @@ export function UserProfilePopup({
     />
   );
 
+  const fullBioModal = (
+    <FullUserProfileModal
+      open={fullBioOpen}
+      onOpenChange={setFullBioOpen}
+      user={{
+        id: user.id,
+        display_name: user.displayName,
+        username: user.username,
+        avatar_url: user.avatar ?? null,
+        banner_url: user.banner ?? null,
+        bio: user.bio ?? null,
+        status: user.status,
+        created_at: user.createdAt ?? null,
+      }}
+      onNavigateToDM={onOpenDM}
+    />
+  );
+
   // Mode Card - affichage en carte latérale
   if (mode === 'card' && open) {
     return (
@@ -608,7 +726,7 @@ export function UserProfilePopup({
               )}
               
               {/* Main Profile Card */}
-              <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
+              <div className="relative w-[340px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-in-right">
                 <ProfileContent />
               </div>
             </div>
@@ -616,6 +734,7 @@ export function UserProfilePopup({
           document.body
         )}
         {serverProfileModal}
+        {fullBioModal}
       </>
     );
   }
@@ -632,6 +751,7 @@ export function UserProfilePopup({
           </DrawerContent>
         </Drawer>
         {serverProfileModal}
+        {fullBioModal}
       </>
     );
   }
@@ -640,11 +760,12 @@ export function UserProfilePopup({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
+        <DialogContent className="p-0 overflow-hidden w-[340px] max-w-[340px] bg-card border-border rounded-xl">
           <ProfileContent />
         </DialogContent>
       </Dialog>
       {serverProfileModal}
+      {fullBioModal}
     </>
   );
 }

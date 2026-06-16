@@ -1,39 +1,61 @@
+## Audit log "Discord-style" — branchement complet
 
-## Problème
+L'infrastructure existe déjà (table `audit_logs`, RLS, RPC `insert_audit_log`, hook `useAuditLogs`, UI `AuditLogManager`, permission `view_audit_log`) **mais aucune action de l'app n'écrit dedans** → le journal est toujours vide. On va le câbler proprement.
 
-Sur la modale "Recadrer l'image" (utilisée pour la photo de profil utilisateur ET pour l'icône de serveur), la zone de recadrage est coupée :
-- Le conteneur de prévisualisation utilise `max-h-[400px] overflow-hidden`, ce qui clippe le cercle de sélection en haut/bas.
-- Le zoom est appliqué via `transform: scale(...)` sur le `<img>` : l'image grandit visuellement mais déborde du conteneur (qui la rogne), et la sélection de `react-image-crop` n'est plus alignée avec ce qu'on voit.
-- La largeur du Dialog (`max-w-lg`) est trop étroite pour une image carrée à pleine hauteur.
+### Approche : triggers DB plutôt que client
 
-## Correctif (fichier unique : `src/components/ui/image-cropper.tsx`)
+Discord journalise côté serveur, jamais côté client (les clients peuvent skipper). On ajoute des triggers PostgreSQL `AFTER INSERT/UPDATE/DELETE` sur les tables sensibles, qui inscrivent l'entrée dans `audit_logs` avec `auth.uid()` comme acteur. Si `auth.uid()` est NULL (cascade, action système), le trigger n'inscrit rien.
 
-1. **Élargir et reformater la modale**
-   - `DialogContent` : passer à `max-w-2xl` avec un padding interne cohérent, pour laisser respirer le canvas.
+### 1. Actions journalisées (triggers DB)
 
-2. **Refonte du conteneur de prévisualisation**
-   - Remplacer `max-h-[400px] overflow-hidden rounded-lg bg-muted` par un wrapper centré `flex items-center justify-center bg-muted/40 rounded-lg p-4` d'une hauteur fixe responsive (`h-[min(60vh,480px)] w-full`).
-   - Le wrapper ne clippe plus la sélection (`overflow-visible` / pas d'overflow-hidden) afin que le cercle pointillé soit visible en entier, même près des bords.
+| Table                  | Évènement                | Action type                                                                  |
+|------------------------|--------------------------|------------------------------------------------------------------------------|
+| `servers`              | UPDATE                   | `server_update` (capture diffs : name, icon, banner, description, owners)    |
+| `server_members`       | DELETE (actor ≠ user)    | `member_kick`                                                                |
+| `server_bans`          | INSERT / DELETE          | `member_ban` / `member_unban`                                                |
+| `roles`                | INSERT / UPDATE / DELETE | `role_create` / `role_update` / `role_delete`                                |
+| `member_roles`         | INSERT / DELETE          | `member_role_add` / `member_role_remove`                                     |
+| `role_permissions`     | INSERT / DELETE          | `role_permission_grant` / `role_permission_revoke`                           |
+| `categories`           | INSERT / UPDATE / DELETE | `category_create` / `category_update` / `category_delete`                    |
+| `channels`             | INSERT / UPDATE / DELETE | `channel_create` / `channel_update` / `channel_delete`                       |
+| `channel_permission_overrides` | INSERT/UPDATE/DELETE | `channel_overwrite_create/update/delete`                                |
+| `invites`              | INSERT / DELETE          | `invite_create` / `invite_delete`                                            |
+| `webhooks`             | INSERT / UPDATE / DELETE | `webhook_create` / `webhook_update` / `webhook_delete`                       |
+| `server_emojis`        | INSERT / UPDATE / DELETE | `emoji_create` / `emoji_update` / `emoji_delete`                             |
+| `server_stickers`      | INSERT / UPDATE / DELETE | `sticker_create` / `sticker_update` / `sticker_delete`                       |
+| `messages`             | DELETE (actor ≠ author)  | `message_delete`                                                             |
+| `pinned_messages`      | INSERT / DELETE          | `message_pin` / `message_unpin`                                              |
+| `threads`              | INSERT / DELETE          | `thread_create` / `thread_delete`                                            |
 
-3. **Image bien dimensionnée**
-   - Sur le `<img>` : `max-h-full max-w-full object-contain` et retirer le `max-h-[400px]` figé.
-   - L'image se laisse contenir par le wrapper, plus de débordement.
+Chaque trigger remplit `details` (jsonb) avec les infos utiles : nom de la ressource, changements `{ field: { old, new } }`, raison (ban), etc. `target_id` pointe vers un `profiles.id` quand l'action vise un membre, sinon NULL et l'ID de ressource va dans `details`.
 
-4. **Zoom propre**
-   - Garder le slider mais appliquer la transformation au `<img>` via `style={{ transform: scale(${scale}), transformOrigin: 'center' }}`, et envelopper l'image dans un conteneur `overflow-hidden rounded-lg` interne pour que le zoom ne pousse pas l'UI mais reste cliquable.
-   - `ReactCrop` reste autour de l'image afin que la sélection suive la même transformation visuelle (recalcul OK car react-image-crop utilise les dimensions du `<img>` rendu).
-   - Étendre la plage du slider à `min=1, max=3, step=0.05` (zoom uniquement avant — pas de dé-zoom qui crée des bandes vides) et caler la valeur initiale + reset à `1`.
+### 2. Hook & UI
 
-5. **Lisibilité contrôles**
-   - Garder slider + boutons zoom/reset sous le canvas, alignés sur la largeur du wrapper.
-   - Footer (`Annuler` / `Appliquer`) inchangé.
+`src/hooks/useAuditLogs.ts`
+- Étendre `ACTION_TYPES` avec tous les nouveaux types, regroupés par catégorie (Membres / Rôles / Salons / Serveur / Webhooks / Emojis / Messages).
+- Ajouter `category` + `icon` (lucide) à chaque entrée.
 
-## Aucun changement fonctionnel
+`src/components/server-settings/AuditLogManager.tsx`
+- Popover filtre : sections collapsibles par catégorie au lieu d'une liste plate.
+- Rendu enrichi des `details` : pour `*_update`, afficher les diffs sous forme `champ : ancien → nouveau`. Pour create/delete, afficher le nom de la ressource.
+- Icône d'action devant le badge (`<History>` remplacé par l'icône de la catégorie).
+- Si l'utilisateur n'a pas `view_audit_log` ni n'est owner : afficher état "Accès restreint" (la RLS bloque déjà la requête, on traite juste l'erreur côté UI).
 
-- Pas de modification de la logique de génération du blob (`getCroppedImg`), de `onCropComplete`, ni des appelants (avatar profil utilisateur, icône serveur, bannières) — seul le layout/sizing visuel est corrigé.
-- Aucune dépendance ajoutée.
+### 3. Garde-fous
 
-## Vérification après build
+- Trigger fonctions en `SECURITY DEFINER`, `SET search_path = public`.
+- Garde `IF auth.uid() IS NULL THEN RETURN NEW; END IF;` → pas de log pour cascades (suppression de serveur, seeds, edge functions service_role).
+- `member_kick` : trigger sur `server_members DELETE` qui inscrit uniquement si `auth.uid() <> OLD.user_id` (sinon = "leave server", pas un kick).
+- `message_delete` : uniquement si `auth.uid() <> OLD.author_id` (sinon = auto-suppression).
+- Limite UI : déjà à 100 entrées + realtime, on garde tel quel.
 
-- Ouvrir Paramètres serveur → Profil du serveur → upload d'une image carrée et d'une image très large : le cercle de sélection doit être entièrement visible, image entièrement contenue, slider de zoom fluide.
-- Refaire le même test sur la photo de profil utilisateur (mêmes composants).
+### Détails techniques
+
+**Fichiers touchés**
+- `supabase/migrations/<timestamp>_audit_log_triggers.sql` (nouveau) — fonctions trigger + `CREATE TRIGGER` sur chaque table.
+- `src/hooks/useAuditLogs.ts` — extension `ACTION_TYPES` + catégories.
+- `src/components/server-settings/AuditLogManager.tsx` — filtre par catégorie, rendu diff, icônes.
+
+**Pas touché** : `audit_logs` table/RLS (déjà bonnes), `insert_audit_log` RPC (gardée pour `transfer_server_ownership` qui l'appelle déjà), permission `view_audit_log` (déjà existante).
+
+**Coût** : un trigger par table, overhead négligeable (un INSERT supplémentaire par mutation surveillée).

@@ -1,14 +1,13 @@
-**Problème** : Les blocs de code rendus dans les messages (`src/components/ui/code-block.tsx`) n'ont aucune limite de hauteur. Un long bloc remplit l'écran et empêche de faire défiler la conversation pour revenir aux derniers messages.
+**Cause** : Lorsqu'on clique sur "Modifier" sur un message contenant un bloc de code, le `<Textarea>` d'édition est rendu avec la prop `autoFocus` (lignes 1583 et 1710 de `src/components/chat/ChatArea.tsx`). Le navigateur déclenche alors un `scrollIntoView` automatique pour centrer le champ focusé. Quand l'utilisateur essaie ensuite de défiler vers le bas de la conversation, ce comportement (combiné aux re-renders / auto-resize de la textarea) ramène la vue vers la textarea d'édition, donnant l'impression qu'on est "remis légèrement plus haut".
 
 **Correction** :
 
-1. **`src/components/ui/code-block.tsx`** — Ajouter une hauteur maximale et un défilement vertical interne :
-   - `<pre>` : retirer `overflow-hidden`, ajouter `max-h-[360px] overflow-auto`.
-   - `<code>` : conserver `whitespace-pre` pour le défilement horizontal sur les longues lignes.
-   - Le bouton "Copier" reste `absolute` et `sticky-like` via `top-1.5 right-1.5` (déjà positionné, reste visible car positionné par rapport à `<pre>` scrollable).
-   
-   Pour que le bouton reste visible même quand le bloc est scrollé, le wrapper devient `<div class="relative">` autour du `<pre>` scrollable, avec le bouton sur le `<div>` (et non sur le `<pre>`).
+Dans `src/components/chat/ChatArea.tsx`, pour les **deux** textareas d'édition (lignes ~1561 et ~1688) :
 
-2. **Conteneur de rédaction (`InputMarkdownOverlay`)** — Aucun changement nécessaire : le `<textarea>` est déjà plafonné (`max-h-[200px] overflow-y-auto` dans `MessageInput.tsx`), donc le bloc de code dans la zone de saisie défile naturellement avec la textarea.
+1. Retirer la prop `autoFocus`.
+2. Dans le callback `ref={(el) => { ... }}`, appeler `el.focus({ preventScroll: true })` après avoir initialisé la hauteur, et placer le curseur en fin de texte (`el.setSelectionRange(el.value.length, el.value.length)`).
+3. Garder un drapeau (via `dataset`) pour ne focuser qu'une seule fois à l'ouverture du mode édition, afin de ne pas re-focuser à chaque re-render lié à la frappe.
 
-**Vérification** : Coller un bloc de code de 80 lignes dans un message → le bloc affiche ~360px de hauteur avec ascenseur vertical interne, le scroll de la conversation reste fluide et atteint les derniers messages. Le bouton Copier reste visible en haut à droite du bloc.
+**Aucun autre fichier modifié.**
+
+**Vérification** : modifier un message contenant un bloc de code → la textarea reçoit le focus sans que la liste des messages ne saute. L'utilisateur peut défiler librement jusqu'au dernier message pendant l'édition.

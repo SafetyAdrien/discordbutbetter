@@ -76,7 +76,6 @@ import { Eye } from "lucide-react";
 import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
 import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
-import { useMembers } from "@/hooks/useMembers";
 import { useChannels } from "@/hooks/useChannels";
 import { Thread } from "@/types/thread";
 import { PollDisplay } from "./PollDisplay";
@@ -281,7 +280,7 @@ interface ChatAreaProps {
   onSelectThread?: (threadId: string) => void;
   activeThreadId?: string | null;
   onCloseThread?: () => void;
-  members?: Array<{ id: string; displayName: string; username: string; avatar?: string; bio?: string }>;
+  members?: Array<{ id: string; memberId?: string; displayName: string; username: string; avatar?: string; bio?: string }>;
   onChannelSelect?: (channelId: string) => void;
 }
 // Long-press wrapper for polls on mobile
@@ -608,7 +607,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
-  const { data: serverMembers = [] } = useMembers(channel.server_id || null);
   const { data: channelsData } = useChannels(channel.server_id);
 
   // Pinned messages
@@ -654,7 +652,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const isAdminOrOwner = isGod || hasServerPermission("administrator");
   const canManageRoles = isAdminOrOwner || hasServerPermission("manage_roles");
   const selectedUserMemberId = selectedUser
-    ? serverMembers.find((member) => member.user.id === selectedUser.user.id)?.id
+    ? members.find((member) => member.id === selectedUser.user.id)?.memberId
     : undefined;
 
   // Check multiple chat permissions reactively

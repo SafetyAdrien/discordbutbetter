@@ -106,7 +106,7 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
         type="button"
         onClick={handleCopy}
         aria-label="Copier le code"
-        className={`absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-[3px] bg-background/60 text-muted-foreground hover:text-foreground z-10 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground z-10 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}
       >
         {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>

@@ -125,13 +125,13 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
           if (error && error.code !== "23505") throw error;
         }
 
-        // Force refresh related queries for full consistency across clients
+        // Do NOT invalidate ['members', serverId] — the optimistic patch + realtime
+        // subscription keep the cache in sync. An invalidate here triggers a refetch
+        // that can briefly return pre-write data and cause a visible flicker.
         if (userId) {
           queryClient.invalidateQueries({ queryKey: ["profile", userId] });
         }
         queryClient.invalidateQueries({ queryKey: ["role-member-counts", serverId] });
-        // Ensure permissions + members caches converge to server truth
-        queryClient.invalidateQueries({ queryKey: ["members", serverId] });
         [
           'channel-permission', 'channel-permissions', 'user-channel-permissions',
           'user-permissions', 'category-permissions', 'roles', 'role-permissions',

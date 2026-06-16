@@ -88,9 +88,13 @@ export function hasInlineMarkdown(content: string): boolean {
   return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
 }
 
-export function hasInlineMentions(content: string): boolean {
+export function hasInlineMentions(content: string, entries?: MentionEntry[]): boolean {
   if (!content) return false;
-  return /<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content);
+  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content)) return true;
+  if (entries && entries.length > 0) {
+    return entries.some(e => content.includes(e.display));
+  }
+  return false;
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {

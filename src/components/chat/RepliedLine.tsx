@@ -26,6 +26,13 @@ interface RepliedLineProps {
 
   /** Visual indentation in px to align with the parent message avatar */
   indent?: number;
+  /**
+   * Horizontal center (in px, from the wrapper's outer edge) of the parent
+   * message avatar this reply belongs to. Used to perfectly align the
+   * vertical bar of the L-connector above that avatar.
+   * Defaults to 30px (40px avatar with `pl-[21px] -ml-[11px]` layout).
+   */
+  avatarCenter?: number;
   /** Optional role color for the cited author (semibold pseudo color) */
   authorColor?: string;
   /** Optional full role object — rendered via RoleBadgePopover (Discord-like pill) */
@@ -39,9 +46,6 @@ const MAX_PREVIEW_CHARS = 64;
 
 /**
  * Strip mentions/markdown to a clean inline preview.
- * - <@id> mentions become "@membre"
- * - <#id> channel mentions become "#salon"
- * - markdown chars are stripped
  */
 function cleanPreview(raw: string): string {
   return raw
@@ -71,19 +75,75 @@ function describeAttachments(attachments: Attachment[]): { icon: JSX.Element; la
   };
 }
 
-export function RepliedLine({
+// ============================================================================
+// ReplyLine — absolute-positioned SVG L-connector only.
+// Selectable via `.reply-line` / `[data-reply-line]`.
+// ============================================================================
+
+export interface ReplyLineProps {
+  /** Horizontal center (px from wrapper outer edge) of the parent avatar. */
+  avatarCenter?: number;
+  /** Right edge (px from wrapper outer edge) where the arm should end. */
+  endX: number;
+  className?: string;
+}
+
+export function ReplyLine({ avatarCenter = 30, endX, className }: ReplyLineProps) {
+  // Place SVG so its x=1 (stroke center) sits at avatarCenter.
+  const left = Math.max(0, avatarCenter - 1);
+  const width = Math.max(28, endX - left);
+
+  return (
+    <svg
+      aria-hidden="true"
+      data-reply-line
+      className={cn("reply-line absolute pointer-events-none text-border/70", className)}
+      style={{
+        left,
+        top: 8,
+        width,
+        height: 26,
+        overflow: "visible",
+      }}
+      viewBox={`0 0 ${width} 26`}
+      preserveAspectRatio="none"
+      fill="none"
+    >
+      <path
+        d={`M 1 26 L 1 9 Q 1 1 9 1 L ${width} 1`}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+// ============================================================================
+// RepliedContent — mini-avatar + author name + role badge + preview/attachment.
+// Selectable via `.replied-content` / `[data-replied-content]`.
+// ============================================================================
+
+export interface RepliedContentProps {
+  repliedMessage: RepliedMessageRef | null;
+  authorColor?: string;
+  authorRole?: RoleForBadge | null;
+  authorRoleIcon?: { iconUrl: string; name: string; color?: string | null } | null;
+  isClickable?: boolean;
+  className?: string;
+}
+
+export function RepliedContent({
   repliedMessage,
-  onJump,
-  indent = 50,
   authorColor,
   authorRole,
   authorRoleIcon,
+  isClickable,
   className,
-}: RepliedLineProps) {
-  // ---- Resolve display data ----
+}: RepliedContentProps) {
   const isDeleted = repliedMessage?.deleted === true;
 
-  // Author resolution from the resolved reply snapshot only.
   const resolvedAuthor = useMemo(() => {
     if (repliedMessage?.author) {
       return {
@@ -98,15 +158,11 @@ export function RepliedLine({
   const displayedAuthorName =
     resolvedAuthor?.displayName ?? (isDeleted ? "Inconnu" : "Utilisateur");
 
-  // Content resolution
   const rawPreview = useMemo(() => {
     if (isDeleted) return "";
     if (repliedMessage) {
       const c = (repliedMessage.content || "").trim();
       if (c) return cleanPreview(c);
-      const atts = repliedMessage.attachments ?? [];
-      if (atts.length > 0) return ""; // we render an attachment chip instead
-      return "";
     }
     return "";
   }, [repliedMessage, isDeleted]);
@@ -115,79 +171,24 @@ export function RepliedLine({
     if (!repliedMessage || isDeleted) return null;
     const atts = repliedMessage.attachments ?? [];
     if (!atts.length) return null;
-    if ((repliedMessage.content || "").trim()) return null; // text wins
+    if ((repliedMessage.content || "").trim()) return null;
     return describeAttachments(atts);
   }, [repliedMessage, isDeleted]);
 
-  const truncated = useMemo(() => {
-    if (rawPreview.length <= MAX_PREVIEW_CHARS) return rawPreview;
-    return rawPreview.slice(0, MAX_PREVIEW_CHARS);
-  }, [rawPreview]);
+  const truncated =
+    rawPreview.length <= MAX_PREVIEW_CHARS ? rawPreview : rawPreview.slice(0, MAX_PREVIEW_CHARS);
   const isTruncated = rawPreview.length > MAX_PREVIEW_CHARS;
 
-  // ---- Resolve jump target ----
-  const jumpTargetId = useMemo(() => {
-    if (isDeleted) return null;
-    if (repliedMessage?.id) return repliedMessage.id;
-    return null;
-  }, [repliedMessage, isDeleted]);
-
-  const isClickable = Boolean(jumpTargetId && onJump && !isDeleted);
   const initial = displayedAuthorName.charAt(0).toUpperCase();
 
-  const handleClick = () => {
-    if (jumpTargetId && onJump) onJump(jumpTargetId);
-  };
-
-  // Connector L positioning: the L is rooted in the avatar gutter of the
-  // message BELOW this line and curves up-right to meet this reply row.
-  // The SVG extends downward beyond the row (overflow-visible) to reach into
-  // the parent avatar's vertical zone.
-  // connectorLeft sits roughly at the center of the parent avatar (≈20px from left).
-  // Pixel-perfect alignment:
-  // - connectorLeft positions the vertical bar at the horizontal center of the
-  //   parent avatar below (20px for 40px avatar → indent-36; 16px for 32px avatar → indent-28).
-  // - The SVG extends BELOW this row (overflow-visible) so the bottom of the L
-  //   reaches the vertical center of the parent avatar.
-  const connectorLeft = Math.max(0, indent - 36);
-  const connectorWidth = Math.max(28, indent - connectorLeft - 4);
-
-  const content = (
+  return (
     <div
+      data-replied-content
       className={cn(
-        "relative flex items-center gap-1.5 text-[13px] leading-tight select-none",
-        "min-h-[18px] overflow-visible",
-        isClickable && "cursor-pointer",
+        "replied-content relative flex items-center gap-1.5 min-w-0",
         className,
       )}
-      style={{ paddingLeft: indent }}
     >
-      {/* L-shaped connector — vertical bar centered on parent avatar (below),
-          horizontal arm pointing to the mini-avatar of this reply row. */}
-      <svg
-        aria-hidden="true"
-        className="absolute pointer-events-none text-border/70"
-        style={{
-          left: connectorLeft,
-          top: 8,
-          width: connectorWidth,
-          height: 26,
-          overflow: "visible",
-        }}
-        viewBox={`0 0 ${connectorWidth} 26`}
-        preserveAspectRatio="none"
-        fill="none"
-      >
-        <path
-          d={`M 1 26 L 1 9 Q 1 1 9 1 L ${connectorWidth} 1`}
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </svg>
-
-      {/* Mini avatar (real avatar in fidelity mode) */}
       <Avatar className="w-4 h-4 flex-shrink-0">
         {!isDeleted && resolvedAuthor?.avatar && (
           <AvatarImage src={resolvedAuthor.avatar} alt={displayedAuthorName} />
@@ -202,7 +203,6 @@ export function RepliedLine({
         </AvatarFallback>
       </Avatar>
 
-      {/* Author name (with @ prefix, role-colored) */}
       {!isDeleted && (
         <span
           className={cn(
@@ -215,14 +215,12 @@ export function RepliedLine({
         </span>
       )}
 
-      {/* Role badge — preferred path: full RoleBadgePopover (compact) */}
       {!isDeleted && authorRole?.icon_url && (
         <span className="flex-shrink-0 inline-flex items-center [&_button>img]:!w-3.5 [&_button>img]:!h-3.5 [&_button>span]:!text-[14px]">
           <RoleBadgePopover role={authorRole} />
         </span>
       )}
 
-      {/* Plain icon fallback for non-server contexts */}
       {!isDeleted && !authorRole?.icon_url && authorRoleIcon?.iconUrl && (
         <span
           className="flex-shrink-0 inline-flex items-center"
@@ -241,7 +239,6 @@ export function RepliedLine({
         </span>
       )}
 
-      {/* Body: deleted, attachment chip, or text preview */}
       {isDeleted ? (
         <span className="text-[13px] text-muted-foreground italic">
           Message original supprimé
@@ -267,6 +264,64 @@ export function RepliedLine({
           {truncated}
         </span>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// RepliedLine — wrapper composing <ReplyLine /> + <RepliedContent />.
+// ============================================================================
+
+export function RepliedLine({
+  repliedMessage,
+  onJump,
+  indent = 50,
+  avatarCenter = 30,
+  authorColor,
+  authorRole,
+  authorRoleIcon,
+  className,
+}: RepliedLineProps) {
+  const isDeleted = repliedMessage?.deleted === true;
+
+  const displayedAuthorName =
+    repliedMessage?.author?.displayName ?? (isDeleted ? "Inconnu" : "Utilisateur");
+
+  const rawPreview = useMemo(() => {
+    if (isDeleted || !repliedMessage) return "";
+    return cleanPreview(repliedMessage.content || "");
+  }, [repliedMessage, isDeleted]);
+
+  const isTruncated = rawPreview.length > MAX_PREVIEW_CHARS;
+
+  const jumpTargetId = !isDeleted && repliedMessage?.id ? repliedMessage.id : null;
+  const isClickable = Boolean(jumpTargetId && onJump && !isDeleted);
+
+  const handleClick = () => {
+    if (jumpTargetId && onJump) onJump(jumpTargetId);
+  };
+
+  // Arm of the L should end just before the mini-avatar of this row (indent - 4).
+  const endX = Math.max(avatarCenter + 28, indent - 4);
+
+  const content = (
+    <div
+      className={cn(
+        "relative flex items-center gap-1.5 text-[13px] leading-tight select-none",
+        "min-h-[18px] overflow-visible",
+        isClickable && "cursor-pointer",
+        className,
+      )}
+      style={{ paddingLeft: indent }}
+    >
+      <ReplyLine avatarCenter={avatarCenter} endX={endX} />
+      <RepliedContent
+        repliedMessage={repliedMessage}
+        authorColor={authorColor}
+        authorRole={authorRole}
+        authorRoleIcon={authorRoleIcon}
+        isClickable={isClickable}
+      />
     </div>
   );
 

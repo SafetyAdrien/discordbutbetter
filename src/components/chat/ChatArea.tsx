@@ -394,7 +394,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
   const editingMessageIdRef = useRef<string | null>(null);
-  const editScrollLockRef = useRef<{ top: number; rafIds: number[]; timeoutId: number | null } | null>(null);
+  const editScrollLockRef = useRef<{
+    top: number;
+    messageId: string | null;
+    anchorTop: number | null;
+    rafIds: number[];
+    timeoutId: number | null;
+  } | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
   // Pending attachments for drag & drop
@@ -422,6 +428,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
+    const anchor = lock.messageId ? messageRefs.current.get(lock.messageId) : null;
+    if (anchor && lock.anchorTop !== null) {
+      const currentTop = anchor.getBoundingClientRect().top - vp.getBoundingClientRect().top;
+      vp.scrollTop += currentTop - lock.anchorTop;
+      return;
+    }
     vp.scrollTop = lock.top;
   }, []);
 
@@ -433,7 +445,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     previousLock?.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
     if (previousLock?.timeoutId) window.clearTimeout(previousLock.timeoutId);
 
-    const lock = { top: vp.scrollTop, rafIds: [] as number[], timeoutId: null as number | null };
+    const anchor = messageId ? messageRefs.current.get(messageId) : null;
+    const lock = {
+      top: vp.scrollTop,
+      messageId,
+      anchorTop: anchor ? anchor.getBoundingClientRect().top - vp.getBoundingClientRect().top : null,
+      rafIds: [] as number[],
+      timeoutId: null as number | null,
+    };
     editScrollLockRef.current = lock;
     editingMessageIdRef.current = messageId;
     vp.style.overflowAnchor = "none";

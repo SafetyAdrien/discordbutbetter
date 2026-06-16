@@ -122,20 +122,20 @@ export function ImageCropper({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Recadrer l'image</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4">
-          <div className="w-full h-[min(60vh,480px)] flex items-center justify-center rounded-lg bg-muted/40 p-4">
+          <div className="w-full flex items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-2 [&_.ReactCrop]:max-h-[50vh] [&_.ReactCrop]:max-w-full">
             <ReactCrop
               crop={crop}
               onChange={(_, percentCrop) => setCrop(percentCrop)}
               onComplete={(c) => setCompletedCrop(c)}
               aspect={aspectRatio}
               circularCrop={circularCrop}
-              className="max-h-full max-w-full"
+              keepSelection
             >
               <img
                 ref={imgRef}
@@ -143,7 +143,7 @@ export function ImageCropper({
                 alt="Crop preview"
                 style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}
                 onLoad={onImageLoad}
-                className="max-h-[min(58vh,460px)] max-w-full object-contain block"
+                className="block max-h-[50vh] max-w-full object-contain"
               />
             </ReactCrop>
           </div>

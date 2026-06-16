@@ -160,7 +160,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
               </Avatar>
               <div className="flex-1 bg-muted/30 rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{comment.author?.display_name}</span>
+                  <span className="font-medium text-sm" style={{ color: (comment.author?.id ? memberTopRole.get(comment.author.id)?.color : undefined) || undefined }}>{comment.author?.display_name}</span>
                   <span className="text-xs text-muted-foreground">
                     {formatRelativeTime(comment.created_at)}
                   </span>

@@ -17,7 +17,7 @@ import { StreamlineHash } from '@/components/icons/StreamlineHash';
 
 interface CreateServerModalProps {
   onClose: () => void;
-  onCreate: (name: string, iconUrl: string | null, bannerUrl?: string | null, templateId?: string | null) => void;
+  onCreate: (name: string, iconFile: File | null, bannerFile: File | null, templateId?: string | null) => void;
   onDiscoverClick?: () => void;
 }
 

@@ -272,7 +272,17 @@ export function MessageInput({
   // Using non-capturing groups for browser compatibility (Safari, Firefox)
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
-    
+
+    // If the cursor sits right at the end of a confirmed mention entry, do NOT
+    // re-open the autocomplete. The user just deleted the trailing space after
+    // inserting `#Blog` / `@User` and we should treat it as a closed mention.
+    const entries = mentionEntriesRef.current;
+    for (const entry of entries) {
+      if (beforeCursor.endsWith(entry.display)) {
+        return null;
+      }
+    }
+
     // Check for channel mention (# prefix) - explicit logic for full browser compatibility
     const hashIndex = beforeCursor.lastIndexOf('#');
     if (hashIndex !== -1) {
@@ -312,6 +322,7 @@ export function MessageInput({
         triggerLength: 1,
       };
     }
+
     
     return null;
   }, [channels]);

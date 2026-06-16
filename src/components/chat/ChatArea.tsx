@@ -449,26 +449,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     if (previousLock?.timeoutId) window.clearTimeout(previousLock.timeoutId);
 
     const vpRect = vp.getBoundingClientRect();
-    let anchorId = messageId;
-    let anchorTop: number | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    messageRefs.current.forEach((el, id) => {
-      const rect = el.getBoundingClientRect();
-      if (rect.bottom <= vpRect.top || rect.top >= vpRect.bottom) return;
-      const top = rect.top - vpRect.top;
-      const distance = Math.abs(top);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        anchorId = id;
-        anchorTop = top;
-      }
-    });
-
-    if (anchorTop === null && messageId) {
-      const anchor = messageRefs.current.get(messageId);
-      anchorTop = anchor ? anchor.getBoundingClientRect().top - vpRect.top : null;
-    }
+    const anchorId = messageId;
+    const anchor = anchorId ? messageRefs.current.get(anchorId) : null;
+    const anchorTop = anchor ? anchor.getBoundingClientRect().top - vpRect.top : null;
 
     const lock = {
       top: vp.scrollTop,
@@ -938,18 +921,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   const handleSaveEdit = () => {
     if (editingMessageId && editingContent.trim()) {
+      lockScrollForEditTransition(editingMessageId);
       editMessage.mutate({
         messageId: editingMessageId,
         channelId: channel.id,
         content: editingContent,
       });
-      lockScrollForEditTransition(null);
       setEditingMessageId(null);
       setEditingContent("");
     }
   };
   const handleCancelEdit = () => {
-    lockScrollForEditTransition(null);
+    lockScrollForEditTransition(editingMessageId);
     setEditingMessageId(null);
     setEditingContent("");
   };

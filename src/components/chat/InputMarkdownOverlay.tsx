@@ -547,7 +547,6 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
                   {l.text || '\u200B'}
                 </div>
               ))}
-              {inner.length > 0 && <CodeBlockCopyButton innerLines={inner} />}
             </div>
           );
         })}

@@ -111,6 +111,20 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
     }));
   }, [serverRoles]);
 
+  const memberTopRoleColor = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const m of membersData) {
+      const uid = (m as any).user?.id;
+      if (!uid) continue;
+      const roles = (((m as any).roles ?? []) as Array<{ color?: string | null; position?: number | null; name?: string }>)
+        .filter((r) => r.name !== '@everyone')
+        .slice()
+        .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+      map.set(uid, roles[0]?.color || undefined);
+    }
+    return map;
+  }, [membersData]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);

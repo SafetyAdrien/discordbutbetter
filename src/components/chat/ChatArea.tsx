@@ -393,7 +393,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const editingMessageIdRef = useRef<string | null>(null);
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
   // Pending attachments for drag & drop
   const {

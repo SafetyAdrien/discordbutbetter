@@ -121,6 +121,8 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   if (currentLine.startsWith('-# ')) return 'subtext';
   if (currentLine.startsWith('> ') || currentLine.startsWith('>>> ')) return 'blockquote';
   if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(currentLine.trim())) return 'separator';
+  if (/^(\s*)[-*] \[x\] /i.test(currentLine)) return 'taskItemChecked';
+  if (/^(\s*)[-*] \[ \] /.test(currentLine)) return 'taskItemUnchecked';
   if (/^(\s*)[-*] /.test(currentLine)) return 'listItem';
   if (/^(\s*)\d+\. /.test(currentLine)) return 'orderedListItem';
   return 'normal';

@@ -3056,6 +3056,15 @@ export type Database = {
       }
     }
     Functions: {
+      _audit: {
+        Args: {
+          _action_type: string
+          _details: Json
+          _server_id: string
+          _target_id: string
+        }
+        Returns: undefined
+      }
       ban_member: {
         Args: { _reason?: string; _server_id: string; _user_id: string }
         Returns: undefined

@@ -1508,7 +1508,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 className="mb-1"
                               />
                             )}
-                            <div className="flex gap-3 items-start -ml-[11px]">
+                            <div className="flex gap-3 items-start">
                               <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
@@ -1662,7 +1662,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="relative">
                             {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
                             {/* Note: hasReply forces showAuthor=true, so RepliedLine never renders here. */}
-                            <div className="flex gap-3 items-start -ml-[11px]">
+                            <div className="flex gap-3 items-start">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">

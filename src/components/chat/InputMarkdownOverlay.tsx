@@ -311,7 +311,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">**</span>
-          <span className="text-foreground">{match[2]}</span>
+          <span className="text-foreground font-bold">{match[2]}</span>
           <span className="text-muted-foreground/50">**</span>
         </span>
       );
@@ -343,7 +343,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">`</span>
-          <span className="bg-muted/40 rounded-[3px] text-[hsl(340,65%,65%)]">{match[6]}</span>
+          <span className="bg-muted/40 rounded-[3px] text-[hsl(340,65%,65%)] font-mono">{match[6]}</span>
           <span className="text-muted-foreground/50">`</span>
         </span>
       );
@@ -351,7 +351,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">[</span>
-          <span className="text-foreground">{match[7]}</span>
+          <span className="text-primary underline">{match[7]}</span>
           <span className="text-muted-foreground/50">](</span>
           <span className="text-muted-foreground/40">{match[8]}</span>
           <span className="text-muted-foreground/50">)</span>
@@ -361,7 +361,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">*</span>
-          <span className="text-foreground">{match[9]}</span>
+          <span className="text-foreground italic">{match[9]}</span>
           <span className="text-muted-foreground/50">*</span>
         </span>
       );
@@ -369,7 +369,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">_</span>
-          <span className="text-foreground">{match[10]}</span>
+          <span className="text-foreground italic">{match[10]}</span>
           <span className="text-muted-foreground/50">_</span>
         </span>
       );

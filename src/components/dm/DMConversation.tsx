@@ -472,6 +472,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               }}
                               onJump={handleJumpToMessage}
                               indent={56}
+                              avatarCenter={23}
                               className="mb-1"
                             />
                           </div>

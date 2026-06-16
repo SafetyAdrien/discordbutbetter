@@ -433,6 +433,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
+      if (editingMessageId) return;
       if (wasAtBottomRef.current) {
         vp.scrollTop = vp.scrollHeight;
       }
@@ -443,14 +444,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id]);
+  }, [channel.id, editingMessageId]);
 
-  // Auto-scroll to bottom on new messages, only if user was at bottom
+  // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {
+    if (editingMessageId) return;
     if (wasAtBottomRef.current) {
       scrollToBottom(true);
     }
-  }, [messages.length]);
+  }, [messages.length, editingMessageId]);
 
 
 

@@ -423,6 +423,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
   }, []);
 
+  const setEditingTextareaNode = useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      editingTextareaRef.current = el;
+      resizeEditTextarea(el);
+    },
+    [resizeEditTextarea],
+  );
+
   const editTextareaClass =
     "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden pr-5 whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [word-break:break-word] [scrollbar-gutter:stable]";
 
@@ -546,6 +554,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
+    if (editingMessageId) {
+      releaseEditScrollLock();
+      return;
+    }
 
     vp.scrollTop = lock.top;
     const raf1 = requestAnimationFrame(() => {
@@ -564,7 +576,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       lock.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
       if (lock.timeoutId) window.clearTimeout(lock.timeoutId);
     };
-  }, [editingMessageId, restoreEditScrollLock]);
+  }, [editingMessageId, releaseEditScrollLock, restoreEditScrollLock]);
 
 
 
@@ -1724,10 +1736,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 {isEditing ? (
                                   <div className="mt-1 space-y-2">
                                     <Textarea
-                                      ref={(el) => {
-                                        editingTextareaRef.current = el;
-                                        resizeEditTextarea(el);
-                                      }}
+                                      ref={setEditingTextareaNode}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);
@@ -1847,10 +1856,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 {isEditing ? (
                                   <div className="space-y-2">
                                     <Textarea
-                                      ref={(el) => {
-                                        editingTextareaRef.current = el;
-                                        resizeEditTextarea(el);
-                                      }}
+                                      ref={setEditingTextareaNode}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);

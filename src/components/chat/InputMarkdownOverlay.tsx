@@ -162,7 +162,7 @@ function renderMentionsInline(text: string, mentionData?: MentionLookupData): st
       const channel = uuid ? mentionData.channels?.find(c => c.id === uuid) : undefined;
       const displayName = channel ? `#${channel.name}` : full;
       parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: 'rgba(79,84,92,0.48)', color: '#c4c9ce' }}>
+        <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
           {displayName}
         </span>
       );

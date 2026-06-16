@@ -1,32 +1,37 @@
 ## Objectif
 
-Aligner le rendu des mentions de salons (`<#…>`) sur celui des mentions utilisateurs (`<@…>`), à la fois dans le conteneur de rédaction (overlay du textarea) et dans les messages envoyés. Les mentions de rôles utilisent déjà le même style ; aucune autre logique métier n'est modifiée.
+Supprimer l'écart entre le badge de mention et le curseur (ou texte suivant) en cessant de stocker le token long `<@SNOWFLAKE>` dans le textarea. Le textarea contiendra désormais la forme courte affichable (`@displayName`, `#channelName`, `@roleName`) ; la conversion vers le format protocole `<@SNOWFLAKE>` / `<#SNOWFLAKE>` / `<@&SNOWFLAKE>` se fera juste avant l'envoi.
 
 ## Changements
 
-### 1. `src/components/chat/mentions/MentionComponents.tsx` — `ChannelMention`
-Remplacer le style gris actuel (`bg-[rgba(79,84,92,0.48)] text-[#c4c9ce]`) par le style identique aux mentions utilisateurs :
-- Fond : `bg-primary/30`
-- Texte : `text-[#dee0fc]`
-- Hover : `hover:bg-primary hover:text-white`
-- Conservation de l'icône `Hash` (taille `w-3.5 h-3.5`) pour distinguer visuellement qu'il s'agit d'un salon, mais palette unifiée.
+### 1. `src/components/chat/MentionAutocomplete.tsx`
+- `onSelect` reçoit désormais le **token court à stocker dans l'input** (et pas `<@SNOWFLAKE>`).
+- User : `onSelect(\`@${member.displayName}\`, ...)` 
+- Role : `onSelect(\`@${role.name}\`, ...)`
+- Channel : `onSelect(\`#${channel.name}\`, ...)`
+- `@everyone` / `@here` restent inchangés (déjà courts).
 
-### 2. `src/components/chat/InputMarkdownOverlay.tsx` — `renderMentionsInline`
-Dans la branche `match[4]` (mention de salon), remplacer :
-```tsx
-style={{ backgroundColor: 'rgba(79,84,92,0.48)', color: '#c4c9ce' }}
-```
-par les classes :
-```tsx
-className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]"
-```
-pour que l'overlay de l'input affiche les mentions de salons exactement comme les mentions utilisateurs (badge violet clair). Le `#` reste devant le nom du salon (pas d'icône SVG dans l'overlay car celui-ci doit conserver les métriques de glyphes du textarea).
+### 2. `src/components/chat/MessageInput.tsx`
+- **Nouveau ref** `pendingMentionsRef = useRef<Array<{ display: string; token: string }>>([])` qui accumule les associations `@displayName → <@SNOWFLAKE>` insérées par l'autocomplete.
+- `handleMentionSelect(insertText, displayText)` : insère `insertText` (la forme courte) dans `value`, et ajoute au ref `{ display: insertText, token: '<@SNOWFLAKE>' }` calculé depuis la sélection (user/role/channel id → snowflake).
+  - Pour cela, `onSelect` reçoit un 3e argument `token: string` contenant la forme `<@…>` correspondante. Mise à jour de l'interface `MentionAutocompleteProps.onSelect = (insertText, displayText, token) => void`.
+- **Avant envoi** (dans `performSend` / `handleSendMessage`) : construire `serializedValue` à partir de `value` en remplaçant chaque `pendingMentionsRef.current[i].display` par son `token`, en respectant l'ordre d'apparition et en ne remplaçant que la première occurrence non encore consommée à chaque itération. Passer `serializedValue` à `onSend` (via un override interne) à la place de `value`.
+- Au reset post-envoi : vider `pendingMentionsRef.current`.
+- Si l'utilisateur supprime manuellement une mention (le texte `@displayName` n'est plus présent dans `value`), purger l'entrée correspondante du ref via un `useEffect([value])` qui filtre les entrées dont `display` n'apparaît plus dans `value`.
 
-### 3. Vérification
-- `MessageInput.tsx` passe déjà `mentionData={{ members, roles, channels }}` à `InputMarkdownOverlay` (ligne 640) — aucune modification nécessaire ici.
-- Les mentions `@everyone` / `@here` (orange) et les rôles (couleur du rôle) restent inchangées.
+### 3. `src/components/chat/InputMarkdownOverlay.tsx`
+- `renderMentionsInline` doit aussi reconnaître les formes courtes pour appliquer le style « pill » dans l'overlay :
+  - Regex étendue : `(<@&\d{18}>|<@\d{18}>|<#\d{18}>|@everyone|@here)` + nouveau passage qui détecte les segments `@displayName` / `#channelName` / `@roleName` à partir de la liste `mentionData.members/roles/channels`.
+- Implémentation : après le passage actuel, repasser sur les fragments texte restants et y remplacer les correspondances exactes de `@${member.displayName}`, `#${channel.name}`, `@${role.name}` par des badges (mêmes styles que les badges actuels — violet `bg-primary/30 text-[#dee0fc]` pour user/role/channel, couleur du rôle pour les rôles).
+- Détection par ordre : longueur descendante des noms pour éviter qu'un `@Adrien` matche dans `@Adrien Moulin`.
+
+### 4. Vérifications
+- Détection trigger (`detectMentionTrigger`) reste basée sur `@` / `#` + query — inchangée.
+- Le format envoyé en base reste `<@SNOWFLAKE>` (compatibilité messages existants, parsing côté affichage, notifications de mention via `detect_and_insert_mentions` trigger DB).
+- L'édition d'un message existant (qui contient déjà `<@SNOWFLAKE>`) doit pré-convertir vers la forme courte à l'ouverture : ajouter une étape dans le composant d'édition (`MessageEditForm` / équivalent) qui parse le contenu chargé et remplit `pendingMentionsRef` + remplace les tokens longs par leurs formes courtes avant d'hydrater le `value`. *(Si l'édition n'utilise pas `MessageInput`, à confirmer lors de l'exploration build.)*
 
 ## Hors périmètre
 
-- Aucun changement de logique d'envoi, d'autocomplete, ou de parsing.
-- Aucun changement de tokens design globaux.
+- Pas de changement du format en base ni du rendu des messages envoyés.
+- Pas de modification du système de détection de mentions côté serveur.
+- Style visuel du badge (violet) inchangé — déjà aligné dans la tâche précédente.

@@ -91,14 +91,16 @@ export function useServers() {
             )
           );
 
-          // If ownership changed, also refresh members/permissions
+          // If ownership changed, also refresh members/permissions + reconcile local intent
           if (
             prev?.owner_id !== next.owner_id ||
             prev?.secondary_owner_id !== next.secondary_owner_id
           ) {
+            reconcileSecondaryOwnerFromRealtime(next.id, next.secondary_owner_id ?? null);
             queryClient.invalidateQueries({ queryKey: ['members'] });
             queryClient.invalidateQueries({ queryKey: ['permissions'] });
           }
+
         }
       )
       .on(

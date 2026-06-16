@@ -396,15 +396,27 @@ export function MessageInput({
   }, [roles]);
 
   const handleMentionSelect = useCallback((mention: string, displayText: string) => {
-    if (!mentionState || !textareaRef.current) return;
+    if (!mentionState) return;
 
     const entry = classifyMention(mention, displayText);
-
-    const before = value.slice(0, mentionState.startIndex);
-    const after = value.slice(textareaRef.current.selectionStart);
     // Insert the visible display text so the textarea and overlay stay in sync.
     // The raw token is reconstructed at send-time via mentionEntriesRef.
     const inserted = entry ? displayText : mention;
+
+    const start = mentionState.startIndex;
+    // Replace the entire trigger span: `#` + typed query (whatever it was when
+    // the autocomplete opened). We deliberately do NOT use the textarea's live
+    // selectionStart because clicking a suggestion can desync it.
+    let end = start + mentionState.triggerLength + mentionState.query.length;
+    // If the user kept typing past the captured query, extend until the next
+    // whitespace or another trigger char so we don't leave residue.
+    while (end < value.length && /\S/.test(value[end]) && value[end] !== '@' && value[end] !== '#') {
+      end++;
+    }
+    const before = value.slice(0, start);
+    // Consume any whitespace that already follows the trigger — we'll add
+    // exactly one separating space ourselves.
+    const after = value.slice(end).replace(/^[ \t]+/, '');
     const newValue = before + inserted + ' ' + after;
 
     if (entry) {
@@ -416,10 +428,10 @@ export function MessageInput({
     onChange(newValue);
     setMentionState(null);
 
-    // Set cursor position after the inserted text
+    // Set cursor position right after the inserted mention + single space.
+    const newPos = start + inserted.length + 1;
     setTimeout(() => {
       if (textareaRef.current) {
-        const newPos = mentionState.startIndex + inserted.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
       }

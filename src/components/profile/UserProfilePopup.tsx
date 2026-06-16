@@ -54,6 +54,7 @@ import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditMo
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
+import { useServerProfile } from '@/hooks/useServerProfile';
 
 const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },
@@ -194,7 +195,22 @@ export function UserProfilePopup({
     gcTime: Infinity,
   });
 
+  // Server profile override (Discord-style nickname/avatar/banner/bio per server)
+  const { data: serverProfile } = useServerProfile(user?.id ?? null, serverId ?? null);
+
   if (!user) return null;
+
+  // Apply server profile overrides on top of the global user when in a server context
+  const effectiveUser: User = serverId && serverProfile
+    ? {
+        ...user,
+        displayName: serverProfile.display_name || user.displayName,
+        avatar: serverProfile.avatar_url || user.avatar,
+        banner: serverProfile.banner_url || user.banner,
+        bio: serverProfile.bio ?? user.bio,
+        ...(serverProfile.pronouns ? { pronouns: serverProfile.pronouns } as any : {}),
+      }
+    : user;
 
   const isOwnProfile = currentUser?.id === user.id;
   const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;
@@ -275,8 +291,8 @@ export function UserProfilePopup({
 
   // Get banner style based on theme settings
   const getBannerStyle = () => {
-    if (user.banner) {
-      return { background: `url(${user.banner}) center/cover` };
+    if (effectiveUser.banner) {
+      return { background: `url(${effectiveUser.banner}) center/cover` };
     }
     if ((user as any).theme_gradient) {
       const [start, end] = (user as any).theme_gradient.split(',');
@@ -291,10 +307,11 @@ export function UserProfilePopup({
   const ActivityIcon = (user as any).activity_type ? activityIcons[(user as any).activity_type] : null;
 
   const userBadges: string[] = Array.isArray((user as any).badges) ? (user as any).badges : [];
-  const bioText = user.bio ?? '';
+  const bioText = effectiveUser.bio ?? '';
   const bioIsLong = bioText.length > 180;
   const truncatedBio = bioIsLong ? bioText.slice(0, 180).trimEnd() + '…' : bioText;
   const language = (user as any).language ?? (user as any).locale ?? null;
+  const effectivePronouns = (effectiveUser as any).pronouns ?? (user as any).pronouns;
 
   const handleRemoveRole = async (roleId: string, roleName: string) => {
     if (!serverId || !memberId || removingRoleId) return;
@@ -414,9 +431,9 @@ export function UserProfilePopup({
         <div className="relative -mt-10 mb-2 flex items-end gap-2">
           <div className="relative inline-block">
             <Avatar className="w-[72px] h-[72px] border-[5px] border-card">
-              <AvatarImage src={user.avatar} alt={user.displayName} />
+              <AvatarImage src={effectiveUser.avatar} alt={effectiveUser.displayName} />
               <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                {user.displayName.charAt(0).toUpperCase()}
+                {effectiveUser.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div
@@ -441,11 +458,11 @@ export function UserProfilePopup({
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="text-base font-bold text-foreground leading-tight">
-                {user.displayName}
+                {effectiveUser.displayName}
               </h3>
-              {(user as any).pronouns && (
+              {effectivePronouns && (
                 <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-muted text-muted-foreground">
-                  {(user as any).pronouns}
+                  {effectivePronouns}
                 </span>
               )}
             </div>
@@ -785,7 +802,7 @@ interface FloatingProfileCardProps {
   roleSidePanel?: React.ReactNode;
 }
 
-const CARD_WIDTH = 340;
+const CARD_WIDTH = 300;
 const CARD_MAX_HEIGHT_ESTIMATE = 520;
 const GAP = 8;
 
@@ -869,7 +886,7 @@ function FloatingProfileCard({ children, onClose, cardPosition, showRolePanel, r
         style={{ top: pos.top, left: pos.left }}
       >
         {pos.openLeft && showRolePanel && roleSidePanel}
-        <div className="relative w-[340px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+        <div className="relative w-[300px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-fade-in max-h-[85vh] overflow-y-auto">
           {children}
         </div>
         {!pos.openLeft && showRolePanel && roleSidePanel}

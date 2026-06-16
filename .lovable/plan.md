@@ -1,58 +1,61 @@
-## Objectif
+# Refonte de la carte de profil utilisateur
 
-Supprimer le `Dialog` modal avec backdrop sombre. Le profil utilisateur s'ouvre désormais **partout** sous forme d'un **petit conteneur flottant ancré près du pseudo cliqué** (style Discord), sans assombrissement de l'arrière-plan, fermable au clic en dehors ou via Échap.
+Objectif: rendre la carte flottante "Discord-like" avec deux variantes claires selon le contexte (DM vs Serveur), format vertical compact (~300px de large, plus haut).
 
-## Approche
+## 1. Deux variantes de carte
 
-### 1. Capture universelle de la position du clic
-Ajouter dans `src/components/profile/UserProfilePopup.tsx` un **registre global léger** :
-```ts
-let lastProfileTriggerRect: DOMRect | null = null;
-export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) { ... }
-```
-Cette fonction stocke le `getBoundingClientRect()` de l'élément cliqué. Elle est appelée par chaque caller au moment d'ouvrir le popup (un seul appel `onMouseDown` à ajouter sur chaque trigger).
+### Variante A — DM (privé ou groupé)
+- Carte "universelle" minimaliste actuelle.
+- Affiche: bannière, avatar+statut, statut personnalisé, pseudo global, username, badges, bio tronquée, date d'inscription, mutual servers/friends, note.
+- **Aucun rôle, aucun bouton de gestion serveur.**
+- S'ouvre depuis: `DMConversation`, `MobileDMConversation`, `DMUserInfoPanel`, `NewMessageModal`, `FriendsPanel`, `InboxPanel`.
 
-### 2. Refonte du mode rendu (UserProfilePopup.tsx)
-- Supprimer la branche `Dialog` desktop. Le rendu desktop devient **toujours** un portail flottant identique à l'actuel `mode='card'` (340px, `bg-card`, `rounded-xl`, `shadow-2xl`), **sans overlay assombri**.
-- Calcul automatique de la position :
-  - Si `cardPosition` prop est fournie → l'utiliser (rétro-compat VoiceParticipantGrid).
-  - Sinon utiliser `lastProfileTriggerRect` :
-    - Horizontal : à droite du trigger (`left: rect.right + 8`), fallback à gauche si déborde.
-    - Vertical : aligné sur le haut du trigger, ajusté pour rester dans le viewport (`bottom >= 8`).
-  - Fallback ultime : centre-bas de l'écran.
-- Wrapper du portail :
-  - `<div className="fixed inset-0 z-50 pointer-events-none">` (pas de fond noir, ne bloque pas les interactions ailleurs sauf sur la carte).
-  - La carte elle-même : `pointer-events-auto`.
-  - Listener `mousedown` global sur `document` → si le clic est hors de la carte, fermer.
-  - Listener `keydown` Escape → fermer.
-- Mode mobile (`Drawer` du bas) : **inchangé**.
+### Variante B — Serveur
+- Mêmes infos de base + section **Rôles** (tags colorés avec pastille).
+- Si l'utilisateur courant a la permission `manage_roles` (admin / propriétaire / second owner via `usePermissions`): bouton **+** à la fin de la rangée des rôles → ouvre `RoleAssignmentPopover` existant. Tags affichent la croix `✕` pour retirer.
+- Si simple membre: rôles affichés **read-only**, pas de **+**, pas de **✕**.
+- **Profil serveur prioritaire**: si `server_profiles` contient une override (avatar / banner / display_name / bio / pronouns) pour cet utilisateur sur ce serveur, c'est CELA qui s'affiche (déjà chargé via `useServerProfile`). Sinon fallback profil global.
+- S'ouvre depuis: `ChatArea` (messages), `AnnouncementChannel`, `MemberList`, `ChannelList` (voix), `VoiceParticipantGrid`.
 
-### 3. Mise à jour des callers (7 fichiers)
-Ajouter `onMouseDownCapture={rememberProfileTrigger}` (ou équivalent) sur l'élément déclencheur du popup, puis appeler `setSelectedUser(...)` comme aujourd'hui.
+## 2. Détection auto de la variante
+Dans `UserProfilePopup`:
+- Si `serverId` (prop déjà passée par les callers serveur) est défini → variante B.
+- Sinon → variante A (DM).
+- Les callers DM passent déjà `serverId={undefined}` — pas de changement côté appel.
 
-Fichiers concernés :
-- `src/components/chat/ChatArea.tsx` (clic sur pseudo dans messages)
-- `src/components/channels/AnnouncementChannel.tsx` (clic sur pseudo dans annonces)
-- `src/components/layout/MemberList.tsx` (clic sur membre)
-- `src/components/dm/DMConversation.tsx` (clic sur participant DM)
-- `src/components/mobile/dm/MobileDMConversation.tsx` (mobile → géré par Drawer, ajout non requis)
-- `src/components/layout/ChannelList.tsx` (déjà en `mode='card'`, simple harmonisation)
-- `src/components/channels/voice/VoiceParticipantGrid.tsx` (déjà en `mode='card'`, inchangé)
+## 3. Format visuel (Discord-like vertical)
+- Largeur: **300px** (au lieu de 340).
+- Bannière: 60px de haut (au lieu de 80).
+- Avatar: 80px, débordant -40px sur la bannière, bordure 6px `bg-card`.
+- Padding latéral: 16px.
+- Disposition verticale stricte:
+  ```
+  [Bannière]
+  [Avatar + bulle statut perso à droite]
+  [Display name (gros)]
+  [@username · pronoms]
+  [Rangée badges]
+  ─────────────
+  [Section "À PROPOS" + bio tronquée + lien]
+  [Section "MEMBRE DEPUIS" date]
+  [Section "RÔLES" — variante B uniquement, tags + bouton +]
+  [Note personnelle (footer compact)]
+  ```
+- Hauteur libre (contenu), max ~520px avec scroll interne si overflow.
+- Pas de fond sombre/backdrop (déjà fait à l'étape précédente).
 
-Pour chacun : repérer l'élément/cellule qui déclenche `setSelectedUser(...)` et ajouter `onMouseDownCapture={(e) => rememberProfileTrigger(e)}` sur ce nœud. Aucun changement de logique métier.
+## 4. Section Rôles (variante B)
+- Source: `useMembers(serverId)` → `member.roles` (déjà chargé).
+- Rendu: tags `rounded-full` avec pastille couleur `bg-[role.color]`, label nom du rôle.
+- Bouton **+** rond, même taille, ouvre `RoleAssignmentPopover` ancré sur le bouton.
+- Croix `✕` visible au hover sur chaque tag si permission, déclenche `removeRole` (mutation existante dans `useMemberActions`).
 
-### 4. Suppression de l'API `mode`
-Le prop `mode` devient inutile (toujours flottant sur desktop, toujours Drawer sur mobile). Le garder accepté pour rétro-compat mais ignoré, et retirer son utilisation côté `VoiceParticipantGrid` / `ChannelList` (purement cosmétique, optionnel).
+## 5. Fichiers touchés
+- `src/components/profile/UserProfilePopup.tsx` — refonte layout vertical, branchement variante A/B, intégration rôles + permissions + override `server_profiles`.
+- Aucun changement nécessaire dans les callers (la prop `serverId` est déjà transmise correctement).
+- Mobile (`Drawer`) suit la même logique de variante.
 
 ## Hors scope
-- Pas de changement du contenu visuel de la carte (déjà refondu Discord-like).
-- Pas de changement de `FullUserProfileModal` (qui reste un modal normal puisqu'ouvert via "Voir bio complète").
-- Pas de modification mobile (Drawer conservé).
-
-## Fichiers touchés
-- `src/components/profile/UserProfilePopup.tsx` (refonte du wrapper + helper export)
-- `src/components/chat/ChatArea.tsx`
-- `src/components/channels/AnnouncementChannel.tsx`
-- `src/components/layout/MemberList.tsx`
-- `src/components/dm/DMConversation.tsx`
-- `src/components/layout/ChannelList.tsx`
+- Pas de modification de `FullUserProfileModal`.
+- Pas de nouveau hook ni nouvelle table.
+- Pas de changement de logique métier rôles/permissions.

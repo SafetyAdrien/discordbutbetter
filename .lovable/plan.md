@@ -1,27 +1,53 @@
-## Plan
+- Goal
 
-**Objectif**
-Empêcher le curseur de se placer à l'intérieur d'une mention. Les flèches gauche/droite, ainsi qu'un clic à l'intérieur d'une mention, doivent toujours envoyer le curseur soit juste avant, soit juste après la mention.
+Restore live markdown styling **inside** the message composer so that as the user types:
 
-**Implémentation (dans `src/components/chat/MessageInput.tsx`)**
+- `**texte**` → renders **bold**
+- `*texte*` / `_texte_` → renders *italic* (text + caret visually leans)
+- `__texte__` → renders underlined text
+- `~~texte~~` → renders strikethrough
+- `||texte||` → spoiler block
+- ``code`` → inline code styling
+- `[label](url)` → label styled as a link
+- Existing line markdown (headers, quotes, lists, code blocks, subtext, separators) already styled — kept as-is.
 
-1. **Helper "range d'une mention"** — Utiliser la même logique que pour `reserved` (déjà calculée dans `detectMentionTrigger`) pour retrouver, à un index donné, la plage `[start, end]` d'une mention si l'index tombe à l'intérieur.
+## Where to change
 
-2. **Touches ArrowLeft / ArrowRight (sans Shift, sans modificateur)** dans `handleKeyDown`:
-   - ArrowRight: si le caret est à `start` d'une mention, sauter directement à `end`.
-   - ArrowLeft: si le caret est à `end` d'une mention, sauter directement à `start`.
-   - Si le caret se trouve strictement à l'intérieur (bug récupération), le repositionner à la limite la plus proche.
-   - Si Shift est tenu (sélection), on laisse le comportement natif.
+Single file: `src/components/chat/InputMarkdownOverlay.tsx`, in `renderInlineMarkdownOnly` (the function that draws the colored overlay above the `<textarea>`). No edits to `MessageInput.tsx`, no parser changes.
 
-3. **Sélection / clic via `onSelect` sur le textarea**:
-   - Ajouter un handler qui, après chaque changement de selection (clic, drag, focus), vérifie si `selectionStart` (et/ou `selectionEnd`) tombe à l'intérieur d'une mention.
-   - Si oui, replacer le caret à la limite la plus proche (`start` ou `end`).
-   - Si la sélection couvre partiellement une mention, étendre la sélection pour englober la mention entière (pour que copier/supprimer fonctionne logiquement).
+## What to do
 
-4. **Pas de modification du texte ni du rendu**. Cette correction est purement comportementale au niveau du caret.
+For each inline match, replace the current "uniform-weight" inner `<span>` with one that carries the real visual style, **only on the inner content** (between the delimiters), keeping the delimiters muted as today:
 
-**Validation**
-- Tab/clic sur une mention `@Adrien Moulin` → flèches gauche/droite sautent toute la mention.
-- Clic au milieu de la mention → caret repositionné automatiquement à la limite la plus proche.
-- Sélection avec Shift+flèche traverse la mention en bloc.
-- Comportement inchangé hors mention.
+- `**…**` → inner span gets `font-bold`
+- `*…*` and `_…_` → inner span gets `italic`
+- `__…__` → inner span gets `underline` (already present, keep)
+- `~~…~~` → `line-through` (already present, keep)
+- `||…||` → keep current spoiler look (muted background)
+- ``…`` → keep code styling, add `font-mono`
+- `[label](url)` → label gets `text-primary underline`
+
+Delimiter spans (`**`, `*`, `_`, etc.) stay at `text-muted-foreground/50`, same weight as the surrounding text, so they don't shift the caret.
+
+## Known trade-off (caret alignment)
+
+The overlay sits above the `<textarea>` and relies on identical glyph metrics so the textarea caret lines up with the visible characters. Today the overlay is intentionally locked to a single weight/style to guarantee this alignment — that's why bold/italic were removed previously.
+
+Re-introducing real `font-weight: 700` / `font-style: italic` will produce a small horizontal caret drift on the affected segments with most fonts (the project font is `"gg sans"`, which does not have identical metrics across weights). Mitigations applied in the plan:
+
+1. Bold/italic are scoped to the inner text only, not delimiters, so drift is bounded to the styled segment.
+2. Add `font-synthesis: none; font-variant-numeric: tabular-nums;` on the overlay container to avoid double-synthesis.
+3. No change to font-size or line-height — vertical alignment stays pixel-perfect.
+
+Horizontal drift inside bold/italic spans is the accepted cost of this feature, matching what the user asked for ("le texte ainsi que le curseur deviendra penché").
+
+## Validation
+
+- Type `**hello**` in the composer → "hello" renders bold while typing, caret remains on the same line.
+- Type `*hello*` → italic, caret visibly leans inside the span.
+- Type `__hello__` → underlined.
+- Mix with mentions and headers → existing behavior preserved.
+- Sending the message produces unchanged raw markdown (parser untouched).  
+  
+CHOSE IMPORTANTE:   
+Cela doit être comme sur Discord concernant les markdowns basique.

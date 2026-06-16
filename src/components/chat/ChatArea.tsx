@@ -406,6 +406,26 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   } | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
+  const releaseEditScrollLock = useCallback(() => {
+    const lock = editScrollLockRef.current;
+    lock?.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
+    if (lock?.timeoutId) window.clearTimeout(lock.timeoutId);
+    const vp = scrollViewportRef.current;
+    if (vp) vp.style.overflowAnchor = "";
+    editScrollLockRef.current = null;
+  }, []);
+
+  const resizeEditTextarea = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    const maxHeight = Math.min(320, Math.max(180, Math.floor(window.innerHeight * 0.45)));
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, []);
+
+  const editTextareaClass =
+    "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [scrollbar-gutter:stable]";
+
   // Pending attachments for drag & drop
   const {
     attachments,
@@ -422,8 +442,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   } = usePendingAttachments();
 
   const scrollToBottom = (smooth = true) => {
+    releaseEditScrollLock();
     const vp = scrollViewportRef.current;
     if (!vp) return;
+    wasAtBottomRef.current = true;
+    setShowJumpToBottom(false);
     vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   };
 

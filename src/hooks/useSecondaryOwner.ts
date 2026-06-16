@@ -20,36 +20,29 @@ export function useSetSecondaryOwner() {
 
   return useMutation({
     mutationFn: async ({ serverId, userId }: { serverId: string; userId: string }) => {
-      const { error } = await supabase.rpc('set_secondary_owner', {
-        _server_id: serverId,
-        _user_id: userId
-      });
-      if (error) throw error;
+      // Fire-and-forget: do not await network. Optimistic UI handles instant feedback.
+      supabase.rpc('set_secondary_owner', { _server_id: serverId, _user_id: userId })
+        .then(({ error }) => {
+          if (error) {
+            console.error('set_secondary_owner failed', error);
+            toast.error("Impossible d'ajouter le second propriétaire");
+            queryClient.invalidateQueries({ queryKey: ['servers'] });
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+          }
+        });
       return { serverId, userId };
     },
     onMutate: async ({ serverId, userId }) => {
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       const previousServers = queryClient.getQueryData<Server[]>(['servers']);
-      
+
       queryClient.setQueryData<Server[]>(['servers'], old =>
         old?.map(s => s.id === serverId ? { ...s, secondary_owner_id: userId } : s)
       );
-      
+
+      toast.success('Second propriétaire ajouté');
       return { previousServers };
     },
-    onError: (_, __, context) => {
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
-      toast.error("Impossible d'ajouter le second propriétaire");
-    },
-    onSuccess: () => {
-      toast.success('Second propriétaire ajouté avec succès');
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-    }
   });
 }
 
@@ -58,39 +51,31 @@ export function useRemoveSecondaryOwner() {
 
   return useMutation({
     mutationFn: async (serverId: string) => {
-      const { error } = await supabase.rpc('remove_secondary_owner', {
-        _server_id: serverId
-      });
-      if (error) throw error;
+      supabase.rpc('remove_secondary_owner', { _server_id: serverId })
+        .then(({ error }) => {
+          if (error) {
+            console.error('remove_secondary_owner failed', error);
+            toast.error('Impossible de retirer le second propriétaire');
+            queryClient.invalidateQueries({ queryKey: ['servers'] });
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+          }
+        });
       return serverId;
     },
     onMutate: async (serverId) => {
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       const previousServers = queryClient.getQueryData<Server[]>(['servers']);
-      
+
       queryClient.setQueryData<Server[]>(['servers'], old =>
         old?.map(s => s.id === serverId ? { ...s, secondary_owner_id: null } : s)
       );
-      
+
+      toast.success('Second propriétaire retiré');
       return { previousServers };
     },
-    onError: (_, __, context) => {
-      if (context?.previousServers) {
-        queryClient.setQueryData(['servers'], context.previousServers);
-      }
-      toast.error('Impossible de retirer le second propriétaire');
-    },
-    onSuccess: () => {
-      toast.success('Second propriétaire retiré');
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['servers'] });
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-    }
   });
 }
 
-export function useTransferOwnership() {
   const queryClient = useQueryClient();
 
   return useMutation({

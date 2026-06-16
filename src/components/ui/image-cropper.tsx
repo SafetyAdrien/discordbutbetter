@@ -122,27 +122,28 @@ export function ImageCropper({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Recadrer l'image</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4">
-          <div className="max-h-[400px] overflow-hidden rounded-lg bg-muted">
+          <div className="w-full h-[min(60vh,480px)] flex items-center justify-center rounded-lg bg-muted/40 p-4">
             <ReactCrop
               crop={crop}
               onChange={(_, percentCrop) => setCrop(percentCrop)}
               onComplete={(c) => setCompletedCrop(c)}
               aspect={aspectRatio}
               circularCrop={circularCrop}
+              className="max-h-full max-w-full"
             >
               <img
                 ref={imgRef}
                 src={imageSrc}
                 alt="Crop preview"
-                style={{ transform: `scale(${scale})` }}
+                style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}
                 onLoad={onImageLoad}
-                className="max-h-[400px] object-contain"
+                className="max-h-[min(58vh,460px)] max-w-full object-contain block"
               />
             </ReactCrop>
           </div>
@@ -153,9 +154,9 @@ export function ImageCropper({
             <Slider
               value={[scale]}
               onValueChange={([value]) => setScale(value)}
-              min={0.5}
-              max={2}
-              step={0.1}
+              min={1}
+              max={3}
+              step={0.05}
               className="flex-1"
             />
             <ZoomIn className="w-4 h-4 text-muted-foreground" />

@@ -1,22 +1,27 @@
 ## Plan
 
-**Cause exacte**
-Après l'insertion d'une mention `#Blog `, le code de détection de trigger trouve le `#` au début et construit la requête `Blog ` (avec espace). `normalizeForSearch` supprime les espaces, ce qui donne `"blog"`. Ce mot matche le salon "Blog" → le menu se rouvre alors que `#Blog` est en réalité une mention déjà confirmée.
+**Objectif**
+Empêcher le curseur de se placer à l'intérieur d'une mention. Les flèches gauche/droite, ainsi qu'un clic à l'intérieur d'une mention, doivent toujours envoyer le curseur soit juste avant, soit juste après la mention.
 
-**Correction (dans `detectMentionTrigger`, `src/components/chat/MessageInput.tsx`)**
+**Implémentation (dans `src/components/chat/MessageInput.tsx`)**
 
-1. Avant de chercher un trigger, ignorer tout `#` ou `@` qui appartient au début d'une mention déjà confirmée (`mentionEntriesRef.current`). Concrètement: pour chaque entrée, retrouver sa position dans `beforeCursor` et marquer la plage `[start, start + display.length]` comme "zone réservée".
+1. **Helper "range d'une mention"** — Utiliser la même logique que pour `reserved` (déjà calculée dans `detectMentionTrigger`) pour retrouver, à un index donné, la plage `[start, end]` d'une mention si l'index tombe à l'intérieur.
 
-2. Quand on cherche le dernier `#` ou `@` avant le curseur, sauter ceux qui tombent dans une zone réservée.
+2. **Touches ArrowLeft / ArrowRight (sans Shift, sans modificateur)** dans `handleKeyDown`:
+   - ArrowRight: si le caret est à `start` d'une mention, sauter directement à `end`.
+   - ArrowLeft: si le caret est à `end` d'une mention, sauter directement à `start`.
+   - Si le caret se trouve strictement à l'intérieur (bug récupération), le repositionner à la limite la plus proche.
+   - Si Shift est tenu (sélection), on laisse le comportement natif.
 
-3. Cela couvre les deux cas:
-   - Cursor juste après `#Blog` → pas de réouverture.
-   - Cursor après `#Blog ` (espace ajouté ou frappé manuellement) → pas de réouverture non plus tant que l'utilisateur n'a pas tapé un nouveau `@`/`#` plus loin.
+3. **Sélection / clic via `onSelect` sur le textarea**:
+   - Ajouter un handler qui, après chaque changement de selection (clic, drag, focus), vérifie si `selectionStart` (et/ou `selectionEnd`) tombe à l'intérieur d'une mention.
+   - Si oui, replacer le caret à la limite la plus proche (`start` ou `end`).
+   - Si la sélection couvre partiellement une mention, étendre la sélection pour englober la mention entière (pour que copier/supprimer fonctionne logiquement).
 
-4. La logique existante qui ferme déjà le menu quand `beforeCursor.endsWith(entry.display)` peut être supprimée (remplacée par la nouvelle, plus complète).
+4. **Pas de modification du texte ni du rendu**. Cette correction est purement comportementale au niveau du caret.
 
 **Validation**
-- Insérer `#Blog` via Tab/clic, taper espace puis du texte: le menu ne doit jamais se rouvrir.
-- Taper un nouveau `#` ailleurs dans la phrase: le menu s'ouvre normalement.
-- Idem pour `@mention` (user/role).
-- Backspace dans la mention: comportement inchangé (suppression complète de la mention).
+- Tab/clic sur une mention `@Adrien Moulin` → flèches gauche/droite sautent toute la mention.
+- Clic au milieu de la mention → caret repositionné automatiquement à la limite la plus proche.
+- Sélection avec Shift+flèche traverse la mention en bloc.
+- Comportement inchangé hors mention.

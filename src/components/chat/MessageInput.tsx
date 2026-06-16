@@ -496,9 +496,31 @@ export function MessageInput({
       description: a.description,
       isSpoiler: a.isSpoiler,
     }));
+
+    // Serialize short-form mentions (@Adrien Moulin) back to protocol tokens (<@SNOWFLAKE>)
+    // so what's sent stays compatible with the server-side mention pipeline.
+    // Longest display names first to avoid replacing a sub-name (e.g. @Adrien inside @Adrien Moulin).
+    const pending = pendingMentionsRef.current;
+    if (pending.length > 0) {
+      const sorted = [...pending].sort((a, b) => b.display.length - a.display.length);
+      let serialized = value;
+      for (const { display, token } of sorted) {
+        const idx = serialized.indexOf(display);
+        if (idx !== -1) {
+          serialized = serialized.slice(0, idx) + token + serialized.slice(idx + display.length);
+        }
+      }
+      if (serialized !== value) {
+        // Commit synchronously so parent state holds the serialized value
+        // before onSend() reads it.
+        flushSync(() => onChange(serialized));
+      }
+      pendingMentionsRef.current = [];
+    }
+
     onSend(attachmentData.length > 0 ? attachmentData : undefined);
     onClearAttachments?.();
-  }, [attachments, onSend, onClearAttachments]);
+  }, [attachments, onSend, onClearAttachments, value, onChange]);
 
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {

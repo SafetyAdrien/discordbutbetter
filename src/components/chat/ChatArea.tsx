@@ -1736,10 +1736,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 {isEditing ? (
                                   <div className="mt-1 space-y-2">
                                     <Textarea
-                                      ref={(el) => {
-                                        editingTextareaRef.current = el;
-                                        resizeEditTextarea(el);
-                                      }}
+                                      ref={setEditingTextareaNode}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);
@@ -1859,10 +1856,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 {isEditing ? (
                                   <div className="space-y-2">
                                     <Textarea
-                                      ref={(el) => {
-                                        editingTextareaRef.current = el;
-                                        resizeEditTextarea(el);
-                                      }}
+                                      ref={setEditingTextareaNode}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);

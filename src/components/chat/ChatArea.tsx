@@ -76,6 +76,7 @@ import { Eye } from "lucide-react";
 import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
 import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
+import { useMembers } from "@/hooks/useMembers";
 import { useChannels } from "@/hooks/useChannels";
 import { Thread } from "@/types/thread";
 import { PollDisplay } from "./PollDisplay";
@@ -607,6 +608,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
+  const { data: serverMembers = [] } = useMembers(channel.server_id || null);
   const { data: channelsData } = useChannels(channel.server_id);
 
   // Pinned messages
@@ -650,6 +652,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // Get owner/admin status (already loaded from server context - instant)
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);
   const isAdminOrOwner = isGod || hasServerPermission("administrator");
+  const canManageRoles = isAdminOrOwner || hasServerPermission("manage_roles");
+  const selectedUserMemberId = selectedUser
+    ? serverMembers.find((member) => member.user.id === selectedUser.user.id)?.id
+    : undefined;
 
   // Check multiple chat permissions reactively
   const { can: canPerm, isLoading: permissionsLoading } = useMultipleChannelPermissions(channel.id, [
@@ -2178,6 +2184,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         onOpenChange={(open) => !open && setSelectedUser(null)}
         roles={selectedUser?.roles}
         onOpenDM={onOpenDM}
+        serverId={channel.server_id}
+        memberId={selectedUserMemberId}
+        canManageRoles={canManageRoles}
       />
 
       {/* Create Thread from Message Modal */}

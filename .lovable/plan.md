@@ -1,3 +1,5 @@
-1. **Blocs de code fermés uniquement** : Modifier `groupRenderables` dans `InputMarkdownOverlay.tsx` pour que le rendu visuel du bloc (encadré avec style) n'apparaisse que si le bloc est correctement fermé par un second `\`\`\``. Tant que la fermeture n'est pas tapée, les lignes restent affichées comme du texte normal (pas de conteneur stylisé).
+**Problème** : Dans `InputMarkdownOverlay.tsx` (ligne 303), la regex inline code `` `(.+?)` `` matche le backtick du milieu lorsque l'utilisateur tape `` ``` ``, ce qui produit la petite pastille colorée (fond `bg-muted/40`, texte rose) visible sur la capture.
 
-2. **Retirer l'icône de copie** : Supprimer le rendu du composant `CodeBlockCopyButton` à l'intérieur du conteneur de code dans `InputMarkdownOverlay.tsx`. Le bouton copier reste présent dans l'affichage des messages (conversation) mais disparaît de la zone de saisie.
+**Correction** : Modifier le groupe inline code de la regex pour interdire les backticks à l'intérieur du contenu, soit `` `([^\`\n]+?)` ``. Cela empêche `` ``` `` (et toute séquence de backticks consécutifs) d'être interprété comme du code en ligne, tout en laissant `` `foo` `` fonctionner normalement.
+
+Aucun autre changement.

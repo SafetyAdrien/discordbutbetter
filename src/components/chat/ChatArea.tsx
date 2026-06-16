@@ -878,6 +878,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     }
   };
   const handleStartEdit = (message: Message) => {
+    lockScrollForEditTransition(message.id);
     setEditingMessageId(message.id);
     setEditingContent(message.content);
   };
@@ -888,11 +889,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         channelId: channel.id,
         content: editingContent,
       });
+      lockScrollForEditTransition(null);
       setEditingMessageId(null);
       setEditingContent("");
     }
   };
   const handleCancelEdit = () => {
+    lockScrollForEditTransition(null);
     setEditingMessageId(null);
     setEditingContent("");
   };

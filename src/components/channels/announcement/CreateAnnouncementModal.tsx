@@ -91,7 +91,7 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
     let bannerUrl: string | undefined = isEditMode ? announcement.banner_url || undefined : undefined;
 
     if (bannerFile) {
-      bannerUrl = await uploadBanner.mutateAsync(bannerFile);
+      bannerUrl = await uploadBanner.mutateAsync({ file: bannerFile, channelId });
     } else if (!bannerPreview && isEditMode) {
       // Banner was cleared
       bannerUrl = undefined;

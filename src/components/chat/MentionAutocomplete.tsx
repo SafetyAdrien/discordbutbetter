@@ -56,7 +56,14 @@ interface MentionAutocompleteProps {
   members?: MentionMember[];
   roles?: MentionRole[];
   channels?: MentionChannel[];
-  onSelect: (mention: string, displayText: string) => void;
+  /**
+   * Called when an item is picked.
+   * @param insertText  The short, human-readable form to insert in the textarea (e.g. `@Adrien Moulin`).
+   * @param displayText Human display label (e.g. `Adrien Moulin`).
+   * @param token       The protocol token to be used at send time (e.g. `<@SNOWFLAKE>`).
+   *                    For @everyone / @here, this is the same as insertText.
+   */
+  onSelect: (insertText: string, displayText: string, token: string) => void;
   onClose: () => void;
   selectedIndex: number;
   onIndexChange: (index: number) => void;

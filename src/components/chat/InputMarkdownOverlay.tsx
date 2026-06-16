@@ -8,11 +8,19 @@ export interface MentionLookupData {
   channels?: MentionChannel[];
 }
 
+export interface MentionEntry {
+  display: string;
+  token: string;
+  kind: 'user' | 'role' | 'channel';
+  color?: string;
+}
+
 interface InputMarkdownOverlayProps {
   content: string;
   compact?: boolean;
   className?: string;
   mentionData?: MentionLookupData;
+  mentionEntries?: MentionEntry[];
 }
 
 interface OverlayLine {
@@ -80,9 +88,13 @@ export function hasInlineMarkdown(content: string): boolean {
   return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
 }
 
-export function hasInlineMentions(content: string): boolean {
+export function hasInlineMentions(content: string, entries?: MentionEntry[]): boolean {
   if (!content) return false;
-  return /<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content);
+  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content)) return true;
+  if (entries && entries.length > 0) {
+    return entries.some(e => content.includes(e.display));
+  }
+  return false;
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
@@ -110,15 +122,63 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   return 'normal';
 }
 
-// Render mention badges inline - resolves Snowflake IDs to display names
-function renderMentionsInline(text: string, mentionData?: MentionLookupData): string | ReactNode[] {
-  if (!text || !mentionData) return text;
-  
+interface MentionConsumer {
+  entries: MentionEntry[];
+  idx: number;
+}
+
+function pillClassFor(kind: MentionEntry['kind']): string {
+  return 'rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]';
+}
+
+function renderMentionEntry(entry: MentionEntry, key: number): ReactNode {
+  if (entry.kind === 'role' && entry.color) {
+    return (
+      <span key={key} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${entry.color}4D`, color: entry.color }}>
+        {entry.display}
+      </span>
+    );
+  }
+  return (
+    <span key={key} className={pillClassFor(entry.kind)}>
+      {entry.display}
+    </span>
+  );
+}
+
+// Try to match entries (in order) at substrings of `text`. Mutates consumer.idx.
+function consumeEntryMentions(text: string, consumer: MentionConsumer, keyStart: number): { nodes: ReactNode[]; consumed: boolean; nextKey: number } {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let key = keyStart;
+  let consumed = false;
+  while (consumer.idx < consumer.entries.length) {
+    const entry = consumer.entries[consumer.idx];
+    if (!entry.display) { consumer.idx++; continue; }
+    const at = text.indexOf(entry.display, cursor);
+    if (at === -1) break; // try next line
+    if (at > cursor) {
+      nodes.push(<span key={key++}>{text.slice(cursor, at)}</span>);
+    }
+    nodes.push(renderMentionEntry(entry, key++));
+    cursor = at + entry.display.length;
+    consumer.idx++;
+    consumed = true;
+  }
+  if (!consumed) return { nodes: [], consumed: false, nextKey: keyStart };
+  if (cursor < text.length) {
+    nodes.push(<span key={key++}>{text.slice(cursor)}</span>);
+  }
+  return { nodes, consumed: true, nextKey: key };
+}
+
+// Render legacy <@SNOWFLAKE>, <#…>, <@&…> tokens and @everyone/@here in a single text segment.
+function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookupData | undefined, keyStart: number): { nodes: ReactNode[]; found: boolean; nextKey: number } {
   const mentionRegex = /(<@&(\d{18})>|<@(\d{18})>|<#(\d{18})>|@everyone|@here)/g;
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  let key = 0;
+  let key = keyStart;
   let found = false;
 
   while ((match = mentionRegex.exec(text)) !== null) {
@@ -126,9 +186,7 @@ function renderMentionsInline(text: string, mentionData?: MentionLookupData): st
     if (match.index > lastIndex) {
       parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
     }
-
     const full = match[0];
-
     if (full === '@everyone' || full === '@here') {
       parts.push(
         <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: 'rgba(250,166,26,0.3)', color: '#faa61a' }}>
@@ -136,82 +194,89 @@ function renderMentionsInline(text: string, mentionData?: MentionLookupData): st
         </span>
       );
     } else if (match[3] !== undefined) {
-      // User mention <@SNOWFLAKE>
       const uuid = snowflakeToUuid(match[3]);
-      const member = uuid ? mentionData.members?.find(m => m.id === uuid) : undefined;
+      const member = uuid ? mentionData?.members?.find(m => m.id === uuid) : undefined;
       const displayName = member ? `@${member.displayName}` : full;
-      parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
-          {displayName}
-        </span>
-      );
+      parts.push(<span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
     } else if (match[2] !== undefined) {
-      // Role mention <@&SNOWFLAKE>
       const uuid = snowflakeToUuid(match[2]);
-      const role = uuid ? mentionData.roles?.find(r => r.id === uuid) : undefined;
+      const role = uuid ? mentionData?.roles?.find(r => r.id === uuid) : undefined;
       const roleColor = role?.color || '#99aab5';
       const displayName = role ? `@${role.name}` : full;
-      parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>
-          {displayName}
-        </span>
-      );
+      parts.push(<span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>{displayName}</span>);
     } else if (match[4] !== undefined) {
-      // Channel mention <#SNOWFLAKE>
       const uuid = snowflakeToUuid(match[4]);
-      const channel = uuid ? mentionData.channels?.find(c => c.id === uuid) : undefined;
+      const channel = uuid ? mentionData?.channels?.find(c => c.id === uuid) : undefined;
       const displayName = channel ? `#${channel.name}` : full;
-      parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">
-          {displayName}
-        </span>
-      );
+      parts.push(<span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
     } else {
       parts.push(<span key={key++}>{full}</span>);
     }
-
     lastIndex = match.index + full.length;
   }
 
-  if (!found) return text;
-
-  if (lastIndex < text.length) {
-    parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
-  }
-
-  return parts;
+  if (!found) return { nodes: [], found: false, nextKey: keyStart };
+  if (lastIndex < text.length) parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+  return { nodes: parts, found: true, nextKey: key };
 }
 
-// Inline markdown rendering - uses ONLY color/decoration, never font metrics
-function renderInlineMarkdown(text: string, mentionData?: MentionLookupData): ReactNode {
+// Inline rendering for a single line. Receives a shared mention consumer for entry-based mentions.
+function renderInlineMarkdown(text: string, mentionData: MentionLookupData | undefined, consumer: MentionConsumer): ReactNode {
   if (!text) return '\u200B';
-  
-  // First pass: render mentions
-  const mentionRendered = renderMentionsInline(text, mentionData);
-  
-  // If mentions were found and returned as ReactNode[], we skip further inline markdown on those parts
-  // For simplicity, if mentions are present, return mention-rendered result
-  if (Array.isArray(mentionRendered)) {
-    // Process each text span for inline markdown
-    return mentionRendered.map((part, i) => {
-      if (typeof part === 'object' && part !== null && 'props' in part) {
-        const props = (part as any).props;
-        // If it's a mention badge (has className with rounded), pass through
-        if (props.className && props.className.includes('rounded')) return part;
-        // If it's a plain text span, process for inline markdown
-        if (props.children && typeof props.children === 'string') {
-          const inlineResult = renderInlineMarkdownOnly(props.children);
-          if (inlineResult !== props.children) {
-            return <span key={`im-${i}`}>{inlineResult}</span>;
+
+  // 1) Entry-based mentions (display-text from current draft). These have the same length in textarea and overlay.
+  const entryResult = consumeEntryMentions(text, consumer, 0);
+
+  // The output we will iterate to apply legacy + inline markdown on text spans.
+  let workingNodes: ReactNode[];
+  if (entryResult.consumed) {
+    workingNodes = entryResult.nodes;
+  } else {
+    workingNodes = [text];
+  }
+
+  // 2) Pass each plain-text segment through legacy mention regex (drafts / pasted tokens), then inline markdown.
+  const finalNodes: ReactNode[] = [];
+  let key = 1000;
+  for (const node of workingNodes) {
+    if (typeof node === 'string') {
+      const legacy = renderLegacyAndSpecialMentions(node, mentionData, key);
+      key = legacy.nextKey + 1;
+      if (legacy.found) {
+        for (const sub of legacy.nodes) {
+          if (typeof sub === 'object' && sub !== null && 'props' in (sub as any)) {
+            const props = (sub as any).props;
+            if (props.className && props.className.includes('rounded')) {
+              finalNodes.push(sub);
+            } else if (typeof props.children === 'string') {
+              finalNodes.push(<span key={key++}>{renderInlineMarkdownOnly(props.children)}</span>);
+            } else {
+              finalNodes.push(sub);
+            }
+          } else {
+            finalNodes.push(sub);
           }
         }
+      } else {
+        finalNodes.push(<span key={key++}>{renderInlineMarkdownOnly(node)}</span>);
       }
-      return part;
-    });
+    } else if (typeof node === 'object' && node !== null && 'props' in (node as any)) {
+      const props = (node as any).props;
+      if (props.className && props.className.includes('rounded')) {
+        finalNodes.push(node);
+      } else if (typeof props.children === 'string') {
+        finalNodes.push(<span key={key++}>{renderInlineMarkdownOnly(props.children)}</span>);
+      } else {
+        finalNodes.push(node);
+      }
+    } else {
+      finalNodes.push(node);
+    }
   }
-  
-  return renderInlineMarkdownOnly(text);
+
+  return finalNodes;
 }
+
 
 function renderInlineMarkdownOnly(text: string): ReactNode {
   if (!text) return '\u200B';
@@ -312,16 +377,17 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
 }
 
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
-  ({ content, compact = false, className, mentionData }, ref) => {
+  ({ content, compact = false, className, mentionData, mentionEntries }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
     const hasMarkdown = useMemo(() => 
-      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content),
-      [lines, content]
+      lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content, mentionEntries),
+      [lines, content, mentionEntries]
     );
 
     if (!hasMarkdown) return null;
 
     const defaultPadding = compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]';
+    const consumer: MentionConsumer = { entries: mentionEntries ?? [], idx: 0 };
 
     return (
       <div
@@ -340,7 +406,7 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
           >
             {line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter'
               ? (line.text || '\u200B')
-              : renderInlineMarkdown(line.text, mentionData)
+              : renderInlineMarkdown(line.text, mentionData, consumer)
             }
           </div>
         ))}

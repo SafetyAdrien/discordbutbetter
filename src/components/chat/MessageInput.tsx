@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, hasInlineMentions, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, hasInlineMentions, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
@@ -13,6 +13,7 @@ import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, ChevronLeft, Chevro
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
 import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from './MentionEveryoneWarningModal';
+import { snowflakeToUuid } from '@/lib/snowflake';
 
 interface MessageInputProps {
   value: string;
@@ -96,11 +97,15 @@ export function MessageInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Mention entries inserted via autocomplete (display text -> token mapping)
+  const mentionEntriesRef = useRef<MentionEntry[]>([]);
+  const [mentionRev, setMentionRev] = useState(0);
+
   const hasMarkdown = useMemo(() => {
     if (!value) return false;
     const lines = parseLines(value);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value);
-  }, [value]);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value, mentionEntriesRef.current);
+  }, [value, mentionRev]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
@@ -311,11 +316,31 @@ export function MessageInput({
     return null;
   }, [channels]);
 
+  // Re-validate the mention entries against the current text. Drops entries whose
+  // display text no longer appears (e.g. the user deleted/edited the mention).
+  const revalidateEntries = useCallback((text: string) => {
+    const entries = mentionEntriesRef.current;
+    if (entries.length === 0) return;
+    const next: MentionEntry[] = [];
+    let cursor = 0;
+    for (const e of entries) {
+      const at = text.indexOf(e.display, cursor);
+      if (at === -1) continue;
+      next.push(e);
+      cursor = at + e.display.length;
+    }
+    if (next.length !== entries.length) {
+      mentionEntriesRef.current = next;
+      setMentionRev(r => r + 1);
+    }
+  }, []);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
     
     onChange(newValue);
+    revalidateEntries(newValue);
     
     // Detect mention triggers
     const mentionTrigger = detectMentionTrigger(newValue, cursorPos);
@@ -337,29 +362,58 @@ export function MessageInput({
         onTypingStop();
       }, 2000);
     }
-  }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger]);
+  }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger, revalidateEntries]);
 
   const sendAfterMentionRef = useRef(false);
   const handleSendMessageRef = useRef<(() => void) | null>(null);
-  const handleMentionSelect = useCallback((mention: string, _displayText: string) => {
+
+  const classifyMention = useCallback((token: string, displayText: string): MentionEntry | null => {
+    // Role: <@&SNOWFLAKE>
+    let m = token.match(/^<@&(\d{18})>$/);
+    if (m) {
+      const uuid = snowflakeToUuid(m[1]);
+      const role = uuid ? roles.find(r => r.id === uuid) : undefined;
+      return { display: displayText, token, kind: 'role', color: role?.color };
+    }
+    // User: <@SNOWFLAKE>
+    m = token.match(/^<@(\d{18})>$/);
+    if (m) return { display: displayText, token, kind: 'user' };
+    // Channel: <#SNOWFLAKE>
+    m = token.match(/^<#(\d{18})>$/);
+    if (m) return { display: displayText, token, kind: 'channel' };
+    return null;
+  }, [roles]);
+
+  const handleMentionSelect = useCallback((mention: string, displayText: string) => {
     if (!mentionState || !textareaRef.current) return;
-    
+
+    const entry = classifyMention(mention, displayText);
+
     const before = value.slice(0, mentionState.startIndex);
     const after = value.slice(textareaRef.current.selectionStart);
-    const newValue = before + mention + ' ' + after;
-    
+    // Insert the visible display text so the textarea and overlay stay in sync.
+    // The raw token is reconstructed at send-time via mentionEntriesRef.
+    const inserted = entry ? displayText : mention;
+    const newValue = before + inserted + ' ' + after;
+
+    if (entry) {
+      // Append entry in document order (validated on every change).
+      mentionEntriesRef.current = [...mentionEntriesRef.current, entry];
+      setMentionRev(r => r + 1);
+    }
+
     onChange(newValue);
     setMentionState(null);
-    
-    // Set cursor position after the mention
+
+    // Set cursor position after the inserted text
     setTimeout(() => {
       if (textareaRef.current) {
-        const newPos = mentionState.startIndex + mention.length + 1;
+        const newPos = mentionState.startIndex + inserted.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
       }
     }, 0);
-  }, [mentionState, value, onChange]);
+  }, [mentionState, value, onChange, classifyMention]);
 
   // Get filtered suggestions count for keyboard navigation
   const getSuggestionsCount = useCallback(() => {
@@ -452,7 +506,36 @@ export function MessageInput({
 
   const [pendingEveryoneMention, setPendingEveryoneMention] = useState<EveryoneMentionType | null>(null);
 
+  // Resolve display-text mentions back into <@SNOWFLAKE> / <#…> / <@&…> tokens.
+  const resolveContent = useCallback((text: string): string => {
+    const entries = mentionEntriesRef.current;
+    if (entries.length === 0) return text;
+    let result = '';
+    let cursor = 0;
+    for (const e of entries) {
+      const at = text.indexOf(e.display, cursor);
+      if (at === -1) continue;
+      result += text.slice(cursor, at) + e.token;
+      cursor = at + e.display.length;
+    }
+    result += text.slice(cursor);
+    return result;
+  }, []);
+
+  // Pending-send pattern: when entries exist, we mutate `value` to the resolved
+  // form via onChange first, then trigger the actual send once the parent has
+  // committed the new value (avoids stale closures in parent's onSend).
+  const pendingSendRef = useRef(false);
+
   const performSend = useCallback(() => {
+    if (mentionEntriesRef.current.length > 0) {
+      const resolved = resolveContent(value);
+      if (resolved !== value) {
+        pendingSendRef.current = true;
+        onChange(resolved);
+        return;
+      }
+    }
     setLastSentAt(Date.now());
     const attachmentData = attachments.map(a => ({
       file: a.file,
@@ -462,7 +545,9 @@ export function MessageInput({
     }));
     onSend(attachmentData.length > 0 ? attachmentData : undefined);
     onClearAttachments?.();
-  }, [attachments, onSend, onClearAttachments]);
+    mentionEntriesRef.current = [];
+    setMentionRev(r => r + 1);
+  }, [attachments, onSend, onClearAttachments, value, onChange, resolveContent]);
 
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {
@@ -497,7 +582,12 @@ export function MessageInput({
       sendAfterMentionRef.current = false;
       handleSendMessageRef.current?.();
     }
-  }, [value]);
+    if (pendingSendRef.current) {
+      pendingSendRef.current = false;
+      // Now that value has been resolved into token form, run the actual send.
+      performSend();
+    }
+  }, [value, performSend]);
 
   const handleConfirmEveryone = useCallback(() => {
     setPendingEveryoneMention(null);
@@ -638,6 +728,7 @@ export function MessageInput({
                 compact={compact}
                 className={`${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'} min-h-[28px]`}
                 mentionData={{ members, roles, channels }}
+                mentionEntries={mentionEntriesRef.current}
               />
             )}
             <textarea

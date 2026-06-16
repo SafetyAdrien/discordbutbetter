@@ -489,7 +489,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
-      if (editScrollLockRef.current || editingMessageIdRef.current) {
+      if (editScrollLockRef.current) {
         restoreEditScrollLock();
         return;
       }
@@ -534,7 +534,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       restoreEditScrollLock();
       vp.style.overflowAnchor = "";
       editScrollLockRef.current = null;
-    }, 220);
+    }, 80);
 
     return () => {
       lock.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));

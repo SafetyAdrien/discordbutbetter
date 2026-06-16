@@ -516,10 +516,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         >
                         <div 
                           className={cn(
-                            'flex gap-3 group message-hover px-2 -mx-2 relative',
+                            'flex gap-3 group message-hover -mx-4 pl-[21px] pr-8 relative',
                             showAuthor ? 'pt-1' : 'py-0',
-                            !showAuthor && 'pl-12',
-                            messageMentionsMe(message.content, user?.id, []) && 'message-mentioned !-mx-4 !px-6',
+                            !showAuthor && 'pl-[65px]',
+                            messageMentionsMe(message.content, user?.id, []) && 'message-mentioned',
                           )}
                           onMouseEnter={() => setHoveredMessageId(message.id)}
                           onMouseLeave={() => { 

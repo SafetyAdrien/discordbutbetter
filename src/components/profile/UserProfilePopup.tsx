@@ -802,7 +802,7 @@ interface FloatingProfileCardProps {
   roleSidePanel?: React.ReactNode;
 }
 
-const CARD_WIDTH = 340;
+const CARD_WIDTH = 300;
 const CARD_MAX_HEIGHT_ESTIMATE = 520;
 const GAP = 8;
 

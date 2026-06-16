@@ -273,18 +273,36 @@ export function MessageInput({
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
 
-    // If the cursor sits right at the end of a confirmed mention entry, do NOT
-    // re-open the autocomplete. The user just deleted the trailing space after
-    // inserting `#Blog` / `@User` and we should treat it as a closed mention.
-    const entries = mentionEntriesRef.current;
-    for (const entry of entries) {
-      if (beforeCursor.endsWith(entry.display)) {
-        return null;
+    // Compute "reserved" ranges occupied by confirmed mention entries within
+    // beforeCursor. Any trigger char (#, @) that falls inside one of those
+    // ranges must be ignored — it belongs to a mention that was already
+    // inserted, not to a new autocomplete trigger.
+    const reserved: Array<{ start: number; end: number }> = [];
+    {
+      let cursor = 0;
+      for (const entry of mentionEntriesRef.current) {
+        if (!entry.display) continue;
+        const at = text.indexOf(entry.display, cursor);
+        if (at === -1) continue;
+        const end = at + entry.display.length;
+        if (at < cursorPos) {
+          reserved.push({ start: at, end: Math.min(end, cursorPos) });
+        }
+        cursor = end;
+      }
+    }
+    const inReserved = (idx: number) => reserved.some(r => idx >= r.start && idx < r.end);
+
+    // Find the most recent `#` that is NOT inside a confirmed mention.
+    let hashIndex = -1;
+    {
+      let i = beforeCursor.lastIndexOf('#');
+      while (i !== -1) {
+        if (!inReserved(i)) { hashIndex = i; break; }
+        i = beforeCursor.lastIndexOf('#', i - 1);
       }
     }
 
-    // Check for channel mention (# prefix) - explicit logic for full browser compatibility
-    const hashIndex = beforeCursor.lastIndexOf('#');
     if (hashIndex !== -1) {
       const charBefore = hashIndex === 0 ? '' : beforeCursor[hashIndex - 1];
       // Only trigger if # is at start or after whitespace
@@ -308,24 +326,35 @@ export function MessageInput({
         }
       }
     }
-    
-    // Check for unified mention (@ prefix) - members + roles + global mentions
-    const userMatch = beforeCursor.match(/(?:^|\s)(@[\w\u00C0-\u024F]*)$/);
-    if (userMatch) {
-      const fullMatch = userMatch[1]; // "@query"
-      const query = fullMatch.slice(1); // Remove @
-      const matchStart = beforeCursor.lastIndexOf(fullMatch);
-      return {
-        type: 'user' as const,
-        query,
-        startIndex: matchStart,
-        triggerLength: 1,
-      };
+
+    // Check for unified mention (@ prefix) - members + roles + global mentions.
+    // We scan from the right for an `@` not inside a confirmed mention range.
+    let atIndex = -1;
+    {
+      let i = beforeCursor.lastIndexOf('@');
+      while (i !== -1) {
+        if (!inReserved(i)) { atIndex = i; break; }
+        i = beforeCursor.lastIndexOf('@', i - 1);
+      }
+    }
+    if (atIndex !== -1) {
+      const charBefore = atIndex === 0 ? '' : beforeCursor[atIndex - 1];
+      if (atIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {
+        const query = beforeCursor.slice(atIndex + 1);
+        if (/^[\w\u00C0-\u024F]*$/.test(query)) {
+          return {
+            type: 'user' as const,
+            query,
+            startIndex: atIndex,
+            triggerLength: 1,
+          };
+        }
+      }
     }
 
-    
     return null;
   }, [channels]);
+
 
   // Re-validate the mention entries against the current text. Drops entries whose
   // display text no longer appears (e.g. the user deleted/edited the mention).

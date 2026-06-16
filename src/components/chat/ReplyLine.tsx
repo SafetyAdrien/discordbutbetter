@@ -49,7 +49,7 @@ export function ReplyLine({
       }
       data-reply-line
       className={cn(
-        "reply-line absolute pointer-events-none text-border/70 focus:outline-none",
+        "reply-line absolute pointer-events-none text-border/70 group-hover/replied:text-border focus:outline-none",
         className,
       )}
 

@@ -1,61 +1,39 @@
-# Refonte de la carte de profil utilisateur
 
-Objectif: rendre la carte flottante "Discord-like" avec deux variantes claires selon le contexte (DM vs Serveur), format vertical compact (~300px de large, plus haut).
+## Problème
 
-## 1. Deux variantes de carte
+Sur la modale "Recadrer l'image" (utilisée pour la photo de profil utilisateur ET pour l'icône de serveur), la zone de recadrage est coupée :
+- Le conteneur de prévisualisation utilise `max-h-[400px] overflow-hidden`, ce qui clippe le cercle de sélection en haut/bas.
+- Le zoom est appliqué via `transform: scale(...)` sur le `<img>` : l'image grandit visuellement mais déborde du conteneur (qui la rogne), et la sélection de `react-image-crop` n'est plus alignée avec ce qu'on voit.
+- La largeur du Dialog (`max-w-lg`) est trop étroite pour une image carrée à pleine hauteur.
 
-### Variante A — DM (privé ou groupé)
-- Carte "universelle" minimaliste actuelle.
-- Affiche: bannière, avatar+statut, statut personnalisé, pseudo global, username, badges, bio tronquée, date d'inscription, mutual servers/friends, note.
-- **Aucun rôle, aucun bouton de gestion serveur.**
-- S'ouvre depuis: `DMConversation`, `MobileDMConversation`, `DMUserInfoPanel`, `NewMessageModal`, `FriendsPanel`, `InboxPanel`.
+## Correctif (fichier unique : `src/components/ui/image-cropper.tsx`)
 
-### Variante B — Serveur
-- Mêmes infos de base + section **Rôles** (tags colorés avec pastille).
-- Si l'utilisateur courant a la permission `manage_roles` (admin / propriétaire / second owner via `usePermissions`): bouton **+** à la fin de la rangée des rôles → ouvre `RoleAssignmentPopover` existant. Tags affichent la croix `✕` pour retirer.
-- Si simple membre: rôles affichés **read-only**, pas de **+**, pas de **✕**.
-- **Profil serveur prioritaire**: si `server_profiles` contient une override (avatar / banner / display_name / bio / pronouns) pour cet utilisateur sur ce serveur, c'est CELA qui s'affiche (déjà chargé via `useServerProfile`). Sinon fallback profil global.
-- S'ouvre depuis: `ChatArea` (messages), `AnnouncementChannel`, `MemberList`, `ChannelList` (voix), `VoiceParticipantGrid`.
+1. **Élargir et reformater la modale**
+   - `DialogContent` : passer à `max-w-2xl` avec un padding interne cohérent, pour laisser respirer le canvas.
 
-## 2. Détection auto de la variante
-Dans `UserProfilePopup`:
-- Si `serverId` (prop déjà passée par les callers serveur) est défini → variante B.
-- Sinon → variante A (DM).
-- Les callers DM passent déjà `serverId={undefined}` — pas de changement côté appel.
+2. **Refonte du conteneur de prévisualisation**
+   - Remplacer `max-h-[400px] overflow-hidden rounded-lg bg-muted` par un wrapper centré `flex items-center justify-center bg-muted/40 rounded-lg p-4` d'une hauteur fixe responsive (`h-[min(60vh,480px)] w-full`).
+   - Le wrapper ne clippe plus la sélection (`overflow-visible` / pas d'overflow-hidden) afin que le cercle pointillé soit visible en entier, même près des bords.
 
-## 3. Format visuel (Discord-like vertical)
-- Largeur: **300px** (au lieu de 340).
-- Bannière: 60px de haut (au lieu de 80).
-- Avatar: 80px, débordant -40px sur la bannière, bordure 6px `bg-card`.
-- Padding latéral: 16px.
-- Disposition verticale stricte:
-  ```
-  [Bannière]
-  [Avatar + bulle statut perso à droite]
-  [Display name (gros)]
-  [@username · pronoms]
-  [Rangée badges]
-  ─────────────
-  [Section "À PROPOS" + bio tronquée + lien]
-  [Section "MEMBRE DEPUIS" date]
-  [Section "RÔLES" — variante B uniquement, tags + bouton +]
-  [Note personnelle (footer compact)]
-  ```
-- Hauteur libre (contenu), max ~520px avec scroll interne si overflow.
-- Pas de fond sombre/backdrop (déjà fait à l'étape précédente).
+3. **Image bien dimensionnée**
+   - Sur le `<img>` : `max-h-full max-w-full object-contain` et retirer le `max-h-[400px]` figé.
+   - L'image se laisse contenir par le wrapper, plus de débordement.
 
-## 4. Section Rôles (variante B)
-- Source: `useMembers(serverId)` → `member.roles` (déjà chargé).
-- Rendu: tags `rounded-full` avec pastille couleur `bg-[role.color]`, label nom du rôle.
-- Bouton **+** rond, même taille, ouvre `RoleAssignmentPopover` ancré sur le bouton.
-- Croix `✕` visible au hover sur chaque tag si permission, déclenche `removeRole` (mutation existante dans `useMemberActions`).
+4. **Zoom propre**
+   - Garder le slider mais appliquer la transformation au `<img>` via `style={{ transform: scale(${scale}), transformOrigin: 'center' }}`, et envelopper l'image dans un conteneur `overflow-hidden rounded-lg` interne pour que le zoom ne pousse pas l'UI mais reste cliquable.
+   - `ReactCrop` reste autour de l'image afin que la sélection suive la même transformation visuelle (recalcul OK car react-image-crop utilise les dimensions du `<img>` rendu).
+   - Étendre la plage du slider à `min=1, max=3, step=0.05` (zoom uniquement avant — pas de dé-zoom qui crée des bandes vides) et caler la valeur initiale + reset à `1`.
 
-## 5. Fichiers touchés
-- `src/components/profile/UserProfilePopup.tsx` — refonte layout vertical, branchement variante A/B, intégration rôles + permissions + override `server_profiles`.
-- Aucun changement nécessaire dans les callers (la prop `serverId` est déjà transmise correctement).
-- Mobile (`Drawer`) suit la même logique de variante.
+5. **Lisibilité contrôles**
+   - Garder slider + boutons zoom/reset sous le canvas, alignés sur la largeur du wrapper.
+   - Footer (`Annuler` / `Appliquer`) inchangé.
 
-## Hors scope
-- Pas de modification de `FullUserProfileModal`.
-- Pas de nouveau hook ni nouvelle table.
-- Pas de changement de logique métier rôles/permissions.
+## Aucun changement fonctionnel
+
+- Pas de modification de la logique de génération du blob (`getCroppedImg`), de `onCropComplete`, ni des appelants (avatar profil utilisateur, icône serveur, bannières) — seul le layout/sizing visuel est corrigé.
+- Aucune dépendance ajoutée.
+
+## Vérification après build
+
+- Ouvrir Paramètres serveur → Profil du serveur → upload d'une image carrée et d'une image très large : le cercle de sélection doit être entièrement visible, image entièrement contenue, slider de zoom fluide.
+- Refaire le même test sur la photo de profil utilisateur (mêmes composants).

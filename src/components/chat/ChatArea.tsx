@@ -433,6 +433,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
+      if (editingMessageId) return;
       if (wasAtBottomRef.current) {
         vp.scrollTop = vp.scrollHeight;
       }
@@ -443,14 +444,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id]);
+  }, [channel.id, editingMessageId]);
 
-  // Auto-scroll to bottom on new messages, only if user was at bottom
+  // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {
+    if (editingMessageId) return;
     if (wasAtBottomRef.current) {
       scrollToBottom(true);
     }
-  }, [messages.length]);
+  }, [messages.length, editingMessageId]);
 
 
 
@@ -2004,7 +2006,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
         {!isAtBottom && (
-          <div className="absolute left-1/2 -translate-x-1/2 -top-3 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/40 shadow-md text-xs animate-fade-in">
+          <div className="absolute left-1/2 -translate-x-1/2 -top-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/40 shadow-md text-xs animate-fade-in">
             <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
             <button
               type="button"

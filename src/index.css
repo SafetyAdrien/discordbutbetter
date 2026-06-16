@@ -815,18 +815,7 @@
   }
 }
 
-/* Markdown overlay decorations */
-.discord-overlay-code {
-  position: relative;
-}
-.discord-overlay-code::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: hsl(var(--surface-elevated));
-  border-radius: 3px;
-  z-index: -1;
-}
+/* Markdown overlay decorations: code-block grouping now handled in React (InputMarkdownOverlay) */
 
 /* ============================================
    MOBILE SAFE AREA UTILITIES

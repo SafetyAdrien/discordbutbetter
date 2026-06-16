@@ -1,4 +1,5 @@
-import { useMemo, forwardRef, ReactNode } from 'react';
+import { useMemo, forwardRef, ReactNode, useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { snowflakeToUuid } from '@/lib/snowflake';
 import { MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 
@@ -77,8 +78,8 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   taskItemUnchecked: 'text-foreground',
   taskItemChecked: 'text-muted-foreground',
   separator: 'text-muted-foreground',
-  codeBlockDelimiter: 'text-muted-foreground discord-overlay-code',
-  codeBlockLine: 'text-foreground discord-overlay-code',
+  codeBlockDelimiter: 'text-muted-foreground/60',
+  codeBlockLine: 'text-foreground',
   normal: 'text-foreground',
 };
 
@@ -367,7 +368,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">*</span>
-          <span style={{ display: 'inline-block', transform: 'skewX(-10deg)' }}>{match[9]}</span>
+          <span style={{ fontStyle: 'italic' }}>{match[9]}</span>
           <span className="text-muted-foreground/50">*</span>
         </span>
       );
@@ -375,7 +376,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">_</span>
-          <span style={{ display: 'inline-block', transform: 'skewX(-10deg)' }}>{match[10]}</span>
+          <span style={{ fontStyle: 'italic' }}>{match[10]}</span>
           <span className="text-muted-foreground/50">_</span>
         </span>
       );
@@ -393,10 +394,75 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
   return parts.length > 0 ? parts : text;
 }
 
+interface CodeBlockBoxProps {
+  innerLines: string[];
+}
+
+function CodeBlockCopyButton({ innerLines }: CodeBlockBoxProps) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = innerLines.join('\n');
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={handleCopy}
+      aria-label="Copier le code"
+      className="absolute top-0.5 right-0.5 w-6 h-6 flex items-center justify-center rounded-[3px] bg-background/60 text-muted-foreground hover:text-foreground"
+      style={{ pointerEvents: 'auto' }}
+    >
+      {copied ? <Check size={14} /> : <Copy size={14} />}
+    </button>
+  );
+}
+
+interface RenderableNode {
+  kind: 'line' | 'codeBlock';
+  line?: OverlayLine;
+  blockLines?: OverlayLine[];
+  innerCode?: string[];
+}
+
+function groupRenderables(lines: OverlayLine[]): RenderableNode[] {
+  const out: RenderableNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.type === 'codeBlockDelimiter') {
+      const block: OverlayLine[] = [line];
+      const inner: string[] = [];
+      i++;
+      while (i < lines.length) {
+        const l = lines[i];
+        block.push(l);
+        if (l.type === 'codeBlockDelimiter') {
+          i++;
+          break;
+        }
+        if (l.type === 'codeBlockLine') inner.push(l.text);
+        i++;
+      }
+      out.push({ kind: 'codeBlock', blockLines: block, innerCode: inner });
+      continue;
+    }
+    out.push({ kind: 'line', line });
+    i++;
+  }
+  return out;
+}
+
 export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOverlayProps>(
   ({ content, compact = false, className, mentionData, mentionEntries }, ref) => {
     const lines = useMemo(() => parseLines(content), [content]);
-    const hasMarkdown = useMemo(() => 
+    const renderables = useMemo(() => groupRenderables(lines), [lines]);
+    const hasMarkdown = useMemo(() =>
       lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content, mentionEntries),
       [lines, content, mentionEntries]
     );
@@ -406,6 +472,31 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
     const defaultPadding = compact ? 'py-1 pr-2 min-h-[28px]' : 'py-2.5 pr-1 min-h-[40px]';
     const consumer: MentionConsumer = { entries: mentionEntries ?? [], idx: 0 };
 
+    const renderPlainLine = (line: OverlayLine, key: number) => {
+      const isChecked = line.type === 'taskItemChecked';
+      let prefix = '';
+      let rest = line.text;
+      if (line.type === 'listItem' || line.type === 'orderedListItem' || line.type === 'taskItemChecked' || line.type === 'taskItemUnchecked') {
+        const m = line.text.match(/^(\s*(?:[-*]|\d+\.)(?:\s\[[ xX]\])?\s)/);
+        if (m) {
+          prefix = m[1];
+          rest = line.text.slice(m[1].length);
+        }
+      }
+      return (
+        <div
+          key={key}
+          className={`${lineStyles[line.type]} relative ${isChecked ? 'line-through' : ''}`}
+          style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+        >
+          {prefix && <span className="text-muted-foreground/70">{prefix}</span>}
+          {renderInlineMarkdown(rest, mentionData, consumer)}
+        </div>
+      );
+    };
+
+    let keyCounter = 0;
+
     return (
       <div
         ref={ref}
@@ -413,32 +504,34 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
         className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words box-border text-sm leading-5 font-normal tracking-normal ${
           className || defaultPadding
         }`}
-        style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+        style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal', fontSynthesis: 'none' }}
       >
-        {lines.map((line, i) => {
-          const isCodeBlock = line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter';
-          const isChecked = line.type === 'taskItemChecked';
-          let prefix = '';
-          let rest = line.text;
-          if (line.type === 'listItem' || line.type === 'orderedListItem' || line.type === 'taskItemChecked' || line.type === 'taskItemUnchecked') {
-            const m = line.text.match(/^(\s*(?:[-*]|\d+\.)(?:\s\[[ xX]\])?\s)/);
-            if (m) {
-              prefix = m[1];
-              rest = line.text.slice(m[1].length);
-            }
+        {renderables.map((node) => {
+          if (node.kind === 'line' && node.line) {
+            return renderPlainLine(node.line, keyCounter++);
           }
+          // code block group: single bordered box, no padding (preserves caret alignment)
+          const block = node.blockLines!;
+          const inner = node.innerCode ?? [];
           return (
             <div
-              key={i}
-              className={`${lineStyles[line.type]} relative ${isChecked ? 'line-through' : ''}`}
-              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+              key={keyCounter++}
+              className="relative rounded-[4px]"
+              style={{
+                backgroundColor: 'hsl(var(--surface-elevated))',
+                boxShadow: 'inset 0 0 0 1px hsl(var(--border) / 0.4)',
+              }}
             >
-              {isCodeBlock ? (line.text || '\u200B') : (
-                <>
-                  {prefix && <span className="text-muted-foreground/70">{prefix}</span>}
-                  {renderInlineMarkdown(rest, mentionData, consumer)}
-                </>
-              )}
+              {block.map((l) => (
+                <div
+                  key={keyCounter++}
+                  className={lineStyles[l.type]}
+                  style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+                >
+                  {l.text || '\u200B'}
+                </div>
+              ))}
+              {inner.length > 0 && <CodeBlockCopyButton innerLines={inner} />}
             </div>
           );
         })}
@@ -448,3 +541,4 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
 );
 
 InputMarkdownOverlay.displayName = 'InputMarkdownOverlay';
+

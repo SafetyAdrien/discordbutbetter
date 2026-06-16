@@ -335,8 +335,14 @@ export function UserProfilePopup({
         .eq('member_id', memberId)
         .eq('role_id', roleId);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['members', serverId] });
+      // Do NOT invalidate ['members', serverId] here — the optimistic patch
+      // plus the realtime subscription keep the cache in sync without flicker.
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
+      [
+        'channel-permission', 'channel-permissions', 'user-channel-permissions',
+        'user-permissions', 'category-permissions', 'role-permissions',
+        'member-roles', 'server-channel-permissions',
+      ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
     } catch (err: any) {
       if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);
       toast.error(`Impossible de retirer le rôle ${roleName}`, {

@@ -1453,12 +1453,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           if (el) messageRefs.current.set(message.id, el);
                         }}
                         className={cn(
-                          "group/message group message-hover pl-[4px] pr-4 mb-0 relative pt-[5px] pb-[2px]",
+                          "group/message group message-hover px-4 mb-0 relative pt-[5px] pb-[2px]",
                           messageMentionsMe(
                             message.content,
                             user?.id,
                             memberRoles?.get(user?.id ?? "")?.map((r) => r.id) ?? [],
-                          ) && "message-mentioned -ml-[4px] -mr-4 pl-2 pr-8",
+                          ) && "message-mentioned -mx-4 px-8",
                         )}
                         onMouseEnter={() => setHoveredMessageId(message.id)}
                         onMouseLeave={() => {
@@ -1509,7 +1509,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               />
                             )}
                             <div className="flex gap-3 items-start">
-                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0 -ml-3">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
                                   <AvatarFallback className="bg-primary/20 text-primary">
@@ -1517,7 +1517,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </AvatarFallback>
                                 </Avatar>
                               </button>
-                              <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex-1 min-w-0 overflow-hidden ml-3">
                                 <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                                   <button
                                     onClick={() => handleUserClick(message.author)}

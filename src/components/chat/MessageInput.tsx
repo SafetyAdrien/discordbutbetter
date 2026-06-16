@@ -477,7 +477,40 @@ export function MessageInput({
         return;
       }
     }
-    
+
+    // Backspace at the right edge of a mention deletes the whole mention in one go.
+    if (e.key === 'Backspace' && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+      const ta = textareaRef.current;
+      if (ta && ta.selectionStart === ta.selectionEnd) {
+        const caret = ta.selectionStart;
+        const entries = mentionEntriesRef.current;
+        if (entries.length > 0) {
+          // Walk entries in order so duplicate displays resolve to the correct occurrence.
+          let cursor = 0;
+          for (const entry of entries) {
+            const at = value.indexOf(entry.display, cursor);
+            if (at === -1) break;
+            const end = at + entry.display.length;
+            if (caret === end) {
+              e.preventDefault();
+              const newValue = value.slice(0, at) + value.slice(end);
+              onChange(newValue);
+              mentionEntriesRef.current = entries.filter(x => x !== entry);
+              setMentionRev(r => r + 1);
+              setTimeout(() => {
+                if (textareaRef.current) {
+                  textareaRef.current.selectionStart = textareaRef.current.selectionEnd = at;
+                  textareaRef.current.focus();
+                }
+              }, 0);
+              return;
+            }
+            cursor = end;
+          }
+        }
+      }
+    }
+
     // On mobile: Enter inserts a newline, send via button only
     // On desktop: Enter sends, Shift+Enter inserts newline
     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
@@ -486,7 +519,7 @@ export function MessageInput({
         handleSendMessage();
       }
     }
-  }, [value, mentionState, getSuggestionsCount, mentionSelectedIndex, attachments.length]);
+  }, [value, mentionState, getSuggestionsCount, mentionSelectedIndex, attachments.length, onChange, isMobile, handleSendMessage]);
 
   // Cooldown timer for slowmode
   useEffect(() => {

@@ -911,7 +911,7 @@ export function MessageInput({
               } ${
                 compact ? 'max-h-[120px] overflow-y-auto' : 'max-h-[200px] overflow-y-auto'
               }`}
-              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400 }}
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, fontSynthesis: 'none', letterSpacing: 'normal' }}
               rows={1}
             />
           </div>

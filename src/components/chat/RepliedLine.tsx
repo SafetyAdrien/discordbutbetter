@@ -97,7 +97,7 @@ export function ReplyLine({ avatarCenter = 20, endX, className }: ReplyLineProps
     <svg
       aria-hidden="true"
       data-reply-line
-      className={cn("reply-line absolute pointer-events-none text-border/70", className)}
+      className={cn("reply-line absolute pointer-events-auto text-border/70", className)}
       style={{
         left,
         top: 8,

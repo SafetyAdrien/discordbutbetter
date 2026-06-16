@@ -415,18 +415,33 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
         }`}
         style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
       >
-        {lines.map((line, i) => (
-          <div
-            key={i}
-            className={`${lineStyles[line.type]} relative`}
-            style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
-          >
-            {line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter'
-              ? (line.text || '\u200B')
-              : renderInlineMarkdown(line.text, mentionData, consumer)
+        {lines.map((line, i) => {
+          const isCodeBlock = line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter';
+          const isChecked = line.type === 'taskItemChecked';
+          let prefix = '';
+          let rest = line.text;
+          if (line.type === 'listItem' || line.type === 'orderedListItem' || line.type === 'taskItemChecked' || line.type === 'taskItemUnchecked') {
+            const m = line.text.match(/^(\s*(?:[-*]|\d+\.)(?:\s\[[ xX]\])?\s)/);
+            if (m) {
+              prefix = m[1];
+              rest = line.text.slice(m[1].length);
             }
-          </div>
-        ))}
+          }
+          return (
+            <div
+              key={i}
+              className={`${lineStyles[line.type]} relative ${isChecked ? 'line-through' : ''}`}
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+            >
+              {isCodeBlock ? (line.text || '\u200B') : (
+                <>
+                  {prefix && <span className="text-muted-foreground/70">{prefix}</span>}
+                  {renderInlineMarkdown(rest, mentionData, consumer)}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }

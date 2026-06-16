@@ -96,11 +96,15 @@ export function MessageInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Mention entries inserted via autocomplete (display text -> token mapping)
+  const mentionEntriesRef = useRef<MentionEntry[]>([]);
+  const [mentionRev, setMentionRev] = useState(0);
+
   const hasMarkdown = useMemo(() => {
     if (!value) return false;
     const lines = parseLines(value);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value);
-  }, [value]);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value, mentionEntriesRef.current);
+  }, [value, mentionRev]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);

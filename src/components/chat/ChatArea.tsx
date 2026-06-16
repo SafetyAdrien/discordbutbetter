@@ -424,7 +424,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   }, []);
 
   const editTextareaClass =
-    "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [word-break:break-word] [scrollbar-gutter:stable]";
+    "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden pr-5 whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [word-break:break-word] [scrollbar-gutter:stable]";
 
   // Pending attachments for drag & drop
   const {
@@ -443,6 +443,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   const scrollToBottom = useCallback((smooth = true) => {
     releaseEditScrollLock();
+    if (editingMessageIdRef.current) {
+      editingTextareaRef.current?.blur();
+    }
     const vp = scrollViewportRef.current;
     if (!vp) return;
     wasAtBottomRef.current = true;

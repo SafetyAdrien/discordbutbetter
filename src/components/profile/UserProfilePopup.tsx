@@ -54,6 +54,7 @@ import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditMo
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
+import { useServerProfile } from '@/hooks/useServerProfile';
 
 const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },

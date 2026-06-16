@@ -394,7 +394,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
   const editingMessageIdRef = useRef<string | null>(null);
-  const editScrollLockRef = useRef<{ top: number; rafIds: number[]; timeoutId: number | null } | null>(null);
+  const editScrollLockRef = useRef<{
+    top: number;
+    messageId: string | null;
+    anchorTop: number | null;
+    rafIds: number[];
+    timeoutId: number | null;
+  } | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
   // Pending attachments for drag & drop
@@ -422,6 +428,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
+    const anchor = lock.messageId ? messageRefs.current.get(lock.messageId) : null;
+    if (anchor && lock.anchorTop !== null) {
+      const currentTop = anchor.getBoundingClientRect().top - vp.getBoundingClientRect().top;
+      vp.scrollTop += currentTop - lock.anchorTop;
+      return;
+    }
     vp.scrollTop = lock.top;
   }, []);
 
@@ -433,7 +445,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     previousLock?.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
     if (previousLock?.timeoutId) window.clearTimeout(previousLock.timeoutId);
 
-    const lock = { top: vp.scrollTop, rafIds: [] as number[], timeoutId: null as number | null };
+    const anchor = messageId ? messageRefs.current.get(messageId) : null;
+    const lock = {
+      top: vp.scrollTop,
+      messageId,
+      anchorTop: anchor ? anchor.getBoundingClientRect().top - vp.getBoundingClientRect().top : null,
+      rafIds: [] as number[],
+      timeoutId: null as number | null,
+    };
     editScrollLockRef.current = lock;
     editingMessageIdRef.current = messageId;
     vp.style.overflowAnchor = "none";
@@ -2063,7 +2082,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
-        {showJumpToBottom && (
+        {showJumpToBottom && !editingMessageId && (
           <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/60 shadow-[0_4px_16px_rgba(0,0,0,0.25)] text-xs animate-fade-in">
             <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
             <button

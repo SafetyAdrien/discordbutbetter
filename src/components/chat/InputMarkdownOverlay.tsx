@@ -74,6 +74,8 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   blockquote: 'text-muted-foreground',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
+  taskItemUnchecked: 'text-foreground',
+  taskItemChecked: 'text-muted-foreground',
   separator: 'text-muted-foreground',
   codeBlockDelimiter: 'text-muted-foreground discord-overlay-code',
   codeBlockLine: 'text-foreground discord-overlay-code',

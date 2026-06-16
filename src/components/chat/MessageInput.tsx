@@ -13,6 +13,7 @@ import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, ChevronLeft, Chevro
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
 import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from './MentionEveryoneWarningModal';
+import { snowflakeToUuid } from '@/lib/snowflake';
 
 interface MessageInputProps {
   value: string;

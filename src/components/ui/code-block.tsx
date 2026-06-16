@@ -91,7 +91,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   };
 
   return (
-    <pre
+    <div
       className="group relative my-2 rounded-[4px] overflow-hidden"
       style={{
         backgroundColor: 'hsl(var(--surface-elevated))',
@@ -106,13 +106,15 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
       >
         {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
-      <code
-        ref={codeRef}
-        className={`block px-3 py-2 pr-10 text-sm font-mono overflow-x-auto whitespace-pre ${language ? `language-${language}` : ''}`}
-      >
-        {code}
-      </code>
-    </pre>
+      <pre className="m-0 max-h-[360px] overflow-auto">
+        <code
+          ref={codeRef}
+          className={`block px-3 py-2 pr-10 text-sm font-mono whitespace-pre ${lang ? `language-${lang}` : ''}`}
+        >
+          {code}
+        </code>
+      </pre>
+    </div>
   );
 }
 

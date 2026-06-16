@@ -1,56 +1,58 @@
+## 1. Layout des messages — conformité Discord
 
-## Objectif
-Aligner le drag & drop de `src/components/layout/ChannelList.tsx` sur la spec Discord fournie, **tout en conservant la réorganisation live** déjà en place (mémoire projet : optimistic + `mutationLockRef`).
+**Fichier**: `src/components/chat/ChatArea.tsx`
 
-## Décisions de portée
-- Live reorder **conservé** : on garde le comportement actuel où les éléments se déplacent sous le curseur. Seul l'indicateur bleu signale la position de drop.
-- Tous les changements restent dans `ChannelList.tsx` (+ quelques tokens dans `src/index.css`). Pas de nouvelle route, pas de mock data, pas de refactor backend.
-- Activation : on garde `useDndSensors` (déjà configuré) ; on vérifie qu'il expose distance 4px **ou** delay ~150ms. Sinon on ajuste dans `src/hooks/useDndSensors.ts`.
+### Changements visuels
 
-## Changements
+Reproduire les espacements exacts de Discord :
 
-### 1. Ghost / DragOverlay (lignes ~1850-1869)
-Remplacer l'overlay text-only actuel par une **copie fidèle de l'élément** :
-- Catégorie en drag → rendre un `SortableCategory` visuel (chevron + nom majuscules 12px gris).
-- Salon en drag → rendre une rangée avec icône (#, voice, megaphone, etc.) + nom.
-- Style : `opacity: 0.85`, `box-shadow: 1px 2px 8px rgba(0,0,0,0.3)`, `cursor: grabbing`, fond `#2B2D31`, `border-radius: 4px`, padding identique à l'élément réel.
-- `dropAnimation={null}` conservé (collage au curseur sans transition).
+| Élément | Actuel | Discord / Nouveau |
+|---|---|---|
+| Gap avatar ↔ contenu | `gap-3` (12px) | `gap-4` (16px) |
+| Espace au-dessus d'un message "premier du groupe" | `space-y-0.5` (2px) | `mt-[17px]` sur le premier message de chaque groupe |
+| Espace entre nom d'auteur et 1ʳᵉ ligne | implicite (gap baseline) | `mt-[2px]` sur le bloc de contenu |
+| Padding-top en haut du wrapper username | inexistant | `pt-[2px]` (petit espace au-dessus du nom) |
+| Indent gauche du contenu groupé (sans avatar) | `w-10` placeholder + `gap-3` = 52px | `w-10` + `gap-4` = 56px (aligné sur Discord 72px = 16 padding container + 56) |
+| Espacement entre messages d'un même groupe | `space-y-0.5` | conservé (~2px) |
 
-### 2. Drop indicator (lignes 130-158)
-- Remplacer `animate-fade-in` par une transition CSS dédiée **opacity 0 → 1 en 80ms** (créer `.dnd-drop-indicator` dans `index.css`).
-- Couleur figée `#5865F2` (déjà ok).
-- Pour les **catégories entières** : variante plus épaisse / pleine largeur (prop `variant: "category" | "channel"`). Légèrement plus haute (3px) et sans cercles aux extrémités, pour distinguer du drop entre salons.
+### Implémentation
 
-### 3. Placeholder (élément en cours de drag)
-Actuellement `.dnd-item-dragging` = `opacity: 0.3`. Spec demande un espace vide qui maintient la hauteur :
-- Conserver la hauteur (déjà OK via `useSortable`/`SortableContext`).
-- Passer à `opacity: 0` + fond `rgba(88, 101, 242, 0.08)` léger (teinte accent) sur l'item source, pour matcher "fond légèrement teinté".
+1. Le wrapper de liste (~ligne 1038) passe de `space-y-0.5` à `space-y-0`. Les marges sont gérées au niveau de chaque message via `mt-[17px]` pour les premiers du groupe et `mt-0` pour les groupés.
+2. La rangée header (avatar + contenu, lignes 1470 et 1620) passe de `gap-3` à `gap-4`.
+3. Le bloc texte/markdown (lignes 1570 et 1693) reçoit `mt-[2px]` pour créer le petit gap sous le nom.
+4. L'`Avatar` perd `mt-0.5` au profit d'un alignement précis : `mt-[2px]` (pour matcher la baseline de Discord).
+5. Le wrapper d'un message "premier du groupe" reçoit `mt-[17px]` (sauf le tout premier de la liste).
 
-### 4. Transition de drop (150ms ease)
-- Sur les éléments sortables (hors item en drag), appliquer `transition: transform 150ms ease` pour adoucir la réorganisation au drop. Ne pas appliquer sur le ghost.
+Aucune logique business modifiée — purement présentation. Reorder live et toutes autres règles préservées.
 
-### 5. Palette
-Vérifier/ajouter les tokens dans `index.css` si besoin (la plupart existent déjà via le thème sombre). Forcer dans la sidebar : `#2B2D31` bg, `#35373C` hover, `#404249` actif, `#F2F3F5` texte primaire, `#949BA4` texte secondaire, `#5865F2` accent. Probablement déjà conformes — diff minimal.
+## 2. Simplification de la popup @everyone / @here
 
-### 6. Activation / garde-clics
-- Confirmer dans `useDndSensors` : `PointerSensor` avec `activationConstraint: { distance: 4 }` ou `delay: 150, tolerance: 5`.
-- Confirmer que les listeners sont posés sur la zone "drag handle" et **non** sur les boutons icônes paramètres (déjà le cas via `stopPropagation` sur boutons gear/+). Auditer rapidement et corriger si un bouton manque `onPointerDown` stop.
+**Fichier**: `src/components/profile/EveryoneHerePopup.tsx`
 
-### 7. Accessibilité clavier (optionnel)
-Hors scope par défaut (gros chantier). À mentionner mais **non implémenté** dans cette passe sauf demande explicite.
+Réduire la popup à un layout minimal type Discord (cf. capture) :
 
-## Détails techniques
-- `DragOverlay` reçoit un composant `<DragGhost activeId={...} server={...} />` qui matérialise un rendu fidèle (catégorie ou salon) avec les mêmes icônes que `ChannelList` (`getChannelIcon`).
-- `.dnd-drop-indicator { opacity: 0; transition: opacity 80ms linear; } .dnd-drop-indicator.visible { opacity: 1; }`.
-- `.dnd-item-dragging { opacity: 0; background: rgba(88,101,242,0.08); }`.
-- Pas de modification du hook `useChannels` ni du store — uniquement présentation.
+```text
+┌────────────────────────────┐
+│ @everyone   (texte grisé)  │  ← header simple
+├────────────────────────────┤
+│ [avatar] Nom membre        │
+│ [avatar] Nom membre        │
+│ ...                        │
+└────────────────────────────┘
+```
+
+### Changements
+
+- **Supprimer** : bandeau gradient coloré, icône AtSign/Megaphone, sous-titre "Mention contextuelle/globale", barre de stats (compteurs online/idle/dnd/offline), bloc description avec icône Info.
+- **Garder** :
+  - Un header unique avec le texte `@everyone` ou `@here` en `text-xs text-muted-foreground font-medium` sur un padding compact (`px-3 py-2`), séparateur `border-b border-border`.
+  - La liste scrollable des membres (avatar 24px + nom), sans dot de statut pour rester minimal (style capture).
+- **Conserver** : tri (online d'abord, alpha ensuite), filtrage `here` (online/idle/dnd uniquement), `ScrollArea max-h-60`.
+- Taille de popover réduite : `w-64` au lieu de `w-80`.
+
+Aucune logique de mention/notification modifiée.
 
 ## Fichiers touchés
-- `src/components/layout/ChannelList.tsx` — DragOverlay refait, DropIndicator (variant), placeholder style.
-- `src/index.css` — `.dnd-drop-indicator`, `.dnd-item-dragging`, transition reorder 150ms.
-- `src/hooks/useDndSensors.ts` — uniquement si l'activation 4px/150ms manque.
 
-## Hors scope
-- Pas de nouveau composant standalone, pas de route démo.
-- Pas de support clavier Ctrl+D / flèches (peut être ajouté ensuite).
-- Aucune logique métier ou DB modifiée.
+- `src/components/chat/ChatArea.tsx` (espacements messages)
+- `src/components/profile/EveryoneHerePopup.tsx` (refonte popup)

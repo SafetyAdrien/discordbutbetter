@@ -24,7 +24,7 @@ interface InputMarkdownOverlayProps {
 }
 
 interface OverlayLine {
-  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
+  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'taskItemUnchecked' | 'taskItemChecked' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
   text: string;
 }
 

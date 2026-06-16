@@ -97,11 +97,13 @@ export function MessageInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  const mentionData = useMemo(() => ({ members, roles, channels }), [members, roles, channels]);
+
   const hasMarkdown = useMemo(() => {
     if (!value) return false;
     const lines = parseLines(value);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value);
-  }, [value]);
+    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value, mentionData);
+  }, [value, mentionData]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);

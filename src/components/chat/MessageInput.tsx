@@ -344,25 +344,58 @@ export function MessageInput({
 
   const sendAfterMentionRef = useRef(false);
   const handleSendMessageRef = useRef<(() => void) | null>(null);
-  const handleMentionSelect = useCallback((mention: string, _displayText: string) => {
+  // Tracks pending mentions inserted via autocomplete: short form -> protocol token.
+  // Serialized to <@SNOWFLAKE> on send so the textarea keeps a compact human-readable form
+  // (no transparent-character gap between badge and cursor).
+  const pendingMentionsRef = useRef<Array<{ display: string; token: string }>>([]);
+
+  const handleMentionSelect = useCallback((insertText: string, _displayText: string, token: string) => {
     if (!mentionState || !textareaRef.current) return;
-    
+
     const before = value.slice(0, mentionState.startIndex);
     const after = value.slice(textareaRef.current.selectionStart);
-    const newValue = before + mention + ' ' + after;
-    
+    const newValue = before + insertText + ' ' + after;
+
+    // Only register a pending mention when storage differs from display
+    if (insertText !== token) {
+      pendingMentionsRef.current.push({ display: insertText, token });
+    }
+
     onChange(newValue);
     setMentionState(null);
-    
+
     // Set cursor position after the mention
     setTimeout(() => {
       if (textareaRef.current) {
-        const newPos = mentionState.startIndex + mention.length + 1;
+        const newPos = mentionState.startIndex + insertText.length + 1;
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newPos;
         textareaRef.current.focus();
       }
     }, 0);
   }, [mentionState, value, onChange]);
+
+  // Drop pending mentions whose display text no longer appears in the input
+  // (covers manual deletion / clearing of the textarea).
+  useEffect(() => {
+    if (pendingMentionsRef.current.length === 0) return;
+    const remaining: Array<{ display: string; token: string }> = [];
+    let working = value;
+    // Process longest first so "@Adrien Moulin" isn't shadowed by "@Adrien"
+    const sorted = [...pendingMentionsRef.current].sort((a, b) => b.display.length - a.display.length);
+    // For each pending entry, consume one occurrence from the working text if present
+    for (const entry of sorted) {
+      const idx = working.indexOf(entry.display);
+      if (idx !== -1) {
+        remaining.push(entry);
+        working = working.slice(0, idx) + working.slice(idx + entry.display.length);
+      }
+    }
+    if (remaining.length !== pendingMentionsRef.current.length) {
+      // Restore original insertion order among the survivors
+      const surviveSet = new Set(remaining);
+      pendingMentionsRef.current = pendingMentionsRef.current.filter(e => surviveSet.has(e));
+    }
+  }, [value]);
 
   // Get filtered suggestions count for keyboard navigation
   const getSuggestionsCount = useCallback(() => {

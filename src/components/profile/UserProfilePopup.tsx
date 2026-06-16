@@ -151,6 +151,8 @@ export function UserProfilePopup({
   const { voiceState } = useVoice();
   const { getUserVolume, setUserVolume } = useVoiceUserSettings();
   const [localVolume, setLocalVolume] = useState<number | null>(null);
+  const [fullBioOpen, setFullBioOpen] = useState(false);
+  const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
   const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({

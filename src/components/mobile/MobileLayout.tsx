@@ -46,7 +46,7 @@ interface MobileLayoutProps {
   onOpenDM: (conversationId: string) => void;
   onShowFriends: () => void;
   onJoinServer: (serverId: string) => void;
-  onCreateServer: (name: string, iconUrl: string | null, bannerUrl?: string | null, templateId?: string | null) => void;
+  onCreateServer: (name: string, iconFile: File | null, bannerFile: File | null, templateId?: string | null) => void;
   discoverableServers: Server[];
   rawServers: any[];
 }

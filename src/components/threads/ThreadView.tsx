@@ -894,9 +894,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       >
                       <div 
                         className={cn(
-                          'flex gap-3 px-2 py-px message-hover relative',
+                          'flex gap-3 -mx-4 pl-[21px] pr-8 py-px message-hover relative',
                           showAuthor ? 'pt-2' : '',
-                          messageMentionsMe(message.content, user?.id, membersData.find(m => m.user?.id === user?.id)?.roles?.map((r: any) => r.id) ?? []) && 'message-mentioned !-mx-4 !px-6',
+                          messageMentionsMe(message.content, user?.id, membersData.find(m => m.user?.id === user?.id)?.roles?.map((r: any) => r.id) ?? []) && 'message-mentioned',
                         )}
                         onMouseEnter={() => setHoveredMessageId(message.id)}
                         onMouseLeave={() => { 

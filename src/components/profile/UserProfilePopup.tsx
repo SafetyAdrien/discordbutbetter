@@ -1,8 +1,20 @@
-import { useState, useRef, forwardRef } from 'react';
+import { useState, useRef, useEffect, forwardRef } from 'react';
 import { User } from '@/types/app';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+
+// Global trigger-rect registry: each caller records the bounding rect of the
+// clicked element so the floating profile card can anchor near it.
+let lastProfileTriggerRect: DOMRect | null = null;
+export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) {
+  const target = e.currentTarget as HTMLElement | null;
+  if (target && typeof target.getBoundingClientRect === 'function') {
+    lastProfileTriggerRect = target.getBoundingClientRect();
+  } else if ('clientX' in e) {
+    lastProfileTriggerRect = new DOMRect(e.clientX, e.clientY, 0, 0);
+  }
+}
+
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';

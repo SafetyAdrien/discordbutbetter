@@ -127,26 +127,33 @@ interface MentionConsumer {
   idx: number;
 }
 
+// CRITICAL: pills must not add ANY horizontal layout width (no padding, no margin)
+// — otherwise the textarea caret drifts away from the visible mention text.
+// We fake the side padding with a horizontal-only box-shadow which is purely
+// visual and does not affect layout.
+const PRIMARY_PILL_BG = 'hsl(var(--primary) / 0.30)';
+const sideShadow = (color: string) => `${color} 2px 0 0 0, ${color} -2px 0 0 0`;
+
 function pillClassFor(kind: MentionEntry['kind']): string {
-  // CRITICAL: no horizontal padding/margin — would shift the textarea caret
-  // away from the visible mention text. Only color decoration is allowed.
   return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';
 }
 
 function renderMentionEntry(entry: MentionEntry, key: number): ReactNode {
   if (entry.kind === 'role' && entry.color) {
+    const bg = `${entry.color}4D`;
     return (
-      <span key={key} className="rounded-[3px]" style={{ backgroundColor: `${entry.color}4D`, color: entry.color }}>
+      <span key={key} className="rounded-[3px]" style={{ backgroundColor: bg, color: entry.color, boxShadow: sideShadow(bg) }}>
         {entry.display}
       </span>
     );
   }
   return (
-    <span key={key} className={pillClassFor(entry.kind)}>
+    <span key={key} className={pillClassFor(entry.kind)} style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>
       {entry.display}
     </span>
   );
 }
+
 
 // Try to match entries (in order) at substrings of `text`. Mutates consumer.idx.
 function consumeEntryMentions(text: string, consumer: MentionConsumer, keyStart: number): { nodes: ReactNode[]; consumed: boolean; nextKey: number } {
@@ -190,8 +197,9 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
     }
     const full = match[0];
     if (full === '@everyone' || full === '@here') {
+      const bg = 'rgba(250,166,26,0.3)';
       parts.push(
-        <span key={key++} className="rounded-[3px]" style={{ backgroundColor: 'rgba(250,166,26,0.3)', color: '#faa61a' }}>
+        <span key={key++} className="rounded-[3px]" style={{ backgroundColor: bg, color: '#faa61a', boxShadow: sideShadow(bg) }}>
           {full}
         </span>
       );
@@ -199,18 +207,19 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
       const uuid = snowflakeToUuid(match[3]);
       const member = uuid ? mentionData?.members?.find(m => m.id === uuid) : undefined;
       const displayName = member ? `@${member.displayName}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
+      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]" style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>{displayName}</span>);
     } else if (match[2] !== undefined) {
       const uuid = snowflakeToUuid(match[2]);
       const role = uuid ? mentionData?.roles?.find(r => r.id === uuid) : undefined;
       const roleColor = role?.color || '#99aab5';
       const displayName = role ? `@${role.name}` : full;
-      parts.push(<span key={key++} className="rounded-[3px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>{displayName}</span>);
+      const bg = `${roleColor}4D`;
+      parts.push(<span key={key++} className="rounded-[3px]" style={{ backgroundColor: bg, color: roleColor, boxShadow: sideShadow(bg) }}>{displayName}</span>);
     } else if (match[4] !== undefined) {
       const uuid = snowflakeToUuid(match[4]);
       const channel = uuid ? mentionData?.channels?.find(c => c.id === uuid) : undefined;
       const displayName = channel ? `#${channel.name}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
+      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]" style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>{displayName}</span>);
     } else {
       parts.push(<span key={key++}>{full}</span>);
     }

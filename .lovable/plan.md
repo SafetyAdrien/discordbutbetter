@@ -1,53 +1,78 @@
-- Goal
+## Goal
 
-Restore live markdown styling **inside** the message composer so that as the user types:
+1. Compléter le rendu markdown live dans le composer pour les formats restants.
+2. Corriger la dérive du curseur (caret au milieu d'un mot alors qu'il est en fin) causée par `font-bold`, `italic` et `font-mono` qui modifient la largeur des glyphes par rapport au textarea.
 
-- `**texte**` → renders **bold**
-- `*texte*` / `_texte_` → renders *italic* (text + caret visually leans)
-- `__texte__` → renders underlined text
-- `~~texte~~` → renders strikethrough
-- `||texte||` → spoiler block
-- ``code`` → inline code styling
-- `[label](url)` → label styled as a link
-- Existing line markdown (headers, quotes, lists, code blocks, subtext, separators) already styled — kept as-is.
+## Cause de la dérive du curseur
 
-## Where to change
+Le textarea utilise toujours `font-weight: 400`, `font-style: normal`, `gg sans`. L'overlay, lui, applique `font-bold`, `italic` ou `font-mono` sur le texte intérieur des délimiteurs. Ces propriétés **changent la largeur des glyphes**, donc l'overlay et le textarea ne sont plus alignés caractère par caractère → le curseur visuel paraît décalé (image 1 et 2).
 
-Single file: `src/components/chat/InputMarkdownOverlay.tsx`, in `renderInlineMarkdownOnly` (the function that draws the colored overlay above the `<textarea>`). No edits to `MessageInput.tsx`, no parser changes.
+Règle stricte (déjà documentée en haut du fichier) : aucune variation de `font-weight`, `font-style`, ni `font-family` ne doit affecter la **largeur de mise en page**.
 
-## What to do
+## Plan
 
-For each inline match, replace the current "uniform-weight" inner `<span>` with one that carries the real visual style, **only on the inner content** (between the delimiters), keeping the delimiters muted as today:
+Fichier unique : `src/components/chat/InputMarkdownOverlay.tsx`.
 
-- `**…**` → inner span gets `font-bold`
-- `*…*` and `_…_` → inner span gets `italic`
-- `__…__` → inner span gets `underline` (already present, keep)
-- `~~…~~` → `line-through` (already present, keep)
-- `||…||` → keep current spoiler look (muted background)
-- ``…`` → keep code styling, add `font-mono`
-- `[label](url)` → label gets `text-primary underline`
+### 1. Reproduire le gras sans changer la largeur
 
-Delimiter spans (`**`, `*`, `_`, etc.) stay at `text-muted-foreground/50`, same weight as the surrounding text, so they don't shift the caret.
+Remplacer `font-bold` par un faux gras via `text-shadow`, qui ne change pas la métrique :
 
-## Known trade-off (caret alignment)
+```tsx
+<span style={{ textShadow: '0.6px 0 0 currentColor, -0.6px 0 0 currentColor' }}>
+  {match[2]}
+</span>
+```
 
-The overlay sits above the `<textarea>` and relies on identical glyph metrics so the textarea caret lines up with the visible characters. Today the overlay is intentionally locked to a single weight/style to guarantee this alignment — that's why bold/italic were removed previously.
+### 2. Reproduire l'italique sans changer la largeur
 
-Re-introducing real `font-weight: 700` / `font-style: italic` will produce a small horizontal caret drift on the affected segments with most fonts (the project font is `"gg sans"`, which does not have identical metrics across weights). Mitigations applied in the plan:
+Remplacer `italic` par `transform: skewX(-10deg); display: inline-block;` — `transform` n'affecte pas le layout, donc la largeur reste identique au textarea, mais le texte (et le curseur visuel sous la lettre) paraît penché.
 
-1. Bold/italic are scoped to the inner text only, not delimiters, so drift is bounded to the styled segment.
-2. Add `font-synthesis: none; font-variant-numeric: tabular-nums;` on the overlay container to avoid double-synthesis.
-3. No change to font-size or line-height — vertical alignment stays pixel-perfect.
+```tsx
+<span style={{ transform: 'skewX(-10deg)', display: 'inline-block' }}>
+  {match[9]}
+</span>
+```
 
-Horizontal drift inside bold/italic spans is the accepted cost of this feature, matching what the user asked for ("le texte ainsi que le curseur deviendra penché").
+### 3. Inline code : retirer `font-mono`
+
+`font-mono` change drastiquement la largeur des glyphes → suppression. On garde uniquement la couleur + background pour distinguer visuellement le code en ligne (comme actuellement, mais sans la police monospace).
+
+### 4. Spoiler
+
+Déjà rendu, on conserve mais on garantit qu'aucun `font-*` n'est utilisé : juste un `bg-muted/50 rounded-[3px]` sur le texte intérieur, délimiteurs en `text-muted-foreground/50`. Aucun changement de métrique.
+
+### 5. Listes à puces et numérotées
+
+Déjà parsées (`listItem`, `orderedListItem`) mais sans rendu visuel particulier. Ajouter une coloration du marqueur uniquement (le `-`, `*` ou `1.`) en `text-muted-foreground/70`, le reste du texte normal. **Aucun changement de marge/indentation** — sinon dérive.
+
+Implémentation : détecter le préfixe dans `renderInlineMarkdown` au niveau de la ligne pour les types `listItem` / `orderedListItem`, l'envelopper d'un span coloré, puis passer le reste de la ligne dans le rendu inline existant.
+
+### 6. Listes de tâches `- [ ]` / `- [x]`
+
+Ajouter un nouveau type de ligne `taskItem` dans `OverlayLine['type']` et dans `parseLines` / `getLineTypeAtCursor` :
+
+- regex : `/^(\s*)[-*] \[( |x)\] /`
+- rendu : marqueur `- [ ]` ou `- [x]` en `text-muted-foreground/70`, et si coché : strikethrough sur le reste de la ligne (via `text-decoration: line-through` — n'affecte pas la largeur).
+
+### 7. Bloc de code (` ``` `)
+
+Déjà rendu comme `codeBlockDelimiter` / `codeBlockLine` avec la classe `discord-overlay-code`. Vérifier dans `index.css` que cette classe **n'applique pas** `font-family: monospace` (car cela décalerait le curseur). Si elle le fait, retirer `font-family` et garder seulement `background`/`color`. (Lecture du CSS au moment du build pour confirmer.)
+
+### 8. Sanity check global
+
+À la fin, le fichier ne doit plus contenir aucune occurrence de :
+- `font-bold`
+- `font-mono`
+- `italic` (classe Tailwind ou `font-style: italic`)
+
+Tous remplacés par `text-shadow` / `transform: skewX` / couleur+background.
 
 ## Validation
 
-- Type `**hello**` in the composer → "hello" renders bold while typing, caret remains on the same line.
-- Type `*hello*` → italic, caret visibly leans inside the span.
-- Type `__hello__` → underlined.
-- Mix with mentions and headers → existing behavior preserved.
-- Sending the message produces unchanged raw markdown (parser untouched).  
-  
-CHOSE IMPORTANTE:   
-Cela doit être comme sur Discord concernant les markdowns basique.
+- Taper `**Test**` → "Test" apparaît visuellement gras, curseur **exactement** à la fin du mot.
+- Taper `*Test*` / `_Test_` → texte penché, curseur en fin de mot.
+- Taper `` `Code en ligne` `` → fond coloré, **même police** que le reste, curseur aligné.
+- Taper `- [ ] Tâche` puis cocher `- [x] Tâche` → marqueur grisé, texte barré quand coché.
+- Taper `1. Item` ou `- Item` → marqueur grisé, texte normal.
+- Mélange `**gras** *italique* ` `code` ` ||spoiler||` sur la même ligne → tous les curseurs restent alignés.
+- Aucun changement attendu sur l'envoi : le markdown brut est inchangé.

@@ -1,10 +1,10 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
 // ReplyLine — absolute-positioned SVG L-connector only.
 // Selectable via `.reply-line` / `[data-reply-line]`.
-// When `onClick` is provided, only the stroke of the path is clickable
-// (the SVG bounding box stays transparent to pointer events).
+// When `onClick` is provided, the stroke is ONLY clickable while hovered.
 // ============================================================================
 
 export interface ReplyLineProps {
@@ -26,19 +26,23 @@ export function ReplyLine({
   ariaLabel,
   className,
 }: ReplyLineProps) {
-  // Place SVG so its x=1 (stroke center) sits at avatarCenter.
+  const [hovered, setHovered] = useState(false);
+
   const left = Math.max(0, avatarCenter - 1);
   const width = Math.max(28, endX - left);
   const interactive = typeof onClick === "function";
+  const active = interactive && hovered;
+
+  const pathD = `M 1 26 L 1 9 Q 1 1 9 1 L ${width} 1`;
 
   return (
     <svg
-      aria-hidden={interactive ? undefined : true}
-      role={interactive ? "button" : undefined}
-      aria-label={interactive ? ariaLabel : undefined}
-      tabIndex={interactive ? 0 : undefined}
+      aria-hidden={active ? undefined : true}
+      role={active ? "button" : undefined}
+      aria-label={active ? ariaLabel : undefined}
+      tabIndex={active ? 0 : undefined}
       onKeyDown={
-        interactive
+        active
           ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -52,7 +56,6 @@ export function ReplyLine({
         "reply-line absolute pointer-events-none text-border/70 group-hover/replied:text-foreground/80 focus:outline-none",
         className,
       )}
-
       style={{
         left,
         top: 8,
@@ -64,19 +67,28 @@ export function ReplyLine({
       preserveAspectRatio="none"
       fill="none"
     >
+      {/* Visible line */}
       <path
-        d={`M 1 26 L 1 9 Q 1 1 9 1 L ${width} 1`}
+        d={pathD}
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         fill="none"
-        onClick={interactive ? onClick : undefined}
-        style={
-          interactive
-            ? { pointerEvents: "stroke", cursor: "pointer" }
-            : undefined
-        }
       />
+      {/* Invisible hit area — only present when interactive; hover activates clickability */}
+      {interactive && (
+        <path
+          d={pathD}
+          stroke="transparent"
+          strokeWidth="10"
+          strokeLinecap="round"
+          fill="none"
+          style={{ pointerEvents: "stroke", cursor: "pointer" }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onClick={onClick}
+        />
+      )}
     </svg>
   );
 }

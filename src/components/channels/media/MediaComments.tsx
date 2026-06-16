@@ -146,6 +146,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
                   repliedMessage={toRepliedRef(comment.repliedComment)}
                   onJump={handleJump}
                   indent={44}
+                  avatarCenter={16}
                   authorColor={topRole?.color || undefined}
                   authorRole={topRole ?? null}
                   className="mb-1"

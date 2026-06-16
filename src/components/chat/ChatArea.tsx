@@ -1,4 +1,4 @@
-import React, { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, forwardRef, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Message, Channel, User } from "@/types/app";
@@ -394,6 +394,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
   const editingMessageIdRef = useRef<string | null>(null);
+  const editScrollLockRef = useRef<{ top: number; rafIds: number[]; timeoutId: number | null } | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
   // Pending attachments for drag & drop
@@ -417,6 +418,27 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   };
 
+  const restoreEditScrollLock = useCallback(() => {
+    const vp = scrollViewportRef.current;
+    const lock = editScrollLockRef.current;
+    if (!vp || !lock) return;
+    vp.scrollTop = lock.top;
+  }, []);
+
+  const lockScrollForEditTransition = useCallback((messageId: string | null = editingMessageIdRef.current) => {
+    const vp = scrollViewportRef.current;
+    if (!vp) return;
+
+    const previousLock = editScrollLockRef.current;
+    previousLock?.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
+    if (previousLock?.timeoutId) window.clearTimeout(previousLock.timeoutId);
+
+    const lock = { top: vp.scrollTop, rafIds: [] as number[], timeoutId: null as number | null };
+    editScrollLockRef.current = lock;
+    editingMessageIdRef.current = messageId;
+    vp.style.overflowAnchor = "none";
+  }, []);
+
   // Track scroll position to detect "at bottom" and stabilize on resize
   useEffect(() => {
     const vp = chatContainerRef.current?.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]');
@@ -436,7 +458,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
-      if (editingMessageIdRef.current) return;
+      if (editScrollLockRef.current || editingMessageIdRef.current) {
+        restoreEditScrollLock();
+        return;
+      }
       if (wasAtBottomRef.current) {
         vp.scrollTop = vp.scrollHeight;
       }
@@ -447,7 +472,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id]);
+  }, [channel.id, restoreEditScrollLock]);
 
   // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {
@@ -459,24 +484,30 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
   // Stabiliser la position de scroll à l'entrée/sortie du mode édition
   // (les blocs de code remplacés par un textarea changent la hauteur du contenu)
-  useEffect(() => {
+  useLayoutEffect(() => {
     editingMessageIdRef.current = editingMessageId;
     const vp = scrollViewportRef.current;
-    if (!vp) return;
-    const savedTop = vp.scrollTop;
-    // Restaurer après le rendu du textarea / retour au markdown
+    const lock = editScrollLockRef.current;
+    if (!vp || !lock) return;
+
+    vp.scrollTop = lock.top;
     const raf1 = requestAnimationFrame(() => {
-      vp.scrollTop = savedTop;
-      const raf2 = requestAnimationFrame(() => {
-        vp.scrollTop = savedTop;
-      });
-      (vp as any).__raf2 = raf2;
+      restoreEditScrollLock();
+      const raf2 = requestAnimationFrame(restoreEditScrollLock);
+      lock.rafIds.push(raf2);
     });
+    lock.rafIds.push(raf1);
+    lock.timeoutId = window.setTimeout(() => {
+      restoreEditScrollLock();
+      vp.style.overflowAnchor = "";
+      editScrollLockRef.current = null;
+    }, 220);
+
     return () => {
-      cancelAnimationFrame(raf1);
-      if ((vp as any).__raf2) cancelAnimationFrame((vp as any).__raf2);
+      lock.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
+      if (lock.timeoutId) window.clearTimeout(lock.timeoutId);
     };
-  }, [editingMessageId]);
+  }, [editingMessageId, restoreEditScrollLock]);
 
 
 

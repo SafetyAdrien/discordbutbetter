@@ -1,13 +1,39 @@
-**Cause** : Lorsqu'on clique sur "Modifier" sur un message contenant un bloc de code, le `<Textarea>` d'édition est rendu avec la prop `autoFocus` (lignes 1583 et 1710 de `src/components/chat/ChatArea.tsx`). Le navigateur déclenche alors un `scrollIntoView` automatique pour centrer le champ focusé. Quand l'utilisateur essaie ensuite de défiler vers le bas de la conversation, ce comportement (combiné aux re-renders / auto-resize de la textarea) ramène la vue vers la textarea d'édition, donnant l'impression qu'on est "remis légèrement plus haut".
+**Objectif** : empêcher tout saut de scroll quand la hauteur du contenu change pendant l'édition d'un message à bloc de code, et afficher un bandeau « Aller en bas » quand l'utilisateur n'est pas en bas.
 
-**Correction** :
+**Modifications dans `src/components/chat/ChatArea.tsx`** :
 
-Dans `src/components/chat/ChatArea.tsx`, pour les **deux** textareas d'édition (lignes ~1561 et ~1688) :
+1. **Suivi du scroll** :
+   - Récupérer une `ref` sur le viewport interne de `ScrollArea` (`[data-radix-scroll-area-viewport]`).
+   - Ajouter un state `isAtBottom` (booléen) et un `ref` `wasAtBottomRef` pour mémoriser l'état avant un changement de taille.
+   - Écouter l'event `scroll` du viewport : `isAtBottom = scrollHeight - scrollTop - clientHeight < 24` (24px tolérance).
 
-1. Retirer la prop `autoFocus`.
-2. Dans le callback `ref={(el) => { ... }}`, appeler `el.focus({ preventScroll: true })` après avoir initialisé la hauteur, et placer le curseur en fin de texte (`el.setSelectionRange(el.value.length, el.value.length)`).
-3. Garder un drapeau (via `dataset`) pour ne focuser qu'une seule fois à l'ouverture du mode édition, afin de ne pas re-focuser à chaque re-render lié à la frappe.
+2. **Stabilisation pendant l'édition / resize** :
+   - Ajouter un `ResizeObserver` sur le contenu du viewport : si `wasAtBottomRef.current === true` quand la taille change, forcer `viewport.scrollTop = viewport.scrollHeight` sans animation (`behavior: 'auto'`).
+   - Mettre à jour `wasAtBottomRef` à chaque event scroll (avant que l'observer ne déclenche).
+   - Conséquence : édition d'un message → la textarea grandit → si l'utilisateur était collé en bas, il y reste pixel-perfect sans saut.
 
-**Aucun autre fichier modifié.**
+3. **Modifier l'auto-scroll existant** (ligne 410-415) :
+   - Remplacer le `scrollIntoView` sur `[messages.length]` par : si `wasAtBottomRef.current`, scroller en bas ; sinon, ne rien faire (l'utilisateur reste où il est et verra la pill).
 
-**Vérification** : modifier un message contenant un bloc de code → la textarea reçoit le focus sans que la liste des messages ne saute. L'utilisateur peut défiler librement jusqu'au dernier message pendant l'édition.
+4. **Bandeau « Aller en bas »** :
+   - Au-dessus du `MessageInput` (avant `TypingIndicator`, ligne ~1966), rendre conditionnellement :
+     ```tsx
+     {!isAtBottom && (
+       <div className="absolute left-1/2 -translate-x-1/2 -top-12 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-elevated border border-border/40 shadow-md text-xs">
+         <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
+         <button onClick={scrollToBottom} className="px-2 py-1 rounded-full bg-primary text-primary-foreground font-medium">
+           Aller en bas
+         </button>
+       </div>
+     )}
+     ```
+   - Wrapper le conteneur input avec `relative` pour positionner la pill.
+   - `scrollToBottom` : `viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })`.
+
+5. **Aucun autre fichier modifié.**
+
+**Vérification** :
+- Éditer un message à bloc de code en bas de liste → reste en bas, pas de saut.
+- Faire défiler vers le haut → la pill apparaît au-dessus du composer.
+- Cliquer la pill → scroll fluide vers le bas, la pill disparaît.
+- Nouveau message reçu pendant qu'on lit plus haut → la pill reste visible (pas d'auto-scroll forcé).

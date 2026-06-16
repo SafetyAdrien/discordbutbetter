@@ -391,6 +391,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const wasAtBottomRef = useRef(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   // Pending attachments for drag & drop
   const {
@@ -407,12 +410,49 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     handleDrop,
   } = usePendingAttachments();
 
-  // Auto-scroll to bottom on new messages
+  const scrollToBottom = (smooth = true) => {
+    const vp = scrollViewportRef.current;
+    if (!vp) return;
+    vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
+
+  // Track scroll position to detect "at bottom" and stabilize on resize
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
+    const vp = chatContainerRef.current?.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]');
+    if (!vp) return;
+    scrollViewportRef.current = vp;
+
+    const computeAtBottom = () => {
+      const atBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight < 24;
+      wasAtBottomRef.current = atBottom;
+      setIsAtBottom(atBottom);
+    };
+    computeAtBottom();
+
+    vp.addEventListener('scroll', computeAtBottom, { passive: true });
+
+    const content = vp.firstElementChild as HTMLElement | null;
+    const ro = new ResizeObserver(() => {
+      if (wasAtBottomRef.current) {
+        vp.scrollTop = vp.scrollHeight;
+      }
     });
+    if (content) ro.observe(content);
+
+    return () => {
+      vp.removeEventListener('scroll', computeAtBottom);
+      ro.disconnect();
+    };
+  }, [channel.id]);
+
+  // Auto-scroll to bottom on new messages, only if user was at bottom
+  useEffect(() => {
+    if (wasAtBottomRef.current) {
+      scrollToBottom(true);
+    }
   }, [messages.length]);
+
+
 
   // SHIFT key detection
   useEffect(() => {
@@ -1962,7 +2002,19 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       </ScrollArea>
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
+      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
+        {!isAtBottom && (
+          <div className="absolute left-1/2 -translate-x-1/2 -top-3 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/40 shadow-md text-xs animate-fade-in">
+            <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
+            <button
+              type="button"
+              onClick={() => scrollToBottom(true)}
+              className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90"
+            >
+              Aller en bas
+            </button>
+          </div>
+        )}
         <TypingIndicator channelId={channel.id} />
         {replyingTo && (
           <ReplyBanner

@@ -54,7 +54,7 @@ export function ReplyLine({
       data-reply-line
       className={cn(
         "reply-line absolute pointer-events-none focus:outline-none",
-        hovered ? "text-foreground/80" : "text-border/70",
+        hovered ? "text-foreground" : "text-border/70",
         className,
       )}
       style={{

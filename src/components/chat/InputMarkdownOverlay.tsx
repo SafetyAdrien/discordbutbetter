@@ -1,4 +1,5 @@
-import { useMemo, forwardRef, ReactNode } from 'react';
+import { useMemo, forwardRef, ReactNode, useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { snowflakeToUuid } from '@/lib/snowflake';
 import { MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 
@@ -77,8 +78,8 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   taskItemUnchecked: 'text-foreground',
   taskItemChecked: 'text-muted-foreground',
   separator: 'text-muted-foreground',
-  codeBlockDelimiter: 'text-muted-foreground discord-overlay-code',
-  codeBlockLine: 'text-foreground discord-overlay-code',
+  codeBlockDelimiter: 'text-muted-foreground/60',
+  codeBlockLine: 'text-foreground',
   normal: 'text-foreground',
 };
 
@@ -367,7 +368,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">*</span>
-          <span style={{ display: 'inline-block', transform: 'skewX(-10deg)' }}>{match[9]}</span>
+          <span style={{ fontStyle: 'italic' }}>{match[9]}</span>
           <span className="text-muted-foreground/50">*</span>
         </span>
       );
@@ -375,7 +376,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">_</span>
-          <span style={{ display: 'inline-block', transform: 'skewX(-10deg)' }}>{match[10]}</span>
+          <span style={{ fontStyle: 'italic' }}>{match[10]}</span>
           <span className="text-muted-foreground/50">_</span>
         </span>
       );

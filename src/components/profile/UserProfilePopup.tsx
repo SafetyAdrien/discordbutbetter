@@ -726,7 +726,7 @@ export function UserProfilePopup({
               )}
               
               {/* Main Profile Card */}
-              <div className="relative w-80 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-right">
+              <div className="relative w-[340px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-in-right">
                 <ProfileContent />
               </div>
             </div>
@@ -734,6 +734,7 @@ export function UserProfilePopup({
           document.body
         )}
         {serverProfileModal}
+        {fullBioModal}
       </>
     );
   }

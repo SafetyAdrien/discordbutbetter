@@ -291,8 +291,8 @@ export function UserProfilePopup({
 
   // Get banner style based on theme settings
   const getBannerStyle = () => {
-    if (user.banner) {
-      return { background: `url(${user.banner}) center/cover` };
+    if (effectiveUser.banner) {
+      return { background: `url(${effectiveUser.banner}) center/cover` };
     }
     if ((user as any).theme_gradient) {
       const [start, end] = (user as any).theme_gradient.split(',');
@@ -307,10 +307,11 @@ export function UserProfilePopup({
   const ActivityIcon = (user as any).activity_type ? activityIcons[(user as any).activity_type] : null;
 
   const userBadges: string[] = Array.isArray((user as any).badges) ? (user as any).badges : [];
-  const bioText = user.bio ?? '';
+  const bioText = effectiveUser.bio ?? '';
   const bioIsLong = bioText.length > 180;
   const truncatedBio = bioIsLong ? bioText.slice(0, 180).trimEnd() + '…' : bioText;
   const language = (user as any).language ?? (user as any).locale ?? null;
+  const effectivePronouns = (effectiveUser as any).pronouns ?? (user as any).pronouns;
 
   const handleRemoveRole = async (roleId: string, roleName: string) => {
     if (!serverId || !memberId || removingRoleId) return;

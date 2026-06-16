@@ -867,6 +867,41 @@ export function MessageInput({
               value={value}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
+              onSelect={(e) => {
+                const ta = e.currentTarget;
+                const entries = mentionEntriesRef.current;
+                if (entries.length === 0) return;
+                const ranges: Array<{ start: number; end: number }> = [];
+                let cur = 0;
+                for (const entry of entries) {
+                  const at = value.indexOf(entry.display, cur);
+                  if (at === -1) continue;
+                  ranges.push({ start: at, end: at + entry.display.length });
+                  cur = at + entry.display.length;
+                }
+                if (ranges.length === 0) return;
+                let s = ta.selectionStart;
+                let en = ta.selectionEnd;
+                const collapsed = s === en;
+                let changed = false;
+                for (const r of ranges) {
+                  if (collapsed) {
+                    if (s > r.start && s < r.end) {
+                      const target = (s - r.start) <= (r.end - s) ? r.start : r.end;
+                      s = en = target;
+                      changed = true;
+                    }
+                  } else {
+                    if (s > r.start && s < r.end) { s = r.start; changed = true; }
+                    if (en > r.start && en < r.end) { en = r.end; changed = true; }
+                  }
+                }
+                if (changed) {
+                  if (s > en) { const t = s; s = en; en = t; }
+                  ta.setSelectionRange(s, en);
+                }
+              }}
+
               onPaste={handlePaste}
               onScroll={() => { if (overlayRef.current && textareaRef.current) overlayRef.current.scrollTop = textareaRef.current.scrollTop; }}
               placeholder={placeholder}

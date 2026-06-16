@@ -530,6 +530,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // (les blocs de code remplacés par un textarea changent la hauteur du contenu)
   useLayoutEffect(() => {
     editingMessageIdRef.current = editingMessageId;
+    hasFocusedEditTextareaRef.current = false;
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
@@ -925,6 +926,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     lockScrollForEditTransition(message.id);
     setEditingMessageId(message.id);
     setEditingContent(message.content);
+    requestAnimationFrame(() => {
+      const el = editingTextareaRef.current;
+      if (!el || hasFocusedEditTextareaRef.current) return;
+      hasFocusedEditTextareaRef.current = true;
+      el.focus({ preventScroll: true });
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+      restoreEditScrollLock();
+    });
   };
   const handleSaveEdit = () => {
     if (editingMessageId && editingContent.trim()) {

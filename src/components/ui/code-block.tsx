@@ -69,6 +69,7 @@ interface CodeBlockProps {
 export function CodeBlock({ code, language, variant }: CodeBlockProps) {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const lang = language?.toLowerCase();
 
@@ -93,7 +94,9 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
 
   return (
     <div
-      className="group relative my-2 rounded-[4px] overflow-hidden"
+      className="relative my-2 rounded-[4px] overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         backgroundColor: 'hsl(var(--surface-elevated))',
         boxShadow: variant === 'chat' ? 'inset 0 0 0 1px hsl(225 14% 35%)' : 'inset 0 0 0 1px hsl(var(--border) / 0.4)',
@@ -103,7 +106,7 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
         type="button"
         onClick={handleCopy}
         aria-label="Copier le code"
-        className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-[3px] bg-background/60 text-muted-foreground hover:text-foreground z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+        className={`absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-[3px] bg-background/60 text-muted-foreground hover:text-foreground z-10 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}
       >
         {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>

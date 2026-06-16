@@ -3069,6 +3069,7 @@ export type Database = {
         Args: { _reason?: string; _server_id: string; _user_id: string }
         Returns: undefined
       }
+      can_access_realtime_topic: { Args: { _topic: string }; Returns: boolean }
       can_mention_everyone: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean

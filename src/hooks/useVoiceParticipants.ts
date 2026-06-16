@@ -129,7 +129,7 @@ export function useVoiceParticipants(channelId: string | null) {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`voice-p:${channelId}:${instanceId}`)
+      .channel(`voice-p:${channelId}:${instanceId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

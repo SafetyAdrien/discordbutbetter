@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     const channel = supabase
-      .channel(`profile:${user.id}`)
+      .channel(`profile:${user.id}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

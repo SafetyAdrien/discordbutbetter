@@ -21,7 +21,7 @@ export function useDMMessageReactions(messageIds: string[]) {
   useEffect(() => {
     if (messageIds.length === 0) return;
     const channel = supabase
-      .channel(`dm-reactions-rt-${messageIds[0]}`)
+      .channel(`dm-reactions-rt-${messageIds[0]}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_message_reactions' },

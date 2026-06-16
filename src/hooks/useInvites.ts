@@ -36,7 +36,7 @@ export function useServerInvites(serverId: string | null) {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`invites-rt-${serverId}`)
+      .channel(`invites-rt-${serverId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'invites', filter: `server_id=eq.${serverId}` },

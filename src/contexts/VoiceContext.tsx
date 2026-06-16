@@ -225,7 +225,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     voiceEventsInstanceRef.current = instanceId;
 
     const channel = supabase
-      .channel(`voice-events:${voiceState.channelId}-${instanceId}`)
+      .channel(`voice-events:${voiceState.channelId}-${instanceId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

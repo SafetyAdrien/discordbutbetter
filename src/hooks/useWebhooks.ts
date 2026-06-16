@@ -24,7 +24,7 @@ export function useChannelWebhooks(channelId: string | null) {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`webhooks-rt-${channelId}`)
+      .channel(`webhooks-rt-${channelId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'webhooks', filter: `channel_id=eq.${channelId}` },

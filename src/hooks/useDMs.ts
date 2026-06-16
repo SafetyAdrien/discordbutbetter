@@ -141,7 +141,7 @@ export function useDMConversations() {
     if (!user) return;
 
     const channel = supabase
-      .channel(`dm-updates:${user.id}`)
+      .channel(`dm-updates:${user.id}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

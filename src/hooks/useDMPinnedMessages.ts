@@ -32,7 +32,7 @@ export function useDMPinnedMessages(conversationId: string | null) {
     if (!conversationId) return;
 
     const channel = supabase
-      .channel(`dm-pinned-rt-${conversationId}`)
+      .channel(`dm-pinned-rt-${conversationId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_pinned_messages', filter: `conversation_id=eq.${conversationId}` },

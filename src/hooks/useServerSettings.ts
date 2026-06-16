@@ -34,7 +34,7 @@ export function useServerSettings(serverId: string) {
     if (!serverId || !user) return;
 
     const channel = supabase
-      .channel(`server-settings-rt-${serverId}`)
+      .channel(`server-settings-rt-${serverId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_settings', filter: `server_id=eq.${serverId}` },

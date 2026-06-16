@@ -82,7 +82,7 @@ export function useFriends() {
     if (!user) return;
 
     const channel = supabase
-      .channel(`friendships:${user.id}`)
+      .channel(`friendships:${user.id}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

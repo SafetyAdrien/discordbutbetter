@@ -553,47 +553,59 @@ export function UserProfilePopup({
               <h4 className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase mb-1.5">
                 Rôles
               </h4>
-              <div className="flex flex-wrap gap-1">
-                {displayRoles.map((role) => (
-                  <div
-                    key={role.id}
-                    className="group/role inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded text-[11px] font-medium bg-muted/40 border border-border/40"
-                  >
+              {displayRoles.length === 0 && canManageRoles && serverId && memberId && assignableRoles.length > 0 ? (
+                <button
+                  onClick={() => setShowRolePanel(true)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-dashed border-border/60 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Ajouter un rôle
+                </button>
+              ) : (
+                <div className="flex flex-wrap gap-1 items-center">
+                  {displayRoles.map((role) => (
                     <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
-                    />
-                    <span style={{ color: role.color || undefined }} className="truncate max-w-[120px]">
-                      {role.name}
-                    </span>
-                    {canManageRoles && (
-                      <button
-                        onClick={() => handleRemoveRole(role.id, role.name)}
-                        disabled={removingRoleId === role.id}
-                        className="ml-0.5 p-0.5 rounded opacity-0 group-hover/role:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
-                        aria-label={`Retirer ${role.name}`}
-                      >
-                        {removingRoleId === role.id ? (
-                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                        ) : (
-                          <X className="w-2.5 h-2.5" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
-                  <button
-                    onClick={() => setShowRolePanel(true)}
-                    className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/40 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    aria-label="Ajouter un rôle"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
+                      key={role.id}
+                      className="group/role inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded text-[11px] font-medium bg-muted/40 border border-border/40"
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: role.color || 'hsl(var(--muted-foreground))' }}
+                      />
+                      <span style={{ color: role.color || undefined }} className="truncate max-w-[120px]">
+                        {role.name}
+                      </span>
+                      {canManageRoles && (
+                        <button
+                          onClick={() => handleRemoveRole(role.id, role.name)}
+                          disabled={removingRoleId === role.id}
+                          className="ml-0.5 p-0.5 rounded opacity-0 group-hover/role:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
+                          aria-label={`Retirer ${role.name}`}
+                        >
+                          {removingRoleId === role.id ? (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                          ) : (
+                            <X className="w-2.5 h-2.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
+                    <button
+                      onClick={() => setShowRolePanel(true)}
+                      className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/40 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      aria-label="Ajouter un rôle"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
+
+
 
           {/* Volume Slider — voice */}
           {isInVoiceWithTarget && (

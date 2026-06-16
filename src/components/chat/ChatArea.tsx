@@ -920,8 +920,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       if (!el || hasFocusedEditTextareaRef.current) return;
       hasFocusedEditTextareaRef.current = true;
       el.focus({ preventScroll: true });
-      const end = el.value.length;
-      el.setSelectionRange(end, end);
       restoreEditScrollLock();
     });
   };

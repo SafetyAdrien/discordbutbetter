@@ -1453,12 +1453,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           if (el) messageRefs.current.set(message.id, el);
                         }}
                         className={cn(
-                          "group/message group message-hover pl-[5px] pr-4 mb-0 relative pt-[5px] pb-[2px]",
+                          "group/message group message-hover px-4 mb-0 relative pt-[5px] pb-[2px]",
                           messageMentionsMe(
                             message.content,
                             user?.id,
                             memberRoles?.get(user?.id ?? "")?.map((r) => r.id) ?? [],
-                          ) && "message-mentioned -ml-[5px] -mr-4 pl-[10px] pr-8",
+                          ) && "message-mentioned -mx-4 px-8",
                         )}
                         onMouseEnter={() => setHoveredMessageId(message.id)}
                         onMouseLeave={() => {
@@ -1508,7 +1508,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 className="mb-1"
                               />
                             )}
-                            <div className="flex gap-3 items-start">
+                            <div className="flex gap-3 items-start -ml-[11px]">
                               <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
@@ -1662,7 +1662,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="relative">
                             {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
                             {/* Note: hasReply forces showAuthor=true, so RepliedLine never renders here. */}
-                            <div className="flex gap-3 items-start">
+                            <div className="flex gap-3 items-start -ml-[11px]">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">

@@ -297,7 +297,10 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm font-medium text-white truncate">
+                            <span
+                              className="text-sm font-medium truncate"
+                              style={{ color: (message.author?.id ? memberTopRoleColor.get(message.author.id) : undefined) || '#ffffff' }}
+                            >
                               {message.author?.display_name || 'Utilisateur'}
                             </span>
                             <span className="text-[10px] text-muted-foreground">

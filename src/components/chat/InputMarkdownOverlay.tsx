@@ -80,9 +80,15 @@ export function hasInlineMarkdown(content: string): boolean {
   return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
 }
 
-export function hasInlineMentions(content: string): boolean {
+export function hasInlineMentions(content: string, mentionData?: MentionLookupData): boolean {
   if (!content) return false;
-  return /<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content);
+  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content)) return true;
+  if (mentionData) {
+    if (mentionData.members?.some(m => content.includes(`@${m.displayName}`))) return true;
+    if (mentionData.roles?.some(r => content.includes(`@${r.name}`))) return true;
+    if (mentionData.channels?.some(c => content.includes(`#${c.name}`))) return true;
+  }
+  return false;
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {

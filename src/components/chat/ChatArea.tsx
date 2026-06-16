@@ -1494,7 +1494,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <RepliedLine
                                 repliedMessage={message.repliedMessage}
                                 onJump={scrollToMessage}
-                                indent={52}
+                                indent={41}
                                 avatarCenter={9}
                                 authorColor={
                                   message.repliedMessage?.author

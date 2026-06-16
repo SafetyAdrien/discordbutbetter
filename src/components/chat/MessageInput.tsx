@@ -299,9 +299,11 @@ export function MessageInput({
       let i = beforeCursor.lastIndexOf('#');
       while (i !== -1) {
         if (!inReserved(i)) { hashIndex = i; break; }
+        if (i === 0) break;
         i = beforeCursor.lastIndexOf('#', i - 1);
       }
     }
+
 
     if (hashIndex !== -1) {
       const charBefore = hashIndex === 0 ? '' : beforeCursor[hashIndex - 1];
@@ -334,9 +336,11 @@ export function MessageInput({
       let i = beforeCursor.lastIndexOf('@');
       while (i !== -1) {
         if (!inReserved(i)) { atIndex = i; break; }
+        if (i === 0) break;
         i = beforeCursor.lastIndexOf('@', i - 1);
       }
     }
+
     if (atIndex !== -1) {
       const charBefore = atIndex === 0 ? '' : beforeCursor[atIndex - 1];
       if (atIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {

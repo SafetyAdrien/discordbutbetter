@@ -49,10 +49,10 @@ export function ReplyLine({
       }
       data-reply-line
       className={cn(
-        "reply-line absolute text-border/70",
-        interactive ? "pointer-events-none cursor-pointer" : "pointer-events-none",
+        "reply-line absolute pointer-events-none text-border/70 focus:outline-none",
         className,
       )}
+
       style={{
         left,
         top: 8,

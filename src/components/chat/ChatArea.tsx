@@ -1509,7 +1509,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               />
                             )}
                             <div className="flex gap-3 items-start">
-                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0 -ml-3">
+                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
                                   <AvatarFallback className="bg-primary/20 text-primary">
@@ -1517,7 +1517,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </AvatarFallback>
                                 </Avatar>
                               </button>
-                              <div className="flex-1 min-w-0 overflow-hidden ml-3">
+                              <div className="flex-1 min-w-0 overflow-hidden">
                                 <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                                   <button
                                     onClick={() => handleUserClick(message.author)}

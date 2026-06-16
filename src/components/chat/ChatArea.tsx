@@ -1453,8 +1453,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           if (el) messageRefs.current.set(message.id, el);
                         }}
                         className={cn(
-                          "group/message group message-hover px-4 pb-0 mb-0 relative",
-                          showAuthor ? (hasReply ? "pt-[17px]" : "pt-[17px]") : "py-px",
+                          "group/message group message-hover px-4 mb-0 relative",
+                          showAuthor ? (hasReply ? "pt-[19px] pb-[2px]" : "pt-[19px] pb-[2px]") : "py-px pb-0",
                           messageMentionsMe(
                             message.content,
                             user?.id,

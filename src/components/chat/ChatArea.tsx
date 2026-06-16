@@ -441,14 +441,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     handleDrop,
   } = usePendingAttachments();
 
-  const scrollToBottom = (smooth = true) => {
+  const scrollToBottom = useCallback((smooth = true) => {
     releaseEditScrollLock();
     const vp = scrollViewportRef.current;
     if (!vp) return;
     wasAtBottomRef.current = true;
     setShowJumpToBottom(false);
     vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
-  };
+  }, [releaseEditScrollLock]);
 
   const restoreEditScrollLock = useCallback(() => {
     const vp = scrollViewportRef.current;
@@ -533,7 +533,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     if (wasAtBottomRef.current) {
       scrollToBottom(true);
     }
-  }, [messages.length]);
+  }, [messages.length, scrollToBottom]);
 
   // Stabiliser la position de scroll à l'entrée/sortie du mode édition
   // (les blocs de code remplacés par un textarea changent la hauteur du contenu)

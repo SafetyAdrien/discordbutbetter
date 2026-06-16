@@ -431,9 +431,9 @@ export function UserProfilePopup({
         <div className="relative -mt-10 mb-2 flex items-end gap-2">
           <div className="relative inline-block">
             <Avatar className="w-[72px] h-[72px] border-[5px] border-card">
-              <AvatarImage src={user.avatar} alt={user.displayName} />
+              <AvatarImage src={effectiveUser.avatar} alt={effectiveUser.displayName} />
               <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                {user.displayName.charAt(0).toUpperCase()}
+                {effectiveUser.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div
@@ -458,11 +458,11 @@ export function UserProfilePopup({
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="text-base font-bold text-foreground leading-tight">
-                {user.displayName}
+                {effectiveUser.displayName}
               </h3>
-              {(user as any).pronouns && (
+              {effectivePronouns && (
                 <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-muted text-muted-foreground">
-                  {(user as any).pronouns}
+                  {effectivePronouns}
                 </span>
               )}
             </div>

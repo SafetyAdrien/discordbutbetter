@@ -76,6 +76,8 @@ export function useRemoveSecondaryOwner() {
   });
 }
 
+export function useTransferOwnership() {
+
   const queryClient = useQueryClient();
 
   return useMutation({

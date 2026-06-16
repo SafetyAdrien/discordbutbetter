@@ -405,12 +405,13 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
 // ============================================
 // MARKDOWN TEXT COMPONENT
 // ============================================
-export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string }>(
-  ({ content, className }, ref) => {
+export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string; variant?: 'chat' | 'bio' }>(
+  ({ content, className, variant }, ref) => {
     const reactContext = useMarkdownContext();
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
-    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, activeContext)}</div>;
+    const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
+    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

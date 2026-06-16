@@ -751,6 +751,7 @@ export function UserProfilePopup({
           </DrawerContent>
         </Drawer>
         {serverProfileModal}
+        {fullBioModal}
       </>
     );
   }
@@ -759,11 +760,12 @@ export function UserProfilePopup({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 overflow-hidden max-w-sm bg-card border-border">
+        <DialogContent className="p-0 overflow-hidden w-[340px] max-w-[340px] bg-card border-border rounded-xl">
           <ProfileContent />
         </DialogContent>
       </Dialog>
       {serverProfileModal}
+      {fullBioModal}
     </>
   );
 }

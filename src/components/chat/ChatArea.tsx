@@ -406,6 +406,26 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   } | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
+  const releaseEditScrollLock = useCallback(() => {
+    const lock = editScrollLockRef.current;
+    lock?.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
+    if (lock?.timeoutId) window.clearTimeout(lock.timeoutId);
+    const vp = scrollViewportRef.current;
+    if (vp) vp.style.overflowAnchor = "";
+    editScrollLockRef.current = null;
+  }, []);
+
+  const resizeEditTextarea = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    const maxHeight = Math.min(320, Math.max(180, Math.floor(window.innerHeight * 0.45)));
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, []);
+
+  const editTextareaClass =
+    "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden pr-5 whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [word-break:break-word] [scrollbar-gutter:stable]";
+
   // Pending attachments for drag & drop
   const {
     attachments,
@@ -421,11 +441,17 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     handleDrop,
   } = usePendingAttachments();
 
-  const scrollToBottom = (smooth = true) => {
+  const scrollToBottom = useCallback((smooth = true) => {
+    releaseEditScrollLock();
+    if (editingMessageIdRef.current) {
+      editingTextareaRef.current?.blur();
+    }
     const vp = scrollViewportRef.current;
     if (!vp) return;
+    wasAtBottomRef.current = true;
+    setShowJumpToBottom(false);
     vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
-  };
+  }, [releaseEditScrollLock]);
 
   const restoreEditScrollLock = useCallback(() => {
     const vp = scrollViewportRef.current;
@@ -473,10 +499,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     scrollViewportRef.current = vp;
 
     const computeAtBottom = () => {
-      if (editingMessageIdRef.current) {
-        setShowJumpToBottom(false);
-        return;
-      }
       const distanceFromBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight;
       const atBottom = distanceFromBottom < 24;
       wasAtBottomRef.current = atBottom;
@@ -489,6 +511,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
+      if (editingMessageIdRef.current) {
+        return;
+      }
       if (editScrollLockRef.current) {
         restoreEditScrollLock();
         return;
@@ -511,14 +536,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     if (wasAtBottomRef.current) {
       scrollToBottom(true);
     }
-  }, [messages.length]);
+  }, [messages.length, scrollToBottom]);
 
   // Stabiliser la position de scroll à l'entrée/sortie du mode édition
   // (les blocs de code remplacés par un textarea changent la hauteur du contenu)
   useLayoutEffect(() => {
     editingMessageIdRef.current = editingMessageId;
     hasFocusedEditTextareaRef.current = false;
-    if (editingMessageId) setShowJumpToBottom(false);
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
@@ -912,13 +936,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   const handleStartEdit = (message: Message) => {
     lockScrollForEditTransition(message.id);
-    setShowJumpToBottom(false);
     setEditingMessageId(message.id);
     setEditingContent(message.content);
     requestAnimationFrame(() => {
       const el = editingTextareaRef.current;
       if (!el || hasFocusedEditTextareaRef.current) return;
       hasFocusedEditTextareaRef.current = true;
+      resizeEditTextarea(el);
       el.focus({ preventScroll: true });
       restoreEditScrollLock();
     });
@@ -1702,16 +1726,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     <Textarea
                                       ref={(el) => {
                                         editingTextareaRef.current = el;
-                                        if (el) {
-                                          el.style.height = "auto";
-                                          el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                        }
+                                        resizeEditTextarea(el);
                                       }}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);
-                                        e.target.style.height = "auto";
-                                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                        resizeEditTextarea(e.target);
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
@@ -1722,7 +1742,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           handleCancelEdit();
                                         }
                                       }}
-                                      className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                      className={editTextareaClass}
                                       rows={1}
                                     />
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1829,16 +1849,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     <Textarea
                                       ref={(el) => {
                                         editingTextareaRef.current = el;
-                                        if (el) {
-                                          el.style.height = "auto";
-                                          el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                        }
+                                        resizeEditTextarea(el);
                                       }}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);
-                                        e.target.style.height = "auto";
-                                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                        resizeEditTextarea(e.target);
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
@@ -1849,7 +1865,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           handleCancelEdit();
                                         }
                                       }}
-                                      className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                      className={editTextareaClass}
                                       rows={1}
                                     />
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -2094,7 +2110,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
-        {showJumpToBottom && !editingMessageId && (
+        {showJumpToBottom && (
           <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/60 shadow-[0_4px_16px_rgba(0,0,0,0.25)] text-xs animate-fade-in">
             <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
             <button

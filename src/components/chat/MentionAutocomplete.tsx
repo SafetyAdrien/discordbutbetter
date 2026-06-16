@@ -10,7 +10,7 @@ import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
-import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
+import { cn, normalizeForSearch } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { uuidToSnowflake } from "@/lib/snowflake";

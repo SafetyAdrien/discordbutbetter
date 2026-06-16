@@ -226,6 +226,7 @@ export function MobileMessageBubble({
                 repliedMessage={message.repliedMessage}
                 onJump={onJumpToMessage}
                 indent={message.isOwn ? 24 : 28}
+                avatarCenter={message.isOwn ? 12 : 14}
               />
             </div>
           )}

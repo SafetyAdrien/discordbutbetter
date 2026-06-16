@@ -534,6 +534,48 @@ export function MessageInput({
       }
     }
 
+    // Helper: compute current mention display ranges in the value
+    const getMentionRanges = (): Array<{ start: number; end: number }> => {
+      const ranges: Array<{ start: number; end: number }> = [];
+      let cursor = 0;
+      for (const entry of mentionEntriesRef.current) {
+        const at = value.indexOf(entry.display, cursor);
+        if (at === -1) continue;
+        ranges.push({ start: at, end: at + entry.display.length });
+        cursor = at + entry.display.length;
+      }
+      return ranges;
+    };
+
+    // Atomic mention navigation: ArrowLeft/Right jump over mentions instead of entering them.
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+      const ta = textareaRef.current;
+      if (ta && ta.selectionStart === ta.selectionEnd) {
+        const caret = ta.selectionStart;
+        const ranges = getMentionRanges();
+        for (const r of ranges) {
+          if (e.key === 'ArrowRight' && caret === r.start) {
+            e.preventDefault();
+            ta.setSelectionRange(r.end, r.end);
+            return;
+          }
+          if (e.key === 'ArrowLeft' && caret === r.end) {
+            e.preventDefault();
+            ta.setSelectionRange(r.start, r.start);
+            return;
+          }
+          if (caret > r.start && caret < r.end) {
+            e.preventDefault();
+            const target = e.key === 'ArrowLeft' ? r.start : r.end;
+            ta.setSelectionRange(target, target);
+            return;
+          }
+        }
+      }
+    }
+
+
+
     // Backspace at the right edge of a mention deletes the whole mention in one go.
     if (e.key === 'Backspace' && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
       const ta = textareaRef.current;

@@ -69,17 +69,20 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 
+  const lang = language?.toLowerCase();
+
   useEffect(() => {
     if (codeRef.current) {
       codeRef.current.removeAttribute('data-highlighted');
-      
-      if (language && hljs.getLanguage(language)) {
+
+      if (lang && hljs.getLanguage(lang)) {
+        codeRef.current.className = codeRef.current.className.replace(/language-\S+/g, '') + ` language-${lang}`;
         hljs.highlightElement(codeRef.current);
       } else if (code.trim()) {
         hljs.highlightElement(codeRef.current);
       }
     }
-  }, [code, language]);
+  }, [code, lang]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code);

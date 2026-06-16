@@ -393,7 +393,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const editingMessageIdRef = useRef<string | null>(null);
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 
   // Pending attachments for drag & drop
   const {
@@ -423,9 +424,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     scrollViewportRef.current = vp;
 
     const computeAtBottom = () => {
-      const atBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight < 24;
+      const distanceFromBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight;
+      const atBottom = distanceFromBottom < 24;
       wasAtBottomRef.current = atBottom;
-      setIsAtBottom(atBottom);
+      // Bouton "Aller en bas" : seuil ~150px
+      setShowJumpToBottom(distanceFromBottom > 150);
     };
     computeAtBottom();
 
@@ -433,7 +436,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
-      if (editingMessageId) return;
+      if (editingMessageIdRef.current) return;
       if (wasAtBottomRef.current) {
         vp.scrollTop = vp.scrollHeight;
       }
@@ -444,15 +447,36 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id, editingMessageId]);
+  }, [channel.id]);
 
   // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {
-    if (editingMessageId) return;
+    if (editingMessageIdRef.current) return;
     if (wasAtBottomRef.current) {
       scrollToBottom(true);
     }
-  }, [messages.length, editingMessageId]);
+  }, [messages.length]);
+
+  // Stabiliser la position de scroll à l'entrée/sortie du mode édition
+  // (les blocs de code remplacés par un textarea changent la hauteur du contenu)
+  useEffect(() => {
+    editingMessageIdRef.current = editingMessageId;
+    const vp = scrollViewportRef.current;
+    if (!vp) return;
+    const savedTop = vp.scrollTop;
+    // Restaurer après le rendu du textarea / retour au markdown
+    const raf1 = requestAnimationFrame(() => {
+      vp.scrollTop = savedTop;
+      const raf2 = requestAnimationFrame(() => {
+        vp.scrollTop = savedTop;
+      });
+      (vp as any).__raf2 = raf2;
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if ((vp as any).__raf2) cancelAnimationFrame((vp as any).__raf2);
+    };
+  }, [editingMessageId]);
 
 
 
@@ -2005,7 +2029,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
-        {!isAtBottom && (
+        {showJumpToBottom && (
           <div className="absolute left-1/2 -translate-x-1/2 -top-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/40 shadow-md text-xs animate-fade-in">
             <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
             <button

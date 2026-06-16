@@ -436,20 +436,36 @@ function groupRenderables(lines: OverlayLine[]): RenderableNode[] {
   while (i < lines.length) {
     const line = lines[i];
     if (line.type === 'codeBlockDelimiter') {
+      // Look ahead for closing delimiter
       const block: OverlayLine[] = [line];
       const inner: string[] = [];
-      i++;
-      while (i < lines.length) {
-        const l = lines[i];
+      let j = i + 1;
+      let closed = false;
+      while (j < lines.length) {
+        const l = lines[j];
         block.push(l);
         if (l.type === 'codeBlockDelimiter') {
-          i++;
+          closed = true;
+          j++;
           break;
         }
         if (l.type === 'codeBlockLine') inner.push(l.text);
-        i++;
+        j++;
       }
-      out.push({ kind: 'codeBlock', blockLines: block, innerCode: inner });
+      if (closed) {
+        out.push({ kind: 'codeBlock', blockLines: block, innerCode: inner });
+        i = j;
+        continue;
+      }
+      // Not closed: render each line as a normal line (no box)
+      out.push({ kind: 'line', line: { type: 'normal', text: line.text } });
+      i++;
+      continue;
+    }
+    if (line.type === 'codeBlockLine') {
+      // Orphan code line (unclosed block) — render as normal
+      out.push({ kind: 'line', line: { type: 'normal', text: line.text } });
+      i++;
       continue;
     }
     out.push({ kind: 'line', line });

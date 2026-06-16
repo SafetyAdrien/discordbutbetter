@@ -93,7 +93,7 @@ export function FeaturedAnnouncement({ announcement, onClick }: FeaturedAnnounce
             </h2>
           )}
           <div className="text-foreground/80 line-clamp-3">
-            <MarkdownText content={announcement.content} />
+            <MarkdownText variant="chat" content={announcement.content} />
           </div>
         </div>
 

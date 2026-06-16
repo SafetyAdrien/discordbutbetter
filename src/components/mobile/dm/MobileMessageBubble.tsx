@@ -250,7 +250,7 @@ export function MobileMessageBubble({
             aria-label={`Message de ${message.author?.displayName ?? 'vous'}`}
           >
             {message.content && (
-              <MarkdownText content={message.content} />
+              <MarkdownText variant="chat" content={message.content} />
             )}
             {message.attachments.length > 0 && (
               <div className={cn(message.content ? 'mt-2' : '')}>

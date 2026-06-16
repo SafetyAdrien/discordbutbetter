@@ -176,7 +176,7 @@ export function AnnouncementDetailModal({
 
               {/* Content */}
               <div className="prose prose-invert max-w-none mb-8">
-                <MarkdownText content={announcement.content} />
+                <MarkdownText variant="chat" content={announcement.content} />
               </div>
 
               {/* Reactions */}

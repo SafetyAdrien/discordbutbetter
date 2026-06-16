@@ -1,48 +1,58 @@
 ## Objectif
 
-Refondre `UserProfilePopup` pour matcher le style Discord compact (~340px) montré dans la vidéo, sans toucher au backend ni au modal complet (`FullUserProfileModal`).
+Supprimer le `Dialog` modal avec backdrop sombre. Le profil utilisateur s'ouvre désormais **partout** sous forme d'un **petit conteneur flottant ancré près du pseudo cliqué** (style Discord), sans assombrissement de l'arrière-plan, fermable au clic en dehors ou via Échap.
 
-## Changements visuels (uniquement `src/components/profile/UserProfilePopup.tsx`)
+## Approche
 
-### Layout & dimensions
-- Largeur fixe `w-[340px]` (au lieu du dialog plein standard), `rounded-xl`, fond `bg-card`, bordure fine et ombre douce.
-- Bannière `h-[90px]`, padding interne resserré (`p-3`).
+### 1. Capture universelle de la position du clic
+Ajouter dans `src/components/profile/UserProfilePopup.tsx` un **registre global léger** :
+```ts
+let lastProfileTriggerRect: DOMRect | null = null;
+export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) { ... }
+```
+Cette fonction stocke le `getBoundingClientRect()` de l'élément cliqué. Elle est appelée par chaque caller au moment d'ouvrir le popup (un seul appel `onMouseDown` à ajouter sur chaque trigger).
 
-### Avatar + statut personnalisé en bulle
-- Avatar `w-[72px]` chevauchant la bannière (`-mt-10`), bordure épaisse couleur card, pastille de statut en bas-droite.
-- Si `user.customStatus` existe : afficher une **bulle flottante** à droite de l'avatar (`bg-popover`, `rounded-2xl`, petite flèche/coin pointant vers l'avatar) contenant le texte du statut tronqué sur 1 ligne. Remplace l'actuelle ligne italique sous le nom.
+### 2. Refonte du mode rendu (UserProfilePopup.tsx)
+- Supprimer la branche `Dialog` desktop. Le rendu desktop devient **toujours** un portail flottant identique à l'actuel `mode='card'` (340px, `bg-card`, `rounded-xl`, `shadow-2xl`), **sans overlay assombri**.
+- Calcul automatique de la position :
+  - Si `cardPosition` prop est fournie → l'utiliser (rétro-compat VoiceParticipantGrid).
+  - Sinon utiliser `lastProfileTriggerRect` :
+    - Horizontal : à droite du trigger (`left: rect.right + 8`), fallback à gauche si déborde.
+    - Vertical : aligné sur le haut du trigger, ajusté pour rester dans le viewport (`bottom >= 8`).
+  - Fallback ultime : centre-bas de l'écran.
+- Wrapper du portail :
+  - `<div className="fixed inset-0 z-50 pointer-events-none">` (pas de fond noir, ne bloque pas les interactions ailleurs sauf sur la carte).
+  - La carte elle-même : `pointer-events-auto`.
+  - Listener `mousedown` global sur `document` → si le clic est hors de la carte, fermer.
+  - Listener `keydown` Escape → fermer.
+- Mode mobile (`Drawer` du bas) : **inchangé**.
 
-### Bloc nom (carte intérieure unifiée Discord-style)
-- Encapsuler nom + username + badges + bio + roles dans un sous-bloc `bg-background/40 rounded-lg p-3` (effet "carte dans la carte" visible dans la vidéo).
-- Ligne 1 : `displayName` (gras, `text-base`) + badge pronoms inline.
-- Ligne 2 : `@username` · séparateur `·` · (langue si dispo) · badge tag serveur (premier rôle "tag-like" si présent).
-- Ligne 3 : **rangée de badges/icônes** (`flex gap-1`) — affichage purement visuel basé sur des flags optionnels du profil (`badges?: string[]` lu défensivement via `(user as any).badges`). Si vide, ne rien afficher. Tooltip sur chaque badge avec son nom. Aucune migration DB.
+### 3. Mise à jour des callers (7 fichiers)
+Ajouter `onMouseDownCapture={rememberProfileTrigger}` (ou équivalent) sur l'élément déclencheur du popup, puis appeler `setSelectedUser(...)` comme aujourd'hui.
 
-### Bio compacte + lien
-- Section "À Propos" : afficher la bio rendue avec `line-clamp-3`.
-- Si la bio dépasse (longueur > ~180 chars), afficher un lien `View Full Bio` (FR : "Voir la bio complète") en `text-xs text-primary` qui ouvre `FullUserProfileModal` déjà existant (ajouter un état local `fullBioOpen`).
+Fichiers concernés :
+- `src/components/chat/ChatArea.tsx` (clic sur pseudo dans messages)
+- `src/components/channels/AnnouncementChannel.tsx` (clic sur pseudo dans annonces)
+- `src/components/layout/MemberList.tsx` (clic sur membre)
+- `src/components/dm/DMConversation.tsx` (clic sur participant DM)
+- `src/components/mobile/dm/MobileDMConversation.tsx` (mobile → géré par Drawer, ajout non requis)
+- `src/components/layout/ChannelList.tsx` (déjà en `mode='card'`, simple harmonisation)
+- `src/components/channels/voice/VoiceParticipantGrid.tsx` (déjà en `mode='card'`, inchangé)
 
-### Rôles avec retrait rapide (✕)
-- Tags rôles plus compacts (`px-1.5 py-0.5 text-[11px]`), pastille de couleur ronde à gauche.
-- Si `canManageRoles` : ajouter un bouton `✕` à droite de chaque tag (apparition au hover du tag, `opacity-0 hover:opacity-100`) qui appelle un nouveau handler `handleRemoveRole(roleId)` utilisant la mutation existante d'assignation de rôles (réutiliser la logique du `RoleCheckboxItem` / hook actuel — décocher = retirer). Garder le bouton `+` final (style Discord) qui ouvre le panneau de gestion existant (`setShowRolePanel(true)`).
-- Si aucun rôle : ne rien afficher (au lieu du texte "Aucun rôle assigné").
+Pour chacun : repérer l'élément/cellule qui déclenche `setSelectedUser(...)` et ajouter `onMouseDownCapture={(e) => rememberProfileTrigger(e)}` sur ce nœud. Aucun changement de logique métier.
 
-### Bouton principal en bas
-- Garder le bouton `Edit Profile` (propre profil) / `Send Message` (autre) déjà présents mais en pleine largeur `w-full`, hauteur `h-9`, `rounded-md`, style primaire plein (comme dans la vidéo).
-- Icônes d'action (message / ami) conservées en haut-droite de la bannière (inchangées).
+### 4. Suppression de l'API `mode`
+Le prop `mode` devient inutile (toujours flottant sur desktop, toujours Drawer sur mobile). Le garder accepté pour rétro-compat mais ignoré, et retirer son utilisation côté `VoiceParticipantGrid` / `ChannelList` (purement cosmétique, optionnel).
 
-### Conservations
-- Volume slider voice (inchangé).
-- Section activité / rich presence (inchangée mais resserrée).
-- Kick / Ban (inchangé, dans le menu existant).
-- Mode `card` vs `dialog` + `cardPosition` (inchangé).
-- Drawer mobile (inchangé, juste contenu ré-emballé).
+## Hors scope
+- Pas de changement du contenu visuel de la carte (déjà refondu Discord-like).
+- Pas de changement de `FullUserProfileModal` (qui reste un modal normal puisqu'ouvert via "Voir bio complète").
+- Pas de modification mobile (Drawer conservé).
 
-## Hors scope (à ne PAS faire)
-- Pas de "Game Collection" (nécessiterait du backend).
-- Pas de nouvelle table/colonne DB.
-- Pas de modification de `FullUserProfileModal`, `UserProfileCard`, ni des hooks de rôles/amis.
-- Pas de changement de l'API du composant (`UserProfilePopupProps` inchangé).
-
-## Fichier touché
-- `src/components/profile/UserProfilePopup.tsx` (édition unique).
+## Fichiers touchés
+- `src/components/profile/UserProfilePopup.tsx` (refonte du wrapper + helper export)
+- `src/components/chat/ChatArea.tsx`
+- `src/components/channels/AnnouncementChannel.tsx`
+- `src/components/layout/MemberList.tsx`
+- `src/components/dm/DMConversation.tsx`
+- `src/components/layout/ChannelList.tsx`

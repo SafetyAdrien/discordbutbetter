@@ -195,7 +195,22 @@ export function UserProfilePopup({
     gcTime: Infinity,
   });
 
+  // Server profile override (Discord-style nickname/avatar/banner/bio per server)
+  const { data: serverProfile } = useServerProfile(user?.id ?? null, serverId ?? null);
+
   if (!user) return null;
+
+  // Apply server profile overrides on top of the global user when in a server context
+  const effectiveUser: User = serverId && serverProfile
+    ? {
+        ...user,
+        displayName: serverProfile.display_name || user.displayName,
+        avatar: serverProfile.avatar_url || user.avatar,
+        banner: serverProfile.banner_url || user.banner,
+        bio: serverProfile.bio ?? user.bio,
+        ...(serverProfile.pronouns ? { pronouns: serverProfile.pronouns } as any : {}),
+      }
+    : user;
 
   const isOwnProfile = currentUser?.id === user.id;
   const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;

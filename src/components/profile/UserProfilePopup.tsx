@@ -886,7 +886,7 @@ function FloatingProfileCard({ children, onClose, cardPosition, showRolePanel, r
         style={{ top: pos.top, left: pos.left }}
       >
         {pos.openLeft && showRolePanel && roleSidePanel}
-        <div className="relative w-[340px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+        <div className="relative w-[300px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-fade-in max-h-[85vh] overflow-y-auto">
           {children}
         </div>
         {!pos.openLeft && showRolePanel && roleSidePanel}

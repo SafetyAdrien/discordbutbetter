@@ -354,7 +354,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
     case 'multiBlockquote': return <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">{renderInlineContent(block.content)}</blockquote>;
     case 'listItem': { const level = block.indentLevel || 0; return <li key={key} className={level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]'} style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
     case 'orderedListItem': { const level = block.indentLevel || 0; return <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
-    case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} />;
+    case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} variant={context.variant} />;
     case 'separator': return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
     case 'empty': return <br key={key} />;
     case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;

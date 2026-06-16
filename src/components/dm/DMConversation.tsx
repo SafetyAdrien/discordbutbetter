@@ -618,8 +618,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                   'text-sm break-words font-ginto',
                                   message.isPending && 'opacity-50'
                                 )}>
-                                  <MarkdownText content={message.content} />
-                                </div>
+                                   <MarkdownText variant="chat" content={message.content} />
+                                 </div>
                               </>
                             )}
 

@@ -128,13 +128,15 @@ interface MentionConsumer {
 }
 
 function pillClassFor(kind: MentionEntry['kind']): string {
-  return 'rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]';
+  // CRITICAL: no horizontal padding/margin — would shift the textarea caret
+  // away from the visible mention text. Only color decoration is allowed.
+  return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';
 }
 
 function renderMentionEntry(entry: MentionEntry, key: number): ReactNode {
   if (entry.kind === 'role' && entry.color) {
     return (
-      <span key={key} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${entry.color}4D`, color: entry.color }}>
+      <span key={key} className="rounded-[3px]" style={{ backgroundColor: `${entry.color}4D`, color: entry.color }}>
         {entry.display}
       </span>
     );
@@ -189,7 +191,7 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
     const full = match[0];
     if (full === '@everyone' || full === '@here') {
       parts.push(
-        <span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: 'rgba(250,166,26,0.3)', color: '#faa61a' }}>
+        <span key={key++} className="rounded-[3px]" style={{ backgroundColor: 'rgba(250,166,26,0.3)', color: '#faa61a' }}>
           {full}
         </span>
       );
@@ -197,18 +199,18 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
       const uuid = snowflakeToUuid(match[3]);
       const member = uuid ? mentionData?.members?.find(m => m.id === uuid) : undefined;
       const displayName = member ? `@${member.displayName}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
+      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
     } else if (match[2] !== undefined) {
       const uuid = snowflakeToUuid(match[2]);
       const role = uuid ? mentionData?.roles?.find(r => r.id === uuid) : undefined;
       const roleColor = role?.color || '#99aab5';
       const displayName = role ? `@${role.name}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] px-[2px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>{displayName}</span>);
+      parts.push(<span key={key++} className="rounded-[3px]" style={{ backgroundColor: `${roleColor}4D`, color: roleColor }}>{displayName}</span>);
     } else if (match[4] !== undefined) {
       const uuid = snowflakeToUuid(match[4]);
       const channel = uuid ? mentionData?.channels?.find(c => c.id === uuid) : undefined;
       const displayName = channel ? `#${channel.name}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] px-[2px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
+      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]">{displayName}</span>);
     } else {
       parts.push(<span key={key++}>{full}</span>);
     }

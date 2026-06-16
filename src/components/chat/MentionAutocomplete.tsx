@@ -131,22 +131,22 @@ export function MentionAutocomplete({
 
   const handleSelectMember = (member: MentionMember) => {
     const snowflakeId = uuidToSnowflake(member.id);
-    onSelect(`<@${snowflakeId}>`, member.displayName);
+    onSelect(`@${member.displayName}`, member.displayName, `<@${snowflakeId}>`);
   };
 
   const handleSelectRole = (role: MentionRole) => {
     if (role.id === "everyone" || role.id === "here") {
-      onSelect(`@${role.name}`, `@${role.name}`);
+      const tok = `@${role.name}`;
+      onSelect(tok, tok, tok);
     } else {
       const snowflakeId = uuidToSnowflake(role.id);
-      onSelect(`<@&${snowflakeId}>`, `@${role.name}`);
+      onSelect(`@${role.name}`, `@${role.name}`, `<@&${snowflakeId}>`);
     }
   };
 
   const handleSelectChannel = (channel: MentionChannel) => {
     const snowflakeId = uuidToSnowflake(channel.id);
-    const formattedName = formatChannelName(channel.name, channel.type);
-    onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
+    onSelect(`#${channel.name}`, `#${channel.name}`, `<#${snowflakeId}>`);
   };
 
   return (

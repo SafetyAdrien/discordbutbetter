@@ -394,9 +394,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
   const editingMessageIdRef = useRef<string | null>(null);
+  const editingTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const hasFocusedEditTextareaRef = useRef(false);
   const editScrollLockRef = useRef<{
     top: number;
     messageId: string | null;
+    anchorId: string | null;
     anchorTop: number | null;
     rafIds: number[];
     timeoutId: number | null;
@@ -428,7 +431,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
-    const anchor = lock.messageId ? messageRefs.current.get(lock.messageId) : null;
+    const anchor = lock.anchorId ? messageRefs.current.get(lock.anchorId) : null;
     if (anchor && lock.anchorTop !== null) {
       const currentTop = anchor.getBoundingClientRect().top - vp.getBoundingClientRect().top;
       vp.scrollTop += currentTop - lock.anchorTop;
@@ -445,11 +448,33 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     previousLock?.rafIds.forEach((rafId) => cancelAnimationFrame(rafId));
     if (previousLock?.timeoutId) window.clearTimeout(previousLock.timeoutId);
 
-    const anchor = messageId ? messageRefs.current.get(messageId) : null;
+    const vpRect = vp.getBoundingClientRect();
+    let anchorId = messageId;
+    let anchorTop: number | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    messageRefs.current.forEach((el, id) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom <= vpRect.top || rect.top >= vpRect.bottom) return;
+      const top = rect.top - vpRect.top;
+      const distance = Math.abs(top);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        anchorId = id;
+        anchorTop = top;
+      }
+    });
+
+    if (anchorTop === null && messageId) {
+      const anchor = messageRefs.current.get(messageId);
+      anchorTop = anchor ? anchor.getBoundingClientRect().top - vpRect.top : null;
+    }
+
     const lock = {
       top: vp.scrollTop,
       messageId,
-      anchorTop: anchor ? anchor.getBoundingClientRect().top - vp.getBoundingClientRect().top : null,
+      anchorId,
+      anchorTop,
       rafIds: [] as number[],
       timeoutId: null as number | null,
     };

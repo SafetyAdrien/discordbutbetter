@@ -125,7 +125,13 @@ export function RepliedLine({
       <TooltipTrigger asChild>
         <div className="group/replied mb-0.5 overflow-visible">
           <div className={wrapperClasses} style={{ paddingLeft: indent }}>
-            <ReplyLine avatarCenter={avatarCenter} endX={endX} />
+            <ReplyLine
+              avatarCenter={avatarCenter}
+              endX={endX}
+              onClick={handleClick}
+              ariaLabel={`Réponse à ${displayedAuthorName}. Aller au message original.`}
+            />
+
             <button
               type="button"
               onClick={handleClick}

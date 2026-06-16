@@ -8,11 +8,19 @@ export interface MentionLookupData {
   channels?: MentionChannel[];
 }
 
+export interface MentionEntry {
+  display: string;
+  token: string;
+  kind: 'user' | 'role' | 'channel';
+  color?: string;
+}
+
 interface InputMarkdownOverlayProps {
   content: string;
   compact?: boolean;
   className?: string;
   mentionData?: MentionLookupData;
+  mentionEntries?: MentionEntry[];
 }
 
 interface OverlayLine {

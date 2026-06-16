@@ -448,7 +448,7 @@ export function useWebRTC(): UseWebRTCReturn {
         // Subscribe to new participants with instanceId isolation
         const subChannelName = `voice-participants-${channelId}-${instanceIdRef.current}`;
         participantsSubscriptionRef.current = supabase
-          .channel(subChannelName)
+          .channel(subChannelName, { config: { private: true } })
           .on(
             'postgres_changes',
             {

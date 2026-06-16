@@ -149,7 +149,7 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`audit-logs:${serverId}`)
+      .channel(`audit-logs:${serverId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

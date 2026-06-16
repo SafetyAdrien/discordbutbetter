@@ -25,7 +25,7 @@ export function useFavoriteFriendIds() {
   useEffect(() => {
     if (!user) return;
     const ch = supabase
-      .channel(`friend-favorites:${user.id}`)
+      .channel(`friend-favorites:${user.id}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'friend_favorites', filter: `user_id=eq.${user.id}` },

@@ -55,7 +55,7 @@ export function useServerVoiceParticipants(serverId: string | null) {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`srv-voice:${serverId}:${instanceId}`)
+      .channel(`srv-voice:${serverId}:${instanceId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

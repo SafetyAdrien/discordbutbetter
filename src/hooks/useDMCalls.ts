@@ -60,7 +60,7 @@ export function useDMCalls(conversationId: string | null) {
     if (!conversationId) return;
 
     const channel = supabase
-      .channel(`dm-calls:${conversationId}`)
+      .channel(`dm-calls:${conversationId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

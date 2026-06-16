@@ -21,7 +21,7 @@ export class SignalingService {
     console.log('[SignalingService] Starting for channel:', this.channelId, 'instance:', this.instanceId);
 
     this.subscription = supabase
-      .channel(`voice-signals-${this.channelId}-${this.instanceId}`)
+      .channel(`voice-signals-${this.channelId}-${this.instanceId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

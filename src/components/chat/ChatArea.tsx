@@ -1714,15 +1714,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   <div className="mt-1 space-y-2">
                                     <Textarea
                                       ref={(el) => {
+                                        editingTextareaRef.current = el;
                                         if (el) {
                                           el.style.height = "auto";
                                           el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                          if (!el.dataset.focused) {
-                                            el.dataset.focused = "1";
-                                            el.focus({ preventScroll: true });
-                                            const end = el.value.length;
-                                            el.setSelectionRange(end, end);
-                                          }
                                         }
                                       }}
                                       value={editingContent}
@@ -1846,15 +1841,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   <div className="space-y-2">
                                     <Textarea
                                       ref={(el) => {
+                                        editingTextareaRef.current = el;
                                         if (el) {
                                           el.style.height = "auto";
                                           el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                          if (!el.dataset.focused) {
-                                            el.dataset.focused = "1";
-                                            el.focus({ preventScroll: true });
-                                            const end = el.value.length;
-                                            el.setSelectionRange(end, end);
-                                          }
                                         }
                                       }}
                                       value={editingContent}

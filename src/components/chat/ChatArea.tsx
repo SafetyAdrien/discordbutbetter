@@ -1453,12 +1453,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           if (el) messageRefs.current.set(message.id, el);
                         }}
                         className={cn(
-                          "group/message group message-hover px-4 mb-0 relative pt-[5px] pb-[2px]",
+                          "group/message group message-hover -mx-4 px-8 mb-0 relative pt-[5px] pb-[2px]",
                           messageMentionsMe(
                             message.content,
                             user?.id,
                             memberRoles?.get(user?.id ?? "")?.map((r) => r.id) ?? [],
-                          ) && "message-mentioned -mx-4 px-8",
+                          ) && "message-mentioned",
                         )}
                         onMouseEnter={() => setHoveredMessageId(message.id)}
                         onMouseLeave={() => {

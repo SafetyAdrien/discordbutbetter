@@ -24,7 +24,7 @@ interface InputMarkdownOverlayProps {
 }
 
 interface OverlayLine {
-  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
+  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'taskItemUnchecked' | 'taskItemChecked' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
   text: string;
 }
 
@@ -53,6 +53,8 @@ export function parseLines(content: string): OverlayLine[] {
     if (line.startsWith('-# ')) { result.push({ type: 'subtext', text: line }); continue; }
     if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
+    if (/^(\s*)[-*] \[x\] /i.test(line)) { result.push({ type: 'taskItemChecked', text: line }); continue; }
+    if (/^(\s*)[-*] \[ \] /.test(line)) { result.push({ type: 'taskItemUnchecked', text: line }); continue; }
     if (/^(\s*)[-*] /.test(line)) { result.push({ type: 'listItem', text: line }); continue; }
     if (/^(\s*)\d+\. /.test(line)) { result.push({ type: 'orderedListItem', text: line }); continue; }
     result.push({ type: 'normal', text: line });
@@ -72,6 +74,8 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   blockquote: 'text-muted-foreground',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
+  taskItemUnchecked: 'text-foreground',
+  taskItemChecked: 'text-muted-foreground',
   separator: 'text-muted-foreground',
   codeBlockDelimiter: 'text-muted-foreground discord-overlay-code',
   codeBlockLine: 'text-foreground discord-overlay-code',
@@ -117,6 +121,8 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   if (currentLine.startsWith('-# ')) return 'subtext';
   if (currentLine.startsWith('> ') || currentLine.startsWith('>>> ')) return 'blockquote';
   if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(currentLine.trim())) return 'separator';
+  if (/^(\s*)[-*] \[x\] /i.test(currentLine)) return 'taskItemChecked';
+  if (/^(\s*)[-*] \[ \] /.test(currentLine)) return 'taskItemUnchecked';
   if (/^(\s*)[-*] /.test(currentLine)) return 'listItem';
   if (/^(\s*)\d+\. /.test(currentLine)) return 'orderedListItem';
   return 'normal';
@@ -311,7 +317,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">**</span>
-          <span className="text-foreground font-bold">{match[2]}</span>
+          <span style={{ textShadow: '0.55px 0 0 currentColor, -0.55px 0 0 currentColor' }}>{match[2]}</span>
           <span className="text-muted-foreground/50">**</span>
         </span>
       );
@@ -319,7 +325,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">__</span>
-          <span className="text-foreground underline">{match[3]}</span>
+          <span className="underline">{match[3]}</span>
           <span className="text-muted-foreground/50">__</span>
         </span>
       );
@@ -327,7 +333,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">~~</span>
-          <span className="text-foreground line-through">{match[4]}</span>
+          <span className="line-through">{match[4]}</span>
           <span className="text-muted-foreground/50">~~</span>
         </span>
       );
@@ -335,7 +341,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">||</span>
-          <span className="text-foreground bg-muted/50 rounded-[3px]">{match[5]}</span>
+          <span className="bg-foreground/20 rounded-[3px]">{match[5]}</span>
           <span className="text-muted-foreground/50">||</span>
         </span>
       );
@@ -343,7 +349,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">`</span>
-          <span className="bg-muted/40 rounded-[3px] text-[hsl(340,65%,65%)] font-mono">{match[6]}</span>
+          <span className="bg-muted/40 rounded-[3px] text-[hsl(340,65%,65%)]">{match[6]}</span>
           <span className="text-muted-foreground/50">`</span>
         </span>
       );
@@ -361,7 +367,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">*</span>
-          <span className="text-foreground italic">{match[9]}</span>
+          <span style={{ display: 'inline-block', transform: 'skewX(-10deg)' }}>{match[9]}</span>
           <span className="text-muted-foreground/50">*</span>
         </span>
       );
@@ -369,7 +375,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           <span className="text-muted-foreground/50">_</span>
-          <span className="text-foreground italic">{match[10]}</span>
+          <span style={{ display: 'inline-block', transform: 'skewX(-10deg)' }}>{match[10]}</span>
           <span className="text-muted-foreground/50">_</span>
         </span>
       );
@@ -409,18 +415,33 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
         }`}
         style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
       >
-        {lines.map((line, i) => (
-          <div
-            key={i}
-            className={`${lineStyles[line.type]} relative`}
-            style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
-          >
-            {line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter'
-              ? (line.text || '\u200B')
-              : renderInlineMarkdown(line.text, mentionData, consumer)
+        {lines.map((line, i) => {
+          const isCodeBlock = line.type === 'codeBlockLine' || line.type === 'codeBlockDelimiter';
+          const isChecked = line.type === 'taskItemChecked';
+          let prefix = '';
+          let rest = line.text;
+          if (line.type === 'listItem' || line.type === 'orderedListItem' || line.type === 'taskItemChecked' || line.type === 'taskItemUnchecked') {
+            const m = line.text.match(/^(\s*(?:[-*]|\d+\.)(?:\s\[[ xX]\])?\s)/);
+            if (m) {
+              prefix = m[1];
+              rest = line.text.slice(m[1].length);
             }
-          </div>
-        ))}
+          }
+          return (
+            <div
+              key={i}
+              className={`${lineStyles[line.type]} relative ${isChecked ? 'line-through' : ''}`}
+              style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+            >
+              {isCodeBlock ? (line.text || '\u200B') : (
+                <>
+                  {prefix && <span className="text-muted-foreground/70">{prefix}</span>}
+                  {renderInlineMarkdown(rest, mentionData, consumer)}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }

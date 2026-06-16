@@ -512,6 +512,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
     const content = vp.firstElementChild as HTMLElement | null;
     const ro = new ResizeObserver(() => {
+      if (editingMessageIdRef.current) {
+        return;
+      }
       if (editScrollLockRef.current) {
         restoreEditScrollLock();
         return;
@@ -942,6 +945,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       const el = editingTextareaRef.current;
       if (!el || hasFocusedEditTextareaRef.current) return;
       hasFocusedEditTextareaRef.current = true;
+      resizeEditTextarea(el);
       el.focus({ preventScroll: true });
       restoreEditScrollLock();
     });
@@ -1725,16 +1729,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     <Textarea
                                       ref={(el) => {
                                         editingTextareaRef.current = el;
-                                        if (el) {
-                                          el.style.height = "auto";
-                                          el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                        }
+                                        resizeEditTextarea(el);
                                       }}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);
-                                        e.target.style.height = "auto";
-                                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                        resizeEditTextarea(e.target);
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
@@ -1745,7 +1745,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           handleCancelEdit();
                                         }
                                       }}
-                                      className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                      className={editTextareaClass}
                                       rows={1}
                                     />
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1852,16 +1852,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     <Textarea
                                       ref={(el) => {
                                         editingTextareaRef.current = el;
-                                        if (el) {
-                                          el.style.height = "auto";
-                                          el.style.height = Math.min(el.scrollHeight, 200) + "px";
-                                        }
+                                        resizeEditTextarea(el);
                                       }}
                                       value={editingContent}
                                       onChange={(e) => {
                                         setEditingContent(e.target.value);
-                                        e.target.style.height = "auto";
-                                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                        resizeEditTextarea(e.target);
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
@@ -1872,7 +1868,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                           handleCancelEdit();
                                         }
                                       }}
-                                      className="bg-input min-h-[40px] max-h-[200px] resize-none"
+                                      className={editTextareaClass}
                                       rows={1}
                                     />
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

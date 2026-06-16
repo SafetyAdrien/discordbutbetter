@@ -424,7 +424,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   }, []);
 
   const editTextareaClass =
-    "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [scrollbar-gutter:stable]";
+    "bg-[hsl(var(--surface-3))] border-border/60 min-h-[44px] max-h-[45vh] md:max-h-[320px] resize-none overflow-x-hidden whitespace-pre-wrap break-words font-ginto leading-[1.375rem] text-foreground [overflow-wrap:anywhere] [word-break:break-word] [scrollbar-gutter:stable]";
 
   // Pending attachments for drag & drop
   const {
@@ -496,10 +496,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     scrollViewportRef.current = vp;
 
     const computeAtBottom = () => {
-      if (editingMessageIdRef.current) {
-        setShowJumpToBottom(false);
-        return;
-      }
       const distanceFromBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight;
       const atBottom = distanceFromBottom < 24;
       wasAtBottomRef.current = atBottom;
@@ -544,7 +540,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   useLayoutEffect(() => {
     editingMessageIdRef.current = editingMessageId;
     hasFocusedEditTextareaRef.current = false;
-    if (editingMessageId) setShowJumpToBottom(false);
     const vp = scrollViewportRef.current;
     const lock = editScrollLockRef.current;
     if (!vp || !lock) return;
@@ -938,7 +933,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   };
   const handleStartEdit = (message: Message) => {
     lockScrollForEditTransition(message.id);
-    setShowJumpToBottom(false);
     setEditingMessageId(message.id);
     setEditingContent(message.content);
     requestAnimationFrame(() => {

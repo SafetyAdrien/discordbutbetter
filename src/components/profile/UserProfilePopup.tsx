@@ -8,22 +8,34 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { MessageSquare, UserPlus, Check, Loader2, Calendar, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, UserPlus, Check, Loader2, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil, Volume2, VolumeX, Plus, Sparkles, Shield, Star, Crown, Heart, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { MemberWithProfile } from '@/hooks/useMembers';
+import { MemberWithProfile, membersMutationLockRef } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
+import { lockPermissionsMutation } from '@/hooks/usePermissionsRealtime';
+import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
+import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
+
+const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
+  staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },
+  partner: { icon: Star, label: 'Partenaire', color: '#5865F2' },
+  hypesquad: { icon: Sparkles, label: 'HypeSquad', color: '#F47B67' },
+  bug_hunter: { icon: Zap, label: 'Bug Hunter', color: '#3BA55C' },
+  early_supporter: { icon: Heart, label: 'Soutien de la première heure', color: '#FF73FA' },
+  owner: { icon: Crown, label: 'Propriétaire', color: '#FAA61A' },
+};
 
 
 

@@ -276,7 +276,7 @@ function renderInlineMarkdown(text: string, mentionData: MentionLookupData | und
 
   return finalNodes;
 }
-}
+
 
 function renderInlineMarkdownOnly(text: string): ReactNode {
   if (!text) return '\u200B';

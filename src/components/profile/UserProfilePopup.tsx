@@ -1,8 +1,35 @@
-import { useState, useRef, forwardRef } from 'react';
+import { useState, useRef, useEffect, forwardRef } from 'react';
 import { User } from '@/types/app';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+
+// Global trigger-rect registry: a single document-level mousedown listener
+// captures the bounding rect of whatever element the user last clicked.
+// The floating profile card uses this rect as its anchor.
+let lastProfileTriggerRect: DOMRect | null = null;
+if (typeof window !== 'undefined' && !(window as any).__profileTriggerListenerInstalled) {
+  (window as any).__profileTriggerListenerInstalled = true;
+  document.addEventListener(
+    'mousedown',
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target && typeof target.getBoundingClientRect === 'function') {
+        lastProfileTriggerRect = target.getBoundingClientRect();
+      } else {
+        lastProfileTriggerRect = new DOMRect(e.clientX, e.clientY, 0, 0);
+      }
+    },
+    true,
+  );
+}
+export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) {
+  const target = e.currentTarget as HTMLElement | null;
+  if (target && typeof target.getBoundingClientRect === 'function') {
+    lastProfileTriggerRect = target.getBoundingClientRect();
+  }
+}
+
+
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -703,43 +730,7 @@ export function UserProfilePopup({
     />
   );
 
-  // Mode Card - affichage en carte latérale
-  if (mode === 'card' && open) {
-    return (
-      <>
-        {createPortal(
-          <div 
-            className="fixed inset-0 z-50"
-            onClick={() => { setShowRolePanel(false); onOpenChange(false); }}
-          >
-            <div 
-              className="absolute flex items-start"
-              style={{ 
-                top: cardPosition?.top ?? 100,
-                right: cardPosition?.right ?? 280
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Role Side Panel */}
-              {showRolePanel && canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
-                <RoleSidePanel />
-              )}
-              
-              {/* Main Profile Card */}
-              <div className="relative w-[340px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-in-right">
-                <ProfileContent />
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-        {serverProfileModal}
-        {fullBioModal}
-      </>
-    );
-  }
-
-  // Mobile: Drawer from bottom
+  // Mobile: Drawer from bottom (unchanged)
   if (isMobile) {
     return (
       <>
@@ -756,16 +747,134 @@ export function UserProfilePopup({
     );
   }
 
-  // Desktop: Dialog
+  // Desktop: floating anchored card (universal, no backdrop)
+  if (!open) {
+    return (
+      <>
+        {serverProfileModal}
+        {fullBioModal}
+      </>
+    );
+  }
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 overflow-hidden w-[340px] max-w-[340px] bg-card border-border rounded-xl">
-          <ProfileContent />
-        </DialogContent>
-      </Dialog>
+      <FloatingProfileCard
+        cardPosition={cardPosition}
+        onClose={() => { setShowRolePanel(false); onOpenChange(false); }}
+        showRolePanel={showRolePanel && canManageRoles && !!serverId && !!memberId && assignableRoles.length > 0}
+        roleSidePanel={<RoleSidePanel />}
+      >
+        <ProfileContent />
+      </FloatingProfileCard>
       {serverProfileModal}
       {fullBioModal}
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FloatingProfileCard: anchors next to last clicked trigger, no backdrop,
+// closes on outside click or Escape.
+// ─────────────────────────────────────────────────────────────────────────────
+interface FloatingProfileCardProps {
+  children: React.ReactNode;
+  onClose: () => void;
+  cardPosition?: { top: number; right: number };
+  showRolePanel?: boolean;
+  roleSidePanel?: React.ReactNode;
+}
+
+const CARD_WIDTH = 340;
+const CARD_MAX_HEIGHT_ESTIMATE = 520;
+const GAP = 8;
+
+function computePosition(): { top: number; left: number; openLeft: boolean } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const rect = lastProfileTriggerRect;
+
+  if (!rect) {
+    return {
+      top: Math.max(GAP, vh - CARD_MAX_HEIGHT_ESTIMATE - GAP),
+      left: Math.max(GAP, (vw - CARD_WIDTH) / 2),
+      openLeft: false,
+    };
+  }
+
+  // Prefer opening to the right of the trigger
+  let left = rect.right + GAP;
+  let openLeft = false;
+  if (left + CARD_WIDTH + GAP > vw) {
+    // Not enough room on the right → open to the left
+    left = rect.left - CARD_WIDTH - GAP;
+    openLeft = true;
+    if (left < GAP) {
+      // Still doesn't fit → clamp to right edge
+      left = Math.max(GAP, vw - CARD_WIDTH - GAP);
+    }
+  }
+
+  // Vertical: align top with trigger, clamp to viewport
+  let top = rect.top;
+  if (top + CARD_MAX_HEIGHT_ESTIMATE + GAP > vh) {
+    top = Math.max(GAP, vh - CARD_MAX_HEIGHT_ESTIMATE - GAP);
+  }
+  if (top < GAP) top = GAP;
+
+  return { top, left, openLeft };
+}
+
+function FloatingProfileCard({ children, onClose, cardPosition, showRolePanel, roleSidePanel }: FloatingProfileCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState(() => {
+    if (cardPosition) {
+      return { top: cardPosition.top, left: window.innerWidth - cardPosition.right - CARD_WIDTH, openLeft: true };
+    }
+    return computePosition();
+  });
+
+  useEffect(() => {
+    if (cardPosition) return;
+    setPos(computePosition());
+  }, [cardPosition]);
+
+  useEffect(() => {
+    const handleDown = (e: MouseEvent) => {
+      if (!cardRef.current) return;
+      if (!cardRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    // Defer so the click that opened the card doesn't immediately close it
+    const id = window.setTimeout(() => {
+      document.addEventListener('mousedown', handleDown);
+      document.addEventListener('keydown', handleKey);
+    }, 0);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener('mousedown', handleDown);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 pointer-events-none">
+      <div
+        ref={cardRef}
+        className="absolute flex items-start pointer-events-auto"
+        style={{ top: pos.top, left: pos.left }}
+      >
+        {pos.openLeft && showRolePanel && roleSidePanel}
+        <div className="relative w-[340px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+          {children}
+        </div>
+        {!pos.openLeft && showRolePanel && roleSidePanel}
+      </div>
+    </div>,
+    document.body
   );
 }

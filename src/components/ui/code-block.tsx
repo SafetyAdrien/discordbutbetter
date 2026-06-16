@@ -69,23 +69,28 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   };
 
   return (
-    <pre className="group relative bg-[#2b2d31] border border-[#1e1f22] rounded-md my-2 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#1e1f22] bg-[#232428]">
-        <span className="text-xs text-[#949BA4]">{language || 'code'}</span>
-        <button
-          onClick={handleCopy}
-          className="text-[#949BA4] hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-          title="Copier le code"
-        >
-          {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-        </button>
-      </div>
-      <code 
+    <pre
+      className="group relative my-2 rounded-[4px] overflow-hidden"
+      style={{
+        backgroundColor: 'hsl(var(--surface-elevated))',
+        boxShadow: 'inset 0 0 0 1px hsl(var(--border) / 0.4)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copier le code"
+        className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-[3px] bg-background/60 text-muted-foreground hover:text-foreground z-10"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+      <code
         ref={codeRef}
-        className={`block px-3 py-2 text-sm font-mono overflow-x-auto ${language ? `language-${language}` : ''}`}
+        className={`block px-3 py-2 pr-10 text-sm font-mono overflow-x-auto whitespace-pre ${language ? `language-${language}` : ''}`}
       >
         {code}
       </code>
     </pre>
   );
 }
+

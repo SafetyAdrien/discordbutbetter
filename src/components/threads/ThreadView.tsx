@@ -879,6 +879,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                   : null,
                               }}
                               indent={44}
+                              avatarCenter={16}
                               authorColor={topRole?.color || undefined}
                               authorRole={topRole ?? null}
                               className="mb-1"

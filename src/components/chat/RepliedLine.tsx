@@ -30,7 +30,7 @@ interface RepliedLineProps {
    * Horizontal center (in px, from the wrapper's outer edge) of the parent
    * message avatar this reply belongs to. Used to perfectly align the
    * vertical bar of the L-connector above that avatar.
-   * Defaults to 30px (40px avatar with `pl-[21px] -ml-[11px]` layout).
+   * Defaults to 20px (40px avatar centered at the wrapper's outer edge).
    */
   avatarCenter?: number;
   /** Optional role color for the cited author (semibold pseudo color) */
@@ -88,7 +88,7 @@ export interface ReplyLineProps {
   className?: string;
 }
 
-export function ReplyLine({ avatarCenter = 30, endX, className }: ReplyLineProps) {
+export function ReplyLine({ avatarCenter = 20, endX, className }: ReplyLineProps) {
   // Place SVG so its x=1 (stroke center) sits at avatarCenter.
   const left = Math.max(0, avatarCenter - 1);
   const width = Math.max(28, endX - left);
@@ -276,7 +276,7 @@ export function RepliedLine({
   repliedMessage,
   onJump,
   indent = 50,
-  avatarCenter = 30,
+  avatarCenter = 20,
   authorColor,
   authorRole,
   authorRoleIcon,

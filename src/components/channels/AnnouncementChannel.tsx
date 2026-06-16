@@ -904,6 +904,7 @@ export function AnnouncementChannel({
                                 repliedMessage={repliedMsg}
                                 onJump={scrollToMessage}
                                 indent={56}
+                                avatarCenter={20}
                                 authorColor={topRole?.color || undefined}
                                 authorRole={topRole ?? null}
                                 className="mb-1"

@@ -96,7 +96,7 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
       className="group relative my-2 rounded-[4px] overflow-hidden"
       style={{
         backgroundColor: 'hsl(var(--surface-elevated))',
-        boxShadow: variant === 'chat' ? 'inset 0 0 0 3px hsl(var(--border) / 0.5)' : 'inset 0 0 0 1px hsl(var(--border) / 0.4)',
+        boxShadow: variant === 'chat' ? 'inset 0 0 0 1px hsl(var(--border) / 0.8)' : 'inset 0 0 0 1px hsl(var(--border) / 0.4)',
       }}
     >
       <button

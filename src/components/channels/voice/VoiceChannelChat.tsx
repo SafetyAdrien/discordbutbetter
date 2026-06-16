@@ -111,6 +111,20 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
     }));
   }, [serverRoles]);
 
+  const memberTopRoleColor = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const m of membersData) {
+      const uid = (m as any).user?.id;
+      if (!uid) continue;
+      const roles = (((m as any).roles ?? []) as Array<{ color?: string | null; position?: number | null; name?: string }>)
+        .filter((r) => r.name !== '@everyone')
+        .slice()
+        .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+      map.set(uid, roles[0]?.color || undefined);
+    }
+    return map;
+  }, [membersData]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -283,7 +297,10 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm font-medium text-white truncate">
+                            <span
+                              className="text-sm font-medium truncate"
+                              style={{ color: (message.author?.id ? memberTopRoleColor.get(message.author.id) : undefined) || '#ffffff' }}
+                            >
                               {message.author?.display_name || 'Utilisateur'}
                             </span>
                             <span className="text-[10px] text-muted-foreground">

@@ -1703,7 +1703,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                                   <button
                                     onClick={() => handleUserClick(message.author)}
-                                    className="font-semibold text-foreground hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                                    className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
+                                    style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
                                   >
                                     {message.author.displayName}
                                   </button>

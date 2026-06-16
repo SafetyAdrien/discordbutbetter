@@ -932,7 +932,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         <div className="flex-1 min-w-0">
                           {showAuthor && (
                             <div className="flex items-baseline gap-2 mb-0.5">
-                              <span className="font-medium text-foreground text-sm">
+                              <span
+                                className="font-medium text-sm"
+                                style={{ color: (message.author?.id ? memberRoles.get(message.author.id)?.[0]?.color : undefined) || undefined }}
+                              >
                                 {message.author?.display_name || 'Inconnu'}
                               </span>
                               <span className="text-xs text-muted-foreground">

@@ -5,6 +5,8 @@ import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { timeAsync } from '@/lib/perf';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { reconcileSecondaryOwnerFromRealtime } from './useSecondaryOwner';
+
 
 export interface ServerWithDetails {
   id: string;
@@ -56,7 +58,7 @@ export function useServers() {
     }, 0);
   };
 
-  // Realtime subscription on servers table for name/icon/banner changes
+  // Realtime subscription on servers table — patch cache instantly for ownership changes
   useEffect(() => {
     if (!user) return;
 
@@ -64,12 +66,63 @@ export function useServers() {
       .channel('servers-rt')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'servers' },
+        { event: 'UPDATE', schema: 'public', table: 'servers' },
+        (payload) => {
+          const next = payload.new as Partial<ServerWithDetails> & { id: string };
+          const prev = payload.old as Partial<ServerWithDetails> & { id?: string };
+
+          // Instant patch: apply scalar fields (owner_id, secondary_owner_id, name, icon, banner, description, is_public)
+          queryClient.setQueryData<ServerWithDetails[]>(['servers'], (old) =>
+            old?.map((s) =>
+              s.id === next.id
+                ? {
+                    ...s,
+                    name: next.name ?? s.name,
+                    icon_url: next.icon_url ?? s.icon_url,
+                    banner_url: next.banner_url ?? s.banner_url,
+                    description: next.description ?? s.description,
+                    is_public: next.is_public ?? s.is_public,
+                    owner_id: next.owner_id ?? s.owner_id,
+                    // null is a valid value here, so use `in` to detect presence
+                    secondary_owner_id:
+                      'secondary_owner_id' in next ? next.secondary_owner_id ?? null : s.secondary_owner_id,
+                  }
+                : s
+            )
+          );
+
+          // If ownership changed, also refresh members/permissions + reconcile local intent
+          if (
+            prev?.owner_id !== next.owner_id ||
+            prev?.secondary_owner_id !== next.secondary_owner_id
+          ) {
+            reconcileSecondaryOwnerFromRealtime(next.id, next.secondary_owner_id ?? null);
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+            queryClient.invalidateQueries({ queryKey: ['permissions'] });
+          }
+
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'servers' },
         () => {
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['servers'] });
           }, 300);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'servers' },
+        (payload) => {
+          const oldId = (payload.old as { id?: string })?.id;
+          if (oldId) {
+            queryClient.setQueryData<ServerWithDetails[]>(['servers'], (old) =>
+              old?.filter((s) => s.id !== oldId)
+            );
+          }
         }
       )
       .subscribe();
@@ -79,6 +132,7 @@ export function useServers() {
       supabase.removeChannel(channel);
     };
   }, [user, queryClient]);
+
 
   const queryCachedServers = queryClient.getQueryData<ServerWithDetails[]>(['servers']);
   const persistedServers = user?.id ? cacheGetSync<ServerWithDetails[]>(`servers:${user.id}`) : undefined;

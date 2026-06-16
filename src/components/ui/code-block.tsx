@@ -63,6 +63,7 @@ hljs.registerLanguage('yml', yaml);
 interface CodeBlockProps {
   code: string;
   language?: string;
+  variant?: 'chat' | 'bio';
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps) {

@@ -17,7 +17,7 @@ import { StreamlineHash } from '@/components/icons/StreamlineHash';
 
 interface CreateServerModalProps {
   onClose: () => void;
-  onCreate: (name: string, iconUrl: string | null, bannerUrl?: string | null, templateId?: string | null) => void;
+  onCreate: (name: string, iconFile: File | null, bannerFile: File | null, templateId?: string | null) => void;
   onDiscoverClick?: () => void;
 }
 
@@ -134,23 +134,10 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
   const handleCreate = async () => {
     if (!serverName.trim()) return;
-    
     setIsUploading(true);
     try {
-      let iconUrl: string | null = null;
-      let bannerUrl: string | null = null;
-      
-      if (iconFile) {
-        iconUrl = await uploadToStorage(iconFile, 'server-icons');
-      }
-      if (bannerFile) {
-        bannerUrl = await uploadToStorage(bannerFile, 'server-banners');
-      }
-      
-      onCreate(serverName, iconUrl, bannerUrl, selectedTemplate);
+      onCreate(serverName, iconFile, bannerFile, selectedTemplate);
       onClose();
-    } catch (error) {
-      console.error('Error uploading:', error);
     } finally {
       setIsUploading(false);
     }

@@ -594,7 +594,7 @@ export function UserProfilePopup({
                   {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
                     <button
                       onClick={() => setShowRolePanel(true)}
-                      className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/40 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Ajouter un rôle"
                     >
                       <Plus className="w-3 h-3" />

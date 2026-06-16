@@ -506,7 +506,36 @@ export function MessageInput({
 
   const [pendingEveryoneMention, setPendingEveryoneMention] = useState<EveryoneMentionType | null>(null);
 
+  // Resolve display-text mentions back into <@SNOWFLAKE> / <#…> / <@&…> tokens.
+  const resolveContent = useCallback((text: string): string => {
+    const entries = mentionEntriesRef.current;
+    if (entries.length === 0) return text;
+    let result = '';
+    let cursor = 0;
+    for (const e of entries) {
+      const at = text.indexOf(e.display, cursor);
+      if (at === -1) continue;
+      result += text.slice(cursor, at) + e.token;
+      cursor = at + e.display.length;
+    }
+    result += text.slice(cursor);
+    return result;
+  }, []);
+
+  // Pending-send pattern: when entries exist, we mutate `value` to the resolved
+  // form via onChange first, then trigger the actual send once the parent has
+  // committed the new value (avoids stale closures in parent's onSend).
+  const pendingSendRef = useRef(false);
+
   const performSend = useCallback(() => {
+    if (mentionEntriesRef.current.length > 0) {
+      const resolved = resolveContent(value);
+      if (resolved !== value) {
+        pendingSendRef.current = true;
+        onChange(resolved);
+        return;
+      }
+    }
     setLastSentAt(Date.now());
     const attachmentData = attachments.map(a => ({
       file: a.file,
@@ -516,7 +545,9 @@ export function MessageInput({
     }));
     onSend(attachmentData.length > 0 ? attachmentData : undefined);
     onClearAttachments?.();
-  }, [attachments, onSend, onClearAttachments]);
+    mentionEntriesRef.current = [];
+    setMentionRev(r => r + 1);
+  }, [attachments, onSend, onClearAttachments, value, onChange, resolveContent]);
 
   const handleSendMessage = useCallback(() => {
     if ((value.trim() || attachments.length > 0) && !disabled) {
@@ -551,7 +582,12 @@ export function MessageInput({
       sendAfterMentionRef.current = false;
       handleSendMessageRef.current?.();
     }
-  }, [value]);
+    if (pendingSendRef.current) {
+      pendingSendRef.current = false;
+      // Now that value has been resolved into token form, run the actual send.
+      performSend();
+    }
+  }, [value, performSend]);
 
   const handleConfirmEveryone = useCallback(() => {
     setPendingEveryoneMention(null);

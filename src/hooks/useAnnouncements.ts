@@ -307,12 +307,23 @@ export function useIncrementViewCount() {
   });
 }
 
-// Upload banner
+// Upload banner (scoped to a server folder for RLS)
 export function useUploadAnnouncementBanner() {
   return useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, channelId }: { file: File; channelId: string }) => {
+      // Resolve server_id from channel so the storage path matches RLS scope
+      const { data: channel, error: channelError } = await supabase
+        .from('channels')
+        .select('server_id')
+        .eq('id', channelId)
+        .single();
+
+      if (channelError || !channel?.server_id) {
+        throw channelError ?? new Error('Channel not found');
+      }
+
       const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const fileName = `${channel.server_id}/${crypto.randomUUID()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('announcement-banners')

@@ -3,17 +3,32 @@ import { User } from '@/types/app';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
-// Global trigger-rect registry: each caller records the bounding rect of the
-// clicked element so the floating profile card can anchor near it.
+// Global trigger-rect registry: a single document-level mousedown listener
+// captures the bounding rect of whatever element the user last clicked.
+// The floating profile card uses this rect as its anchor.
 let lastProfileTriggerRect: DOMRect | null = null;
+if (typeof window !== 'undefined' && !(window as any).__profileTriggerListenerInstalled) {
+  (window as any).__profileTriggerListenerInstalled = true;
+  document.addEventListener(
+    'mousedown',
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target && typeof target.getBoundingClientRect === 'function') {
+        lastProfileTriggerRect = target.getBoundingClientRect();
+      } else {
+        lastProfileTriggerRect = new DOMRect(e.clientX, e.clientY, 0, 0);
+      }
+    },
+    true,
+  );
+}
 export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) {
   const target = e.currentTarget as HTMLElement | null;
   if (target && typeof target.getBoundingClientRect === 'function') {
     lastProfileTriggerRect = target.getBoundingClientRect();
-  } else if ('clientX' in e) {
-    lastProfileTriggerRect = new DOMRect(e.clientX, e.clientY, 0, 0);
   }
 }
+
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

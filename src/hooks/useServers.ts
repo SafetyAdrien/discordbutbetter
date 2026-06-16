@@ -258,6 +258,8 @@ export function useCreateServer() {
       name,
       icon_url,
       banner_url,
+      iconFile,
+      bannerFile,
       description,
       is_public,
       templateId,
@@ -265,13 +267,15 @@ export function useCreateServer() {
       name: string;
       icon_url?: string;
       banner_url?: string;
+      iconFile?: File | null;
+      bannerFile?: File | null;
       description?: string;
       is_public?: boolean;
       templateId?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Create server first
+      // Create server first (without icon/banner so we have its id for storage RLS)
       const { data: server, error } = await supabase
         .from('servers')
         .insert({
@@ -286,6 +290,29 @@ export function useCreateServer() {
         .single();
 
       if (error) throw error;
+
+      // Upload icon/banner using server.id as folder (required by storage RLS)
+      const uploadToBucket = async (file: File, bucket: string): Promise<string> => {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${server.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from(bucket).upload(path, file);
+        if (upErr) throw upErr;
+        return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+      };
+
+      const patch: { icon_url?: string; banner_url?: string } = {};
+      if (iconFile) patch.icon_url = await uploadToBucket(iconFile, 'server-icons');
+      if (bannerFile) patch.banner_url = await uploadToBucket(bannerFile, 'server-banners');
+
+      if (patch.icon_url || patch.banner_url) {
+        const { data: updated, error: updErr } = await supabase
+          .from('servers')
+          .update(patch)
+          .eq('id', server.id)
+          .select()
+          .single();
+        if (!updErr && updated) Object.assign(server, updated);
+      }
 
       // If template selected, create additional categories and channels
       if (templateId && serverTemplates[templateId]) {

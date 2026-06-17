@@ -25,6 +25,7 @@ import {
   Loader2,
   AtSign,
   MessageSquare,
+  ChevronLeft,
 } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 
@@ -43,7 +44,11 @@ function categorize(n: ServerNotification): Filter {
   return 'system';
 }
 
-export function MobileNotificationsView() {
+interface MobileNotificationsViewProps {
+  onBack?: () => void;
+}
+
+export function MobileNotificationsView({ onBack }: MobileNotificationsViewProps = {}) {
   const { data: notifications = [], isLoading } = useNotifications();
   const markAllRead = useMarkAllNotificationsAsRead();
   const markRead = useMarkNotificationAsRead();
@@ -70,18 +75,28 @@ export function MobileNotificationsView() {
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border bg-[hsl(var(--surface-header))]">
-        <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-sm">Notifications</h2>
-          {unreadCount > 0 && (
-            <span
-              className="text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full h-4 min-w-4 px-1 flex items-center justify-center"
-              aria-label={`${unreadCount} non lues`}
-            >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </div>
+      <div className="h-12 px-2 flex items-center gap-1 border-b border-border bg-[hsl(var(--surface-header))]">
+        {onBack && (
+          <button
+            onClick={() => {
+              haptics.light();
+              onBack();
+            }}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:bg-muted/60"
+            aria-label="Retour"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        )}
+        <h2 className="font-semibold text-base flex-1 truncate">Notifications</h2>
+        {unreadCount > 0 && (
+          <span
+            className="text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full h-4 min-w-4 px-1 flex items-center justify-center mr-2"
+            aria-label={`${unreadCount} non lues`}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </div>
 
       {/* Pills */}
@@ -160,7 +175,10 @@ export function MobileNotificationsView() {
             haptics.medium();
             markAllRead.mutate();
           }}
-          className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors z-10 text-sm font-medium"
+          className={cn(
+            'fixed right-4 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors z-10 text-sm font-medium',
+            onBack ? 'bottom-4' : 'bottom-[calc(72px+env(safe-area-inset-bottom,0px))]'
+          )}
           aria-label="Tout marquer comme lu"
           title="Tout marquer comme lu"
         >

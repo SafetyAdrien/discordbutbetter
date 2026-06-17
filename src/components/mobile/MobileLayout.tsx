@@ -3,7 +3,7 @@ import { MobileBottomNav, MobileTab } from './MobileBottomNav';
 import { MobileServersView } from './MobileServersView';
 import { MobileChannelListView } from './MobileChannelListView';
 import { MobileChatView } from './MobileChatView';
-import { MobileNotificationsView } from './MobileNotificationsView';
+
 import { MobileProfileView } from './MobileProfileView';
 
 import { MobileThreadView } from './MobileThreadView';
@@ -73,7 +73,7 @@ export function MobileLayout({
   // Restore persisted state on mount
   const [activeTab, setActiveTabLocal] = useState<MobileTab>(() => {
     const tab = persistedTab as MobileTab;
-    if (tab === 'servers' || tab === 'notifications' || tab === 'profile') return tab;
+    if (tab === 'servers' || tab === 'profile') return tab;
     return 'servers';
   });
   const [mobileView, setMobileViewLocal] = useState<MobileView>(() => {
@@ -635,7 +635,6 @@ export function MobileLayout({
                 onShowFriends={onShowFriends}
               />
             )}
-            {activeTab === 'notifications' && <MobileNotificationsView />}
             {activeTab === 'profile' && (
               <MobileProfileView
                 onOpenDM={onOpenDM}

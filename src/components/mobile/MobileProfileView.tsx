@@ -4,6 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
   Pencil,
+  Bell,
   // ChevronRight removed (no longer used)
   Copy,
   Check,
@@ -20,8 +21,9 @@ import { MobileFavoriteFriendsView } from './profile/MobileFavoriteFriendsView';
 import { MobileServersListView } from './profile/MobileServersListView';
 import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView';
 import { MobileFullProfileView } from './profile/MobileFullProfileView';
+import { MobileNotificationsView } from './MobileNotificationsView';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
@@ -29,6 +31,7 @@ import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
+import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import {
   CONNECTION_PROVIDERS_BY_ID,
   formatConnectionDisplay,
@@ -64,6 +67,7 @@ export function MobileProfileView({
   const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
+  const notifCount = useUnreadNotificationsCount();
   const [showSettings, setShowSettings] = useState(false);
   const [showStatusSheet, setShowStatusSheet] = useState(false);
   const [showCustomStatus, setShowCustomStatus] = useState(false);
@@ -159,6 +163,21 @@ export function MobileProfileView({
               aria-label="Modifier le profil"
             >
               <Pencil className="w-4 h-4 text-foreground" />
+            </button>
+            <button
+              onClick={() => {
+                haptics.light();
+                setSubpage('notifications');
+              }}
+              className="relative flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4 h-4 text-foreground" />
+              {notifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
+                  {notifCount > 99 ? '99+' : notifCount}
+                </span>
+              )}
             </button>
             <button
               onClick={handleOpenSettings}
@@ -394,15 +413,16 @@ export function MobileProfileView({
           />
         )}
         {subpage === 'notifications' && (
-          <MobileSettingsRedirectView
-            key="notif-settings"
-            variant="notifications"
-            onBack={() => setSubpage(null)}
-            onOpenFullSettings={() => {
-              setSubpage(null);
-              setShowSettings(true);
-            }}
-          />
+          <motion.div
+            key="notifications"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+            className="absolute inset-0 z-40 bg-background flex flex-col"
+          >
+            <MobileNotificationsView onBack={() => setSubpage(null)} />
+          </motion.div>
         )}
         {subpage === 'appearance' && (
           <MobileSettingsRedirectView

@@ -175,7 +175,10 @@ export function MobileNotificationsView({ onBack }: MobileNotificationsViewProps
             haptics.medium();
             markAllRead.mutate();
           }}
-          className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors z-10 text-sm font-medium"
+          className={cn(
+            'fixed right-4 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors z-10 text-sm font-medium',
+            onBack ? 'bottom-4' : 'bottom-[calc(72px+env(safe-area-inset-bottom,0px))]'
+          )}
           aria-label="Tout marquer comme lu"
           title="Tout marquer comme lu"
         >

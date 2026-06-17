@@ -618,12 +618,6 @@ export function MobileLayout({
         <div
           className="h-full"
           style={{ paddingBottom: hideBottomNav ? 0 : 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
-          {...(canSwipeTabs ? {
-            onTouchStart: swipeTabs.onTouchStart,
-            onTouchMove: swipeTabs.onTouchMove,
-            onTouchEnd: swipeTabs.onTouchEnd,
-            onTouchCancel: swipeTabs.onTouchCancel,
-          } : {})}
         >
           <div className="h-full">
             {activeTab === 'servers' && (

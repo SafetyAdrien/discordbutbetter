@@ -4,7 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
   Pencil,
-  ChevronRight,
+  // ChevronRight removed (no longer used)
   Copy,
   Check,
   X,

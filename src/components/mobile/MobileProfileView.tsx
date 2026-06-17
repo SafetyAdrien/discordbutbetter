@@ -161,29 +161,65 @@ export function MobileProfileView({
             </button>
           </div>
 
-          {/* Avatar */}
+          {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative">
-            <button
-              onClick={() => {
-                haptics.light();
-                setShowStatusSheet(true);
-              }}
-              className="relative active:opacity-80 transition-opacity"
-              aria-label="Changer le statut"
-            >
-              <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
-              <div
-                className={cn(
-                  'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                  statusColors[currentStatus]
-                )}
-              />
-            </button>
+            <div className="flex items-end gap-3">
+              <button
+                onClick={() => {
+                  haptics.light();
+                  setShowStatusSheet(true);
+                }}
+                className="relative active:opacity-80 transition-opacity shrink-0"
+                aria-label="Changer le statut en ligne"
+              >
+                <Avatar className="w-24 h-24 ring-[5px] ring-background">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
+                    {initial}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className={cn(
+                    'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
+                    statusColors[currentStatus]
+                  )}
+                />
+              </button>
+
+              {/* Custom status zone (right of avatar, above the banner shadow) */}
+              <div className="relative flex-1 min-w-0 pb-2">
+                {/* Mini "+" bubble, floating above-left of the large bubble */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setShowCustomStatus(true);
+                  }}
+                  aria-label="Modifier le statut personnalisé"
+                  className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-background flex items-center justify-center active:scale-95 transition-transform z-10"
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                </button>
+                {/* Wide horizontal bubble */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setShowCustomStatus(true);
+                  }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 rounded-2xl bg-muted/50 border border-border/40 active:bg-muted/70 transition-colors',
+                    'flex items-center gap-2 min-h-[40px]',
+                  )}
+                >
+                  {profile?.custom_status ? (
+                    <span className="text-sm text-foreground truncate">{profile.custom_status}</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground italic truncate">Quoi de neuf ?</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 

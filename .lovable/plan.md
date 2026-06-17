@@ -1,132 +1,103 @@
-# Plan
+# Refonte UI/UX — Notifications Mobile
 
-Three independent chantiers. Tous limités aux plateformes prioritaires : **Twitter/X, Instagram, Bluesky, YouTube**.
+## Objectifs
 
----
-
-## 1. Système "Connections" — critères configurables par serveur
-
-### Concept
-Chaque serveur peut définir des **règles d'éligibilité** sur les connections d'un utilisateur. Si un membre lie un compte (ex. Instagram) et que ses stats déclarées satisfont la règle, un **rôle** est automatiquement attribué.
-
-### Données saisies par l'utilisateur (sur le profil)
-On enrichit chaque entrée `ProfileConnection` avec des stats déclaratives optionnelles :
-- `posts_count` (nombre)
-- `followers_count` (nombre)
-- `following_count` (nombre)
-- `is_verified` (bool, badge bleu)
-- `account_created_at` (date → âge calculé)
-
-Saisie via le modal d'ajout/édition existant (`ConnectionsSettings.tsx`), avec un sous-formulaire spécifique aux 4 plateformes prioritaires. Les autres providers gardent l'UI actuelle.
-
-Note honnêteté : ces stats sont **déclaratives** (l'utilisateur peut mentir). Un drapeau visuel "non vérifié automatiquement" sera affiché à côté des stats. Une vraie vérification par API n'est pas dans le périmètre.
-
-### Règles côté serveur
-Nouvelle table `server_connection_rules` :
-- `server_id`, `provider` (twitter/instagram/bluesky/youtube), `role_id` (rôle à attribuer)
-- `min_posts`, `min_followers`, `min_account_age_days` (nullable)
-- `require_verified` (bool)
-- `name`, `description`
-
-UI dans `ServerSettings` → nouvel onglet **"Critères Connections"** :
-- Liste des règles, bouton "Nouvelle règle"
-- Formulaire : choix provider, choix rôle, seuils, prévisualisation
-
-### Évaluation & attribution de rôle
-- RPC `evaluate_connection_rules(_user_id, _server_id)` côté DB : lit `profiles.connections`, compare aux règles, attribue/retire les rôles ciblés.
-- Trigger automatique sur `UPDATE profiles.connections` (pour tous les serveurs où l'utilisateur est membre).
-- Bouton manuel "Réévaluer mes rôles" dans les paramètres du serveur côté membre.
-
-### Affichage
-- Sur la fiche de profil utilisateur (popup + mobile), chaque connection des 4 plateformes prioritaires affiche en dessous : badge "✓ Vérifié" si applicable, et "1.2K abonnés · 340 posts · Compte depuis 2 ans".
+1. **Nettoyer le header** : retirer les tabs visibles (Tout / Mentions / Réponses / Système) et les regrouper dans une popup de filtres accessible via un icône.
+2. **Élargir le scope** : intégrer aussi les notifications de **Messages Privés** (amis favoris + DMs les plus actifs).
+3. **Tri intelligent** : organiser la liste par activité récente avec regroupement par catégorie collapsible.
+4. **Filtre par serveur** : permettre de filtrer les notifications par serveur spécifique depuis la popup.
 
 ---
 
-## 2. Interface Mobile — Vue Profil
-
-### Statut au clic sur l'avatar
-- L'avatar ouvre déjà le `MobileStatusSheet` ✅ (conservé)
-- **Retirer** le bouton trigger statut situé dans l'identity card sur le nom d'affichage (lignes 179–196 de `MobileProfileView.tsx`) : on garde `h2` + chevron stat-pill supprimés. Le nom redevient un simple titre non cliquable.
-- Le label texte "En ligne / Inactif…" (ligne 198–200) est aussi retiré (déjà accessible via la pastille sur l'avatar).
-
-### Statut personnalisé compact (style Desktop)
-Nouvelle disposition dans la zone avatar :
-- **Bulle large horizontale** à droite de l'avatar : affiche le `custom_status` actuel. Si vide → placeholder gris "Quoi de neuf ?" avec icône `+`. Tap → ouvre `CustomStatusModal`.
-- **Mini bulle** flottante au-dessus-gauche de la bulle large (légèrement décalée vers la pdp) : petit cercle avec icône `+` blanche, sert de bouton d'ajout/édition rapide (même action : ouvre le modal).
-- Suppression du bloc `custom_status` actuel dans l'identity card (lignes 218–222).
+## 1. Nouveau Header
 
 ```text
-   ╭──╮
-   │ +│              ← mini bulle décalée gauche
-   ╰──╯
- ⬤────  ╭─────────────────────────╮
- │PDP│  │ + Quoi de neuf ?         │   ← bulle large à droite
- ⬤────  ╰─────────────────────────╯
+┌────────────────────────────────────────┐
+│ ← Notifications  •3       [⚙ Filtres] │
+├────────────────────────────────────────┤
+│ [Pills actifs (si filtre appliqué) ×] │
+└────────────────────────────────────────┘
 ```
+
+- Retrait des pills de filtres permanents.
+- Nouveau bouton **icône Filtre** (`SlidersHorizontal`) à droite, avec un dot primary si un filtre est actif.
+- Si un filtre est actif → affichage d'un **chip retirable** sous le header (ex: « Serveur : Mon Serveur ×», « Mentions ×»).
+- Compteur unread déplacé à côté du titre de manière plus discrète.
+
+## 2. Popup de Filtres (Sheet bottom)
+
+Sheet glissant depuis le bas (`Sheet` de shadcn en `side="bottom"`), avec sections :
+
+- **Type** : chips multi-sélection — Tout, Mentions, Réponses, Système, **Messages privés** (nouveau).
+- **Source** : sélecteur de serveur (liste scrollable avec icônes) + option « Messages privés ».
+- **Période** : Aujourd'hui / 7 jours / 30 jours / Tout.
+- Boutons en bas : « Réinitialiser » + « Appliquer ».
+
+## 3. Intégration des Messages Privés
+
+Nouveau hook `useDMNotifications()` qui agrège :
+
+- **DM non-lus** depuis `dm_read_states` + `dm_messages` (dernier message > last_read_at).
+- **Bonus de priorité** pour :
+  - Amis marqués favoris (`friend_favorites`)
+  - Conversations très actives (nombre de messages reçus dans les dernières 24h)
+- Mappés vers une structure unifiée `UnifiedNotification` (compatible avec `ServerNotification` + nouveau type `dm_message`).
+
+## 4. Tri & Regroupement
+
+Liste regroupée par sections collapsibles avec headers :
+
+- **Aujourd'hui**
+- **Cette semaine**
+- **Plus ancien**
+
+Dans chaque section, tri par `created_at` desc. Les DMs de favoris et notifications mentions sont surlignées avec un liseré primary à gauche.
+
+## 5. Améliorations UX
+
+- **Animation fluide** au passage du filtre (motion fade + slide).
+- **Empty states contextuels** par filtre actif.
+- **Swipe gauche/droite conservé** (mark read / archive), avec icônes plus claires.
+- **Header sticky** au scroll.
+- **FAB « Tout marquer lu »** : conservé, repositionné.
 
 ---
 
-## 3. Markdown Mobile — fidélité Desktop + bloc de code
+## Section technique
 
-### Constat
-- `MobileMessageBubble` utilise `MarkdownText` (comme desktop) mais la largeur de bulle + paddings tronquent les `CodeBlock` (largeur fixe, pas de scroll horizontal, débordement caché).
-- Certains éléments markdown (titres, listes, citations) ne respectent pas la même hiérarchie de styles que desktop sur mobile.
+### Fichiers à créer
 
-### Corrections
-1. **`src/components/ui/code-block.tsx`** : ajouter `overflow-x-auto` + `max-w-full` sur `<pre>`, et un wrapper qui permet le scroll horizontal sur mobile sans casser la bulle. Conserver la lisibilité (font-size légèrement réduit sur viewport < 480px).
-2. **`MobileMessageBubble`** : forcer la bulle à `max-w-[85%]` avec `min-w-0` sur les conteneurs internes, et `overflow-hidden` au niveau bubble + `overflow-x-auto` au niveau code uniquement.
-3. **`src/lib/markdown.tsx`** : auditer les composants rendus (h1/h2/h3, ul, ol, blockquote, inline code, table) et s'assurer qu'aucune classe ne disparaît sur mobile. Ajouter des variantes responsives si la taille est trop tassée (ex. `text-base md:text-lg` sur titres).
-4. **Aperçu d'édition** (input rédaction) : `InputMarkdownOverlay` — vérifier que le rendu live correspond bien au rendu final (mêmes classes que `MarkdownText`), notamment pour le bloc de code multi-lignes.
+- `src/hooks/useUnifiedNotifications.ts` — agrège `useNotifications` + nouveau `useDMNotifications`, retourne `UnifiedNotification[]`.
+- `src/hooks/useDMNotifications.ts` — query DMs non-lus avec scoring (favoris + activité).
+- `src/components/mobile/notifications/NotificationsFilterSheet.tsx` — Sheet shadcn bottom avec filtres multi-critères.
+- `src/components/mobile/notifications/NotificationSection.tsx` — section collapsible par période.
+- `src/components/mobile/notifications/UnifiedNotificationRow.tsx` — row swipeable supportant DM + serveur.
 
-### Vérification
-Test manuel via `browser--view_preview` à 390×844 avec :
-- un message contenant ``` ```ts\nconst foo = ...\n``` ```
-- titres `# ## ###`, listes, citations, mentions, liens
+### Fichiers modifiés
 
----
+- `src/components/mobile/MobileNotificationsView.tsx` :
+  - Suppression des pills permanents.
+  - Ajout du bouton filtre dans le header (icône `SlidersHorizontal`).
+  - State `filters: { types: Set<string>; serverId: string|null; period: 'today'|'week'|'month'|'all' }`.
+  - Utilise `useUnifiedNotifications` et `NotificationsFilterSheet`.
+  - Affichage de chips de filtres actifs sous le header.
+  - Regroupement par période via `NotificationSection`.
 
-## Détails techniques
+### Schéma de données (lecture seule, pas de migration)
 
-### Migration DB
-```sql
-CREATE TABLE public.server_connection_rules (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  server_id uuid NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-  provider text NOT NULL CHECK (provider IN ('twitter','instagram','bluesky','youtube')),
-  role_id uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  description text,
-  min_posts integer,
-  min_followers integer,
-  min_account_age_days integer,
-  require_verified boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT ON public.server_connection_rules TO authenticated;
-GRANT ALL ON public.server_connection_rules TO service_role;
-ALTER TABLE public.server_connection_rules ENABLE ROW LEVEL SECURITY;
+- `dm_messages` (sender_id, dm_conversation_id, created_at, content)
+- `dm_read_states` (user_id, dm_conversation_id, last_read_at)
+- `dm_participants` (user_id, dm_conversation_id) — pour résoudre l'autre participant
+- `friend_favorites` (user_id, friend_id)
+- `server_notifications` (existant)
 
--- SELECT : tout membre du serveur
--- INSERT/UPDATE/DELETE : has_server_permission(manage_roles)
-```
+### Performance
 
-Plus la RPC `evaluate_connection_rules` (SECURITY DEFINER) et un trigger sur `profiles` qui itère sur les serveurs du user.
+- Scoring DM calculé côté client (cache déjà chaud via realtime DM).
+- Pas de nouvelle subscription : réutilise les channels existants (DM + notifications).
+- Memoization du tri/regroupement avec `useMemo` sur les dépendances clés.
 
-### Fichiers touchés
-- `src/lib/connections.ts` (ajout champs stats au type)
-- `src/components/account-settings/ConnectionsSettings.tsx` (sous-formulaire stats)
-- `src/components/profile/UserProfilePopup.tsx` + `MobileFullProfileView` (affichage stats)
-- Nouveau `src/components/server-settings/ConnectionRulesManager.tsx`
-- `src/components/server-settings/ServerSettingsModal.tsx` (nouvel onglet)
-- Nouveau hook `src/hooks/useServerConnectionRules.ts`
-- `src/components/mobile/MobileProfileView.tsx` (retraits + nouvelles bulles)
-- `src/components/mobile/dm/MobileMessageBubble.tsx` + `ChatArea` desktop variantes mobiles
-- `src/components/ui/code-block.tsx` (overflow + responsive)
-- `src/lib/markdown.tsx` (audit responsive)
-- `src/components/chat/InputMarkdownOverlay.tsx` (parité visuelle)
-- Migration SQL
+### Compat
 
-### Hors périmètre (à mentionner)
-- Vraie vérification API des stats sociales (OAuth + appels Twitter/Instagram/YT) → projet à part, coûteux.
-- Retrait automatique des rôles si le user supprime sa connection → inclus, mais on n'attaque pas la fraude utilisateur.
+- L'icône Bell dans `MobileProfileView` reste inchangée.
+- Aucune modification du schéma DB, aucune migration.

@@ -289,9 +289,46 @@ export function MobileProfileView({
             <Link2 className="w-4 h-4 text-muted-foreground" />
             <h3 className="font-semibold text-sm">Connections</h3>
           </div>
-          <div className="py-6 text-center text-xs text-muted-foreground">
-            Aucune connexion pour le moment
-          </div>
+          {connections.length === 0 ? (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              Aucune connexion pour le moment
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {connections.map((c, i) => {
+                const provider = CONNECTION_PROVIDERS_BY_ID[c.provider];
+                if (!provider) return null;
+                const Icon = provider.icon;
+                const hasStats = STAT_ENABLED_PROVIDERS.has(c.provider) && c.stats;
+                const age = accountAgeYears(c.stats?.account_created_at);
+                const statBits: string[] = [];
+                if (c.stats?.followers_count != null) statBits.push(`${formatStatCount(c.stats.followers_count)} abonnés`);
+                if (c.stats?.posts_count != null) statBits.push(`${formatStatCount(c.stats.posts_count)} posts`);
+                if (age != null) statBits.push(age === 0 ? 'Compte récent' : `Compte depuis ${age} an${age > 1 ? 's' : ''}`);
+                return (
+                  <div key={`${c.provider}-${i}`} className="flex items-start gap-3 px-1 py-1">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40 shrink-0">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium truncate">{formatConnectionDisplay(c)}</span>
+                        {c.stats?.is_verified && (
+                          <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">{provider.label}</div>
+                      {hasStats && statBits.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate">
+                          {statBits.join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <div className="h-6" />
@@ -300,6 +337,7 @@ export function MobileProfileView({
       {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />}
 
       <MobileStatusSheet open={showStatusSheet} onOpenChange={setShowStatusSheet} />
+      <CustomStatusModal open={showCustomStatus} onOpenChange={setShowCustomStatus} />
 
       {/* Sub-pages stack */}
       <AnimatePresence>

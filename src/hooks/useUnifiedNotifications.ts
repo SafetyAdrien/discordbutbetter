@@ -18,6 +18,7 @@ export interface UnifiedNotification {
   serverName: string | null;
   serverIconUrl: string | null;
   conversationId: string | null;
+  userId: string | null;
   unreadCount: number;
   raw: ServerNotification | DMNotificationItem;
 }

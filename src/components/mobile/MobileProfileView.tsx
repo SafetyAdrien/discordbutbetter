@@ -190,12 +190,12 @@ export function MobileProfileView({
                   }}
                   aria-label="Modifier le statut personnalisé"
                   className={cn(
-                    'w-full text-left pl-2 pr-4 py-2 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
+                    'inline-flex text-left pl-2 pr-4 py-2 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
                     'flex items-center gap-2 min-h-[40px] shadow-sm',
                   )}
                 >
-                  <span className="shrink-0 w-6 h-6 rounded-full bg-muted text-foreground flex items-center justify-center">
-                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    <span className="shrink-0 w-6 h-6 rounded-full text-foreground flex items-center justify-center">
+                      <Plus className="w-5 h-5" strokeWidth={2.5} />
                   </span>
                   {profile?.custom_status ? (
                     <span className="text-base text-foreground italic truncate">{profile.custom_status}</span>

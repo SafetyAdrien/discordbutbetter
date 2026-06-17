@@ -157,7 +157,7 @@ export function MobileProfileView({
 
           {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative">
-            <div className="flex items-end gap-3">
+            <div className="flex items-end gap-4">
               <button
                 onClick={() => {
                   haptics.light();

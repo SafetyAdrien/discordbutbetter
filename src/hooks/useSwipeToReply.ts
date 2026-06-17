@@ -13,11 +13,10 @@ interface UseSwipeToReplyOptions {
 
 /**
  * Discord/iMessage-style swipe-to-reply for chat bubbles.
- * Returns touch handlers + the live `translateX` so the caller can render
- * a transform and an icon that fades in based on `progress` (0..1).
- *
- * The gesture only commits on a clear, dominant horizontal rightward swipe.
- * Vertical scrolling is preserved by locking direction after a small movement.
+ * The gesture is now a clear, dominant LEFTWARD swipe (right → left),
+ * matching the iMessage convention. Returns touch handlers plus the live
+ * (negative) `translateX` so the caller can render a transform and an icon
+ * that fades in from the right as `progress` goes 0..1.
  */
 export function useSwipeToReply({
   onReply,
@@ -58,15 +57,15 @@ export function useSwipeToReply({
     }
     if (lockedRef.current !== 'horizontal') return;
 
-    // Only react to rightward swipes; clamp & rubber-band past max.
-    const clamped = Math.max(0, Math.min(maxTranslate, dx));
-    setTranslateX(clamped);
+    // Only react to LEFTWARD swipes (negative dx); clamp magnitude.
+    const clampedMag = Math.max(0, Math.min(maxTranslate, -dx));
+    setTranslateX(-clampedMag);
 
     // Light haptic tick when the user crosses the commit threshold.
-    if (!committedRef.current && clamped >= threshold) {
+    if (!committedRef.current && clampedMag >= threshold) {
       committedRef.current = true;
       haptics.selection();
-    } else if (committedRef.current && clamped < threshold) {
+    } else if (committedRef.current && clampedMag < threshold) {
       committedRef.current = false;
     }
   }, [disabled, threshold, maxTranslate]);
@@ -83,12 +82,12 @@ export function useSwipeToReply({
     reset();
   }, [reset]);
 
-  const progress = Math.min(1, translateX / threshold);
+  const progress = Math.min(1, Math.abs(translateX) / threshold);
 
   return {
     handlers: { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel },
     translateX,
     progress,
-    isActive: translateX > 0,
+    isActive: translateX !== 0,
   };
 }

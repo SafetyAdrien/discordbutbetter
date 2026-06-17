@@ -24,6 +24,7 @@ import { MobileQRCodeView } from './profile/MobileQRCodeView';
 import { MobileFavoriteFriendsView } from './profile/MobileFavoriteFriendsView';
 import { MobileServersListView } from './profile/MobileServersListView';
 import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView';
+import { MobileFullProfileView } from './profile/MobileFullProfileView';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -34,6 +35,7 @@ import { useServers } from '@/hooks/useServers';
 
 type Subpage =
   | null
+  | 'profile-detail'
   | 'edit-profile'
   | 'qr-code'
   | 'friends'
@@ -80,6 +82,11 @@ export function MobileProfileView({
     offline: 'bg-[hsl(var(--offline))]',
   };
 
+  const handleOpenProfileDetail = () => {
+    haptics.light();
+    setSubpage('profile-detail');
+  };
+
   const handleOpenSettings = () => {
     haptics.light();
     setShowSettings(true);
@@ -109,9 +116,9 @@ export function MobileProfileView({
       <header className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
         <h1 className="font-semibold text-base">Toi</h1>
         <button
-          onClick={handleOpenSettings}
+          onClick={handleOpenProfileDetail}
           className="w-9 h-9 rounded-full flex items-center justify-center -mr-2 active:bg-muted/60 transition-colors"
-          aria-label="Paramètres"
+          aria-label="Voir mon profil"
         >
           <Settings className="w-5 h-5 text-muted-foreground" />
         </button>
@@ -352,6 +359,9 @@ export function MobileProfileView({
 
       {/* Sub-pages stack */}
       <AnimatePresence>
+        {subpage === 'profile-detail' && (
+          <MobileFullProfileView key="profile-detail" onBack={() => setSubpage(null)} />
+        )}
         {subpage === 'edit-profile' && (
           <MobileEditProfileView key="edit" onBack={() => setSubpage(null)} />
         )}

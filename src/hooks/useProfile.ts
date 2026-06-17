@@ -15,6 +15,7 @@ interface ProfileData {
   avatar_decoration_url?: string | null;
   avatar_url?: string;
   banner_url?: string;
+  connections?: Array<{ provider: string; value: string }>;
 }
 
 export function useUpdateProfile() {

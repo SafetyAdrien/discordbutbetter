@@ -1,5 +1,23 @@
 import { useState } from 'react';
-import { X, User, Shield, Link2, AppWindow, Smartphone, LogOut, Palette, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  X,
+  User,
+  Shield,
+  Link2,
+  AppWindow,
+  Smartphone,
+  LogOut,
+  Palette,
+  Trash2,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  QrCode,
+  Sparkles,
+  Bell,
+  HelpCircle,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +34,7 @@ import { ConnectionsSettings } from './ConnectionsSettings';
 import { AuthorizedAppsSettings } from './AuthorizedAppsSettings';
 import { SessionsSettings } from './SessionsSettings';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { uuidToSnowflake } from '@/lib/snowflake';
 
 interface AccountSettingsModalProps {
   onClose: () => void;
@@ -38,7 +57,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab !== undefined ? initialTab : (isMobile ? null : 'account'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -143,20 +162,68 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
     </div>
   );
 
+  const renderMobileSettingsHome = () => (
+    <div className="pb-8">
+      <SettingsSection title="Compte">
+        <SettingsRow icon={<User className="w-4 h-4 text-muted-foreground" />} label="Mon compte" onClick={() => setActiveTab('account')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Pencil className="w-4 h-4 text-muted-foreground" />} label="Modifier le profil" onClick={() => setActiveTab('profile')} />
+        <SettingsDivider />
+        <SettingsRow icon={<QrCode className="w-4 h-4 text-muted-foreground" />} label="Mon code QR" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Link2 className="w-4 h-4 text-muted-foreground" />} label="Connexions" onClick={() => setActiveTab('connections')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Smartphone className="w-4 h-4 text-muted-foreground" />} label="Sessions actives" onClick={() => setActiveTab('sessions')} />
+        <SettingsDivider />
+        <SettingsRow icon={<AppWindow className="w-4 h-4 text-muted-foreground" />} label="Applications autorisées" onClick={() => setActiveTab('apps')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Sparkles className="w-4 h-4 text-muted-foreground" />} label="Boost & avantages" onClick={() => toast.info('Bientôt disponible')} />
+      </SettingsSection>
+
+      <SettingsSection title="Préférences">
+        <SettingsRow icon={<Bell className="w-4 h-4 text-muted-foreground" />} label="Notifications" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Palette className="w-4 h-4 text-muted-foreground" />} label="Apparence" onClick={() => setActiveTab('profile')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Shield className="w-4 h-4 text-muted-foreground" />} label="Confidentialité & sécurité" onClick={() => setActiveTab('privacy')} />
+      </SettingsSection>
+
+      <SettingsSection title="Support">
+        <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Aide & FAQ" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Settings className="w-4 h-4 text-muted-foreground" />} label="Paramètres avancés" onClick={() => setActiveTab('account')} />
+      </SettingsSection>
+
+      <section className="mx-4 mt-6 rounded-2xl bg-card border border-border/50 overflow-hidden">
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Se déconnecter
+        </button>
+      </section>
+
+      <p className="text-center text-[11px] text-muted-foreground/60 mt-4 px-4">
+        ID · {user?.id ? uuidToSnowflake(user.id) : '—'}
+      </p>
+    </div>
+  );
+
   // Mobile: 2-level navigation
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
         {activeTab === null ? (
           <>
-            <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+            <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
+              <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center active:bg-muted/60" aria-label="Fermer">
                 <X className="w-5 h-5" />
               </button>
               <h2 className="font-semibold text-base flex-1">Paramètres</h2>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {renderNavList((tab) => setActiveTab(tab))}
+              {renderMobileSettingsHome()}
             </div>
           </>
         ) : (
@@ -218,5 +285,35 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         </div>
       </div>
     </div>
+  );
+}
+
+function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <>
+      <h3 className="px-6 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </h3>
+      <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
+        {children}
+      </section>
+    </>
+  );
+}
+
+function SettingsDivider() {
+  return <div className="h-px bg-border/40 mx-4" />;
+}
+
+function SettingsRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
+    >
+      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">{icon}</div>
+      <div className="flex-1 text-left text-sm font-medium">{label}</div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </button>
   );
 }

@@ -4,18 +4,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
   Pencil,
-  LogOut,
   ChevronRight,
-  Sparkles,
-  Bell,
-  Shield,
-  Palette,
-  HelpCircle,
   Copy,
   Check,
-  QrCode,
-  Users,
-  Server,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
@@ -61,10 +52,8 @@ interface MobileProfileViewProps {
 export function MobileProfileView({
   onOpenDM,
   onSelectServer,
-  onCreateServer,
-  onDiscover,
 }: MobileProfileViewProps = {}) {
-  const { profile, user, signOut } = useAuth();
+  const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
   const [showSettings, setShowSettings] = useState(false);
@@ -82,14 +71,9 @@ export function MobileProfileView({
     offline: 'bg-[hsl(var(--offline))]',
   };
 
-  const handleOpenProfileDetail = () => {
-    haptics.light();
-    setSubpage('profile-detail');
-  };
-
   const handleOpenSettings = () => {
-    haptics.light();
     setShowSettings(true);
+    haptics.light();
   };
 
   const handleCopyId = async () => {
@@ -102,11 +86,6 @@ export function MobileProfileView({
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const handleSignOut = async () => {
-    haptics.medium();
-    await signOut();
-  };
-
   const initial = profile?.display_name?.charAt(0)?.toUpperCase() || '?';
   const currentStatus = profile?.status || 'offline';
 
@@ -115,13 +94,7 @@ export function MobileProfileView({
       {/* Header */}
       <header className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
         <h1 className="font-semibold text-base">Toi</h1>
-        <button
-          onClick={handleOpenSettings}
-          className="w-9 h-9 rounded-full flex items-center justify-center -mr-2 active:bg-muted/60 transition-colors"
-          aria-label="Paramètres"
-        >
-          <Settings className="w-5 h-5 text-muted-foreground" />
-        </button>
+        <div className="w-9 h-9 -mr-2" />
       </header>
 
       <div className="flex-1 overflow-y-auto pb-8" style={{ overscrollBehavior: 'contain' }}>
@@ -141,6 +114,14 @@ export function MobileProfileView({
               }}
             />
           )}
+
+          <button
+            onClick={handleOpenSettings}
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+            aria-label="Paramètres"
+          >
+            <Settings className="w-5 h-5 text-foreground" />
+          </button>
 
           {/* Avatar + Edit btn */}
           <div className="px-4 -mt-12 relative">
@@ -265,98 +246,7 @@ export function MobileProfileView({
           </div>
         </section>
 
-        {/* Account section */}
-        <SectionHeader>Compte</SectionHeader>
-        <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
-          <RowItem
-            icon={<Users className="w-4 h-4 text-muted-foreground" />}
-            label="Voir mon profil"
-            onClick={() => setSubpage('profile-detail')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Pencil className="w-4 h-4 text-muted-foreground" />}
-            label="Modifier le profil"
-            onClick={() => setSubpage('edit-profile')}
-          />
-          <Divider />
-          <RowItem
-            icon={<QrCode className="w-4 h-4 text-muted-foreground" />}
-            label="Mon code QR"
-            onClick={() => setSubpage('qr-code')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Users className="w-4 h-4 text-muted-foreground" />}
-            label="Amis"
-            onClick={() => setSubpage('friends')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Server className="w-4 h-4 text-muted-foreground" />}
-            label="Serveurs"
-            onClick={() => setSubpage('servers')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Sparkles className="w-4 h-4 text-muted-foreground" />}
-            label="Boost & avantages"
-            onClick={handleOpenSettings}
-          />
-        </section>
-
-        {/* Preferences section */}
-        <SectionHeader>Préférences</SectionHeader>
-        <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
-          <RowItem
-            icon={<Bell className="w-4 h-4 text-muted-foreground" />}
-            label="Notifications"
-            onClick={() => setSubpage('notifications')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Palette className="w-4 h-4 text-muted-foreground" />}
-            label="Apparence"
-            onClick={() => setSubpage('appearance')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Shield className="w-4 h-4 text-muted-foreground" />}
-            label="Confidentialité & sécurité"
-            onClick={() => setSubpage('privacy')}
-          />
-        </section>
-
-        {/* Support section */}
-        <SectionHeader>Support</SectionHeader>
-        <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
-          <RowItem
-            icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
-            label="Aide & FAQ"
-            onClick={() => toast.info('Bientôt disponible')}
-          />
-          <Divider />
-          <RowItem
-            icon={<Settings className="w-4 h-4 text-muted-foreground" />}
-            label="Paramètres avancés"
-            onClick={handleOpenSettings}
-          />
-        </section>
-
-        {/* Logout */}
-        <section className="mx-4 mt-6 rounded-2xl bg-card border border-border/50 overflow-hidden">
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Se déconnecter
-          </button>
-        </section>
-
-        <p className="text-center text-[11px] text-muted-foreground/60 mt-4 px-4">
-          ID · {user?.id ? uuidToSnowflake(user.id) : '—'}
-        </p>
+        <div className="h-6" />
       </div>
 
       {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />}
@@ -429,38 +319,3 @@ export function MobileProfileView({
   );
 }
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="px-6 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h3>
-  );
-}
-
-function Divider() {
-  return <div className="h-px bg-border/40 mx-4" />;
-}
-
-function RowItem({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={() => {
-        haptics.light();
-        onClick();
-      }}
-      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
-    >
-      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">{icon}</div>
-      <div className="flex-1 text-left text-sm font-medium">{label}</div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-    </button>
-  );
-}

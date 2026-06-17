@@ -1,111 +1,152 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMemo, useState } from 'react';
+import { Plus, Trash2, ChevronRight, Check } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Link2, Plus } from 'lucide-react';
-
-const availableConnections = [
-  { 
-    id: 'twitch', 
-    name: 'Twitch', 
-    icon: '🎮',
-    color: 'bg-purple-600',
-    description: 'Afficher votre statut de streaming' 
-  },
-  { 
-    id: 'youtube', 
-    name: 'YouTube', 
-    icon: '📺',
-    color: 'bg-red-600',
-    description: 'Partager vos vidéos et streams' 
-  },
-  { 
-    id: 'github', 
-    name: 'GitHub', 
-    icon: '🐙',
-    color: 'bg-gray-800',
-    description: 'Afficher vos contributions' 
-  },
-  { 
-    id: 'twitter', 
-    name: 'X (Twitter)', 
-    icon: '🐦',
-    color: 'bg-sky-500',
-    description: 'Partager votre profil social' 
-  },
-  { 
-    id: 'spotify', 
-    name: 'Spotify', 
-    icon: '🎵',
-    color: 'bg-green-600',
-    description: 'Afficher ce que vous écoutez' 
-  },
-  { 
-    id: 'steam', 
-    name: 'Steam', 
-    icon: '🎲',
-    color: 'bg-slate-700',
-    description: 'Afficher votre bibliothèque de jeux' 
-  },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { useUpdateProfile } from '@/hooks/useProfile';
+import { haptics } from '@/lib/haptics';
+import { cn } from '@/lib/utils';
+import {
+  CONNECTION_PROVIDERS,
+  CONNECTION_PROVIDERS_BY_ID,
+  formatConnectionDisplay,
+  type ProfileConnection,
+} from '@/lib/connections';
 
 export function ConnectionsSettings() {
-  return (
-    <div className="space-y-6">
-      {/* Connected Accounts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Link2 className="w-5 h-5" />
-            Comptes connectés
-          </CardTitle>
-          <CardDescription>
-            Aucun compte connecté pour le moment
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground text-sm mb-4">
-              Connectez vos comptes pour enrichir votre profil
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+  const { profile } = useAuth();
+  const updateProfile = useUpdateProfile();
+  const current = useMemo<ProfileConnection[]>(() => {
+    const raw = (profile as any)?.connections;
+    return Array.isArray(raw) ? raw : [];
+  }, [profile]);
+  const [adding, setAdding] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [value, setValue] = useState('');
 
-      {/* Available Connections */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Connexions disponibles</CardTitle>
-          <CardDescription>
-            Liez vos comptes pour afficher votre activité sur votre profil
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3">
-            {availableConnections.map((connection) => (
+  const save = (next: ProfileConnection[]) => updateProfile.mutate({ connections: next } as any);
+
+  const handleAdd = () => {
+    if (!selectedProvider || !value.trim()) return;
+    haptics.medium();
+    save([...current, { provider: selectedProvider, value: value.trim() }]);
+    setAdding(false);
+    setSelectedProvider(null);
+    setValue('');
+  };
+
+  const handleRemove = (idx: number) => {
+    haptics.medium();
+    save(current.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className="space-y-4">
+      {current.length > 0 && (
+        <section className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+          {current.map((c, i) => {
+            const provider = CONNECTION_PROVIDERS_BY_ID[c.provider];
+            if (!provider) return null;
+            const Icon = provider.icon;
+            return (
               <div
-                key={connection.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                key={`${c.provider}-${i}`}
+                className={cn('flex items-center gap-3 px-4 py-3', i < current.length - 1 && 'border-b border-border/40')}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg ${connection.color} flex items-center justify-center text-xl`}>
-                    {connection.icon}
-                  </div>
-                  <div>
-                    <p className="font-medium">{connection.name}</p>
-                    <p className="text-sm text-muted-foreground">{connection.description}</p>
-                  </div>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">
+                  <Icon className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <Button variant="outline" size="sm" className="gap-2" disabled>
-                  <Plus className="w-4 h-4" />
-                  Connecter
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{formatConnectionDisplay(c)}</div>
+                  <div className="text-[11px] text-muted-foreground">{provider.label}</div>
+                </div>
+                <button
+                  onClick={() => handleRemove(i)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center active:bg-destructive/10 text-destructive"
+                  aria-label="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
+      {!adding ? (
+        <button
+          onClick={() => {
+            haptics.light();
+            setAdding(true);
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-card border border-border/50 active:bg-muted/40"
+        >
+          <div className="w-9 h-9 rounded-full flex items-center justify-center bg-primary/15 text-primary">
+            <Plus className="w-4 h-4" />
+          </div>
+          <span className="flex-1 text-left text-sm font-medium">Ajouter une connexion</span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </button>
+      ) : (
+        <section className="rounded-2xl bg-card border border-border/50 p-4 space-y-3">
+          {!selectedProvider ? (
+            <div className="grid grid-cols-3 gap-2">
+              {CONNECTION_PROVIDERS.map((provider) => {
+                const Icon = provider.icon;
+                return (
+                  <button
+                    key={provider.id}
+                    onClick={() => {
+                      haptics.light();
+                      setSelectedProvider(provider.id);
+                    }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted/40 active:bg-muted/60"
+                  >
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-[11px] font-medium text-center leading-tight">{provider.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const provider = CONNECTION_PROVIDERS_BY_ID[selectedProvider];
+                  const Icon = provider.icon;
+                  return (
+                    <>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted/40">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="text-sm font-semibold">{provider.label}</div>
+                    </>
+                  );
+                })()}
+              </div>
+              <Input
+                autoFocus
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder={CONNECTION_PROVIDERS_BY_ID[selectedProvider]?.placeholder}
+              />
+              <div className="flex gap-2">
+                <Button variant="ghost" className="flex-1" onClick={() => { setSelectedProvider(null); setValue(''); }}>
+                  Retour
+                </Button>
+                <Button className="flex-1" disabled={!value.trim() || updateProfile.isPending} onClick={handleAdd}>
+                  <Check className="w-4 h-4 mr-1" /> Ajouter
                 </Button>
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            Les connexions externes seront disponibles prochainement
-          </p>
-        </CardContent>
-      </Card>
+            </div>
+          )}
+          {!selectedProvider && (
+            <Button variant="ghost" className="w-full" onClick={() => setAdding(false)}>
+              Annuler
+            </Button>
+          )}
+        </section>
+      )}
     </div>
   );
 }

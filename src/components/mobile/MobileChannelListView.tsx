@@ -438,11 +438,7 @@ export function MobileChannelListView({
                 <ChevronLeft className="w-4 h-4 text-white" />
               </button>
             )}
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={
-              <button className="flex items-center gap-1 text-left min-w-0">
-                <h2 className="font-semibold text-sm truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
-              </button>
-            } onOpenSettings={onOpenSettings} />
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
             <div className="flex-1" />
             {onOpenSettings && (
               <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">

@@ -4,7 +4,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
   Pencil,
-  LogOut,
   ChevronRight,
   Copy,
   Check,
@@ -76,11 +75,6 @@ export function MobileProfileView({
     offline: 'bg-[hsl(var(--offline))]',
   };
 
-  const handleOpenProfileDetail = () => {
-    haptics.light();
-    setSubpage('profile-detail');
-  };
-
   const handleOpenSettings = () => {
     haptics.light();
     setShowSettings(true);
@@ -94,11 +88,6 @@ export function MobileProfileView({
     setCopied(true);
     toast.success('Identifiant copié');
     setTimeout(() => setCopied(false), 1500);
-  };
-
-  const handleSignOut = async () => {
-    haptics.medium();
-    await signOut();
   };
 
   const initial = profile?.display_name?.charAt(0)?.toUpperCase() || '?';
@@ -334,38 +323,3 @@ export function MobileProfileView({
   );
 }
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="px-6 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h3>
-  );
-}
-
-function Divider() {
-  return <div className="h-px bg-border/40 mx-4" />;
-}
-
-function RowItem({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={() => {
-        haptics.light();
-        onClick();
-      }}
-      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
-    >
-      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">{icon}</div>
-      <div className="flex-1 text-left text-sm font-medium">{label}</div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-    </button>
-  );
-}

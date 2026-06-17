@@ -13,10 +13,11 @@ interface UseSwipeToReplyOptions {
 
 /**
  * Discord/iMessage-style swipe-to-reply for chat bubbles.
- * Returns touch handlers + the live `translateX` so the caller can render
- * a transform and an icon that fades in based on `progress` (0..1).
+ * Gesture: swipe RIGHT → LEFT on a message to reply.
+ * Returns touch handlers + the live `translateX` (negative value) so the
+ * caller can render a transform and an icon that fades in based on
+ * `progress` (0..1).
  *
- * The gesture only commits on a clear, dominant horizontal rightward swipe.
  * Vertical scrolling is preserved by locking direction after a small movement.
  */
 export function useSwipeToReply({
@@ -58,15 +59,16 @@ export function useSwipeToReply({
     }
     if (lockedRef.current !== 'horizontal') return;
 
-    // Only react to rightward swipes; clamp & rubber-band past max.
-    const clamped = Math.max(0, Math.min(maxTranslate, dx));
+    // Only react to LEFTWARD swipes (dx < 0); clamp to [-maxTranslate, 0].
+    const clamped = Math.min(0, Math.max(-maxTranslate, dx));
     setTranslateX(clamped);
 
     // Light haptic tick when the user crosses the commit threshold.
-    if (!committedRef.current && clamped >= threshold) {
+    const magnitude = Math.abs(clamped);
+    if (!committedRef.current && magnitude >= threshold) {
       committedRef.current = true;
       haptics.selection();
-    } else if (committedRef.current && clamped < threshold) {
+    } else if (committedRef.current && magnitude < threshold) {
       committedRef.current = false;
     }
   }, [disabled, threshold, maxTranslate]);
@@ -83,12 +85,12 @@ export function useSwipeToReply({
     reset();
   }, [reset]);
 
-  const progress = Math.min(1, translateX / threshold);
+  const progress = Math.min(1, Math.abs(translateX) / threshold);
 
   return {
     handlers: { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel },
     translateX,
     progress,
-    isActive: translateX > 0,
+    isActive: translateX < 0,
   };
 }

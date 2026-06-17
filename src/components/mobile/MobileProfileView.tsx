@@ -7,8 +7,6 @@ import {
   ChevronRight,
   Copy,
   Check,
-  Users,
-  Server,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
@@ -57,7 +55,7 @@ export function MobileProfileView({
   onCreateServer,
   onDiscover,
 }: MobileProfileViewProps = {}) {
-  const { profile, user, signOut } = useAuth();
+  const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
   const [showSettings, setShowSettings] = useState(false);

@@ -547,6 +547,13 @@ export function MobileLayout({
   }, [keyboardHeight, hideBottomNav]);
 
 
+  // When the bottom nav is hidden (keyboard open on focused input) the overlays
+  // should extend all the way to the bottom — otherwise the 56px nav reservation
+  // leaves a transparent strip that reveals the underlying tab view (servers list).
+  const overlayBottomClass = hideBottomNav
+    ? 'bottom-0'
+    : 'bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))]';
+
   return (
     <div
       className="flex flex-col bg-background overflow-hidden relative"
@@ -563,7 +570,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className="absolute inset-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-30 bg-background"
+              className={`absolute inset-0 ${overlayBottomClass} z-30 bg-background`}
               onTouchStart={threadSwipe.onTouchStart}
               onTouchMove={threadSwipe.onTouchMove}
               onTouchEnd={threadSwipe.onTouchEnd}

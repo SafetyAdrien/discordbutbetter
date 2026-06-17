@@ -372,7 +372,7 @@ async function uploadAttachments(
 
     uploadedAttachments.push({
       id: attachment.id,
-      url: urlData.publicUrl,
+      url: urlData.signedUrl,
       name: attachment.name || attachment.file.name,
       type,
       size: attachment.file.size,

@@ -9,12 +9,11 @@ import {
   LogOut,
   Palette,
   Trash2,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Pencil,
   QrCode,
-  Users,
-  Server,
   Sparkles,
   Bell,
   HelpCircle,
@@ -286,5 +285,35 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         </div>
       </div>
     </div>
+  );
+}
+
+function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <>
+      <h3 className="px-6 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </h3>
+      <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
+        {children}
+      </section>
+    </>
+  );
+}
+
+function SettingsDivider() {
+  return <div className="h-px bg-border/40 mx-4" />;
+}
+
+function SettingsRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
+    >
+      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">{icon}</div>
+      <div className="flex-1 text-left text-sm font-medium">{label}</div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </button>
   );
 }

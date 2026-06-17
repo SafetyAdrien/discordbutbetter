@@ -232,14 +232,20 @@ export function MobileProfileView({
         </section>
 
         <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
-          <div className="space-y-0">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-bold text-xl truncate min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-bold text-xl truncate">
                 {profile?.display_name || 'Utilisateur'}
               </h2>
+              <p className="text-sm text-muted-foreground truncate">@{profile?.username}</p>
+              {profile?.pronouns && (
+                <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
+              )}
+            </div>
+            <div className="flex flex-col items-center shrink-0">
               <button
                 onClick={handleCopyDisplayName}
-                className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center shrink-0"
+                className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
                 aria-label="Copier le nom d'affichage"
               >
                 {copied ? (
@@ -248,12 +254,9 @@ export function MobileProfileView({
                   <Copy className="w-3.5 h-3.5 text-muted-foreground/60" />
                 )}
               </button>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground truncate min-w-0">@{profile?.username}</p>
               <button
                 onClick={handleCopyUsername}
-                className="w-5 h-5 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center shrink-0"
+                className="w-5 h-5 rounded-full active:bg-muted-muted/60 transition-colors flex items-center justify-center"
                 aria-label="Copier le nom d'utilisateur"
               >
                 {copiedUsername ? (
@@ -263,9 +266,6 @@ export function MobileProfileView({
                 )}
               </button>
             </div>
-            {profile?.pronouns && (
-              <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
-            )}
           </div>
 
           {/* Stats */}

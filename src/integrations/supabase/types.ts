@@ -1789,6 +1789,66 @@ export type Database = {
           },
         ]
       }
+      server_connection_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          min_account_age_days: number | null
+          min_followers: number | null
+          min_posts: number | null
+          name: string
+          provider: string
+          require_verified: boolean
+          role_id: string
+          server_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_account_age_days?: number | null
+          min_followers?: number | null
+          min_posts?: number | null
+          name: string
+          provider: string
+          require_verified?: boolean
+          role_id: string
+          server_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_account_age_days?: number | null
+          min_followers?: number | null
+          min_posts?: number | null
+          name?: string
+          provider?: string
+          require_verified?: boolean
+          role_id?: string
+          server_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_connection_rules_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_connection_rules_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_emojis: {
         Row: {
           created_at: string | null
@@ -3096,6 +3156,10 @@ export type Database = {
         Returns: string
       }
       delete_server_as_owner: { Args: { _server_id: string }; Returns: boolean }
+      evaluate_connection_rules: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: undefined
+      }
       find_user_for_friend_request: {
         Args: { target_username: string }
         Returns: {

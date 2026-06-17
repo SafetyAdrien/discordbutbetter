@@ -180,9 +180,8 @@ export function MobileProfileView({
                 />
               </button>
 
-              {/* Custom status zone (right of avatar, above the banner shadow) */}
-              <div className="relative flex-1 min-w-0 pb-2">
-                {/* Mini "+" bubble, floating above-left of the large bubble */}
+              {/* Custom status zone (right of avatar) — single dark pill with inline "+" icon */}
+              <div className="flex-1 min-w-0 pb-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -190,26 +189,18 @@ export function MobileProfileView({
                     setShowCustomStatus(true);
                   }}
                   aria-label="Modifier le statut personnalisé"
-                  className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-background flex items-center justify-center active:scale-95 transition-transform z-10"
-                >
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                </button>
-                {/* Wide horizontal bubble */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    haptics.light();
-                    setShowCustomStatus(true);
-                  }}
                   className={cn(
-                    'w-full text-left px-3 py-2 rounded-2xl bg-muted/50 border border-border/40 active:bg-muted/70 transition-colors',
-                    'flex items-center gap-2 min-h-[40px]',
+                    'w-full text-left pl-2 pr-4 py-2 rounded-full bg-background/80 backdrop-blur-md active:bg-background transition-colors',
+                    'flex items-center gap-2 min-h-[40px] shadow-sm',
                   )}
                 >
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-muted text-foreground flex items-center justify-center">
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                  </span>
                   {profile?.custom_status ? (
-                    <span className="text-sm text-foreground truncate">{profile.custom_status}</span>
+                    <span className="text-base text-foreground italic truncate">{profile.custom_status}</span>
                   ) : (
-                    <span className="text-sm text-muted-foreground italic truncate">Quoi de neuf ?</span>
+                    <span className="text-base text-muted-foreground italic truncate">Quoi de neuf ?</span>
                   )}
                 </button>
               </div>

@@ -67,6 +67,7 @@ export function MobileProfileView({
   const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
+  const notifCount = useUnreadNotificationsCount();
   const [showSettings, setShowSettings] = useState(false);
   const [showStatusSheet, setShowStatusSheet] = useState(false);
   const [showCustomStatus, setShowCustomStatus] = useState(false);

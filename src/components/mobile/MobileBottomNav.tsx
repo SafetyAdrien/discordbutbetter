@@ -33,12 +33,12 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
       animate={{ y: 0 }}
       exit={{ y: 80 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--surface-1))] backdrop-blur-2xl border-t border-border/30 pb-safe pl-safe pr-safe"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--surface-1))] backdrop-blur-2xl border-t border-border/30 pb-[env(safe-area-inset-bottom,0px)]"
       style={{ boxShadow: 'var(--shadow-elevation-2)' }}
       aria-label="Navigation principale"
       role="navigation"
     >
-      <div className="flex items-center justify-around h-16 short:h-14 tall:h-[68px] px-1">
+      <div className="flex items-center justify-around h-16 px-1">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           const badge = getBadge(id);

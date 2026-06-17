@@ -1,87 +1,29 @@
-# Plan — Refonte Mobile Universelle
+## 1. Bouton "Aller en bas" — seuil + animation
 
-## 1. État actuel (audit)
+Fichier : `src/components/chat/ChatArea.tsx`
 
-**Détection responsive**
-- `useBreakpoint.ts` : seuils en `window.innerWidth` (xs<480, md<768…), pas d'écoute `matchMedia`, pas de prise en compte de `dvh`/`svh`, du DPR, du `visualViewport`, ni du safe-area horizontal (notches paysage).
-- `use-mobile.tsx` : duplique la logique avec un seul breakpoint 768.
-- `index.css` : 4 media queries mobiles (`640`, `374`, `428–640`, `1023`). Aucune règle pour 360, 390, 393, 412, 430, ni pour les écrans très hauts (ratio ≥ 20:9 type Redmagic 6 : **387 × 819 CSS px**, DPR 2.75).
-- Pas de `viewport-fit=cover` vérifié dans `index.html`, safe-area uniquement bottom/top.
+- **Condition d'affichage** (ligne ~514) : n'afficher le bouton que si le salon contient au moins **50 messages chargés** ET que la distance depuis le bas dépasse 150 px.
+  ```ts
+  setShowJumpToBottom(messages.length >= 50 && distanceFromBottom > 150);
+  ```
+  Ajouter `messages.length` aux dépendances de l'effet.
+- **Animation** (ligne ~2125) : remplacer l'`animate-fade-in` actuel par une petite animation de glissement vers le haut + fondu, plus visible :
+  - Ajouter une keyframe `slide-in-bottom` dans `tailwind.config.ts` (translateY(8px)+opacity 0 → 0+1, 220 ms ease-out) et la classe `animate-slide-in-bottom`.
+  - Appliquer cette classe au conteneur du bouton.
 
-**Couches mobiles existantes** (18 fichiers, ~4 527 LOC)
-- Layout : `MobileLayout` (759), `MobileNavigationStack`, `MobileBottomNav`.
-- Vues : Home, Servers, ChannelList (859), Chat (415), Notifications, Profile, Thread, DM (dossier), Profile (dossier).
-- Overlays : `MobileChannelDetailSheet`, `MobileMoreActionsSheet`, `MessagePreviewSheet`, `MobileMessageActions`, `MobilePollActions`, `VoicePiP`, `MobilePullIndicator`, `SwipeToReplyRow`.
+Seuil retenu : **50 messages** (option mentionnée par l'utilisateur ; modifiable en une ligne si tu préfères 100).
 
-**Problèmes observés**
-- Tailles tactiles incohérentes (`min-height: 36px` pour boutons < recommandation 44px iOS / 48dp Android).
-- Aucun support explicite des très petits écrans (320–360) ni des très grands phablets (≥ 428).
-- Pas de gestion du paysage mobile ni du clavier virtuel (`visualViewport`).
-- Sheets/Drawers (`AdaptiveSheet`) basés sur un seul flag `isMobile`, sans variante pour écrans hauts.
-- Voice PiP, modals serveur, paramètres, role editor, channel-settings, account-settings → utilisent encore les composants desktop sur mobile dans plusieurs cas.
+## 2. Resserrer le nom de catégorie de ses salons enfants
 
-## 2. Objectifs
+Fichier : `src/components/layout/ChannelList.tsx`
 
-1. Détecter **toutes** les tailles smartphone modernes (320 → 480 CSS px largeur, ratios 16:9 à 21:9, DPR 1 à 4).
-2. Unifier la détection (un seul hook source de vérité) + tokens CSS responsive.
-3. Auditer **chaque écran/overlay** et garantir : zones tactiles ≥ 44px, safe-area 4 côtés, clavier virtuel respecté, paysage géré.
-4. Cas spécial **Nubia Redmagic 6** (6.8", 387×819 CSS, 20:9, 165Hz, pas de notch, bords latéraux courbes) : pleine hauteur via `dvh`, marges horizontales sûres (>= 8px), animations honorant `prefers-reduced-motion`.
+- En-tête de catégorie (ligne 304) : passer le padding vertical de `py-1.5` à `pt-1.5 pb-0` pour réduire l'espace **sous** le nom de catégorie.
+- Conteneur des salons enfants (ligne 359) : réduire la marge basse `mb-2` → `mb-1` pour garder l'espacement global cohérent entre catégories sans changer le haut de la catégorie suivante.
 
-## 3. Plan d'action
+Résultat : le nom de catégorie est visuellement « collé » à ses salons, tout en gardant la respiration entre deux catégories.
 
-### Phase A — Fondations responsive
-1. **Refonte `useBreakpoint`** : palier officiel
-   ```
-   xxs <360 | xs 360-389 | sm 390-427 | md 428-479 | phablet 480-639
-   tablet 640-1023 | desktop ≥1024
-   ```
-   + `isShortViewport` (<700 dvh), `isTallViewport` (≥820 dvh, cible Redmagic), `isLandscape`, `dpr`, `hasHover`, `pointerFine`.
-   Implémentation via `matchMedia` (perf) + `visualViewport` resize.
-2. **Supprimer** `use-mobile.tsx` (remplacer les imports par `useBreakpoint`).
-3. **`index.html`** : `viewport-fit=cover`, `interactive-widget=resizes-content`.
-4. **`index.css`** : ajouter tokens `--app-h: 100dvh` (fallback `100vh`), `--safe-l/r/t/b`, classes `h-app`, `min-h-app`, `pl-safe`, `pr-safe`. Nouvelles media queries : 360, 390, 412, 430, et `@media (min-aspect-ratio: 20/9)` pour écrans longs (Redmagic, Galaxy, Pixel Pro).
-5. **`tailwind.config.ts`** : screens alignés sur les paliers + `screens: { tall: { raw: '(min-height: 820px)' }, short: { raw: '(max-height: 700px)' } }`.
+## Détails techniques
 
-### Phase B — Audit composant par composant
-Pour chaque écran/overlay listé en §1, vérifier et corriger :
-- hauteur via `h-app` (dvh), pas `h-screen`.
-- safe-area 4 côtés sur les conteneurs racine et les barres flottantes (BottomNav, VoicePiP, composer).
-- tap targets ≥ 44×44, espacement vertical ≥ 8px entre cibles.
-- typographies fluides (`clamp()`), troncature `line-clamp`.
-- support clavier (composer chat, modals texte) via `visualViewport`.
-- mode paysage : layouts en 2 colonnes pour `MobileChatView` et `DMConversation` si `isLandscape && width≥640`.
-
-Liste exhaustive à passer (build à découper en sous-tâches) :
-```
-Layout/Nav: MobileLayout, MobileNavigationStack, MobileBottomNav, MobilePullIndicator
-Home/Listes: MobileHomeView, MobileServersView, MobileChannelListView, MobileNotificationsView, MobileProfileView, mobile/dm/*, mobile/profile/*
-Chat: MobileChatView, MobileThreadView, MobileMessageActions, MessagePreviewSheet, MobilePollActions, SwipeToReplyRow
-Voice: VoicePiP, VoiceChannelView, voice/*
-Overlays: MobileChannelDetailSheet, MobileMoreActionsSheet, AdaptiveSheet, ResponsiveModal
-Settings (à mobiliser): AccountSettingsModal, ServerSettingsModal, ChannelSettingsModal, CategorySettings, RoleEditor, RoleManager, ProfileSettings, ServerProfileEditModal
-Modals: CreateServer/Channel/Category/Invite, JoinServer, Discover, GlobalSearch, ExternalLinkWarning, KeyboardShortcuts, AddFriend, NewDM, CreateGroup, IncomingCall, EveryoneHerePopup
-Channels spéciaux: Announcement, Calendar, Forum, Media, Stage, Tasks, VoiceChannelView (vérifier rendu mobile)
-```
-
-### Phase C — Cas Nubia Redmagic 6 & cousins (ratio ≥ 20:9, ≥ 820 dvh)
-- Utiliser `tall:` Tailwind pour : agrandir liste DM/canaux, sticky composer plus bas (12px marge), VoicePiP repositionnable plus haut.
-- Marges horizontales `px-3` minimum sur conteneurs racine pour éviter bords courbes.
-- Tester sur tailles cibles : 320×568 (iPhone SE1), 360×640 (Android bas), 375×667 (SE2/3), 390×844 (iPhone 14), 393×852 (iPhone 15), 412×915 (Pixel 8 Pro), 414×896 (XR), 428×926 (Pro Max), **387×819 (Redmagic 6)**, 430×932 (15 Pro Max). Vérification via `browser--set_viewport_size`.
-
-### Phase D — QA
-- Snapshot visuel sur 8 viewports clés via `browser--view_preview`.
-- Vérifier console (pas d'overflow horizontal), Lighthouse mobile.
-
-## 4. Détails techniques
-
-- **`dvh` vs `vh`** : `100dvh` exclut les barres dynamiques mobiles. Fallback `100vh` via `@supports`.
-- **`visualViewport`** : écouter `resize` pour ajuster la position du composer quand le clavier s'ouvre (offset = `window.innerHeight - visualViewport.height`).
-- **Tap target** : passer la règle CSS de `min-height: 36px` à `44px` pour `button/a/[role="button"]` sous 640px.
-- **Safe-area horizontale** : `env(safe-area-inset-left/right)` ajouté aux barres et BottomNav.
-
-## 5. Livrable
-Refonte en 4 PR logiques (A→D). Aucune régression desktop : les nouvelles règles sont gated par media queries ≤ 1023px ou par flags `useBreakpoint`.
-
-## 6. Hors scope
-- Refonte visuelle (couleurs/typo) : ce plan reste fonctionnel/responsive.
-- Nouvelles fonctionnalités produit.
+- Aucun changement de logique métier ; uniquement présentation et un seuil d'affichage.
+- Pas d'impact sur le scroll auto, le state `wasAtBottomRef` ou les hooks de messages.
+- Nouvelle keyframe Tailwind isolée, pas de remplacement des animations existantes.

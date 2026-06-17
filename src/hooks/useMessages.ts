@@ -357,9 +357,13 @@ async function uploadAttachments(
       continue;
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData, error: signErr } = await supabase.storage
       .from('message-attachments')
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 60 * 60 * 24 * 365);
+    if (signErr || !urlData) {
+      console.error('Sign URL error:', signErr);
+      continue;
+    }
 
     // Determine type based on MIME
     let type: 'image' | 'video' | 'file' = 'file';

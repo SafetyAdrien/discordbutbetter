@@ -231,35 +231,49 @@ export function MobileProfileView({
           </button>
         </section>
 
-        {/* Identity card (name is no longer a status trigger — avatar handles that) */}
         <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h2 className="font-bold text-xl truncate">
-                {profile?.display_name || 'Utilisateur'}
-              </h2>
-              <p className="text-sm text-muted-foreground truncate">@{profile?.username}</p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h2 className="font-bold text-xl truncate">
+                  {profile?.display_name || 'Utilisateur'}
+                </h2>
+                <button
+                  onClick={handleCopyDisplayName}
+                  className="shrink-0 w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
+                  aria-label="Copier le nom d'affichage"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-[hsl(var(--online))]" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center gap-1 min-w-0">
+                <p className="text-sm text-muted-foreground truncate">@{profile?.username}</p>
+                <button
+                  onClick={handleCopyUsername}
+                  className="shrink-0 w-5 h-5 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
+                  aria-label="Copier le nom d'utilisateur"
+                >
+                  {copiedUsername ? (
+                    <Check className="w-3 h-3 text-[hsl(var(--online))]" />
+                  ) : (
+                    <Copy className="w-3 h-3 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
               {profile?.pronouns && (
                 <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
               )}
             </div>
-            <button
-              onClick={handleCopyId}
-              className="shrink-0 w-9 h-9 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
-              aria-label="Copier l'identifiant"
-            >
-              {copied ? (
-                <Check className="w-4 h-4 text-[hsl(var(--online))]" />
-              ) : (
-                <Copy className="w-4 h-4 text-muted-foreground" />
-              )}
-            </button>
           </div>
 
           {profile?.bio && (
-            <p className="text-sm text-foreground/80 mt-3 whitespace-pre-wrap leading-relaxed">
-              {profile.bio}
-            </p>
+            <div className="mt-3 text-sm text-foreground/80 leading-relaxed break-words">
+              <MarkdownText content={profile.bio} variant="bio" className="w-full" />
+            </div>
           )}
 
           {/* Stats */}

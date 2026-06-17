@@ -256,6 +256,17 @@ export function MobileProfileView({
           </div>
         </section>
 
+        {/* Connections */}
+        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Link2 className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">Connections</h3>
+          </div>
+          <div className="py-6 text-center text-xs text-muted-foreground">
+            Aucune connexion pour le moment
+          </div>
+        </section>
+
         <div className="h-6" />
       </div>
 

@@ -593,7 +593,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className="absolute inset-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-20 bg-background"
+              className={`absolute inset-0 ${overlayBottomClass} z-20 bg-background`}
               onTouchStart={chatSwipe.onTouchStart}
               onTouchMove={chatSwipe.onTouchMove}
               onTouchEnd={chatSwipe.onTouchEnd}

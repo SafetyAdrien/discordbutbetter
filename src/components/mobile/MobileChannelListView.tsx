@@ -357,6 +357,9 @@ export function MobileChannelListView({
   
   const { data: servers } = useServers();
   const currentServer = servers?.find(s => s.id === serverId);
+  const { data: members } = useMembers(serverId);
+  const memberCount = members?.length ?? 0;
+  const serverCategory = (currentServer as any)?.category || 'Communauté';
 
   const clearEmptyLongPress = useCallback(() => {
     if (emptyLongPressTimer.current) {
@@ -390,8 +393,20 @@ export function MobileChannelListView({
   };
 
   const serverNameTrigger = (
-    <button className="flex items-center gap-1 text-left min-w-0">
-      <h2 className="font-semibold text-sm truncate">{serverName}</h2>
+    <button className="flex flex-col items-start text-left min-w-0 leading-tight">
+      <h2 className="font-bold text-lg truncate text-foreground max-w-full">{serverName}</h2>
+      <p className="text-[11px] text-muted-foreground truncate max-w-full">
+        {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
+      </p>
+    </button>
+  );
+
+  const serverNameTriggerLight = (
+    <button className="flex flex-col items-start text-left min-w-0 leading-tight">
+      <h2 className="font-bold text-lg truncate text-white max-w-full [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+      <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
+        {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
+      </p>
     </button>
   );
 
@@ -423,11 +438,7 @@ export function MobileChannelListView({
                 <ChevronLeft className="w-4 h-4 text-white" />
               </button>
             )}
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={
-              <button className="flex items-center gap-1 text-left min-w-0">
-                <h2 className="font-semibold text-sm truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
-              </button>
-            } onOpenSettings={onOpenSettings} />
+            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
             <div className="flex-1" />
             {onOpenSettings && (
               <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
@@ -440,7 +451,7 @@ export function MobileChannelListView({
 
       {/* Header (shown when no banner or banner nearly hidden) */}
       {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
-        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-1))]">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -455,7 +466,7 @@ export function MobileChannelListView({
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
-        <div className="h-12 px-4 flex items-center gap-2 border-b border-border bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 border-b border-border bg-[hsl(var(--surface-1))]">
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
@@ -602,7 +613,7 @@ export function MobileChannelListView({
                   <button
                     onClick={() => toggleCategory(cat.id)}
                     {...longPressHandlers}
-                    className="w-full flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wide"
+                    className="w-full flex items-center gap-1 px-3 pt-3 pb-0 text-xs font-semibold text-muted-foreground tracking-wide"
                   >
                     <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
                     {cat.name}
@@ -631,7 +642,7 @@ export function MobileChannelListView({
                   </button>
                 </PopoverContent>
               </Popover>
-              {!isCollapsed && cat.channels.map(ch => {
+              {!isCollapsed && <div className="mt-0.5 mb-1">{cat.channels.map(ch => {
                 const Icon = channelIcons[ch.type] || StreamlineHash;
                 const info = channelUnreadInfo[ch.id];
                 const chLongPressHandlers = {
@@ -704,7 +715,7 @@ export function MobileChannelListView({
                     </PopoverContent>
                   </Popover>
                 );
-              })}
+              })}</div>}
             </div>
           );
         })}

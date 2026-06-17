@@ -71,11 +71,11 @@ export function MobileEditProfileView({ onBack }: Props) {
         </Button>
       }
     >
-      {/* Banner + avatar */}
+      {/* Hero — Banner + Avatar (matches MobileProfileView) */}
       <section className="relative">
         <button
           onClick={() => bannerRef.current?.click()}
-          className="relative w-full h-32 block group"
+          className={`relative w-full block group ${profile?.banner_url ? 'h-32' : 'h-24'}`}
           aria-label="Changer la bannière"
         >
           {profile?.banner_url ? (
@@ -105,24 +105,24 @@ export function MobileEditProfileView({ onBack }: Props) {
           }}
         />
 
-        <div className="px-4 -mt-12 relative">
-          <button
-            onClick={() => avatarRef.current?.click()}
-            className="relative inline-block"
-            aria-label="Changer l'avatar"
-          >
-            <Avatar className="w-24 h-24 ring-[5px] ring-background">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-background border-[3px] border-background flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-primary flex items-center justify-center">
-                <Camera className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="px-4 -mt-12 relative z-10">
+          <div className="flex items-end gap-4">
+            <button
+              onClick={() => avatarRef.current?.click()}
+              className="relative active:opacity-80 transition-opacity shrink-0"
+              aria-label="Changer l'avatar"
+            >
+              <Avatar className="w-24 h-24 ring-[5px] ring-background">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background bg-primary flex items-center justify-center">
+                <Camera className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
-            </div>
-          </button>
+            </button>
+          </div>
           <input
             ref={avatarRef}
             type="file"
@@ -136,10 +136,12 @@ export function MobileEditProfileView({ onBack }: Props) {
         </div>
       </section>
 
-      {/* Form fields */}
-      <section className="px-4 mt-6 space-y-5">
+      {/* Identity card — matches MobileProfileView */}
+      <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4 space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="display_name">Nom d'affichage</Label>
+          <Label htmlFor="display_name" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Nom d'affichage
+          </Label>
           <Input
             id="display_name"
             value={displayName}
@@ -151,7 +153,9 @@ export function MobileEditProfileView({ onBack }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="username">Nom d'utilisateur</Label>
+          <Label htmlFor="username" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Nom d'utilisateur
+          </Label>
           <Input
             id="username"
             value={profile?.username || ''}
@@ -164,7 +168,9 @@ export function MobileEditProfileView({ onBack }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pronouns">Pronoms</Label>
+          <Label htmlFor="pronouns" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Pronoms
+          </Label>
           <Input
             id="pronouns"
             value={pronouns}
@@ -174,9 +180,14 @@ export function MobileEditProfileView({ onBack }: Props) {
             className="h-11 rounded-xl"
           />
         </div>
+      </section>
 
+      {/* About card — matches MobileProfileView */}
+      <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
         <div className="space-y-2">
-          <Label htmlFor="bio">À propos de moi</Label>
+          <Label htmlFor="bio" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            À propos de moi
+          </Label>
           <Textarea
             id="bio"
             value={bio}
@@ -189,6 +200,8 @@ export function MobileEditProfileView({ onBack }: Props) {
           <p className="text-[11px] text-muted-foreground text-right">{bio.length}/200</p>
         </div>
       </section>
+
+      <div className="h-6" />
     </MobileProfileSubpage>
   );
 }

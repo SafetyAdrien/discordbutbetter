@@ -54,7 +54,7 @@ export function MobileNotificationsView({
   const { data: servers = [] } = useServers();
   const queryClient = useQueryClient();
 
-  const [filters, setFilters] = useState<NotifFilters>({ ...DEFAULT_FILTERS, kinds: new Set() });
+  const [filters, setFilters] = useState<NotifFilters>(() => loadSavedFilters());
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const { containerRef, pullDistance, progress, refreshing } =

@@ -635,7 +635,6 @@ export function MobileLayout({
                 onShowFriends={onShowFriends}
               />
             )}
-            {activeTab === 'notifications' && <MobileNotificationsView />}
             {activeTab === 'profile' && (
               <MobileProfileView
                 onOpenDM={onOpenDM}

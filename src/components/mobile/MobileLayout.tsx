@@ -3,7 +3,7 @@ import { MobileBottomNav, MobileTab } from './MobileBottomNav';
 import { MobileServersView } from './MobileServersView';
 import { MobileChannelListView } from './MobileChannelListView';
 import { MobileChatView } from './MobileChatView';
-import { MobileNotificationsView } from './MobileNotificationsView';
+
 import { MobileProfileView } from './MobileProfileView';
 
 import { MobileThreadView } from './MobileThreadView';

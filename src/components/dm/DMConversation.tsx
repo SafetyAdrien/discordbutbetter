@@ -78,7 +78,7 @@ export interface DMConversationProps {
 
 export function DMConversation({ conversationId, onBack }: DMConversationProps) {
   const { isMobile, isTablet } = useBreakpoint();
-  const swipeBack = useSwipeBack({ onBack: () => onBack?.() });
+  const swipeBack = useSwipeBack({ onBack: () => onBack?.(), fullScreen: isMobile });
   const [messageInput, setMessageInput] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);

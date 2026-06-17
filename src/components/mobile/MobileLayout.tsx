@@ -510,9 +510,12 @@ export function MobileLayout({
   }));
 
   // Swipe-back handlers for overlays
-  const chatSwipe = useSwipeBack({ onBack: handleBackToChannels });
+  // Full-screen left→right swipe to navigate back from chat/thread overlays.
+  // The channel list still uses an edge-only gesture to avoid interfering
+  // with channel item interactions.
+  const chatSwipe = useSwipeBack({ onBack: handleBackToChannels, fullScreen: true });
   const channelSwipe = useSwipeBack({ onBack: handleBackToServers });
-  const threadSwipe = useSwipeBack({ onBack: handleBackToChannels });
+  const threadSwipe = useSwipeBack({ onBack: handleBackToChannels, fullScreen: true });
 
   // Swipe between tabs
   const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];

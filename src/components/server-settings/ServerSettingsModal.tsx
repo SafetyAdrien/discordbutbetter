@@ -119,6 +119,7 @@ export function ServerSettingsModal({
       case 'members': return <MemberManager serverId={serverId} />;
       case 'roles': return <RoleManager serverId={serverId} />;
       case 'invites': return <InviteManager serverId={serverId} />;
+      case 'connection-rules': return <ConnectionRulesManager serverId={serverId} />;
       case 'integrations': return <IntegrationsPage serverId={serverId} />;
       case 'audit': return <AuditLogManager serverId={serverId} />;
       case 'banned': return <BannedMembersManager serverId={serverId} />;

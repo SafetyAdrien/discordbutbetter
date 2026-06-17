@@ -357,6 +357,9 @@ export function MobileChannelListView({
   
   const { data: servers } = useServers();
   const currentServer = servers?.find(s => s.id === serverId);
+  const { data: members } = useMembers(serverId);
+  const memberCount = members?.length ?? 0;
+  const serverCategory = (currentServer as any)?.category || 'Communauté';
 
   const clearEmptyLongPress = useCallback(() => {
     if (emptyLongPressTimer.current) {

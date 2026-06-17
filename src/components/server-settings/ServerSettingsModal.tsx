@@ -76,7 +76,8 @@ export function ServerSettingsModal({
       tabs: [
         { id: 'members', label: 'Membres', icon: Users },
         { id: 'roles', label: 'Rôles', icon: Shield },
-        { id: 'invites', label: 'Invitations', icon: Link }
+        { id: 'invites', label: 'Invitations', icon: Link },
+        { id: 'connection-rules', label: 'Critères Connections', icon: BadgeCheck }
       ]
     },
     {

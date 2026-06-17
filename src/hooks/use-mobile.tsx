@@ -1,5 +1,5 @@
-import * as React from "react";
 import { useDevice } from "./useDevice";
+
 
 const MOBILE_BREAKPOINT = 768;
 

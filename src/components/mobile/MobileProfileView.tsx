@@ -157,7 +157,7 @@ export function MobileProfileView({
 
           {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative">
-            <div className="flex items-end gap-4">
+            <div className="flex items-end gap-6">
               <button
                 onClick={() => {
                   haptics.light();
@@ -190,7 +190,7 @@ export function MobileProfileView({
                   }}
                   aria-label="Modifier le statut personnalisé"
                   className={cn(
-                    'inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
+                    'inline-flex text-left pl-2 pr-4 py-2 ml-3 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
                     'flex items-center gap-2 min-h-[40px] shadow-sm',
                   )}
                 >

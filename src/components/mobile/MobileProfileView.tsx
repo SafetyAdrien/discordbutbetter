@@ -269,6 +269,12 @@ export function MobileProfileView({
         <SectionHeader>Compte</SectionHeader>
         <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
           <RowItem
+            icon={<Users className="w-4 h-4 text-muted-foreground" />}
+            label="Voir mon profil"
+            onClick={() => setSubpage('profile-detail')}
+          />
+          <Divider />
+          <RowItem
             icon={<Pencil className="w-4 h-4 text-muted-foreground" />}
             label="Modifier le profil"
             onClick={() => setSubpage('edit-profile')}

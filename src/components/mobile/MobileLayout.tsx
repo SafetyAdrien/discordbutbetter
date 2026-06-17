@@ -25,7 +25,7 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { useSwipeTabs } from '@/hooks/useSwipeTabs';
+
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useVisualViewport } from '@/hooks/useVisualViewport';
@@ -517,24 +517,7 @@ export function MobileLayout({
   const channelSwipe = useSwipeBack({ onBack: handleBackToServers });
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels, fullScreen: true });
 
-  // Swipe between tabs
-  const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];
-  const tabIndex = TAB_ORDER.indexOf(activeTab);
-
-  const handleSwipeTab = useCallback((newIndex: number) => {
-    const tab = TAB_ORDER[newIndex];
-    setActiveTab(tab);
-    setMobileView({ type: 'tab' });
-  }, [setActiveTab, setMobileView]);
-
-  const swipeTabs = useSwipeTabs({
-    currentIndex: tabIndex,
-    tabCount: TAB_ORDER.length,
-    onSwipe: handleSwipeTab,
-  });
-
   const isOverlayActive = mobileView.type !== 'tab';
-  const canSwipeTabs = !isOverlayActive && !activeDMId && !showDiscover && !showCreate && !settingsServerId;
 
   // Visual viewport / keyboard handling
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
@@ -635,12 +618,6 @@ export function MobileLayout({
         <div
           className="h-full"
           style={{ paddingBottom: hideBottomNav ? 0 : 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
-          {...(canSwipeTabs ? {
-            onTouchStart: swipeTabs.onTouchStart,
-            onTouchMove: swipeTabs.onTouchMove,
-            onTouchEnd: swipeTabs.onTouchEnd,
-            onTouchCancel: swipeTabs.onTouchCancel,
-          } : {})}
         >
           <div className="h-full">
             {activeTab === 'servers' && (

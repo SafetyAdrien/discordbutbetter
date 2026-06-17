@@ -1,10 +1,9 @@
 import { cn } from '@/lib/utils';
-import { Globe, Bell, User } from 'lucide-react';
-import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
+import { Globe, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 
-export type MobileTab = 'servers' | 'notifications' | 'profile';
+export type MobileTab = 'servers' | 'profile';
 
 interface MobileBottomNavProps {
   activeTab: MobileTab;
@@ -15,15 +14,11 @@ interface MobileBottomNavProps {
 
 const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
   { id: 'servers', label: 'Serveurs', icon: Globe },
-  { id: 'notifications', label: 'Notifs', icon: Bell },
   { id: 'profile', label: 'Vous', icon: User },
 ];
 
 export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }: MobileBottomNavProps) {
-  const notifCount = useUnreadNotificationsCount();
-
   const getBadge = (id: MobileTab) => {
-    if (id === 'notifications' && notifCount > 0) return notifCount;
     return 0;
   };
 

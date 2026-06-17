@@ -94,7 +94,7 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
 
   return (
     <div
-      className="relative my-2 rounded-[4px] overflow-hidden"
+      className="relative my-2 w-full max-w-full min-w-0 rounded-[4px] overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -111,12 +111,12 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
         {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
       <pre
-        className="m-0 max-h-[360px] overflow-auto scrollbar-thin"
+        className="m-0 block w-full max-w-full min-w-0 max-h-[360px] overflow-x-auto overflow-y-auto scrollbar-thin"
         style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
       >
         <code
           ref={codeRef}
-          className={`block px-3 py-2 pr-10 text-sm font-mono whitespace-pre-wrap break-words md:whitespace-pre md:break-normal ${lang ? `language-${lang}` : ''}`}
+          className={`block w-full min-w-0 max-w-full px-3 py-2 pr-10 text-sm font-mono whitespace-pre-wrap break-words [overflow-wrap:anywhere] md:whitespace-pre md:break-normal ${lang ? `language-${lang}` : ''}`}
         >
           {code}
         </code>

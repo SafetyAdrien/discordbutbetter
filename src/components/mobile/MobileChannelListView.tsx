@@ -613,7 +613,7 @@ export function MobileChannelListView({
                   <button
                     onClick={() => toggleCategory(cat.id)}
                     {...longPressHandlers}
-                    className="w-full flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wide"
+                    className="w-full flex items-center gap-1 px-3 pt-3 pb-0 text-xs font-semibold text-muted-foreground tracking-wide"
                   >
                     <ChevronDown className={cn("w-3 h-3 transition-transform", isCollapsed && "-rotate-90")} />
                     {cat.name}

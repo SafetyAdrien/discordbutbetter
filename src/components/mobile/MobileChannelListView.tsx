@@ -451,7 +451,7 @@ export function MobileChannelListView({
 
       {/* Header (shown when no banner or banner nearly hidden) */}
       {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
-        <div className="h-12 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 border-b border-border rounded-t-xl bg-[hsl(var(--surface-1))]">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>

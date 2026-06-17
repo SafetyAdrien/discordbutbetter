@@ -199,7 +199,7 @@ export function MobileProfileView({
             {/* Petite bulle d'attache vers l'avatar (style Discord) */}
             <span
               aria-hidden
-              className="absolute -left-2 bottom-1 w-2.5 h-2.5 rounded-full bg-[hsl(220_8%_18%)]"
+              className="absolute -left-2 top-1 w-2.5 h-2.5 rounded-full bg-[hsl(220_8%_18%)]"
             />
             <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
               <Plus className="w-[18px] h-[18px]" strokeWidth={2} />

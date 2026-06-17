@@ -537,6 +537,16 @@ export function MobileLayout({
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
   const hideBottomNav = isKeyboardOpen && isInputFocused;
 
+  // Publish keyboard offset as a CSS variable so any component (modals,
+  // floating buttons, chat input) can dock above the on-screen keyboard.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--kb-offset', hideBottomNav ? `${keyboardHeight}px` : '0px');
+    return () => {
+      document.documentElement.style.setProperty('--kb-offset', '0px');
+    };
+  }, [keyboardHeight, hideBottomNav]);
+
+
   return (
     <div
       className="flex flex-col bg-background overflow-hidden relative"

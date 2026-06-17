@@ -1,11 +1,28 @@
 @tailwind base;
 
+/* ============================================
+   UNIVERSAL VIEWPORT & SAFE-AREA TOKENS
+   Drives the mobile UI across every device tier
+   (iPhone SE → Nubia Redmagic 6 → S24 Ultra → foldables).
+   --kb-offset is updated at runtime by MobileLayout
+   when the on-screen keyboard appears.
+   ============================================ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --kb-offset: 0px;
+  --vh-dynamic: 1dvh;
+}
+
 /* Dynamic viewport height fallback for older browsers */
 @supports not (height: 100dvh) {
-  .h-\[100dvh\] {
-    height: 100vh;
-  }
+  .h-\[100dvh\], .h-dvh { height: 100vh; }
+  .min-h-dvh { min-height: 100vh; }
 }
+
+
 
 /* ============================================
    DND-KIT DRAG AND DROP STYLES

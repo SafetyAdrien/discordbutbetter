@@ -12,6 +12,32 @@ export default {
         "2xl": "1400px",
       },
     },
+    screens: {
+      // Mobile device tiers (covers iPhone SE → Redmagic 6 → S24 Ultra → foldables)
+      'xxs': '320px',
+      'xs': '360px',
+      'sm-mobile': '380px',
+      'md-mobile': '400px',
+      'lg-mobile': '430px',
+      'xl-mobile': '480px',
+      // Classic Tailwind defaults preserved
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+      // Capability queries
+      'touch': { 'raw': '(pointer: coarse)' },
+      'mouse': { 'raw': '(hover: hover) and (pointer: fine)' },
+      'tall': { 'raw': '(min-height: 900px)' },
+      'short': { 'raw': '(max-height: 700px)' },
+      'landscape': { 'raw': '(orientation: landscape)' },
+      'portrait': { 'raw': '(orientation: portrait)' },
+      'standalone': { 'raw': '(display-mode: standalone)' },
+      'high-dpr': { 'raw': '(min-resolution: 2dppx)' },
+      'foldable': { 'raw': '(horizontal-viewport-segments: 2), (spanning: single-fold-vertical)' },
+    },
+
     extend: {
       transitionDuration: {
         'fast': '100ms',
@@ -166,5 +192,31 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function ({ addUtilities }: any) {
+      addUtilities({
+        '.pt-safe': { paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)' },
+        '.pb-safe': { paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' },
+        '.pl-safe': { paddingLeft: 'max(env(safe-area-inset-left, 0px), 0px)' },
+        '.pr-safe': { paddingRight: 'max(env(safe-area-inset-right, 0px), 0px)' },
+        '.px-safe': {
+          paddingLeft: 'max(env(safe-area-inset-left, 0px), 0px)',
+          paddingRight: 'max(env(safe-area-inset-right, 0px), 0px)',
+        },
+        '.py-safe': {
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)',
+        },
+        '.mb-kb': { marginBottom: 'var(--kb-offset, 0px)' },
+        '.pb-kb': { paddingBottom: 'var(--kb-offset, 0px)' },
+        '.bottom-kb': { bottom: 'var(--kb-offset, 0px)' },
+        '.h-dvh': { height: '100dvh' },
+        '.min-h-dvh': { minHeight: '100dvh' },
+        '.h-svh': { height: '100svh' },
+        '.h-lvh': { height: '100lvh' },
+      });
+    },
+  ],
 } satisfies Config;
+

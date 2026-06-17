@@ -179,33 +179,32 @@ export function MobileProfileView({
                   )}
                 />
               </button>
-
-              {/* Custom status zone (right of avatar) — single dark pill with inline "+" icon */}
-              <div className="flex-1 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    haptics.light();
-                    setShowCustomStatus(true);
-                  }}
-                  aria-label="Modifier le statut personnalisé"
-                  className={cn(
-                    '-mt-3 inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
-                    'flex items-center gap-2 min-h-[40px] shadow-sm',
-                  )}
-                >
-                  <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
-                    <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
-                  </span>
-                  {profile?.custom_status ? (
-                    <span className="text-base text-foreground italic whitespace-nowrap">{profile.custom_status}</span>
-                  ) : (
-                    <span className="text-base text-muted-foreground italic whitespace-nowrap">Quoi de neuf ?</span>
-                  )}
-                </button>
-              </div>
             </div>
           </div>
+
+          {/* Custom status zone — pinned to the banner edge */}
+          <button
+            type="button"
+            onClick={() => {
+              haptics.light();
+              setShowCustomStatus(true);
+            }}
+            aria-label="Modifier le statut personnalisé"
+            className={cn(
+              'absolute left-32 z-20 inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
+              'flex items-center gap-2 min-h-[40px] shadow-sm',
+              profile?.banner_url ? 'top-[122px]' : 'top-[90px]'
+            )}
+          >
+            <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
+              <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
+            </span>
+            {profile?.custom_status ? (
+              <span className="text-base text-foreground italic whitespace-nowrap">{profile.custom_status}</span>
+            ) : (
+              <span className="text-base text-muted-foreground italic whitespace-nowrap">Quoi de neuf ?</span>
+            )}
+          </button>
         </section>
 
         {/* Identity card (name is no longer a status trigger — avatar handles that) */}

@@ -196,10 +196,10 @@ export function MobileProfileView({
               profile?.banner_url ? 'top-[122px]' : 'top-[90px]'
             )}
           >
-            {/* Petite bulle d'attache vers l'avatar (style Discord) */}
+            {/* Mini bulle dans l'angle, séparée et alignée en diagonale vers l'avatar */}
             <span
               aria-hidden
-              className="absolute -left-2 top-1 w-2.5 h-2.5 rounded-full bg-[hsl(220_8%_18%)]"
+              className="absolute -left-3 -bottom-3 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] border-2 border-background"
             />
             <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
               <Plus className="w-[18px] h-[18px]" strokeWidth={2} />

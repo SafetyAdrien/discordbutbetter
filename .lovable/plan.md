@@ -1,63 +1,132 @@
-# Interface Mobile — Plan
+# Plan
 
-## 1. Fix de l'affichage des réponses (RepliedLine) en mobile
+Three independent chantiers. Tous limités aux plateformes prioritaires : **Twitter/X, Instagram, Bluesky, YouTube**.
 
-**Problème** : sur mobile, `ChatArea` rend `RepliedLine` avec `indent={41}` et `avatarCenter={9}` calculés pour l'avatar desktop (`w-10` + `-ml-[11px]`). Sur viewport étroit, le connecteur et le texte de la réponse paraissent décalés vers la gauche (déconnectés visuellement du message), et `MobileMessageBubble` (DM) utilise déjà ses propres valeurs (24/28). On va aligner les deux rendus mobile.
+---
 
-**Action** :
-- `src/components/chat/ChatArea.tsx` : détecter mobile via `useIsMobile()` (déjà importé via hooks). Si mobile, passer à `RepliedLine` : `indent={28}`, `avatarCenter={14}` (alignés sur l'avatar mobile) + `className="mb-1 ml-1"` pour recoller le connecteur au-dessus de l'avatar.
-- `src/components/mobile/dm/MobileMessageBubble.tsx` : recadrer les valeurs (`indent=20/24`, `avatarCenter=12/14`) selon `isOwn` pour que le connecteur démarre pile au-dessus de l'avatar 8×8 et que le texte de la réponse soit aligné avec le bord de la bulle (pas avec l'avatar).
-- Aucune modif du `RepliedLine` lui-même.
+## 1. Système "Connections" — critères configurables par serveur
 
-## 2. Restructuration de l'écran Profil mobile
+### Concept
+Chaque serveur peut définir des **règles d'éligibilité** sur les connections d'un utilisateur. Si un membre lie un compte (ex. Instagram) et que ses stats déclarées satisfont la règle, un **rôle** est automatiquement attribué.
 
-Fichier principal : `src/components/mobile/MobileProfileView.tsx`.
+### Données saisies par l'utilisateur (sur le profil)
+On enrichit chaque entrée `ProfileConnection` avec des stats déclaratives optionnelles :
+- `posts_count` (nombre)
+- `followers_count` (nombre)
+- `following_count` (nombre)
+- `is_verified` (bool, badge bleu)
+- `account_created_at` (date → âge calculé)
 
-### 2a. Le bouton engrenage ouvre désormais la "vue profil détaillée"
+Saisie via le modal d'ajout/édition existant (`ConnectionsSettings.tsx`), avec un sous-formulaire spécifique aux 4 plateformes prioritaires. Les autres providers gardent l'UI actuelle.
 
-- L'engrenage actuel (header `h-12`) n'ouvre plus `AccountSettingsModal`. Il ouvre une nouvelle sous-page `profile-detail` qui reprend **à l'identique** le style du `FullUserProfileModal` desktop (bannière, avatar, identité, bio, etc.) mais en plein écran mobile, intégré au stack `AnimatePresence` existant.
-- Nouveau fichier : `src/components/mobile/profile/MobileFullProfileView.tsx` (réutilise les sous-composants visuels de `FullUserProfileModal`).
+Note honnêteté : ces stats sont **déclaratives** (l'utilisateur peut mentir). Un drapeau visuel "non vérifié automatiquement" sera affiché à côté des stats. Une vraie vérification par API n'est pas dans le périmètre.
 
-### 2b. Engrenage repositionné sur la bannière de chaque profil
+### Règles côté serveur
+Nouvelle table `server_connection_rules` :
+- `server_id`, `provider` (twitter/instagram/bluesky/youtube), `role_id` (rôle à attribuer)
+- `min_posts`, `min_followers`, `min_account_age_days` (nullable)
+- `require_verified` (bool)
+- `name`, `description`
 
-- Dans la nouvelle `MobileFullProfileView` ET dans tous les profils utilisateurs visibles en mobile (popup profil d'un autre membre côté mobile s'il existe — sinon, uniquement la vue "Toi"), le bouton engrenage flotte en **haut-droite de la bannière** (absolute, `top-3 right-3`, bouton circulaire semi-transparent comme le pattern Discord).
-- Le header `h-12` "Toi" en haut de `MobileProfileView` perd l'engrenage. Il garde uniquement le titre.
+UI dans `ServerSettings` → nouvel onglet **"Critères Connections"** :
+- Liste des règles, bouton "Nouvelle règle"
+- Formulaire : choix provider, choix rôle, seuils, prévisualisation
 
-### 2c. Bouton "X" pour revenir en arrière
+### Évaluation & attribution de rôle
+- RPC `evaluate_connection_rules(_user_id, _server_id)` côté DB : lit `profiles.connections`, compare aux règles, attribue/retire les rôles ciblés.
+- Trigger automatique sur `UPDATE profiles.connections` (pour tous les serveurs où l'utilisateur est membre).
+- Bouton manuel "Réévaluer mes rôles" dans les paramètres du serveur côté membre.
 
-- Sur la bannière de `MobileFullProfileView`, en **haut-gauche** (`top-3 left-3`), un bouton "X" qui ferme la sous-page et restaure la dernière vue (utiliser le `subpage = null` + fallback `useNavigationState` si l'utilisateur arrive depuis une autre route).
+### Affichage
+- Sur la fiche de profil utilisateur (popup + mobile), chaque connection des 4 plateformes prioritaires affiche en dessous : badge "✓ Vérifié" si applicable, et "1.2K abonnés · 340 posts · Compte depuis 2 ans".
 
-### 2d. "Membre depuis" sous la bio
+---
 
-- Dans `MobileFullProfileView`, juste en dessous du bloc `Ma bio`, ajouter un bloc identique intitulé **"Membre depuis"** affichant `profile.created_at` (ou `user.created_at`) formaté en français (`format(date, 'd MMMM yyyy', { locale: fr })` via `date-fns`).
-- Même style visuel que le bloc bio (carte arrondie `bg-muted/40`).
+## 2. Interface Mobile — Vue Profil
 
-### 2e. Sections "Connections" (réseaux sociaux) à la place des sections actuelles
+### Statut au clic sur l'avatar
+- L'avatar ouvre déjà le `MobileStatusSheet` ✅ (conservé)
+- **Retirer** le bouton trigger statut situé dans l'identity card sur le nom d'affichage (lignes 179–196 de `MobileProfileView.tsx`) : on garde `h2` + chevron stat-pill supprimés. Le nom redevient un simple titre non cliquable.
+- Le label texte "En ligne / Inactif…" (ligne 198–200) est aussi retiré (déjà accessible via la pastille sur l'avatar).
 
-- Dans `MobileFullProfileView`, **remplacer** les sections "Compte", "Préférences", "Support" (sauf l'aperçu du profil lui-même) par **une seule section "Connections"**.
-- Chaque connexion s'affiche : `[Icône réseau social] [Nom de domaine ou @username] [chevron pour éditer]`.
-- Liste de réseaux supportés (exclure **TikTok** et **Snapchat**) :
-  - Twitter/X, Instagram, YouTube, Twitch, Spotify, GitHub, GitLab, Reddit, LinkedIn, Steam, PlayStation, Xbox, Battle.net, Epic Games, Facebook, Discord, Bluesky, Mastodon, Threads, Website (custom domain).
-- Stockage : nouvelle colonne `profile.connections jsonb` (array `{ provider: string, value: string }`).
-- Nouveau composant `MobileConnectionsManager.tsx` (sous-page) pour ajouter/éditer/supprimer une connexion, déclenchée par un bouton "Ajouter une connexion".
-- Icônes : utiliser les icônes Lucide existantes (`Twitter`, `Instagram`, `Youtube`, `Twitch`, `Github`, etc.) avec fallback sur un `Link` générique.
+### Statut personnalisé compact (style Desktop)
+Nouvelle disposition dans la zone avatar :
+- **Bulle large horizontale** à droite de l'avatar : affiche le `custom_status` actuel. Si vide → placeholder gris "Quoi de neuf ?" avec icône `+`. Tap → ouvre `CustomStatusModal`.
+- **Mini bulle** flottante au-dessus-gauche de la bulle large (légèrement décalée vers la pdp) : petit cercle avec icône `+` blanche, sert de bouton d'ajout/édition rapide (même action : ouvre le modal).
+- Suppression du bloc `custom_status` actuel dans l'identity card (lignes 218–222).
 
-### 2f. Conservation des autres écrans
+```text
+   ╭──╮
+   │ +│              ← mini bulle décalée gauche
+   ╰──╯
+ ⬤────  ╭─────────────────────────╮
+ │PDP│  │ + Quoi de neuf ?         │   ← bulle large à droite
+ ⬤────  ╰─────────────────────────╯
+```
 
-- La page "Toi" (`MobileProfileView`) garde : header, hero bannière+avatar, carte identité+stats, **et conserve les sections Compte/Préférences/Support/Logout existantes** (ce sont les écrans de gestion). Seule la "vue profil" est déplacée derrière l'engrenage.
+---
 
-## Section technique
+## 3. Markdown Mobile — fidélité Desktop + bloc de code
 
-- **Migration DB** : `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS connections jsonb NOT NULL DEFAULT '[]'::jsonb;` (RLS déjà en place sur `profiles`).
-- **Types Supabase** régénérés après migration.
-- **Mises à jour `useProfile` / `AuthContext`** : aucun changement structurel — `connections` arrive automatiquement avec le row profile.
-- **Nouveau hook léger** `useUpdateConnections(connections)` (mutation Supabase `update profiles`).
-- **Fichiers créés** :
-  - `src/components/mobile/profile/MobileFullProfileView.tsx`
-  - `src/components/mobile/profile/MobileConnectionsManager.tsx`
-  - `src/lib/connections.ts` (registry des providers + icône + label + parseur d'URL/username)
-- **Fichiers modifiés** :
-  - `src/components/chat/ChatArea.tsx` (props `RepliedLine` mobile-aware)
-  - `src/components/mobile/dm/MobileMessageBubble.tsx` (recalibrage indent/avatarCenter)
-  - `src/components/mobile/MobileProfileView.tsx` (subpage `profile-detail`, retrait engrenage du header)
-- **Hors scope** : aucun changement business logic, aucun changement desktop hors du fix `RepliedLine` côté mobile.
+### Constat
+- `MobileMessageBubble` utilise `MarkdownText` (comme desktop) mais la largeur de bulle + paddings tronquent les `CodeBlock` (largeur fixe, pas de scroll horizontal, débordement caché).
+- Certains éléments markdown (titres, listes, citations) ne respectent pas la même hiérarchie de styles que desktop sur mobile.
+
+### Corrections
+1. **`src/components/ui/code-block.tsx`** : ajouter `overflow-x-auto` + `max-w-full` sur `<pre>`, et un wrapper qui permet le scroll horizontal sur mobile sans casser la bulle. Conserver la lisibilité (font-size légèrement réduit sur viewport < 480px).
+2. **`MobileMessageBubble`** : forcer la bulle à `max-w-[85%]` avec `min-w-0` sur les conteneurs internes, et `overflow-hidden` au niveau bubble + `overflow-x-auto` au niveau code uniquement.
+3. **`src/lib/markdown.tsx`** : auditer les composants rendus (h1/h2/h3, ul, ol, blockquote, inline code, table) et s'assurer qu'aucune classe ne disparaît sur mobile. Ajouter des variantes responsives si la taille est trop tassée (ex. `text-base md:text-lg` sur titres).
+4. **Aperçu d'édition** (input rédaction) : `InputMarkdownOverlay` — vérifier que le rendu live correspond bien au rendu final (mêmes classes que `MarkdownText`), notamment pour le bloc de code multi-lignes.
+
+### Vérification
+Test manuel via `browser--view_preview` à 390×844 avec :
+- un message contenant ``` ```ts\nconst foo = ...\n``` ```
+- titres `# ## ###`, listes, citations, mentions, liens
+
+---
+
+## Détails techniques
+
+### Migration DB
+```sql
+CREATE TABLE public.server_connection_rules (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  server_id uuid NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+  provider text NOT NULL CHECK (provider IN ('twitter','instagram','bluesky','youtube')),
+  role_id uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  min_posts integer,
+  min_followers integer,
+  min_account_age_days integer,
+  require_verified boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.server_connection_rules TO authenticated;
+GRANT ALL ON public.server_connection_rules TO service_role;
+ALTER TABLE public.server_connection_rules ENABLE ROW LEVEL SECURITY;
+
+-- SELECT : tout membre du serveur
+-- INSERT/UPDATE/DELETE : has_server_permission(manage_roles)
+```
+
+Plus la RPC `evaluate_connection_rules` (SECURITY DEFINER) et un trigger sur `profiles` qui itère sur les serveurs du user.
+
+### Fichiers touchés
+- `src/lib/connections.ts` (ajout champs stats au type)
+- `src/components/account-settings/ConnectionsSettings.tsx` (sous-formulaire stats)
+- `src/components/profile/UserProfilePopup.tsx` + `MobileFullProfileView` (affichage stats)
+- Nouveau `src/components/server-settings/ConnectionRulesManager.tsx`
+- `src/components/server-settings/ServerSettingsModal.tsx` (nouvel onglet)
+- Nouveau hook `src/hooks/useServerConnectionRules.ts`
+- `src/components/mobile/MobileProfileView.tsx` (retraits + nouvelles bulles)
+- `src/components/mobile/dm/MobileMessageBubble.tsx` + `ChatArea` desktop variantes mobiles
+- `src/components/ui/code-block.tsx` (overflow + responsive)
+- `src/lib/markdown.tsx` (audit responsive)
+- `src/components/chat/InputMarkdownOverlay.tsx` (parité visuelle)
+- Migration SQL
+
+### Hors périmètre (à mentionner)
+- Vraie vérification API des stats sociales (OAuth + appels Twitter/Instagram/YT) → projet à part, coûteux.
+- Retrait automatique des rôles si le user supprime sa connection → inclus, mais on n'attaque pas la fraude utilisateur.

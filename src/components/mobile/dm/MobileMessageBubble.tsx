@@ -219,14 +219,14 @@ export function MobileMessageBubble({
             </span>
           )}
 
-          {/* Replied line (Discord-like, faithful) */}
+          {/* Replied line — aligned with the bubble corner (no avatar to anchor to on mobile) */}
           {message.repliedMessage && (
             <div className={cn('w-full mb-0.5', message.isOwn ? 'self-end' : 'self-start')}>
               <RepliedLine
                 repliedMessage={message.repliedMessage}
                 onJump={onJumpToMessage}
-                indent={message.isOwn ? 24 : 28}
-                avatarCenter={message.isOwn ? 12 : 14}
+                indent={14}
+                avatarCenter={6}
               />
             </div>
           )}

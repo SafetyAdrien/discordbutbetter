@@ -89,15 +89,27 @@ export function MobileProfileView({
     haptics.light();
   };
 
-  const handleCopyId = async () => {
-    if (!user?.id) return;
+  const handleCopyDisplayName = async () => {
+    if (!profile?.display_name) return;
     haptics.light();
-    const snowflake = uuidToSnowflake(user.id);
-    await navigator.clipboard.writeText(snowflake);
+    await navigator.clipboard.writeText(profile.display_name);
     setCopied(true);
-    toast.success('Identifiant copié');
+    toast.success("Nom d'affichage copié");
     setTimeout(() => setCopied(false), 1500);
   };
+
+  const handleCopyUsername = async () => {
+    if (!profile?.username) return;
+    haptics.light();
+    await navigator.clipboard.writeText(profile.username);
+    setCopiedUsername(true);
+    toast.success("Nom d'utilisateur copié");
+    setTimeout(() => setCopiedUsername(false), 1500);
+  };
+
+  // Kept for parity (id snowflake) — currently unused after copy reassignment
+  void uuidToSnowflake;
+  void user;
 
   const initial = profile?.display_name?.charAt(0)?.toUpperCase() || '?';
   const currentStatus = profile?.status || 'offline';

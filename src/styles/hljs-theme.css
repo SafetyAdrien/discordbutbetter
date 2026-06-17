@@ -1,0 +1,122 @@
+/* Custom highlight.js theme — adapts to light & dark mode, optimized for mobile readability */
+
+.hljs {
+  background: transparent;
+  color: hsl(220 14% 18%);
+  -webkit-text-size-adjust: 100%;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: hsl(220 9% 46%);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-type,
+.hljs-built_in {
+  color: hsl(286 60% 40%);
+}
+
+.hljs-string,
+.hljs-attr,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-addition {
+  color: hsl(140 55% 30%);
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: hsl(25 85% 38%);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: hsl(210 80% 40%);
+  font-weight: 600;
+}
+
+.hljs-variable,
+.hljs-params,
+.hljs-property {
+  color: hsl(355 65% 45%);
+}
+
+.hljs-tag,
+.hljs-deletion {
+  color: hsl(355 65% 45%);
+}
+
+.hljs-regexp {
+  color: hsl(186 70% 35%);
+}
+
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+
+/* Dark mode overrides — high-contrast palette tuned for OLED/mobile */
+.dark .hljs {
+  color: hsl(220 15% 90%);
+}
+
+.dark .hljs-comment,
+.dark .hljs-quote,
+.dark .hljs-meta {
+  color: hsl(220 10% 60%);
+}
+
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-literal,
+.dark .hljs-type,
+.dark .hljs-built_in {
+  color: hsl(286 75% 75%);
+}
+
+.dark .hljs-string,
+.dark .hljs-attr,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable,
+.dark .hljs-addition {
+  color: hsl(135 55% 70%);
+}
+
+.dark .hljs-number,
+.dark .hljs-symbol,
+.dark .hljs-bullet,
+.dark .hljs-link {
+  color: hsl(28 90% 70%);
+}
+
+.dark .hljs-title,
+.dark .hljs-section,
+.dark .hljs-name,
+.dark .hljs-selector-id,
+.dark .hljs-selector-class {
+  color: hsl(205 90% 72%);
+  font-weight: 600;
+}
+
+.dark .hljs-variable,
+.dark .hljs-params,
+.dark .hljs-property {
+  color: hsl(355 80% 75%);
+}
+
+.dark .hljs-tag,
+.dark .hljs-deletion {
+  color: hsl(355 80% 75%);
+}
+
+.dark .hljs-regexp {
+  color: hsl(186 75% 70%);
+}

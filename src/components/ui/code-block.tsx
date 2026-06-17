@@ -20,7 +20,7 @@ import ruby from 'highlight.js/lib/languages/ruby';
 import kotlin from 'highlight.js/lib/languages/kotlin';
 import swift from 'highlight.js/lib/languages/swift';
 import yaml from 'highlight.js/lib/languages/yaml';
-import 'highlight.js/styles/github-dark.css';
+import '@/styles/hljs-theme.css';
 
 // Register languages
 hljs.registerLanguage('javascript', javascript);

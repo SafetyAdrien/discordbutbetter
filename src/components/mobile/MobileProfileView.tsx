@@ -9,6 +9,8 @@ import {
   Check,
   X,
   Link2,
+  Plus,
+  BadgeCheck,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
@@ -18,6 +20,7 @@ import { MobileFavoriteFriendsView } from './profile/MobileFavoriteFriendsView';
 import { MobileServersListView } from './profile/MobileServersListView';
 import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView';
 import { MobileFullProfileView } from './profile/MobileFullProfileView';
+import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -25,6 +28,14 @@ import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
+import {
+  CONNECTION_PROVIDERS_BY_ID,
+  formatConnectionDisplay,
+  formatStatCount,
+  accountAgeYears,
+  STAT_ENABLED_PROVIDERS,
+  type ProfileConnection,
+} from '@/lib/connections';
 
 type Subpage =
   | null

@@ -192,14 +192,14 @@ export function MobileProfileView({
             aria-label="Modifier le statut personnalisé"
             className={cn(
               'absolute left-32 z-20 inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-[hsl(220_8%_18%)] active:bg-[hsl(220_8%_22%)] transition-colors',
-              'flex items-center gap-2 min-h-[40px] shadow-sm',
+              'flex items-center gap-2 min-h-[40px] shadow-md',
               profile?.banner_url ? 'top-[122px]' : 'top-[90px]'
             )}
           >
             {/* Mini bulle dans l'angle haut-gauche, au-dessus de la bulle large */}
             <span
               aria-hidden
-              className="absolute -left-3 -top-3 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] border-2 border-background"
+              className="absolute -left-3 -top-3 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] shadow-lg"
             />
             <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
               <Plus className="w-[18px] h-[18px]" strokeWidth={2} />

@@ -242,16 +242,16 @@ export function MobileProfileView({
                 <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
               )}
             </div>
-            <div className="flex flex-col items-center gap-1 shrink-0">
+            <div className="flex flex-col items-center shrink-0">
               <button
                 onClick={handleCopyDisplayName}
-                className="w-9 h-9 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
+                className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
                 aria-label="Copier le nom d'affichage"
               >
                 {copied ? (
-                  <Check className="w-4 h-4 text-[hsl(var(--online))]" />
+                  <Check className="w-4 h-4 text-[hsl(var(--online))]/80" />
                 ) : (
-                  <Copy className="w-4 h-4 text-muted-foreground" />
+                  <Copy className="w-4 h-4 text-muted-foreground/60" />
                 )}
               </button>
               <button
@@ -260,19 +260,13 @@ export function MobileProfileView({
                 aria-label="Copier le nom d'utilisateur"
               >
                 {copiedUsername ? (
-                  <Check className="w-3 h-3 text-[hsl(var(--online))]" />
+                  <Check className="w-3 h-3 text-[hsl(var(--online))]/80" />
                 ) : (
-                  <Copy className="w-3 h-3 text-muted-foreground" />
+                  <Copy className="w-3 h-3 text-muted-foreground/60" />
                 )}
               </button>
             </div>
           </div>
-
-          {profile?.bio && (
-            <div className="mt-3 text-sm text-foreground/80 leading-relaxed break-words">
-              <MarkdownText content={profile.bio} variant="bio" className="w-full" />
-            </div>
-          )}
 
           {/* Stats */}
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -302,6 +296,18 @@ export function MobileProfileView({
             </button>
           </div>
         </section>
+
+        {/* About */}
+        {profile?.bio && (
+          <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              À propos de moi
+            </h3>
+            <div className="text-sm text-foreground/80 leading-relaxed break-words">
+              <MarkdownText content={profile.bio} variant="bio" className="w-full" />
+            </div>
+          </section>
+        )}
 
         {/* Connections */}
         <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">

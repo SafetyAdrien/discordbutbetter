@@ -422,19 +422,20 @@ export function MobileProfileView({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               onClick={() => setSubpage(null)}
-              className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              className="absolute inset-0 z-40 bg-black/40 backdrop-blur-sm"
             />
-            {/* Popup anchored top-right */}
+            {/* Small popup anchored top-right */}
             <motion.div
               key="notifications"
-              initial={{ opacity: 0, scale: 0.92, y: -8 }}
+              initial={{ opacity: 0, scale: 0.9, y: -6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -6 }}
-              transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+              exit={{ opacity: 0, scale: 0.92, y: -4 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 30 }}
               style={{ transformOrigin: 'top right' }}
-              className="absolute top-2 right-2 left-2 bottom-16 z-50 rounded-3xl bg-background overflow-hidden flex flex-col shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_0_0_1px_hsl(var(--border))]"
+              className="absolute top-12 right-3 w-[280px] max-h-[420px] z-50 rounded-2xl bg-background overflow-hidden flex flex-col shadow-[0_20px_50px_-10px_rgba(0,0,0,0.55),0_0_0_1px_hsl(var(--border))]"
             >
               <MobileNotificationsView
+                compact
                 onBack={() => setSubpage(null)}
                 onOpenDM={(id) => {
                   setSubpage(null);

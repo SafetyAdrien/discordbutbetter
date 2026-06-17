@@ -25,6 +25,7 @@ import {
   Loader2,
   AtSign,
   MessageSquare,
+  ChevronLeft,
 } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 

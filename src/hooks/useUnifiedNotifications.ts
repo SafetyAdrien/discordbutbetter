@@ -50,7 +50,7 @@ export function useUnifiedNotifications() {
         serverName: n.server?.name ?? null,
         serverIconUrl: n.server?.icon_url ?? null,
         conversationId: null,
-        userId: n.sender?.id ?? null,
+        userId: (n as any).sender_id ?? null,
         unreadCount: 0,
         raw: n,
       };

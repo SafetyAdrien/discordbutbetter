@@ -72,8 +72,8 @@ export function MobileProfileView({
   };
 
   const handleOpenSettings = () => {
-    haptics.light();
     setShowSettings(true);
+    haptics.light();
   };
 
   const handleCopyId = async () => {

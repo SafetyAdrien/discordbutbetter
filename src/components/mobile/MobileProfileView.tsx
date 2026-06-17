@@ -116,9 +116,9 @@ export function MobileProfileView({
       <header className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
         <h1 className="font-semibold text-base">Toi</h1>
         <button
-          onClick={handleOpenProfileDetail}
+          onClick={handleOpenSettings}
           className="w-9 h-9 rounded-full flex items-center justify-center -mr-2 active:bg-muted/60 transition-colors"
-          aria-label="Voir mon profil"
+          aria-label="Paramètres"
         >
           <Settings className="w-5 h-5 text-muted-foreground" />
         </button>

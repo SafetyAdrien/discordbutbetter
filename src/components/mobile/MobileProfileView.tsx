@@ -7,6 +7,8 @@ import {
   ChevronRight,
   Copy,
   Check,
+  X,
+  Link2,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
@@ -89,14 +91,15 @@ export function MobileProfileView({
   const initial = profile?.display_name?.charAt(0)?.toUpperCase() || '?';
   const currentStatus = profile?.status || 'offline';
 
+  const handleClose = () => {
+    haptics.light();
+    if (window.history.length > 1) {
+      window.history.back();
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* Header */}
-      <header className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
-        <h1 className="font-semibold text-base">Toi</h1>
-        <div className="w-9 h-9 -mr-2" />
-      </header>
-
       <div className="flex-1 overflow-y-auto pb-8" style={{ overscrollBehavior: 'contain' }}>
         {/* Hero — Banner + Avatar */}
         <section className="relative">
@@ -116,49 +119,56 @@ export function MobileProfileView({
           )}
 
           <button
-            onClick={handleOpenSettings}
-            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
-            aria-label="Paramètres"
+            onClick={handleClose}
+            className="absolute top-3 left-3 w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+            aria-label="Fermer"
           >
-            <Settings className="w-5 h-5 text-foreground" />
+            <X className="w-5 h-5 text-foreground" />
           </button>
 
-          {/* Avatar + Edit btn */}
-          <div className="px-4 -mt-12 relative">
-            <div className="flex items-end justify-between">
-              <button
-                onClick={() => {
-                  haptics.light();
-                  setShowStatusSheet(true);
-                }}
-                className="relative active:opacity-80 transition-opacity"
-                aria-label="Changer le statut"
-              >
-                <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-                <div
-                  className={cn(
-                    'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                    statusColors[currentStatus]
-                  )}
-                />
-              </button>
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            <button
+              onClick={() => {
+                haptics.light();
+                setSubpage('edit-profile');
+              }}
+              className="w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+              aria-label="Modifier le profil"
+            >
+              <Pencil className="w-5 h-5 text-foreground" />
+            </button>
+            <button
+              onClick={handleOpenSettings}
+              className="w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+              aria-label="Paramètres"
+            >
+              <Settings className="w-5 h-5 text-foreground" />
+            </button>
+          </div>
 
-              <button
-                onClick={() => {
-                  haptics.light();
-                  setSubpage('edit-profile');
-                }}
-                className="mb-2 px-4 h-9 rounded-full bg-muted/60 text-sm font-medium active:bg-muted transition-colors flex items-center gap-1.5"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Modifier
-              </button>
-            </div>
+          {/* Avatar */}
+          <div className="px-4 -mt-12 relative">
+            <button
+              onClick={() => {
+                haptics.light();
+                setShowStatusSheet(true);
+              }}
+              className="relative active:opacity-80 transition-opacity"
+              aria-label="Changer le statut"
+            >
+              <Avatar className="w-24 h-24 ring-[5px] ring-background">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
+              <div
+                className={cn(
+                  'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
+                  statusColors[currentStatus]
+                )}
+              />
+            </button>
           </div>
         </section>
 
@@ -243,6 +253,17 @@ export function MobileProfileView({
                 {serverCount > 1 ? 'Serveurs' : 'Serveur'}
               </div>
             </button>
+          </div>
+        </section>
+
+        {/* Connections */}
+        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Link2 className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">Connections</h3>
+          </div>
+          <div className="py-6 text-center text-xs text-muted-foreground">
+            Aucune connexion pour le moment
           </div>
         </section>
 

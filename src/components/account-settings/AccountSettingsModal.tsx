@@ -1,5 +1,24 @@
 import { useState } from 'react';
-import { X, User, Shield, Link2, AppWindow, Smartphone, LogOut, Palette, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  X,
+  User,
+  Shield,
+  Link2,
+  AppWindow,
+  Smartphone,
+  LogOut,
+  Palette,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  QrCode,
+  Users,
+  Server,
+  Sparkles,
+  Bell,
+  HelpCircle,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +35,7 @@ import { ConnectionsSettings } from './ConnectionsSettings';
 import { AuthorizedAppsSettings } from './AuthorizedAppsSettings';
 import { SessionsSettings } from './SessionsSettings';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { uuidToSnowflake } from '@/lib/snowflake';
 
 interface AccountSettingsModalProps {
   onClose: () => void;
@@ -38,7 +58,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab !== undefined ? initialTab : (isMobile ? null : 'account'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();

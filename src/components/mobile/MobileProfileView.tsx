@@ -68,6 +68,7 @@ export function MobileProfileView({
   const [showStatusSheet, setShowStatusSheet] = useState(false);
   const [showCustomStatus, setShowCustomStatus] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedUsername, setCopiedUsername] = useState(false);
   const [subpage, setSubpage] = useState<Subpage>(null);
 
   const acceptedFriends = friends.filter((f: any) => f.status === 'accepted').length;

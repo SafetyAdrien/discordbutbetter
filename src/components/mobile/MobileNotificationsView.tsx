@@ -13,8 +13,8 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 import {
   NotificationsFilterSheet,
-  DEFAULT_FILTERS,
   hasActiveFilters,
+  loadSavedFilters,
   type NotifFilters,
 } from '@/components/mobile/notifications/NotificationsFilterSheet';
 import { NotificationSection } from '@/components/mobile/notifications/NotificationSection';

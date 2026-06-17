@@ -299,7 +299,7 @@ export function MobileProfileView({
 
         {/* About */}
         {profile?.bio && (
-          <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+          <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 py-3 px-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
               À propos de moi
             </h3>

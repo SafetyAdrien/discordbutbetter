@@ -301,7 +301,7 @@ function SortableCategory({
             <div
               {...attributes}
               {...listeners}
-              className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
+              className="flex items-center gap-1.5 px-3 pt-1.5 pb-0 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
 
               <button
                 onClick={(e) => {

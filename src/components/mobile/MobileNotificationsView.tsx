@@ -40,6 +40,7 @@ interface MobileNotificationsViewProps {
 }
 
 export function MobileNotificationsView({
+  compact,
   onBack,
   onOpenDM,
   onOpenServer,

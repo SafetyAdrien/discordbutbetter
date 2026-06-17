@@ -52,8 +52,6 @@ interface MobileProfileViewProps {
 export function MobileProfileView({
   onOpenDM,
   onSelectServer,
-  onCreateServer,
-  onDiscover,
 }: MobileProfileViewProps = {}) {
   const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();

@@ -6,14 +6,8 @@ import {
   Pencil,
   LogOut,
   ChevronRight,
-  Sparkles,
-  Bell,
-  Shield,
-  Palette,
-  HelpCircle,
   Copy,
   Check,
-  QrCode,
   Users,
   Server,
 } from 'lucide-react';
@@ -115,13 +109,7 @@ export function MobileProfileView({
       {/* Header */}
       <header className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
         <h1 className="font-semibold text-base">Toi</h1>
-        <button
-          onClick={handleOpenSettings}
-          className="w-9 h-9 rounded-full flex items-center justify-center -mr-2 active:bg-muted/60 transition-colors"
-          aria-label="Paramètres"
-        >
-          <Settings className="w-5 h-5 text-muted-foreground" />
-        </button>
+        <div className="w-9 h-9 -mr-2" />
       </header>
 
       <div className="flex-1 overflow-y-auto pb-8" style={{ overscrollBehavior: 'contain' }}>
@@ -141,6 +129,14 @@ export function MobileProfileView({
               }}
             />
           )}
+
+          <button
+            onClick={handleOpenSettings}
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+            aria-label="Paramètres"
+          >
+            <Settings className="w-5 h-5 text-foreground" />
+          </button>
 
           {/* Avatar + Edit btn */}
           <div className="px-4 -mt-12 relative">

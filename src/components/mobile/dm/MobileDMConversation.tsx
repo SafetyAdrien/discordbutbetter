@@ -50,7 +50,7 @@ function formatDateLabel(d: Date): string {
 export function MobileDMConversation({ conversationId, onBack }: Props) {
   const { user } = useAuth();
   const reduced = useReducedMotion();
-  const swipeBack = useSwipeBack({ onBack });
+  const swipeBack = useSwipeBack({ onBack, fullScreen: true });
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
 
   const [messageInput, setMessageInput] = useState('');

@@ -29,7 +29,7 @@ interface ServerSettingsModalProps {
 type SettingsTab = 
   | 'profile' | 'engagement' | 'boost'
   | 'emojis' | 'stickers' | 'soundboard'
-  | 'members' | 'roles' | 'invites'
+  | 'members' | 'roles' | 'invites' | 'connection-rules'
   | 'integrations'
   | 'audit' | 'banned'
   | 'template' | 'delete';

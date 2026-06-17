@@ -140,7 +140,7 @@ export function ConnectionRulesManager({ serverId }: Props) {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>Plateforme</Label>
-                  <Select value={editing.provider} onValueChange={(v) => setEditing({ ...editing, provider: v })}>
+                  <Select value={editing.provider} onValueChange={(v) => setEditing({ ...editing, provider: v as ServerConnectionRule['provider'] })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {PROVIDERS.map((p) => (

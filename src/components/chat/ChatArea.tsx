@@ -536,7 +536,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id, restoreEditScrollLock]);
+  }, [channel.id, restoreEditScrollLock, messages.length]);
 
   // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {

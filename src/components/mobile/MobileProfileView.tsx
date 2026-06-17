@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';
+import { MarkdownText } from '@/lib/markdown';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
 import {

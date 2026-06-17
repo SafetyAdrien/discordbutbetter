@@ -144,6 +144,10 @@ export default {
           "0%": { opacity: "0", transform: "scale(0.95)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        "slide-in-bottom": {
+          "0%": { opacity: "0", transform: "translate(-50%, 8px)" },
+          "100%": { opacity: "1", transform: "translate(-50%, 0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -154,6 +158,7 @@ export default {
         "badge-shake": "badge-shake 0.5s ease-in-out",
         "press": "press 150ms ease-out",
         "appear": "appear 200ms ease-out",
+        "slide-in-bottom": "slide-in-bottom 220ms ease-out",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

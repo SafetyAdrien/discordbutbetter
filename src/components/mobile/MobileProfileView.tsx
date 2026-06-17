@@ -120,29 +120,29 @@ export function MobileProfileView({
 
           <button
             onClick={handleClose}
-            className="absolute top-3 left-3 w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+            className="absolute top-3 left-3 w-8 h-8 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
             aria-label="Fermer"
           >
-            <X className="w-5 h-5 text-foreground" />
+            <X className="w-4 h-4 text-foreground" />
           </button>
 
-          <div className="absolute top-3 right-3 flex items-center gap-2">
+          <div className="absolute top-3 right-3 flex items-center gap-1.5">
             <button
               onClick={() => {
                 haptics.light();
                 setSubpage('edit-profile');
               }}
-              className="w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+              className="w-8 h-8 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
               aria-label="Modifier le profil"
             >
-              <Pencil className="w-5 h-5 text-foreground" />
+              <Pencil className="w-4 h-4 text-foreground" />
             </button>
             <button
               onClick={handleOpenSettings}
-              className="w-9 h-9 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
+              className="w-8 h-8 rounded-full bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors"
               aria-label="Paramètres"
             >
-              <Settings className="w-5 h-5 text-foreground" />
+              <Settings className="w-4 h-4 text-foreground" />
             </button>
           </div>
 

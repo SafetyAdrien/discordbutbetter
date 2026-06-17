@@ -23,7 +23,7 @@ import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView
 import { MobileFullProfileView } from './profile/MobileFullProfileView';
 import { MobileNotificationsView } from './MobileNotificationsView';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';

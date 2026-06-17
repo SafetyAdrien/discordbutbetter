@@ -7,6 +7,8 @@ import {
   ChevronRight,
   Copy,
   Check,
+  X,
+  Link2,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';

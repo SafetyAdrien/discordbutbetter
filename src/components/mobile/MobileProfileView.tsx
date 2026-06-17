@@ -156,7 +156,7 @@ export function MobileProfileView({
           </div>
 
           {/* Avatar + Custom status bubble (Desktop-style compact) */}
-          <div className="px-4 -mt-12 relative">
+          <div className="px-4 -mt-12 relative z-10">
             <div className="flex items-end gap-4">
               <button
                 onClick={() => {

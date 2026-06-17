@@ -137,61 +137,76 @@ export function MobileNotificationsView({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="h-12 px-2 flex items-center gap-1 border-b border-border bg-[hsl(var(--surface-header))]">
-        {onBack && (
+      {/* Header — large title style */}
+      <div className="px-4 pt-3 pb-3 bg-background border-b border-border/50">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          {onBack ? (
+            <button
+              onClick={() => {
+                haptics.light();
+                onBack();
+              }}
+              className="-ml-2 h-9 w-9 rounded-full flex items-center justify-center active:bg-muted/60"
+              aria-label="Retour"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          ) : (
+            <div className="w-9" />
+          )}
+
           <button
             onClick={() => {
               haptics.light();
-              onBack();
+              setFilterSheetOpen(true);
             }}
-            className="w-9 h-9 rounded-full flex items-center justify-center active:bg-muted/60"
-            aria-label="Retour"
+            className={cn(
+              'relative h-9 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-colors',
+              active
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-[hsl(var(--surface-2))] text-foreground/80 active:bg-[hsl(var(--surface-3))]'
+            )}
+            aria-label="Filtres"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filtres
+            {active && (
+              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-background/25 text-[10px] font-bold flex items-center justify-center">
+                {filterChips.length}
+              </span>
+            )}
           </button>
-        )}
-        <h2 className="font-semibold text-base flex-1 truncate flex items-center gap-2">
-          Notifications
+        </div>
+
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-[26px] leading-none font-bold tracking-tight">Notifications</h1>
           {unreadCount > 0 && (
-            <span className="text-[10px] font-bold bg-primary/20 text-primary rounded-full h-4 min-w-4 px-1.5 flex items-center justify-center">
-              {unreadCount > 99 ? '99+' : unreadCount}
+            <span className="text-xs font-semibold text-primary">
+              {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
             </span>
           )}
-        </h2>
-        <button
-          onClick={() => {
-            haptics.light();
-            setFilterSheetOpen(true);
-          }}
-          className={cn(
-            'relative w-9 h-9 rounded-full flex items-center justify-center active:bg-muted/60',
-            active && 'text-primary'
-          )}
-          aria-label="Filtres"
-        >
-          <SlidersHorizontal className="w-5 h-5" />
-          {active && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-[hsl(var(--surface-header))]" />
-          )}
-        </button>
+        </div>
       </div>
 
       {/* Active filter chips */}
       {filterChips.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto px-3 py-2 border-b border-border scrollbar-thin">
+        <div className="flex gap-2 overflow-x-auto px-4 py-2 border-b border-border/50 scrollbar-thin">
           {filterChips.map((c) => (
             <button
               key={c.key}
               onClick={() => removeChip(c)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium whitespace-nowrap"
+              className="flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium whitespace-nowrap active:bg-primary/25 transition-colors"
             >
               {c.label}
-              <X className="w-3 h-3" />
+              <span className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
+                <X className="w-2.5 h-2.5" />
+              </span>
             </button>
           ))}
         </div>
       )}
+
+
 
       {/* List */}
       <div

@@ -129,7 +129,7 @@ export function MobileProfileView({
 
           <button
             onClick={handleClose}
-            className="absolute top-3 left-3 w-8 h-8 rounded-[50%] bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors overflow-hidden"
+            className="absolute top-3 left-3 flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
             aria-label="Fermer"
           >
             <X className="w-4 h-4 text-foreground" />
@@ -141,14 +141,14 @@ export function MobileProfileView({
                 haptics.light();
                 setSubpage('edit-profile');
               }}
-              className="w-8 h-8 rounded-[50%] bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors overflow-hidden"
+              className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Modifier le profil"
             >
               <Pencil className="w-4 h-4 text-foreground" />
             </button>
             <button
               onClick={handleOpenSettings}
-              className="w-8 h-8 rounded-[50%] bg-background/75 backdrop-blur-md flex items-center justify-center active:bg-background/90 transition-colors overflow-hidden"
+              className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Paramètres"
             >
               <Settings className="w-4 h-4 text-foreground" />

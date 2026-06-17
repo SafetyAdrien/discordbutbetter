@@ -223,32 +223,14 @@ export function MobileProfileView({
           </div>
         </section>
 
-        {/* Identity card with status trigger on display name */}
+        {/* Identity card (name is no longer a status trigger — avatar handles that) */}
         <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <button
-                onClick={() => {
-                  haptics.light();
-                  setShowStatusSheet(true);
-                }}
-                className="flex items-center gap-2 max-w-full text-left active:opacity-70 transition-opacity"
-                aria-label="Changer le statut"
-              >
-                <h2 className="font-bold text-xl truncate">
-                  {profile?.display_name || 'Utilisateur'}
-                </h2>
-                <div className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-muted/60">
-                  <div
-                    className={cn('w-2 h-2 rounded-full', statusColors[currentStatus])}
-                  />
-                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                </div>
-              </button>
+              <h2 className="font-bold text-xl truncate">
+                {profile?.display_name || 'Utilisateur'}
+              </h2>
               <p className="text-sm text-muted-foreground truncate">@{profile?.username}</p>
-              <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                {STATUS_LABELS[currentStatus]}
-              </p>
               {profile?.pronouns && (
                 <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
               )}
@@ -265,12 +247,6 @@ export function MobileProfileView({
               )}
             </button>
           </div>
-
-          {profile?.custom_status && (
-            <div className="mt-3 px-3 py-2 rounded-xl bg-muted/40 text-sm">
-              {profile.custom_status}
-            </div>
-          )}
 
           {profile?.bio && (
             <p className="text-sm text-foreground/80 mt-3 whitespace-pre-wrap leading-relaxed">

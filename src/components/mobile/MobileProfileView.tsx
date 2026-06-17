@@ -421,7 +421,17 @@ export function MobileProfileView({
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
             className="absolute inset-0 z-40 bg-background flex flex-col"
           >
-            <MobileNotificationsView onBack={() => setSubpage(null)} />
+            <MobileNotificationsView
+              onBack={() => setSubpage(null)}
+              onOpenDM={(id) => {
+                setSubpage(null);
+                onOpenDM?.(id);
+              }}
+              onOpenServer={(id) => {
+                setSubpage(null);
+                onSelectServer?.(id);
+              }}
+            />
           </motion.div>
         )}
         {subpage === 'appearance' && (

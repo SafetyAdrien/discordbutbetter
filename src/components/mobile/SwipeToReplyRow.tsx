@@ -55,18 +55,18 @@ export const SwipeToReplyRow = forwardRef<HTMLDivElement, SwipeToReplyRowProps>(
   return (
     <div
       ref={ref}
-      className={cn('relative touch-pan-y select-none', className)}
+      className={cn('relative touch-pan-y select-none overflow-hidden', className)}
       role="group"
-      aria-roledescription="Glisser à droite pour répondre"
+      aria-roledescription="Glisser vers la gauche pour répondre"
       onTouchStart={swipe.handlers.onTouchStart}
       onTouchMove={swipe.handlers.onTouchMove}
       onTouchEnd={onTouchEnd}
       onTouchCancel={swipe.handlers.onTouchCancel}
     >
-      {/* Reveal indicator behind the row */}
+      {/* Reveal indicator behind the row, on the right side */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+        className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
         style={{ opacity: swipe.progress }}
       >
         <div

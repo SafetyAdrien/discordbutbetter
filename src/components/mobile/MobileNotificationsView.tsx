@@ -84,6 +84,7 @@ export function MobileNotificationsView({
       if (filters.serverId === '__dm__' && n.kind !== 'dm') return false;
       if (filters.serverId && filters.serverId !== '__dm__' && n.serverId !== filters.serverId)
         return false;
+      if (filters.userId && n.userId !== filters.userId) return false;
       if (periodCutoff > 0 && Date.parse(n.createdAt) < periodCutoff) return false;
       return true;
     });

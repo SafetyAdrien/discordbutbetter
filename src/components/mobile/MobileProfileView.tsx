@@ -4,6 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
   Pencil,
+  Bell,
   // ChevronRight removed (no longer used)
   Copy,
   Check,
@@ -20,6 +21,7 @@ import { MobileFavoriteFriendsView } from './profile/MobileFavoriteFriendsView';
 import { MobileServersListView } from './profile/MobileServersListView';
 import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView';
 import { MobileFullProfileView } from './profile/MobileFullProfileView';
+import { MobileNotificationsView } from './MobileNotificationsView';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -29,6 +31,7 @@ import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
+import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import {
   CONNECTION_PROVIDERS_BY_ID,
   formatConnectionDisplay,

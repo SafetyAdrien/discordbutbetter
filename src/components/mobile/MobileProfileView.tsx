@@ -48,12 +48,6 @@ type Subpage =
   | 'appearance'
   | 'privacy';
 
-const STATUS_LABELS: Record<string, string> = {
-  online: 'En ligne',
-  idle: 'Inactif',
-  dnd: 'Ne pas déranger',
-  offline: 'Invisible',
-};
 
 interface MobileProfileViewProps {
   onOpenDM?: (conversationId: string) => void;

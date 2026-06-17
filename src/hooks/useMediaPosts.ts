@@ -165,9 +165,10 @@ export function useCreateMediaPost(channelId: string) {
             .from('message-attachments')
             .upload(filePath, file);
           if (uploadError) throw uploadError;
-          const { data: urlData } = supabase.storage
+          const { data: urlData, error: signErr } = await supabase.storage
             .from('message-attachments')
-            .getPublicUrl(filePath);
+            .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+          if (signErr || !urlData) throw signErr ?? new Error('Sign URL failed');
           return {
             file,
             url: urlData.publicUrl,

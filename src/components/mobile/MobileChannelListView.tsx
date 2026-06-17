@@ -715,7 +715,7 @@ export function MobileChannelListView({
                     </PopoverContent>
                   </Popover>
                 );
-              })}
+              })}</div>}
             </div>
           );
         })}

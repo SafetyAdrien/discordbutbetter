@@ -411,7 +411,7 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
     const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
-    return <div ref={ref} className={className} style={{ display: 'inline-block', verticalAlign: 'top' }}>{parseMarkdown(content, ctxWithVariant)}</div>;
+    return <div ref={ref} className={cn('inline-block max-w-full min-w-0 align-top', className)}>{parseMarkdown(content, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

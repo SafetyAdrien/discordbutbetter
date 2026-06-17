@@ -171,7 +171,7 @@ export function useCreateMediaPost(channelId: string) {
           if (signErr || !urlData) throw signErr ?? new Error('Sign URL failed');
           return {
             file,
-            url: urlData.publicUrl,
+            url: urlData.signedUrl,
             type: file.type.startsWith('video/') ? 'video' : 'image',
           };
         })

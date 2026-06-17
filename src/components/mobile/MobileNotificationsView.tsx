@@ -13,8 +13,8 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { MobilePullIndicator } from '@/components/mobile/MobilePullIndicator';
 import {
   NotificationsFilterSheet,
-  DEFAULT_FILTERS,
   hasActiveFilters,
+  loadSavedFilters,
   type NotifFilters,
 } from '@/components/mobile/notifications/NotificationsFilterSheet';
 import { NotificationSection } from '@/components/mobile/notifications/NotificationSection';
@@ -54,7 +54,7 @@ export function MobileNotificationsView({
   const { data: servers = [] } = useServers();
   const queryClient = useQueryClient();
 
-  const [filters, setFilters] = useState<NotifFilters>({ ...DEFAULT_FILTERS, kinds: new Set() });
+  const [filters, setFilters] = useState<NotifFilters>(() => loadSavedFilters());
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const { containerRef, pullDistance, progress, refreshing } =
@@ -84,6 +84,7 @@ export function MobileNotificationsView({
       if (filters.serverId === '__dm__' && n.kind !== 'dm') return false;
       if (filters.serverId && filters.serverId !== '__dm__' && n.serverId !== filters.serverId)
         return false;
+      if (filters.userId && n.userId !== filters.userId) return false;
       if (periodCutoff > 0 && Date.parse(n.createdAt) < periodCutoff) return false;
       return true;
     });
@@ -388,6 +389,16 @@ function buildFilterChips(
       label: srv?.name ?? 'Serveur',
       apply: (nf) => {
         nf.serverId = null;
+      },
+    });
+  }
+
+  if (f.userId) {
+    chips.push({
+      key: `usr:${f.userId}`,
+      label: 'Utilisateur',
+      apply: (nf) => {
+        nf.userId = null;
       },
     });
   }

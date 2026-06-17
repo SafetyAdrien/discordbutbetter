@@ -18,6 +18,7 @@ export interface UnifiedNotification {
   serverName: string | null;
   serverIconUrl: string | null;
   conversationId: string | null;
+  userId: string | null;
   unreadCount: number;
   raw: ServerNotification | DMNotificationItem;
 }
@@ -49,6 +50,7 @@ export function useUnifiedNotifications() {
         serverName: n.server?.name ?? null,
         serverIconUrl: n.server?.icon_url ?? null,
         conversationId: null,
+        userId: (n as any).sender_id ?? null,
         unreadCount: 0,
         raw: n,
       };
@@ -68,6 +70,7 @@ export function useUnifiedNotifications() {
       serverName: null,
       serverIconUrl: null,
       conversationId: d.conversationId,
+      userId: d.userId,
       unreadCount: d.unreadCount,
       raw: d,
     }));

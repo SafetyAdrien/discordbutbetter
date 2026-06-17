@@ -335,9 +335,14 @@ async function uploadDMAttachments(
       continue;
     }
 
-    const { data: urlData } = supabase.storage
+    // Bucket is private; use a long-lived signed URL (1 year)
+    const { data: urlData, error: signErr } = await supabase.storage
       .from('message-attachments')
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 60 * 60 * 24 * 365);
+    if (signErr || !urlData) {
+      console.error('Sign URL error:', signErr);
+      continue;
+    }
 
     let type: 'image' | 'video' | 'file' = 'file';
     if (attachment.file.type.startsWith('image/')) type = 'image';

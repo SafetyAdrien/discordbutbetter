@@ -199,7 +199,12 @@ export function MobileProfileView({
             {/* Mini bulle dans l'angle haut-gauche, au-dessus de la bulle large */}
             <span
               aria-hidden
-              className="absolute -left-3 -top-3 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] shadow-lg"
+              className="absolute -left-3 -top-5 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] shadow-lg"
+            />
+            {/* Petite bulle sur le bord gauche, fondu dans la forme de la bulle large */}
+            <span
+              aria-hidden
+              className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)]"
             />
             <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
               <Plus className="w-[18px] h-[18px]" strokeWidth={2} />

@@ -109,8 +109,8 @@ export function MobileMessageBubble({
       movedRef.current = true;
       longPress.onTouchMove();
 
-      // Right-to-left swipe-to-reply on every message (own or incoming).
-      const dir = -1;
+      // Allow rightward swipe-to-reply on incoming, leftward on own
+      const dir = message.isOwn ? -1 : 1;
       const projected = dx * dir;
       if (projected <= 0) {
         setTranslateX(0);
@@ -165,7 +165,8 @@ export function MobileMessageBubble({
       <div
         aria-hidden
         className={cn(
-          'absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none',
+          'absolute inset-y-0 flex items-center pointer-events-none',
+          message.isOwn ? 'right-0 pr-3' : 'left-0 pl-3',
         )}
         style={{ opacity: Math.min(1, Math.abs(translateX) / SWIPE_THRESHOLD) }}
       >

@@ -12,6 +12,30 @@ export default {
         "2xl": "1400px",
       },
     },
+    screens: {
+      // Phone tiers (additive — defaults sm/md/lg/xl preserved below)
+      xxs: "360px",
+      xs: "390px",
+      // Default Tailwind breakpoints (kept verbatim to avoid breaking existing classes)
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+      // New phone-specific tiers
+      phone: "428px",  // Pro Max / Pixel Pro class
+      phablet: "480px",
+      tablet: "768px",
+      // Height-based
+      tall: { raw: "(min-height: 820px)" },
+      short: { raw: "(max-height: 700px)" },
+      // Aspect ratio (Nubia Redmagic 6, Pixel Pro, Galaxy Ultra…)
+      ultratall: { raw: "(min-aspect-ratio: 20/9)" },
+      landscape: { raw: "(orientation: landscape) and (max-height: 500px)" },
+      // Capabilities
+      hover: { raw: "(hover: hover) and (pointer: fine)" },
+      touch: { raw: "(hover: none) and (pointer: coarse)" },
+    },
     extend: {
       transitionDuration: {
         'fast': '100ms',

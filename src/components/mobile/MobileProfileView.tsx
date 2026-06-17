@@ -165,6 +165,21 @@ export function MobileProfileView({
               <Pencil className="w-4 h-4 text-foreground" />
             </button>
             <button
+              onClick={() => {
+                haptics.light();
+                setSubpage('notifications');
+              }}
+              className="relative flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4 h-4 text-foreground" />
+              {notifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
+                  {notifCount > 99 ? '99+' : notifCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={handleOpenSettings}
               className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Paramètres"

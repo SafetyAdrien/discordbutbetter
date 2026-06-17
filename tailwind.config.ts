@@ -12,6 +12,27 @@ export default {
         "2xl": "1400px",
       },
     },
+    screens: {
+      // Phone tiers (mobile-first, CSS px)
+      xxs: "360px",
+      xs: "390px",
+      sm: "428px",
+      md: "480px",
+      phablet: "640px",
+      tablet: "1024px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1440px",
+      // Height-based
+      tall: { raw: "(min-height: 820px)" },
+      short: { raw: "(max-height: 700px)" },
+      // Aspect ratio (Nubia Redmagic 6, Pixel Pro, Galaxy Ultra…)
+      ultratall: { raw: "(min-aspect-ratio: 20/9)" },
+      landscape: { raw: "(orientation: landscape) and (max-height: 500px)" },
+      // Capabilities
+      hover: { raw: "(hover: hover) and (pointer: fine)" },
+      touch: { raw: "(hover: none) and (pointer: coarse)" },
+    },
     extend: {
       transitionDuration: {
         'fast': '100ms',

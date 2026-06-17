@@ -818,64 +818,116 @@
 /* Markdown overlay decorations: code-block grouping now handled in React (InputMarkdownOverlay) */
 
 /* ============================================
-   MOBILE SAFE AREA UTILITIES
+   MOBILE SAFE AREA + DYNAMIC VIEWPORT UTILITIES
    ============================================ */
 
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
-  .mb-safe { margin-bottom: env(safe-area-inset-bottom, 0px); }
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --app-h: 100vh;
+}
+@supports (height: 100dvh) {
+  :root { --app-h: 100dvh; }
 }
 
-/* Mobile touch optimizations */
-@media (max-width: 640px) {
-  .message-hover:hover {
-    background: transparent;
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: var(--safe-bottom); }
+  .pt-safe { padding-top: var(--safe-top); }
+  .pl-safe { padding-left: var(--safe-left); }
+  .pr-safe { padding-right: var(--safe-right); }
+  .px-safe { padding-left: var(--safe-left); padding-right: var(--safe-right); }
+  .mb-safe { margin-bottom: var(--safe-bottom); }
+  .mt-safe { margin-top: var(--safe-top); }
+  .inset-safe {
+    padding-top: var(--safe-top);
+    padding-right: var(--safe-right);
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
   }
-  
+}
+
+/* Dynamic viewport height — falls back to vh on legacy browsers */
+.h-app { height: var(--app-h); }
+.min-h-app { min-height: var(--app-h); }
+.max-h-app { max-height: var(--app-h); }
+
+/* ============================================
+   MOBILE TOUCH OPTIMIZATIONS
+   ============================================ */
+@media (max-width: 639px) {
+  .message-hover:hover { background: transparent; }
+
   .channel-item {
     padding-top: 0.625rem;
     padding-bottom: 0.625rem;
     min-height: 44px;
   }
-  
-  button, a, [role="button"] {
-    min-height: 36px;
-  }
-  
-  .scrollbar-thin {
-    scrollbar-width: none;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    display: none;
-  }
 
-  button, a, input, select, textarea {
+  /* WCAG 2.5.5 / Apple HIG / Material: 44×44 minimum tap target */
+  button, a, [role="button"], [role="link"], [role="menuitem"], [role="tab"] {
+    min-height: 44px;
     touch-action: manipulation;
   }
+  /* Allow opt-out for compact UI bits (badges, inline chips) */
+  .tap-sm { min-height: 32px !important; }
+  .tap-none { min-height: 0 !important; }
+
+  input, select, textarea {
+    touch-action: manipulation;
+    font-size: max(16px, 1rem); /* prevent iOS zoom on focus */
+  }
+
+  .scrollbar-thin { scrollbar-width: none; }
+  .scrollbar-thin::-webkit-scrollbar { display: none; }
 }
 
-@media (max-width: 374px) {
+/* Very small screens (320–359): legacy & ultra-compact */
+@media (max-width: 359px) {
   .channel-item {
     padding-left: 0.375rem;
     padding-right: 0.375rem;
     font-size: 0.8125rem;
   }
+  .hide-xxs { display: none !important; }
 }
 
-@media (min-width: 428px) and (max-width: 640px) {
-  .channel-item {
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
+/* Standard Android (360–389) — Nubia Redmagic 6 lives here at 387 */
+@media (min-width: 360px) and (max-width: 389px) {
+  .channel-item { padding-top: 0.6875rem; padding-bottom: 0.6875rem; }
 }
 
-/* Mobile: prevent iOS rubber-band bounce inside scroll containers and respect system text size. */
+/* iPhone 13/14/15 class (390–427) */
+@media (min-width: 390px) and (max-width: 427px) {
+  .channel-item { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+}
+
+/* Pro Max / Pixel Pro class (≥428) */
+@media (min-width: 428px) and (max-width: 639px) {
+  .channel-item { padding-top: 0.8125rem; padding-bottom: 0.8125rem; }
+}
+
+/* Ultra-tall ratio (≥20:9) — Redmagic 6, Galaxy Ultra, Pixel Pro */
+@media (min-aspect-ratio: 20/9) and (max-width: 639px) {
+  .ultratall-spacer { padding-bottom: 0.5rem; }
+}
+
+/* Landscape phones — squat, prioritize horizontal density */
+@media (orientation: landscape) and (max-height: 500px) {
+  .hide-landscape { display: none !important; }
+}
+
+/* Mobile/tablet: contain rubber-band bounce & system text scaling */
 @media (max-width: 1023px) {
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .scroll-area-viewport,
   [data-radix-scroll-area-viewport],
   .messages-scroll {
     overscroll-behavior: contain;
+  }
+  body {
+    /* Avoid horizontal overflow on curved-edge devices */
+    overflow-x: hidden;
   }
 }

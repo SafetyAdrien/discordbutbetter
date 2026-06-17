@@ -1575,6 +1575,7 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
+          connections: Json
           created_at: string | null
           custom_status: string | null
           display_name: string
@@ -1593,6 +1594,7 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          connections?: Json
           created_at?: string | null
           custom_status?: string | null
           display_name: string
@@ -1611,6 +1613,7 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          connections?: Json
           created_at?: string | null
           custom_status?: string | null
           display_name?: string

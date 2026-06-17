@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight, BadgeCheck } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';
 import { EmojiManager } from './EmojiManager';
 import { StickerManager } from './StickerManager';
 import { MemberManager } from './MemberManager';
 import { RoleManager } from './RoleManager';
+import { ConnectionRulesManager } from './ConnectionRulesManager';
 import { InviteManager } from './InviteManager';
 import { BannedMembersManager } from './BannedMembersManager';
 import { AuditLogManager } from './AuditLogManager';
@@ -28,7 +29,7 @@ interface ServerSettingsModalProps {
 type SettingsTab = 
   | 'profile' | 'engagement' | 'boost'
   | 'emojis' | 'stickers' | 'soundboard'
-  | 'members' | 'roles' | 'invites'
+  | 'members' | 'roles' | 'invites' | 'connection-rules'
   | 'integrations'
   | 'audit' | 'banned'
   | 'template' | 'delete';
@@ -75,7 +76,8 @@ export function ServerSettingsModal({
       tabs: [
         { id: 'members', label: 'Membres', icon: Users },
         { id: 'roles', label: 'Rôles', icon: Shield },
-        { id: 'invites', label: 'Invitations', icon: Link }
+        { id: 'invites', label: 'Invitations', icon: Link },
+        { id: 'connection-rules', label: 'Critères Connections', icon: BadgeCheck }
       ]
     },
     {
@@ -117,6 +119,7 @@ export function ServerSettingsModal({
       case 'members': return <MemberManager serverId={serverId} />;
       case 'roles': return <RoleManager serverId={serverId} />;
       case 'invites': return <InviteManager serverId={serverId} />;
+      case 'connection-rules': return <ConnectionRulesManager serverId={serverId} />;
       case 'integrations': return <IntegrationsPage serverId={serverId} />;
       case 'audit': return <AuditLogManager serverId={serverId} />;
       case 'banned': return <BannedMembersManager serverId={serverId} />;

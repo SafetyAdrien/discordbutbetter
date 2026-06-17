@@ -57,10 +57,28 @@ export const CONNECTION_PROVIDERS_BY_ID: Record<string, ConnectionProvider> = Ob
   CONNECTION_PROVIDERS.map(p => [p.id, p]),
 );
 
+export interface ConnectionStats {
+  /** Total number of posts/tweets/videos on this account (declared). */
+  posts_count?: number;
+  /** Number of followers/subscribers (declared). */
+  followers_count?: number;
+  /** Number of accounts followed (declared). */
+  following_count?: number;
+  /** Account is officially verified (blue check) on the platform. */
+  is_verified?: boolean;
+  /** ISO date string of account creation on the external platform. */
+  account_created_at?: string;
+}
+
 export interface ProfileConnection {
   provider: string;
   value: string;
+  /** Declarative stats used for server-side eligibility rules (priority providers only). */
+  stats?: ConnectionStats;
 }
+
+/** Providers that support server-side eligibility rules. */
+export const STAT_ENABLED_PROVIDERS = new Set(['twitter', 'instagram', 'bluesky', 'youtube']);
 
 function stripAt(v: string): string {
   return v.replace(/^@/, '').trim();
@@ -79,4 +97,19 @@ export function getConnectionUrl(c: ProfileConnection): string | null {
   const p = CONNECTION_PROVIDERS_BY_ID[c.provider];
   if (!p?.toUrl) return null;
   return p.toUrl(c.value);
+}
+
+/** Compact number formatting: 1234 -> "1.2K". */
+export function formatStatCount(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, '')}K`;
+  return `${(n / 1_000_000).toFixed(n < 10_000_000 ? 1 : 0).replace(/\.0$/, '')}M`;
+}
+
+/** Whole years elapsed since account creation. */
+export function accountAgeYears(iso?: string): number | null {
+  if (!iso) return null;
+  const d = new Date(iso).getTime();
+  if (Number.isNaN(d)) return null;
+  return Math.max(0, Math.floor((Date.now() - d) / (365.25 * 24 * 3600 * 1000)));
 }

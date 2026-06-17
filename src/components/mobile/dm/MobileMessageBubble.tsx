@@ -209,7 +209,9 @@ export function MobileMessageBubble({
           className={cn(
             'flex flex-col min-w-0',
             message.isOwn ? 'items-end' : 'items-start',
-            'max-w-[78%]',
+            // Wider bubbles when content contains a fenced code block, so the block doesn't get
+            // crushed to a tiny strip. Otherwise keep the regular 78% width.
+            /```/.test(message.content || '') ? 'max-w-[92%] w-full' : 'max-w-[78%]',
           )}
         >
           {/* Author name (groups only, first of burst) */}
@@ -239,8 +241,8 @@ export function MobileMessageBubble({
             onTouchCancel={handleTouchEnd}
             onClick={handleClick}
             className={cn(
-              'text-left text-[15px] leading-snug whitespace-pre-wrap break-words',
-              'px-3 py-2 rounded-2xl',
+              'block text-left text-[15px] leading-snug whitespace-pre-wrap break-words',
+              'px-3 py-2 rounded-2xl max-w-full min-w-0 overflow-hidden',
               message.isOwn
                 ? 'bg-primary text-primary-foreground rounded-br-md'
                 : 'bg-[hsl(var(--surface-2))] text-foreground rounded-bl-md',

@@ -4,11 +4,13 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Settings,
   Pencil,
-  ChevronRight,
+  // ChevronRight removed (no longer used)
   Copy,
   Check,
   X,
   Link2,
+  Plus,
+  BadgeCheck,
 } from 'lucide-react';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
@@ -18,6 +20,7 @@ import { MobileFavoriteFriendsView } from './profile/MobileFavoriteFriendsView';
 import { MobileServersListView } from './profile/MobileServersListView';
 import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView';
 import { MobileFullProfileView } from './profile/MobileFullProfileView';
+import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -25,6 +28,14 @@ import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
+import {
+  CONNECTION_PROVIDERS_BY_ID,
+  formatConnectionDisplay,
+  formatStatCount,
+  accountAgeYears,
+  STAT_ENABLED_PROVIDERS,
+  type ProfileConnection,
+} from '@/lib/connections';
 
 type Subpage =
   | null
@@ -37,12 +48,6 @@ type Subpage =
   | 'appearance'
   | 'privacy';
 
-const STATUS_LABELS: Record<string, string> = {
-  online: 'En ligne',
-  idle: 'Inactif',
-  dnd: 'Ne pas déranger',
-  offline: 'Invisible',
-};
 
 interface MobileProfileViewProps {
   onOpenDM?: (conversationId: string) => void;
@@ -60,11 +65,15 @@ export function MobileProfileView({
   const { data: servers = [] } = useServers();
   const [showSettings, setShowSettings] = useState(false);
   const [showStatusSheet, setShowStatusSheet] = useState(false);
+  const [showCustomStatus, setShowCustomStatus] = useState(false);
   const [copied, setCopied] = useState(false);
   const [subpage, setSubpage] = useState<Subpage>(null);
 
   const acceptedFriends = friends.filter((f: any) => f.status === 'accepted').length;
   const serverCount = servers.length;
+  const connections: ProfileConnection[] = Array.isArray((profile as any)?.connections)
+    ? ((profile as any).connections as ProfileConnection[])
+    : [];
 
   const statusColors: Record<string, string> = {
     online: 'bg-[hsl(var(--online))]',
@@ -146,58 +155,76 @@ export function MobileProfileView({
             </button>
           </div>
 
-          {/* Avatar */}
+          {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative">
-            <button
-              onClick={() => {
-                haptics.light();
-                setShowStatusSheet(true);
-              }}
-              className="relative active:opacity-80 transition-opacity"
-              aria-label="Changer le statut"
-            >
-              <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
-              <div
-                className={cn(
-                  'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                  statusColors[currentStatus]
-                )}
-              />
-            </button>
-          </div>
-        </section>
-
-        {/* Identity card with status trigger on display name */}
-        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
+            <div className="flex items-end gap-3">
               <button
                 onClick={() => {
                   haptics.light();
                   setShowStatusSheet(true);
                 }}
-                className="flex items-center gap-2 max-w-full text-left active:opacity-70 transition-opacity"
-                aria-label="Changer le statut"
+                className="relative active:opacity-80 transition-opacity shrink-0"
+                aria-label="Changer le statut en ligne"
               >
-                <h2 className="font-bold text-xl truncate">
-                  {profile?.display_name || 'Utilisateur'}
-                </h2>
-                <div className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-muted/60">
-                  <div
-                    className={cn('w-2 h-2 rounded-full', statusColors[currentStatus])}
-                  />
-                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                </div>
+                <Avatar className="w-24 h-24 ring-[5px] ring-background">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
+                    {initial}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className={cn(
+                    'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
+                    statusColors[currentStatus]
+                  )}
+                />
               </button>
+
+              {/* Custom status zone (right of avatar, above the banner shadow) */}
+              <div className="relative flex-1 min-w-0 pb-2">
+                {/* Mini "+" bubble, floating above-left of the large bubble */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setShowCustomStatus(true);
+                  }}
+                  aria-label="Modifier le statut personnalisé"
+                  className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-background flex items-center justify-center active:scale-95 transition-transform z-10"
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                </button>
+                {/* Wide horizontal bubble */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setShowCustomStatus(true);
+                  }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 rounded-2xl bg-muted/50 border border-border/40 active:bg-muted/70 transition-colors',
+                    'flex items-center gap-2 min-h-[40px]',
+                  )}
+                >
+                  {profile?.custom_status ? (
+                    <span className="text-sm text-foreground truncate">{profile.custom_status}</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground italic truncate">Quoi de neuf ?</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Identity card (name is no longer a status trigger — avatar handles that) */}
+        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-bold text-xl truncate">
+                {profile?.display_name || 'Utilisateur'}
+              </h2>
               <p className="text-sm text-muted-foreground truncate">@{profile?.username}</p>
-              <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                {STATUS_LABELS[currentStatus]}
-              </p>
               {profile?.pronouns && (
                 <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
               )}
@@ -214,12 +241,6 @@ export function MobileProfileView({
               )}
             </button>
           </div>
-
-          {profile?.custom_status && (
-            <div className="mt-3 px-3 py-2 rounded-xl bg-muted/40 text-sm">
-              {profile.custom_status}
-            </div>
-          )}
 
           {profile?.bio && (
             <p className="text-sm text-foreground/80 mt-3 whitespace-pre-wrap leading-relaxed">
@@ -262,9 +283,46 @@ export function MobileProfileView({
             <Link2 className="w-4 h-4 text-muted-foreground" />
             <h3 className="font-semibold text-sm">Connections</h3>
           </div>
-          <div className="py-6 text-center text-xs text-muted-foreground">
-            Aucune connexion pour le moment
-          </div>
+          {connections.length === 0 ? (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              Aucune connexion pour le moment
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {connections.map((c, i) => {
+                const provider = CONNECTION_PROVIDERS_BY_ID[c.provider];
+                if (!provider) return null;
+                const Icon = provider.icon;
+                const hasStats = STAT_ENABLED_PROVIDERS.has(c.provider) && c.stats;
+                const age = accountAgeYears(c.stats?.account_created_at);
+                const statBits: string[] = [];
+                if (c.stats?.followers_count != null) statBits.push(`${formatStatCount(c.stats.followers_count)} abonnés`);
+                if (c.stats?.posts_count != null) statBits.push(`${formatStatCount(c.stats.posts_count)} posts`);
+                if (age != null) statBits.push(age === 0 ? 'Compte récent' : `Compte depuis ${age} an${age > 1 ? 's' : ''}`);
+                return (
+                  <div key={`${c.provider}-${i}`} className="flex items-start gap-3 px-1 py-1">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40 shrink-0">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium truncate">{formatConnectionDisplay(c)}</span>
+                        {c.stats?.is_verified && (
+                          <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">{provider.label}</div>
+                      {hasStats && statBits.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate">
+                          {statBits.join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <div className="h-6" />
@@ -273,6 +331,7 @@ export function MobileProfileView({
       {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />}
 
       <MobileStatusSheet open={showStatusSheet} onOpenChange={setShowStatusSheet} />
+      <CustomStatusModal open={showCustomStatus} onOpenChange={setShowCustomStatus} />
 
       {/* Sub-pages stack */}
       <AnimatePresence>

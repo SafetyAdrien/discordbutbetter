@@ -517,24 +517,7 @@ export function MobileLayout({
   const channelSwipe = useSwipeBack({ onBack: handleBackToServers });
   const threadSwipe = useSwipeBack({ onBack: handleBackToChannels, fullScreen: true });
 
-  // Swipe between tabs
-  const TAB_ORDER: MobileTab[] = ['servers', 'notifications', 'profile'];
-  const tabIndex = TAB_ORDER.indexOf(activeTab);
-
-  const handleSwipeTab = useCallback((newIndex: number) => {
-    const tab = TAB_ORDER[newIndex];
-    setActiveTab(tab);
-    setMobileView({ type: 'tab' });
-  }, [setActiveTab, setMobileView]);
-
-  const swipeTabs = useSwipeTabs({
-    currentIndex: tabIndex,
-    tabCount: TAB_ORDER.length,
-    onSwipe: handleSwipeTab,
-  });
-
   const isOverlayActive = mobileView.type !== 'tab';
-  const canSwipeTabs = !isOverlayActive && !activeDMId && !showDiscover && !showCreate && !settingsServerId;
 
   // Visual viewport / keyboard handling
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();

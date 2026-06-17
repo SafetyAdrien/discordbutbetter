@@ -359,6 +359,9 @@ export function MobileProfileView({
 
       {/* Sub-pages stack */}
       <AnimatePresence>
+        {subpage === 'profile-detail' && (
+          <MobileFullProfileView key="profile-detail" onBack={() => setSubpage(null)} />
+        )}
         {subpage === 'edit-profile' && (
           <MobileEditProfileView key="edit" onBack={() => setSubpage(null)} />
         )}

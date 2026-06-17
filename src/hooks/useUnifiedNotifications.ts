@@ -70,6 +70,7 @@ export function useUnifiedNotifications() {
       serverName: null,
       serverIconUrl: null,
       conversationId: d.conversationId,
+      userId: d.userId,
       unreadCount: d.unreadCount,
       raw: d,
     }));

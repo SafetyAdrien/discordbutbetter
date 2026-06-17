@@ -301,7 +301,7 @@ function SortableCategory({
             <div
               {...attributes}
               {...listeners}
-              className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
+              className="flex items-center gap-1.5 px-3 pt-1.5 pb-0 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
 
               <button
                 onClick={(e) => {
@@ -356,7 +356,7 @@ function SortableCategory({
 
       {/* Salons enfants en dehors de la zone sortable: la catégorie reste un en-tête fin (rect réduit),
           ce qui empêche la catégorie active d'absorber le pointeur pendant un drag. */}
-      {!isCollapsed && <div className="mb-2">{children}</div>}
+      {!isCollapsed && <div className="mb-1">{children}</div>}
 
 
       {/* Delete Category Confirmation Dialog */}

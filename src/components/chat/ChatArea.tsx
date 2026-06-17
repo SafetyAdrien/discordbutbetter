@@ -510,8 +510,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       const distanceFromBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight;
       const atBottom = distanceFromBottom < 24;
       wasAtBottomRef.current = atBottom;
-      // Bouton "Aller en bas" : seuil ~150px
-      setShowJumpToBottom(distanceFromBottom > 150);
+      // Bouton "Aller en bas" : visible uniquement avec ≥50 messages et distance > 150px
+      setShowJumpToBottom(messages.length >= 50 && distanceFromBottom > 150);
     };
     computeAtBottom();
 
@@ -536,7 +536,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id, restoreEditScrollLock]);
+  }, [channel.id, restoreEditScrollLock, messages.length]);
 
   // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {
@@ -2122,7 +2122,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       {/* Input Container - aligned with UserProfileCard (h-14) */}
       <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
         {showJumpToBottom && (
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/60 shadow-[0_4px_16px_rgba(0,0,0,0.25)] text-xs animate-fade-in">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/60 shadow-[0_4px_16px_rgba(0,0,0,0.25)] text-xs animate-slide-in-bottom">
             <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
             <button
               type="button"

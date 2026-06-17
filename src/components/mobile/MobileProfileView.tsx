@@ -249,9 +249,9 @@ export function MobileProfileView({
                 aria-label="Copier le nom d'affichage"
               >
                 {copied ? (
-                  <Check className="w-4 h-4 text-[hsl(var(--online))]/80" />
+                  <Check className="w-3.5 h-3.5 text-[hsl(var(--online))]/80" />
                 ) : (
-                  <Copy className="w-4 h-4 text-muted-foreground/60" />
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground/60" />
                 )}
               </button>
               <button

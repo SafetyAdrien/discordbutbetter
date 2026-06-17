@@ -110,10 +110,13 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
       >
         {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
-      <pre className="m-0 max-h-[360px] overflow-auto">
+      <pre
+        className="m-0 max-h-[360px] overflow-auto scrollbar-thin"
+        style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+      >
         <code
           ref={codeRef}
-          className={`block px-3 py-2 pr-10 text-sm font-mono whitespace-pre ${lang ? `language-${lang}` : ''}`}
+          className={`block px-3 py-2 pr-10 text-sm font-mono whitespace-pre-wrap break-words md:whitespace-pre md:break-normal ${lang ? `language-${lang}` : ''}`}
         >
           {code}
         </code>

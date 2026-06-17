@@ -393,6 +393,16 @@ function buildFilterChips(
     });
   }
 
+  if (f.userId) {
+    chips.push({
+      key: `usr:${f.userId}`,
+      label: 'Utilisateur',
+      apply: (nf) => {
+        nf.userId = null;
+      },
+    });
+  }
+
   if (f.period !== 'all') {
     chips.push({
       key: `period:${f.period}`,

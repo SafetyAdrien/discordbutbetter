@@ -356,7 +356,7 @@ function SortableCategory({
 
       {/* Salons enfants en dehors de la zone sortable: la catégorie reste un en-tête fin (rect réduit),
           ce qui empêche la catégorie active d'absorber le pointeur pendant un drag. */}
-      {!isCollapsed && <div className="mb-2">{children}</div>}
+      {!isCollapsed && <div className="mb-1">{children}</div>}
 
 
       {/* Delete Category Confirmation Dialog */}

@@ -190,7 +190,7 @@ export function MobileProfileView({
                   }}
                   aria-label="Modifier le statut personnalisé"
                   className={cn(
-                    '-mt-3 inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
+                    'relative -top-4 inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
                     'flex items-center gap-2 min-h-[40px] shadow-sm',
                   )}
                 >

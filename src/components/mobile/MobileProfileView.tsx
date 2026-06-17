@@ -181,7 +181,7 @@ export function MobileProfileView({
               </button>
 
               {/* Custom status zone (right of avatar) — single dark pill with inline "+" icon */}
-              <div className="flex-1 min-w-0 pb-2">
+              <div className="flex-1 min-w-0 pb-2 mr-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -194,13 +194,13 @@ export function MobileProfileView({
                     'flex items-center gap-2 min-h-[40px] shadow-sm',
                   )}
                 >
-                    <span className="shrink-0 w-6 h-6 rounded-full text-foreground flex items-center justify-center">
-                      <Plus className="w-5 h-5" strokeWidth={2.5} />
+                  <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
+                    <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
                   </span>
                   {profile?.custom_status ? (
-                    <span className="text-base text-foreground italic truncate">{profile.custom_status}</span>
+                    <span className="text-base text-foreground italic whitespace-nowrap">{profile.custom_status}</span>
                   ) : (
-                    <span className="text-base text-muted-foreground italic truncate">Quoi de neuf ?</span>
+                    <span className="text-base text-muted-foreground italic whitespace-nowrap">Quoi de neuf ?</span>
                   )}
                 </button>
               </div>

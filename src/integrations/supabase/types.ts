@@ -3077,6 +3077,10 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_message_attachment: {
+        Args: { _path: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_webhook_token: {
         Args: { _user_id: string; _webhook_id: string }
         Returns: boolean

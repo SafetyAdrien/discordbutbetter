@@ -204,7 +204,7 @@ export function MobileProfileView({
             {/* Petite bulle fondue dans le haut-gauche de la bulle large */}
             <span
               aria-hidden
-              className="absolute left-1.5 -top-5 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] shadow-md"
+              className="absolute left-2 -top-2 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] shadow-md"
             />
             <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
               <Plus className="w-[18px] h-[18px]" strokeWidth={2} />

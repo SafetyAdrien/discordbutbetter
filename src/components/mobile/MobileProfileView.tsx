@@ -413,26 +413,40 @@ export function MobileProfileView({
           />
         )}
         {subpage === 'notifications' && (
-          <motion.div
-            key="notifications"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="absolute inset-0 z-40 bg-background flex flex-col"
-          >
-            <MobileNotificationsView
-              onBack={() => setSubpage(null)}
-              onOpenDM={(id) => {
-                setSubpage(null);
-                onOpenDM?.(id);
-              }}
-              onOpenServer={(id) => {
-                setSubpage(null);
-                onSelectServer?.(id);
-              }}
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="notifications-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setSubpage(null)}
+              className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm"
             />
-          </motion.div>
+            {/* Popup anchored top-right */}
+            <motion.div
+              key="notifications"
+              initial={{ opacity: 0, scale: 0.92, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -6 }}
+              transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+              style={{ transformOrigin: 'top right' }}
+              className="absolute top-2 right-2 left-2 bottom-16 z-50 rounded-3xl bg-background overflow-hidden flex flex-col shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_0_0_1px_hsl(var(--border))]"
+            >
+              <MobileNotificationsView
+                onBack={() => setSubpage(null)}
+                onOpenDM={(id) => {
+                  setSubpage(null);
+                  onOpenDM?.(id);
+                }}
+                onOpenServer={(id) => {
+                  setSubpage(null);
+                  onSelectServer?.(id);
+                }}
+              />
+            </motion.div>
+          </>
         )}
         {subpage === 'appearance' && (
           <MobileSettingsRedirectView

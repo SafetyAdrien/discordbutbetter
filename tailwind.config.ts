@@ -13,16 +13,19 @@ export default {
       },
     },
     screens: {
-      // Phone tiers (mobile-first, CSS px)
+      // Phone tiers (additive — defaults sm/md/lg/xl preserved below)
       xxs: "360px",
       xs: "390px",
-      sm: "428px",
-      md: "480px",
-      phablet: "640px",
-      tablet: "1024px",
+      // Default Tailwind breakpoints (kept verbatim to avoid breaking existing classes)
+      sm: "640px",
+      md: "768px",
       lg: "1024px",
       xl: "1280px",
-      "2xl": "1440px",
+      "2xl": "1536px",
+      // New phone-specific tiers
+      phone: "428px",  // Pro Max / Pixel Pro class
+      phablet: "480px",
+      tablet: "768px",
       // Height-based
       tall: { raw: "(min-height: 820px)" },
       short: { raw: "(max-height: 700px)" },

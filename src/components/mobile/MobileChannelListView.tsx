@@ -393,8 +393,20 @@ export function MobileChannelListView({
   };
 
   const serverNameTrigger = (
-    <button className="flex items-center gap-1 text-left min-w-0">
-      <h2 className="font-semibold text-sm truncate">{serverName}</h2>
+    <button className="flex flex-col items-start text-left min-w-0 leading-tight">
+      <h2 className="font-bold text-lg truncate text-foreground max-w-full">{serverName}</h2>
+      <p className="text-[11px] text-muted-foreground truncate max-w-full">
+        {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
+      </p>
+    </button>
+  );
+
+  const serverNameTriggerLight = (
+    <button className="flex flex-col items-start text-left min-w-0 leading-tight">
+      <h2 className="font-bold text-lg truncate text-white max-w-full [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+      <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
+        {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
+      </p>
     </button>
   );
 

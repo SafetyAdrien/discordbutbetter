@@ -642,7 +642,7 @@ export function MobileChannelListView({
                   </button>
                 </PopoverContent>
               </Popover>
-              {!isCollapsed && cat.channels.map(ch => {
+              {!isCollapsed && <div className="mt-0.5 mb-1">{cat.channels.map(ch => {
                 const Icon = channelIcons[ch.type] || StreamlineHash;
                 const info = channelUnreadInfo[ch.id];
                 const chLongPressHandlers = {

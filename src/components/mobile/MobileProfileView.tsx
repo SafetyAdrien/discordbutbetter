@@ -413,15 +413,16 @@ export function MobileProfileView({
           />
         )}
         {subpage === 'notifications' && (
-          <MobileSettingsRedirectView
-            key="notif-settings"
-            variant="notifications"
-            onBack={() => setSubpage(null)}
-            onOpenFullSettings={() => {
-              setSubpage(null);
-              setShowSettings(true);
-            }}
-          />
+          <motion.div
+            key="notifications"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+            className="absolute inset-0 z-40 bg-background flex flex-col"
+          >
+            <MobileNotificationsView onBack={() => setSubpage(null)} />
+          </motion.div>
         )}
         {subpage === 'appearance' && (
           <MobileSettingsRedirectView

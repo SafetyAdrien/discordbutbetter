@@ -33,6 +33,7 @@ import { haptics } from '@/lib/haptics';
 const DAY = 24 * 60 * 60 * 1000;
 
 interface MobileNotificationsViewProps {
+  compact?: boolean;
   onBack?: () => void;
   onOpenDM?: (conversationId: string) => void;
   onOpenServer?: (serverId: string) => void;

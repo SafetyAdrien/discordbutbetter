@@ -510,8 +510,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       const distanceFromBottom = vp.scrollHeight - vp.scrollTop - vp.clientHeight;
       const atBottom = distanceFromBottom < 24;
       wasAtBottomRef.current = atBottom;
-      // Bouton "Aller en bas" : seuil ~150px
-      setShowJumpToBottom(distanceFromBottom > 150);
+      // Bouton "Aller en bas" : visible uniquement avec ≥50 messages et distance > 150px
+      setShowJumpToBottom(messages.length >= 50 && distanceFromBottom > 150);
     };
     computeAtBottom();
 

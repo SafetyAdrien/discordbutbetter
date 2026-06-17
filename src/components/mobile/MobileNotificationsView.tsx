@@ -139,22 +139,39 @@ export function MobileNotificationsView({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header — large title style */}
-      <div className="px-4 pt-3 pb-3 bg-background border-b border-border/50">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          {onBack ? (
-            <button
-              onClick={() => {
-                haptics.light();
-                onBack();
-              }}
-              className="-ml-2 h-9 w-9 rounded-full flex items-center justify-center active:bg-muted/60"
-              aria-label="Retour"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
+      {/* Header */}
+      <div className={cn(
+        "px-3 bg-background border-b border-border/50 shrink-0",
+        compact ? "py-2" : "pt-3 pb-3"
+      )}>
+        <div className="flex items-center justify-between gap-2">
+          {compact ? (
+            <span className="text-sm font-bold">Notifications</span>
           ) : (
-            <div className="w-9" />
+            <>
+              {onBack ? (
+                <button
+                  onClick={() => {
+                    haptics.light();
+                    onBack();
+                  }}
+                  className="-ml-2 h-9 w-9 rounded-full flex items-center justify-center active:bg-muted/60"
+                  aria-label="Retour"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              ) : (
+                <div className="w-9" />
+              )}
+              <div className="flex items-baseline gap-2">
+                <h1 className="text-[26px] leading-none font-bold tracking-tight">Notifications</h1>
+                {unreadCount > 0 && (
+                  <span className="text-xs font-semibold text-primary">
+                    {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </>
           )}
 
           <button
@@ -163,30 +180,27 @@ export function MobileNotificationsView({
               setFilterSheetOpen(true);
             }}
             className={cn(
-              'relative h-9 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-colors',
+              'relative rounded-full flex items-center gap-1.5 font-semibold transition-colors shrink-0',
+              compact
+                ? 'h-7 px-2 text-[10px]'
+                : 'h-9 px-3 text-xs',
               active
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-[hsl(var(--surface-2))] text-foreground/80 active:bg-[hsl(var(--surface-3))]'
             )}
             aria-label="Filtres"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            Filtres
+            <SlidersHorizontal className={cn(compact ? 'w-3 h-3' : 'w-3.5 h-3.5')} />
+            {!compact && 'Filtres'}
             {active && (
-              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-background/25 text-[10px] font-bold flex items-center justify-center">
+              <span className={cn(
+                "rounded-full bg-background/25 font-bold flex items-center justify-center",
+                compact ? "ml-0.5 min-w-[14px] h-3.5 px-0.5 text-[9px]" : "ml-0.5 min-w-[16px] h-4 px-1 text-[10px]"
+              )}>
                 {filterChips.length}
               </span>
             )}
           </button>
-        </div>
-
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-[26px] leading-none font-bold tracking-tight">Notifications</h1>
-          {unreadCount > 0 && (
-            <span className="text-xs font-semibold text-primary">
-              {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
-            </span>
-          )}
         </div>
       </div>
 

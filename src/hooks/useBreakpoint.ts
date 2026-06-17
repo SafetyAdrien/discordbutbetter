@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useDevice, type DeviceTier } from './useDevice';
 
 const BREAKPOINTS = {
   xs: 480,
@@ -8,32 +8,43 @@ const BREAKPOINTS = {
   xl: 1440,
 } as const;
 
+/**
+ * Backwards-compatible breakpoint hook, now powered by useDevice for full
+ * smartphone tier coverage (xxs → xl-mobile → tablet → desktop) plus
+ * orientation, safe-area, foldable and refresh-rate awareness.
+ */
 export function useBreakpoint() {
-  const [width, setWidth] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth : 1280
-  );
+  const d = useDevice();
 
-  useEffect(() => {
-    const onResize = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const isXs = width < BREAKPOINTS.xs;
-  const isMobile = width < BREAKPOINTS.md; // < 768
-  const isTablet = width >= BREAKPOINTS.md && width < BREAKPOINTS.lg; // 768–1023
-  const isDesktop = width >= BREAKPOINTS.lg; // >= 1024
-  const isLargeDesktop = width >= BREAKPOINTS.xl; // >= 1440
+  const isXs = d.width < BREAKPOINTS.xs;
+  const isMobile = d.width < BREAKPOINTS.md; // < 768
+  const isTablet = d.width >= BREAKPOINTS.md && d.width < BREAKPOINTS.lg;
+  const isDesktop = d.width >= BREAKPOINTS.lg;
+  const isLargeDesktop = d.width >= BREAKPOINTS.xl;
 
   return {
-    // New unified flags
+    // Legacy API
     isXs,
     isMobile,
     isTablet,
     isDesktop,
     isLargeDesktop,
-    // Backwards-compat
     isSmallMobile: isXs,
-    width,
+    width: d.width,
+    // Extended device info
+    height: d.height,
+    tier: d.tier as DeviceTier,
+    orientation: d.orientation,
+    isTall: d.isTall,
+    isFoldable: d.isFoldable,
+    isStandalone: d.isStandalone,
+    hasNotch: d.hasNotch,
+    hasDynamicIsland: d.hasDynamicIsland,
+    safeArea: d.safeArea,
+    pointer: d.pointer,
+    hover: d.hover,
+    refreshRate: d.refreshRate,
+    dpr: d.dpr,
+    aspectRatio: d.aspectRatio,
   };
 }

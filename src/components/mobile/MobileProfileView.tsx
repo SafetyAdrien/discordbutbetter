@@ -181,7 +181,7 @@ export function MobileProfileView({
               </button>
 
               {/* Custom status zone (right of avatar) — single dark pill with inline "+" icon */}
-              <div className="flex-1 min-w-0 pb-2 mr-2">
+              <div className="flex-1 min-w-0 pb-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -190,7 +190,7 @@ export function MobileProfileView({
                   }}
                   aria-label="Modifier le statut personnalisé"
                   className={cn(
-                    'inline-flex text-left pl-2 pr-4 py-2 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
+                    'inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-muted/60 backdrop-blur-md active:bg-muted/80 transition-colors',
                     'flex items-center gap-2 min-h-[40px] shadow-sm',
                   )}
                 >

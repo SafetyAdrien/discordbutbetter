@@ -25,7 +25,7 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { useSwipeTabs } from '@/hooks/useSwipeTabs';
+
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useVisualViewport } from '@/hooks/useVisualViewport';

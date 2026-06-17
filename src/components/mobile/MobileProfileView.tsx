@@ -71,11 +71,15 @@ export function MobileProfileView({
   const { data: servers = [] } = useServers();
   const [showSettings, setShowSettings] = useState(false);
   const [showStatusSheet, setShowStatusSheet] = useState(false);
+  const [showCustomStatus, setShowCustomStatus] = useState(false);
   const [copied, setCopied] = useState(false);
   const [subpage, setSubpage] = useState<Subpage>(null);
 
   const acceptedFriends = friends.filter((f: any) => f.status === 'accepted').length;
   const serverCount = servers.length;
+  const connections: ProfileConnection[] = Array.isArray((profile as any)?.connections)
+    ? ((profile as any).connections as ProfileConnection[])
+    : [];
 
   const statusColors: Record<string, string> = {
     online: 'bg-[hsl(var(--online))]',

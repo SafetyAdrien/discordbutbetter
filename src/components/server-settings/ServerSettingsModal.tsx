@@ -7,6 +7,7 @@ import { EmojiManager } from './EmojiManager';
 import { StickerManager } from './StickerManager';
 import { MemberManager } from './MemberManager';
 import { RoleManager } from './RoleManager';
+import { ConnectionRulesManager } from './ConnectionRulesManager';
 import { InviteManager } from './InviteManager';
 import { BannedMembersManager } from './BannedMembersManager';
 import { AuditLogManager } from './AuditLogManager';

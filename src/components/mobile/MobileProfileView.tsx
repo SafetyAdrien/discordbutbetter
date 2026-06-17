@@ -256,7 +256,7 @@ export function MobileProfileView({
               </button>
               <button
                 onClick={handleCopyUsername}
-                className="w-5 h-5 rounded-full active:bg-muted-muted/60 transition-colors flex items-center justify-center -mt-0.5"
+                className="w-5 h-5 rounded-full active:bg-muted-muted/60 transition-colors flex items-center justify-center -mt-2"
                 aria-label="Copier le nom d'utilisateur"
               >
                 {copiedUsername ? (

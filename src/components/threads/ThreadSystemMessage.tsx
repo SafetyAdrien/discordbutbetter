@@ -153,6 +153,8 @@ export function ThreadSystemMessage({
       >
         {embedContent}
       </UniversalMessageContextMenu>
+      </div>
+
 
 
       {/* Rename Dialog */}

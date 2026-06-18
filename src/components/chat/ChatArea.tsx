@@ -223,7 +223,8 @@ function PollActions({
       {/* 2. Picker emoji complet */}
       <Popover>
         <PopoverTrigger asChild>
-          <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+          <button className={slotCls}>
+
             <SmilePlus className="w-4 h-4 text-muted-foreground" />
           </button>
         </PopoverTrigger>

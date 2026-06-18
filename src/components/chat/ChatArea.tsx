@@ -1452,7 +1452,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 })}
                               </TooltipContent>
                             </Tooltip>
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <PollDisplay poll={poll} channelId={channel.id} />
                             </div>
                           </div>

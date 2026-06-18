@@ -73,19 +73,21 @@ export function EventListBelow({ userId, readOnly = false }: EventListBelowProps
                   <p className="text-[11px] text-muted-foreground/80 truncate mt-0.5">{evt.description}</p>
                 )}
               </div>
-              <div className="flex items-center gap-0.5">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(evt)}>
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={() => remove.mutate(evt.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center gap-0.5">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(evt)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => remove.mutate(evt.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

@@ -260,7 +260,8 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-poll rounded-xl overflow-hidden max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
+    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
+
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         
@@ -350,8 +351,9 @@ export function PollDisplay({
           })}
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap min-w-0">
+
             <span className="my-0 px-0 py-0">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
             {poll.expires_at && (
               <div className="flex items-center gap-2">
@@ -380,7 +382,8 @@ export function PollDisplay({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
+
             {/* Modify vote button — only while poll is open and user has voted */}
             {!isExpired && hasVoted && !isEditing && canVote && (
               <Button

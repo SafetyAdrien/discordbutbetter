@@ -1,103 +1,79 @@
-# Refonte UI/UX — Notifications Mobile
+# Plan — Refonte Profil + Calendrier
 
-## Objectifs
+## 1. NavBar mobile — Avatar au lieu de l'icône "Vous"
+- `src/components/mobile/MobileBottomNav.tsx` : remplacer l'icône `User` du tab `profile` par l'`Avatar` (avatar_url) du profil courant. Conserver le badge, le pill actif, la pastille verte vocale. Fallback initiales si pas d'avatar. Récupération via `useAuth().profile`.
 
-1. **Nettoyer le header** : retirer les tabs visibles (Tout / Mentions / Réponses / Système) et les regrouper dans une popup de filtres accessible via un icône.
-2. **Élargir le scope** : intégrer aussi les notifications de **Messages Privés** (amis favoris + DMs les plus actifs).
-3. **Tri intelligent** : organiser la liste par activité récente avec regroupement par catégorie collapsible.
-4. **Filtre par serveur** : permettre de filtrer les notifications par serveur spécifique depuis la popup.
+## 2. Édition du profil — Markdown live dans "À propos"
+- Créer `src/components/profile/MarkdownLiveTextarea.tsx` réutilisant l'architecture overlay du chat (`InputMarkdownOverlay`) : textarea transparent + couche `parseMarkdown` synchronisée (scroll, font, padding). Sert sur mobile **et** desktop.
+- `MobileEditProfileView.tsx` : remplacer la `<Textarea>` du bio par `<MarkdownLiveTextarea>`, support complet du Markdown rendu en temps réel pendant la frappe.
 
----
+## 3. Vue/Édition Profil Desktop — alignement sur le design Mobile
+- Réécrire `src/components/profile/ProfileSettings.tsx` (édition) en reprenant les patterns visuels de `MobileEditProfileView` :
+  - Bannière + bouton caméra superposé, avatar `-mt-12` ring background, sections cards `rounded-2xl bg-card border border-border/50`.
+  - Sections : Identité (display_name, username readonly, pronouns) → À propos (MarkdownLiveTextarea) → **Calendrier** (cf. §4) → Statut/Activité/Thème (existant, redesigné en cards).
+  - Barre flottante "Modifications non enregistrées" au lieu du bouton fixe.
+  - Modal occupe `max-w-3xl max-h-[92vh]` au lieu du layout actuel, padding adaptés desktop.
+- `FullUserProfileModal.tsx` (vue lecture) : aligner les cards/spacing sur le mobile profile, sans toucher aux données affichées.
 
-## 1. Nouveau Header
+## 4. Nouvelle section "Calendrier" (Desktop + Mobile)
+
+### 4.1 Base de données
+Migration `calendar_events` :
+- `id uuid pk`, `user_id uuid not null references auth.users on delete cascade`
+- `title text not null` (max 120), `description text` (max 500)
+- `event_date date not null`, `event_time time not null`
+- `color text not null default '#00D4FF'` (hex)
+- `is_public boolean not null default false`
+- `created_at`, `updated_at` + trigger `update_updated_at_column`
+- GRANT select/insert/update/delete authenticated + ALL service_role
+- RLS :
+  - SELECT : `user_id = auth.uid() OR is_public = true`
+  - INSERT/UPDATE/DELETE : `user_id = auth.uid()`
+- `ALTER PUBLICATION supabase_realtime ADD TABLE public.calendar_events`
+- `REPLICA IDENTITY FULL` pour DELETE realtime
+
+### 4.2 Hook `useCalendarEvents`
+- `src/hooks/useCalendarEvents.ts` : query `['calendar-events', userId]`, mutations create/update/delete avec **mises à jour optimistes instantanées** (cf. mémoire `optimistic-updates-mutation-locking`), abonnement Realtime 1 channel par user.
+
+### 4.3 Composants calendrier
+- `src/components/profile/calendar/ProfileCalendar.tsx`
+  - Grille hebdomadaire moderne : **heures (0h–23h) en colonne verticale gauche**, **jours en haut affichés en diagonale (texte `-rotate-45 origin-bottom-left`)** pour économiser l'espace.
+  - Cellules cliquables (clic gauche) → ouvre `CreateEventModal` pré-rempli avec jour/heure.
+  - Évènements rendus dans les cellules avec leur couleur de fond.
+  - Navigation semaine précédente/suivante.
+- `src/components/profile/calendar/EventListBelow.tsx` : liste sous le calendrier des évènements (titre, date, heure, pastille couleur, actions edit/delete).
+- `src/components/profile/calendar/CreateEventModal.tsx`
+  - Champs : titre, description (compteur 500), date (DatePicker shadcn), heure (`<input type="time">`), toggle public/privé.
+  - Sélecteur couleur : 8 swatches préconfigurés + bouton "Personnalisé" qui révèle un `ModernColorPicker`.
+- `src/components/profile/calendar/ModernColorPicker.tsx`
+  - Input HexColor (texte) synchronisé.
+  - Curseurs HSL : Teinte (0–360, gradient arc-en-ciel), Saturation (0–100), Luminosité (0–100).
+  - Aperçu en direct, conversion hex↔hsl côté client.
+
+### 4.4 Intégration
+- Section "Calendrier" insérée juste après "À propos" dans `MobileEditProfileView` et dans la nouvelle `ProfileSettings`.
+- Tout est instantané : optimistic update + realtime, **aucune latence perçue** (lock 500–800 ms conforme à la mémoire projet).
+
+## Détails techniques
 
 ```text
-┌────────────────────────────────────────┐
-│ ← Notifications  •3       [⚙ Filtres] │
-├────────────────────────────────────────┤
-│ [Pills actifs (si filtre appliqué) ×] │
-└────────────────────────────────────────┘
+Calendrier (vue hebdo)
+┌──────┬────────┬────────┬────────┬────────┐
+│      │  Lun   │  Mar   │  Mer   │ ...    │  ← jours en diagonale -rotate-45
+├──────┼────────┼────────┼────────┼────────┤
+│  8h  │   ▓▓   │        │        │        │
+│  9h  │        │   ▓▓   │        │        │
+│ ...  │        │        │        │        │
+└──────┴────────┴────────┴────────┴────────┘
+   ↑
+   colonne heures
 ```
 
-- Retrait des pills de filtres permanents.
-- Nouveau bouton **icône Filtre** (`SlidersHorizontal`) à droite, avec un dot primary si un filtre est actif.
-- Si un filtre est actif → affichage d'un **chip retirable** sous le header (ex: « Serveur : Mon Serveur ×», « Mentions ×»).
-- Compteur unread déplacé à côté du titre de manière plus discrète.
+- Token couleur : on stocke un hex utilisateur (champ libre), c'est volontairement hors du design system (couleurs d'évènements personnelles).
+- Markdown live : réutiliser `parseMarkdown` + overlay déjà éprouvé pour le chat (voir mémoire `markdown-system-and-input-overlay`).
+- Avatar NavBar : utilise `useAuth()` déjà importé ailleurs dans `MobileLayout`, pas de prop drilling supplémentaire.
 
-## 2. Popup de Filtres (Sheet bottom)
-
-Sheet glissant depuis le bas (`Sheet` de shadcn en `side="bottom"`), avec sections :
-
-- **Type** : chips multi-sélection — Tout, Mentions, Réponses, Système, **Messages privés** (nouveau).
-- **Source** : sélecteur de serveur (liste scrollable avec icônes) + option « Messages privés ».
-- **Période** : Aujourd'hui / 7 jours / 30 jours / Tout.
-- Boutons en bas : « Réinitialiser » + « Appliquer ».
-
-## 3. Intégration des Messages Privés
-
-Nouveau hook `useDMNotifications()` qui agrège :
-
-- **DM non-lus** depuis `dm_read_states` + `dm_messages` (dernier message > last_read_at).
-- **Bonus de priorité** pour :
-  - Amis marqués favoris (`friend_favorites`)
-  - Conversations très actives (nombre de messages reçus dans les dernières 24h)
-- Mappés vers une structure unifiée `UnifiedNotification` (compatible avec `ServerNotification` + nouveau type `dm_message`).
-
-## 4. Tri & Regroupement
-
-Liste regroupée par sections collapsibles avec headers :
-
-- **Aujourd'hui**
-- **Cette semaine**
-- **Plus ancien**
-
-Dans chaque section, tri par `created_at` desc. Les DMs de favoris et notifications mentions sont surlignées avec un liseré primary à gauche.
-
-## 5. Améliorations UX
-
-- **Animation fluide** au passage du filtre (motion fade + slide).
-- **Empty states contextuels** par filtre actif.
-- **Swipe gauche/droite conservé** (mark read / archive), avec icônes plus claires.
-- **Header sticky** au scroll.
-- **FAB « Tout marquer lu »** : conservé, repositionné.
-
----
-
-## Section technique
-
-### Fichiers à créer
-
-- `src/hooks/useUnifiedNotifications.ts` — agrège `useNotifications` + nouveau `useDMNotifications`, retourne `UnifiedNotification[]`.
-- `src/hooks/useDMNotifications.ts` — query DMs non-lus avec scoring (favoris + activité).
-- `src/components/mobile/notifications/NotificationsFilterSheet.tsx` — Sheet shadcn bottom avec filtres multi-critères.
-- `src/components/mobile/notifications/NotificationSection.tsx` — section collapsible par période.
-- `src/components/mobile/notifications/UnifiedNotificationRow.tsx` — row swipeable supportant DM + serveur.
-
-### Fichiers modifiés
-
-- `src/components/mobile/MobileNotificationsView.tsx` :
-  - Suppression des pills permanents.
-  - Ajout du bouton filtre dans le header (icône `SlidersHorizontal`).
-  - State `filters: { types: Set<string>; serverId: string|null; period: 'today'|'week'|'month'|'all' }`.
-  - Utilise `useUnifiedNotifications` et `NotificationsFilterSheet`.
-  - Affichage de chips de filtres actifs sous le header.
-  - Regroupement par période via `NotificationSection`.
-
-### Schéma de données (lecture seule, pas de migration)
-
-- `dm_messages` (sender_id, dm_conversation_id, created_at, content)
-- `dm_read_states` (user_id, dm_conversation_id, last_read_at)
-- `dm_participants` (user_id, dm_conversation_id) — pour résoudre l'autre participant
-- `friend_favorites` (user_id, friend_id)
-- `server_notifications` (existant)
-
-### Performance
-
-- Scoring DM calculé côté client (cache déjà chaud via realtime DM).
-- Pas de nouvelle subscription : réutilise les channels existants (DM + notifications).
-- Memoization du tri/regroupement avec `useMemo` sur les dépendances clés.
-
-### Compat
-
-- L'icône Bell dans `MobileProfileView` reste inchangée.
-- Aucune modification du schéma DB, aucune migration.
+## Fichiers touchés
+- Migration SQL : `calendar_events` (table + RLS + realtime).
+- Nouveaux : `useCalendarEvents.ts`, `MarkdownLiveTextarea.tsx`, `ProfileCalendar.tsx`, `EventListBelow.tsx`, `CreateEventModal.tsx`, `ModernColorPicker.tsx`.
+- Modifiés : `MobileBottomNav.tsx`, `MobileEditProfileView.tsx`, `ProfileSettings.tsx`, `FullUserProfileModal.tsx`.

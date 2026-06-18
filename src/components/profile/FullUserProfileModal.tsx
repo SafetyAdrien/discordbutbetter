@@ -17,6 +17,7 @@ import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/mar
 import { toast } from 'sonner';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -145,11 +146,10 @@ export function FullUserProfileModal({
                   {user.display_name?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div
-                className={cn(
-                  'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                  statusColors[user.status || 'offline'],
-                )}
+              <StatusIndicator
+                status={user.status || 'offline'}
+                className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
+                bgClassName="bg-background"
               />
             </div>
             {!isOwnProfile && (
@@ -272,11 +272,9 @@ export function FullUserProfileModal({
                           {friend.display_name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div
-                        className={cn(
-                          'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card',
-                          statusColors[friend.status || 'offline'],
-                        )}
+                      <StatusIndicator
+                        status={friend.status || 'offline'}
+                        className="absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-card"
                       />
                     </div>
                     <div className="flex-1 min-w-0">

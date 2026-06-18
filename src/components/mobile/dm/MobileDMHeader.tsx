@@ -2,6 +2,7 @@ import { ArrowLeft, MoreVertical, Phone, Video } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
@@ -92,12 +93,10 @@ export function MobileDMHeader({
             </AvatarFallback>
           </Avatar>
           {!isGroup && status && (
-            <div
-              className={cn(
-                'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[hsl(var(--surface-header))]',
-                statusColors[safeStatus],
-              )}
-              aria-hidden
+            <StatusIndicator
+              status={safeStatus}
+              className="absolute bottom-0 right-0 w-3 h-3 border-2 border-[hsl(var(--surface-header))]"
+              bgClassName="bg-[hsl(var(--surface-header))]"
             />
           )}
           {hasActiveCall && (

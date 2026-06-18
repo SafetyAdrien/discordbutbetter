@@ -23,6 +23,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { InboxPanel } from "@/components/inbox/InboxPanel";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Badge } from "@/components/ui/badge";

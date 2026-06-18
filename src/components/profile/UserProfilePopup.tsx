@@ -442,11 +442,9 @@ export function UserProfilePopup({
                 {effectiveUser.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div
-              className={cn(
-                'absolute bottom-0.5 right-0.5 w-[18px] h-[18px] rounded-full border-[4px] border-card',
-                statusColors[user.status]
-              )}
+            <StatusIndicator
+              status={user.status}
+              className="absolute bottom-0.5 right-0.5 w-[18px] h-[18px] border-[4px] border-card"
             />
           </div>
 

@@ -11,6 +11,7 @@ import { useVoice } from "@/contexts/VoiceContext";
 import { copyToClipboard } from "@/lib/clipboard";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { CustomStatusModal } from "./CustomStatusModal";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 
 const statusColors = {
   online: "bg-[hsl(var(--online))]",
@@ -132,11 +133,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                   {profile?.display_name?.charAt(0).toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
-              <div
-                className={cn(
-                  "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background",
-                  statusColors[currentStatus],
-                )}
+              <StatusIndicator
+                status={currentStatus}
+                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-background"
+                bgClassName="bg-background"
               />
             </div>
             <div className="flex-1 min-w-0 text-left">
@@ -162,11 +162,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                   {profile?.display_name?.charAt(0).toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
-              <div
-                className={cn(
-                  "absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-card",
-                  statusColors[currentStatus],
-                )}
+              <StatusIndicator
+                status={currentStatus}
+                className="absolute bottom-0 right-0 w-4 h-4 border-2 border-card"
               />
             </div>
           </div>
@@ -193,7 +191,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                   className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-sm"
                 >
                   <div className="flex items-center gap-2">
-                    <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[currentStatus])} />
+                    <StatusIndicator status={currentStatus} className="w-2.5 h-2.5" bgClassName="bg-popover" />
                     <span>{statusLabels[currentStatus]}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -221,7 +219,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                             currentStatus === status ? "bg-primary/20 text-primary" : "hover:bg-muted",
                           )}
                         >
-                          <div className={cn("w-2.5 h-2.5 rounded-full", statusColors[status])} />
+                          <StatusIndicator status={status} className="w-2.5 h-2.5" bgClassName="bg-popover" />
                           <span>{statusLabels[status]}</span>
                         </button>
                       ))}

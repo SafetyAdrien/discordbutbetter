@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AddFriendModal } from './AddFriendModal';
 import { UserPlus, MessageCircle, Check, X, UserMinus, Search, Users } from 'lucide-react';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const statusColors = {
   online: 'bg-[hsl(var(--online))]',
@@ -269,10 +270,11 @@ function FriendCard({
             {friend.profile.display_name.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <div className={cn(
-          'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background',
-          statusColors[friend.profile.status || 'offline']
-        )} />
+        <StatusIndicator
+          status={friend.profile.status || 'offline'}
+          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-background"
+          bgClassName="bg-background"
+        />
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{friend.profile.display_name}</p>

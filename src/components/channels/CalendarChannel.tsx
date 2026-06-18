@@ -20,6 +20,7 @@ export interface CalendarChannelProps {
   channel: Channel;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  hideHeader?: boolean;
 }
 
 interface CalendarEvent {
@@ -33,7 +34,7 @@ interface CalendarEvent {
   color: string;
 }
 
-export function CalendarChannel({ channel, onToggleMembers, showMembers }: CalendarChannelProps) {
+export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHeader = false }: CalendarChannelProps) {
   const { isMobile } = useBreakpoint();
   // Permissions
   const { data: canCreateEvents = true } = useHasChannelPermission(channel.id, 'create_events');
@@ -59,7 +60,9 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
 
   return (
     <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">
+      {!hideHeader && (
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
+
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineCalendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
@@ -112,6 +115,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
           )}
         </div>
       </div>
+      )}
 
       {viewMode === 'agenda' ? (
         <div className="flex-1 overflow-y-auto p-4 space-y-3">

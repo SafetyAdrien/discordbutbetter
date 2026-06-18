@@ -1,65 +1,64 @@
-## Objectif
+# Plan mobile — profil + salons
 
-Unifier le menu contextuel (clic droit) sur **tous les styles de messages** — messages d'utilisateurs classiques, messages système, sondages (polls), annonces (announcements), embeds de thread système — en utilisant `UniversalMessageContextMenu` comme socle commun, tout en préservant les actions spécifiques à chaque type.
+## Partie 1 — Profil plein écran sur mobile (dans un serveur)
 
-## Approche
+Aujourd'hui, taper l'avatar/nom d'un membre dans le chat ouvre `UserProfilePopup` (Dialog flottant). Sur mobile, on veut une **vue plein écran** qui masque la bottom nav et qui se ferme via swipe gauche→droite.
 
-Plutôt que de dupliquer la logique du menu universel partout, on étend `UniversalMessageContextMenu` avec une nouvelle prop optionnelle `extraItems?: ReactNode` permettant d'injecter des actions spécifiques (ex. "Terminer le sondage", "Modifier le sondage", "Renommer le thread"). On retire ensuite les menus contextuels ad-hoc des composants spécialisés.
+### Approche
 
-## Étapes
+1. Créer `src/components/mobile/profile/MobileUserProfileSheet.tsx` :
+   - Reprend les données affichées par `UserProfilePopup` (avatar, bannière, statut, bio, rôles, mutuels, notes, calendrier, actions DM/ami).
+   - Présentation plein écran : `position: fixed inset-0 z-50`, slide-in `x: 100% → 0` via framer-motion, swipe-back via `useSwipeBack({ fullScreen: true })`.
+   - Header compact avec bouton retour (chevron) + menu kebab (Bloquer, Copier ID, etc.).
+2. Dans `ChatArea.tsx` : remplacer `UserProfilePopup` par `MobileUserProfileSheet` quand `useIsMobile()` est `true` (sinon garder le popup desktop).
+3. Exposer un flag global `--mobile-profile-open` (data-attribute sur `<html>`) que `MobileLayout` lit pour masquer `MobileBottomNav` (similaire au flag `hideBottomNav` déjà en place pour le clavier).
+4. Swipe back ferme la fiche profil. La vue Chat reste sous-jacente — l'utilisateur retombe naturellement dans la liste salons/serveurs en re-swipant (gestes déjà gérés par `chatSwipe` / `channelSwipe`).
 
-### 1. Extension de `UniversalMessageContextMenu`
+## Partie 2 — Refonte affichage messages par type de salon (mobile)
 
-- Ajouter prop `extraItems?: ReactNode` (rendue avant le séparateur final, après les actions universelles).
-- Ajouter prop `variant?: 'message' | 'poll' | 'system'` pour adapter le texte/icônes du libellé "Copier l'ID" → "Copier l'ID du sondage", masquer "Répondre"/"Créer un thread"/"Copier le texte" quand inadapté.
-- Conserver les comportements existants (mobile long-press sheet, raccourci Shift+Delete, dialog de confirmation).
+Pour chaque type non-texte, créer/adapter un wrapper mobile qui réutilise la logique métier mais avec une présentation dense et tactile.
 
-### 2. Refactor des messages **Polls** (`ChatArea.tsx` lignes 1337-1472)
+### Salons à traiter
 
-- Remplacer le `<ContextMenu>` ad-hoc par `<UniversalMessageContextMenu variant="poll">`.
-- Injecter via `extraItems` : "Terminer le sondage", "Modifier le sondage", "Supprimer le sondage" (si propriétaire).
-- Masquer "Copier le texte" (non pertinents pour un sondage).
-- Conserver les réactions (déjà supportées par les polls).
+| Type           | Composant cible                                         | Adaptations mobile                                                                                                                  |
+| -------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `text`         | `ChatArea` via `MobileChatView` (déjà ok)               | Vérifier paddings, bulles, replies. Ajouter `min-w-0` aux conteneurs.                                                               |
+| `announcement` | idem text + bandeau "Suivre" déjà présent               | Vérifier responsive du bandeau follow.                                                                                              |
+| `voice`        | `VoiceChannelView`                                      | Header compact, grille participants 1-col en portrait, contrôles en barre fixe basse.                                               |
+| `stage`        | `StageChannel`                                          | Liste speakers/audience en sections empilées, boutons larges.                                                                       |
+| `media`        | `MediaChannel`                                          | Grille posts 2-col (au lieu de 3-4), miniature ratio 1:1, compteurs en pied de carte.                                               |
+| `forum`        | `ForumChannel`                                          | Cartes posts en pile pleine largeur, badge type+tag en ligne, FAB "+ Nouveau post".                                                 |
+| `tasks`        | `TasksChannel`                                          | Colonnes Kanban en tabs swipables (To do / In progress / Done), carte tâche pleine largeur.                                         |
+| `calendar`     | `CalendarChannel`                                       | Vue agenda liste par défaut (au lieu de grille mois), bouton "Mois" en alternative.                                                 |
 
-### 3. Refactor des **messages système thread créé** (`ChatArea.tsx` lignes 1489-1673)
+### Mécanique
 
-- Remplacer par `<UniversalMessageContextMenu variant="system">` avec actions limitées : copier lien, copier ID, supprimer (si modérateur).
+- Détection : `useIsMobile()` dans chaque composant top-level de salon.
+- Extraire les variantes mobiles en sous-composants `*.mobile.tsx` colocalisés pour limiter le bruit.
+- Réutiliser `FullScreenWrapper` (déjà dans `MobileLayout`) pour header standardisé Back + Titre.
+- Conserver toute la logique de données / mutations : seules les présentations changent.
 
-### 4. Refactor de `ThreadSystemMessage.tsx`
+## Détails techniques
 
-- Remplacer le `<ContextMenu>` ad-hoc par `<UniversalMessageContextMenu variant="system">`.
-- Injecter via `extraItems` : "Renommer le thread", "Supprimer le thread" (si `canManage`).
-- Conserver les dialogs de renommage/suppression existants.
+- `useIsMobile` existe déjà dans `src/hooks/use-mobile.tsx`.
+- `useSwipeBack` est prêt à l'emploi (`fullScreen: true` désactive la zone edge-only).
+- Bottom-nav hide : ajouter dans `MobileLayout`
+  ```ts
+  const [profileOpen, setProfileOpen] = useState(false);
+  const hideBottomNav = (isKeyboardOpen && isInputFocused) || profileOpen;
+  ```
+  et exposer un contexte léger `MobileChromeContext` pour que `MobileUserProfileSheet` puisse setter `profileOpen`.
+- Aucun changement de schéma DB. Aucun changement de logique métier.
 
-### 5. Refactor des messages **AnnouncementChannel** (lignes 750-812 et 1157-1198)
+## Livrables
 
-- Annonce publiée : `<UniversalMessageContextMenu variant="message">` avec actions standard + extra "Republier" si applicable.
-- Messages classiques (1157+) : remplacer par `UniversalMessageContextMenu` standard.
-
-### 6. Vérification
-
-- Build automatique.
-- Tester rapidement via session : clic droit sur un message normal, un sondage, un message système, une annonce → menu cohérent partout.
-- Conserver les comportements mobile (long-press → MessagePreviewSheet).
-
-## Fichiers modifiés
-
-- `src/components/chat/UniversalMessageContextMenu.tsx` — ajout `extraItems` + `variant`
-- `src/components/chat/ChatArea.tsx` — refactor Polls + messages système thread
-- `src/components/threads/ThreadSystemMessage.tsx` — refactor
-- `src/components/channels/AnnouncementChannel.tsx` — refactor 2 menus
+1. `MobileUserProfileSheet.tsx` + intégration `ChatArea`.
+2. Contexte/flag pour masquer la bottom nav.
+3. 7 variantes mobiles (text/announcement déjà ok → seulement vérifs + 5 nouvelles : voice, stage, media, forum, tasks, calendar).
+4. Pas de migration, pas de nouveau secret.
 
 ## Hors scope
 
-- Pas de modification du comportement mobile (long-press déjà géré par `UniversalMessageContextMenu`).
-- Pas de modification des handlers métier (delete, edit, end poll, etc.) — uniquement la couche UI du menu.
-- Pas de touche aux tests existants sauf si signatures cassées.
-
-## Risques et atténuations
-
-- **Risque** : casser les actions spécifiques (terminer sondage, renommer thread).
-→ Mitigation : `extraItems` reste un slot libre, les handlers existants sont passés tels quels.
-- **Risque** : régression UI mobile (sheet).
-→ Mitigation : `UniversalMessageContextMenu` gère déjà mobile/desktop, aucun changement à ce niveau.
-- **Risque** : style visuel différent des menus actuels.
-→ Mitigation : le menu universel respecte déjà le design system shadcn ; cohérence améliorée.
+- DM (déjà mobile-natif).
+- Threads (déjà `MobileThreadView`).
+- Modifications de logique permissions/realtime.

@@ -628,6 +628,7 @@ export function MobileLayout({
                 activeDMId={activeDMId}
                 onServerSelect={handleServerSelect}
                 onChannelSelect={handleServerChannelSelect}
+                onDiscoverClick={() => setShowDiscover(true)}
                 onCreateClick={() => setShowCreate(true)}
                 onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
                 onOpenDM={onOpenDM}
@@ -691,7 +692,6 @@ export function MobileLayout({
         <MobileBottomNav
           activeTab={activeTab}
           voiceActive={isConnected && !!voiceState.channelId}
-          onDiscoverClick={() => setShowDiscover(true)}
           onTabChange={(tab) => {
             setActiveTab(tab);
             setMobileView({ type: 'tab' });

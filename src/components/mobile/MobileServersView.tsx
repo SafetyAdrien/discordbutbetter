@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { Plus, Compass, MessageCircle } from 'lucide-react';
+import { Plus, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
@@ -39,7 +39,6 @@ interface MobileServersViewProps {
   activeDMId: string | null;
   onServerSelect: (serverId: string) => void;
   onChannelSelect: (serverId: string, channelId: string, channelType: string) => void;
-  onDiscoverClick: () => void;
   onCreateClick: () => void;
   onOpenSettings?: (initialTab?: string) => void;
   onOpenDM: (conversationId: string) => void;
@@ -156,7 +155,6 @@ export function MobileServersView({
   activeDMId,
   onServerSelect,
   onChannelSelect,
-  onDiscoverClick,
   onCreateClick,
   onOpenSettings,
   onOpenDM,
@@ -346,13 +344,6 @@ export function MobileServersView({
         </DndContext>
 
         {servers.length > 0 && <Separator className="w-8 my-1" />}
-
-        <button
-          onClick={onDiscoverClick}
-          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-surface-3 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
-        >
-          <Compass className="w-6 h-6" />
-        </button>
 
         <button
           onClick={onCreateClick}

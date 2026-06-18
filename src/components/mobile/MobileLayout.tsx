@@ -73,7 +73,7 @@ export function MobileLayout({
   // Restore persisted state on mount
   const [activeTab, setActiveTabLocal] = useState<MobileTab>(() => {
     const tab = persistedTab as MobileTab;
-    if (tab === 'servers' || tab === 'profile') return tab;
+    if (tab === 'servers' || tab === 'explore' || tab === 'profile') return tab;
     return 'servers';
   });
   const [mobileView, setMobileViewLocal] = useState<MobileView>(() => {
@@ -525,7 +525,7 @@ export function MobileLayout({
   // The `channels` (salons) overlay must keep the nav visible at all times.
   const inFullOverlay = mobileView.type === 'chat' || mobileView.type === 'thread';
   const onProfileTab = activeTab === 'profile';
-  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inFullOverlay || onProfileTab;
+  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inFullOverlay || onProfileTab || showDiscover;
 
   // Publish keyboard offset as a CSS variable so any component (modals,
   // floating buttons, chat input) can dock above the on-screen keyboard.
@@ -632,7 +632,6 @@ export function MobileLayout({
                 activeDMId={activeDMId}
                 onServerSelect={handleServerSelect}
                 onChannelSelect={handleServerChannelSelect}
-                onDiscoverClick={() => setShowDiscover(true)}
                 onCreateClick={() => setShowCreate(true)}
                 onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
                 onOpenDM={onOpenDM}
@@ -700,6 +699,11 @@ export function MobileLayout({
           onTabChange={(tab) => {
             setActiveTab(tab);
             setMobileView({ type: 'tab' });
+            if (tab === 'explore') {
+              setShowDiscover(true);
+            } else {
+              setShowDiscover(false);
+            }
           }}
         />
       )}
@@ -708,8 +712,11 @@ export function MobileLayout({
       {showDiscover && (
         <DiscoverModal
           servers={discoverableServers}
-          onClose={() => setShowDiscover(false)}
-          onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); }}
+          onClose={() => {
+            setShowDiscover(false);
+            setActiveTab('servers');
+          }}
+          onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); setActiveTab('servers'); }}
         />
       )}
       {showCreate && (

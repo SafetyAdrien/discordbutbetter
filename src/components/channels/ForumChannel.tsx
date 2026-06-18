@@ -19,6 +19,11 @@ export interface ForumChannelProps {
   channel: Channel;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  hideHeader?: boolean;
+}
+  channel: Channel;
+  onToggleMembers?: () => void;
+  showMembers?: boolean;
 }
 
 interface ForumThread {

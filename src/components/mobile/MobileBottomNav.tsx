@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 export type MobileTab = 'servers' | 'profile';
 

@@ -292,21 +292,25 @@ export function UniversalMessageContextMenu({
             </div>
           )}
           
-          <ContextMenuItem onClick={onReply}>
-            <Reply className="w-4 h-4 mr-2" />
-            Répondre
-          </ContextMenuItem>
-          <ContextMenuItem onClick={onCopyText}>
-            <Copy className="w-4 h-4 mr-2" />
-            Copier le texte
-          </ContextMenuItem>
+          {showReply && (
+            <ContextMenuItem onClick={onReply}>
+              <Reply className="w-4 h-4 mr-2" />
+              Répondre
+            </ContextMenuItem>
+          )}
+          {showCopyText && (
+            <ContextMenuItem onClick={onCopyText}>
+              <Copy className="w-4 h-4 mr-2" />
+              Copier le texte
+            </ContextMenuItem>
+          )}
           {onPin && (
             <ContextMenuItem onClick={onPin}>
               <Pin className="w-4 h-4 mr-2" />
               {isPinned ? 'Désépingler' : 'Épingler'}
             </ContextMenuItem>
           )}
-          {onCreateThread && (
+          {showCreateThread && (
             <ContextMenuItem onClick={onCreateThread}>
               <StreamlineThreads className="w-4 h-4 mr-2" />
               Créer un thread
@@ -314,11 +318,11 @@ export function UniversalMessageContextMenu({
           )}
           <ContextMenuItem onClick={onCopyLink}>
             <Link className="w-4 h-4 mr-2" />
-            Copier le lien
+            {copyLinkLabel ?? 'Copier le lien'}
           </ContextMenuItem>
           <ContextMenuItem onClick={onCopyId}>
             <Hash className="w-4 h-4 mr-2" />
-            Copier l'ID
+            {copyIdLabel ?? "Copier l'ID"}
           </ContextMenuItem>
 
           {hasReactions && onViewReactions && (
@@ -340,15 +344,23 @@ export function UniversalMessageContextMenu({
             </>
           )}
 
+          {extraItems && (
+            <>
+              <ContextMenuSeparator />
+              {extraItems}
+            </>
+          )}
+
           <ContextMenuSeparator />
           {isOwnMessage ? (
             <>
-              {onEdit && (
+              {showEdit && (
                 <ContextMenuItem onClick={onEdit}>
                   <Pencil className="w-4 h-4 mr-2" />
                   Modifier
                 </ContextMenuItem>
               )}
+
               {onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 

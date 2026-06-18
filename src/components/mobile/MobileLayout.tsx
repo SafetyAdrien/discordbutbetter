@@ -699,6 +699,11 @@ export function MobileLayout({
           onTabChange={(tab) => {
             setActiveTab(tab);
             setMobileView({ type: 'tab' });
+            if (tab === 'explore') {
+              setShowDiscover(true);
+            } else {
+              setShowDiscover(false);
+            }
           }}
         />
       )}
@@ -707,7 +712,10 @@ export function MobileLayout({
       {showDiscover && (
         <DiscoverModal
           servers={discoverableServers}
-          onClose={() => setShowDiscover(false)}
+          onClose={() => {
+            setShowDiscover(false);
+            setActiveTab('servers');
+          }}
           onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); }}
         />
       )}

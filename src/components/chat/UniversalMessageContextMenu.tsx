@@ -40,9 +40,16 @@ export interface UniversalMessageContextMenuProps {
   previewAuthorName?: string;
   previewAuthorAvatar?: string;
   previewContent?: string;
-  onReply: () => void;
+  /** 'message' (default) shows all universal actions. 'poll' hides reply/copy text/create thread. 'system' hides reply/create thread/edit. */
+  variant?: 'message' | 'poll' | 'system';
+  /** Extra menu items injected after universal actions and before the danger zone. Receives a `close` helper for mobile sheet dismissal. */
+  extraItems?: ReactNode;
+  /** Labels overrides for ID/link copy entries (e.g. "Copier l'ID du sondage"). */
+  copyIdLabel?: string;
+  copyLinkLabel?: string;
+  onReply?: () => void;
   onAddReaction: (emoji: string) => void;
-  onCopyText: () => void;
+  onCopyText?: () => void;
   onCopyLink: () => void;
   onCopyId: () => void;
   onEdit?: () => void;
@@ -53,6 +60,7 @@ export interface UniversalMessageContextMenuProps {
   onViewReactions?: () => void;
   onClearAllReactions?: () => void;
 }
+
 
 export function UniversalMessageContextMenu({
   children,

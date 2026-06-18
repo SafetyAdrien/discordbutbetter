@@ -150,8 +150,8 @@ export function useDMMessages(conversationId: string | null) {
     },
     enabled: !!conversationId && !!user && cacheReady,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
+    refetchOnMount: (q) => (q.state.data ? false : 'always'),
     refetchOnWindowFocus: false,
   });
 

@@ -8,7 +8,7 @@ async function bootstrap() {
     // Cap warmCache so a wedged IDB on mobile never blocks the shell.
     await Promise.race([
       warmCache(),
-      new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
     ]);
   } catch (e) {
     console.warn('[bootstrap] warmCache failed, rendering anyway', e);

@@ -272,15 +272,16 @@ export async function warmCache(): Promise<void> {
     recordPerf('warmCache:schemaEnforce', performance.now() - t0);
   } catch {
     // ignore
-  } finally {
-    markCacheReady();
-    markPerf('warmCache:ready');
-    measurePerf('warmCache:total(blocking)', 'warmCache:start', 'warmCache:ready');
   }
 
-  // Step 2 (NON-BLOCKING): hydrate IndexedDB into memory in background.
-  void (async () => {
-    const t0 = performance.now();
+  // Step 2 (BLOCKING with 1200ms safety cap): hydrate IndexedDB into memory
+  // BEFORE marking the cache ready. Otherwise every `cacheGetSync()` issued by
+  // message/DM/server hooks at first paint returns `undefined` and we lose
+  // instant rendering on mobile (localStorage mirror often hits quota).
+  const HYDRATE_CAP_MS = 1200;
+  const hydrateStart = performance.now();
+
+  const hydratePromise = (async () => {
     try {
       const db = await getDB();
       let count = 0;
@@ -299,11 +300,23 @@ export async function warmCache(): Promise<void> {
         tx.oncomplete = () => resolve();
         tx.onerror = () => resolve();
       });
-      recordPerf(`warmCache:idbHydrate(${count})`, performance.now() - t0);
+      recordPerf(`warmCache:idbHydrate(${count})`, performance.now() - hydrateStart);
     } catch {
-      recordPerf('warmCache:idbHydrate(failed)', performance.now() - t0);
+      recordPerf('warmCache:idbHydrate(failed)', performance.now() - hydrateStart);
     }
   })();
+
+  await Promise.race([
+    hydratePromise,
+    new Promise<void>((resolve) => setTimeout(() => {
+      recordPerf('warmCache:idbHydrate(timeout)', performance.now() - hydrateStart);
+      resolve();
+    }, HYDRATE_CAP_MS)),
+  ]);
+
+  markCacheReady();
+  markPerf('warmCache:ready');
+  measurePerf('warmCache:total(blocking)', 'warmCache:start', 'warmCache:ready');
 }
 
 /**

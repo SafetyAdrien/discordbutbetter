@@ -647,6 +647,7 @@ export function MobileLayout({
                 }}
                 onCreateServer={() => setShowCreate(true)}
                 onDiscover={() => setShowDiscover(true)}
+                onClose={() => setActiveTab('servers')}
               />
             )}
           </div>

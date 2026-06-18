@@ -118,7 +118,9 @@ export function ThreadSystemMessage({
 
   return (
     <>
+      <div onContextMenu={(e) => e.stopPropagation()}>
       <UniversalMessageContextMenu
+
         messageId={thread.id}
         isOwnMessage={false}
         canAddReactions={false}

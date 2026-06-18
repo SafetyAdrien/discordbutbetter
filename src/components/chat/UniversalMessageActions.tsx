@@ -57,7 +57,7 @@ export function UniversalMessageActions({
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
   if (isShiftPressed) {
     return <>
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-[12rem]">
         <Tooltip>
           <TooltipTrigger asChild>
             <button onClick={onCopyId} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
@@ -109,7 +109,7 @@ export function UniversalMessageActions({
   // Mode normal
   return <>
     {isVisible && (
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in bg-[hsl(var(--surface-3))]">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in bg-[hsl(var(--surface-3))] w-[12rem]">
         {canAddReactions && onAddReaction && QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
             <TooltipTrigger asChild>
               <button onClick={() => onAddReaction(emoji)} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors text-base">

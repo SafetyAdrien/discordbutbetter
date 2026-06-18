@@ -129,7 +129,7 @@ export function UniversalMessageActions({
             </PopoverTrigger>
             <PopoverContent side="top" align="end" className="w-64 p-2">
               <div className="grid grid-cols-8 gap-1">
-                {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-primary/10 rounded-full text-lg transition-col]">
+                {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-primary/10 rounded-full text-lg transition-colors">
                     {emoji}
                   </button>)}
               </div>

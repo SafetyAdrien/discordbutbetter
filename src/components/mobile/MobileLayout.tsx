@@ -29,6 +29,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useVisualViewport } from '@/hooks/useVisualViewport';
+import { useMobileProfileOpen } from '@/lib/mobile-chrome';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -521,7 +522,8 @@ export function MobileLayout({
 
   // Visual viewport / keyboard handling
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
-  const hideBottomNav = isKeyboardOpen && isInputFocused;
+  const mobileProfileOpen = useMobileProfileOpen();
+  const hideBottomNav = (isKeyboardOpen && isInputFocused) || mobileProfileOpen;
 
   // Publish keyboard offset as a CSS variable so any component (modals,
   // floating buttons, chat input) can dock above the on-screen keyboard.

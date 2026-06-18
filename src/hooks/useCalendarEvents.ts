@@ -26,21 +26,26 @@ export interface CalendarEventInput {
   is_public: boolean;
 }
 
-const key = (userId: string | null | undefined) => ['calendar-events', userId] as const;
+const key = (userId: string | null | undefined, publicOnly: boolean) =>
+  ['calendar-events', userId, publicOnly ? 'public' : 'all'] as const;
 
 export function useCalendarEvents(targetUserId?: string | null) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const userId = targetUserId ?? user?.id ?? null;
+  const publicOnly = !!targetUserId && targetUserId !== user?.id;
+  const k = key(userId, publicOnly);
 
   const query = useQuery({
-    queryKey: key(userId),
+    queryKey: k,
     enabled: !!userId,
     queryFn: async (): Promise<CalendarEvent[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('calendar_events')
         .select('*')
-        .eq('user_id', userId!)
+        .eq('user_id', userId!);
+      if (publicOnly) q = q.eq('is_public', true);
+      const { data, error } = await q
         .order('event_date', { ascending: true })
         .order('event_time', { ascending: true });
       if (error) throw error;
@@ -56,7 +61,7 @@ export function useCalendarEvents(targetUserId?: string | null) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'calendar_events', filter: `user_id=eq.${userId}` },
-        () => qc.invalidateQueries({ queryKey: key(userId) }),
+        () => qc.invalidateQueries({ queryKey: k }),
       )
       .subscribe();
     return () => {
@@ -76,8 +81,8 @@ export function useCalendarEvents(targetUserId?: string | null) {
       return data as CalendarEvent;
     },
     onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: key(userId) });
-      const previous = qc.getQueryData<CalendarEvent[]>(key(userId)) || [];
+      await qc.cancelQueries({ queryKey: k });
+      const previous = qc.getQueryData<CalendarEvent[]>(k) || [];
       const optimistic: CalendarEvent = {
         id: `tmp-${Date.now()}`,
         user_id: user?.id || '',
@@ -90,15 +95,15 @@ export function useCalendarEvents(targetUserId?: string | null) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      qc.setQueryData<CalendarEvent[]>(key(userId), [...previous, optimistic]);
+      qc.setQueryData<CalendarEvent[]>(k, [...previous, optimistic]);
       return { previous };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(key(userId), ctx.previous);
+      if (ctx?.previous) qc.setQueryData(k, ctx.previous);
       toast.error('Impossible de créer l\'évènement');
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: key(userId) });
+      qc.invalidateQueries({ queryKey: k });
     },
   });
 
@@ -114,19 +119,19 @@ export function useCalendarEvents(targetUserId?: string | null) {
       return data as CalendarEvent;
     },
     onMutate: async ({ id, patch }) => {
-      await qc.cancelQueries({ queryKey: key(userId) });
-      const previous = qc.getQueryData<CalendarEvent[]>(key(userId)) || [];
+      await qc.cancelQueries({ queryKey: k });
+      const previous = qc.getQueryData<CalendarEvent[]>(k) || [];
       qc.setQueryData<CalendarEvent[]>(
-        key(userId),
+        k,
         previous.map((e) => (e.id === id ? { ...e, ...patch, updated_at: new Date().toISOString() } as CalendarEvent : e)),
       );
       return { previous };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(key(userId), ctx.previous);
+      if (ctx?.previous) qc.setQueryData(k, ctx.previous);
       toast.error('Impossible de modifier l\'évènement');
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(userId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: k }),
   });
 
   const remove = useMutation({
@@ -136,16 +141,16 @@ export function useCalendarEvents(targetUserId?: string | null) {
       return id;
     },
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: key(userId) });
-      const previous = qc.getQueryData<CalendarEvent[]>(key(userId)) || [];
-      qc.setQueryData<CalendarEvent[]>(key(userId), previous.filter((e) => e.id !== id));
+      await qc.cancelQueries({ queryKey: k });
+      const previous = qc.getQueryData<CalendarEvent[]>(k) || [];
+      qc.setQueryData<CalendarEvent[]>(k, previous.filter((e) => e.id !== id));
       return { previous };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(key(userId), ctx.previous);
+      if (ctx?.previous) qc.setQueryData(k, ctx.previous);
       toast.error('Impossible de supprimer l\'évènement');
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(userId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: k }),
   });
 
   return {

@@ -23,13 +23,18 @@ function fmtDate(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
-export function ProfileCalendar() {
+interface ProfileCalendarProps {
+  userId?: string;
+  readOnly?: boolean;
+}
+
+export function ProfileCalendar({ userId, readOnly = false }: ProfileCalendarProps = {}) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: string; time: string } | null>(null);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
 
-  const { events } = useCalendarEvents();
+  const { events } = useCalendarEvents(userId);
 
   const days = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -64,6 +69,7 @@ export function ProfileCalendar() {
   const goToday = () => setWeekStart(startOfWeek(new Date()));
 
   const openCreate = (date: string, hour: number) => {
+    if (readOnly) return;
     setEditing(null);
     setSelectedSlot({ date, time: `${String(hour).padStart(2, '0')}:00` });
     setModalOpen(true);
@@ -71,6 +77,7 @@ export function ProfileCalendar() {
 
   const openEdit = (evt: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (readOnly) return;
     setEditing(evt);
     setSelectedSlot(null);
     setModalOpen(true);

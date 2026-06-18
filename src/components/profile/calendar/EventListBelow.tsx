@@ -16,8 +16,13 @@ function fmtDateTime(date: string, time: string): string {
   }
 }
 
-export function EventListBelow() {
-  const { events, remove } = useCalendarEvents();
+interface EventListBelowProps {
+  userId?: string;
+  readOnly?: boolean;
+}
+
+export function EventListBelow({ userId, readOnly = false }: EventListBelowProps = {}) {
+  const { events, remove } = useCalendarEvents(userId);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
 
   const sorted = [...events].sort((a, b) => {
@@ -30,7 +35,7 @@ export function EventListBelow() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Mes évènements ({sorted.length})
+          {readOnly ? `Évènements (${sorted.length})` : `Mes évènements (${sorted.length})`}
         </h4>
       </div>
 
@@ -38,7 +43,7 @@ export function EventListBelow() {
         <div className="rounded-xl border border-dashed border-border p-6 text-center">
           <Calendar className="w-6 h-6 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-xs text-muted-foreground">
-            Aucun évènement. Cliquez sur une case du calendrier pour en créer un.
+            {readOnly ? 'Aucun évènement public.' : 'Aucun évènement. Cliquez sur une case du calendrier pour en créer un.'}
           </p>
         </div>
       ) : (
@@ -68,19 +73,21 @@ export function EventListBelow() {
                   <p className="text-[11px] text-muted-foreground/80 truncate mt-0.5">{evt.description}</p>
                 )}
               </div>
-              <div className="flex items-center gap-0.5">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(evt)}>
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={() => remove.mutate(evt.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center gap-0.5">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(evt)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => remove.mutate(evt.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

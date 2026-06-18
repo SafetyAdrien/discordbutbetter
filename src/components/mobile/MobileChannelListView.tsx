@@ -325,8 +325,8 @@ function ServerProfileSheet({
               />
             </div>
 
-
             {/* Emojis */}
+
             {displayedEmojis.length > 0 && (
               <div className="space-y-1.5">
                 <h4 className="text-xs font-semibold text-muted-foreground">

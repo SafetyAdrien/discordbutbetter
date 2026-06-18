@@ -1,42 +1,65 @@
-# Plan
+## Objectif
 
-## 1. Polls — Modification stricte via bouton "Modifier"
+Unifier le menu contextuel (clic droit) sur **tous les styles de messages** — messages d'utilisateurs classiques, messages système, sondages (polls), annonces (announcements), embeds de thread système — en utilisant `UniversalMessageContextMenu` comme socle commun, tout en préservant les actions spécifiques à chaque type.
 
-Dans `src/components/chat/PollDisplay.tsx` :
+## Approche
 
-- Après vote, l'utilisateur voit **uniquement les résultats**. Cliquer sur une option n'a **aucun effet** tant que le mode édition n'est pas activé.
-- Le bouton **"Modifier"** (déjà à côté de "Terminer") devient l'unique porte d'entrée pour changer son vote.
-- Au clic sur "Modifier" :
-  - `isEditing = true`
-  - Pré-remplir `selectedOptions` avec les votes actuels (ne plus les vider via `removeVote`)
-  - Afficher **"Confirmer"** et **"Annuler"** (annuler = retour résultats sans toucher les votes)
-- Handler de clic sur option : ne s'exécute que si `(!hasVoted || isEditing) && !isExpired && !poll.is_closed`.
-- À "Confirmer" : diff entre `selectedOptions` et `userVotes` → appliquer ajouts/suppressions optimistes, `isEditing = false`.
+Plutôt que de dupliquer la logique du menu universel partout, on étend `UniversalMessageContextMenu` avec une nouvelle prop optionnelle `extraItems?: ReactNode` permettant d'injecter des actions spécifiques (ex. "Terminer le sondage", "Modifier le sondage", "Renommer le thread"). On retire ensuite les menus contextuels ad-hoc des composants spécialisés.
 
-## 2. Présence — bascule automatique Desktop + Mobile, temps réel
+## Étapes
 
-Modifier `src/hooks/usePresence.ts` :
+### 1. Extension de `UniversalMessageContextMenu`
 
-Règles :
-- **Online** sans activité → **Idle** (timeout actuel) → **Offline** après **2 min** supplémentaires.
-- **DND** (manuel) sans activité pendant **5 min** → **Offline**.
-- **Idle manuel** : inchangé, pas de timeout offline, pas de texte ajouté.
-- À la moindre activité après bascule auto en offline/idle, retour **Online** (sauf si statut manuel `dnd`/`idle`).
+- Ajouter prop `extraItems?: ReactNode` (rendue avant le séparateur final, après les actions universelles).
+- Ajouter prop `variant?: 'message' | 'poll' | 'system'` pour adapter le texte/icônes du libellé "Copier l'ID" → "Copier l'ID du sondage", masquer "Répondre"/"Créer un thread"/"Copier le texte" quand inadapté.
+- Conserver les comportements existants (mobile long-press sheet, raccourci Shift+Delete, dialog de confirmation).
 
-Implémentation Desktop + Mobile (temps réel, instantané) :
-- Constantes : `IDLE_TO_OFFLINE_TIMEOUT = 2*60*1000`, `DND_TO_OFFLINE_TIMEOUT = 5*60*1000`.
-- Refs : `offlineTimerRef`, `dndOfflineTimerRef`, `isManualIdleRef`.
-- Étendre `ACTIVITY_EVENTS` pour couvrir le mobile : ajouter `touchmove`, `touchend`, `pointerdown`, `pointermove`, `focus` (window) et `pageshow`. Conserver `{ passive: true }`.
-- Étendre `setManualStatus` pour distinguer idle manuel vs auto (`isManualIdleRef`).
-- Sur transition auto vers `idle` : démarrer `offlineTimerRef` (2 min) → `updateStatus('offline')`. Clear sur activité ou changement de statut manuel.
-- Sur statut `dnd` actif : démarrer `dndOfflineTimerRef` (5 min) basé sur `lastActivityRef`, reset à chaque activité ; au déclenchement → `updateStatus('offline', true)`.
-- `handleActivity` :
-  - clear `offlineTimerRef` et `dndOfflineTimerRef`
-  - si statut courant `offline` (et pas manuel) → retour `online`
-  - si `idle` non manuel → retour `online`
-- `visibilitychange` et `pagehide` (mobile/iOS) : déclencher la logique d'inactivité immédiatement (timer raccourci comme aujourd'hui pour `hidden`). Sur `pagehide`, envoyer un PATCH `offline` keepalive (comme `beforeunload`) pour couvrir la fermeture mobile.
-- Tous les changements de statut passent déjà par `updateProfile` → propagation temps réel instantanée via les souscriptions Realtime existantes sur `profiles` (utilisé partout — `StatusIndicator`, listes, profils). Aucun changement Realtime requis.
+### 2. Refactor des messages **Polls** (`ChatArea.tsx` lignes 1337-1472)
 
-## Fichiers touchés
-- `src/components/chat/PollDisplay.tsx`
-- `src/hooks/usePresence.ts`
+- Remplacer le `<ContextMenu>` ad-hoc par `<UniversalMessageContextMenu variant="poll">`.
+- Injecter via `extraItems` : "Terminer le sondage", "Modifier le sondage", "Supprimer le sondage" (si propriétaire).
+- Masquer "Copier le texte" (non pertinents pour un sondage).
+- Conserver les réactions (déjà supportées par les polls).
+
+### 3. Refactor des **messages système thread créé** (`ChatArea.tsx` lignes 1489-1673)
+
+- Remplacer par `<UniversalMessageContextMenu variant="system">` avec actions limitées : copier lien, copier ID, supprimer (si modérateur).
+
+### 4. Refactor de `ThreadSystemMessage.tsx`
+
+- Remplacer le `<ContextMenu>` ad-hoc par `<UniversalMessageContextMenu variant="system">`.
+- Injecter via `extraItems` : "Renommer le thread", "Supprimer le thread" (si `canManage`).
+- Conserver les dialogs de renommage/suppression existants.
+
+### 5. Refactor des messages **AnnouncementChannel** (lignes 750-812 et 1157-1198)
+
+- Annonce publiée : `<UniversalMessageContextMenu variant="message">` avec actions standard + extra "Republier" si applicable.
+- Messages classiques (1157+) : remplacer par `UniversalMessageContextMenu` standard.
+
+### 6. Vérification
+
+- Build automatique.
+- Tester rapidement via session : clic droit sur un message normal, un sondage, un message système, une annonce → menu cohérent partout.
+- Conserver les comportements mobile (long-press → MessagePreviewSheet).
+
+## Fichiers modifiés
+
+- `src/components/chat/UniversalMessageContextMenu.tsx` — ajout `extraItems` + `variant`
+- `src/components/chat/ChatArea.tsx` — refactor Polls + messages système thread
+- `src/components/threads/ThreadSystemMessage.tsx` — refactor
+- `src/components/channels/AnnouncementChannel.tsx` — refactor 2 menus
+
+## Hors scope
+
+- Pas de modification du comportement mobile (long-press déjà géré par `UniversalMessageContextMenu`).
+- Pas de modification des handlers métier (delete, edit, end poll, etc.) — uniquement la couche UI du menu.
+- Pas de touche aux tests existants sauf si signatures cassées.
+
+## Risques et atténuations
+
+- **Risque** : casser les actions spécifiques (terminer sondage, renommer thread).
+→ Mitigation : `extraItems` reste un slot libre, les handlers existants sont passés tels quels.
+- **Risque** : régression UI mobile (sheet).
+→ Mitigation : `UniversalMessageContextMenu` gère déjà mobile/desktop, aucun changement à ce niveau.
+- **Risque** : style visuel différent des menus actuels.
+→ Mitigation : le menu universel respecte déjà le design system shadcn ; cohérence améliorée.

@@ -566,18 +566,18 @@ export function MobileChannelListView({
 
       {/* Header (shown when no banner or banner nearly hidden) */}
       {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
-        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 rounded-t-xl bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 rounded-t-[15px] bg-[hsl(var(--surface-1))]">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 mt-1">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
-        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 bg-[hsl(var(--surface-1))]">
-          <div className="flex-1 min-w-0">
+        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 rounded-t-[15px] bg-[hsl(var(--surface-1))]">
+          <div className="flex-1 min-w-0 mt-1">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
         </div>
@@ -603,7 +603,7 @@ export function MobileChannelListView({
       </div>
 
       {/* Separator before channel list */}
-      <div className="h-px bg-border/30" />
+      <div className="h-0.5 bg-border/30" />
 
       {/* Channel List */}
       <div

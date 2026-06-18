@@ -55,12 +55,13 @@ export function UniversalMessageActions({
   const canDeleteMessage = (isOwnMessage || canManageMessages) && onDelete;
 
   // Mode SHIFT : affiche des actions alternatives (administration/technique)
+  const slotCls = "h-7 w-7 shrink-0 inline-flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors";
   if (isShiftPressed) {
     return <>
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-[12rem]">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-fit">
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onCopyId} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onCopyId} className={slotCls}>
               <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -69,7 +70,7 @@ export function UniversalMessageActions({
         
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onCopyLink} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onCopyLink} className={slotCls}>
               <Link className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -78,7 +79,7 @@ export function UniversalMessageActions({
         
         {onPin && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onPin} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <button onClick={onPin} className={slotCls}>
                 <Pin className={cn("w-4 h-4", isPinned ? "text-primary" : "text-muted-foreground")} />
               </button>
             </TooltipTrigger>
@@ -87,7 +88,7 @@ export function UniversalMessageActions({
         
         {isOwnMessage && onEdit && <Tooltip>
             <TooltipTrigger asChild>
-               <button onClick={onEdit} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+               <button onClick={onEdit} className={slotCls}>
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -96,7 +97,7 @@ export function UniversalMessageActions({
         
         {canDeleteMessage && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={() => onDelete?.()} className="p-1.5 hover:bg-destructive/15 rounded-full transition-colors">
+              <button onClick={() => onDelete?.()} className={cn(slotCls, "hover:bg-destructive/15")}>
                 <Trash2 className="w-4 h-4 text-destructive" />
               </button>
             </TooltipTrigger>

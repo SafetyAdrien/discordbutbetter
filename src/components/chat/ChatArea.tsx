@@ -33,6 +33,8 @@ import {
 import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
+import { UniversalMessageContextMenu } from "@/components/chat/UniversalMessageContextMenu";
+
 import {
   DropdownMenu,
   DropdownMenuContent,

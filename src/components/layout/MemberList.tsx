@@ -537,11 +537,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                   {member.displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div
-                className={cn(
-                  "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
-                  statusColors[member.status],
-                )}
+              <StatusIndicator
+                status={member.status}
+                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-card"
               />
             </div>
 

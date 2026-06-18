@@ -93,7 +93,7 @@ function ServerProfileSheet({
 }: {
   serverId: string;
   serverName: string;
-  trigger: React.ReactNode;
+  trigger: (isOpen: boolean) => React.ReactNode;
   onOpenSettings?: (initialTab?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -198,7 +198,7 @@ function ServerProfileSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>{trigger}</SheetTrigger>
+        <SheetTrigger asChild>{trigger(open)}</SheetTrigger>
         <SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto">
           {/* Banner */}
           <div className="relative h-28 w-full overflow-hidden rounded-t-2xl">
@@ -501,12 +501,12 @@ export function MobileChannelListView({
     });
   };
 
-  const serverNameTrigger = (
+  const serverNameTrigger = (isOpen: boolean) => (
     <button className="flex items-center text-left min-w-0 leading-tight gap-1.5">
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           <h2 className="font-bold text-lg truncate text-foreground">{serverName}</h2>
-          <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <ChevronRight className={cn("w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform duration-200", isOpen && "rotate-90")} />
         </div>
         <p className="text-[11px] text-muted-foreground truncate max-w-full">
           {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
@@ -515,12 +515,12 @@ export function MobileChannelListView({
     </button>
   );
 
-  const serverNameTriggerLight = (
+  const serverNameTriggerLight = (isOpen: boolean) => (
     <button className="flex items-center text-left min-w-0 leading-tight gap-1.5">
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           <h2 className="font-bold text-lg truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
-          <ChevronRight className="w-5 h-5 text-white/90 flex-shrink-0 [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.9))]" />
+          <ChevronRight className={cn("w-5 h-5 text-white/90 flex-shrink-0 [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.9))] transition-transform duration-200", isOpen && "rotate-90")} />
         </div>
         <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
           {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}

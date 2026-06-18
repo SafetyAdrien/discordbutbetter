@@ -69,6 +69,7 @@ export function ProfileCalendar({ userId, readOnly = false }: ProfileCalendarPro
   const goToday = () => setWeekStart(startOfWeek(new Date()));
 
   const openCreate = (date: string, hour: number) => {
+    if (readOnly) return;
     setEditing(null);
     setSelectedSlot({ date, time: `${String(hour).padStart(2, '0')}:00` });
     setModalOpen(true);
@@ -76,6 +77,7 @@ export function ProfileCalendar({ userId, readOnly = false }: ProfileCalendarPro
 
   const openEdit = (evt: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (readOnly) return;
     setEditing(evt);
     setSelectedSlot(null);
     setModalOpen(true);

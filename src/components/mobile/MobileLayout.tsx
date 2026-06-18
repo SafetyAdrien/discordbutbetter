@@ -632,7 +632,6 @@ export function MobileLayout({
                 activeDMId={activeDMId}
                 onServerSelect={handleServerSelect}
                 onChannelSelect={handleServerChannelSelect}
-                onDiscoverClick={() => setShowDiscover(true)}
                 onCreateClick={() => setShowCreate(true)}
                 onOpenSettings={(initialTab) => activeServerId && openServerSettings(activeServerId, initialTab)}
                 onOpenDM={onOpenDM}

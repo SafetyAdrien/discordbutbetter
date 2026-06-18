@@ -29,7 +29,6 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useVisualViewport } from '@/hooks/useVisualViewport';
-import { useMobileProfileOpen } from '@/lib/mobile-chrome';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -413,13 +412,13 @@ export function MobileLayout({
           </div>
         );
       case 'media':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} hideHeader /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} /></FullScreenWrapper>;
       case 'forum':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} hideHeader /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} /></FullScreenWrapper>;
       case 'tasks':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} hideHeader /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} /></FullScreenWrapper>;
       case 'calendar':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} hideHeader /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} /></FullScreenWrapper>;
       case 'announcement':
         return (
           <MobileChatView
@@ -522,8 +521,7 @@ export function MobileLayout({
 
   // Visual viewport / keyboard handling
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
-  const mobileProfileOpen = useMobileProfileOpen();
-  const hideBottomNav = (isKeyboardOpen && isInputFocused) || mobileProfileOpen;
+  const hideBottomNav = isKeyboardOpen && isInputFocused;
 
   // Publish keyboard offset as a CSS variable so any component (modals,
   // floating buttons, chat input) can dock above the on-screen keyboard.

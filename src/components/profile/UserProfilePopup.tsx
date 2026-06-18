@@ -3,11 +3,6 @@ import { User } from '@/types/app';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft } from 'lucide-react';
-import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { setMobileProfileOpen } from '@/lib/mobile-chrome';
-import { haptics } from '@/lib/haptics';
 
 // Global trigger-rect registry: a single document-level mousedown listener
 // captures the bounding rect of whatever element the user last clicked.
@@ -769,16 +764,17 @@ export function UserProfilePopup({
     />
   );
 
-  // Mobile: full-screen slide-from-right sheet with swipe-back
+  // Mobile: Drawer from bottom (unchanged)
   if (isMobile) {
     return (
       <>
-        <MobileProfileFullScreen
-          open={open}
-          onClose={() => onOpenChange(false)}
-        >
-          <ProfileContent />
-        </MobileProfileFullScreen>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
+            <div className="overflow-y-auto">
+              <ProfileContent />
+            </div>
+          </DrawerContent>
+        </Drawer>
         {serverProfileModal}
         {fullBioModal}
       </>
@@ -914,82 +910,5 @@ function FloatingProfileCard({ children, onClose, cardPosition, showRolePanel, r
       </div>
     </div>,
     document.body
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MobileProfileFullScreen: full-screen slide-from-right sheet with swipe-back.
-// Notifies global mobile chrome so the bottom nav hides while open.
-// ─────────────────────────────────────────────────────────────────────────────
-function MobileProfileFullScreen({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const swipe = useSwipeBack({
-    onBack: () => {
-      haptics.light();
-      onClose();
-    },
-    fullScreen: true,
-  });
-
-  useEffect(() => {
-    setMobileProfileOpen(open);
-    return () => setMobileProfileOpen(false);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-          className="fixed inset-0 z-50 bg-background flex flex-col"
-          onTouchStart={swipe.onTouchStart}
-          onTouchMove={swipe.onTouchMove}
-          onTouchEnd={swipe.onTouchEnd}
-        >
-          <header
-            className="h-12 px-2 flex items-center gap-1 border-b border-border shrink-0 bg-background/80 backdrop-blur"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-          >
-            <button
-              onClick={() => {
-                haptics.light();
-                onClose();
-              }}
-              className="w-9 h-9 rounded-full flex items-center justify-center active:bg-muted/60"
-              aria-label="Retour"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h1 className="font-semibold text-base flex-1 truncate">Profil</h1>
-          </header>
-          <div
-            className="flex-1 overflow-y-auto overscroll-contain"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-          >
-            {children}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body,
   );
 }

@@ -232,11 +232,12 @@ export function UniversalMessageContextMenu({
           authorName={previewAuthorName}
           authorAvatar={previewAuthorAvatar}
           messageContent={previewContent}
-          onReply={onReply}
+          onReply={onReply ?? (() => {})}
           onAddReaction={canAddReactions ? onAddReaction : undefined}
           onCopyLink={onCopyLink}
           onCopyId={onCopyId}
-          onCopyText={onCopyText}
+          onCopyText={onCopyText ?? (() => {})}
+
           onEdit={onEdit}
           onDelete={onDelete}
           onCreateThread={onCreateThread}

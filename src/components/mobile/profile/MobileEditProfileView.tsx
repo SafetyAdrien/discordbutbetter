@@ -3,14 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useProfile';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Loader2, ChevronLeft } from 'lucide-react';
+import { Camera, Loader2, ChevronLeft, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { haptics } from '@/lib/haptics';
+import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
+import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
+import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 
 interface Props {
   onBack: () => void;
@@ -222,17 +224,28 @@ export function MobileEditProfileView({ onBack }: Props) {
             <Label htmlFor="bio" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               À propos de moi
             </Label>
-            <Textarea
+            <MarkdownLiveTextarea
               id="bio"
               value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+              onChange={setBio}
               maxLength={BIO_MAX}
               rows={8}
-              className="rounded-xl resize-none font-mono text-sm"
               placeholder="Parle un peu de toi… Le markdown est supporté : **gras**, *italique*, `code`, > citation, listes, [liens](https://…)"
             />
             <p className="text-[11px] text-muted-foreground text-right">{bio.length}/{BIO_MAX}</p>
           </div>
+        </section>
+
+        {/* Calendar card */}
+        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Calendrier
+            </Label>
+          </div>
+          <ProfileCalendar />
+          <EventListBelow />
         </section>
 
         <div className="h-6" />

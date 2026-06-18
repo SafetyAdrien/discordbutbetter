@@ -4,7 +4,7 @@ import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll } from '@/hooks/
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { isPast } from 'date-fns';
-import { Check, Lock, StopCircle } from 'lucide-react';
+import { Check, Lock, StopCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
@@ -83,6 +83,7 @@ export function PollDisplay({
   const { user } = useAuth();
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
   const endPoll = useEndPoll();
@@ -184,10 +185,23 @@ export function PollDisplay({
     return map;
   }, [poll.votes, poll.options]);
 
-  const shouldShowResults = showResults || hasVoted || isExpired;
+  const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
 
   const handleOptionClick = (optionId: string) => {
     if (!canVote) return;
+
+    // Editing mode: clear existing votes on click; rebuild selection like first-time voting.
+    if (isEditing) {
+      if (poll.allow_multiple) {
+        setSelectedOptions(prev =>
+          prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]
+        );
+      } else {
+        setSelectedOptions([optionId]);
+      }
+      return;
+    }
+
     if (showResults && !hasVoted) return;
 
     if (hasVoted) {
@@ -208,9 +222,9 @@ export function PollDisplay({
       }
     } else {
       if (poll.allow_multiple) {
-        setSelectedOptions(prev => 
-          prev.includes(optionId) 
-            ? prev.filter(id => id !== optionId) 
+        setSelectedOptions(prev =>
+          prev.includes(optionId)
+            ? prev.filter(id => id !== optionId)
             : [...prev, optionId]
         );
       } else {
@@ -228,6 +242,21 @@ export function PollDisplay({
         threadId
       });
     });
+    setSelectedOptions([]);
+    setIsEditing(false);
+  };
+
+  const handleStartEdit = () => {
+    // Remove all existing votes from this user, then enter selection mode pre-filled with current choices.
+    userVotes.forEach(optionId => {
+      removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
+    });
+    setSelectedOptions([]);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
     setSelectedOptions([]);
   };
 

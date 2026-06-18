@@ -278,12 +278,12 @@ export function MobileServersView({
   }));
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-[hsl(var(--surface-server-list))]">
       {/* Left: Server icons column */}
       <div
         data-swipe-ignore="true"
         className={cn(
-        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 border-r border-border/50 overflow-y-auto scrollbar-hide'
+        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 overflow-y-auto scrollbar-hide'
       )}>
         {/* DM Button */}
         <button
@@ -354,7 +354,7 @@ export function MobileServersView({
       </div>
 
       {/* Right: Content panel */}
-      <div className="flex-1 min-w-0 overflow-hidden">
+      <div className="flex-1 min-w-0 overflow-hidden rounded-tl-[15px] bg-[hsl(var(--surface-1))]">
         {showDMs ? (
           <MobileHomeView
             activeDMId={activeDMId}

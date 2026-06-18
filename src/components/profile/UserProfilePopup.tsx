@@ -769,17 +769,16 @@ export function UserProfilePopup({
     />
   );
 
-  // Mobile: Drawer from bottom (unchanged)
+  // Mobile: full-screen slide-from-right sheet with swipe-back
   if (isMobile) {
     return (
       <>
-        <Drawer open={open} onOpenChange={onOpenChange}>
-          <DrawerContent className="p-0 overflow-hidden bg-card border-border max-h-[85vh]">
-            <div className="overflow-y-auto">
-              <ProfileContent />
-            </div>
-          </DrawerContent>
-        </Drawer>
+        <MobileProfileFullScreen
+          open={open}
+          onClose={() => onOpenChange(false)}
+        >
+          <ProfileContent />
+        </MobileProfileFullScreen>
         {serverProfileModal}
         {fullBioModal}
       </>

@@ -280,7 +280,7 @@ function PollActions({
       {onReply && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onReply} className={slotCls}>
               <Reply className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>

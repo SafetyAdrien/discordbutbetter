@@ -123,6 +123,10 @@ export function MobileProfileView({
 
   const handleClose = () => {
     haptics.light();
+    if (onClose) {
+      onClose();
+      return;
+    }
     if (window.history.length > 1) {
       window.history.back();
     }

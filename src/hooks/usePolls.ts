@@ -136,8 +136,12 @@ export function usePolls(channelId: string | null) {
               const fullPoll = { ...pollRes.data, options: optionsRes.data || [], votes: votesRes.data || [] };
               queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old => {
                 if (!old) return [fullPoll as Poll];
-                if (old.some(p => p.id === fullPoll.id)) return old;
-                return [...old, fullPoll as Poll];
+                // Remove any optimistic temp polls from the same author with the same question, plus dedupe by real id
+                const cleaned = old.filter(p =>
+                  p.id !== fullPoll.id &&
+                  !(p.id.startsWith('temp-') && p.author_id === fullPoll.author_id && p.question === fullPoll.question)
+                );
+                return [...cleaned, fullPoll as Poll];
               });
             }
           } else if (payload.eventType === 'UPDATE') {
@@ -192,7 +196,14 @@ export function usePolls(channelId: string | null) {
           queryClient.setQueryData<Poll[]>(['polls', 'channel', channelId], old =>
             old?.map(p => p.id === newVote.poll_id ? {
               ...p,
-              votes: p.votes.some(v => v.id === newVote.id) ? p.votes : [...p.votes, { ...newVote, user: profile || undefined }]
+              votes: [
+                // Drop optimistic temp vote for this (user, option), and any duplicate by id
+                ...p.votes.filter(v =>
+                  v.id !== newVote.id &&
+                  !(v.id.startsWith('temp-') && v.user_id === newVote.user_id && v.option_id === newVote.option_id)
+                ),
+                { ...newVote, user: profile || undefined }
+              ]
             } : p)
           );
         }
@@ -298,8 +309,11 @@ export function useThreadPolls(threadId: string | null) {
               const fullPoll = { ...pollRes.data, options: optionsRes.data || [], votes: votesRes.data || [] };
               queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old => {
                 if (!old) return [fullPoll as Poll];
-                if (old.some(p => p.id === fullPoll.id)) return old;
-                return [...old, fullPoll as Poll];
+                const cleaned = old.filter(p =>
+                  p.id !== fullPoll.id &&
+                  !(p.id.startsWith('temp-') && p.author_id === fullPoll.author_id && p.question === fullPoll.question)
+                );
+                return [...cleaned, fullPoll as Poll];
               });
             }
           } else if (payload.eventType === 'UPDATE') {
@@ -353,7 +367,13 @@ export function useThreadPolls(threadId: string | null) {
           queryClient.setQueryData<Poll[]>(['polls', 'thread', threadId], old =>
             old?.map(p => p.id === newVote.poll_id ? {
               ...p,
-              votes: p.votes.some(v => v.id === newVote.id) ? p.votes : [...p.votes, { ...newVote, user: profile || undefined }]
+              votes: [
+                ...p.votes.filter(v =>
+                  v.id !== newVote.id &&
+                  !(v.id.startsWith('temp-') && v.user_id === newVote.user_id && v.option_id === newVote.option_id)
+                ),
+                { ...newVote, user: profile || undefined }
+              ]
             } : p)
           );
         }
@@ -466,16 +486,31 @@ export function useCreatePoll() {
       }
       toast.error('Erreur lors de la création du sondage');
     },
-    onSuccess: () => {
+    onSuccess: (poll, variables) => {
+      // Replace the optimistic temp poll with the real one in-place to avoid duplicate/flicker.
+      const queryKey = variables.threadId
+        ? ['polls', 'thread', variables.threadId]
+        : ['polls', 'channel', variables.channelId];
+      queryClient.setQueryData<Poll[]>(queryKey, old => {
+        if (!old) return old;
+        // If the realtime INSERT already injected the real poll, just clean temp leftovers.
+        const hasReal = old.some(p => p.id === poll.id);
+        const cleaned = old.filter(p => !p.id.startsWith('temp-'));
+        if (hasReal) return cleaned;
+        // Swap the temp poll with the real id while keeping the optimistic shape.
+        const tempIdx = old.findIndex(p => p.id.startsWith('temp-') && p.question === poll.question && p.author_id === poll.author_id);
+        if (tempIdx === -1) return cleaned;
+        const merged: Poll = {
+          ...(old[tempIdx] as Poll),
+          id: poll.id,
+          created_at: poll.created_at,
+          expires_at: poll.expires_at,
+        };
+        return [...cleaned.filter(p => p.id !== merged.id), merged];
+      });
       toast.success('Sondage créé');
     },
-    onSettled: (_, __, variables) => {
-      if (variables.threadId) {
-        queryClient.invalidateQueries({ queryKey: ['polls', 'thread', variables.threadId] });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['polls', 'channel', variables.channelId] });
-      }
-    }
+    // No onSettled invalidation: optimistic swap + realtime keep the cache in sync without flicker.
   });
 }
 
@@ -508,13 +543,17 @@ export function useVotePoll() {
             poll.id === pollId
               ? {
                   ...poll,
-                  votes: [...poll.votes, {
-                    id: `temp-${Date.now()}`,
-                    poll_id: pollId,
-                    option_id: optionId,
-                    user_id: user.id,
-                    created_at: new Date().toISOString()
-                  }]
+                  votes: [
+                    // Avoid stacking duplicates if optimistic fires twice for same (user, option)
+                    ...poll.votes.filter(v => !(v.user_id === user.id && v.option_id === optionId)),
+                    {
+                      id: `temp-${user.id}-${optionId}`,
+                      poll_id: pollId,
+                      option_id: optionId,
+                      user_id: user.id,
+                      created_at: new Date().toISOString()
+                    }
+                  ]
                 }
               : poll
           )
@@ -529,10 +568,7 @@ export function useVotePoll() {
       }
       toast.error('Erreur lors du vote');
     },
-    onSettled: (_, __, variables) => {
-      const queryKey = variables.threadId ? ['polls', 'thread', variables.threadId] : ['polls', 'channel', variables.channelId];
-      queryClient.invalidateQueries({ queryKey });
-    }
+    // No onSettled invalidation — realtime INSERT swaps the temp vote for the real one with no flicker.
   });
 }
 

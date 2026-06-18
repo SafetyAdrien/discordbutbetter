@@ -1,7 +1,9 @@
 import { cn } from '@/lib/utils';
-import { Globe, User } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export type MobileTab = 'servers' | 'profile';
 
@@ -12,15 +14,14 @@ interface MobileBottomNavProps {
   voiceActive?: boolean;
 }
 
-const tabs: { id: MobileTab; label: string; icon: React.ElementType }[] = [
-  { id: 'servers', label: 'Serveurs', icon: Globe },
-  { id: 'profile', label: 'Vous', icon: User },
-];
-
 export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }: MobileBottomNavProps) {
-  const getBadge = (id: MobileTab) => {
-    return 0;
-  };
+  const { profile } = useAuth();
+  const initial = (profile?.display_name || profile?.username || '?').charAt(0).toUpperCase();
+
+  const tabs: { id: MobileTab; label: string }[] = [
+    { id: 'servers', label: 'Serveurs' },
+    { id: 'profile', label: 'Vous' },
+  ];
 
   return (
     <motion.nav
@@ -34,11 +35,8 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
       role="navigation"
     >
       <div className="flex items-center justify-around h-16 px-1">
-        {tabs.map(({ id, label, icon: Icon }) => {
+        {tabs.map(({ id, label }) => {
           const isActive = activeTab === id;
-          const badge = getBadge(id);
-          const badgeLabel = badge > 0 ? `, ${badge} non lu${badge > 1 ? 's' : ''}` : '';
-
           return (
             <button
               key={id}
@@ -46,7 +44,7 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                 if (activeTab !== id) haptics.selection();
                 onTabChange(id);
               }}
-              aria-label={`${label}${badgeLabel}`}
+              aria-label={label}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all duration-300 relative min-w-[56px] min-h-[44px]',
@@ -61,19 +59,28 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
-                <Icon
-                  className={cn(
-                    'w-[22px] h-[22px] relative z-10 transition-all duration-200',
-                    isActive ? 'text-primary' : 'text-muted-foreground',
-                  )}
-                  strokeWidth={isActive ? 2.5 : 2.25}
-                  fill={isActive ? 'currentColor' : 'none'}
-                  fillOpacity={isActive ? 0.18 : 0}
-                />
-                {badge > 0 && (
-                  <span aria-hidden="true" className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
+                {id === 'profile' ? (
+                  <Avatar
+                    className={cn(
+                      'w-[24px] h-[24px] relative z-10 transition-all duration-200',
+                      isActive ? 'ring-2 ring-primary' : 'ring-1 ring-border/40',
+                    )}
+                  >
+                    <AvatarImage src={profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
+                      {initial}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <Globe
+                    className={cn(
+                      'w-[22px] h-[22px] relative z-10 transition-all duration-200',
+                      isActive ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    strokeWidth={isActive ? 2.5 : 2.25}
+                    fill={isActive ? 'currentColor' : 'none'}
+                    fillOpacity={isActive ? 0.18 : 0}
+                  />
                 )}
                 {voiceActive && id === 'servers' && (
                   <span

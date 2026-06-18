@@ -59,11 +59,13 @@ interface MobileProfileViewProps {
   onSelectServer?: (serverId: string) => void;
   onCreateServer?: () => void;
   onDiscover?: () => void;
+  onClose?: () => void;
 }
 
 export function MobileProfileView({
   onOpenDM,
   onSelectServer,
+  onClose,
 }: MobileProfileViewProps = {}) {
   const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();

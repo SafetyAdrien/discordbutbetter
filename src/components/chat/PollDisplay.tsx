@@ -204,7 +204,8 @@ export function PollDisplay({
     return map;
   }, [poll.votes, poll.options]);
 
-  const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
+  const shiftPeek = isHovering && isShiftPressed && !isEditing;
+  const shouldShowResults = ((showResults || hasVoted || isExpired) && !isEditing) || shiftPeek;
 
   const handleOptionClick = (optionId: string) => {
     if (!canVote) return;

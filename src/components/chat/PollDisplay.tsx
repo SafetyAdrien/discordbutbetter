@@ -382,7 +382,8 @@ export function PollDisplay({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
+
             {/* Modify vote button — only while poll is open and user has voted */}
             {!isExpired && hasVoted && !isEditing && canVote && (
               <Button

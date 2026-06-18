@@ -81,6 +81,16 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                       bgClassName="bg-[hsl(var(--surface-1))]"
                     />
                   </div>
+                ) : id === 'explore' ? (
+                  <Compass
+                    className={cn(
+                      'w-[22px] h-[22px] relative z-10 transition-all duration-200',
+                      isActive ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    strokeWidth={isActive ? 2.5 : 2.25}
+                    fill={isActive ? 'currentColor' : 'none'}
+                    fillOpacity={isActive ? 0.18 : 0}
+                  />
                 ) : (
                   <Globe
                     className={cn(

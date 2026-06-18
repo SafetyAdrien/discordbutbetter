@@ -39,7 +39,6 @@ interface MobileServersViewProps {
   activeDMId: string | null;
   onServerSelect: (serverId: string) => void;
   onChannelSelect: (serverId: string, channelId: string, channelType: string) => void;
-  onDiscoverClick: () => void;
   onCreateClick: () => void;
   onOpenSettings?: (initialTab?: string) => void;
   onOpenDM: (conversationId: string) => void;

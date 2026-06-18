@@ -1,58 +1,42 @@
-## Contexte
+# Plan
 
-Le redesign Desktop précédent a touché `ProfileSettings.tsx` — mais ce composant n'est PAS celui utilisé en Desktop. Sur Desktop :
+## 1. Polls — Modification stricte via bouton "Modifier"
 
-- **Édition du profil** = `ProfileSettingsTab.tsx` (onglet dans `AccountSettingsModal`) → toujours en ancienne UI, sans calendrier, sans Markdown live complet.
-- **Vue du profil (lecture)** = `FullUserProfileModal.tsx` → toujours en ancienne UI, sans calendrier.
+Dans `src/components/chat/PollDisplay.tsx` :
 
-Il faut donc porter la nouvelle UI Mobile vers ces deux composants Desktop.
+- Après vote, l'utilisateur voit **uniquement les résultats**. Cliquer sur une option n'a **aucun effet** tant que le mode édition n'est pas activé.
+- Le bouton **"Modifier"** (déjà à côté de "Terminer") devient l'unique porte d'entrée pour changer son vote.
+- Au clic sur "Modifier" :
+  - `isEditing = true`
+  - Pré-remplir `selectedOptions` avec les votes actuels (ne plus les vider via `removeVote`)
+  - Afficher **"Confirmer"** et **"Annuler"** (annuler = retour résultats sans toucher les votes)
+- Handler de clic sur option : ne s'exécute que si `(!hasVoted || isEditing) && !isExpired && !poll.is_closed`.
+- À "Confirmer" : diff entre `selectedOptions` et `userVotes` → appliquer ajouts/suppressions optimistes, `isEditing = false`.
 
-## 1. Vue du Profil Desktop — `FullUserProfileModal.tsx`
+## 2. Présence — bascule automatique Desktop + Mobile, temps réel
 
-Réécriture pour calquer la version Mobile lecture seule, adaptée aux dimensions Desktop :
+Modifier `src/hooks/usePresence.ts` :
 
-- Modale `max-w-2xl max-h-[88vh]`, `rounded-2xl`, fond `bg-background`, ombre élégante.
-- **Hero** : bannière (h-44) + dégradé thème en fallback, avatar `w-28 h-28 ring-[5px] ring-background` chevauchant (`-mt-14`), pastille de statut.
-- Identité : nom d'affichage, `@username`, pronoms, statut perso.
-- Cartes `rounded-2xl bg-card border border-border/50 p-4` :
-  - **À propos** — rendu Markdown complet via `parseMarkdown(bio)`.
-  - **Calendrier** — `<ProfileCalendar userId={user.id} readOnly />` + `<EventListBelow userId={user.id} readOnly />`, n'affiche que les events `is_public = true` du user visualisé.
-  - **Serveurs en commun** / **Amis en commun** — listes existantes restylées en cartes.
-  - **Note** (uniquement si pas son propre profil) — `Textarea` actuel conservé.
-- Actions sticky bas : Message (DM) + Ajouter/Retirer ami (icônes lucide), arrondies pleines.
+Règles :
+- **Online** sans activité → **Idle** (timeout actuel) → **Offline** après **2 min** supplémentaires.
+- **DND** (manuel) sans activité pendant **5 min** → **Offline**.
+- **Idle manuel** : inchangé, pas de timeout offline, pas de texte ajouté.
+- À la moindre activité après bascule auto en offline/idle, retour **Online** (sauf si statut manuel `dnd`/`idle`).
 
-## 2. Édition du Profil Desktop — `ProfileSettingsTab.tsx`
+Implémentation Desktop + Mobile (temps réel, instantané) :
+- Constantes : `IDLE_TO_OFFLINE_TIMEOUT = 2*60*1000`, `DND_TO_OFFLINE_TIMEOUT = 5*60*1000`.
+- Refs : `offlineTimerRef`, `dndOfflineTimerRef`, `isManualIdleRef`.
+- Étendre `ACTIVITY_EVENTS` pour couvrir le mobile : ajouter `touchmove`, `touchend`, `pointerdown`, `pointermove`, `focus` (window) et `pageshow`. Conserver `{ passive: true }`.
+- Étendre `setManualStatus` pour distinguer idle manuel vs auto (`isManualIdleRef`).
+- Sur transition auto vers `idle` : démarrer `offlineTimerRef` (2 min) → `updateStatus('offline')`. Clear sur activité ou changement de statut manuel.
+- Sur statut `dnd` actif : démarrer `dndOfflineTimerRef` (5 min) basé sur `lastActivityRef`, reset à chaque activité ; au déclenchement → `updateStatus('offline', true)`.
+- `handleActivity` :
+  - clear `offlineTimerRef` et `dndOfflineTimerRef`
+  - si statut courant `offline` (et pas manuel) → retour `online`
+  - si `idle` non manuel → retour `online`
+- `visibilitychange` et `pagehide` (mobile/iOS) : déclencher la logique d'inactivité immédiatement (timer raccourci comme aujourd'hui pour `hidden`). Sur `pagehide`, envoyer un PATCH `offline` keepalive (comme `beforeunload`) pour couvrir la fermeture mobile.
+- Tous les changements de statut passent déjà par `updateProfile` → propagation temps réel instantanée via les souscriptions Realtime existantes sur `profiles` (utilisé partout — `StatusIndicator`, listes, profils). Aucun changement Realtime requis.
 
-Réécriture pour calquer `MobileEditProfileView` (et la version déjà faite dans `ProfileSettings.tsx`) :
-
-- Layout en `space-y-4`, cartes `rounded-2xl bg-card border border-border/50 p-4`.
-- Hero : bannière cliquable (camera overlay) + avatar `w-28 h-28` avec badge caméra rond.
-- Sections cartes :
-  - **Identité** : `display_name` (32), `pronouns` (50), `custom_status` (128).
-  - **À propos** : `<MarkdownLiveTextarea>` (Markdown live complet, max 4000).
-  - **Calendrier** : `<ProfileCalendar />` + `<EventListBelow />` (mode édition complet).
-  - **Activité (Rich Presence)** : type + texte.
-  - **Thème** : couleur unie / dégradé via `<ModernColorPicker>` (Hex + curseurs HSL + presets).
-  - **Profils serveur** : bouton vers `ServerProfileEditModal`.
-- Barre flottante sticky bas "Modifications non enregistrées" avec Annuler / Enregistrer.
-- Suppression du double `Aperçu du profil` (redondant avec la vue lecture désormais cohérente).
-
-## 3. Calendrier Desktop — vérifications
-
-- `ProfileCalendar.tsx`, `EventListBelow.tsx`, `CreateEventModal.tsx` et `ModernColorPicker.tsx` ré-utilisés tels quels. Ajout d'une prop `userId?: string` et `readOnly?: boolean` à `ProfileCalendar` + `EventListBelow` pour la vue d'un autre user (filtre `is_public` côté hook).
-- `useCalendarEvents.ts` étendu pour accepter un `userId` cible : si fourni et différent de l'utilisateur courant, charge uniquement les events publics.
-- Grille hebdo + jours en diagonale + clic cellule → `CreateEventModal` (déjà OK en Mobile, juste vérifier le rendu Desktop responsive).
-
-## 4. Fichiers touchés
-
-- Réécrits : `src/components/profile/FullUserProfileModal.tsx`, `src/components/account-settings/ProfileSettingsTab.tsx`.
-- Modifiés : `src/hooks/useCalendarEvents.ts`, `src/components/profile/calendar/ProfileCalendar.tsx`, `src/components/profile/calendar/EventListBelow.tsx` (props `userId` + `readOnly`).
-- Non touchés : Mobile, migration DB (déjà en place), `ProfileSettings.tsx` (legacy gardé jusqu'à validation).
-
-## Détails techniques
-
-- Filtre events publics : dans le hook, si `userId !== auth.uid()` → `.eq('user_id', userId).eq('is_public', true)`.
-- Realtime : 1 channel Supabase par `userId` cible (clé `calendar_events:${userId}`).
-- Markdown bio (lecture) : `parseMarkdown` existant + classe `markdown-preview` (déjà utilisée).
-- Markdown bio (édition) : `<MarkdownLiveTextarea>` (overlay transparent déjà créé).
-- Aucune modif des autres pages, du Mobile, ou des `Core` memories.
+## Fichiers touchés
+- `src/components/chat/PollDisplay.tsx`
+- `src/hooks/usePresence.ts`

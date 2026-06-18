@@ -190,7 +190,7 @@ export function PollDisplay({
   const handleOptionClick = (optionId: string) => {
     if (!canVote) return;
 
-    // Editing mode: clear existing votes on click; rebuild selection like first-time voting.
+    // Editing mode: build selection like first-time voting (no DB mutation yet).
     if (isEditing) {
       if (poll.allow_multiple) {
         setSelectedOptions(prev =>
@@ -202,38 +202,36 @@ export function PollDisplay({
       return;
     }
 
-    if (showResults && !hasVoted) return;
+    // Once the user has voted, the only way to change vote is via the "Modifier" button.
+    if (hasVoted) return;
+    if (showResults) return;
 
-    if (hasVoted) {
-      if (userVotes.includes(optionId)) {
-        removeVote.mutate({
-          pollId: poll.id,
-          optionId,
-          channelId,
-          threadId
-        });
-      } else if (poll.allow_multiple) {
-        votePoll.mutate({
-          pollId: poll.id,
-          optionId,
-          channelId,
-          threadId
-        });
-      }
+    if (poll.allow_multiple) {
+      setSelectedOptions(prev =>
+        prev.includes(optionId)
+          ? prev.filter(id => id !== optionId)
+          : [...prev, optionId]
+      );
     } else {
-      if (poll.allow_multiple) {
-        setSelectedOptions(prev =>
-          prev.includes(optionId)
-            ? prev.filter(id => id !== optionId)
-            : [...prev, optionId]
-        );
-      } else {
-        setSelectedOptions([optionId]);
-      }
+      setSelectedOptions([optionId]);
     }
   };
 
   const handleVote = () => {
+    if (isEditing) {
+      const toAdd = selectedOptions.filter(id => !userVotes.includes(id));
+      const toRemove = userVotes.filter(id => !selectedOptions.includes(id));
+      toRemove.forEach(optionId => {
+        removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
+      });
+      toAdd.forEach(optionId => {
+        votePoll.mutate({ pollId: poll.id, optionId, channelId, threadId });
+      });
+      setSelectedOptions([]);
+      setIsEditing(false);
+      return;
+    }
+
     selectedOptions.forEach(optionId => {
       votePoll.mutate({
         pollId: poll.id,
@@ -243,15 +241,11 @@ export function PollDisplay({
       });
     });
     setSelectedOptions([]);
-    setIsEditing(false);
   };
 
   const handleStartEdit = () => {
-    // Remove all existing votes from this user, then enter selection mode pre-filled with current choices.
-    userVotes.forEach(optionId => {
-      removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
-    });
-    setSelectedOptions([]);
+    // Pre-fill selection with current votes; do NOT remove votes from DB.
+    setSelectedOptions([...userVotes]);
     setIsEditing(true);
   };
 

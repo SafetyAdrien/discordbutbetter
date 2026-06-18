@@ -155,7 +155,6 @@ export function MobileServersView({
   activeDMId,
   onServerSelect,
   onChannelSelect,
-  onDiscoverClick,
   onCreateClick,
   onOpenSettings,
   onOpenDM,

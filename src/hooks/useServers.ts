@@ -134,8 +134,19 @@ export function useServers() {
   }, [user, queryClient]);
 
 
+  // Persist user id so a cold mount can read the previous user's server cache
+  // BEFORE supabase.auth.getSession() resolves — otherwise the first paint is
+  // an empty server list on mobile (where getSession() can take ~1s).
+  const lastUserId = (() => {
+    if (user?.id) {
+      try { window.localStorage.setItem('nexuschat:lastUserId', user.id); } catch {}
+      return user.id;
+    }
+    try { return window.localStorage.getItem('nexuschat:lastUserId'); } catch { return null; }
+  })();
+
   const queryCachedServers = queryClient.getQueryData<ServerWithDetails[]>(['servers']);
-  const persistedServers = user?.id ? cacheGetSync<ServerWithDetails[]>(`servers:${user.id}`) : undefined;
+  const persistedServers = lastUserId ? cacheGetSync<ServerWithDetails[]>(`servers:${lastUserId}`) : undefined;
   const cachedServers = [queryCachedServers, persistedServers].reduce<ServerWithDetails[] | undefined>(
     (best, candidate) => (getServerScore(candidate) > getServerScore(best) ? candidate : best),
     undefined

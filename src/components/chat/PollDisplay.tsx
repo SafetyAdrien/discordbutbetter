@@ -84,9 +84,28 @@ export function PollDisplay({
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
   const endPoll = useEndPoll();
+
+  // SHIFT-to-peek: when hovering the poll and pressing SHIFT, reveal results
+  useEffect(() => {
+    if (!isHovering) return;
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftPressed(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftPressed(false); };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, [isHovering]);
+
+  useEffect(() => {
+    if (!isHovering) setIsShiftPressed(false);
+  }, [isHovering]);
 
   // Check vote permission
   const { data: canVoteInPolls = true } = useHasChannelPermission(channelId, 'vote_in_polls');

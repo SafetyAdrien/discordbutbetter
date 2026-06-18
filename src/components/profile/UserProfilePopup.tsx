@@ -3,6 +3,11 @@ import { User } from '@/types/app';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft } from 'lucide-react';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { setMobileProfileOpen } from '@/lib/mobile-chrome';
+import { haptics } from '@/lib/haptics';
 
 // Global trigger-rect registry: a single document-level mousedown listener
 // captures the bounding rect of whatever element the user last clicked.

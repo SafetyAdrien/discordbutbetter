@@ -33,6 +33,8 @@ import {
 import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
+import { UniversalMessageContextMenu } from "@/components/chat/UniversalMessageContextMenu";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1334,9 +1336,29 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               return (
                 <div key={`poll-${poll.id}`}>
                   {DateSeparator}
-                  <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                      <PollLongPressWrapper
+                  <UniversalMessageContextMenu
+                    messageId={poll.id}
+                    isOwnMessage={isOwnPoll}
+                    canAddReactions={canAddReactions}
+                    canManageMessages={canManageMessages}
+                    variant="poll"
+                    copyLinkLabel="Copier le lien du sondage"
+                    copyIdLabel="Copier l'ID du sondage"
+                    onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
+                    onCopyLink={() => handleCopyPollLink(poll.id)}
+                    onCopyId={() => handleCopyId(poll.id)}
+                    onEdit={isOwnPoll ? () => setEditingPoll(poll) : undefined}
+                    onDelete={isOwnPoll || canManageMessages ? () => handleDeletePoll(poll) : undefined}
+                    extraItems={
+                      isOwnPoll && !isPollExpired ? (
+                        <ContextMenuItem onClick={() => handleEndPoll(poll)}>
+                          <StopCircle className="w-4 h-4 mr-2" />
+                          Terminer le sondage
+                        </ContextMenuItem>
+                      ) : undefined
+                    }
+                  >
+                    <PollLongPressWrapper
                         isMobile={isMobile}
                         onLongPress={() => setMobilePollSheetId(poll.id)}
                         className={cn(
@@ -1436,40 +1458,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         )}
                       </PollLongPressWrapper>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-48">
-                      <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>
-                        <Link className="w-4 h-4 mr-2" />
-                        Copier le lien du sondage
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
-                        <Hash className="w-4 h-4 mr-2" />
-                        Copier l'ID du sondage
-                      </ContextMenuItem>
-                      {isOwnPoll && (
-                        <>
-                          <ContextMenuSeparator />
-                          {!isPollExpired && (
-                            <ContextMenuItem onClick={() => handleEndPoll(poll)}>
-                              <StopCircle className="w-4 h-4 mr-2" />
-                              Terminer le sondage
-                            </ContextMenuItem>
-                          )}
-                          <ContextMenuItem onClick={() => setEditingPoll(poll)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Modifier le sondage
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDeletePoll(poll)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer le sondage
-                          </ContextMenuItem>
-                        </>
-                      )}
-                    </ContextMenuContent>
-                  </ContextMenu>
+                  </UniversalMessageContextMenu>
+
                 </div>
               );
             }
@@ -1486,191 +1476,74 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 return (
                   <div key={`msg-${message.id}`}>
                     {DateSeparator}
-                    <ContextMenu>
-                      <ContextMenuTrigger asChild>
-                        <div className="group message-hover px-4 pb-2 pt-1 mb-1">
-                          {/* System text line */}
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span>
-                              <span className="font-semibold text-foreground">{message.author.displayName}</span> a créé
-                              un thread :{" "}
-                              <button
-                                onClick={() => onSelectThread?.(threadId)}
-                                className="font-semibold text-primary hover:underline cursor-pointer"
-                              >
-                                {threadName}
-                              </button>
-                            </span>
-                            <span className="text-muted-foreground/60 ml-1">{formatTime(message.timestamp)}</span>
-                          </div>
-
-                          {/* Spine + Thread embed */}
-                          <div className="pt-1.5 pl-[50px] relative">
-                            <div className="absolute left-[6px] top-0 w-[34px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                            {thread ? (
-                              <ThreadSystemMessage
-                                thread={thread}
-                                onClick={() => onSelectThread?.(threadId)}
-                                canManage={thread.created_by === user?.id || canManageChannels}
-                                onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
-                                onDelete={() => {
-                                  deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
-                                  deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
-                                }}
-                              />
-                            ) : (
-                              <button
-                                onClick={() => onSelectThread?.(threadId)}
-                                className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
-                              >
-                                <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-primary hover:underline">
-                                    {threadName}
-                                  </span>
-                                  <span className="text-xs text-foreground">0 Messages</span>
-                                </div>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent
-                        className="min-w-[220px] p-1.5 rounded-2xl shadow-[var(--shadow-elevation-3)] border border-border/50"
-                        collisionPadding={8}
-                      >
-                        {/* Emoji reaction row */}
-                        <div className="flex items-center gap-1 p-1.5 pb-2 border-b border-border/30 mb-1">
-                          {CONTEXT_MENU_REACTIONS.map((emoji) => (
+                    <UniversalMessageContextMenu
+                      messageId={message.id}
+                      isOwnMessage={user?.id === message.author.id}
+                      canAddReactions={canAddReactions}
+                      canManageMessages={canManageMessages}
+                      canManageReactions={canManageMessages}
+                      hasReactions={(reactionsData?.[message.id]?.length ?? 0) > 0}
+                      variant="system"
+                      copyLinkLabel="Copier le lien du message"
+                      copyIdLabel="Copier l'identifiant du message"
+                      onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                      onCopyText={() => handleCopyMessage(message.content)}
+                      onCopyLink={() => handleCopyMessageLink(message.id)}
+                      onCopyId={() => handleCopyId(message.id)}
+                      onDelete={() => handleContextDeleteSelect(message.id)}
+                      onReport={user?.id !== message.author.id ? () => setReportingMessage(message) : undefined}
+                      onViewReactions={() => setReactionsViewerMessageId(message.id)}
+                      onClearAllReactions={() => clearMessageReactions.mutate({ messageId: message.id })}
+                    >
+                      <div className="group message-hover px-4 pb-2 pt-1 mb-1">
+                        {/* System text line */}
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>
+                            <span className="font-semibold text-foreground">{message.author.displayName}</span> a créé
+                            un thread :{" "}
                             <button
-                              key={emoji}
-                              onClick={() => handleAddReaction(message.id, emoji)}
-                              className="p-1.5 hover:bg-primary/10 rounded-full text-lg transition-colors"
+                              onClick={() => onSelectThread?.(threadId)}
+                              className="font-semibold text-primary hover:underline cursor-pointer"
                             >
-                              {emoji}
+                              {threadName}
                             </button>
-                          ))}
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
-                                <SmilePlus className="w-5 h-5 text-muted-foreground" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent side="right" align="start" className="w-64 p-2">
-                              <div className="grid grid-cols-8 gap-1">
-                                {[
-                                  "😀",
-                                  "😃",
-                                  "😄",
-                                  "😁",
-                                  "😆",
-                                  "😅",
-                                  "🤣",
-                                  "😂",
-                                  "🙂",
-                                  "😊",
-                                  "😇",
-                                  "🥰",
-                                  "😍",
-                                  "🤩",
-                                  "😘",
-                                  "😗",
-                                  "😚",
-                                  "😙",
-                                  "🥲",
-                                  "😋",
-                                  "😛",
-                                  "😜",
-                                  "🤪",
-                                  "😝",
-                                  "🤑",
-                                  "🤗",
-                                  "🤭",
-                                  "🤫",
-                                  "🤔",
-                                  "🤐",
-                                  "🤨",
-                                  "😐",
-                                ].map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    onClick={() => handleAddReaction(message.id, emoji)}
-                                    className="p-1 hover:bg-muted rounded text-lg transition-colors"
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
+                          </span>
+                          <span className="text-muted-foreground/60 ml-1">{formatTime(message.timestamp)}</span>
                         </div>
 
-                        {/* Actions */}
-                        <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copier le texte
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
-                          <Link className="w-4 h-4 mr-2" />
-                          Copier le lien du message
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleCopyId(message.id)}>
-                          <Hash className="w-4 h-4 mr-2" />
-                          Copier l'identifiant du message
-                        </ContextMenuItem>
-
-                        {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
-                          <>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem onClick={() => setReactionsViewerMessageId(message.id)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              Voir les réactions
-                            </ContextMenuItem>
-                            {canManageMessages && (
-                              <ContextMenuItem
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onClick={() => clearMessageReactions.mutate({ messageId: message.id })}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2 text-destructive" />
-                                Supprimer toutes les réactions
-                              </ContextMenuItem>
-                            )}
-                          </>
-                        )}
-
-                        {/* Danger zone */}
-                        <ContextMenuSeparator />
-                        {user?.id === message.author.id ? (
-                          <ContextMenuItem
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                            onSelect={() => handleContextDeleteSelect(message.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2 text-destructive" />
-                            Supprimer le message
-                          </ContextMenuItem>
-                        ) : (
-                          <>
-                            {canManageMessages && (
-                              <ContextMenuItem
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onSelect={() => handleContextDeleteSelect(message.id)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2 text-destructive" />
-                                Supprimer le message
-                              </ContextMenuItem>
-                            )}
-                            <ContextMenuItem
-                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                              onClick={() => setReportingMessage(message)}
+                        {/* Spine + Thread embed */}
+                        <div className="pt-1.5 pl-[50px] relative">
+                          <div className="absolute left-[6px] top-0 w-[34px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
+                          {thread ? (
+                            <ThreadSystemMessage
+                              thread={thread}
+                              onClick={() => onSelectThread?.(threadId)}
+                              canManage={thread.created_by === user?.id || canManageChannels}
+                              onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
+                              onDelete={() => {
+                                deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
+                                deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
+                              }}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => onSelectThread?.(threadId)}
+                              className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
                             >
-                              <Flag className="w-4 h-4 mr-2 text-destructive" />
-                              Signaler ce message
-                            </ContextMenuItem>
-                          </>
-                        )}
-                      </ContextMenuContent>
-                    </ContextMenu>
+                              <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-primary hover:underline">
+                                  {threadName}
+                                </span>
+                                <span className="text-xs text-foreground">0 Messages</span>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </UniversalMessageContextMenu>
+
                   </div>
                 );
               }

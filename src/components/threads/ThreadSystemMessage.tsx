@@ -4,13 +4,12 @@ import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+import { ContextMenuItem } from '@/components/ui/context-menu';
+import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
+import { copyToClipboard } from '@/lib/clipboard';
+import { uuidToSnowflake } from '@/lib/snowflake';
+import { toast } from 'sonner';
+
 import {
   Dialog,
   DialogContent,
@@ -108,33 +107,55 @@ export function ThreadSystemMessage({
     </button>
   );
 
+  const handleCopyId = () => {
+    copyToClipboard(uuidToSnowflake(thread.id));
+    toast.success('ID copié');
+  };
+  const handleCopyLink = () => {
+    copyToClipboard(`${window.location.origin}/thread/${thread.id}`);
+    toast.success('Lien copié');
+  };
+
   return (
     <>
-      {canManage ? (
-        <ContextMenu>
-          <ContextMenuTrigger asChild onContextMenu={(e) => e.stopPropagation()}>
-            {embedContent}
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem
-              onClick={() => requestAnimationFrame(() => setRenameOpen(true))}
-            >
-              <Pencil className="w-4 h-4 mr-2" />
-              Modifier le nom
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => requestAnimationFrame(() => setDeleteOpen(true))}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Supprimer le Thread
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      ) : (
-        embedContent
-      )}
+      <div onContextMenu={(e) => e.stopPropagation()}>
+      <UniversalMessageContextMenu
+
+        messageId={thread.id}
+        isOwnMessage={false}
+        canAddReactions={false}
+        canManageMessages={canManage}
+        variant="system"
+        copyLinkLabel="Copier le lien du thread"
+        copyIdLabel="Copier l'ID du thread"
+        onAddReaction={() => {}}
+        onCopyLink={handleCopyLink}
+        onCopyId={handleCopyId}
+        extraItems={
+          canManage ? (
+            <>
+              <ContextMenuItem
+                onClick={() => requestAnimationFrame(() => setRenameOpen(true))}
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Modifier le nom
+              </ContextMenuItem>
+              <ContextMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => requestAnimationFrame(() => setDeleteOpen(true))}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer le Thread
+              </ContextMenuItem>
+            </>
+          ) : undefined
+        }
+      >
+        {embedContent}
+      </UniversalMessageContextMenu>
+      </div>
+
+
 
       {/* Rename Dialog */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>

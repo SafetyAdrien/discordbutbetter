@@ -40,9 +40,16 @@ export interface UniversalMessageContextMenuProps {
   previewAuthorName?: string;
   previewAuthorAvatar?: string;
   previewContent?: string;
-  onReply: () => void;
+  /** 'message' (default) shows all universal actions. 'poll' hides reply/copy text/create thread. 'system' hides reply/create thread/edit. */
+  variant?: 'message' | 'poll' | 'system';
+  /** Extra menu items injected after universal actions and before the danger zone. Receives a `close` helper for mobile sheet dismissal. */
+  extraItems?: ReactNode;
+  /** Labels overrides for ID/link copy entries (e.g. "Copier l'ID du sondage"). */
+  copyIdLabel?: string;
+  copyLinkLabel?: string;
+  onReply?: () => void;
   onAddReaction: (emoji: string) => void;
-  onCopyText: () => void;
+  onCopyText?: () => void;
   onCopyLink: () => void;
   onCopyId: () => void;
   onEdit?: () => void;
@@ -53,6 +60,7 @@ export interface UniversalMessageContextMenuProps {
   onViewReactions?: () => void;
   onClearAllReactions?: () => void;
 }
+
 
 export function UniversalMessageContextMenu({
   children,
@@ -66,6 +74,10 @@ export function UniversalMessageContextMenu({
   previewAuthorName,
   previewAuthorAvatar,
   previewContent,
+  variant = 'message',
+  extraItems,
+  copyIdLabel,
+  copyLinkLabel,
   onReply,
   onAddReaction,
   onCopyText,
@@ -79,6 +91,7 @@ export function UniversalMessageContextMenu({
   onViewReactions,
   onClearAllReactions,
 }: UniversalMessageContextMenuProps) {
+
   const { isMobile } = useBreakpoint();
   const isShiftPressed = useShiftKey();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -98,6 +111,11 @@ export function UniversalMessageContextMenu({
     }
   };
 
+  const showReply = variant === 'message' && !!onReply;
+  const showCopyText = variant !== 'poll' && !!onCopyText;
+  const showCreateThread = variant === 'message' && !!onCreateThread;
+  const showEdit = variant !== 'system' && !!onEdit;
+
   // Shared action items renderer
   const renderActions = (onAction?: () => void) => (
     <>
@@ -115,27 +133,31 @@ export function UniversalMessageContextMenu({
         </div>
       )}
       
-      <button onClick={() => { onReply(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Reply className="w-4 h-4 text-muted-foreground" /> Répondre
-      </button>
-      <button onClick={() => { onCopyText(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Copy className="w-4 h-4 text-muted-foreground" /> Copier le texte
-      </button>
+      {showReply && (
+        <button onClick={() => { onReply?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <Reply className="w-4 h-4 text-muted-foreground" /> Répondre
+        </button>
+      )}
+      {showCopyText && (
+        <button onClick={() => { onCopyText?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <Copy className="w-4 h-4 text-muted-foreground" /> Copier le texte
+        </button>
+      )}
       {onPin && (
         <button onClick={() => { onPin(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <Pin className="w-4 h-4 text-muted-foreground" /> {isPinned ? 'Désépingler' : 'Épingler'}
         </button>
       )}
-      {onCreateThread && (
-        <button onClick={() => { onCreateThread(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+      {showCreateThread && (
+        <button onClick={() => { onCreateThread?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <StreamlineThreads className="w-4 h-4 text-muted-foreground" /> Créer un thread
         </button>
       )}
       <button onClick={() => { onCopyLink(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Link className="w-4 h-4 text-muted-foreground" /> Copier le lien
+        <Link className="w-4 h-4 text-muted-foreground" /> {copyLinkLabel ?? 'Copier le lien'}
       </button>
       <button onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Hash className="w-4 h-4 text-muted-foreground" /> Copier l'ID
+        <Hash className="w-4 h-4 text-muted-foreground" /> {copyIdLabel ?? "Copier l'ID"}
       </button>
 
       {hasReactions && onViewReactions && (
@@ -152,11 +174,18 @@ export function UniversalMessageContextMenu({
         </>
       )}
 
+      {extraItems && (
+        <>
+          <div className="h-px bg-border my-1" />
+          {extraItems}
+        </>
+      )}
+
       <div className="h-px bg-border my-1" />
       {isOwnMessage ? (
         <>
-          {onEdit && (
-            <button onClick={() => { onEdit(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          {showEdit && (
+            <button onClick={() => { onEdit?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
               <Pencil className="w-4 h-4 text-muted-foreground" /> Modifier
             </button>
           )}
@@ -183,6 +212,7 @@ export function UniversalMessageContextMenu({
     </>
   );
 
+
   const deleteDialog = (
     <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />
   );
@@ -202,11 +232,12 @@ export function UniversalMessageContextMenu({
           authorName={previewAuthorName}
           authorAvatar={previewAuthorAvatar}
           messageContent={previewContent}
-          onReply={onReply}
+          onReply={onReply ?? (() => {})}
           onAddReaction={canAddReactions ? onAddReaction : undefined}
           onCopyLink={onCopyLink}
           onCopyId={onCopyId}
-          onCopyText={onCopyText}
+          onCopyText={onCopyText ?? (() => {})}
+
           onEdit={onEdit}
           onDelete={onDelete}
           onCreateThread={onCreateThread}
@@ -261,21 +292,25 @@ export function UniversalMessageContextMenu({
             </div>
           )}
           
-          <ContextMenuItem onClick={onReply}>
-            <Reply className="w-4 h-4 mr-2" />
-            Répondre
-          </ContextMenuItem>
-          <ContextMenuItem onClick={onCopyText}>
-            <Copy className="w-4 h-4 mr-2" />
-            Copier le texte
-          </ContextMenuItem>
+          {showReply && (
+            <ContextMenuItem onClick={onReply}>
+              <Reply className="w-4 h-4 mr-2" />
+              Répondre
+            </ContextMenuItem>
+          )}
+          {showCopyText && (
+            <ContextMenuItem onClick={onCopyText}>
+              <Copy className="w-4 h-4 mr-2" />
+              Copier le texte
+            </ContextMenuItem>
+          )}
           {onPin && (
             <ContextMenuItem onClick={onPin}>
               <Pin className="w-4 h-4 mr-2" />
               {isPinned ? 'Désépingler' : 'Épingler'}
             </ContextMenuItem>
           )}
-          {onCreateThread && (
+          {showCreateThread && (
             <ContextMenuItem onClick={onCreateThread}>
               <StreamlineThreads className="w-4 h-4 mr-2" />
               Créer un thread
@@ -283,11 +318,11 @@ export function UniversalMessageContextMenu({
           )}
           <ContextMenuItem onClick={onCopyLink}>
             <Link className="w-4 h-4 mr-2" />
-            Copier le lien
+            {copyLinkLabel ?? 'Copier le lien'}
           </ContextMenuItem>
           <ContextMenuItem onClick={onCopyId}>
             <Hash className="w-4 h-4 mr-2" />
-            Copier l'ID
+            {copyIdLabel ?? "Copier l'ID"}
           </ContextMenuItem>
 
           {hasReactions && onViewReactions && (
@@ -309,15 +344,23 @@ export function UniversalMessageContextMenu({
             </>
           )}
 
+          {extraItems && (
+            <>
+              <ContextMenuSeparator />
+              {extraItems}
+            </>
+          )}
+
           <ContextMenuSeparator />
           {isOwnMessage ? (
             <>
-              {onEdit && (
+              {showEdit && (
                 <ContextMenuItem onClick={onEdit}>
                   <Pencil className="w-4 h-4 mr-2" />
                   Modifier
                 </ContextMenuItem>
               )}
+
               {onDelete && (
                 <ContextMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10" 

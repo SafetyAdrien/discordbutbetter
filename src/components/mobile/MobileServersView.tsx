@@ -354,7 +354,7 @@ export function MobileServersView({
       </div>
 
       {/* Right: Content panel */}
-      <div className="flex-1 min-w-0 overflow-hidden rounded-tl-[15px] bg-[hsl(var(--surface-1))]">
+      <div className="flex-1 min-w-0 overflow-hidden rounded-tl-[30px] bg-[hsl(var(--surface-1))]">
         {showDMs ? (
           <MobileHomeView
             activeDMId={activeDMId}

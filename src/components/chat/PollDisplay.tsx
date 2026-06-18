@@ -84,9 +84,28 @@ export function PollDisplay({
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
   const endPoll = useEndPoll();
+
+  // SHIFT-to-peek: when hovering the poll and pressing SHIFT, reveal results
+  useEffect(() => {
+    if (!isHovering) return;
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftPressed(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftPressed(false); };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, [isHovering]);
+
+  useEffect(() => {
+    if (!isHovering) setIsShiftPressed(false);
+  }, [isHovering]);
 
   // Check vote permission
   const { data: canVoteInPolls = true } = useHasChannelPermission(channelId, 'vote_in_polls');
@@ -185,7 +204,8 @@ export function PollDisplay({
     return map;
   }, [poll.votes, poll.options]);
 
-  const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
+  const shiftPeek = isHovering && isShiftPressed && !isEditing;
+  const shouldShowResults = ((showResults || hasVoted || isExpired) && !isEditing) || shiftPeek;
 
   const handleOptionClick = (optionId: string) => {
     if (!canVote) return;
@@ -260,7 +280,11 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-poll rounded-xl overflow-hidden max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
+    <div
+      className="bg-poll rounded-xl overflow-hidden max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         

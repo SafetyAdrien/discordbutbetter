@@ -139,17 +139,34 @@ function getDB(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     try {
+      if (typeof indexedDB === 'undefined') {
+        idbAvailable = false;
+        reject(new Error('IndexedDB unavailable'));
+        return;
+      }
       const request = indexedDB.open(DB_NAME, DB_VERSION);
+      // Safety: some mobile browsers (iOS private mode, PWA edge cases) never
+      // fire onsuccess/onerror — bail out after 2s so warmCache can proceed.
+      const timeout = setTimeout(() => {
+        idbAvailable = false;
+        reject(new Error('IndexedDB open timed out'));
+      }, 2000);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME);
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => { clearTimeout(timeout); resolve(request.result); };
       request.onerror = () => {
+        clearTimeout(timeout);
         idbAvailable = false;
         reject(request.error);
+      };
+      request.onblocked = () => {
+        clearTimeout(timeout);
+        idbAvailable = false;
+        reject(new Error('IndexedDB blocked'));
       };
     } catch (e) {
       idbAvailable = false;

@@ -4,7 +4,15 @@ import App from "./App.tsx";
 import "./index.css";
 
 async function bootstrap() {
-  await warmCache();
+  try {
+    // Cap warmCache so a wedged IDB on mobile never blocks the shell.
+    await Promise.race([
+      warmCache(),
+      new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+    ]);
+  } catch (e) {
+    console.warn('[bootstrap] warmCache failed, rendering anyway', e);
+  }
   createRoot(document.getElementById("root")!).render(<App />);
 }
 

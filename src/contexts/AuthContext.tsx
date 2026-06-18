@@ -71,15 +71,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, nextSession) => {
+    let resolved = false;
+    const resolve = (nextSession: Session | null) => {
+      resolved = true;
       applySession(nextSession);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, nextSession) => {
+      resolve(nextSession);
     });
 
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      applySession(existingSession);
+      resolve(existingSession);
+    }).catch(() => {
+      if (!resolved) resolve(null);
     });
 
-    return () => subscription.unsubscribe();
+    // Safety net: never let the loading screen hang forever (mobile Safari /
+    // PWA can wedge supabase.auth.getSession()). After 4s, force-exit loading.
+    const safety = setTimeout(() => {
+      if (!resolved) {
+        console.warn('[auth] getSession timed out — falling back to no session');
+        resolve(null);
+      }
+    }, 4000);
+
+    return () => {
+      clearTimeout(safety);
+      subscription.unsubscribe();
+    };
   }, [applySession]);
 
   useEffect(() => {

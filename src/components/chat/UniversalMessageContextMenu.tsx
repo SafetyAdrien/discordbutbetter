@@ -111,6 +111,11 @@ export function UniversalMessageContextMenu({
     }
   };
 
+  const showReply = variant === 'message' && !!onReply;
+  const showCopyText = variant !== 'poll' && !!onCopyText;
+  const showCreateThread = variant === 'message' && !!onCreateThread;
+  const showEdit = variant !== 'system' && !!onEdit;
+
   // Shared action items renderer
   const renderActions = (onAction?: () => void) => (
     <>
@@ -128,27 +133,31 @@ export function UniversalMessageContextMenu({
         </div>
       )}
       
-      <button onClick={() => { onReply(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Reply className="w-4 h-4 text-muted-foreground" /> Répondre
-      </button>
-      <button onClick={() => { onCopyText(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Copy className="w-4 h-4 text-muted-foreground" /> Copier le texte
-      </button>
+      {showReply && (
+        <button onClick={() => { onReply?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <Reply className="w-4 h-4 text-muted-foreground" /> Répondre
+        </button>
+      )}
+      {showCopyText && (
+        <button onClick={() => { onCopyText?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <Copy className="w-4 h-4 text-muted-foreground" /> Copier le texte
+        </button>
+      )}
       {onPin && (
         <button onClick={() => { onPin(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <Pin className="w-4 h-4 text-muted-foreground" /> {isPinned ? 'Désépingler' : 'Épingler'}
         </button>
       )}
-      {onCreateThread && (
-        <button onClick={() => { onCreateThread(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+      {showCreateThread && (
+        <button onClick={() => { onCreateThread?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <StreamlineThreads className="w-4 h-4 text-muted-foreground" /> Créer un thread
         </button>
       )}
       <button onClick={() => { onCopyLink(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Link className="w-4 h-4 text-muted-foreground" /> Copier le lien
+        <Link className="w-4 h-4 text-muted-foreground" /> {copyLinkLabel ?? 'Copier le lien'}
       </button>
       <button onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-        <Hash className="w-4 h-4 text-muted-foreground" /> Copier l'ID
+        <Hash className="w-4 h-4 text-muted-foreground" /> {copyIdLabel ?? "Copier l'ID"}
       </button>
 
       {hasReactions && onViewReactions && (
@@ -165,11 +174,18 @@ export function UniversalMessageContextMenu({
         </>
       )}
 
+      {extraItems && (
+        <>
+          <div className="h-px bg-border my-1" />
+          {extraItems}
+        </>
+      )}
+
       <div className="h-px bg-border my-1" />
       {isOwnMessage ? (
         <>
-          {onEdit && (
-            <button onClick={() => { onEdit(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          {showEdit && (
+            <button onClick={() => { onEdit?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
               <Pencil className="w-4 h-4 text-muted-foreground" /> Modifier
             </button>
           )}
@@ -195,6 +211,7 @@ export function UniversalMessageContextMenu({
       )}
     </>
   );
+
 
   const deleteDialog = (
     <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />

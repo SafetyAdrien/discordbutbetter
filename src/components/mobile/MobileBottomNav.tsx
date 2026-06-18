@@ -62,17 +62,24 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                   />
                 )}
                 {id === 'profile' ? (
-                  <Avatar
-                    className={cn(
-                      'w-[24px] h-[24px] relative z-10 transition-all duration-200',
-                      isActive ? 'ring-2 ring-primary' : 'ring-1 ring-border/40',
-                    )}
-                  >
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
-                      {initial}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar
+                      className={cn(
+                        'w-[24px] h-[24px] relative z-10 transition-all duration-200',
+                        isActive ? 'ring-2 ring-primary' : 'ring-1 ring-border/40',
+                      )}
+                    >
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
+                        {initial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <StatusIndicator
+                      status={currentStatus}
+                      className="absolute -bottom-0.5 -right-0.5 w-[10px] h-[10px] border-[2px] border-[hsl(var(--surface-1))] z-20"
+                      bgClassName="bg-[hsl(var(--surface-1))]"
+                    />
+                  </div>
                 ) : (
                   <Globe
                     className={cn(

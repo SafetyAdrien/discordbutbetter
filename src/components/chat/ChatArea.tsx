@@ -1352,7 +1352,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         {!isMobile && (
                           <PollActions
                             isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
+                            isShiftPressed={isShiftPressed}
                             onCopyLink={() => handleCopyPollLink(poll.id)}
+                            onCopyId={() => handleCopyId(poll.id)}
                             onEdit={() => setEditingPoll(poll)}
                             onDelete={() => handleDeletePoll(poll)}
                             onReply={undefined}

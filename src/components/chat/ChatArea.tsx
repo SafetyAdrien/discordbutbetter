@@ -12,6 +12,7 @@ import {
   Users,
   Inbox,
   Copy,
+  ClipboardCopy,
   Reply,
   Pencil,
   Trash2,

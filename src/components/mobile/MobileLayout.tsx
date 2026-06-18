@@ -413,13 +413,13 @@ export function MobileLayout({
           </div>
         );
       case 'media':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'forum':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'tasks':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'calendar':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'announcement':
         return (
           <MobileChatView

@@ -115,8 +115,8 @@ export const useThreadMessages = (threadId: string | undefined) => {
     },
     enabled: !!threadId && cacheReady,
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
+    refetchOnMount: (q) => (q.state.data ? false : 'always'),
     refetchOnWindowFocus: false,
   });
 

@@ -58,6 +58,7 @@ function RealtimeTimestamp({ date }: { date: Date }) {
   return <span className="text-[11px] text-muted-foreground">{timestamp}</span>;
 }
 import { MessageCircle, User, Phone, X, Trash2 } from 'lucide-react';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -179,10 +180,11 @@ function DMConversationItem({
               </AvatarFallback>
             </Avatar>
             {!conversation.is_group && (
-              <div className={cn(
-                'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[hsl(var(--surface-1))]',
-                statusColors[status]
-              )} />
+              <StatusIndicator
+                status={status}
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-[hsl(var(--surface-1))]"
+                bgClassName="bg-[hsl(var(--surface-1))]"
+              />
             )}
           </div>
           <div className="flex-1 min-w-0">

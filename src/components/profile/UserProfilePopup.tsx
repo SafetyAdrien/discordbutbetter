@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, forwardRef } from 'react';
 import { User } from '@/types/app';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 // Global trigger-rect registry: a single document-level mousedown listener
 // captures the bounding rect of whatever element the user last clicked.
@@ -442,11 +443,9 @@ export function UserProfilePopup({
                 {effectiveUser.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div
-              className={cn(
-                'absolute bottom-0.5 right-0.5 w-[18px] h-[18px] rounded-full border-[4px] border-card',
-                statusColors[user.status]
-              )}
+            <StatusIndicator
+              status={user.status}
+              className="absolute bottom-0.5 right-0.5 w-[18px] h-[18px] border-[4px] border-card"
             />
           </div>
 

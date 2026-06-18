@@ -23,6 +23,7 @@ import { MobileSettingsRedirectView } from './profile/MobileSettingsRedirectView
 import { MobileFullProfileView } from './profile/MobileFullProfileView';
 import { MobileNotificationsView } from './MobileNotificationsView';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -205,11 +206,10 @@ export function MobileProfileView({
                     {initial}
                   </AvatarFallback>
                 </Avatar>
-                <div
-                  className={cn(
-                    'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                    statusColors[currentStatus]
-                  )}
+                <StatusIndicator
+                  status={currentStatus}
+                  className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
+                  bgClassName="bg-background"
                 />
               </button>
             </div>

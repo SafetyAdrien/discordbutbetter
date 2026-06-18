@@ -4,7 +4,7 @@ import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll } from '@/hooks/
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { isPast } from 'date-fns';
-import { Check, Lock, StopCircle } from 'lucide-react';
+import { Check, Lock, StopCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
@@ -83,6 +83,7 @@ export function PollDisplay({
   const { user } = useAuth();
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
   const endPoll = useEndPoll();
@@ -184,10 +185,23 @@ export function PollDisplay({
     return map;
   }, [poll.votes, poll.options]);
 
-  const shouldShowResults = showResults || hasVoted || isExpired;
+  const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
 
   const handleOptionClick = (optionId: string) => {
     if (!canVote) return;
+
+    // Editing mode: clear existing votes on click; rebuild selection like first-time voting.
+    if (isEditing) {
+      if (poll.allow_multiple) {
+        setSelectedOptions(prev =>
+          prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]
+        );
+      } else {
+        setSelectedOptions([optionId]);
+      }
+      return;
+    }
+
     if (showResults && !hasVoted) return;
 
     if (hasVoted) {
@@ -208,9 +222,9 @@ export function PollDisplay({
       }
     } else {
       if (poll.allow_multiple) {
-        setSelectedOptions(prev => 
-          prev.includes(optionId) 
-            ? prev.filter(id => id !== optionId) 
+        setSelectedOptions(prev =>
+          prev.includes(optionId)
+            ? prev.filter(id => id !== optionId)
             : [...prev, optionId]
         );
       } else {
@@ -228,6 +242,21 @@ export function PollDisplay({
         threadId
       });
     });
+    setSelectedOptions([]);
+    setIsEditing(false);
+  };
+
+  const handleStartEdit = () => {
+    // Remove all existing votes from this user, then enter selection mode pre-filled with current choices.
+    userVotes.forEach(optionId => {
+      removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
+    });
+    setSelectedOptions([]);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
     setSelectedOptions([]);
   };
 
@@ -266,7 +295,7 @@ export function PollDisplay({
               <button
                 key={option.id}
                 onClick={() => handleOptionClick(option.id)}
-                disabled={(!canVote && !hasVoted) || (showResults && !hasVoted)}
+                disabled={isEditing ? false : ((!canVote && !hasVoted) || (showResults && !hasVoted))}
               className={cn(
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted
@@ -358,8 +387,21 @@ export function PollDisplay({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Modify vote button — only while poll is open and user has voted */}
+            {!isExpired && hasVoted && !isEditing && canVote && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStartEdit}
+                className="text-xs h-8"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" />
+                Modifier
+              </Button>
+            )}
+
             {/* End poll button for author */}
-            {!isExpired && poll.author_id === user?.id && (
+            {!isExpired && poll.author_id === user?.id && !isEditing && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -372,7 +414,18 @@ export function PollDisplay({
               </Button>
             )}
 
-            {!shouldShowResults && !hasVoted && canVote && (
+            {isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="text-xs h-8"
+              >
+                Annuler
+              </Button>
+            )}
+
+            {!shouldShowResults && !hasVoted && !isEditing && canVote && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -382,8 +435,8 @@ export function PollDisplay({
                 Afficher les résultats
               </Button>
             )}
-            
-            {showResults && !hasVoted && canVote && (
+
+            {showResults && !hasVoted && !isEditing && canVote && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -393,15 +446,15 @@ export function PollDisplay({
                 Revenir aux votes
               </Button>
             )}
-            
-            {!hasVoted && canVote && selectedOptions.length > 0 && (
+
+            {(!hasVoted || isEditing) && canVote && selectedOptions.length > 0 && (
               <Button
                 onClick={handleVote}
                 disabled={votePoll.isPending}
                 size="sm"
                 className="bg-primary hover:bg-primary/80 text-primary-foreground text-xs h-8"
               >
-                Voter
+                {isEditing ? 'Confirmer' : 'Voter'}
               </Button>
             )}
           </div>

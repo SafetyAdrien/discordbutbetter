@@ -17,6 +17,7 @@ import {
 } from '@/lib/connections';
 import { MobileConnectionsManager } from './MobileConnectionsManager';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 interface Props {
   onBack: () => void;
@@ -113,11 +114,10 @@ export function MobileFullProfileView({ onBack }: Props) {
                     {initial}
                   </AvatarFallback>
                 </Avatar>
-                <div
-                  className={cn(
-                    'absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background',
-                    statusColors[currentStatus],
-                  )}
+                <StatusIndicator
+                  status={currentStatus}
+                  className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
+                  bgClassName="bg-background"
                 />
               </div>
             </div>

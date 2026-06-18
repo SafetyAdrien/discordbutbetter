@@ -23,6 +23,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { InboxPanel } from "@/components/inbox/InboxPanel";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Badge } from "@/components/ui/badge";
@@ -537,11 +538,9 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                   {member.displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div
-                className={cn(
-                  "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
-                  statusColors[member.status],
-                )}
+              <StatusIndicator
+                status={member.status}
+                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-card"
               />
             </div>
 

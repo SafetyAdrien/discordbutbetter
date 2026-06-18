@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils';
-import { Globe } from 'lucide-react';
+import { Compass, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
-export type MobileTab = 'servers' | 'profile';
+export type MobileTab = 'servers' | 'explore' | 'profile';
 
 interface MobileBottomNavProps {
   activeTab: MobileTab;
@@ -22,6 +22,7 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
 
   const tabs: { id: MobileTab; label: string }[] = [
     { id: 'servers', label: 'Serveurs' },
+    { id: 'explore', label: 'Explorer' },
     { id: 'profile', label: 'Vous' },
   ];
 

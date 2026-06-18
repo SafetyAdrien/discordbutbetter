@@ -4,7 +4,7 @@ import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
-import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
+import { ContextMenuItem } from '@/components/ui/context-menu';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';

@@ -74,6 +74,10 @@ export function UniversalMessageContextMenu({
   previewAuthorName,
   previewAuthorAvatar,
   previewContent,
+  variant = 'message',
+  extraItems,
+  copyIdLabel,
+  copyLinkLabel,
   onReply,
   onAddReaction,
   onCopyText,
@@ -87,6 +91,7 @@ export function UniversalMessageContextMenu({
   onViewReactions,
   onClearAllReactions,
 }: UniversalMessageContextMenuProps) {
+
   const { isMobile } = useBreakpoint();
   const isShiftPressed = useShiftKey();
   const [sheetOpen, setSheetOpen] = useState(false);

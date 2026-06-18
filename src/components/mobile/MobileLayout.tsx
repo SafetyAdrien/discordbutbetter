@@ -525,7 +525,7 @@ export function MobileLayout({
   // The `channels` (salons) overlay must keep the nav visible at all times.
   const inFullOverlay = mobileView.type === 'chat' || mobileView.type === 'thread';
   const onProfileTab = activeTab === 'profile';
-  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inFullOverlay || onProfileTab;
+  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inFullOverlay || onProfileTab || showDiscover;
 
   // Publish keyboard offset as a CSS variable so any component (modals,
   // floating buttons, chat input) can dock above the on-screen keyboard.

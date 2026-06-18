@@ -16,8 +16,13 @@ function fmtDateTime(date: string, time: string): string {
   }
 }
 
-export function EventListBelow() {
-  const { events, remove } = useCalendarEvents();
+interface EventListBelowProps {
+  userId?: string;
+  readOnly?: boolean;
+}
+
+export function EventListBelow({ userId, readOnly = false }: EventListBelowProps = {}) {
+  const { events, remove } = useCalendarEvents(userId);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
 
   const sorted = [...events].sort((a, b) => {
@@ -30,7 +35,7 @@ export function EventListBelow() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Mes évènements ({sorted.length})
+          {readOnly ? `Évènements (${sorted.length})` : `Mes évènements (${sorted.length})`}
         </h4>
       </div>
 

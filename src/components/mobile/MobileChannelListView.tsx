@@ -501,26 +501,30 @@ export function MobileChannelListView({
   };
 
   const serverNameTrigger = (
-    <button className="flex items-center text-left min-w-0 leading-tight gap-1 w-full">
-      <div className="flex flex-col min-w-0 flex-1">
-        <h2 className="font-bold text-lg truncate text-foreground max-w-full">{serverName}</h2>
+    <button className="flex items-center text-left min-w-0 leading-tight gap-1.5">
+      <div className="flex flex-col min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          <h2 className="font-bold text-lg truncate text-foreground">{serverName}</h2>
+          <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        </div>
         <p className="text-[11px] text-muted-foreground truncate max-w-full">
           {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
         </p>
       </div>
-      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
     </button>
   );
 
   const serverNameTriggerLight = (
-    <button className="flex items-center text-left min-w-0 leading-tight gap-1 w-full">
-      <div className="flex flex-col min-w-0 flex-1">
-        <h2 className="font-bold text-lg truncate text-white max-w-full [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+    <button className="flex items-center text-left min-w-0 leading-tight gap-1.5">
+      <div className="flex flex-col min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          <h2 className="font-bold text-lg truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+          <ChevronRight className="w-5 h-5 text-white/90 flex-shrink-0 [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.9))]" />
+        </div>
         <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
           {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
         </p>
       </div>
-      <ChevronRight className="w-5 h-5 text-white/90 flex-shrink-0 [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.9))]" />
     </button>
   );
 

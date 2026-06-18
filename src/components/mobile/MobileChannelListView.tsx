@@ -539,7 +539,7 @@ export function MobileChannelListView({
     }, []);
 
     return (
-    <div className="flex flex-col h-full bg-[hsl(var(--surface-1))] rounded-tl-[15px] overflow-hidden select-none">
+    <div className="flex flex-col h-full bg-[hsl(var(--surface-1))] rounded-tl-[30px] overflow-hidden select-none">
       {/* Banner (both embedded and non-embedded) - progressive fade */}
       {bannerUrl && (
         <div
@@ -566,7 +566,7 @@ export function MobileChannelListView({
 
       {/* Header (shown when no banner or banner nearly hidden) */}
       {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
-        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 rounded-tl-[15px] bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 rounded-tl-[30px] bg-[hsl(var(--surface-1))]">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -576,7 +576,7 @@ export function MobileChannelListView({
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
-        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 rounded-tl-[15px] bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 rounded-tl-[30px] bg-[hsl(var(--surface-1))]">
           <div className="flex-1 min-w-0 mt-1">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>

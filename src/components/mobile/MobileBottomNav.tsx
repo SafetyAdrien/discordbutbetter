@@ -18,6 +18,7 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }: MobileBottomNavProps) {
   const { profile } = useAuth();
   const initial = (profile?.display_name || profile?.username || '?').charAt(0).toUpperCase();
+  const currentStatus = profile?.status || 'offline';
 
   const tabs: { id: MobileTab; label: string }[] = [
     { id: 'servers', label: 'Serveurs' },

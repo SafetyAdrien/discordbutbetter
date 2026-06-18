@@ -110,10 +110,10 @@ export function UniversalMessageActions({
   // Mode normal
   return <>
     {isVisible && (
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in bg-[hsl(var(--surface-3))] w-[12rem]">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in bg-[hsl(var(--surface-3))] w-fit">
         {canAddReactions && onAddReaction && QUICK_REACTIONS.map(emoji => <Tooltip key={emoji}>
             <TooltipTrigger asChild>
-              <button onClick={() => onAddReaction(emoji)} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors text-base">
+              <button onClick={() => onAddReaction(emoji)} className={cn(slotCls, "text-base leading-none")}>
                 {emoji}
               </button>
             </TooltipTrigger>
@@ -123,13 +123,13 @@ export function UniversalMessageActions({
         {canAddReactions && onAddReaction && (
           <Popover>
             <PopoverTrigger asChild>
-               <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+               <button className={slotCls}>
                 <SmilePlus className="w-4 h-4 text-muted-foreground" />
               </button>
             </PopoverTrigger>
             <PopoverContent side="top" align="end" className="w-64 p-2">
               <div className="grid grid-cols-8 gap-1">
-                {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-primary/10 rounded-full text-lg transition-colors">
+                {EMOJI_PICKER_GRID.map(emoji => <button key={emoji} onClick={() => onAddReaction(emoji)} className="p-1 hover:bg-primary/10 rounded-full text-lg transition-col]">
                     {emoji}
                   </button>)}
               </div>
@@ -141,7 +141,7 @@ export function UniversalMessageActions({
         
         {isOwnMessage && onEdit && <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onEdit} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <button onClick={onEdit} className={slotCls}>
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -150,7 +150,7 @@ export function UniversalMessageActions({
         
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onReply} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button onClick={onReply} className={slotCls}>
               <Reply className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -159,7 +159,7 @@ export function UniversalMessageActions({
         
         <DropdownMenu onOpenChange={onDropdownOpenChange}>
           <DropdownMenuTrigger asChild>
-            <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+            <button className={slotCls}>
               <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>

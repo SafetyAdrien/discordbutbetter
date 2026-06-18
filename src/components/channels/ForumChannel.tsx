@@ -21,10 +21,6 @@ export interface ForumChannelProps {
   showMembers?: boolean;
   hideHeader?: boolean;
 }
-  channel: Channel;
-  onToggleMembers?: () => void;
-  showMembers?: boolean;
-}
 
 interface ForumThread {
   id: string;
@@ -38,7 +34,7 @@ interface ForumThread {
   pinned?: boolean;
 }
 
-export function ForumChannel({ channel, onToggleMembers, showMembers }: ForumChannelProps) {
+export function ForumChannel({ channel, onToggleMembers, showMembers, hideHeader = false }: ForumChannelProps) {
   // Permissions
   const { data: canCreatePosts = true } = useHasChannelPermission(channel.id, 'create_forum_posts');
   const [searchQuery, setSearchQuery] = useState('');

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 export type MobileTab = 'servers' | 'profile';
 
@@ -17,6 +18,7 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }: MobileBottomNavProps) {
   const { profile } = useAuth();
   const initial = (profile?.display_name || profile?.username || '?').charAt(0).toUpperCase();
+  const currentStatus = profile?.status || 'offline';
 
   const tabs: { id: MobileTab; label: string }[] = [
     { id: 'servers', label: 'Serveurs' },
@@ -60,17 +62,24 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                   />
                 )}
                 {id === 'profile' ? (
-                  <Avatar
-                    className={cn(
-                      'w-[24px] h-[24px] relative z-10 transition-all duration-200',
-                      isActive ? 'ring-2 ring-primary' : 'ring-1 ring-border/40',
-                    )}
-                  >
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
-                      {initial}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar
+                      className={cn(
+                        'w-[24px] h-[24px] relative z-10 transition-all duration-200',
+                        isActive ? 'ring-2 ring-primary' : 'ring-1 ring-border/40',
+                      )}
+                    >
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
+                        {initial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <StatusIndicator
+                      status={currentStatus}
+                      className="absolute -bottom-0.5 -right-0.5 w-[10px] h-[10px] border-[2px] border-[hsl(var(--surface-1))] z-20"
+                      bgClassName="bg-[hsl(var(--surface-1))]"
+                    />
+                  </div>
                 ) : (
                   <Globe
                     className={cn(

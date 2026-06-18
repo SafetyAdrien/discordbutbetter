@@ -59,11 +59,13 @@ interface MobileProfileViewProps {
   onSelectServer?: (serverId: string) => void;
   onCreateServer?: () => void;
   onDiscover?: () => void;
+  onClose?: () => void;
 }
 
 export function MobileProfileView({
   onOpenDM,
   onSelectServer,
+  onClose,
 }: MobileProfileViewProps = {}) {
   const { profile, user } = useAuth();
   const { data: friends = [] } = useFriends();
@@ -121,6 +123,10 @@ export function MobileProfileView({
 
   const handleClose = () => {
     haptics.light();
+    if (onClose) {
+      onClose();
+      return;
+    }
     if (window.history.length > 1) {
       window.history.back();
     }
@@ -413,41 +419,26 @@ export function MobileProfileView({
           />
         )}
         {subpage === 'notifications' && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="notifications-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              onClick={() => setSubpage(null)}
-              className="absolute inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          <motion.div
+            key="notifications-fullscreen"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+            className="absolute inset-0 z-50 bg-background"
+          >
+            <MobileNotificationsView
+              onBack={() => setSubpage(null)}
+              onOpenDM={(id) => {
+                setSubpage(null);
+                onOpenDM?.(id);
+              }}
+              onOpenServer={(id) => {
+                setSubpage(null);
+                onSelectServer?.(id);
+              }}
             />
-            {/* Small popup anchored top-right */}
-            <motion.div
-              key="notifications"
-              initial={{ opacity: 0, scale: 0.9, y: -6 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: -4 }}
-              transition={{ type: 'spring', stiffness: 520, damping: 30 }}
-              style={{ transformOrigin: 'top right' }}
-              className="absolute top-12 right-3 w-[280px] max-h-[420px] z-50 rounded-2xl bg-background overflow-hidden flex flex-col shadow-[0_20px_50px_-10px_rgba(0,0,0,0.55),0_0_0_1px_hsl(var(--border))]"
-            >
-              <MobileNotificationsView
-                compact
-                onBack={() => setSubpage(null)}
-                onOpenDM={(id) => {
-                  setSubpage(null);
-                  onOpenDM?.(id);
-                }}
-                onOpenServer={(id) => {
-                  setSubpage(null);
-                  onSelectServer?.(id);
-                }}
-              />
-            </motion.div>
-          </>
+          </motion.div>
         )}
         {subpage === 'appearance' && (
           <MobileSettingsRedirectView

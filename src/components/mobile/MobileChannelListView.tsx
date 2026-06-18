@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Settings, Calendar, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search, Bell, CheckCheck, UserCog, Globe } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
@@ -91,23 +94,31 @@ function ServerProfileSheet({
   serverId: string;
   serverName: string;
   trigger: React.ReactNode;
-  onOpenSettings?: () => void;
+  onOpenSettings?: (initialTab?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [showCreateInvite, setShowCreateInvite] = useState(false);
+  const [showEditServerProfile, setShowEditServerProfile] = useState(false);
+  const [markingRead, setMarkingRead] = useState(false);
   const { user } = useAuth();
   const { data: servers } = useServers();
   const { data: members } = useMembers(open ? serverId : null);
   const { data: emojis } = useServerEmojis(open ? serverId : null);
   const leaveServer = useLeaveServer();
+  const queryClient = useQueryClient();
 
   const server = servers?.find((s) => s.id === serverId);
   const isOwner = server?.owner_id === user?.id || server?.secondary_owner_id === user?.id;
   const ownerMember = members?.find((m) => m.user.id === server?.owner_id);
   const secondaryOwnerMember = members?.find((m) => m.user.id === server?.secondary_owner_id);
   const memberCount = members?.length ?? 0;
+  const onlineCount = members?.filter((m) => {
+    const s = m.user.status;
+    return s === 'online' || s === 'idle' || s === 'dnd';
+  }).length ?? 0;
+  const serverCategory = (server as any)?.category || 'Communauté';
 
   const maxEmojis = 10;
   const displayedEmojis = emojis?.slice(0, maxEmojis) ?? [];
@@ -118,6 +129,71 @@ function ServerProfileSheet({
       onSuccess: () => setOpen(false),
     });
   };
+
+  const handleMarkAllRead = async () => {
+    if (!user || markingRead) return;
+    setMarkingRead(true);
+    try {
+      // Upsert server-level read marker
+      await supabase
+        .from('server_read_states')
+        .upsert(
+          { user_id: user.id, server_id: serverId, last_read_at: new Date().toISOString() },
+          { onConflict: 'user_id,server_id' }
+        );
+
+      // Clear pending mentions for all this server's channels
+      const { data: chs } = await supabase
+        .from('channels')
+        .select('id')
+        .eq('server_id', serverId);
+      const channelIds = (chs || []).map((c) => c.id);
+      if (channelIds.length > 0) {
+        await supabase
+          .from('channel_mentions')
+          .delete()
+          .eq('user_id', user.id)
+          .in('channel_id', channelIds);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+      queryClient.invalidateQueries({ queryKey: ['server-unread-mentions'] });
+      queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+      toast.success('Tous les messages marqués comme lus');
+      setOpen(false);
+    } catch (e: any) {
+      toast.error('Impossible de marquer comme lu');
+    } finally {
+      setMarkingRead(false);
+    }
+  };
+
+  const ActionTile = ({
+    icon: Icon,
+    label,
+    onClick,
+    danger,
+    disabled,
+  }: {
+    icon: React.ElementType;
+    label: string;
+    onClick: () => void;
+    danger?: boolean;
+    disabled?: boolean;
+  }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex flex-col items-center justify-center gap-1.5 py-2.5 px-1 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors min-w-0 disabled:opacity-50',
+      )}
+    >
+      <Icon className={cn('w-5 h-5', danger ? 'text-destructive' : 'text-foreground')} />
+      <span className={cn('text-[10px] font-medium leading-tight text-center truncate w-full px-0.5', danger ? 'text-destructive' : 'text-muted-foreground')}>
+        {label}
+      </span>
+    </button>
+  );
 
   return (
     <>
@@ -134,16 +210,6 @@ function ServerProfileSheet({
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary/60 to-primary/30" />
-            )}
-
-            {/* Settings button on banner */}
-            {onOpenSettings && (
-              <button
-                onClick={() => { setOpen(false); onOpenSettings(); }}
-                className="absolute top-2.5 left-2.5 flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm text-foreground hover:bg-background/90 transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
             )}
 
             {/* Leave button on banner */}
@@ -178,9 +244,9 @@ function ServerProfileSheet({
 
           {/* Server info */}
           <div className="px-4 pb-5 pt-3 space-y-4">
-            {/* Icon + name + description */}
-            <div className="flex items-start gap-3">
-              <Avatar className="w-14 h-14 rounded-2xl border-2 border-background -mt-8 shadow-lg">
+            {/* Icon + name aligned vertically + single-line stats */}
+            <div className="flex items-center gap-3">
+              <Avatar className="w-14 h-14 rounded-2xl border-2 border-background -mt-8 shadow-lg flex-shrink-0">
                 {server?.icon_url ? (
                   <AvatarImage src={server.icon_url} alt={serverName} />
                 ) : null}
@@ -188,14 +254,45 @@ function ServerProfileSheet({
                   {serverName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0 pt-1">
-                <h3 className="font-bold text-base text-foreground truncate">{serverName}</h3>
-                {server?.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {server.description}
-                  </p>
-                )}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base text-foreground truncate leading-tight">{serverName}</h3>
+                <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground min-w-0">
+                  <Globe className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{serverCategory}</span>
+                  <span className="opacity-60">·</span>
+                  <span className="flex items-center gap-0.5 flex-shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
+                    {onlineCount}
+                  </span>
+                  <span className="opacity-60">·</span>
+                  <span className="flex-shrink-0">{memberCount} membre{memberCount !== 1 ? 's' : ''}</span>
+                </div>
               </div>
+            </div>
+
+            {server?.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {server.description}
+              </p>
+            )}
+
+            {/* Primary actions row (icons + small label) */}
+            <div className="grid grid-cols-3 gap-2">
+              <ActionTile
+                icon={UserPlus}
+                label="Inviter"
+                onClick={() => { setOpen(false); setShowCreateInvite(true); }}
+              />
+              <ActionTile
+                icon={Bell}
+                label="Notifs"
+                onClick={() => { setOpen(false); onOpenSettings?.('notifications'); }}
+              />
+              <ActionTile
+                icon={Settings}
+                label="Paramètres"
+                onClick={() => { setOpen(false); onOpenSettings?.(); }}
+              />
             </div>
 
             {/* Metadata */}
@@ -226,13 +323,6 @@ function ServerProfileSheet({
                   </span>
                 </div>
               )}
-
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Users className="w-4 h-4 flex-shrink-0" />
-                <span className="text-xs">
-                  {memberCount} membre{memberCount !== 1 ? 's' : ''}
-                </span>
-              </div>
             </div>
 
             {/* Emojis */}
@@ -260,15 +350,27 @@ function ServerProfileSheet({
               </div>
             )}
 
-            {/* Actions */}
+            {/* Secondary actions */}
             <Separator />
             <div className="space-y-1">
               <button
-                onClick={() => { setOpen(false); setShowCreateInvite(true); }}
+                onClick={handleMarkAllRead}
+                disabled={markingRead}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left disabled:opacity-50"
+              >
+                {markingRead ? (
+                  <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                ) : (
+                  <CheckCheck className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span className="text-sm text-foreground">Marquer comme lu</span>
+              </button>
+              <button
+                onClick={() => { setOpen(false); setShowEditServerProfile(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
-                <UserPlus className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">Créer une invitation</span>
+                <UserCog className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">Modifie ton profil pour le serveur</span>
               </button>
               <button
                 onClick={() => { setOpen(false); setShowCreateChannel(true); }}
@@ -318,6 +420,12 @@ function ServerProfileSheet({
           onClose={() => setShowCreateInvite(false)}
         />
       )}
+
+      <ServerProfileEditModal
+        open={showEditServerProfile}
+        onOpenChange={setShowEditServerProfile}
+        initialServerId={serverId}
+      />
     </>
   );
 }
@@ -393,20 +501,26 @@ export function MobileChannelListView({
   };
 
   const serverNameTrigger = (
-    <button className="flex flex-col items-start text-left min-w-0 leading-tight">
-      <h2 className="font-bold text-lg truncate text-foreground max-w-full">{serverName}</h2>
-      <p className="text-[11px] text-muted-foreground truncate max-w-full">
-        {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
-      </p>
+    <button className="flex items-center text-left min-w-0 leading-tight gap-1 w-full">
+      <div className="flex flex-col min-w-0 flex-1">
+        <h2 className="font-bold text-lg truncate text-foreground max-w-full">{serverName}</h2>
+        <p className="text-[11px] text-muted-foreground truncate max-w-full">
+          {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
+        </p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
     </button>
   );
 
   const serverNameTriggerLight = (
-    <button className="flex flex-col items-start text-left min-w-0 leading-tight">
-      <h2 className="font-bold text-lg truncate text-white max-w-full [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
-      <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
-        {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
-      </p>
+    <button className="flex items-center text-left min-w-0 leading-tight gap-1 w-full">
+      <div className="flex flex-col min-w-0 flex-1">
+        <h2 className="font-bold text-lg truncate text-white max-w-full [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+        <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
+          {memberCount} membre{memberCount !== 1 ? 's' : ''} · {serverCategory}
+        </p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-white/90 flex-shrink-0 [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.9))]" />
     </button>
   );
 
@@ -438,13 +552,9 @@ export function MobileChannelListView({
                 <ChevronLeft className="w-4 h-4 text-white" />
               </button>
             )}
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
-            <div className="flex-1" />
-            {onOpenSettings && (
-              <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
-                <Settings className="w-4 h-4 text-white/80" />
-              </button>
-            )}
+            <div className="flex-1 min-w-0">
+              <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
+            </div>
           </div>
         </div>
       )}
@@ -458,11 +568,6 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          {onOpenSettings && (
-            <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
@@ -470,11 +575,6 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          {onOpenSettings && (
-            <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
         </div>
       )}
 

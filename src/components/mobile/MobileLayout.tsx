@@ -521,7 +521,9 @@ export function MobileLayout({
 
   // Visual viewport / keyboard handling
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
-  const hideBottomNav = isKeyboardOpen && isInputFocused;
+  const inOverlayView = mobileView.type !== 'tab';
+  const onProfileTab = activeTab === 'profile';
+  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inOverlayView || onProfileTab;
 
   // Publish keyboard offset as a CSS variable so any component (modals,
   // floating buttons, chat input) can dock above the on-screen keyboard.
@@ -645,6 +647,7 @@ export function MobileLayout({
                 }}
                 onCreateServer={() => setShowCreate(true)}
                 onDiscover={() => setShowDiscover(true)}
+                onClose={() => setActiveTab('servers')}
               />
             )}
           </div>

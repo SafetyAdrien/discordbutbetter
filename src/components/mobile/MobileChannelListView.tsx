@@ -444,13 +444,9 @@ export function MobileChannelListView({
                 <ChevronLeft className="w-4 h-4 text-white" />
               </button>
             )}
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
-            <div className="flex-1" />
-            {onOpenSettings && (
-              <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
-                <Settings className="w-4 h-4 text-white/80" />
-              </button>
-            )}
+            <div className="flex-1 min-w-0">
+              <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
+            </div>
           </div>
         </div>
       )}
@@ -464,11 +460,6 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          {onOpenSettings && (
-            <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
@@ -476,11 +467,6 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
-          {onOpenSettings && (
-            <button onClick={() => onOpenSettings()} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
         </div>
       )}
 

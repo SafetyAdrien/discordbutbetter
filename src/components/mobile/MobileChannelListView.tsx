@@ -276,25 +276,6 @@ function ServerProfileSheet({
               </p>
             )}
 
-            {/* Primary actions row (icons + small label) */}
-            <div className="grid grid-cols-3 gap-2">
-              <ActionTile
-                icon={UserPlus}
-                label="Inviter"
-                onClick={() => { setOpen(false); setShowCreateInvite(true); }}
-              />
-              <ActionTile
-                icon={Bell}
-                label="Notifs"
-                onClick={() => { setOpen(false); onOpenSettings?.('notifications'); }}
-              />
-              <ActionTile
-                icon={Settings}
-                label="Paramètres"
-                onClick={() => { setOpen(false); onOpenSettings?.(); }}
-              />
-            </div>
-
             {/* Metadata */}
             <div className="space-y-2.5">
               {server?.created_at && (
@@ -324,6 +305,26 @@ function ServerProfileSheet({
                 </div>
               )}
             </div>
+
+            {/* Primary actions row (icons + small label) */}
+            <div className="grid grid-cols-3 gap-2">
+              <ActionTile
+                icon={UserPlus}
+                label="Inviter"
+                onClick={() => { setOpen(false); setShowCreateInvite(true); }}
+              />
+              <ActionTile
+                icon={Bell}
+                label="Notifs"
+                onClick={() => { setOpen(false); onOpenSettings?.('notifications'); }}
+              />
+              <ActionTile
+                icon={Settings}
+                label="Paramètres"
+                onClick={() => { setOpen(false); onOpenSettings?.(); }}
+              />
+            </div>
+
 
             {/* Emojis */}
             {displayedEmojis.length > 0 && (

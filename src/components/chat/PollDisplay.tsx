@@ -295,7 +295,7 @@ export function PollDisplay({
               <button
                 key={option.id}
                 onClick={() => handleOptionClick(option.id)}
-                disabled={(!canVote && !hasVoted) || (showResults && !hasVoted)}
+                disabled={isEditing ? false : ((!canVote && !hasVoted) || (showResults && !hasVoted))}
               className={cn(
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
                   isSelected || isVoted

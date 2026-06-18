@@ -10,6 +10,7 @@ import { useUserNote } from '@/hooks/useUserNotes';
 import { format } from 'date-fns';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { fr } from 'date-fns/locale';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const NoteAddIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -76,7 +77,7 @@ export function DMUserInfoPanel({
                 {participant.display_name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className={cn("absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-[hsl(var(--surface-1))]", statusColors[participant.status || 'offline'])} />
+            <StatusIndicator status={participant.status || 'offline'} className="absolute bottom-1 right-1 w-5 h-5 border-4 border-[hsl(var(--surface-1))]" bgClassName="bg-[hsl(var(--surface-1))]" />
           </div>
         </div>
 

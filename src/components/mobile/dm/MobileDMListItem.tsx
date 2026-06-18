@@ -7,6 +7,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useLongPress } from '@/hooks/useLongPress';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
@@ -299,12 +300,9 @@ export function MobileDMListItem({
             </div>
           ) : (
             status && (
-              <div
-                className={cn(
-                  'absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-card',
-                  statusColors[status],
-                )}
-                aria-hidden="true"
+              <StatusIndicator
+                status={status}
+                className="absolute bottom-0 right-0 w-3.5 h-3.5 border-2 border-card"
               />
             )
           )}

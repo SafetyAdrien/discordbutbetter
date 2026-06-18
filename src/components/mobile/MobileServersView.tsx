@@ -278,7 +278,7 @@ export function MobileServersView({
   }));
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-[hsl(var(--surface-server-list))]">
       {/* Left: Server icons column */}
       <div
         data-swipe-ignore="true"
@@ -354,7 +354,7 @@ export function MobileServersView({
       </div>
 
       {/* Right: Content panel */}
-      <div className="flex-1 min-w-0 overflow-hidden rounded-tl-[15px] border-l border-border/50 bg-[hsl(var(--surface-1))]">
+      <div className="flex-1 min-w-0 overflow-hidden rounded-tl-[15px] bg-[hsl(var(--surface-1))]">
         {showDMs ? (
           <MobileHomeView
             activeDMId={activeDMId}

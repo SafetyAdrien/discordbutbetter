@@ -147,10 +147,10 @@ export function MobileProfileView({
 
           <button
             onClick={handleClose}
-            className="absolute top-3 left-3 flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
+            className="absolute top-3 left-3 flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-lg bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
             aria-label="Fermer"
           >
-            <X className="w-4 h-4 text-foreground" />
+            <X className="w-4 h-4 text-foreground" fill="currentColor" fillOpacity={0.9} strokeWidth={2} />
           </button>
 
           <div className="absolute top-3 right-3 flex items-center gap-1.5">
@@ -159,20 +159,20 @@ export function MobileProfileView({
                 haptics.light();
                 setSubpage('edit-profile');
               }}
-              className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
+              className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-lg bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Modifier le profil"
             >
-              <Pencil className="w-4 h-4 text-foreground" />
+              <Pencil className="w-4 h-4 text-foreground" fill="currentColor" fillOpacity={0.9} strokeWidth={2} />
             </button>
             <button
               onClick={() => {
                 haptics.light();
                 setSubpage('notifications');
               }}
-              className="relative flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
+              className="relative flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-lg bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Notifications"
             >
-              <Bell className="w-4 h-4 text-foreground" />
+              <Bell className="w-4 h-4 text-foreground" fill="currentColor" fillOpacity={0.9} strokeWidth={2} />
               {notifCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
                   {notifCount > 99 ? '99+' : notifCount}
@@ -181,10 +181,10 @@ export function MobileProfileView({
             </button>
             <button
               onClick={handleOpenSettings}
-              className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
+              className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-lg bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Paramètres"
             >
-              <Settings className="w-4 h-4 text-foreground" />
+              <Settings className="w-4 h-4 text-foreground" fill="currentColor" fillOpacity={0.9} strokeWidth={2} />
             </button>
           </div>
 
@@ -264,24 +264,24 @@ export function MobileProfileView({
             <div className="flex flex-col items-center shrink-0">
               <button
                 onClick={handleCopyDisplayName}
-                className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
+                className="w-7 h-7 rounded-lg active:bg-muted/60 transition-colors flex items-center justify-center"
                 aria-label="Copier le nom d'affichage"
               >
                 {copied ? (
-                  <Check className="w-3.5 h-3.5 text-[hsl(var(--online))]/80" />
+                  <Check className="w-3.5 h-3.5 text-[hsl(var(--online))]/80" fill="currentColor" fillOpacity={0.9} strokeWidth={2} />
                 ) : (
-                  <Copy className="w-3.5 h-3.5 text-muted-foreground/60" />
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground/60" fill="currentColor" fillOpacity={0.55} strokeWidth={2} />
                 )}
               </button>
               <button
                 onClick={handleCopyUsername}
-                className="w-5 h-5 rounded-full active:bg-muted-muted/60 transition-colors flex items-center justify-center -mt-3"
+                className="w-5 h-5 rounded-lg active:bg-muted-muted/60 transition-colors flex items-center justify-center -mt-3"
                 aria-label="Copier le nom d'utilisateur"
               >
                 {copiedUsername ? (
-                  <Check className="w-3 h-3 text-[hsl(var(--online))]/80" />
+                  <Check className="w-3 h-3 text-[hsl(var(--online))]/80" fill="currentColor" fillOpacity={0.9} strokeWidth={2} />
                 ) : (
-                  <Copy className="w-3 h-3 text-muted-foreground/60" />
+                  <Copy className="w-3 h-3 text-muted-foreground/60" fill="currentColor" fillOpacity={0.55} strokeWidth={2} />
                 )}
               </button>
             </div>
@@ -352,8 +352,8 @@ export function MobileProfileView({
                 if (age != null) statBits.push(age === 0 ? 'Compte récent' : `Compte depuis ${age} an${age > 1 ? 's' : ''}`);
                 return (
                   <div key={`${c.provider}-${i}`} className="flex items-start gap-3 px-1 py-1">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40 shrink-0">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-muted/40 shrink-0">
+                      <Icon className="w-4 h-4 text-muted-foreground" fill="currentColor" fillOpacity={0.55} strokeWidth={2} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">

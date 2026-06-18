@@ -49,7 +49,7 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
               aria-label={`${label}${badgeLabel}`}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all duration-300 relative min-w-[56px] min-h-[44px]',
+                'flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-300 relative min-w-[56px] min-h-[44px]',
               )}
               style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
             >
@@ -57,7 +57,7 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                 {isActive && (
                   <motion.div
                     layoutId="mobile-tab-pill"
-                    className="absolute -inset-x-3 -inset-y-1.5 rounded-2xl bg-primary/15"
+                    className="absolute -inset-x-3 -inset-y-1.5 rounded-xl bg-primary/15"
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
@@ -66,9 +66,9 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
                     'w-[22px] h-[22px] relative z-10 transition-all duration-200',
                     isActive ? 'text-primary' : 'text-muted-foreground',
                   )}
-                  strokeWidth={isActive ? 2.5 : 2.25}
-                  fill={isActive ? 'currentColor' : 'none'}
-                  fillOpacity={isActive ? 0.18 : 0}
+                  strokeWidth={2}
+                  fill="currentColor"
+                  fillOpacity={isActive ? 0.9 : 0.55}
                 />
                 {badge > 0 && (
                   <span aria-hidden="true" className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">

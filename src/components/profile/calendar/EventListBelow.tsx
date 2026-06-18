@@ -43,7 +43,7 @@ export function EventListBelow({ userId, readOnly = false }: EventListBelowProps
         <div className="rounded-xl border border-dashed border-border p-6 text-center">
           <Calendar className="w-6 h-6 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-xs text-muted-foreground">
-            Aucun évènement. Cliquez sur une case du calendrier pour en créer un.
+            {readOnly ? 'Aucun évènement public.' : 'Aucun évènement. Cliquez sur une case du calendrier pour en créer un.'}
           </p>
         </div>
       ) : (

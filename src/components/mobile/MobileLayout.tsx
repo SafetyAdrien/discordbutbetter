@@ -716,7 +716,7 @@ export function MobileLayout({
             setShowDiscover(false);
             setActiveTab('servers');
           }}
-          onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); }}
+          onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); setActiveTab('servers'); }}
         />
       )}
       {showCreate && (

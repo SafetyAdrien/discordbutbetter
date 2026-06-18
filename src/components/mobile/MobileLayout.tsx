@@ -521,9 +521,11 @@ export function MobileLayout({
 
   // Visual viewport / keyboard handling
   const { keyboardHeight, isKeyboardOpen, isInputFocused } = useVisualViewport();
-  const inOverlayView = mobileView.type !== 'tab';
+  // Hide the bottom nav only for full-screen chat/thread overlays or the profile tab.
+  // The `channels` (salons) overlay must keep the nav visible at all times.
+  const inFullOverlay = mobileView.type === 'chat' || mobileView.type === 'thread';
   const onProfileTab = activeTab === 'profile';
-  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inOverlayView || onProfileTab;
+  const hideBottomNav = (isKeyboardOpen && isInputFocused) || inFullOverlay || onProfileTab;
 
   // Publish keyboard offset as a CSS variable so any component (modals,
   // floating buttons, chat input) can dock above the on-screen keyboard.

@@ -174,12 +174,8 @@ export function UniversalMessageContextMenu({
         </>
       )}
 
-      {extraItems && (
-        <>
-          <div className="h-px bg-border my-1" />
-          {extraItems}
-        </>
-      )}
+      {/* extraItems are Radix ContextMenuItems → rendered only in desktop branch */}
+
 
       <div className="h-px bg-border my-1" />
       {isOwnMessage ? (

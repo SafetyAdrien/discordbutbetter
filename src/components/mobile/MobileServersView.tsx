@@ -346,13 +346,6 @@ export function MobileServersView({
         {servers.length > 0 && <Separator className="w-8 my-1" />}
 
         <button
-          onClick={onDiscoverClick}
-          className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-surface-3 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
-        >
-          <Compass className="w-6 h-6" />
-        </button>
-
-        <button
           onClick={onCreateClick}
           className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-surface-3 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >

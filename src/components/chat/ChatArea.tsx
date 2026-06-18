@@ -1334,9 +1334,29 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               return (
                 <div key={`poll-${poll.id}`}>
                   {DateSeparator}
-                  <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                      <PollLongPressWrapper
+                  <UniversalMessageContextMenu
+                    messageId={poll.id}
+                    isOwnMessage={isOwnPoll}
+                    canAddReactions={canAddReactions}
+                    canManageMessages={canManageMessages}
+                    variant="poll"
+                    copyLinkLabel="Copier le lien du sondage"
+                    copyIdLabel="Copier l'ID du sondage"
+                    onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
+                    onCopyLink={() => handleCopyPollLink(poll.id)}
+                    onCopyId={() => handleCopyId(poll.id)}
+                    onEdit={isOwnPoll ? () => setEditingPoll(poll) : undefined}
+                    onDelete={isOwnPoll || canManageMessages ? () => handleDeletePoll(poll) : undefined}
+                    extraItems={
+                      isOwnPoll && !isPollExpired ? (
+                        <ContextMenuItem onClick={() => handleEndPoll(poll)}>
+                          <StopCircle className="w-4 h-4 mr-2" />
+                          Terminer le sondage
+                        </ContextMenuItem>
+                      ) : undefined
+                    }
+                  >
+                    <PollLongPressWrapper
                         isMobile={isMobile}
                         onLongPress={() => setMobilePollSheetId(poll.id)}
                         className={cn(
@@ -1436,40 +1456,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           </div>
                         )}
                       </PollLongPressWrapper>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-48">
-                      <ContextMenuItem onClick={() => handleCopyPollLink(poll.id)}>
-                        <Link className="w-4 h-4 mr-2" />
-                        Copier le lien du sondage
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
-                        <Hash className="w-4 h-4 mr-2" />
-                        Copier l'ID du sondage
-                      </ContextMenuItem>
-                      {isOwnPoll && (
-                        <>
-                          <ContextMenuSeparator />
-                          {!isPollExpired && (
-                            <ContextMenuItem onClick={() => handleEndPoll(poll)}>
-                              <StopCircle className="w-4 h-4 mr-2" />
-                              Terminer le sondage
-                            </ContextMenuItem>
-                          )}
-                          <ContextMenuItem onClick={() => setEditingPoll(poll)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Modifier le sondage
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDeletePoll(poll)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer le sondage
-                          </ContextMenuItem>
-                        </>
-                      )}
-                    </ContextMenuContent>
-                  </ContextMenu>
+                  </UniversalMessageContextMenu>
+
                 </div>
               );
             }

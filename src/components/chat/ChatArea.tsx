@@ -150,7 +150,7 @@ function PollActions({
   // Mode SHIFT : actions alternatives (technique / administration) en icônes
   if (isShiftPressed) {
     return (
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-[12rem]">
         <Tooltip>
           <TooltipTrigger asChild>
             <button onClick={onCopyId} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
@@ -202,7 +202,7 @@ function PollActions({
   }
 
   return (
-    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
+    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-[12rem]">
       {/* 1. Réactions rapides - 3 émojis */}
       {QUICK_REACTIONS_HOVER.map((emoji) => (
         <Tooltip key={emoji}>

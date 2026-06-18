@@ -291,7 +291,7 @@ function ServerProfileSheet({
                 <div className="flex items-center gap-2.5 text-muted-foreground">
                   <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-yellow-500" size={16} />
                   <span className="text-xs">
-                    Fondateur : <span className="text-foreground font-medium">{ownerMember.user.display_name}</span>
+                    Fondateur : <span className="text-foreground font-medium">{ownerMember.user.username}</span>
                   </span>
                 </div>
               )}
@@ -300,7 +300,7 @@ function ServerProfileSheet({
                 <div className="flex items-center gap-2.5 text-muted-foreground">
                   <StreamlineCrown className="w-4 h-4 flex-shrink-0 text-gray-400" size={16} />
                   <span className="text-xs">
-                    Co-propriétaire : <span className="text-foreground font-medium">{secondaryOwnerMember.user.display_name}</span>
+                    Co-propriétaire : <span className="text-foreground font-medium">{secondaryOwnerMember.user.username}</span>
                   </span>
                 </div>
               )}

@@ -576,7 +576,7 @@ export function MobileChannelListView({
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
-        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 border-b border-border bg-[hsl(var(--surface-1))]">
+        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 bg-[hsl(var(--surface-1))]">
           <div className="flex-1 min-w-0">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>

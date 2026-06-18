@@ -291,7 +291,8 @@ function PollActions({
       {/* 4. Menu Plus d'options */}
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
-          <button className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+          <button className={slotCls}>
+
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>

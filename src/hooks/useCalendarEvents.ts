@@ -26,21 +26,26 @@ export interface CalendarEventInput {
   is_public: boolean;
 }
 
-const key = (userId: string | null | undefined) => ['calendar-events', userId] as const;
+const key = (userId: string | null | undefined, publicOnly: boolean) =>
+  ['calendar-events', userId, publicOnly ? 'public' : 'all'] as const;
 
 export function useCalendarEvents(targetUserId?: string | null) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const userId = targetUserId ?? user?.id ?? null;
+  const publicOnly = !!targetUserId && targetUserId !== user?.id;
+  const k = key(userId, publicOnly);
 
   const query = useQuery({
-    queryKey: key(userId),
+    queryKey: k,
     enabled: !!userId,
     queryFn: async (): Promise<CalendarEvent[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('calendar_events')
         .select('*')
-        .eq('user_id', userId!)
+        .eq('user_id', userId!);
+      if (publicOnly) q = q.eq('is_public', true);
+      const { data, error } = await q
         .order('event_date', { ascending: true })
         .order('event_time', { ascending: true });
       if (error) throw error;

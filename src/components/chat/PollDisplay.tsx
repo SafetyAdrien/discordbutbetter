@@ -280,7 +280,11 @@ export function PollDisplay({
   };
 
   return (
-    <div className="bg-poll rounded-xl overflow-hidden max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
+    <div
+      className="bg-poll rounded-xl overflow-hidden max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       <div className="px-3 pb-3 space-y-3">
         <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
         

@@ -91,7 +91,7 @@ function ServerProfileSheet({
   serverId: string;
   serverName: string;
   trigger: React.ReactNode;
-  onOpenSettings?: () => void;
+  onOpenSettings?: (initialTab?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);

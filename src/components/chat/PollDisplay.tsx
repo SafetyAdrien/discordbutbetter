@@ -387,8 +387,21 @@ export function PollDisplay({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Modify vote button — only while poll is open and user has voted */}
+            {!isExpired && hasVoted && !isEditing && canVote && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStartEdit}
+                className="text-xs h-8"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" />
+                Modifier
+              </Button>
+            )}
+
             {/* End poll button for author */}
-            {!isExpired && poll.author_id === user?.id && (
+            {!isExpired && poll.author_id === user?.id && !isEditing && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -401,7 +414,18 @@ export function PollDisplay({
               </Button>
             )}
 
-            {!shouldShowResults && !hasVoted && canVote && (
+            {isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="text-xs h-8"
+              >
+                Annuler
+              </Button>
+            )}
+
+            {!shouldShowResults && !hasVoted && !isEditing && canVote && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -411,8 +435,8 @@ export function PollDisplay({
                 Afficher les résultats
               </Button>
             )}
-            
-            {showResults && !hasVoted && canVote && (
+
+            {showResults && !hasVoted && !isEditing && canVote && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -422,15 +446,15 @@ export function PollDisplay({
                 Revenir aux votes
               </Button>
             )}
-            
-            {!hasVoted && canVote && selectedOptions.length > 0 && (
+
+            {(!hasVoted || isEditing) && canVote && selectedOptions.length > 0 && (
               <Button
                 onClick={handleVote}
                 disabled={votePoll.isPending}
                 size="sm"
                 className="bg-primary hover:bg-primary/80 text-primary-foreground text-xs h-8"
               >
-                Voter
+                {isEditing ? 'Confirmer' : 'Voter'}
               </Button>
             )}
           </div>

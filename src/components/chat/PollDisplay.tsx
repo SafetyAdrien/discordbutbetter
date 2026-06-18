@@ -351,8 +351,9 @@ export function PollDisplay({
           })}
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap min-w-0">
+
             <span className="my-0 px-0 py-0">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
             {poll.expires_at && (
               <div className="flex items-center gap-2">

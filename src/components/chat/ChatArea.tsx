@@ -12,6 +12,7 @@ import {
   Users,
   Inbox,
   Copy,
+  ClipboardCopy,
   Reply,
   Pencil,
   Trash2,
@@ -119,7 +120,9 @@ const CONTEXT_MENU_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"
 // Poll Actions Component (shown on hover) - Discord style
 function PollActions({
   isVisible,
+  isShiftPressed = false,
   onCopyLink,
+  onCopyId,
   onEdit,
   onDelete,
   onReply,
@@ -130,7 +133,9 @@ function PollActions({
   onDropdownOpenChange,
 }: {
   isVisible: boolean;
+  isShiftPressed?: boolean;
   onCopyLink: () => void;
+  onCopyId: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onReply?: () => void;
@@ -141,6 +146,61 @@ function PollActions({
   onDropdownOpenChange?: (open: boolean) => void;
 }) {
   if (!isVisible) return null;
+
+  // Mode SHIFT : actions alternatives (technique / administration) en icônes
+  if (isShiftPressed) {
+    return (
+      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onCopyId} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Copier l'ID</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onCopyLink} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+              <Link className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Copier le lien</TooltipContent>
+        </Tooltip>
+        {isOwnPoll && !isPollExpired && onEndPoll && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onEndPoll} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+                <StopCircle className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Terminer le sondage</TooltipContent>
+          </Tooltip>
+        )}
+        {isOwnPoll && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onEdit} className="p-1.5 hover:bg-primary/10 rounded-full transition-colors">
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Modifier</TooltipContent>
+          </Tooltip>
+        )}
+        {isOwnPoll && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onDelete} className="p-1.5 hover:bg-destructive/15 rounded-full transition-colors">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Supprimer</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in">
       {/* 1. Réactions rapides - 3 émojis */}
@@ -1292,7 +1352,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         {!isMobile && (
                           <PollActions
                             isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
+                            isShiftPressed={isShiftPressed}
                             onCopyLink={() => handleCopyPollLink(poll.id)}
+                            onCopyId={() => handleCopyId(poll.id)}
                             onEdit={() => setEditingPoll(poll)}
                             onDelete={() => handleDeletePoll(poll)}
                             onReply={undefined}

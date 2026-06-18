@@ -1,4 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronLeft, ChevronRight, Settings, Calendar, Users, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search, Bell, CheckCheck, UserCog, Globe } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

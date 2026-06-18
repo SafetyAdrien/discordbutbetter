@@ -603,7 +603,7 @@ export function MobileChannelListView({
       </div>
 
       {/* Separator before channel list */}
-      <div className="h-px bg-border/30" />
+      <div className="h-0.5 bg-border/30" />
 
       {/* Channel List */}
       <div

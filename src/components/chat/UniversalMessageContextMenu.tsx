@@ -217,38 +217,39 @@ export function UniversalMessageContextMenu({
     <DeleteMessageDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={() => { onDelete?.(); setDeleteOpen(false); }} />
   );
 
-  // Mobile: long press -> Discord-style preview sheet with backdrop blur
+  // Mobile: long press -> bottom sheet rendering the same actions as desktop right-click
   if (isMobile) {
     return (
       <>
         <div {...longPressHandlers} style={{ touchAction: 'manipulation' }}>
           {children}
         </div>
-        <MessagePreviewSheet
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-          isOwnMessage={isOwnMessage}
-          isPinned={isPinned}
-          authorName={previewAuthorName}
-          authorAvatar={previewAuthorAvatar}
-          messageContent={previewContent}
-          onReply={onReply ?? (() => {})}
-          onAddReaction={canAddReactions ? onAddReaction : undefined}
-          onCopyLink={onCopyLink}
-          onCopyId={onCopyId}
-          onCopyText={onCopyText ?? (() => {})}
-
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onCreateThread={onCreateThread}
-          onPin={onPin}
-          canAddReactions={canAddReactions}
-          canManageMessages={canManageMessages}
-        />
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetContent
+            side="bottom"
+            className="p-0 rounded-t-2xl border-t border-border bg-popover max-h-[85vh] overflow-y-auto"
+          >
+            <div className="mx-auto mt-2 mb-1 h-1 w-10 rounded-full bg-muted-foreground/30" />
+            {(previewAuthorName || previewContent) && (
+              <div className="px-4 py-2 border-b border-border/40">
+                {previewAuthorName && (
+                  <div className="text-xs font-semibold text-foreground">{previewAuthorName}</div>
+                )}
+                {previewContent && (
+                  <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{previewContent}</div>
+                )}
+              </div>
+            )}
+            <div className="p-2">
+              {renderActions(() => setSheetOpen(false))}
+            </div>
+          </SheetContent>
+        </Sheet>
         {deleteDialog}
       </>
     );
   }
+
 
   // Desktop: context menu
   return (

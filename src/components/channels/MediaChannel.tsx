@@ -23,9 +23,10 @@ export interface MediaChannelProps {
   channel: Channel;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  hideHeader?: boolean;
 }
 
-export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
+export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader = false }: MediaChannelProps) {
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
@@ -119,6 +120,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       </AnimatePresence>
 
       {/* Header */}
+      {!hideHeader && (
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMedia className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -164,6 +166,8 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
           )}
         </div>
       </div>
+      )}
+
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">

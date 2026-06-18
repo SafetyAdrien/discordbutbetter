@@ -389,7 +389,6 @@ export function PollDisplay({
                 onClick={handleStartEdit}
                 className="text-xs h-8"
               >
-                <Pencil className="w-3.5 h-3.5 mr-1" />
                 Modifier
               </Button>
             )}

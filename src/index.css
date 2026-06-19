@@ -350,12 +350,12 @@
 
   /* Persistent highlight when a message mentions the current user */
   .message-mentioned {
-    background: rgba(250, 166, 26, 0.10);
+    background: rgba(250, 166, 26, 0.15);
     box-shadow: inset 2px 0 0 0 #faa61a;
   }
 
   .message-mentioned:hover {
-    background: rgba(250, 166, 26, 0.15);
+    background: rgba(250, 166, 26, 0.10);
     box-shadow: inset 2px 0 0 0 #faa61a;
   }
 
@@ -846,7 +846,7 @@
 
 /* Mobile touch optimizations */
 @media (max-width: 640px) {
-  .message-hover:hover {
+  .message-hover:hover:not(.message-mentioned) {
     background: transparent;
   }
   

@@ -560,6 +560,13 @@ export function MobileChannelListView({
             <div className="flex-1 min-w-0">
               <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
             </div>
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="p-1.5 rounded-full bg-background/30 hover:bg-background/50 text-white transition-colors flex-shrink-0"
+              aria-label="Inviter"
+            >
+              <UserPlus className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
@@ -573,6 +580,13 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0 mt-1">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground transition-colors flex-shrink-0"
+            aria-label="Inviter"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
         </div>
       )}
       {(!bannerUrl || bannerProgress < 0.1) && embedded && (
@@ -580,10 +594,17 @@ export function MobileChannelListView({
           <div className="flex-1 min-w-0 mt-1">
             <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
           </div>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground transition-colors flex-shrink-0"
+            aria-label="Inviter"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* Search bar + Invite - always visible */}
+      {/* Search bar - always visible */}
       <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-1))] flex items-center gap-1.5">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
@@ -594,13 +615,8 @@ export function MobileChannelListView({
             className="h-9 pl-8 text-sm bg-input rounded-xl"
           />
         </div>
-        <button
-          onClick={() => setShowInviteModal(true)}
-          className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground transition-colors flex-shrink-0"
-        >
-          <UserPlus className="w-4 h-4" />
-        </button>
       </div>
+
 
       {/* Separator before channel list */}
       <div className="h-0.5 bg-border/30" />

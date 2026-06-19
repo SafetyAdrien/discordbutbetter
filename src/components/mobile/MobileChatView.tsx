@@ -1,5 +1,5 @@
 import { useState, ReactNode } from 'react';
-import { ChevronLeft, Users, Pin, Bell, Search, X, MoreVertical, Rss } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users, Pin, Bell, Search, X, MoreVertical, Rss } from 'lucide-react';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -111,8 +111,12 @@ export function MobileChatView({
   // Pinned messages
   const { data: pinnedMessages = [] } = usePinnedMessages(channel.id);
 
-  // Members count
+  // Members count + online count
   const memberCount = memberListData.length;
+  const onlineCount = memberListData.filter(m => {
+    const s = (m as any).status;
+    return s === 'online' || s === 'idle' || s === 'dnd';
+  }).length;
 
   // Summaries
   const {
@@ -167,9 +171,9 @@ export function MobileChatView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Compact header - Back, Icon, Name (tappable), Members count, Kebab */}
+      {/* Compact header - Back, Icon, Name (tappable → members), Search */}
       <div
-        className="h-13 px-1.5 flex items-center gap-1 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl"
+        className="min-h-16 py-2 px-1.5 flex items-center gap-1 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl"
         style={{ boxShadow: 'var(--shadow-elevation-1)' }}
       >
         <button
@@ -181,48 +185,28 @@ export function MobileChatView({
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Tappable title block — opens detail sheet */}
-        <button
-          type="button"
-          onClick={() => setDetailOpen(true)}
-          className="flex-1 min-w-0 flex items-center gap-2 px-1 py-1.5 rounded-xl active:bg-primary/8 transition-colors text-left"
-          aria-label={`Détails du salon ${channel.name}`}
-        >
-          <div className="w-8 h-8 rounded-full bg-primary/8 flex items-center justify-center flex-shrink-0">
-            <ChannelIcon className="w-4 h-4 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-semibold text-sm truncate leading-tight">{channel.name}</h2>
-            {channel.description && (
-              <p className="text-[11px] text-muted-foreground truncate leading-tight">{channel.description}</p>
-            )}
-          </div>
-        </button>
-
-        {/* Follow button — restored to header for parity with desktop */}
-        {canFollowAnnouncements && (
-          <button
-            type="button"
-            onClick={() => setFollowModalOpen(true)}
-            className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border border-border/60 bg-muted/40 active:bg-muted transition-colors min-h-[32px]"
-            aria-label="Suivre cette annonce"
-            title="Suivre"
-          >
-            <Rss className="w-3.5 h-3.5" />
-            <span>Suivre</span>
-          </button>
-        )}
-
-        {/* Members count - opens member sheet */}
+        {/* Tappable title block — opens member list sheet */}
         <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
           <SheetTrigger asChild>
             <button
-              aria-label={`Membres, ${memberCount}`}
-              title="Membres"
-              className="px-2 py-1 rounded-full active:bg-muted transition-colors flex items-center gap-1 text-muted-foreground min-h-[44px]"
+              type="button"
+              className="flex-1 min-w-0 flex items-center gap-2.5 px-1 py-1.5 rounded-xl active:bg-primary/8 transition-colors text-left"
+              aria-label={`Membres du salon ${channel.name}`}
             >
-              <Users className="w-4 h-4" />
-              <span className="text-xs font-semibold tabular-nums">{memberCount}</span>
+              <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center flex-shrink-0">
+                <ChannelIcon className="w-[22px] h-[22px] text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="flex items-center gap-0.5 min-w-0">
+                  <h2 className="font-semibold text-sm truncate">{channel.name}</h2>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 -ml-0.5" />
+                </div>
+                <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
+                  <span className="tabular-nums">{onlineCount}</span>
+                  <span>En ligne</span>
+                </div>
+              </div>
             </button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-2xl [&>button.absolute]:hidden">
@@ -251,16 +235,31 @@ export function MobileChatView({
           </SheetContent>
         </Sheet>
 
-        {/* Kebab - more actions */}
+        {/* Follow button — restored to header for parity with desktop */}
+        {canFollowAnnouncements && (
+          <button
+            type="button"
+            onClick={() => setFollowModalOpen(true)}
+            className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border border-border/60 bg-muted/40 active:bg-muted transition-colors min-h-[32px]"
+            aria-label="Suivre cette annonce"
+            title="Suivre"
+          >
+            <Rss className="w-3.5 h-3.5" />
+            <span>Suivre</span>
+          </button>
+        )}
+
+        {/* Search (Loop) — search messages/content in this channel */}
         <button
-          onClick={() => setMoreOpen(true)}
-          aria-label="Plus d'actions"
-          title="Plus d'actions"
+          onClick={() => setShowSearch(true)}
+          aria-label="Rechercher dans ce salon"
+          title="Rechercher"
           className="p-2 rounded-full active:bg-muted transition-colors text-muted-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
-          <MoreVertical className="w-5 h-5" />
+          <Search className="w-5 h-5" />
         </button>
       </div>
+
 
       {/* Summaries Bar (collapsible) */}
       {showSummaries && (

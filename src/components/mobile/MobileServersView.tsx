@@ -78,10 +78,14 @@ function SortableMobileServerIcon({
     transform: CSS.Transform.toString(transform),
     transition,
     touchAction: dragActive ? 'none' : 'manipulation',
-  };
+    // Windowing: skip rendering work for off-screen icons
+    contentVisibility: dragActive ? 'visible' : 'auto',
+    containIntrinsicSize: '56px 56px',
+  } as React.CSSProperties;
 
   return (
     <div ref={setNodeRef} style={style}>
+
       {dropIndicator === 'before' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />
       )}

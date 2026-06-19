@@ -81,7 +81,7 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
     <span
       role="button"
       tabIndex={0}
-      className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:min-h-0"
+      className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0"
     >
       @{roleName}
     </span>
@@ -131,7 +131,7 @@ export function ChannelMention({ channelId, channelName, serverId, onNavigate }:
     <span
       onClick={() => onNavigate?.(channelId, serverId)}
       className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
-        bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:min-h-0
+        bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0
         transition-colors duration-100"
     >
       <Hash className="w-3.5 h-3.5" />
@@ -160,7 +160,7 @@ export function SpecialMention({ type }: SpecialMentionProps) {
 
   return (
     <span className="inline-flex items-center gap-1 px-1 rounded-[3px] cursor-pointer font-medium
-      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white max-sm:min-h-0
+      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white max-sm:!min-h-0
       transition-colors duration-100">
       <Icon className="w-3.5 h-3.5" />
       {config.label}
@@ -238,7 +238,7 @@ export function EveryoneMention({ type, serverId }: EveryoneMentionProps) {
       type="button"
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-pointer align-baseline max-sm:min-h-0"
+      className="inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-pointer align-baseline max-sm:!min-h-0"
     >
       @{type}
     </button>

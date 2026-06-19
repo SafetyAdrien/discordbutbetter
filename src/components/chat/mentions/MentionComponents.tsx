@@ -160,7 +160,7 @@ export function SpecialMention({ type }: SpecialMentionProps) {
 
   return (
     <span className="inline-flex items-center gap-1 px-1 rounded-[3px] cursor-pointer font-medium
-      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white max-sm:!min-h-0 max-sm:leading-[1.125rem]
+      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]
       transition-colors duration-100">
       <Icon className="w-3.5 h-3.5" />
       {config.label}

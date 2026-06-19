@@ -1314,7 +1314,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
 
             const DateSeparator = showDateSeparator ? (
-              <div className="flex items-center gap-4 my-3">
+              <div className="flex items-center gap-4 my-3 max-sm:my-2">
                 <div className="flex-1 h-px bg-border/40" />
                 <span className="text-[11px] text-muted-foreground font-semibold bg-[hsl(var(--surface-3))] border border-border/30 px-3 py-1 rounded-full shadow-sm">
                   {formatDate(currentDate)}

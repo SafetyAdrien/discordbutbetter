@@ -1723,7 +1723,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="text-foreground break-words max-w-full font-ginto leading-[1.375rem]">
+                                    <div className="text-foreground break-words max-w-full font-ginto text-[15px] max-sm:text-[14px] leading-[1.375rem] max-sm:leading-[1.25rem]">
                                       <MarkdownText variant="chat" content={message.content} />
                                      </div>
                                   </>

@@ -40,10 +40,10 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, v
             className={`
               inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
               transition-colors duration-100
-              ${isSelf 
-                ? 'bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a] hover:bg-[rgba(250,166,26,0.5)]' 
-                : 'bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white'
-              }
+                ${isSelf 
+                  ? 'bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a] hover:bg-[rgba(250,166,26,0.5)] max-sm:min-h-0' 
+                  : 'bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:min-h-0'
+                }
             `}
           >
             @{displayName}

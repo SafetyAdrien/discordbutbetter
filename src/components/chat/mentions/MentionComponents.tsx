@@ -81,7 +81,7 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
     <span
       role="button"
       tabIndex={0}
-      className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0 max-sm:leading-[1.125rem]"
+      className="inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]"
     >
       @{roleName}
     </span>

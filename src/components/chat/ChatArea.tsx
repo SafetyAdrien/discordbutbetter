@@ -1288,7 +1288,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
-        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+        <div className="flex flex-col min-h-full px-4 py-4 max-sm:py-2 max-sm:px-3 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
 

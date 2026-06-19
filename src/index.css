@@ -856,8 +856,16 @@
     min-height: 44px;
   }
   
-  button, a, [role="button"] {
+  button:not(.mention-pill), a:not(.mention-pill), [role="button"]:not(.mention-pill) {
     min-height: 36px;
+  }
+
+  .mention-pill {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 1.1 !important;
   }
   
   .scrollbar-thin {

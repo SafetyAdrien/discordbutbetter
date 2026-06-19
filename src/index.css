@@ -846,7 +846,7 @@
 
 /* Mobile touch optimizations */
 @media (max-width: 640px) {
-  .message-hover:hover {
+  .message-hover:hover:not(.message-mentioned) {
     background: transparent;
   }
   

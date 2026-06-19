@@ -15,8 +15,8 @@ interface SwipeBackOptions {
 
 export function useSwipeBack({
   onBack,
-  threshold = 100,
-  edgeWidth = 30,
+  threshold = 55,
+  edgeWidth = 48,
   fullScreen = false,
 }: SwipeBackOptions) {
   const startXRef = useRef<number | null>(null);
@@ -43,13 +43,14 @@ export function useSwipeBack({
     const absDx = Math.abs(dx);
 
     // Lock axis on first meaningful movement to preserve vertical scrolling.
-    if (lockedRef.current === null && (absDx > 8 || dy > 8)) {
-      lockedRef.current = absDx > dy * 1.5 ? 'horizontal' : 'vertical';
+    // More sensitive: lock horizontal as soon as dx clearly leads dy.
+    if (lockedRef.current === null && (absDx > 4 || dy > 6)) {
+      lockedRef.current = absDx > dy * 1.1 ? 'horizontal' : 'vertical';
     }
     if (lockedRef.current !== 'horizontal') return;
 
     // Only rightward (left→right) swipe counts as back.
-    if (dx > 10) {
+    if (dx > 4) {
       isSwipingRef.current = true;
       currentXRef.current = dx;
     }

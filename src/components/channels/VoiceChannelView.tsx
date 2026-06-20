@@ -6,6 +6,7 @@ import { MemberList } from '@/components/layout/MemberList';
 import { Button } from '@/components/ui/button';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { MessageSquare } from 'lucide-react';
+import { MarkdownText } from '@/lib/markdown';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 
 // Sub-components

@@ -186,6 +186,24 @@ export function EmojiStickerEditor({
     return fitMode === 'fit' ? Math.min(sx, sy) : Math.max(sx, sy);
   }, [imgEl, PREVIEW, fitMode]);
 
+  const minScale = useMemo(() => {
+    if (!imgEl) return MIN_SCALE;
+    const sx = PREVIEW / imgEl.naturalWidth;
+    const sy = PREVIEW / imgEl.naturalHeight;
+    if (fitMode === 'fit') return 1;
+    return Math.max(MIN_SCALE, Math.min(sx, sy) / Math.max(sx, sy));
+  }, [imgEl, PREVIEW, fitMode]);
+
+  const maxScale = useMemo(() => {
+    if (!imgEl) return MAX_SCALE_CAP;
+    return Math.max(1, Math.min(MAX_SCALE_CAP, 1 / fitScale));
+  }, [imgEl, fitScale]);
+
+  // Keep scale within dynamic image bounds when limits change.
+  useEffect(() => {
+    setScale((s) => clampScale(s, minScale, maxScale));
+  }, [minScale, maxScale]);
+
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);

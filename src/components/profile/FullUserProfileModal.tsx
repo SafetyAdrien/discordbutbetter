@@ -314,5 +314,9 @@ export function FullUserProfileModal({
         </div>
       </DialogContent>
     </Dialog>
+    {isOwnProfile && (
+      <CustomStatusModal open={customStatusOpen} onOpenChange={setCustomStatusOpen} />
+    )}
+    </>
   );
 }

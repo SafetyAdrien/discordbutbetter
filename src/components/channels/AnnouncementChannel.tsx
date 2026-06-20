@@ -43,13 +43,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import { copyToClipboard } from "@/lib/clipboard";
 import { ThreadSpine } from "@/components/threads/ThreadSpine";
 import { useAuth } from "@/contexts/AuthContext";

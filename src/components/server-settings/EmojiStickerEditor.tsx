@@ -31,8 +31,8 @@ const DEFAULT_PREVIEW = 380;
 const MOBILE_PREVIEW = 196;
 const MOBILE_LANDSCAPE_PREVIEW = 136;
 const MIN_PREVIEW = 56;
-const MIN_SCALE = 1;
-const MAX_SCALE = 4;
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 10;
 const MOBILE_CANVAS_PANEL_MIN = 220;
 const MOBILE_CANVAS_PANEL_MAX = 356;
 
@@ -187,7 +187,8 @@ export function EmojiStickerEditor({
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
 
-  const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+  // Free positioning: no clamping so the image can be moved anywhere on the canvas.
+  const clamp = (v: number, _m: number) => v;
 
   // Drag, pinch and direct in-canvas scale handlers
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {

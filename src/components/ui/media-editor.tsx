@@ -492,18 +492,29 @@ export function MediaEditor({
                     />
                   )}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Resize image"
-                  title="Resize image"
-                  className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95"
-                  onPointerDown={onResizePointerDown}
-                  onPointerMove={onResizePointerMove}
-                  onPointerUp={onResizePointerUp}
-                  onPointerCancel={onResizePointerUp}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
+                {[
+                  { Icon: ArrowDownRight, pos: 'top-1 left-1', label: 'top-left' },
+                  { Icon: ArrowDownLeft, pos: 'top-1 right-1', label: 'top-right' },
+                  { Icon: ArrowUpRight, pos: 'bottom-1 left-1', label: 'bottom-left' },
+                  { Icon: ArrowUpLeft, pos: 'bottom-1 right-1', label: 'bottom-right' },
+                ].map(({ Icon, pos, label }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-label={`Resize from ${label}`}
+                    title="Drag to resize"
+                    className={cn(
+                      'absolute z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none',
+                      pos
+                    )}
+                    onPointerDown={onCornerResizeDown}
+                    onPointerMove={onCornerResizeMove}
+                    onPointerUp={onCornerResizeUp}
+                    onPointerCancel={onCornerResizeUp}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
               </div>
             </div>
 

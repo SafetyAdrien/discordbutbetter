@@ -283,6 +283,10 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                           copyToClipboard(uuidToSnowflake(message.id));
                           toast.success('ID copié');
                         }}
+                        onCopyText={() => {
+                          copyToClipboard(message.content);
+                          toast.success('Message copié');
+                        }}
                         onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}
                         onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
                         onDropdownOpenChange={(open) => setOpenDropdownMessageId(open ? message.id : null)}

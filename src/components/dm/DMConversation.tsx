@@ -535,6 +535,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                             onCopyLink={() => handleCopyLink(message.id)}
                             onCopyId={() => handleCopyId(message.id)}
+                            onCopyText={() => handleCopyMessage(message.content)}
                             onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                             onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                             onDropdownOpenChange={(open) => {

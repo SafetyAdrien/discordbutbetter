@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, MoreHorizontal, ClipboardCopy } from 'lucide-react';
+import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, MoreHorizontal, ClipboardCopy, Copy } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';
 import { DeleteMessageDialog } from './DeleteMessageDialog';
@@ -21,6 +21,7 @@ export interface UniversalMessageActionsProps {
   onAddReaction?: (emoji: string) => void;
   onCopyLink: () => void;
   onCopyId: () => void;
+  onCopyText?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onCreateThread?: () => void;
@@ -39,6 +40,7 @@ export function UniversalMessageActions({
   onAddReaction,
   onCopyLink,
   onCopyId,
+  onCopyText,
   onEdit,
   onDelete,
   onCreateThread,
@@ -76,6 +78,15 @@ export function UniversalMessageActions({
           </TooltipTrigger>
           <TooltipContent side="top">Copier le lien</TooltipContent>
         </Tooltip>
+
+        {onCopyText && <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onCopyText} className={slotCls}>
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Copier le message</TooltipContent>
+          </Tooltip>}
         
         {onPin && <Tooltip>
             <TooltipTrigger asChild>
@@ -148,6 +159,15 @@ export function UniversalMessageActions({
             <TooltipContent side="top">Modifier</TooltipContent>
           </Tooltip>}
         
+        {onCopyText && <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onCopyText} className={slotCls}>
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Copier le message</TooltipContent>
+          </Tooltip>}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <button onClick={onReply} className={slotCls}>
@@ -171,6 +191,10 @@ export function UniversalMessageActions({
             {onPin && <DropdownMenuItem onClick={onPin}>
                 <Pin className="w-4 h-4 mr-2" />
                 {isPinned ? 'Désépingler' : 'Épingler'}
+              </DropdownMenuItem>}
+            {onCopyText && <DropdownMenuItem onClick={onCopyText}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copier le message
               </DropdownMenuItem>}
             <DropdownMenuItem onClick={onCopyLink}>
               <Link className="w-4 h-4 mr-2" />

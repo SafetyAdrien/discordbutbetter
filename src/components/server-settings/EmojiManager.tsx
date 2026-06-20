@@ -35,11 +35,14 @@ function useUploaderProfiles(ids: string[]) {
         .in('id', unique);
       if (error) throw error;
       const map: Record<string, { username: string; display_name?: string | null; avatar_url?: string | null }> = {};
-      (data || []).forEach((p: any) => (map[p.id] = p));
+      (data || []).forEach((p) => (map[p.id] = p));
       return map;
     },
   });
 }
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : '';
 
 export function EmojiManager({ serverId }: EmojiManagerProps) {
   const { data: emojis = [], isLoading } = useServerEmojis(serverId);
@@ -98,9 +101,10 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
         silent: true,
       });
       toast.success(`:${result.name}: ajouté`);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = getErrorMessage(e);
       toast.error(
-        e?.message?.includes('duplicate') ? 'Nom déjà utilisé' : "Erreur lors de l'ajout"
+        message.includes('duplicate') ? 'Nom déjà utilisé' : "Erreur lors de l'ajout"
       );
     }
     // Chain remaining
@@ -125,16 +129,16 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="text-sm font-medium">Emojis personnalisés</h4>
           <p className="text-sm text-muted-foreground">
             {emojis.length} emoji{emojis.length > 1 ? 's' : ''} · 8 Mo max (HD)
           </p>
         </div>
-        <Button onClick={() => fileInputRef.current?.click()}>
+        <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto min-h-11">
           <Plus className="w-4 h-4 mr-2" />
-          Upload Emoji
+          Importer un emoji
         </Button>
         <input
           ref={fileInputRef}
@@ -143,6 +147,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
           multiple
           onChange={handleFilesSelect}
           className="hidden"
+          aria-label="Importer des emojis personnalisés"
         />
       </div>
 

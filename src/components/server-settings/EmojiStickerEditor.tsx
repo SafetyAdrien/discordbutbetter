@@ -28,6 +28,8 @@ interface EmojiStickerEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
+const MOBILE_PREVIEW = 214;
+const MOBILE_LANDSCAPE_PREVIEW = 148;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -88,14 +90,18 @@ export function EmojiStickerEditor({
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
       const isMobile = viewportW < 768 || viewportH < 520;
       const isLandscape = viewportW > viewportH;
-      const safeW = Math.max(MIN_PREVIEW, viewportW - 32);
+      const mobileMax = isLandscape ? MOBILE_LANDSCAPE_PREVIEW : MOBILE_PREVIEW;
+      const safeW = Math.max(MIN_PREVIEW, viewportW - (isLandscape ? 292 : 32));
       const viewportLimitedH = isMobile
-        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 220 : 286))
+        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 164 : 376))
         : DEFAULT_PREVIEW;
       const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
       const h = isMobile ? viewportLimitedH : rect.height;
       if (w <= 0) return;
-      const size = Math.max(MIN_PREVIEW, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      const size = Math.max(
+        MIN_PREVIEW,
+        Math.min(DEFAULT_PREVIEW, isMobile ? mobileMax : DEFAULT_PREVIEW, Math.floor(w), Math.floor(h))
+      );
       setPreview(size);
       setViewportHeight((prev) => {
         const next = Math.max(240, Math.floor(viewportH));
@@ -351,10 +357,10 @@ export function EmojiStickerEditor({
         )}
       >
         <DialogTitle className="sr-only">Add {type === 'emoji' ? 'Emoji' : 'Sticker'}</DialogTitle>
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] overflow-hidden">
+          <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:flex-row overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden [@media(max-height:520px)]:w-[42vw] [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
@@ -422,7 +428,7 @@ export function EmojiStickerEditor({
             </div>
 
             {/* Controls */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4 min-w-0">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setFitMode('fit')}
@@ -461,17 +467,18 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col flex-1 md:flex-none p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col flex-1 md:flex-none p-3 sm:p-5 gap-3 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="space-y-1.5">
-              <Label htmlFor="es-name" className="text-xs">
-                {type === 'emoji' ? 'Emoji' : 'Sticker'} name <span className="text-destructive">*</span>
+              <Label htmlFor="es-name" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Nom {type === 'emoji' ? "de l'emoji" : 'du sticker'} <span className="text-destructive">*</span>
               </Label>
               <div className="relative">
                 <Input
                   id="es-name"
+                  aria-label={type === 'emoji' ? "Renommer l'emoji personnalisé" : 'Renommer le sticker personnalisé'}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pr-8 text-base sm:text-sm"
+                  className="h-11 pr-10 text-base sm:text-sm"
                   maxLength={32}
                   autoComplete="off"
                   inputMode="text"
@@ -480,7 +487,7 @@ export function EmojiStickerEditor({
                   <button
                     type="button"
                     onClick={() => setName('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
                     aria-label="Clear name"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -505,11 +512,11 @@ export function EmojiStickerEditor({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">
-                Upload to <span className="text-destructive">*</span>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Serveur de destination <span className="text-destructive">*</span>
               </Label>
               <Select value={serverId} onValueChange={setServerId}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

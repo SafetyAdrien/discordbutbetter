@@ -34,11 +34,14 @@ function useUploaderProfiles(ids: string[]) {
         .in('id', unique);
       if (error) throw error;
       const map: Record<string, { username: string; display_name?: string | null; avatar_url?: string | null }> = {};
-      (data || []).forEach((p: any) => (map[p.id] = p));
+      (data || []).forEach((p) => (map[p.id] = p));
       return map;
     },
   });
 }
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : '';
 
 export function StickerManager({ serverId }: StickerManagerProps) {
   const { data: stickers = [], isLoading } = useServerStickers(serverId);
@@ -97,8 +100,8 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         silent: true,
       });
       toast.success(`${result.name} ajouté`);
-    } catch (e: any) {
-      toast.error(e?.message || "Erreur lors de l'ajout");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) || "Erreur lors de l'ajout");
     }
     if (pending.length > 0) {
       const [next, ...rest] = pending;
@@ -120,16 +123,16 @@ export function StickerManager({ serverId }: StickerManagerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="text-sm font-medium">Stickers personnalisés</h4>
           <p className="text-sm text-muted-foreground">
             {stickers.length} sticker{stickers.length > 1 ? 's' : ''} · 16 Mo max (HD)
           </p>
         </div>
-        <Button onClick={() => fileInputRef.current?.click()}>
+        <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto min-h-11">
           <Plus className="w-4 h-4 mr-2" />
-          Upload Sticker
+          Importer un sticker
         </Button>
         <input
           ref={fileInputRef}
@@ -138,6 +141,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
           multiple
           onChange={handleFilesSelect}
           className="hidden"
+          aria-label="Importer des stickers personnalisés"
         />
       </div>
 

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw } from 'lucide-react';
+import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';

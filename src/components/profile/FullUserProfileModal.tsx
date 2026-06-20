@@ -139,22 +139,29 @@ export function FullUserProfileModal({
               backgroundPosition: 'center',
             }}
           />
-          <div className="px-6 -mt-14 relative z-10 flex items-end justify-between">
-            <div className="relative shrink-0">
-              <Avatar className="w-28 h-28 ring-[5px] ring-background">
-                <AvatarImage src={user.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-4xl font-semibold">
-                  {user.display_name?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <StatusIndicator
-                status={user.status || 'offline'}
-                className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
-                bgClassName="bg-background"
-              />
+          <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
+            <div className="flex items-end gap-3 min-w-0">
+              <div className="relative shrink-0">
+                <Avatar className="w-28 h-28 ring-[5px] ring-background">
+                  <AvatarImage src={user.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-4xl font-semibold">
+                    {user.display_name?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <StatusIndicator
+                  status={user.status || 'offline'}
+                  className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
+                  bgClassName="bg-background"
+                />
+              </div>
+              {user.custom_status && (
+                <div className="mb-2 min-w-0">
+                  <CustomStatusBubble customStatus={user.custom_status} size="md" />
+                </div>
+              )}
             </div>
             {!isOwnProfile && (
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-2 mb-2 shrink-0">
                 <Button size="sm" onClick={handleSendMessage} disabled={createDM.isPending} className="rounded-full">
                   <MessageCircle className="w-4 h-4 mr-1.5" />
                   Message
@@ -194,14 +201,9 @@ export function FullUserProfileModal({
           <section className="rounded-2xl bg-card border border-border/50 p-4">
             <h2 className="text-xl font-bold leading-tight">{user.display_name}</h2>
             <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
-            {(user.pronouns || user.custom_status) && (
+            {user.pronouns && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                {user.pronouns && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
-                )}
-                {user.custom_status && (
-                  <CustomStatusBubble customStatus={user.custom_status} size="sm" />
-                )}
+                <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
               </div>
             )}
             {memberSince && (

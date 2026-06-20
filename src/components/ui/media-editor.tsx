@@ -493,34 +493,6 @@ export function MediaEditor({
                     />
                   )}
                 </div>
-                {(() => {
-                  const cx = PREVIEW / 2 + offset.x;
-                  const cy = PREVIEW / 2 + offset.y;
-                  const halfW = displayedW / 2;
-                  const halfH = displayedH / 2;
-                  const corners = [
-                    { Icon: ArrowDownRight, x: cx - halfW, y: cy - halfH, label: 'top-left' },
-                    { Icon: ArrowDownLeft, x: cx + halfW, y: cy - halfH, label: 'top-right' },
-                    { Icon: ArrowUpRight, x: cx - halfW, y: cy + halfH, label: 'bottom-left' },
-                    { Icon: ArrowUpLeft, x: cx + halfW, y: cy + halfH, label: 'bottom-right' },
-                  ];
-                  return corners.map(({ Icon, x, y, label }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      aria-label={`Resize from ${label}`}
-                      title="Drag to resize"
-                      className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: x, top: y }}
-                      onPointerDown={onCornerResizeDown}
-                      onPointerMove={onCornerResizeMove}
-                      onPointerUp={onCornerResizeUp}
-                      onPointerCancel={onCornerResizeUp}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </button>
-                  ));
-                })()}
               </div>
             </div>
 

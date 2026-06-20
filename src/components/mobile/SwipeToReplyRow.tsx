@@ -5,7 +5,7 @@ import { useSwipeToReply } from '@/hooks/useSwipeToReply';
 import { useDoubleTap } from '@/hooks/useDoubleTap';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
-interface SwipeToReplyRowProps {
+interface SwipeToReplyRowProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onTouchStart' | 'onTouchMove' | 'onTouchEnd' | 'onTouchCancel'> {
   /** Whether the gesture should be active (mobile only). */
   enabled: boolean;
   onReply: () => void;

@@ -114,8 +114,6 @@ import { ReplyBanner } from "@/components/chat/ReplyBanner";
 // Quick reactions - exactement 3 émojis les plus populaires pour le hover standard
 const QUICK_REACTIONS_HOVER = ["👍", "❤️", "😂"];
 
-// Émojis favoris pour le menu contextuel
-const CONTEXT_MENU_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 // QUICK_REACTIONS for PollActions
 

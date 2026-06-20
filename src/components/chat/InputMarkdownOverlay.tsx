@@ -346,7 +346,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
 
   const renderStyled = (kind: InlineKind, inner: string, open: string, close: string, url?: string) => {
     if (kind === 'link') {
-      return <span key={key++}>{marker(open)}<span className="text-primary underline underline-offset-2">{inner}</span>{marker('](')}<span style={{ opacity: 0 }}>{url}</span>{marker(close)}</span>;
+      return <span key={key++}>{marker(open)}<span className="text-primary underline underline-offset-2">{inner}</span>{marker('](')}<span style={{ opacity: 0.35, color: 'hsl(var(--muted-foreground))' }}>{url}</span>{marker(close)}</span>;
     }
     if (kind === 'code') return <span key={key++} style={codeStyle}>{marker(open)}{inner}{marker(close)}</span>;
     if (kind === 'spoiler') {

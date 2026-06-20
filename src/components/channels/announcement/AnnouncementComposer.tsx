@@ -5,6 +5,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
 import { AttachmentStagingArea } from '@/components/chat/upload/AttachmentStagingArea';

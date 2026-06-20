@@ -173,6 +173,9 @@ export function MediaEditor({
     setOffset({ x: 0, y: 0 });
     setFlip(false);
     setFitMode('fit');
+    pointersRef.current.clear();
+    pinchRef.current = null;
+    resizeRef.current = null;
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;

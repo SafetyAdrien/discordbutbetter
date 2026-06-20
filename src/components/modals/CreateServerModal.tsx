@@ -699,6 +699,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                   <button
                     onClick={handleRemoveBanner}
                     className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+                    aria-label="Supprimer la bannière du serveur"
                   >
                     <X className="w-4 h-4" />
                   </button>

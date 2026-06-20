@@ -1700,7 +1700,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
-                                {isEditing ? (
+                                {isEditing && !isMobile ? (
                                   <div className="mt-1 space-y-2">
                                     <MarkdownTextarea
                                       ref={setEditingTextareaNode}
@@ -1820,7 +1820,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </TooltipContent>
                               </Tooltip>
                               <div className="flex-1 min-w-0">
-                                {isEditing ? (
+                                {isEditing && !isMobile ? (
                                   <div className="space-y-2">
                                     <MarkdownTextarea
                                       ref={setEditingTextareaNode}
@@ -1942,7 +1942,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           </div>
         )}
         <TypingIndicator channelId={channel.id} />
-        {replyingTo && (
+        {replyingTo && !(isMobile && editingMessageId) && (
           <ReplyBanner
             authorName={replyingTo.author.displayName}
             authorAvatar={replyingTo.author.avatar}
@@ -1952,17 +1952,34 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             onClear={() => setReplyingTo(null)}
           />
         )}
+        {isMobile && editingMessageId && (
+          <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+            <button
+              onClick={handleCancelEdit}
+              className="flex items-center justify-center w-6 h-6 rounded-full bg-[hsl(var(--surface-4))] hover:bg-[hsl(var(--surface-5))] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+              aria-label="Annuler la modification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-sm text-muted-foreground">Édition du message</span>
+          </div>
+        )}
         <MessageInput
-          value={messageInput}
-          onChange={setMessageInput}
-          onSend={handleSubmit}
-          placeholder={`Envoyer un message dans #${channel.name}`}
+          value={isMobile && editingMessageId ? editingContent : messageInput}
+          onChange={isMobile && editingMessageId ? setEditingContent : setMessageInput}
+          onSend={isMobile && editingMessageId ? () => handleSaveEdit() : handleSubmit}
+          placeholder={
+            isMobile && editingMessageId
+              ? "Modifier le message…"
+              : `Envoyer un message dans #${channel.name}`
+          }
           isSending={isSending}
           onTypingStart={startTyping}
           onTypingStop={stopTyping}
           serverId={channel.server_id}
           channelId={channel.id}
           channelName={channel.name}
+          editingMessageId={isMobile ? editingMessageId : null}
           members={members.map((m) => ({
             id: m.id,
             displayName: m.displayName,

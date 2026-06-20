@@ -948,7 +948,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               )}
                             </div>
                           )}
-                          {editingMessageId === message.id ? (
+                          {editingMessageId === message.id && !isMobile ? (
                             <div className="space-y-2">
                               <MarkdownTextarea
                                 ref={(el) => {
@@ -1045,7 +1045,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       <TypingIndicator threadId={threadId} />
 
       {/* Reply indicator */}
-      {replyingTo && (
+      {replyingTo && !(isMobile && editingMessageId) && (
         <ReplyBanner
           authorName={replyingTo.author?.display_name || 'Inconnu'}
           authorAvatar={replyingTo.author?.avatar_url}
@@ -1054,13 +1054,32 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         />
       )}
 
+      {isMobile && editingMessageId && (
+        <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+          <button
+            onClick={handleCancelEdit}
+            className="flex items-center justify-center w-6 h-6 rounded-full bg-[hsl(var(--surface-4))] hover:bg-[hsl(var(--surface-5))] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            aria-label="Annuler la modification"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-sm text-muted-foreground">Édition du message</span>
+        </div>
+      )}
+
       {/* Input */}
       <div className="px-4 pb-4 pt-2">
       <MessageInput
-        value={messageContent}
-        onChange={setMessageContent}
-        onSend={handleSend}
-        placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}` : `Envoyer un message dans ${thread?.name || 'le thread'}`}
+        value={isMobile && editingMessageId ? editingContent : messageContent}
+        onChange={isMobile && editingMessageId ? setEditingContent : setMessageContent}
+        onSend={isMobile && editingMessageId ? () => handleSaveEdit() : handleSend}
+        placeholder={
+          isMobile && editingMessageId
+            ? 'Modifier le message…'
+            : replyingTo
+            ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}`
+            : `Envoyer un message dans ${thread?.name || 'le thread'}`
+        }
         disabled={sendMessage.isPending || isThreadLocked || isThreadClosed}
         isSending={sendMessage.isPending}
         onTypingStart={startTyping}
@@ -1068,6 +1087,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         serverId={serverId}
         channelId={channelId || thread?.channel_id}
         threadId={threadId}
+        editingMessageId={isMobile ? editingMessageId : null}
         members={mentionMembers}
         roles={mentionRoles}
         channels={allChannels}

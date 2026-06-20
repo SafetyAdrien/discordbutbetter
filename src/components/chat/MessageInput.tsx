@@ -51,6 +51,8 @@ interface MessageInputProps {
   // Announcement channel follow bar
   showFollowBar?: boolean;
   onFollowClick?: () => void;
+  // Edit mode signaling (mobile inline-edit-in-composer)
+  editingMessageId?: string | null;
 }
 
 interface MentionState {
@@ -90,12 +92,24 @@ export function MessageInput({
   slowmodeSeconds = 0,
   showFollowBar = false,
   onFollowClick,
+  editingMessageId = null,
 }: MessageInputProps) {
   const { isMobile, isTablet } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Focus textarea when entering edit mode (mobile inline edit-in-composer)
+  useEffect(() => {
+    if (!editingMessageId) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    const len = el.value.length;
+    try { el.setSelectionRange(len, len); } catch { /* noop */ }
+  }, [editingMessageId]);
+
 
   // Mention entries inserted via autocomplete (display text -> token mapping)
   const mentionEntriesRef = useRef<MentionEntry[]>([]);

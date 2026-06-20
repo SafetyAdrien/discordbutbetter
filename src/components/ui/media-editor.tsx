@@ -12,6 +12,7 @@ export interface EditorTransform {
   offsetX: number;
   offsetY: number;
   flip: boolean;
+  rotation: number;
   PREVIEW: number;
 }
 

@@ -249,8 +249,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     onReply={() => {}}
                     onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                     onCopyText={() => {
-                      copyToClipboard(message.content);
-                      toast.success('Texte copié');
+                      copyMessageWithFormatting(message.content, 'Texte copié');
                     }}
                     onCopyLink={() => {
                       copyToClipboard(`${window.location.origin}/channels/${serverId}/${channelId}/${message.id}`);

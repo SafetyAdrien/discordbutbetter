@@ -837,7 +837,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       previewContent={message.content}
                       onReply={() => setReplyingTo(message)}
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                      onCopyText={() => copyToClipboard(message.content, 'Message copié')}
+                      onCopyText={() => copyMessageWithFormatting(message.content)}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
                       onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}

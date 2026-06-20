@@ -93,12 +93,12 @@ export function useUploadEmoji() {
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${serverId}/${name}.${fileExt}`;
+      const fileExt = (file.name.split('.').pop() || 'png').toLowerCase();
+      const fileName = `${serverId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('server-emojis')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, file, { upsert: false, contentType: file.type || undefined });
 
       if (uploadError) throw uploadError;
 

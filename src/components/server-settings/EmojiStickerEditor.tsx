@@ -458,6 +458,33 @@ export function EmojiStickerEditor({
 
           {/* RIGHT — settings */}
           <div className="flex flex-col flex-1 md:flex-none p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="space-y-1.5">
+              <Label htmlFor="es-name" className="text-xs">
+                {type === 'emoji' ? 'Emoji' : 'Sticker'} name <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="es-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pr-8 text-base sm:text-sm"
+                  maxLength={32}
+                  autoComplete="off"
+                  inputMode="text"
+                />
+                {name && (
+                  <button
+                    type="button"
+                    onClick={() => setName('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear name"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview
@@ -470,29 +497,6 @@ export function EmojiStickerEditor({
                 <div className="p-2 rounded-md bg-muted/40">
                   <PreviewBox size={48} rounded />
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="es-name" className="text-xs">
-                {type === 'emoji' ? 'Emoji' : 'Sticker'} name <span className="text-destructive">*</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="es-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pr-8"
-                  maxLength={32}
-                />
-                {name && (
-                  <button
-                    onClick={() => setName('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             </div>
 

@@ -28,6 +28,8 @@ interface EmojiStickerEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
+const MOBILE_PREVIEW = 214;
+const MOBILE_LANDSCAPE_PREVIEW = 148;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -88,14 +90,18 @@ export function EmojiStickerEditor({
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
       const isMobile = viewportW < 768 || viewportH < 520;
       const isLandscape = viewportW > viewportH;
-      const safeW = Math.max(MIN_PREVIEW, viewportW - 32);
+      const mobileMax = isLandscape ? MOBILE_LANDSCAPE_PREVIEW : MOBILE_PREVIEW;
+      const safeW = Math.max(MIN_PREVIEW, viewportW - (isLandscape ? 292 : 32));
       const viewportLimitedH = isMobile
-        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 220 : 286))
+        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 164 : 376))
         : DEFAULT_PREVIEW;
       const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
       const h = isMobile ? viewportLimitedH : rect.height;
       if (w <= 0) return;
-      const size = Math.max(MIN_PREVIEW, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      const size = Math.max(
+        MIN_PREVIEW,
+        Math.min(DEFAULT_PREVIEW, isMobile ? mobileMax : DEFAULT_PREVIEW, Math.floor(w), Math.floor(h))
+      );
       setPreview(size);
       setViewportHeight((prev) => {
         const next = Math.max(240, Math.floor(viewportH));

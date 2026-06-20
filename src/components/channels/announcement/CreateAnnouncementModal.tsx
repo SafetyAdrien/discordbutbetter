@@ -163,11 +163,11 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
           {/* Content */}
           <div className="space-y-2">
             <Label htmlFor="content">Contenu *</Label>
-            <Textarea
+            <MarkdownTextarea
               id="content"
               placeholder="Rédigez votre annonce... (Markdown supporté)"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(v) => setContent(v)}
               rows={6}
               maxLength={4000}
             />

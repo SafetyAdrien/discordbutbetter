@@ -483,36 +483,24 @@ export function EmojiStickerEditor({
                     />
                   )}
                 </div>
-                {(() => {
-                  const cx = PREVIEW / 2 + offset.x;
-                  const cy = PREVIEW / 2 + offset.y;
-                  const halfW = displayedW / 2;
-                  const halfH = displayedH / 2;
-                  const corners = [
-                    { Icon: ArrowDownRight, x: cx - halfW, y: cy - halfH, label: 'top-left' },
-                    { Icon: ArrowDownLeft, x: cx + halfW, y: cy - halfH, label: 'top-right' },
-                    { Icon: ArrowUpRight, x: cx - halfW, y: cy + halfH, label: 'bottom-left' },
-                    { Icon: ArrowUpLeft, x: cx + halfW, y: cy + halfH, label: 'bottom-right' },
-                  ];
-                  return corners.map(({ Icon, x, y, label }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      aria-label={`Resize from ${label}`}
-                      title="Drag to resize"
-                      className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: x, top: y }}
-                      onPointerDown={onCornerResizeDown}
-                      onPointerMove={onCornerResizeMove}
-                      onPointerUp={onCornerResizeUp}
-                      onPointerCancel={onCornerResizeUp}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </button>
-                  ));
-                })()}
               </div>
             </div>
+
+            {/* Discord-style zoom slider */}
+            <div className="flex items-center gap-3 mt-3 px-1">
+              <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Slider
+                value={[scale]}
+                min={MIN_SCALE}
+                max={MAX_SCALE}
+                step={0.01}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
+                aria-label="Zoom"
+                className="flex-1"
+              />
+              <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
+
 
             {/* Controls */}
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">

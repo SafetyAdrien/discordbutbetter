@@ -607,7 +607,6 @@ async function signSoundUrls(rows: ServerSound[]): Promise<ServerSound[]> {
 export function useServerSounds(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!serverId) return;
@@ -617,18 +616,15 @@ export function useServerSounds(serverId: string | null) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_sounds', filter: `server_id=eq.${serverId}` },
         () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
-          }, 300);
+          queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
         }
       )
       .subscribe();
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [serverId, queryClient]);
+
 
   const query = useQuery({
     queryKey: ['server-sounds', serverId],

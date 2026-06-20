@@ -262,11 +262,11 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
 
       <div className="space-y-2">
         <Label htmlFor="channel-description">Description</Label>
-        <Textarea
+        <MarkdownTextarea
           id="channel-description"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Décrivez le but de ce salon..."
+          onChange={(v) => setDescription(v)}
+          placeholder="Décrivez le but de ce salon... (Markdown supporté)"
           rows={3}
           maxLength={1024}
         />

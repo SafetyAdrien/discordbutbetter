@@ -333,13 +333,14 @@ export function AnnouncementComposer({
             className="w-full bg-transparent border-0 outline-none text-base font-bold text-foreground placeholder:text-muted-foreground/70 px-0 py-1"
             maxLength={200}
           />
-          <Textarea
+          <MarkdownTextarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(v) => setMessage(v)}
             onKeyDown={handleKeyDown}
             placeholder={`Message #${channel.name}`}
             className="min-h-[44px] max-h-[280px] resize-none bg-transparent hover:bg-transparent border-0 px-0 py-1 text-sm placeholder:text-muted-foreground/70"
+            overlayClassName="px-0 py-1"
             rows={1}
           />
         </div>

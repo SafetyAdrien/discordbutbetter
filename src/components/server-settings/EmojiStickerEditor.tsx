@@ -28,7 +28,7 @@ interface EmojiStickerEditorProps {
   onFinish: (result: EditorResult) => void;
 }
 
-const PREVIEW = 380;
+const DEFAULT_PREVIEW = 380;
 const sanitize = (n: string) =>
   n.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 32) || 'item';
 
@@ -63,8 +63,26 @@ export function EmojiStickerEditor({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
+  const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
+
+  // Measure available width to keep the canvas square and fit on mobile
+  useEffect(() => {
+    if (!previewWrapRef.current) return;
+    const el = previewWrapRef.current;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        const h = window.innerHeight * 0.5; // never exceed half the viewport height
+        const size = Math.max(180, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+        setPreview(size);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
 
   // Load image
   useEffect(() => {
@@ -86,7 +104,7 @@ export function EmojiStickerEditor({
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;
     return Math.max(PREVIEW / imgEl.naturalWidth, PREVIEW / imgEl.naturalHeight);
-  }, [imgEl]);
+  }, [imgEl, PREVIEW]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
@@ -213,11 +231,17 @@ export function EmojiStickerEditor({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-[1040px] p-0 overflow-hidden border-border/60 [&>button]:hidden">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_320px]">
+      <DialogContent
+        className={cn(
+          'p-0 overflow-hidden border-border/60 [&>button]:hidden',
+          'sm:max-w-[1040px] sm:w-[95vw] sm:max-h-[92dvh]',
+          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100dvh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
+        )}
+      >
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100dvh] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col p-6 border-r border-border/40">
-            <div className="flex items-center justify-between mb-4">
+          <div className="relative flex flex-col p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
@@ -238,7 +262,7 @@ export function EmojiStickerEditor({
               </button>
             </div>
 
-            <div className="flex-1 flex items-center justify-center">
+            <div ref={previewWrapRef} className="flex-1 min-h-0 flex items-center justify-center">
               <div
                 className={cn(
                   'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] rounded-md border border-border/60 select-none',
@@ -303,7 +327,7 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col p-5 gap-5">
+          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview

@@ -365,6 +365,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
 }
 
 export function parseMarkdown(content: string, context: MarkdownContext = globalMarkdownContext): React.ReactNode {
+  const compact = context.variant === 'chat';
   const hasBlockElements = /^(\\[#>\-*_]|#{1,3} |-# |> |>>> |\d+\. |[-*] |-{3,}|\*{3,}|_{3,})/m.test(content) || content.includes('```');
   if (!hasBlockElements) {
     const lines = content.split('\n');
@@ -383,14 +384,14 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
       else {
         if (currentList) {
           const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
-          groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
+          groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         }
         currentList = { type, items: [block] };
       }
     } else {
       if (currentList) {
         const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
-        groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
+        groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         currentList = null;
       }
       groupedBlocks.push(renderBlockToken(block, index, context, index === blocks.length - 1));
@@ -398,9 +399,9 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
   });
   if (currentList) {
     const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
-    groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
+    groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
   }
-  return <div className="markdown-content text-foreground">{groupedBlocks}</div>;
+  return <div className={cn("markdown-content text-foreground", compact && "chat-markdown")}>{groupedBlocks}</div>;
 }
 
 // ============================================

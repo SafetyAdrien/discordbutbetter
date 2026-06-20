@@ -102,7 +102,7 @@ export function EmojiStickerEditor({
     return () => URL.revokeObjectURL(url);
   }, [file, defaultName, currentServerId]);
 
-  // "Cover" base scale so image always fills the preview at scale = 1
+  // Base scale depends on fit mode: fit = whole image visible, fill = image covers preview
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;
     const sx = PREVIEW / imgEl.naturalWidth;

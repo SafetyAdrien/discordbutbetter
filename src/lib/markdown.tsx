@@ -345,17 +345,18 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
 
 function renderBlockToken(block: BlockToken, key: number, context: MarkdownContext, isLast: boolean = false): React.ReactNode {
   const renderInlineContent = (content: string) => tokenizeInline(content).map((token, i) => renderInlineToken(token, i, context));
+  const compact = context.variant === 'chat';
   switch (block.type) {
-    case 'header1': return <div key={key}><h1 className="text-2xl font-bold text-white my-1">{renderInlineContent(block.content)}</h1><hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" /></div>;
-    case 'header2': return <div key={key}><h2 className="text-xl font-bold text-white my-1">{renderInlineContent(block.content)}</h2><hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" /></div>;
-    case 'header3': return <div key={key}><h3 className="text-lg font-semibold text-white my-0.5">{renderInlineContent(block.content)}</h3><hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" /></div>;
-    case 'subtext': return <div key={key}><hr className="border-t border-[hsl(228,6%,26%)] mt-2 mb-0.5" /><p className="text-[12px] text-muted-foreground leading-4">{renderInlineContent(block.content)}</p></div>;
-    case 'blockquote': return <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground">{renderInlineContent(block.content)}</blockquote>;
-    case 'multiBlockquote': return <blockquote key={key} className="border-l-[4px] border-border pl-3 my-0.5 text-muted-foreground whitespace-pre-wrap">{renderInlineContent(block.content)}</blockquote>;
+    case 'header1': return <div key={key}><h1 className={cn("text-2xl font-bold text-white", compact ? "my-0" : "my-1")}>{renderInlineContent(block.content)}</h1>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />}</div>;
+    case 'header2': return <div key={key}><h2 className={cn("text-xl font-bold text-white", compact ? "my-0" : "my-1")}>{renderInlineContent(block.content)}</h2>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />}</div>;
+    case 'header3': return <div key={key}><h3 className={cn("text-lg font-semibold text-white", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</h3>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />}</div>;
+    case 'subtext': return <div key={key}>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mt-2 mb-0.5" />}<p className="text-[12px] text-muted-foreground leading-4">{renderInlineContent(block.content)}</p></div>;
+    case 'blockquote': return <blockquote key={key} className={cn("border-l-[4px] border-border pl-3 text-muted-foreground", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
+    case 'multiBlockquote': return <blockquote key={key} className={cn("border-l-[4px] border-border pl-3 text-muted-foreground whitespace-pre-wrap", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
     case 'listItem': { const level = block.indentLevel || 0; return <li key={key} className={level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]'} style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
     case 'orderedListItem': { const level = block.indentLevel || 0; return <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
     case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} variant={context.variant} />;
-    case 'separator': return <hr key={key} className="border-t border-[hsl(228,6%,26%)] my-1" />;
+    case 'separator': return <hr key={key} className={cn("border-t border-[hsl(228,6%,26%)]", compact ? "my-0" : "my-1")} />;
     case 'empty': return <br key={key} />;
     case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
     case 'paragraph':
@@ -364,6 +365,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
 }
 
 export function parseMarkdown(content: string, context: MarkdownContext = globalMarkdownContext): React.ReactNode {
+  const compact = context.variant === 'chat';
   const hasBlockElements = /^(\\[#>\-*_]|#{1,3} |-# |> |>>> |\d+\. |[-*] |-{3,}|\*{3,}|_{3,})/m.test(content) || content.includes('```');
   if (!hasBlockElements) {
     const lines = content.split('\n');
@@ -382,14 +384,14 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
       else {
         if (currentList) {
           const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
-          groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
+          groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         }
         currentList = { type, items: [block] };
       }
     } else {
       if (currentList) {
         const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
-        groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
+        groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         currentList = null;
       }
       groupedBlocks.push(renderBlockToken(block, index, context, index === blocks.length - 1));
@@ -397,9 +399,9 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
   });
   if (currentList) {
     const Tag = currentList.type === 'ul' ? 'ul' : 'ol';
-    groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className="my-1">{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
+    groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
   }
-  return <div className="markdown-content text-foreground">{groupedBlocks}</div>;
+  return <div className={cn("markdown-content text-foreground", compact && "chat-markdown")}>{groupedBlocks}</div>;
 }
 
 // ============================================
@@ -411,7 +413,7 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
     const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
-    return <div ref={ref} className={cn('inline-block max-w-full min-w-0 align-top', className)}>{parseMarkdown(content, ctxWithVariant)}</div>;
+    return <div ref={ref} className={cn('inline-block max-w-full min-w-0 align-top', variant === 'chat' && 'chat-markdown', className)}>{parseMarkdown(content, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

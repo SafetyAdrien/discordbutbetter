@@ -549,7 +549,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
               <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                 <span
                   className={cn(
-                    "text-sm font-medium truncate block flex-1 min-w-0",
+                    "text-sm font-medium truncate min-w-0",
                     member.status === "offline" && "opacity-60",
                   )}
                   style={{

@@ -488,7 +488,12 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
     const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
-    return <div ref={ref} className={cn('inline-block max-w-full min-w-0 align-top', variant === 'chat' && 'chat-markdown', className)}>{parseMarkdown(content, ctxWithVariant)}</div>;
+    const hasAlert = content.includes('> [!');
+    return <div ref={ref} className={cn(
+      variant === 'chat' && hasAlert ? 'block w-full' : 'inline-block max-w-full min-w-0 align-top',
+      variant === 'chat' && 'chat-markdown',
+      className
+    )}>{parseMarkdown(content, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

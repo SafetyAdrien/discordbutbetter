@@ -203,6 +203,10 @@ const Index = () => {
   usePermissionsRealtime(activeServerId);
   useGlobalPermissionsRealtime();
 
+  // Realtime server assets (emojis, stickers, sounds) so imports appear instantly for everyone
+  useServerAssetsRealtime(activeServerId);
+
+
   // Voice state
   const { voiceState, toggleMute } = useVoice();
 

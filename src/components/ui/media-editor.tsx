@@ -659,6 +659,14 @@ export function MediaEditor({
               >
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
+              <button
+                onClick={reset}
+                className="px-2 py-1.5 rounded-md border border-border/60 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                title="Reset to default import"
+                aria-label="Reset to default import"
+              >
+                Reset
+              </button>
             </div>
             <button
               type="button"

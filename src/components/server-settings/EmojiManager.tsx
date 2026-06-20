@@ -9,8 +9,9 @@ interface EmojiManagerProps {
   serverId: string;
 }
 
-const MAX_EMOJI_SIZE = 256 * 1024;
-const ACCEPT = 'image/png,image/gif,image/webp,image/jpeg';
+const MAX_EMOJI_SIZE = 8 * 1024 * 1024; // 8 Mo — HD
+const ACCEPT = 'image/png,image/gif,image/webp,image/jpeg,image/avif,image/apng';
+
 
 interface QueueItem extends BatchItem {
   file: File;
@@ -41,7 +42,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
         size: file.size,
         previewUrl: URL.createObjectURL(file),
         status: oversize ? 'error' : 'pending',
-        error: oversize ? 'Fichier > 256 Ko' : undefined,
+        error: oversize ? 'Fichier > 8 Mo' : undefined,
         file,
         emojiName: sanitize(file.name),
       };
@@ -96,7 +97,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
 
   const retryFailed = () => {
     const retry = queue
-      .filter((q) => q.status === 'error' && q.error !== 'Fichier > 256 Ko')
+      .filter((q) => q.status === 'error' && q.error !== 'Fichier > 8 Mo')
       .map((q) => ({ ...q, status: 'pending' as const, error: undefined }));
     if (retry.length === 0) {
       toast.info('Aucun fichier réessayable');
@@ -125,7 +126,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
         <div>
           <h4 className="text-sm font-medium">Emojis personnalisés</h4>
           <p className="text-sm text-muted-foreground">
-            {emojis.length} emoji{emojis.length > 1 ? 's' : ''} · 256 Ko max
+            {emojis.length} emoji{emojis.length > 1 ? 's' : ''} · 8 Mo max (HD)
           </p>
         </div>
         <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>

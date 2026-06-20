@@ -1087,9 +1087,9 @@ export function AnnouncementChannel({
                         <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <div className="space-y-2">
-                              <Textarea
+                              <MarkdownTextarea
                                 value={editingContent}
-                                onChange={(e) => setEditingContent(e.target.value)}
+                                onChange={(v) => setEditingContent(v)}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && !e.shiftKey) {
                                     e.preventDefault();

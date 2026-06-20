@@ -552,3 +552,176 @@ export function useUploadServerBanner() {
     },
   });
 }
+
+// ============== SOUNDBOARD ==============
+
+export interface ServerSound {
+  id: string;
+  name: string;
+  emoji: string | null;
+  url: string; // storage path
+  signedUrl?: string;
+  volume: number;
+  server_id: string;
+  creator_id: string | null;
+  created_at: string | null;
+}
+
+async function signSoundUrls(rows: ServerSound[]): Promise<ServerSound[]> {
+  if (rows.length === 0) return rows;
+  const paths = rows.map((r) => r.url);
+  const { data, error } = await supabase.storage
+    .from('server-sounds')
+    .createSignedUrls(paths, 60 * 60 * 24);
+  if (error || !data) return rows;
+  return rows.map((r, i) => ({ ...r, signedUrl: data[i]?.signedUrl ?? undefined }));
+}
+
+export function useServerSounds(serverId: string | null) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!serverId) return;
+    const channel = supabase
+      .channel(`server-sounds-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_sounds', filter: `server_id=eq.${serverId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
+          }, 300);
+        }
+      )
+      .subscribe();
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
+
+  const query = useQuery({
+    queryKey: ['server-sounds', serverId],
+    placeholderData: () => cacheGetSync(`server-sounds:${serverId}`),
+    queryFn: async (): Promise<ServerSound[]> => {
+      if (!serverId) return [];
+      const { data, error } = await supabase
+        .from('server_sounds' as any)
+        .select('*')
+        .eq('server_id', serverId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return await signSoundUrls((data || []) as unknown as ServerSound[]);
+    },
+    enabled: !!serverId && !!user,
+  });
+
+  useEffect(() => {
+    if (query.data && serverId && !query.isPlaceholderData) {
+      cacheSetAsync(`server-sounds:${serverId}`, query.data);
+    }
+  }, [query.data, serverId, query.isPlaceholderData]);
+
+  return query;
+}
+
+export function useUploadSound() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      serverId,
+      name,
+      emoji,
+      volume,
+      file,
+    }: {
+      serverId: string;
+      name: string;
+      emoji?: string;
+      volume?: number;
+      file: File;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop() || 'mp3';
+      const path = `${serverId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('server-sounds')
+        .upload(path, file, { contentType: file.type || 'audio/mpeg' });
+      if (uploadError) throw uploadError;
+
+      const { data, error } = await supabase
+        .from('server_sounds' as any)
+        .insert({
+          server_id: serverId,
+          name,
+          emoji: emoji || null,
+          url: path,
+          volume: volume ?? 1.0,
+          creator_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        await supabase.storage.from('server-sounds').remove([path]);
+        throw error;
+      }
+      return data as unknown as ServerSound;
+    },
+    onError: (error: any) => {
+      if (error?.message?.includes('row-level security') || error?.message?.includes('permission')) {
+        toast.error("Vous n'avez pas la permission d'ajouter des sons");
+      } else {
+        toast.error("Erreur lors de l'ajout du son");
+      }
+    },
+    onSuccess: () => {
+      toast.success('Son ajouté !');
+    },
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
+    },
+  });
+}
+
+export function useDeleteSound() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ soundId, serverId, path }: { soundId: string; serverId: string; path?: string }) => {
+      const { error } = await supabase.from('server_sounds' as any).delete().eq('id', soundId);
+      if (error) throw error;
+      if (path) {
+        await supabase.storage.from('server-sounds').remove([path]);
+      }
+      return { serverId };
+    },
+    onMutate: async ({ soundId, serverId }) => {
+      await queryClient.cancelQueries({ queryKey: ['server-sounds', serverId] });
+      const previous = queryClient.getQueryData(['server-sounds', serverId]);
+      queryClient.setQueryData(['server-sounds', serverId], (old: ServerSound[] | undefined) =>
+        old?.filter((s) => s.id !== soundId)
+      );
+      return { previous };
+    },
+    onError: (_, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['server-sounds', variables.serverId], context.previous);
+      }
+      toast.error('Erreur lors de la suppression du son');
+    },
+    onSuccess: () => {
+      toast.success('Son supprimé !');
+    },
+    onSettled: (_, __, { serverId }) => {
+      queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
+    },
+  });
+}

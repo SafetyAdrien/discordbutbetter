@@ -2262,6 +2262,47 @@ export type Database = {
           },
         ]
       }
+      server_sounds: {
+        Row: {
+          created_at: string
+          creator_id: string | null
+          emoji: string | null
+          id: string
+          name: string
+          server_id: string
+          url: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          creator_id?: string | null
+          emoji?: string | null
+          id?: string
+          name: string
+          server_id: string
+          url: string
+          volume?: number
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string | null
+          emoji?: string | null
+          id?: string
+          name?: string
+          server_id?: string
+          url?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_sounds_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_stickers: {
         Row: {
           created_at: string | null

@@ -579,9 +579,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
                             {editingMessageId === message.id ? (
                               <div className="mt-1 space-y-2">
-                                <Textarea
+                                <MarkdownTextarea
                                   value={editingContent}
-                                  onChange={(e) => setEditingContent(e.target.value)}
+                                  onChange={(v) => setEditingContent(v)}
                                   className="min-h-[60px] resize-none"
                                   autoFocus
                                   onKeyDown={(e) => {

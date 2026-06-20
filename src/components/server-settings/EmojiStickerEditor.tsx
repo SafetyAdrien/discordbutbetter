@@ -3,9 +3,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, RotateCcw, ZoomIn, ZoomOut, Move, FlipHorizontal2 } from 'lucide-react';
+import { X, RotateCcw, ZoomIn, FlipHorizontal2 } from 'lucide-react';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -29,6 +28,13 @@ interface EmojiStickerEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
+const MIN_PREVIEW = 56;
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+
+const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.hypot(a.x - b.x, a.y - b.y);
 const sanitize = (n: string) =>
   n.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 32) || 'item';
 

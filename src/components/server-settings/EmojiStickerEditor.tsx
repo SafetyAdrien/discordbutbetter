@@ -327,7 +327,7 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col p-5 gap-5">
+          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview

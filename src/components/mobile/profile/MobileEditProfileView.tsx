@@ -13,6 +13,7 @@ import { haptics } from '@/lib/haptics';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
+import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
 
 interface Props {
   onBack: () => void;

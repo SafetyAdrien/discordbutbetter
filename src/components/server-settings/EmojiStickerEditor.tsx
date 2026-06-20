@@ -28,13 +28,13 @@ interface EmojiStickerEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
-const MOBILE_PREVIEW = 184;
-const MOBILE_LANDSCAPE_PREVIEW = 128;
+const MOBILE_PREVIEW = 196;
+const MOBILE_LANDSCAPE_PREVIEW = 136;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const MOBILE_CANVAS_PANEL_MIN = 220;
-const MOBILE_CANVAS_PANEL_MAX = 348;
+const MOBILE_CANVAS_PANEL_MAX = 356;
 
 const getInitialPreview = () => {
   if (typeof window === 'undefined') return DEFAULT_PREVIEW;

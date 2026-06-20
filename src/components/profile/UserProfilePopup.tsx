@@ -451,7 +451,7 @@ export function UserProfilePopup({
           </div>
 
           {user.customStatus && (
-            <div className="absolute left-[86px] bottom-[10px] z-20 max-w-[185px]">
+            <div className="absolute left-[96px] bottom-[6px] z-20 max-w-[180px]">
               <CustomStatusBubble customStatus={user.customStatus} size="sm" />
             </div>
           )}

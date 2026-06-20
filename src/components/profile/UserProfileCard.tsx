@@ -175,7 +175,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             </div>
 
             {/* Custom status bubble — aligned to the avatar like the mobile profile */}
-            <div className="absolute left-[76px] top-[50px] z-20 max-w-[200px]">
+            <div className="absolute left-[88px] top-[58px] z-20 max-w-[172px]">
               <CustomStatusBubble
                 customStatus={profile?.custom_status}
                 onClick={() => setShowCustomStatusModal(true)}

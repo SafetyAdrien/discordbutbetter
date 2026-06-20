@@ -385,7 +385,7 @@ export function MediaEditor({
         <DialogTitle className="sr-only">{title}</DialogTitle>
           <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:flex-row overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden [@media(max-height:520px)]:w-[44vw] [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
+          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden max-sm:max-h-[360px] [@media(max-height:520px)]:w-[42vw] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <button
                 onClick={onClose}

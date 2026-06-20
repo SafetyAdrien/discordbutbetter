@@ -628,9 +628,10 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
                     style={{
                       fontSize: OVERLAY_FONT_SIZE,
                       lineHeight: OVERLAY_LINE_HEIGHT,
-                      fontFamily: isCode ? 'Consolas, "gg mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' : INPUT_FONT_FAMILY,
+                      fontFamily: INPUT_FONT_FAMILY,
                       fontWeight: 400,
                       letterSpacing: 'normal',
+                      color: isCode ? 'hsl(var(--foreground) / 0.92)' : undefined,
                     }}
                   >
                     {l.text || '\u200B'}

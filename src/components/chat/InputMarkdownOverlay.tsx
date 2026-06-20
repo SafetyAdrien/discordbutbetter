@@ -53,6 +53,8 @@ export function parseLines(content: string): OverlayLine[] {
     if (line.startsWith('## ')) { result.push({ type: 'header2', text: line }); continue; }
     if (line.startsWith('# ')) { result.push({ type: 'header1', text: line }); continue; }
     if (line.startsWith('-# ')) { result.push({ type: 'subtext', text: line }); continue; }
+    const alertMatch = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i.exec(line);
+    if (alertMatch) { result.push({ type: 'alertHeader', text: line, alertType: alertMatch[1].toUpperCase() as OverlayLine['alertType'] }); continue; }
     if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
     if (/^(\s*)[-*] \[x\] /i.test(line)) { result.push({ type: 'taskItemChecked', text: line }); continue; }

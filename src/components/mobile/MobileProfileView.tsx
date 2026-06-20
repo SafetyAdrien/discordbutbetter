@@ -221,39 +221,23 @@ export function MobileProfileView({
             </div>
           </div>
 
-          {/* Custom status zone — pinned to the banner edge */}
-          <button
-            type="button"
-            onClick={() => {
-              haptics.light();
-              setShowCustomStatus(true);
-            }}
-            aria-label="Modifier le statut personnalisé"
+          {/* Custom status bubble — unified across all profile views */}
+          <div
             className={cn(
-              'absolute left-32 z-20 inline-flex text-left pl-2 pr-4 py-2 mr-3 rounded-full bg-[hsl(220_8%_18%)] active:bg-[hsl(220_8%_22%)] transition-colors',
-              'flex items-center gap-2 min-h-[40px] shadow-md',
+              'absolute left-32 z-20 mr-3',
               profile?.banner_url ? 'top-[122px]' : 'top-[90px]'
             )}
           >
-            {/* Mini bulle détachée */}
-            <span
-              aria-hidden
-              className="absolute -left-3 -top-5 w-4 h-4 rounded-full bg-[hsl(220_8%_18%)] shadow-lg"
+            <CustomStatusBubble
+              customStatus={profile?.custom_status}
+              onClick={() => {
+                haptics.light();
+                setShowCustomStatus(true);
+              }}
+              size="lg"
+              showPlaceholder
             />
-            {/* Petite bulle fondue dans le haut-gauche de la bulle large */}
-            <span
-              aria-hidden
-              className="absolute left-2 -top-2 w-4 h-4 rounded-[4px_50%_50%_50%] bg-[hsl(220_8%_18%)]"
-            />
-            <span className="shrink-0 w-5 h-5 text-foreground flex items-center justify-center">
-              <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
-            </span>
-            {profile?.custom_status ? (
-              <span className="text-base text-foreground italic whitespace-nowrap">{profile.custom_status}</span>
-            ) : (
-              <span className="text-base text-muted-foreground italic whitespace-nowrap">Quoi de neuf ?</span>
-            )}
-          </button>
+          </div>
         </section>
 
         <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">

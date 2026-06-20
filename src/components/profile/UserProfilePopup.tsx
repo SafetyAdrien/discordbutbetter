@@ -450,9 +450,8 @@ export function UserProfilePopup({
           </div>
 
           {user.customStatus && (
-            <div className="relative mb-1 max-w-[200px] rounded-2xl bg-popover px-3 py-1.5 text-xs text-foreground/90 shadow-md border border-border/40">
-              <span className="absolute -left-1 bottom-2 h-2 w-2 rotate-45 bg-popover border-l border-b border-border/40" />
-              <span className="block truncate">{user.customStatus}</span>
+            <div className="mb-1">
+              <CustomStatusBubble customStatus={user.customStatus} size="sm" />
             </div>
           )}
         </div>

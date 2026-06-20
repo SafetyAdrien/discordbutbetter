@@ -194,12 +194,12 @@ export function FullUserProfileModal({
             <h2 className="text-xl font-bold leading-tight">{user.display_name}</h2>
             <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
             {(user.pronouns || user.custom_status) && (
-              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                 {user.pronouns && (
                   <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
                 )}
                 {user.custom_status && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">{user.custom_status}</span>
+                  <CustomStatusBubble customStatus={user.custom_status} size="sm" />
                 )}
               </div>
             )}

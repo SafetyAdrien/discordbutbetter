@@ -546,10 +546,10 @@ export function MediaEditor({
               <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Slider
                 value={[scale]}
-                min={MIN_SCALE}
-                max={MAX_SCALE}
+                min={minScale}
+                max={maxScale}
                 step={0.01}
-                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1, minScale, maxScale))}
                 aria-label="Zoom"
                 className="flex-1"
               />

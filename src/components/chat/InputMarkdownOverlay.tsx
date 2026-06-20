@@ -76,6 +76,7 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   header3: 'text-foreground',
   subtext: 'text-muted-foreground',
   blockquote: 'text-muted-foreground',
+  alertHeader: 'font-semibold',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
   taskItemUnchecked: 'text-foreground',

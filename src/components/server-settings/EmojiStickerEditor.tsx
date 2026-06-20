@@ -69,8 +69,12 @@ export function EmojiStickerEditor({
   const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
 
   // Measure to keep canvas square + physically contained on mobile browsers.
@@ -82,12 +86,21 @@ export function EmojiStickerEditor({
       const rect = el.getBoundingClientRect();
       const viewportW = window.visualViewport?.width ?? window.innerWidth;
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
-      const isMobile = viewportW < 640;
-      const w = isMobile ? Math.min(rect.width, viewportW - 32) : rect.width;
-      const h = isMobile ? Math.min(rect.height, viewportH - 410) : rect.height;
-      if (w <= 0 || h <= 0) return;
-      const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      const isMobile = viewportW < 768 || viewportH < 520;
+      const isLandscape = viewportW > viewportH;
+      const safeW = Math.max(MIN_PREVIEW, viewportW - 32);
+      const viewportLimitedH = isMobile
+        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 220 : 286))
+        : DEFAULT_PREVIEW;
+      const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
+      const h = isMobile ? Math.min(rect.height || viewportLimitedH, viewportLimitedH) : rect.height;
+      if (w <= 0) return;
+      const size = Math.max(MIN_PREVIEW, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
       setPreview(size);
+      setViewportHeight((prev) => {
+        const next = Math.max(240, Math.floor(viewportH));
+        return prev === next ? prev : next;
+      });
     };
     const scheduleMeasure = () => {
       cancelAnimationFrame(raf);
@@ -140,12 +153,31 @@ export function EmojiStickerEditor({
 
   const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
-  // Drag handlers
-  const onPointerDown = (e: React.PointerEvent) => {
-    (e.target as Element).setPointerCapture(e.pointerId);
+  // Drag, pinch and direct in-canvas scale handlers
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = Array.from(pointersRef.current.values());
+    if (points.length >= 2) {
+      pinchRef.current = { startDistance: pointDistance(points[0], points[1]), startScale: scale };
+      dragRef.current = null;
+      return;
+    }
     dragRef.current = { startX: e.clientX, startY: e.clientY, oX: offset.x, oY: offset.y };
   };
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    const points = Array.from(pointersRef.current.values());
+    if (points.length >= 2 && pinchRef.current) {
+      const distance = pointDistance(points[0], points[1]);
+      if (pinchRef.current.startDistance > 0) {
+        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance)));
+      }
+      return;
+    }
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
@@ -154,7 +186,49 @@ export function EmojiStickerEditor({
       y: clamp(dragRef.current.oY + dy, maxOffsetY),
     });
   };
-  const onPointerUp = () => { dragRef.current = null; };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    pinchRef.current = null;
+    dragRef.current = null;
+    const [remaining] = Array.from(pointersRef.current.values());
+    if (remaining) {
+      dragRef.current = { startX: remaining.x, startY: remaining.y, oX: offset.x, oY: offset.y };
+    }
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
+  };
+
+  const onResizePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
+  };
+
+  const onResizePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!resizeRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = (e.clientX - resizeRef.current.startX + e.clientY - resizeRef.current.startY) / Math.max(PREVIEW, 1);
+    setScale(clampScale(resizeRef.current.startScale + delta * 2));
+  };
+
+  const onResizePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    resizeRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
 
   // Re-clamp when scale changes
   useEffect(() => {

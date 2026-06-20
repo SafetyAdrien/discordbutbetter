@@ -325,7 +325,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
   let key = 0;
 
   const marker = (s: string) => (
-    <span aria-hidden style={{ opacity: 0 }}>{s}</span>
+    <span aria-hidden style={{ opacity: 0.35, color: 'hsl(var(--muted-foreground))' }}>{s}</span>
   );
 
   const boldStyle: React.CSSProperties = {

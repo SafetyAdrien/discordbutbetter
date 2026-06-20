@@ -156,9 +156,14 @@ export function FullUserProfileModal({
                   bgClassName="bg-background"
                 />
               </div>
-              {user.custom_status && (
+              {(user.custom_status || isOwnProfile) && (
                 <div className="absolute left-[128px] bottom-[14px] z-20 max-w-[260px]">
-                  <CustomStatusBubble customStatus={user.custom_status} size="md" />
+                  <CustomStatusBubble
+                    customStatus={user.custom_status}
+                    size="md"
+                    showPlaceholder={isOwnProfile}
+                    onClick={isOwnProfile ? () => setCustomStatusOpen(true) : undefined}
+                  />
                 </div>
               )}
             </div>

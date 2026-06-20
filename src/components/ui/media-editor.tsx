@@ -225,8 +225,8 @@ export function MediaEditor({
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
-  // Free positioning: clamp is a no-op so the image can be moved anywhere.
-  const clamp = (v: number, _m: number) => v;
+  // Bounded positioning: image center stays within roughly one canvas around the center.
+  const clamp = (v: number, _m: number) => Math.max(-PREVIEW, Math.min(PREVIEW, v));
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault();

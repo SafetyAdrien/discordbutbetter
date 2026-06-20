@@ -345,7 +345,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('***')}
-          <span style={{ ...boldStyle, fontStyle: 'italic' }}>{match[2]}</span>
+          <span style={{ ...boldStyle, ...italicStyle }}>{match[2]}</span>
           {marker('***')}
         </span>
       );
@@ -354,7 +354,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('___')}
-          <span className="underline" style={{ ...boldStyle, fontStyle: 'italic' }}>{match[3]}</span>
+          <span className="underline decoration-foreground/80 underline-offset-2" style={{ ...boldStyle, ...italicStyle }}>{match[3]}</span>
           {marker('___')}
         </span>
       );
@@ -363,7 +363,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('__**')}
-          <span className="underline" style={boldStyle}>{match[4]}</span>
+          <span className="underline decoration-foreground/80 underline-offset-2" style={boldStyle}>{match[4]}</span>
           {marker('**__')}
         </span>
       );
@@ -372,7 +372,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('**__')}
-          <span className="underline" style={boldStyle}>{match[5]}</span>
+          <span className="underline decoration-foreground/80 underline-offset-2" style={boldStyle}>{match[5]}</span>
           {marker('__**')}
         </span>
       );
@@ -425,16 +425,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('`')}
-          <span
-            className="rounded-[3px]"
-            style={{
-              backgroundColor: 'hsl(var(--surface-elevated))',
-              boxShadow: '0 0 0 1px hsl(var(--border) / 0.6)',
-              color: 'hsl(var(--foreground))',
-              fontFamily: MONO_FAMILY,
-              fontSize: '0.85em',
-            }}
-          >
+          <span style={codeStyle}>
             {match[10]}
           </span>
           {marker('`')}
@@ -457,7 +448,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('*')}
-          <span style={{ fontStyle: 'italic' }}>{match[13]}</span>
+          <span style={italicStyle}>{match[13]}</span>
           {marker('*')}
         </span>
       );
@@ -466,7 +457,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
       parts.push(
         <span key={key++}>
           {marker('_')}
-          <span style={{ fontStyle: 'italic' }}>{match[14]}</span>
+          <span style={italicStyle}>{match[14]}</span>
           {marker('_')}
         </span>
       );

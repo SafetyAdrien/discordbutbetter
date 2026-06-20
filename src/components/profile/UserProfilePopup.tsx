@@ -452,9 +452,14 @@ export function UserProfilePopup({
             />
           </div>
 
-          {user.customStatus && (
+          {(user.customStatus || isOwnProfile) && (
             <div className="absolute left-[88px] bottom-[14px] z-20 max-w-[180px]">
-              <CustomStatusBubble customStatus={user.customStatus} size="sm" />
+              <CustomStatusBubble
+                customStatus={user.customStatus}
+                size="sm"
+                showPlaceholder={isOwnProfile}
+                onClick={isOwnProfile ? () => setCustomStatusOpen(true) : undefined}
+              />
             </div>
           )}
         </div>

@@ -54,6 +54,7 @@ import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
+import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';

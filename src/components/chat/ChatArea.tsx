@@ -1631,7 +1631,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           canAddReactions={canAddReactions}
                           canManageMessages={canManageMessages}
                         />
-                        {/* Message body kept identical: preserved by surrounding tags below */}
+                        __MSG_BODY_PLACEHOLDER__
                       </div>
                     </SwipeToReplyRow>
                 </UniversalMessageContextMenu>

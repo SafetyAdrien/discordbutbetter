@@ -429,7 +429,7 @@ export function MediaEditor({
               </button>
             </div>
 
-            <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
+            <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-visible pt-8">
               <div
                 className={cn(
                   'relative rounded-md border border-border/60 bg-muted/40 select-none',

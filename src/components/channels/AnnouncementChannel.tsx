@@ -9,21 +9,14 @@ import {
   Pin,
   Users,
   Inbox,
-  Copy,
-  Reply,
   Pencil,
-  Trash2,
   MessageSquareText,
   BellOff,
   BellRing,
   AtSign,
   X,
   Check,
-  Link,
-  SmilePlus,
   BarChart2,
-  Flag,
-  Hash,
 } from "lucide-react";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";

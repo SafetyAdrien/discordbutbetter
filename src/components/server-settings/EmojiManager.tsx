@@ -160,7 +160,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
           </div>
         ) : (
           <div className="rounded-lg bg-muted/30 overflow-hidden">
-            <div className="grid grid-cols-[80px_1fr_1fr_40px] gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/30">
+            <div className="hidden sm:grid grid-cols-[80px_1fr_1fr_40px] gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/30">
               <div>Image</div>
               <div>Name</div>
               <div>Uploaded By</div>
@@ -169,37 +169,40 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
             <ul className="divide-y divide-border/20">
               {emojis.map((emoji) => {
                 const up = emoji.creator_id ? uploaderProfiles.data?.[emoji.creator_id] : null;
+                const uploader = up?.username || up?.display_name || '—';
                 return (
                   <li
                     key={emoji.id}
-                    className="grid grid-cols-[80px_1fr_1fr_40px] gap-3 items-center px-4 py-2 group hover:bg-muted/30 transition-colors"
+                    className="flex sm:grid sm:grid-cols-[80px_1fr_1fr_40px] sm:gap-3 sm:items-center gap-3 items-center px-3 sm:px-4 py-2 group hover:bg-muted/30 transition-colors"
                   >
                     <img
                       src={emoji.url}
                       alt={emoji.name}
-                      className="w-10 h-10 object-contain rounded"
+                      className="w-10 h-10 object-contain rounded shrink-0"
                       loading="lazy"
                     />
-                    <span className="text-sm font-medium truncate">:{emoji.name}:</span>
-                    <div className="flex items-center gap-2 min-w-0">
-                      {up?.avatar_url ? (
-                        <img
-                          src={up.avatar_url}
-                          alt=""
-                          className="w-6 h-6 rounded-full object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-primary/20 text-[10px] font-bold flex items-center justify-center shrink-0">
-                          {(up?.username || up?.display_name || '?')[0]?.toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-sm text-muted-foreground truncate">
-                        {up?.username || up?.display_name || '—'}
-                      </span>
+                    <div className="flex-1 min-w-0 sm:contents">
+                      <p className="text-sm font-medium truncate">:{emoji.name}:</p>
+                      <div className="flex items-center gap-2 min-w-0 mt-0.5 sm:mt-0">
+                        {up?.avatar_url ? (
+                          <img
+                            src={up.avatar_url}
+                            alt=""
+                            className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/20 text-[10px] font-bold flex items-center justify-center shrink-0">
+                            {(uploader[0] || '?').toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs sm:text-sm text-muted-foreground truncate">
+                          {uploader}
+                        </span>
+                      </div>
                     </div>
                     <button
                       onClick={() => deleteEmoji.mutate({ emojiId: emoji.id, serverId })}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all shrink-0"
                       aria-label="Delete emoji"
                     >
                       <Trash2 className="w-4 h-4" />

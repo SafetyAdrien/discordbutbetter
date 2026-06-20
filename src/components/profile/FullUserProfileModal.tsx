@@ -140,8 +140,8 @@ export function FullUserProfileModal({
             }}
           />
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
-            <div className="flex items-end gap-3 min-w-0">
-              <div className="relative shrink-0">
+            <div className="relative min-w-0 shrink-0">
+              <div className="relative">
                 <Avatar className="w-28 h-28 ring-[5px] ring-background">
                   <AvatarImage src={user.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/20 text-primary text-4xl font-semibold">
@@ -155,7 +155,7 @@ export function FullUserProfileModal({
                 />
               </div>
               {user.custom_status && (
-                <div className="mb-2 min-w-0">
+                <div className="absolute left-[132px] bottom-[18px] z-20 max-w-[260px]">
                   <CustomStatusBubble customStatus={user.custom_status} size="md" />
                 </div>
               )}

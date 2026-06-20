@@ -747,8 +747,17 @@ export function AnnouncementChannel({
                 return (
                   <div key={message.id}>
                     {DateSeparator}
-                    <ContextMenu>
-                      <ContextMenuTrigger asChild>
+                    <UniversalMessageContextMenu
+                      messageId={message.id}
+                      isOwnMessage={user?.id === message.author.id}
+                      canAddReactions={false}
+                      canManageMessages={canManageMessages}
+                      variant="system"
+                      onAddReaction={() => {}}
+                      onCopyLink={() => handleCopyMessageLink(message.id)}
+                      onCopyId={() => handleCopyId(message.id)}
+                      onDelete={(user?.id === message.author.id || canManageMessages) ? () => handleDelete(message.id) : undefined}
+                    >
                         <div className="py-1 px-4 my-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
@@ -797,19 +806,7 @@ export function AnnouncementChannel({
                             </div>
                           </div>
                         </div>
-                      </ContextMenuTrigger>
-                      {(user?.id === message.author.id || canManageMessages) && (
-                        <ContextMenuContent>
-                          <ContextMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(message.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer le message
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      )}
-                    </ContextMenu>
+                    </UniversalMessageContextMenu>
                   </div>
                 );
               }

@@ -1,56 +1,68 @@
 ## Objectif
 
-Remplacer les `<ContextMenu>` inline dans `ChatArea.tsx` et `AnnouncementChannel.tsx` par le composant `UniversalMessageContextMenu` déjà utilisé partout ailleurs (DMConversation, ThreadView, VoiceChannelChat, MobileDMConversation…). Toutes les actions (clic droit desktop + long-press mobile) deviennent uniformes et chaque nouvelle entrée n'a plus qu'à être ajoutée au composant universel.
+Aligner le rendu markdown sur Discord (image de référence), des deux côtés et sur les deux plateformes :
 
-## Périmètre
+1. **Conteneur de rédaction (input overlay)** — markers gris **+** contenu réellement stylé (gras, italique, souligné, barré, spoiler pilule, code monospace).
+2. **Messages envoyés (rendu)** — typographie & espacements polis, spoiler opaque cliquable, listes à puces hiérarchisées, code inline & bloc, liens primaires.
 
-- Comportement et UI strictement préservés (mêmes actions, mêmes permissions, mêmes labels visibles).
-- Aucun changement de logique métier (handlers existants — `handleReply`, `handleCopyMessage`, `handlePinMessage`, `handleDelete`, `handlePublishMessage`, etc. — sont réutilisés tels quels).
-- Aucun changement sur les autres vues déjà migrées.
+Aucun changement de logique : pas de toolbar, pas de touche à l'input lui-même, pas de modification de la syntaxe ou du parser de fond.
 
-## Étapes
+---
 
-### 1. `src/components/chat/ChatArea.tsx` — messages texte normaux (lignes ~1564-2054)
+## 1. `src/components/chat/InputMarkdownOverlay.tsx` — WYSIWYG
 
-- Remplacer le bloc `<ContextMenu> … <ContextMenuContent> … </ContextMenu>` qui entoure le message par `<UniversalMessageContextMenu>` configuré ainsi :
-  - `variant="message"`, `messageId={message.id}`, `isOwnMessage`, `isPinned={pinnedMessageIds.has(message.id)}`
-  - `canAddReactions`, `canManageMessages`, `canManageReactions={canManageMessages}`, `hasReactions={(reactionsData?.[message.id]?.length ?? 0) > 0}`
-  - Handlers : `onReply`, `onAddReaction`, `onCopyText`, `onCopyLink`, `onCopyId`, `onEdit` (si `isOwnMessage`), `onDelete` (si `isOwnMessage || canManageMessages`), `onPin` (si `canManageMessages`), `onCreateThread` (si `canCreateThreads`), `onReport`, `onViewReactions`, `onClearAllReactions`
-  - L'enfant est le `<SwipeToReplyRow>…</SwipeToReplyRow>` existant.
-- Supprimer la boîte de dialogue de suppression locale déclenchée par `handleContextDeleteSelect` pour ces messages : Universal gère sa propre `DeleteMessageDialog` (incluant le bypass SHIFT). Vérifier que `handleContextDeleteSelect` n'est plus utilisé par d'autres branches ; sinon le laisser pour les autres usages.
-- Nettoyer les imports devenus inutiles (`ContextMenu`, `ContextMenuTrigger`, `ContextMenuContent`, `ContextMenuItem`, `ContextMenuSeparator`, `Popover/PopoverContent/PopoverTrigger` si plus utilisés, `Reply`, `Copy`, `Pin`, `Link`, `Hash`, `Pencil`, `Trash2`, `Flag`, `Eye`, `SmilePlus`, `StreamlineThreads`, `CONTEXT_MENU_REACTIONS`) — uniquement ceux qui ne servent plus ailleurs dans le fichier (les sondages et messages système conservent leur usage de `UniversalMessageContextMenu` + `extraItems`).
+Suppression de la contrainte "pas de font-weight / font-family". Discord accepte un léger drift de caret pour gagner le vrai rendu : on fait pareil.
 
-### 2. `src/components/channels/AnnouncementChannel.tsx`
+- **Gras `**…**`** : `fontWeight: 700` réel (au lieu du `textShadow` simulé).
+- **Italique `*…*` / `_…_`** : conservé `fontStyle: 'italic'`.
+- **Souligné `__…__`** : `textDecoration: underline` avec offset 2px.
+- **Barré `~~…~~`** : `textDecoration: line-through`.
+- **Combos** : `***…***`, `___…___`, `__**…**__`, `**__…__**` → cumul des styles réels.
+- **Code inline `` `…` ``** : pilule `surface-elevated` + bordure `border/60` + **vraie famille monospace** (`Consolas, "gg mono", ui-monospace, monospace`) + `fontSize: 0.85em`.
+- **Spoiler `||…||`** : pilule opaque `foreground/18` (texte reste lisible dans l'input — c'est ce qu'on voit dans l'image).
+- **Lien `[label](url)`** : label `text-primary underline`, url en `muted-foreground/55`.
+- **Markers** : tous en `muted-foreground/45` (gris discret, comme l'image bas).
+- **Blocs de code multi-lignes (overlay)** : les lignes `codeBlockLine` reçoivent la famille monospace + une teinte de fond légère sur toute la ligne (`surface-elevated/40`) pour reproduire la zone grisée de l'image.
+- **Blockquote `> `** : marker `> ` en `muted-foreground/45`, contenu en `text-foreground/85` avec un fin trait gauche simulé via `box-shadow inset 2px 0 0 hsl(var(--border))` sur la ligne (pas de padding pour ne pas casser l'alignement).
+- **Listes `- ` / `1. ` / `- [ ]`** : marker conservé en `muted-foreground/60` (pas de transformation en glyphe — sinon drift).
+- Conserver la projection 1:1 du caret pour les contenus non transformés ; le drift n'apparaît qu'au sein des spans gras/italique/code (acceptable, identique à Discord).
 
-#### 2a. Messages d'annonces (lignes ~841-1199)
+## 2. `src/lib/markdown.tsx` — rendu des messages envoyés
 
-- Remplacer le `<ContextMenu>` qui entoure la carte d'annonce par `<UniversalMessageContextMenu variant="message" …>` avec les mêmes handlers que ChatArea (`onReply`, `onCopyText`, `onCopyLink`, `onCopyId`, `onAddReaction`, `onEdit`, `onDelete`, `onPin` selon permissions, `onReport`).
-- Pas d'`onCreateThread` ici (les annonces n'en ont pas dans le menu actuel) — laisser `undefined` pour cacher l'entrée.
-- L'action « Publier aux abonnés » reste dans `UniversalMessageActions` via `customAction` (déjà en place) — aucun changement.
-  - Note : Universal ne supporte pas une action personnalisée dans son menu ; si on veut aussi l'exposer dans le clic droit, on peut passer `extraItems` (un `ContextMenuItem` rendu uniquement en desktop). À faire seulement si l'utilisateur le demande — par défaut on garde l'iso comportementale exacte (publier reste sur la toolbar).
+Le tokenizer est déjà bon ; on ne touche qu'au **rendu** des tokens pour matcher l'image haute :
 
-#### 2b. Message système « Thread créé » (lignes ~750-812)
+- **`<strong>`/`<em>`/`<u>`/`<del>`** : tels quels (déjà parfaits), juste vérifier `font-weight: 700` global non écrasé.
+- **`code` inline** : conserver `bg-surface-elevated` + bordure + `font-mono` + `text-[0.85em]` ; ajouter `whitespace-pre` côté zone code pour préserver les espaces.
+- **`spoiler`** : repasser sur pilule opaque `bg-foreground` (texte invisible) avant clic → après clic (`.revealed`), `bg-foreground/15` et texte révélé. CSS dans `index.css` à ajuster si nécessaire.
+- **`link` / `autoLink`** : `text-primary hover:underline underline-offset-2`.
+- **Liste à puces (`listItem`)** : niveau 0 = `list-disc`, niveau ≥ 1 (indent ≥ 2) = `list-[circle]`, marker `text-muted-foreground`, espacement vertical `gap-0.5`.
+- **Liste ordonnée** : `list-decimal`, marker `text-muted-foreground`.
+- **Task item** : checkbox SVG + `line-through` quand coché.
+- **`blockquote` / `multiBlockquote`** : bordure gauche `border-l-4 border-border`, padding-left `pl-3`, texte `text-foreground/90`.
+- **Séparateur (`hr`)** : `border-t border-border my-2`.
+- **Headers `# / ## / ###`** : conserver tailles harmonisées actuelles (déjà OK).
 
-- Remplacer le `<ContextMenu>` inline (qui n'expose qu'une suppression conditionnelle) par `<UniversalMessageContextMenu variant="system" canAddReactions={false}>` avec uniquement `onDelete`, `onCopyLink`, `onCopyId`. Permissions identiques (`user?.id === message.author.id || canManageMessages`).
+## 3. `src/index.css` — petits ajustements
 
-#### 2c. Nettoyage imports
+- Spoiler : `.spoiler { background: hsl(var(--foreground)); color: transparent; border-radius: 4px; cursor: pointer; padding: 0 4px; }` et `.spoiler.revealed { background: hsl(var(--foreground) / 0.15); color: inherit; }`.
+- `chat-markdown` : autoriser `code`, `pre`, `blockquote`, `ul`, `ol` à conserver leurs marges Tailwind (déjà partiellement fait, vérifier).
 
-- Retirer les imports devenus inutiles (`ContextMenu`/`Trigger`/`Content`/`Item`/`Separator`, icônes lucide non utilisées ailleurs).
+## 4. Mobile
+
+Aucune divergence : l'overlay et le renderer sont partagés Desktop/Mobile. La séparation `SwipeToReplyRow` (faite précédemment) n'est pas touchée. Seul l'affichage change, donc Mobile bénéficie automatiquement du patch.
 
 ## Détails techniques
 
-- Le typage de `UniversalMessageContextMenuProps` couvre tous les handlers nécessaires ; aucun changement au composant universel.
-- Universal restitue le `children` via `<ContextMenuTrigger asChild>` (desktop) ou via un wrapper `div` avec `useLongPress` (mobile). Pour ChatArea le `children` reste `<SwipeToReplyRow>…</SwipeToReplyRow>` ; pour AnnouncementChannel c'est le `<div className="group message-hover …">`. Le comportement de hover et de swipe n'est pas affecté.
-- `DeleteMessageDialog` est rendue par Universal — supprimer son équivalent local pour ces deux vues (uniquement les chemins migrés) afin d'éviter une double dialogue. Vérifier les autres usages avant suppression.
-- La grille d'émojis « picker » du menu actuel de ChatArea est déjà présente dans Universal : iso visuelle conservée.
+```text
+overlay caret drift = acceptable
+└── ne survient qu'à l'intérieur des spans transformés (gras/italic/code)
+└── le textarea reste source de vérité — sélection/copier-coller intacts
+└── identique au comportement Discord web
+```
 
-## Validation
+Fichiers modifiés :
+- `src/components/chat/InputMarkdownOverlay.tsx` (refonte du `renderInlineMarkdownOnly` + style de bloc code/blockquote)
+- `src/lib/markdown.tsx` (ajustements rendu liste/spoiler/blockquote)
+- `src/index.css` (classe `.spoiler` + assouplissement `chat-markdown` si requis)
 
-1. Build (auto).
-2. Vérifier visuellement (preview) :
-   - Clic droit sur un message texte standard → menu universel s'ouvre, toutes les actions présentes.
-   - SHIFT + clic sur Supprimer → suppression directe sans dialogue (comportement universel).
-   - Clic droit sur une annonce → mêmes actions qu'avant (sans « Créer un thread »).
-   - Clic droit sur le message système « Thread créé » par l'auteur ou un modérateur → entrée Supprimer.
-   - Long-press mobile sur un message dans #général et #annonces → bottom sheet universel.
-3. Lancer `rg "ContextMenu" src/components/chat/ChatArea.tsx src/components/channels/AnnouncementChannel.tsx` : ne doit plus rester que les usages de `UniversalMessageContextMenu` (et `extraItems` éventuels pour les sondages dans ChatArea).
+Aucun changement : parser, syntaxe markdown supportée, toolbar (inexistante), `SwipeToReplyRow`, hooks, base de données.

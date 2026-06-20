@@ -1710,7 +1710,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                         if (editingTextareaRef.current) resizeEditTextarea(editingTextareaRef.current);
                                       }}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
+                                        if (e.key === "Enter" && !e.shiftKey && !isMobile) {
                                           e.preventDefault();
                                           handleSaveEdit();
                                         }
@@ -1830,7 +1830,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                         if (editingTextareaRef.current) resizeEditTextarea(editingTextareaRef.current);
                                       }}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
+                                        if (e.key === "Enter" && !e.shiftKey && !isMobile) {
                                           e.preventDefault();
                                           handleSaveEdit();
                                         }

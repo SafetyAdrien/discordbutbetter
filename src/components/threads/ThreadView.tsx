@@ -967,7 +967,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                   el.style.height = Math.min(el.scrollHeight, 200) + 'px';
                                 }}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                  if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
                                     e.preventDefault();
                                     handleSaveEdit();
                                   }

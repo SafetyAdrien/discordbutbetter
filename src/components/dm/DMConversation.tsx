@@ -666,7 +666,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           <TypingIndicator conversationId={conversationId} />
 
           {/* Reply preview (above input) */}
-          {replyingTo && (
+          {replyingTo && !(isMobile && editingMessageId) && (
             <ReplyBanner
               authorName={replyingTo.author?.display_name || 'Utilisateur'}
               authorAvatar={replyingTo.author?.avatar_url}
@@ -676,12 +676,29 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             />
           )}
 
+          {isMobile && editingMessageId && (
+            <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+              <button
+                onClick={handleCancelEdit}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-[hsl(var(--surface-4))] hover:bg-[hsl(var(--surface-5))] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                aria-label="Annuler la modification"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-sm text-muted-foreground">Édition du message</span>
+            </div>
+          )}
+
           {/* Input */}
           <div className="px-4 pb-4 pt-2">
           <MessageInput
-            value={messageInput}
-            onChange={setMessageInput}
+            value={isMobile && editingMessageId ? editingContent : messageInput}
+            onChange={isMobile && editingMessageId ? setEditingContent : setMessageInput}
             onSend={() => {
+              if (isMobile && editingMessageId) {
+                handleSaveEdit();
+                return;
+              }
               if (!messageInput.trim() && attachments.length === 0) return;
               sendMessage.mutate({
                 conversationId,
@@ -694,11 +711,18 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               clearAttachments();
               stopTyping();
             }}
-            placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}` : `Envoyer un message à ${displayName}`}
+            placeholder={
+              isMobile && editingMessageId
+                ? 'Modifier le message…'
+                : replyingTo
+                ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}`
+                : `Envoyer un message à ${displayName}`
+            }
             disabled={sendMessage.isPending}
             isSending={sendMessage.isPending}
             onTypingStart={startTyping}
             onTypingStop={stopTyping}
+            editingMessageId={isMobile ? editingMessageId : null}
             attachments={attachments}
             onAddFiles={addFiles}
             onRemoveAttachment={removeAttachment}

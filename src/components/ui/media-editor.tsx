@@ -38,13 +38,13 @@ interface MediaEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
-const MOBILE_PREVIEW = 192;
-const MOBILE_LANDSCAPE_PREVIEW = 132;
+const MOBILE_PREVIEW = 204;
+const MOBILE_LANDSCAPE_PREVIEW = 140;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const MOBILE_CANVAS_PANEL_MIN = 220;
-const MOBILE_CANVAS_PANEL_MAX = 360;
+const MOBILE_CANVAS_PANEL_MAX = 368;
 
 const getInitialPreview = () => {
   if (typeof window === 'undefined') return DEFAULT_PREVIEW;

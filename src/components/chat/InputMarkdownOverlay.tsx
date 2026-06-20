@@ -25,7 +25,8 @@ interface InputMarkdownOverlayProps {
 }
 
 interface OverlayLine {
-  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'taskItemUnchecked' | 'taskItemChecked' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
+  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'alertHeader' | 'listItem' | 'orderedListItem' | 'taskItemUnchecked' | 'taskItemChecked' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
+  alertType?: 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION';
   text: string;
 }
 

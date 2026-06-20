@@ -60,7 +60,7 @@ export const MarkdownTextarea = forwardRef<HTMLTextAreaElement, MarkdownTextarea
           <InputMarkdownOverlay
             ref={overlayRef}
             content={value}
-            className={cn('absolute inset-0 pointer-events-none', overlayClassName)}
+            className={cn('absolute inset-0 pointer-events-none px-3 py-2 overflow-y-auto', overlayClassName)}
           />
         )}
         <textarea

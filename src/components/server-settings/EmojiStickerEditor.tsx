@@ -93,7 +93,7 @@ export function EmojiStickerEditor({
         ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 220 : 286))
         : DEFAULT_PREVIEW;
       const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
-      const h = isMobile ? Math.min(rect.height || viewportLimitedH, viewportLimitedH) : rect.height;
+      const h = isMobile ? viewportLimitedH : rect.height;
       if (w <= 0) return;
       const size = Math.max(MIN_PREVIEW, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
       setPreview(size);

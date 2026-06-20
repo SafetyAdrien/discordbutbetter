@@ -867,6 +867,7 @@ export function AnnouncementChannel({
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
+                      onCopyText={() => handleCopyMessage(message.content)}
                        onEdit={isOwnMessage || canManageMessages ? () => handleStartEdit(message) : undefined}
                        onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
                        onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}

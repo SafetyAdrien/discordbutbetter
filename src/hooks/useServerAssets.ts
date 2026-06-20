@@ -142,20 +142,21 @@ export function useUploadEmoji() {
 
       return { previous, serverId, blobUrl };
     },
-    onError: (error: any, { serverId }, context) => {
+    onError: (error: any, variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['server-emojis', serverId], context.previous);
+        queryClient.setQueryData(['server-emojis', variables.serverId], context.previous);
       }
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
+      if (variables.silent) return;
       if (error.message?.includes('duplicate')) {
         toast.error('Un emoji avec ce nom existe déjà');
       } else {
         toast.error('Erreur lors de l\'ajout de l\'emoji');
       }
     },
-    onSuccess: (_, __, context) => {
+    onSuccess: (_, variables, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      toast.success('Emoji ajouté !');
+      if (!variables.silent) toast.success('Emoji ajouté !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });

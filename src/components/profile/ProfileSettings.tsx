@@ -312,6 +312,15 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
         )}
 
         <ServerProfileEditModal open={serverProfileEditOpen} onOpenChange={setServerProfileEditOpen} />
+        <AvatarUploadEditor
+          open={!!avatarEditorFile}
+          file={avatarEditorFile}
+          onClose={() => setAvatarEditorFile(null)}
+          onFinish={(file) => {
+            setAvatarEditorFile(null);
+            uploadAvatar.mutate(file);
+          }}
+        />
       </div>
     </div>
   );

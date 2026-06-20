@@ -234,7 +234,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
             server_id: server.id,
             category_id: category.id,
             name: ch.name,
-            type: ch.type as any,
+            type: toChannelType(ch.type),
             position: chIdx,
           });
         }
@@ -246,7 +246,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
         await supabase.from('channels').insert({
           server_id: server.id,
           name: ch.name,
-          type: ch.type as any,
+          type: toChannelType(ch.type),
           position: i,
         });
       }

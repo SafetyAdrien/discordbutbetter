@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { X, RotateCcw, ZoomIn, ZoomOut, Move, FlipHorizontal2 } from 'lucide-react';
@@ -102,31 +102,44 @@ export function MediaEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
-  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fill');
+  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
 
-  // Measure to keep canvas square + fit within its container on every viewport
+  // Measure to keep canvas square + physically contained on mobile browsers.
   useEffect(() => {
     if (!previewWrapRef.current || !open) return;
     const el = previewWrapRef.current;
+    let raf = 0;
     const measure = () => {
       const rect = el.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      const viewportW = window.visualViewport?.width ?? window.innerWidth;
+      const viewportH = window.visualViewport?.height ?? window.innerHeight;
+      const isMobile = viewportW < 640;
+      const w = isMobile ? Math.min(rect.width, viewportW - 32) : rect.width;
+      const h = isMobile ? Math.min(rect.height, viewportH - 390) : rect.height;
       if (w <= 0 || h <= 0) return;
       const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
       setPreview(size);
     };
-    measure();
-    const ro = new ResizeObserver(measure);
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+    scheduleMeasure();
+    const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(el);
-    window.addEventListener('resize', measure);
+    window.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('scroll', scheduleMeasure);
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
-      window.removeEventListener('resize', measure);
+      window.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
   }, [open]);
 
@@ -138,7 +151,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fill');
+    setFitMode('fit');
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
@@ -149,8 +162,10 @@ export function MediaEditor({
     if (!imgEl) return 1;
     const sx = PREVIEW / imgEl.naturalWidth;
     const sy = PREVIEW / imgEl.naturalHeight;
-    return fitMode === 'fit' ? Math.min(sx, sy) : Math.max(sx, sy);
-  }, [imgEl, PREVIEW, fitMode]);
+    if (fitMode === 'fill') return Math.max(sx, sy);
+    if (!circular) return Math.min(sx, sy);
+    return PREVIEW / Math.sqrt(imgEl.naturalWidth ** 2 + imgEl.naturalHeight ** 2);
+  }, [imgEl, PREVIEW, fitMode, circular]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
@@ -182,7 +197,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fill');
+    setFitMode('fit');
   };
 
   const exportBlob = async (): Promise<MediaEditorResult | null> => {
@@ -213,7 +228,7 @@ export function MediaEditor({
 
     // Preserve animation if user did not touch the image (GIF/APNG only)
     const isAnimated = /gif|apng/i.test(file.type);
-    if (isAnimated && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
+    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
       return {
         blob: file,
         mime: file.type || 'image/gif',
@@ -253,14 +268,15 @@ export function MediaEditor({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         className={cn(
-          'p-0 overflow-hidden border-border/60 [&>button]:hidden',
+          'p-0 gap-0 overflow-hidden border-border/60 [&>button]:hidden',
           'sm:max-w-[1040px] sm:w-[95vw] sm:max-h-[92dvh]',
-          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100dvh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
+          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100svh] max-sm:max-h-[100svh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
         )}
       >
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100dvh] overflow-hidden">
+        <DialogTitle className="sr-only">{title}</DialogTitle>
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100svh] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-1 md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 overflow-hidden">
+          <div className="relative flex flex-col flex-none md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -280,7 +296,7 @@ export function MediaEditor({
               </button>
             </div>
 
-            <div ref={previewWrapRef} className="flex-1 min-h-0 flex items-center justify-center">
+            <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
               <div
                 className={cn(
                   'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] border border-border/60 select-none',
@@ -318,7 +334,7 @@ export function MediaEditor({
               Drag image to reposition
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4 min-w-0">
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setFitMode('fit')}
@@ -368,7 +384,7 @@ export function MediaEditor({
           </div>
 
           {/* RIGHT — previews + extras + finish */}
-          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-[45dvh] md:max-h-none shrink-0 md:shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col flex-1 md:flex-none p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink md:shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
             {renderPreviews && (
               <div>
                 <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">

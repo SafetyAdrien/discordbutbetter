@@ -326,16 +326,16 @@ export function useUploadSticker() {
 
       return { previous, serverId, blobUrl };
     },
-    onError: (_, { serverId }, context) => {
+    onError: (_, variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['server-stickers', serverId], context.previous);
+        queryClient.setQueryData(['server-stickers', variables.serverId], context.previous);
       }
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      toast.error('Erreur lors de l\'ajout du sticker');
+      if (!variables.silent) toast.error('Erreur lors de l\'ajout du sticker');
     },
-    onSuccess: (_, __, context) => {
+    onSuccess: (_, variables, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      toast.success('Sticker ajouté !');
+      if (!variables.silent) toast.success('Sticker ajouté !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });

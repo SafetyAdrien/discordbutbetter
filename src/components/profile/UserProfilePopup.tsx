@@ -766,10 +766,15 @@ export function UserProfilePopup({
         bio: user.bio ?? null,
         status: user.status,
         created_at: user.createdAt ?? null,
+        custom_status: user.customStatus ?? null,
       }}
       onNavigateToDM={onOpenDM}
     />
   );
+
+  const customStatusModal = isOwnProfile ? (
+    <CustomStatusModal open={customStatusOpen} onOpenChange={setCustomStatusOpen} />
+  ) : null;
 
   // Mobile: Drawer from bottom (unchanged)
   if (isMobile) {

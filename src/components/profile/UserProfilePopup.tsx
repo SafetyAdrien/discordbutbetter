@@ -800,6 +800,7 @@ export function UserProfilePopup({
       <>
         {serverProfileModal}
         {fullBioModal}
+        {customStatusModal}
       </>
     );
   }

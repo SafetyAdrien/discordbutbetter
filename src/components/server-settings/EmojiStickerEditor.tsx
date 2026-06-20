@@ -498,6 +498,20 @@ export function EmojiStickerEditor({
                     />
                   )}
                 </div>
+                {/* Rotation handle */}
+                <span aria-hidden className="pointer-events-none absolute left-1/2 -top-6 h-6 w-px -translate-x-1/2 bg-border/60" />
+                <button
+                  type="button"
+                  aria-label="Drag to rotate"
+                  title="Drag to rotate"
+                  className="absolute left-1/2 -top-10 z-20 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none cursor-grab active:cursor-grabbing"
+                  onPointerDown={onRotateDown}
+                  onPointerMove={onRotateMove}
+                  onPointerUp={onRotateUp}
+                  onPointerCancel={onRotateUp}
+                >
+                  <RotateCw className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
 

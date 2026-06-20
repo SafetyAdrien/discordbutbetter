@@ -218,9 +218,8 @@ export function MediaEditor({
     const sx = PREVIEW / imgEl.naturalWidth;
     const sy = PREVIEW / imgEl.naturalHeight;
     if (fitMode === 'fill') return Math.max(sx, sy);
-    if (!circular) return Math.min(sx, sy);
-    return PREVIEW / Math.sqrt(imgEl.naturalWidth ** 2 + imgEl.naturalHeight ** 2);
-  }, [imgEl, PREVIEW, fitMode, circular]);
+    return Math.min(sx, sy);
+  }, [imgEl, PREVIEW, fitMode]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;

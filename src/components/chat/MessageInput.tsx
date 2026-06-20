@@ -92,6 +92,7 @@ export function MessageInput({
   slowmodeSeconds = 0,
   showFollowBar = false,
   onFollowClick,
+  editingMessageId = null,
 }: MessageInputProps) {
   const { isMobile, isTablet } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);

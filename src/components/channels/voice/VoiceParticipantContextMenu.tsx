@@ -5,7 +5,8 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Volume2, VolumeX, HeadphoneOff, RotateCcw, UserCircle } from 'lucide-react';
+import { Volume2, VolumeX, RotateCcw, UserCircle } from 'lucide-react';
+import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { Slider } from '@/components/ui/slider';

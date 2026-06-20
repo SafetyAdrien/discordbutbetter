@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useVoice } from '@/contexts/VoiceContext';
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, PhoneOff, Maximize2, Headphones, HeadphoneOff } from 'lucide-react';
+import { PhoneOff, Maximize2 } from 'lucide-react';
+import { DiscordMic } from '@/components/icons/DiscordMic';
+import { DiscordMicOff } from '@/components/icons/DiscordMicOff';
+import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
+import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
 import { haptics } from '@/lib/haptics';
 
 interface VoicePiPProps {
@@ -146,7 +150,7 @@ export function VoicePiP({ onExpand }: VoicePiPProps) {
               : 'bg-[hsl(var(--surface-3))] text-foreground',
           )}
         >
-          {voiceState.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          {voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4" />}
         </button>
         <button
           onClick={() => {
@@ -162,7 +166,7 @@ export function VoicePiP({ onExpand }: VoicePiPProps) {
               : 'bg-[hsl(var(--surface-3))] text-foreground',
           )}
         >
-          {voiceState.isDeafened ? <HeadphoneOff className="w-4 h-4" /> : <Headphones className="w-4 h-4" />}
+          {voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4" />}
         </button>
         <button
           onClick={() => {

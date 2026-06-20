@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { DiscordInbox as Inbox } from '@/components/icons/DiscordInbox';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useMarkAllNotificationsAsRead,
@@ -21,7 +22,7 @@ import { NotificationSection } from '@/components/mobile/notifications/Notificat
 import { UnifiedNotificationRow } from '@/components/mobile/notifications/UnifiedNotificationRow';
 import { cn } from '@/lib/utils';
 import {
-  Inbox,
+
   SlidersHorizontal,
   CheckCheck,
   Loader2,

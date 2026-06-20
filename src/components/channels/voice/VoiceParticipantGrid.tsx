@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MicOff, HeadphoneOff, ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
+import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
+import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { VoiceVideoTile } from './VoiceVideoTile';
 import { VoiceParticipantPopover } from './VoiceParticipantPopover';
 import { VoiceParticipantContextMenu } from './VoiceParticipantContextMenu';

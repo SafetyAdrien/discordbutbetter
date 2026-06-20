@@ -4,7 +4,9 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Volume2, VolumeX, MicOff, HeadphoneOff } from 'lucide-react';
+import { Volume2, VolumeX } from 'lucide-react';
+import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
+import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { useState } from 'react';
 
 interface Participant {

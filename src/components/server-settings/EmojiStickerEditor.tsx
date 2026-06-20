@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw } from 'lucide-react';
+import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -591,22 +591,25 @@ export function EmojiStickerEditor({
                   <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[0, 90, 180, 270].map((deg) => (
-                    <button
-                      key={deg}
-                      type="button"
-                      onClick={() => setRotation(deg > 180 ? deg - 360 : deg)}
-                      className={cn(
-                        'h-8 rounded-md border border-border/60 text-xs font-medium transition-colors',
-                        ((rotation + 360) % 360) === deg
-                          ? 'bg-primary text-primary-foreground border-primary/60'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {deg}°
-                    </button>
-                  ))}
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRotation(((rotation - 90 + 540) % 360) - 180)}
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Rotate left"
+                    title="Rotate left"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRotation(((rotation + 90 + 540) % 360) - 180)}
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Rotate right"
+                    title="Rotate right"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
                 </div>
               )}
             </div>

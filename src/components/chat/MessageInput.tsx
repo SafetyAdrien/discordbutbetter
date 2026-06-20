@@ -51,6 +51,8 @@ interface MessageInputProps {
   // Announcement channel follow bar
   showFollowBar?: boolean;
   onFollowClick?: () => void;
+  // Edit mode signaling (mobile inline-edit-in-composer)
+  editingMessageId?: string | null;
 }
 
 interface MentionState {

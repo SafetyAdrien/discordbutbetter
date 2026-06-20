@@ -114,7 +114,7 @@ export function EmojiStickerEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fill');
+    setFitMode('fit');
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
@@ -187,7 +187,7 @@ export function EmojiStickerEditor({
 
     // For PNG (lossless) or fallback. For gif/apng we can't preserve animation through canvas.
     const isAnimated = /gif|apng/i.test(file.type);
-    if (isAnimated && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
+    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
       // Untouched: preserve original animation
       return {
         blob: file,
@@ -219,7 +219,7 @@ export function EmojiStickerEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fill');
+    setFitMode('fit');
   };
 
   // Live preview thumbnails — render via small inline canvas using same transform

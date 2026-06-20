@@ -167,7 +167,7 @@ export function EmojiStickerEditor({
     setFitMode('fit');
     pointersRef.current.clear();
     pinchRef.current = null;
-    resizeRef.current = null;
+    cornerResizeRef.current = null;
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;

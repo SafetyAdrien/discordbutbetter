@@ -339,7 +339,7 @@ export function MediaEditor({
           </div>
 
           {/* RIGHT — previews + extras + finish */}
-          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-[45dvh] md:max-h-none shrink-0 md:shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
             {renderPreviews && (
               <div>
                 <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">

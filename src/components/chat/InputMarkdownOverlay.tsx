@@ -499,11 +499,21 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
           rest = line.text.slice(m[1].length);
         }
       }
+      const alertColorVar = line.type === 'alertHeader' && line.alertType
+        ? `alert-${line.alertType.toLowerCase()}`
+        : null;
       return (
         <div
           key={key}
           className={`${lineStyles[line.type]} relative ${isChecked ? 'line-through' : ''}`}
-          style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+          style={{
+            fontSize: OVERLAY_FONT_SIZE,
+            lineHeight: OVERLAY_LINE_HEIGHT,
+            fontFamily: INPUT_FONT_FAMILY,
+            fontWeight: 400,
+            letterSpacing: 'normal',
+            color: alertColorVar ? `hsl(var(--${alertColorVar}))` : undefined,
+          }}
         >
           {prefix && <span className="text-muted-foreground/70">{prefix}</span>}
           {renderInlineMarkdown(rest, mentionData, consumer)}

@@ -140,7 +140,7 @@ export function MediaEditor({
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
-  const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
+  const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Measure to keep canvas square + physically contained on mobile browsers.

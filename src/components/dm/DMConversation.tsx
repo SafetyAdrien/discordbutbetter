@@ -196,7 +196,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   };
 
   const handleCopyMessage = (content: string) => {
-    copyToClipboard(content, 'Message copié');
+    copyMessageWithFormatting(content);
   };
 
   const handleCopyId = (id: string) => {

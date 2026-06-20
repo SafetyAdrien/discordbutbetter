@@ -976,7 +976,7 @@ export function AnnouncementChannel({
                           </div>
                           {isEditing ? (
                             <div className="mt-1 space-y-2">
-                              <Textarea
+                              <MarkdownTextarea
                                 ref={(el) => {
                                   if (el) {
                                     el.style.height = "auto";
@@ -984,10 +984,11 @@ export function AnnouncementChannel({
                                   }
                                 }}
                                 value={editingContent}
-                                onChange={(e) => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = "auto";
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                onChange={(v) => setEditingContent(v)}
+                                onInput={(e) => {
+                                  const el = e.currentTarget;
+                                  el.style.height = "auto";
+                                  el.style.height = Math.min(el.scrollHeight, 200) + "px";
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && !e.shiftKey) {

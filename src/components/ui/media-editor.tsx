@@ -625,6 +625,14 @@ export function MediaEditor({
 
 
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">
+              <button
+                onClick={reset}
+                className="px-2 py-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors"
+                title="Reset to default import"
+                aria-label="Reset to default import"
+              >
+                Reset
+              </button>
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setFitMode('fit')}
@@ -658,14 +666,6 @@ export function MediaEditor({
                 title="Flip horizontally"
               >
                 <FlipHorizontal2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={reset}
-                className="px-2 py-1.5 rounded-md border border-border/60 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                title="Reset to default import"
-                aria-label="Reset to default import"
-              >
-                Reset
               </button>
             </div>
             <button

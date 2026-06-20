@@ -4,6 +4,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Pin, Bell, BellOff, BellRing, AtSign, Hash } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import StreamlineSummaries from '@/components/icons/StreamlineSummaries';
+import { MarkdownText } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 
 interface MobileChannelDetailSheetProps {

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
+import { UniversalMessageContextMenu } from "@/components/chat/UniversalMessageContextMenu";
 import { ReplyBanner } from "@/components/chat/ReplyBanner";
 import {
   DropdownMenu,

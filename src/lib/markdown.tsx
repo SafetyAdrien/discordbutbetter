@@ -37,10 +37,11 @@ interface MarkdownToken {
 }
 
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'taskItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
   content: string;
   language?: string;
   indentLevel?: number;
+  checked?: boolean;
 }
 
 export interface MarkdownContext {

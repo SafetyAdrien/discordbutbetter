@@ -249,10 +249,10 @@ export function CreateMediaPostModal({
                 {descLength}/500
               </span>
             </div>
-            <Textarea
+            <MarkdownTextarea
               id="media-desc"
               value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+              onChange={(v) => setDescription(v.slice(0, 500))}
               placeholder="Décrivez votre poste (minimum 10 caractères)"
               className="resize-none min-h-[80px]"
             />

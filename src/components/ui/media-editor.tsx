@@ -283,6 +283,46 @@ export function MediaEditor({
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
+  const rotateRef = useRef<{ cx: number; cy: number; startAngle: number; startRot: number } | null>(null);
+  const onRotateDown = (e: PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const canvasEl = e.currentTarget.parentElement as HTMLElement | null;
+    if (!canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    rotateRef.current = {
+      cx,
+      cy,
+      startAngle: Math.atan2(e.clientY - cy, e.clientX - cx),
+      startRot: rotation,
+    };
+  };
+  const onRotateMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!rotateRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const { cx, cy, startAngle, startRot } = rotateRef.current;
+    const a = Math.atan2(e.clientY - cy, e.clientX - cx);
+    let next = startRot + ((a - startAngle) * 180) / Math.PI;
+    next = ((next + 540) % 360) - 180;
+    if (rotationMode === 'step') {
+      next = Math.round(next / 90) * 90;
+      if (next === 180) next = -180;
+    }
+    setRotation(next);
+  };
+  const onRotateUp = (e: PointerEvent<HTMLButtonElement>) => {
+    rotateRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
 
   const onPanelResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
     if (typeof window === 'undefined') return;
@@ -429,7 +469,7 @@ export function MediaEditor({
               </button>
             </div>
 
-            <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
+            <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-visible pt-8">
               <div
                 className={cn(
                   'relative rounded-md border border-border/60 bg-muted/40 select-none',
@@ -466,6 +506,20 @@ export function MediaEditor({
                     />
                   )}
                 </div>
+                {/* Rotation handle */}
+                <span aria-hidden className="pointer-events-none absolute left-1/2 -top-6 h-6 w-px -translate-x-1/2 bg-border/60" />
+                <button
+                  type="button"
+                  aria-label="Drag to rotate"
+                  title="Drag to rotate"
+                  className="absolute left-1/2 -top-10 z-20 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none cursor-grab active:cursor-grabbing"
+                  onPointerDown={onRotateDown}
+                  onPointerMove={onRotateMove}
+                  onPointerUp={onRotateUp}
+                  onPointerCancel={onRotateUp}
+                >
+                  <RotateCw className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
 

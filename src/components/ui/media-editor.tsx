@@ -269,7 +269,7 @@ export function MediaEditor({
     if (points.length >= 2 && pinchRef.current) {
       const distance = pointDistance(points[0], points[1]);
       if (pinchRef.current.startDistance > 0) {
-        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance)));
+        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance), minScale, maxScale));
       }
       return;
     }
@@ -298,7 +298,7 @@ export function MediaEditor({
 
   const onWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
+    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94), minScale, maxScale));
   };
 
   const rotateRef = useRef<{ cx: number; cy: number; startAngle: number; startRot: number } | null>(null);

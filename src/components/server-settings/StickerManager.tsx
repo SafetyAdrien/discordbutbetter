@@ -38,7 +38,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         size: file.size,
         previewUrl: URL.createObjectURL(file),
         status: oversize ? 'error' : 'pending',
-        error: oversize ? 'Fichier > 512 Ko' : undefined,
+        error: oversize ? 'Fichier > 16 Mo' : undefined,
         file,
         stickerName: file.name.replace(/\.[^/.]+$/, '').slice(0, 30) || 'sticker',
       };
@@ -92,7 +92,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
 
   const retryFailed = () => {
     const retry = queue
-      .filter((q) => q.status === 'error' && q.error !== 'Fichier > 512 Ko')
+      .filter((q) => q.status === 'error' && q.error !== 'Fichier > 16 Mo')
       .map((q) => ({ ...q, status: 'pending' as const, error: undefined }));
     if (retry.length === 0) {
       toast.info('Aucun fichier réessayable');
@@ -118,7 +118,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         <div>
           <h4 className="text-sm font-medium">Stickers personnalisés</h4>
           <p className="text-sm text-muted-foreground">
-            {stickers.length} sticker{stickers.length > 1 ? 's' : ''} · 512 Ko max
+            {stickers.length} sticker{stickers.length > 1 ? 's' : ''} · 16 Mo max (HD)
           </p>
         </div>
         <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>

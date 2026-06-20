@@ -1595,6 +1595,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           onAddReaction={canAddReactions ? (emoji) => handleAddReaction(message.id, emoji) : undefined}
                           onCopyLink={() => handleCopyMessageLink(message.id)}
                           onCopyId={() => handleCopyId(message.id)}
+                          onCopyText={() => handleCopyMessage(message.content)}
                           onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                           onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
                           onCreateThread={canCreateThreads ? () => setCreateThreadForMessageId(message.id) : undefined}

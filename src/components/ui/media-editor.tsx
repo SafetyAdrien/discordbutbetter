@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type WheelEvent } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, RotateCcw, ZoomIn, FlipHorizontal2 } from 'lucide-react';
@@ -151,12 +151,14 @@ export function MediaEditor({
     const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(el);
     window.addEventListener('resize', scheduleMeasure);
+    window.addEventListener('orientationchange', scheduleMeasure);
     window.visualViewport?.addEventListener('resize', scheduleMeasure);
     window.visualViewport?.addEventListener('scroll', scheduleMeasure);
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener('resize', scheduleMeasure);
+      window.removeEventListener('orientationchange', scheduleMeasure);
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
@@ -192,7 +194,7 @@ export function MediaEditor({
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
   const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -204,7 +206,7 @@ export function MediaEditor({
     }
     dragRef.current = { startX: e.clientX, startY: e.clientY, oX: offset.x, oY: offset.y };
   };
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (pointersRef.current.has(e.pointerId)) {
       pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
@@ -224,7 +226,7 @@ export function MediaEditor({
       y: clamp(dragRef.current.oY + dy, maxOffsetY),
     });
   };
-  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     pointersRef.current.delete(e.pointerId);
     pinchRef.current = null;
     dragRef.current = null;
@@ -239,19 +241,19 @@ export function MediaEditor({
     }
   };
 
-  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  const onWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
-  const onResizePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
   };
 
-  const onResizePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
     if (!resizeRef.current) return;
     e.preventDefault();
     e.stopPropagation();
@@ -259,7 +261,7 @@ export function MediaEditor({
     setScale(clampScale(resizeRef.current.startScale + delta * 2));
   };
 
-  const onResizePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     resizeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -344,7 +346,7 @@ export function MediaEditor({
     PREVIEW,
   };
   const mobileViewportStyle = viewportHeight
-    ? ({ '--media-editor-vh': `${viewportHeight}px` } as React.CSSProperties)
+    ? ({ '--media-editor-vh': `${viewportHeight}px`, maxHeight: `${viewportHeight}px` } as CSSProperties)
     : undefined;
 
   return (

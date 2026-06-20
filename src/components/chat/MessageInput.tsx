@@ -170,6 +170,29 @@ export function MessageInput({
     });
   }, [value, onChange]);
 
+  const insertAlert = useCallback((alertType: 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION') => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = value.slice(0, start);
+    const selected = value.slice(start, end);
+    const after = value.slice(end);
+    const needsLeadingNewline = before.length > 0 && !before.endsWith('\n');
+    const needsTrailingNewline = after.length > 0 && !after.startsWith('\n');
+    const body = (selected || '').split('\n').map(l => `> ${l}`).join('\n') || '> ';
+    const snippet = `${needsLeadingNewline ? '\n' : ''}> [!${alertType}]\n${body}${needsTrailingNewline ? '\n' : ''}`;
+    const newValue = before + snippet + after;
+    const caretBase = before.length + (needsLeadingNewline ? 1 : 0) + `> [!${alertType}]\n`.length;
+    const newStart = caretBase + (selected ? 0 : 2); // after "> " when empty
+    const newEnd = caretBase + body.length;
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(newStart, newEnd);
+    });
+  }, [value, onChange]);
+
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [lastSentAt, setLastSentAt] = useState(0);

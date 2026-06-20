@@ -394,8 +394,8 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
   const groupedBlocks: React.ReactNode[] = [];
   let currentList: { type: 'ul' | 'ol'; items: BlockToken[] } | null = null;
   blocks.forEach((block, index) => {
-    if (block.type === 'listItem' || block.type === 'orderedListItem') {
-      const type = block.type === 'listItem' ? 'ul' : 'ol';
+    if (block.type === 'listItem' || block.type === 'orderedListItem' || block.type === 'taskItem') {
+      const type = block.type === 'orderedListItem' ? 'ol' : 'ul';
       if (currentList?.type === type) currentList.items.push(block);
       else {
         if (currentList) {

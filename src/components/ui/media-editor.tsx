@@ -280,35 +280,6 @@ export function MediaEditor({
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
-  const cornerResizeRef = useRef<{ centerX: number; centerY: number; startDist: number; startScale: number } | null>(null);
-  const onCornerResizeDown = (e: PointerEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const canvasEl = e.currentTarget.parentElement as HTMLElement | null;
-    if (!canvasEl) return;
-    const rect = canvasEl.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-    cornerResizeRef.current = { centerX: cx, centerY: cy, startDist: Math.max(1, dist), startScale: scale };
-  };
-  const onCornerResizeMove = (e: PointerEvent<HTMLButtonElement>) => {
-    if (!cornerResizeRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const { centerX, centerY, startDist, startScale } = cornerResizeRef.current;
-    const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
-    setScale(clampScale(startScale * (dist / startDist)));
-  };
-  const onCornerResizeUp = (e: PointerEvent<HTMLButtonElement>) => {
-    cornerResizeRef.current = null;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // Pointer capture may already be released by the browser.
-    }
-  };
 
   const onPanelResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
     if (typeof window === 'undefined') return;

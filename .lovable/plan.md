@@ -1,68 +1,110 @@
 ## Objectif
 
-Aligner le rendu markdown sur Discord (image de référence), des deux côtés et sur les deux plateformes :
+Trois extensions du système Markdown, à appliquer partout (desktop + mobile) :
 
-1. **Conteneur de rédaction (input overlay)** — markers gris **+** contenu réellement stylé (gras, italique, souligné, barré, spoiler pilule, code monospace).
-2. **Messages envoyés (rendu)** — typographie & espacements polis, spoiler opaque cliquable, listes à puces hiérarchisées, code inline & bloc, liens primaires.
-
-Aucun changement de logique : pas de toolbar, pas de touche à l'input lui-même, pas de modification de la syntaxe ou du parser de fond.
+1. **Aperçu WYSIWYG dans tous les champs de saisie** Markdown (overlay `InputMarkdownOverlay`).
+2. **Markdown dans les *topics* (descriptions) de tous les types de salons**, en affichage et en édition.
+3. **Alertes GitHub-style** (`> [!NOTE]` / `> [!TIP]` / `> [!IMPORTANT]` / `> [!WARNING]` / `> [!CAUTION]`) dans le renderer.
 
 ---
 
-## 1. `src/components/chat/InputMarkdownOverlay.tsx` — WYSIWYG
+## 1) Overlay WYSIWYG sur tous les composers
 
-Suppression de la contrainte "pas de font-weight / font-family". Discord accepte un léger drift de caret pour gagner le vrai rendu : on fait pareil.
+Aujourd'hui l'overlay n'est branché que sur `MessageInput` (chat principal) et `MarkdownLiveTextarea` (bios). Les `<Textarea>` listés ci-dessous tapent encore en texte brut.
 
-- **Gras `**…**`** : `fontWeight: 700` réel (au lieu du `textShadow` simulé).
-- **Italique `*…*` / `_…_`** : conservé `fontStyle: 'italic'`.
-- **Souligné `__…__`** : `textDecoration: underline` avec offset 2px.
-- **Barré `~~…~~`** : `textDecoration: line-through`.
-- **Combos** : `***…***`, `___…___`, `__**…**__`, `**__…__**` → cumul des styles réels.
-- **Code inline `` `…` ``** : pilule `surface-elevated` + bordure `border/60` + **vraie famille monospace** (`Consolas, "gg mono", ui-monospace, monospace`) + `fontSize: 0.85em`.
-- **Spoiler `||…||`** : pilule opaque `foreground/18` (texte reste lisible dans l'input — c'est ce qu'on voit dans l'image).
-- **Lien `[label](url)`** : label `text-primary underline`, url en `muted-foreground/55`.
-- **Markers** : tous en `muted-foreground/45` (gris discret, comme l'image bas).
-- **Blocs de code multi-lignes (overlay)** : les lignes `codeBlockLine` reçoivent la famille monospace + une teinte de fond légère sur toute la ligne (`surface-elevated/40`) pour reproduire la zone grisée de l'image.
-- **Blockquote `> `** : marker `> ` en `muted-foreground/45`, contenu en `text-foreground/85` avec un fin trait gauche simulé via `box-shadow inset 2px 0 0 hsl(var(--border))` sur la ligne (pas de padding pour ne pas casser l'alignement).
-- **Listes `- ` / `1. ` / `- [ ]`** : marker conservé en `muted-foreground/60` (pas de transformation en glyphe — sinon drift).
-- Conserver la projection 1:1 du caret pour les contenus non transformés ; le drift n'apparaît qu'au sein des spans gras/italique/code (acceptable, identique à Discord).
+**Refactor** : extraire `src/components/chat/MarkdownTextarea.tsx` — wrap `<Textarea>` + `<InputMarkdownOverlay>` synchronisés (scroll, font-metrics, padding, markers ~55 % d'opacité, ref forwardée pour `HTMLTextAreaElement` et auto-resize). `MessageInput` consomme ce composant ; chaque site ci-dessous remplace son `<Textarea>` par `<MarkdownTextarea>`.
 
-## 2. `src/lib/markdown.tsx` — rendu des messages envoyés
+Sites à patcher :
 
-Le tokenizer est déjà bon ; on ne touche qu'au **rendu** des tokens pour matcher l'image haute :
+- **Édition inline de message** : `ChatArea.tsx` (≈ l. 1704 et 1824), `DMConversation.tsx` (≈ l. 581), `ThreadView.tsx` (≈ l. 952), `VoiceChannelChat.tsx` (≈ l. 316), `AnnouncementChannel.tsx` (édition annonce + commentaire, ≈ l. 976 et 1086).
+- **Composers Markdown dédiés** : `announcement/AnnouncementComposer.tsx` (≈ l. 335), `announcement/CreateAnnouncementModal.tsx` (≈ l. 165), `media/CreateMediaPostModal.tsx` (≈ l. 251).
+- **Topic / description de salon** (édition) : `channel-settings/ChannelOverview.tsx` (≈ l. 264).
 
-- **`<strong>`/`<em>`/`<u>`/`<del>`** : tels quels (déjà parfaits), juste vérifier `font-weight: 700` global non écrasé.
-- **`code` inline** : conserver `bg-surface-elevated` + bordure + `font-mono` + `text-[0.85em]` ; ajouter `whitespace-pre` côté zone code pour préserver les espaces.
-- **`spoiler`** : repasser sur pilule opaque `bg-foreground` (texte invisible) avant clic → après clic (`.revealed`), `bg-foreground/15` et texte révélé. CSS dans `index.css` à ajuster si nécessaire.
-- **`link` / `autoLink`** : `text-primary hover:underline underline-offset-2`.
-- **Liste à puces (`listItem`)** : niveau 0 = `list-disc`, niveau ≥ 1 (indent ≥ 2) = `list-[circle]`, marker `text-muted-foreground`, espacement vertical `gap-0.5`.
-- **Liste ordonnée** : `list-decimal`, marker `text-muted-foreground`.
-- **Task item** : checkbox SVG + `line-through` quand coché.
-- **`blockquote` / `multiBlockquote`** : bordure gauche `border-l-4 border-border`, padding-left `pl-3`, texte `text-foreground/90`.
-- **Séparateur (`hr`)** : `border-t border-border my-2`.
-- **Headers `# / ## / ###`** : conserver tailles harmonisées actuelles (déjà OK).
+Mobile : `MobileDMConversation`, `MobileChatView`, `MobileThreadView` consomment déjà `MessageInput` → bénéficient automatiquement du refactor. Pas d'édition inline mobile à patcher.
 
-## 3. `src/index.css` — petits ajustements
+Hors scope : bios (déjà sur `MarkdownLiveTextarea`), question de sondage, description de serveur (reste texte brut tant que produit ne valide pas le Markdown serveur).
 
-- Spoiler : `.spoiler { background: hsl(var(--foreground)); color: transparent; border-radius: 4px; cursor: pointer; padding: 0 4px; }` et `.spoiler.revealed { background: hsl(var(--foreground) / 0.15); color: inherit; }`.
-- `chat-markdown` : autoriser `code`, `pre`, `blockquote`, `ul`, `ol` à conserver leurs marges Tailwind (déjà partiellement fait, vérifier).
+---
 
-## 4. Mobile
+## 2) Topics Markdown sur tous les types de salons
 
-Aucune divergence : l'overlay et le renderer sont partagés Desktop/Mobile. La séparation `SwipeToReplyRow` (faite précédemment) n'est pas touchée. Seul l'affichage change, donc Mobile bénéficie automatiquement du patch.
+Le topic est déjà rendu via `MarkdownText` sur le header desktop du chat texte (`ChatArea.tsx:1109`). À aligner ailleurs :
 
-## Détails techniques
+- **Affichage** : passer `channel.description` à `MarkdownText variant="chat"` (inline-compact) au lieu de `<p>{description}</p>` dans :
+  - `channels/VoiceChannelView.tsx` (≈ l. 171)
+  - `channels/AnnouncementChannel.tsx` (≈ l. 537 et 542)
+  - `channels/StageChannel.tsx`, `ForumChannel.tsx`, `MediaChannel.tsx`, `CalendarChannel.tsx`, `TasksChannel.tsx`, `LinkChannel.tsx` — wherever the header/sidebar renders the topic (ajouter le rendu Markdown s'il y en a un, sinon noter qu'il n'y en a pas).
+  - Mobile : `mobile/MobileChannelDetailSheet.tsx` (≈ l. 60) → `MarkdownText variant="chat"` à la place du `<p>`.
+- **Édition** : `ChannelOverview.tsx` → `MarkdownTextarea` (cf. point 1) pour saisir le topic en WYSIWYG.
 
-```text
-overlay caret drift = acceptable
-└── ne survient qu'à l'intérieur des spans transformés (gras/italic/code)
-└── le textarea reste source de vérité — sélection/copier-coller intacts
-└── identique au comportement Discord web
+Aucun changement de schéma : `channels.description` est déjà du texte libre.
+
+---
+
+## 3) Alertes GitHub-style dans le renderer
+
+Étendre `src/lib/markdown.tsx` pour reconnaître le bloc :
+
+```
+> [!TYPE]
+> Contenu sur une ou plusieurs lignes commençant par `> `
 ```
 
-Fichiers modifiés :
-- `src/components/chat/InputMarkdownOverlay.tsx` (refonte du `renderInlineMarkdownOnly` + style de bloc code/blockquote)
-- `src/lib/markdown.tsx` (ajustements rendu liste/spoiler/blockquote)
-- `src/index.css` (classe `.spoiler` + assouplissement `chat-markdown` si requis)
+avec `TYPE ∈ {NOTE, TIP, IMPORTANT, WARNING, CAUTION}` (case-insensitive). Le bloc entier remplace la séquence de blockquotes consécutifs.
 
-Aucun changement : parser, syntaxe markdown supportée, toolbar (inexistante), `SwipeToReplyRow`, hooks, base de données.
+### Parsing (`parseMarkdown`)
+- Dans le pré-parse des lignes, lorsqu'une ligne `> [!TYPE]` est rencontrée, regrouper toutes les lignes `>`-préfixées suivantes en un nouveau bloc `{ type: 'alert', alertType, content }` (content = jointure des lignes sans le `> `).
+- Si le type est inconnu, retomber sur le rendu blockquote actuel.
+
+### Rendu
+- Nouveau case `'alert'` rendant :
+  ```
+  <div role="note" class="border-l-[4px] pl-3 my-1.5" style="border-color: var(--alert-{type}-border)">
+    <div class="flex items-center gap-1.5 font-semibold mb-0.5" style="color: var(--alert-{type}-fg)">
+      <Icon /> {Label localisé FR}
+    </div>
+    <div>{renderInlineContent(content)}</div>
+  </div>
+  ```
+- Icônes (lucide-react) :
+  - NOTE → `Info` (bleu)
+  - TIP → `Lightbulb` (vert)
+  - IMPORTANT → `MessageSquareWarning` (violet)
+  - WARNING → `TriangleAlert` (ambre)
+  - CAUTION → `OctagonAlert` (rouge)
+- Labels FR : `Note`, `Astuce`, `Important`, `Avertissement`, `Attention`.
+
+### Tokens (`src/index.css`)
+Ajouter des variables HSL sémantiques (light + dark) :
+```
+--alert-note-fg / --alert-note-border    (bleu)
+--alert-tip-fg / --alert-tip-border      (vert)
+--alert-important-fg / --alert-important-border (violet)
+--alert-warning-fg / --alert-warning-border (ambre)
+--alert-caution-fg / --alert-caution-border (rouge)
+```
+Valeurs alignées sur la palette GitHub adaptée au thème sombre du projet — pas de couleur en dur dans le JSX.
+
+### Overlay (`InputMarkdownOverlay.tsx`)
+- Étendre `parseLines` pour reconnaître `> [!TYPE]` comme un nouveau line type `alertHeader`, rendu coloré (couleur de l'alerte, marker `[!TYPE]` visible à ~55 %).
+- Les lignes `>` qui suivent gardent le style `blockquote`. Pas de bloc visuel multi-ligne dans l'overlay (impossible sans casser l'alignement caret) — seul l'entête de la première ligne se colore. Le rendu complet apparaît côté message envoyé.
+
+### Fallbacks
+- `> [!XYZ]` non reconnu → rendu blockquote standard (compat avant).
+- Alerte vide (`> [!NOTE]` sans contenu) → bloc rendu avec entête seul.
+
+---
+
+## Validation
+
+- `bunx tsc --noEmit`.
+- Aperçu visuel desktop + mobile :
+  - Topic Markdown affiché correctement dans chaque type de salon (vocal, annonce, forum, média, calendrier, tâches, stage, lien, mobile sheet).
+  - Composer overlay actif lors de l'édition d'un message (chat/DM/thread/vocal/annonce), composer d'annonce, composer média et édition de topic — markers gris faibles + rendu WYSIWYG.
+  - Coller le bloc des 5 alertes (cf. message utilisateur) dans un message : rendu identique à l'image, couleurs/icônes correctes, marker `[!TYPE]` visible mais discret dans le composer.
+
+## Hors scope
+
+- Pas de Markdown sur la description de serveur (à confirmer séparément).
+- Pas de migration des bios (`parseMarkdown` legacy → `<MarkdownText>`) — déjà fonctionnel.
+- Pas de support des alertes imbriquées dans des listes.

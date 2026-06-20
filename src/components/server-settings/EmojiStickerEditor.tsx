@@ -368,7 +368,7 @@ export function EmojiStickerEditor({
               height: displayedH * r,
               left: '50%',
               top: '50%',
-              transform: `translate(-50%, -50%) translate(${offset.x * r}px, ${offset.y * r}px) scaleX(${flip ? -1 : 1})`,
+              transform: `translate(-50%, -50%) translate(${offset.x * r}px, ${offset.y * r}px) rotate(${rotation}deg) scaleX(${flip ? -1 : 1})`,
               maxWidth: 'none',
             }}
           />

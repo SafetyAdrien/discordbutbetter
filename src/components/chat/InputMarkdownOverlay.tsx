@@ -299,33 +299,44 @@ function renderInlineMarkdown(text: string, mentionData: MentionLookupData | und
 function renderInlineMarkdownOnly(text: string): ReactNode {
   if (!text) return '\u200B';
 
-  // Order matters: longest/most-specific first.
-  // Combined bold+italic/underline patterns are matched before their simpler forms.
-  const inlineRegex = /(\*\*\*(.+?)\*\*\*|___(.+?)___|__\*\*(.+?)\*\*__|\*\*__(.+?)__\*\*|\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`([^`\n]+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
+  type InlineKind = 'bold' | 'italic' | 'boldItalic' | 'underline' | 'underlineBold' | 'underlineItalic' | 'underlineBoldItalic' | 'strike' | 'spoiler' | 'code' | 'link';
+  type InlinePattern = { regex: RegExp; kind: InlineKind; open: string; close: string; labelGroup?: number; urlGroup?: number };
+  const patterns: InlinePattern[] = [
+    { regex: /__\*\*\*([^\n]+?)\*\*\*__/g, kind: 'underlineBoldItalic', open: '__***', close: '***__' },
+    { regex: /\*\*\*__([^\n]+?)__\*\*\*/g, kind: 'underlineBoldItalic', open: '***__', close: '__***' },
+    { regex: /___([^\n]+?)___/g, kind: 'underlineBoldItalic', open: '___', close: '___' },
+    { regex: /__\*\*([^\n]+?)\*\*__/g, kind: 'underlineBold', open: '__**', close: '**__' },
+    { regex: /\*\*__([^\n]+?)__\*\*/g, kind: 'underlineBold', open: '**__', close: '__**' },
+    { regex: /__\*([^\n]+?)\*__/g, kind: 'underlineItalic', open: '__*', close: '*__' },
+    { regex: /\*__([^\n]+?)__\*/g, kind: 'underlineItalic', open: '*__', close: '__*' },
+    { regex: /\*\*\*([^\n]+?)\*\*\*/g, kind: 'boldItalic', open: '***', close: '***' },
+    { regex: /\*\*([^\n]+?)\*\*/g, kind: 'bold', open: '**', close: '**' },
+    { regex: /__([^\n]+?)__/g, kind: 'underline', open: '__', close: '__' },
+    { regex: /~~([^\n]+?)~~/g, kind: 'strike', open: '~~', close: '~~' },
+    { regex: /\|\|([^\n]+?)\|\|/g, kind: 'spoiler', open: '||', close: '||' },
+    { regex: /`([^`\n]+?)`/g, kind: 'code', open: '`', close: '`' },
+    { regex: /\[([^\]\n]+?)\]\(([^)\n]+?)\)/g, kind: 'link', open: '[', close: ')', labelGroup: 1, urlGroup: 2 },
+    { regex: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g, kind: 'italic', open: '*', close: '*' },
+    { regex: /(?<!_)_([^_\n]+?)_(?!_)/g, kind: 'italic', open: '_', close: '_' },
+  ];
 
   const parts: ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+  let cursor = 0;
   let key = 0;
 
-  // Helper: markers stay visible but muted, like Discord's composer while editing.
-  // They keep the exact same glyph metrics as the raw textarea value.
   const marker = (s: string) => (
-    <span style={{ color: 'hsl(var(--muted-foreground) / 0.45)' }}>{s}</span>
+    <span aria-hidden style={{ opacity: 0 }}>{s}</span>
   );
 
-  // Visual-only styling: never changes layout metrics, preventing caret drift.
   const boldStyle: React.CSSProperties = {
     color: 'hsl(var(--foreground))',
-    textShadow: '0.45px 0 0 currentColor, -0.45px 0 0 currentColor, 0 0.28px 0 currentColor, 0 -0.28px 0 currentColor',
+    textShadow: '0.55px 0 0 currentColor, -0.55px 0 0 currentColor, 0 0.32px 0 currentColor, 0 -0.32px 0 currentColor',
   };
-
   const italicStyle: React.CSSProperties = {
     display: 'inline-block',
     transform: 'skewX(-10deg)',
     transformOrigin: 'center',
   };
-
   const codeStyle: React.CSSProperties = {
     backgroundColor: 'hsl(var(--surface-elevated))',
     boxShadow: '0 0 0 1px hsl(var(--border) / 0.65), hsl(var(--surface-elevated)) 2px 0 0 0, hsl(var(--surface-elevated)) -2px 0 0 0',
@@ -333,141 +344,47 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
     borderRadius: '3px',
   };
 
-
-  while ((match = inlineRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+  const renderStyled = (kind: InlineKind, inner: string, open: string, close: string, url?: string) => {
+    if (kind === 'link') {
+      return <span key={key++}>{marker(open)}<span className="text-primary underline underline-offset-2">{inner}</span>{marker('](')}<span style={{ opacity: 0 }}>{url}</span>{marker(close)}</span>;
     }
-    const full = match[0];
+    if (kind === 'code') return <span key={key++} style={codeStyle}>{marker(open)}{inner}{marker(close)}</span>;
+    if (kind === 'spoiler') {
+      return <span key={key++}>{marker(open)}<span className="rounded-[3px]" style={{ backgroundColor: 'hsl(var(--foreground) / 0.22)', boxShadow: '0 0 0 1px hsl(var(--foreground) / 0.07)' }}>{inner}</span>{marker(close)}</span>;
+    }
+    const style: React.CSSProperties = {
+      ...(kind === 'bold' || kind === 'boldItalic' || kind === 'underlineBold' || kind === 'underlineBoldItalic' ? boldStyle : undefined),
+      ...(kind === 'italic' || kind === 'boldItalic' || kind === 'underlineItalic' || kind === 'underlineBoldItalic' ? italicStyle : undefined),
+    };
+    const className = [
+      kind === 'underline' || kind === 'underlineBold' || kind === 'underlineItalic' || kind === 'underlineBoldItalic' ? 'underline decoration-foreground/80 underline-offset-2' : '',
+      kind === 'strike' ? 'line-through decoration-foreground/70' : '',
+    ].filter(Boolean).join(' ');
+    return <span key={key++}>{marker(open)}<span className={className || undefined} style={style}>{inner}</span>{marker(close)}</span>;
+  };
 
-    if (match[2] !== undefined) {
-      // ***bold italic***
-      parts.push(
-        <span key={key++}>
-          {marker('***')}
-          <span style={{ ...boldStyle, ...italicStyle }}>{match[2]}</span>
-          {marker('***')}
-        </span>
-      );
-    } else if (match[3] !== undefined) {
-      // ___underline bold italic___
-      parts.push(
-        <span key={key++}>
-          {marker('___')}
-          <span className="underline decoration-foreground/80 underline-offset-2" style={{ ...boldStyle, ...italicStyle }}>{match[3]}</span>
-          {marker('___')}
-        </span>
-      );
-    } else if (match[4] !== undefined) {
-      // __**underline bold**__
-      parts.push(
-        <span key={key++}>
-          {marker('__**')}
-          <span className="underline decoration-foreground/80 underline-offset-2" style={boldStyle}>{match[4]}</span>
-          {marker('**__')}
-        </span>
-      );
-    } else if (match[5] !== undefined) {
-      // **__bold underline__**
-      parts.push(
-        <span key={key++}>
-          {marker('**__')}
-          <span className="underline decoration-foreground/80 underline-offset-2" style={boldStyle}>{match[5]}</span>
-          {marker('__**')}
-        </span>
-      );
-    } else if (match[6] !== undefined) {
-      // **bold**
-      parts.push(
-        <span key={key++}>
-          {marker('**')}
-          <span style={boldStyle}>{match[6]}</span>
-          {marker('**')}
-        </span>
-      );
-    } else if (match[7] !== undefined) {
-      // __underline__
-      parts.push(
-        <span key={key++}>
-          {marker('__')}
-          <span className="underline decoration-foreground/80 underline-offset-2">{match[7]}</span>
-          {marker('__')}
-        </span>
-      );
-    } else if (match[8] !== undefined) {
-      // ~~strikethrough~~
-      parts.push(
-        <span key={key++}>
-          {marker('~~')}
-          <span className="line-through decoration-foreground/70">{match[8]}</span>
-          {marker('~~')}
-        </span>
-      );
-    } else if (match[9] !== undefined) {
-      // ||spoiler||
-      parts.push(
-        <span key={key++}>
-          {marker('||')}
-          <span
-            className="rounded-[3px]"
-            style={{
-              backgroundColor: 'hsl(var(--foreground) / 0.18)',
-              boxShadow: '0 0 0 1px hsl(var(--foreground) / 0.05)',
-            }}
-          >
-            {match[9]}
-          </span>
-          {marker('||')}
-        </span>
-      );
-    } else if (match[10] !== undefined) {
-      // `inline code` — real monospace pill (Discord-style)
-      parts.push(
-        <span key={key++} style={codeStyle}>
-          {marker('`')}
-          {match[10]}
-          {marker('`')}
-        </span>
-      );
+  while (cursor < text.length) {
+    let best: { pattern: InlinePattern; match: RegExpExecArray; order: number } | null = null;
+    patterns.forEach((pattern, order) => {
+      pattern.regex.lastIndex = cursor;
+      const match = pattern.regex.exec(text);
+      if (!match) return;
+      if (!best || match.index < best.match.index || (match.index === best.match.index && (match[0].length > best.match[0].length || order < best.order))) {
+        best = { pattern, match, order };
+      }
+    });
 
-    } else if (match[11] !== undefined && match[12] !== undefined) {
-      // [label](url)
-      parts.push(
-        <span key={key++}>
-          {marker('[')}
-          <span className="text-primary underline underline-offset-2">{match[11]}</span>
-          {marker('](')}
-          <span style={{ color: 'hsl(var(--muted-foreground) / 0.55)' }}>{match[12]}</span>
-          {marker(')')}
-        </span>
-      );
-    } else if (match[13] !== undefined) {
-      // *italic*
-      parts.push(
-        <span key={key++}>
-          {marker('*')}
-          <span style={italicStyle}>{match[13]}</span>
-          {marker('*')}
-        </span>
-      );
-    } else if (match[14] !== undefined) {
-      // _italic_
-      parts.push(
-        <span key={key++}>
-          {marker('_')}
-          <span style={italicStyle}>{match[14]}</span>
-          {marker('_')}
-        </span>
-      );
-    } else {
-      parts.push(<span key={key++}>{full}</span>);
+    if (!best) {
+      parts.push(<span key={key++}>{text.slice(cursor)}</span>);
+      break;
     }
 
-    lastIndex = match.index + full.length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+    const { pattern, match } = best;
+    if (match.index > cursor) parts.push(<span key={key++}>{text.slice(cursor, match.index)}</span>);
+    const inner = pattern.kind === 'link' ? match[pattern.labelGroup ?? 1] : match[1];
+    const url = pattern.kind === 'link' ? match[pattern.urlGroup ?? 2] : undefined;
+    parts.push(renderStyled(pattern.kind, inner, pattern.open, pattern.close, url));
+    cursor = match.index + match[0].length;
   }
 
   return parts.length > 0 ? parts : text;

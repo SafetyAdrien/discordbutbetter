@@ -1631,7 +1631,293 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           canAddReactions={canAddReactions}
                           canManageMessages={canManageMessages}
                         />
-                        __MSG_BODY_PLACEHOLDER__
+                                                {showAuthor ? (
+                          <div className="relative">
+                            {threadsByMessageId.has(message.id) && <ThreadSpine startY={44} />}
+                            {message.repliedMessage && !isEditing && (
+                              <RepliedLine
+                                repliedMessage={message.repliedMessage}
+                                onJump={scrollToMessage}
+                                indent={41}
+                                avatarCenter={9}
+                                authorColor={
+                                  message.repliedMessage?.author
+                                    ? memberRoles?.get(message.repliedMessage.author.id)?.[0]?.color || undefined
+                                    : undefined
+                                }
+                                authorRole={
+                                  message.repliedMessage?.author
+                                    ? (memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null)
+                                    : null
+                                }
+                                className="mb-1 max-sm:mb-0.5"
+                              />
+                            )}
+                            <div className="flex gap-3 max-sm:gap-2 items-start -ml-[11px]">
+                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                                <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
+                                  <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
+                                  <AvatarFallback className="bg-primary/20 text-primary">
+                                    {message.author.displayName.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </button>
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
+                                  <button
+                                    onClick={() => handleUserClick(message.author)}
+                                    className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0 text-[15px]"
+                                    style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
+                                  >
+                                    {message.author.displayName}
+                                  </button>
+                                  {/* SYSTEM tag for system messages */}
+                                  {(message as any).isSystemMessage && (
+                                    <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5865f2] bg-[#5865f2]/10 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
+                                      SYSTEM
+                                    </span>
+                                  )}
+                                  {/* Role badge icon - displayed to the right of username */}
+                                  {memberRoles?.get(message.author.id)?.[0] &&
+                                    memberRoles.get(message.author.id)![0].icon_url && (
+                                      <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
+                                    )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-xs text-muted-foreground flex-shrink-0 cursor-default">
+                                        {formatTime(message.timestamp)}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                        weekday: "long",
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        second: "2-digit",
+                                      })}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                {isEditing ? (
+                                  <div className="mt-1 space-y-2">
+                                    <Textarea
+                                      ref={setEditingTextareaNode}
+                                      value={editingContent}
+                                      onChange={(e) => {
+                                        setEditingContent(e.target.value);
+                                        resizeEditTextarea(e.target);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                          e.preventDefault();
+                                          handleSaveEdit();
+                                        }
+                                        if (e.key === "Escape") {
+                                          handleCancelEdit();
+                                        }
+                                      }}
+                                      className={editTextareaClass}
+                                      rows={1}
+                                    />
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <span>Échap pour annuler</span>
+                                      <span>•</span>
+                                      <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                                      <span
+                                        className={cn(
+                                          "ml-auto",
+                                          editingContent.length > 1900 && "text-yellow-500",
+                                          editingContent.length > 1980 && "text-destructive font-medium",
+                                        )}
+                                      >
+                                        {editingContent.length}/2000
+                                      </span>
+                                      <div className="flex gap-1">
+                                        <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                          <X className="w-4 h-4" />
+                                        </Button>
+                                        <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                          <Check className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="text-foreground break-words max-w-full font-ginto text-[15px] leading-[1.375rem]">
+                                      <MarkdownText variant="chat" content={message.content} />
+                                     </div>
+                                  </>
+                                )}
+
+                                {/* Message Attachments */}
+                                {(message as any).attachments && (message as any).attachments.length > 0 && (
+                                  <MessageAttachments
+                                    attachments={(message as any).attachments as StoredAttachment[]}
+                                  />
+                                )}
+
+                                {/* Link Embeds */}
+                                <LinkEmbeds content={message.content} />
+
+                                {/* Edited indicator - after attachments */}
+                                {message.edited_at && (
+                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 max-sm:mt-0 block">
+                                    (modifié)
+                                  </span>
+                                )}
+
+                                {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                                  <div className="mt-1 max-sm:mt-0.5">
+                                    <ReactionBar
+                                      reactions={reactionsData?.[message.id] || []}
+                                      onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                      serverId={channel.server_id}
+                                      size="sm"
+                                      onViewReactors={(emoji) => {
+                                        setReactionsViewerInitialEmoji(emoji ?? null);
+                                        setReactionsViewerMessageId(message.id);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Thread System Message */}
+                            {threadsByMessageId.has(message.id) && (
+                              <div className="pt-1.5 pl-[50px] max-sm:pt-1">
+                                <ThreadSystemMessage
+                                  thread={threadsByMessageId.get(message.id)!}
+                                  onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
+                            {/* Note: hasReply forces showAuthor=true, so RepliedLine never renders here. */}
+                            <div className="flex gap-3 max-sm:gap-2 items-start -ml-[11px]">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">
+                                    {formatTime(message.timestamp)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                    weekday: "long",
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })}
+                                </TooltipContent>
+                              </Tooltip>
+                              <div className="flex-1 min-w-0">
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Textarea
+                                      ref={setEditingTextareaNode}
+                                      value={editingContent}
+                                      onChange={(e) => {
+                                        setEditingContent(e.target.value);
+                                        resizeEditTextarea(e.target);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                          e.preventDefault();
+                                          handleSaveEdit();
+                                        }
+                                        if (e.key === "Escape") {
+                                          handleCancelEdit();
+                                        }
+                                      }}
+                                      className={editTextareaClass}
+                                      rows={1}
+                                    />
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <span>Échap pour annuler</span>
+                                      <span>•</span>
+                                      <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                                      <span
+                                        className={cn(
+                                          "ml-auto",
+                                          editingContent.length > 1900 && "text-yellow-500",
+                                          editingContent.length > 1980 && "text-destructive font-medium",
+                                        )}
+                                      >
+                                        {editingContent.length}/2000
+                                      </span>
+                                      <div className="flex gap-1">
+                                        <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
+                                          <X className="w-4 h-4" />
+                                        </Button>
+                                        <Button size="iconSm" variant="default" onClick={handleSaveEdit}>
+                                          <Check className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                     <div className="text-foreground break-words max-w-full font-ginto text-[15px] leading-[1.375rem]">
+                                       <MarkdownText variant="chat" content={message.content} />
+                                     </div>
+                                  </>
+                                )}
+
+                                {/* Message Attachments for grouped messages */}
+                                {(message as any).attachments && (message as any).attachments.length > 0 && (
+                                  <MessageAttachments
+                                    attachments={(message as any).attachments as StoredAttachment[]}
+                                  />
+                                )}
+
+                                {/* Link Embeds */}
+                                <LinkEmbeds content={message.content} />
+
+                                {/* Edited indicator - after attachments */}
+                                {message.edited_at && (
+                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 max-sm:mt-0 block">
+                                    (modifié)
+                                  </span>
+                                )}
+
+                                {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
+                                  <div className="mt-1 max-sm:mt-0.5">
+                                    <ReactionBar
+                                      reactions={reactionsData?.[message.id] || []}
+                                      onToggle={(emoji) => handleAddReaction(message.id, emoji)}
+                                      serverId={channel.server_id}
+                                      size="sm"
+                                      onViewReactors={(emoji) => {
+                                        setReactionsViewerInitialEmoji(emoji ?? null);
+                                        setReactionsViewerMessageId(message.id);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Thread System Message for grouped messages */}
+                            {threadsByMessageId.has(message.id) && (
+                              <div className="pt-1.5 pl-[50px] max-sm:pt-1">
+                                <ThreadSystemMessage
+                                  thread={threadsByMessageId.get(message.id)!}
+                                  onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </SwipeToReplyRow>
                 </UniversalMessageContextMenu>

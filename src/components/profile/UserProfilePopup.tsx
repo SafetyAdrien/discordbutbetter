@@ -817,6 +817,7 @@ export function UserProfilePopup({
       </FloatingProfileCard>
       {serverProfileModal}
       {fullBioModal}
+      {customStatusModal}
     </>
   );
 }

@@ -1,63 +1,56 @@
-## Problème identifié
+## Objectif
 
-Sur mobile, le chargement « instantané » échoue parce que :
+Remplacer les `<ContextMenu>` inline dans `ChatArea.tsx` et `AnnouncementChannel.tsx` par le composant `UniversalMessageContextMenu` déjà utilisé partout ailleurs (DMConversation, ThreadView, VoiceChannelChat, MobileDMConversation…). Toutes les actions (clic droit desktop + long-press mobile) deviennent uniformes et chaque nouvelle entrée n'a plus qu'à être ajoutée au composant universel.
 
-1. **`warmCache()` marque le cache prêt AVANT d'avoir hydraté IndexedDB en mémoire** (`src/lib/cache.ts` lignes 264-307). L'hydratation IDB tourne en arrière-plan et dure ~1s sur smartphone (cf. log `warmCache:idbHydrate(38) = 1039.1ms`).
-2. **`useMessages` / `useDMMessages` / `useThreadMessages` lisent leur `placeholderData` via `cacheGetSync()`** au moment où `cacheReady` passe à `true`. Comme IDB n'est pas encore hydraté en mémoire et que le miroir `localStorage` est souvent saturé sur mobile (quota ~5 Mo silencieusement dépassé), le sync read renvoie `undefined` → aucun message affiché instantanément → on attend la requête réseau (`query:messages = 992ms`).
-3. **`useMessages` force `staleTime: 0` + `refetchOnMount: 'always'`** : même quand le cache existe, chaque changement de salon repart en réseau, ce qui aggrave la latence ressentie.
-4. **`useServers` ne peut pas lire son cache tant que `user` n'est pas résolu** : la première frame de la liste des serveurs est vide. Comme `useAuth` est async, on perd ~1s avant d'afficher la liste, puis `query:servers = 992ms` finit le travail.
+## Périmètre
 
-## Correctifs
+- Comportement et UI strictement préservés (mêmes actions, mêmes permissions, mêmes labels visibles).
+- Aucun changement de logique métier (handlers existants — `handleReply`, `handleCopyMessage`, `handlePinMessage`, `handleDelete`, `handlePublishMessage`, etc. — sont réutilisés tels quels).
+- Aucun changement sur les autres vues déjà migrées.
 
-### 1. `src/lib/cache.ts` — attendre l'hydratation IDB avant de libérer `cacheReady`
+## Étapes
 
-- Ne plus appeler `markCacheReady()` juste après `enforceCacheSchemaVersion()`.
-- Lancer l'hydratation IDB et n'appeler `markCacheReady()` qu'après (`tx.oncomplete`), avec un **plafond de sécurité de 1200 ms** (`setTimeout`) pour ne jamais bloquer l'UI plus longtemps si IDB est lent / cassé.
-- Conserver le purge de schéma comme étape bloquante, mais réduire son timeout interne.
+### 1. `src/components/chat/ChatArea.tsx` — messages texte normaux (lignes ~1564-2054)
 
-Résultat : quand `cacheReady` passe à `true`, le `memoryCache` contient déjà les messages/DM/serveurs/channels du dernier état → les `placeholderData` synchrones renvoient instantanément les données.
+- Remplacer le bloc `<ContextMenu> … <ContextMenuContent> … </ContextMenu>` qui entoure le message par `<UniversalMessageContextMenu>` configuré ainsi :
+  - `variant="message"`, `messageId={message.id}`, `isOwnMessage`, `isPinned={pinnedMessageIds.has(message.id)}`
+  - `canAddReactions`, `canManageMessages`, `canManageReactions={canManageMessages}`, `hasReactions={(reactionsData?.[message.id]?.length ?? 0) > 0}`
+  - Handlers : `onReply`, `onAddReaction`, `onCopyText`, `onCopyLink`, `onCopyId`, `onEdit` (si `isOwnMessage`), `onDelete` (si `isOwnMessage || canManageMessages`), `onPin` (si `canManageMessages`), `onCreateThread` (si `canCreateThreads`), `onReport`, `onViewReactions`, `onClearAllReactions`
+  - L'enfant est le `<SwipeToReplyRow>…</SwipeToReplyRow>` existant.
+- Supprimer la boîte de dialogue de suppression locale déclenchée par `handleContextDeleteSelect` pour ces messages : Universal gère sa propre `DeleteMessageDialog` (incluant le bypass SHIFT). Vérifier que `handleContextDeleteSelect` n'est plus utilisé par d'autres branches ; sinon le laisser pour les autres usages.
+- Nettoyer les imports devenus inutiles (`ContextMenu`, `ContextMenuTrigger`, `ContextMenuContent`, `ContextMenuItem`, `ContextMenuSeparator`, `Popover/PopoverContent/PopoverTrigger` si plus utilisés, `Reply`, `Copy`, `Pin`, `Link`, `Hash`, `Pencil`, `Trash2`, `Flag`, `Eye`, `SmilePlus`, `StreamlineThreads`, `CONTEXT_MENU_REACTIONS`) — uniquement ceux qui ne servent plus ailleurs dans le fichier (les sondages et messages système conservent leur usage de `UniversalMessageContextMenu` + `extraItems`).
 
-### 2. `src/main.tsx` — augmenter le plafond de `warmCache` à 1500 ms
+### 2. `src/components/channels/AnnouncementChannel.tsx`
 
-Aligner avec le nouveau plafond IDB (1200 ms + marge). Le shell se rend toujours après, mais on évite le scénario où le shell s'affiche avec un cache vide.
+#### 2a. Messages d'annonces (lignes ~841-1199)
 
-### 3. `src/hooks/useMessages.ts` — supprimer le refetch agressif
+- Remplacer le `<ContextMenu>` qui entoure la carte d'annonce par `<UniversalMessageContextMenu variant="message" …>` avec les mêmes handlers que ChatArea (`onReply`, `onCopyText`, `onCopyLink`, `onCopyId`, `onAddReaction`, `onEdit`, `onDelete`, `onPin` selon permissions, `onReport`).
+- Pas d'`onCreateThread` ici (les annonces n'en ont pas dans le menu actuel) — laisser `undefined` pour cacher l'entrée.
+- L'action « Publier aux abonnés » reste dans `UniversalMessageActions` via `customAction` (déjà en place) — aucun changement.
+  - Note : Universal ne supporte pas une action personnalisée dans son menu ; si on veut aussi l'exposer dans le clic droit, on peut passer `extraItems` (un `ContextMenuItem` rendu uniquement en desktop). À faire seulement si l'utilisateur le demande — par défaut on garde l'iso comportementale exacte (publier reste sur la toolbar).
 
-- `staleTime: 30_000` (au lieu de 0)
-- `refetchOnMount: false` quand `placeholderData` est présent (sinon `'always'`)
-- Identique pour `useDMMessages.ts` et `useThreadMessages.ts`.
+#### 2b. Message système « Thread créé » (lignes ~750-812)
 
-Le realtime (déjà branché par salon) garde les messages à jour ; on n'a pas besoin de refetch à chaque mount.
+- Remplacer le `<ContextMenu>` inline (qui n'expose qu'une suppression conditionnelle) par `<UniversalMessageContextMenu variant="system" canAddReactions={false}>` avec uniquement `onDelete`, `onCopyLink`, `onCopyId`. Permissions identiques (`user?.id === message.author.id || canManageMessages`).
 
-### 4. `src/hooks/useServers.ts` — fallback cache sans dépendre de `user`
+#### 2c. Nettoyage imports
 
-Lire `servers:<lastUserId>` depuis `localStorage` (clé persistée au login) pour seeder `initialData` même quand `useAuth()` n'a pas encore renvoyé `user`. On stocke `lastUserId` dans `localStorage` à la fin de chaque session authentifiée (déjà dans `AuthContext`, sinon ajout d'une ligne).
-
-### 5. `src/hooks/usePreloader.ts` — précharger les messages du dernier salon depuis IDB en mémoire
-
-Aujourd'hui le preloader ne fait que `queryClient.setQueryData(['messages', targetChannelId], cachedMsgs)` si `cacheGetSync` répond. Avec le correctif n°1 ce read réussira systématiquement, donc aucun changement de code requis ici — juste vérifier que ça fonctionne après les autres correctifs.
+- Retirer les imports devenus inutiles (`ContextMenu`/`Trigger`/`Content`/`Item`/`Separator`, icônes lucide non utilisées ailleurs).
 
 ## Détails techniques
 
-```text
-Avant :
-  warmCache.start ──▶ schemaEnforce ──▶ markReady ──▶ (UI render, cache MISS)
-                                       └─▶ idbHydrate (1s, background)
+- Le typage de `UniversalMessageContextMenuProps` couvre tous les handlers nécessaires ; aucun changement au composant universel.
+- Universal restitue le `children` via `<ContextMenuTrigger asChild>` (desktop) ou via un wrapper `div` avec `useLongPress` (mobile). Pour ChatArea le `children` reste `<SwipeToReplyRow>…</SwipeToReplyRow>` ; pour AnnouncementChannel c'est le `<div className="group message-hover …">`. Le comportement de hover et de swipe n'est pas affecté.
+- `DeleteMessageDialog` est rendue par Universal — supprimer son équivalent local pour ces deux vues (uniquement les chemins migrés) afin d'éviter une double dialogue. Vérifier les autres usages avant suppression.
+- La grille d'émojis « picker » du menu actuel de ChatArea est déjà présente dans Universal : iso visuelle conservée.
 
-Après :
-  warmCache.start ──▶ schemaEnforce ──▶ idbHydrate (cap 1200ms) ──▶ markReady ──▶ UI render (cache HIT)
-```
+## Validation
 
-Cap 1200 ms : c'est le pire cas observé sur le device de l'utilisateur (1039 ms). On ajoute ~15% de marge. Si IDB casse complètement, on libère quand même à 1200 ms et on retombe sur le comportement actuel (réseau).
-
-## Fichiers modifiés
-
-- `src/lib/cache.ts` — réorganiser `warmCache()` (hydratation bloquante avec timeout)
-- `src/main.tsx` — plafond `warmCache` à 1500 ms
-- `src/hooks/useMessages.ts` — `staleTime` + `refetchOnMount`
-- `src/hooks/useDMMessages.ts` — idem
-- `src/hooks/useThreadMessages.ts` — idem
-- `src/hooks/useServers.ts` — fallback `lastUserId` pour `initialData`
-- `src/contexts/AuthContext.tsx` — persister `lastUserId` à la connexion (si pas déjà fait)
-
-Aucun changement visuel, aucune migration backend.
+1. Build (auto).
+2. Vérifier visuellement (preview) :
+   - Clic droit sur un message texte standard → menu universel s'ouvre, toutes les actions présentes.
+   - SHIFT + clic sur Supprimer → suppression directe sans dialogue (comportement universel).
+   - Clic droit sur une annonce → mêmes actions qu'avant (sans « Créer un thread »).
+   - Clic droit sur le message système « Thread créé » par l'auteur ou un modérateur → entrée Supprimer.
+   - Long-press mobile sur un message dans #général et #annonces → bottom sheet universel.
+3. Lancer `rg "ContextMenu" src/components/chat/ChatArea.tsx src/components/channels/AnnouncementChannel.tsx` : ne doit plus rester que les usages de `UniversalMessageContextMenu` (et `extraItems` éventuels pour les sondages dans ChatArea).

@@ -9,24 +9,18 @@ import {
   Pin,
   Users,
   Inbox,
-  Copy,
-  Reply,
   Pencil,
-  Trash2,
   MessageSquareText,
   BellOff,
   BellRing,
   AtSign,
   X,
   Check,
-  Link,
-  SmilePlus,
   BarChart2,
-  Flag,
-  Hash,
 } from "lucide-react";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
+import { UniversalMessageContextMenu } from "@/components/chat/UniversalMessageContextMenu";
 import { ReplyBanner } from "@/components/chat/ReplyBanner";
 import {
   DropdownMenu,
@@ -42,13 +36,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import { copyToClipboard } from "@/lib/clipboard";
 import { ThreadSpine } from "@/components/threads/ThreadSpine";
 import { useAuth } from "@/contexts/AuthContext";
@@ -747,8 +734,17 @@ export function AnnouncementChannel({
                 return (
                   <div key={message.id}>
                     {DateSeparator}
-                    <ContextMenu>
-                      <ContextMenuTrigger asChild>
+                    <UniversalMessageContextMenu
+                      messageId={message.id}
+                      isOwnMessage={user?.id === message.author.id}
+                      canAddReactions={false}
+                      canManageMessages={canManageMessages}
+                      variant="system"
+                      onAddReaction={() => {}}
+                      onCopyLink={() => handleCopyMessageLink(message.id)}
+                      onCopyId={() => handleCopyId(message.id)}
+                      onDelete={(user?.id === message.author.id || canManageMessages) ? () => handleDelete(message.id) : undefined}
+                    >
                         <div className="py-1 px-4 my-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
@@ -797,19 +793,7 @@ export function AnnouncementChannel({
                             </div>
                           </div>
                         </div>
-                      </ContextMenuTrigger>
-                      {(user?.id === message.author.id || canManageMessages) && (
-                        <ContextMenuContent>
-                          <ContextMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(message.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer le message
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      )}
-                    </ContextMenu>
+                    </UniversalMessageContextMenu>
                   </div>
                 );
               }
@@ -838,8 +822,26 @@ export function AnnouncementChannel({
             return (
               <div key={message.id}>
                 {DateSeparator}
-                <ContextMenu>
-                  <ContextMenuTrigger asChild>
+                <UniversalMessageContextMenu
+                  messageId={message.id}
+                  isOwnMessage={isOwnMessage}
+                  isPinned={pinnedMessageIds.has(message.id)}
+                  canAddReactions={canAddReactions}
+                  canManageMessages={canManageMessages}
+                  hasReactions={(reactionsData?.[message.id]?.length ?? 0) > 0}
+                  previewAuthorName={message.author.displayName}
+                  previewContent={message.content}
+                  onReply={() => handleReply(message)}
+                  onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                  onCopyText={() => handleCopyMessage(message.content)}
+                  onCopyLink={() => handleCopyMessageLink(message.id)}
+                  onCopyId={() => handleCopyId(message.id)}
+                  onEdit={(isOwnMessage || canManageMessages) ? () => handleStartEdit(message) : undefined}
+                  onDelete={(isOwnMessage || canManageMessages) ? () => handleDelete(message.id) : undefined}
+                  onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}
+                  copyLinkLabel="Copier le lien du message"
+                  copyIdLabel="Copier l'identifiant du message"
+                >
                   <div
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);
@@ -1155,48 +1157,7 @@ export function AnnouncementChannel({
                       </div>
                     )}
                   </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="w-48">
-                  <ContextMenuItem onClick={() => handleAddReaction(message.id, "👍")}>
-                    <span className="mr-2">👍</span>
-                    Ajouter une réaction
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleReply(message)}>
-                    <Reply className="w-4 h-4 mr-2" />
-                    Répondre
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copier le texte
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
-                    <Link className="w-4 h-4 mr-2" />
-                    Copier le lien du message
-                  </ContextMenuItem>
-                  {(isOwnMessage || canManageMessages) && (
-                    <>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => handleStartEdit(message)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Modifier
-                      </ContextMenuItem>
-                    </>
-                  )}
-                   {(isOwnMessage || canManageMessages) && (
-                     <>
-                       {!(isOwnMessage || canManageMessages) && <ContextMenuSeparator />}
-                      <ContextMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(message.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
-                      </ContextMenuItem>
-                    </>
-                  )}
-                </ContextMenuContent>
-              </ContextMenu>
+                </UniversalMessageContextMenu>
               </div>
             );
           })}

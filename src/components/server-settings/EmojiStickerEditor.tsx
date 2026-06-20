@@ -251,7 +251,7 @@ export function EmojiStickerEditor({
       >
         <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100dvh] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0">
+          <div className="relative flex flex-col flex-1 md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -362,7 +362,7 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-[45dvh] md:max-h-none shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview

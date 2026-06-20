@@ -577,7 +577,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               </div>
                             )}
 
-                            {editingMessageId === message.id ? (
+                            {editingMessageId === message.id && !isMobile ? (
                               <div className="mt-1 space-y-2">
                                 <MarkdownTextarea
                                   value={editingContent}

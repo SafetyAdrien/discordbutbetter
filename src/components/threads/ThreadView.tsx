@@ -54,7 +54,7 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { cn } from '@/lib/utils';
-import { copyToClipboard } from '@/lib/clipboard';
+import { copyToClipboard, copyMessageWithFormatting } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { toast } from 'sonner';
@@ -837,7 +837,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       previewContent={message.content}
                       onReply={() => setReplyingTo(message)}
                       onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                      onCopyText={() => copyToClipboard(message.content, 'Message copié')}
+                      onCopyText={() => copyMessageWithFormatting(message.content)}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
                       onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}

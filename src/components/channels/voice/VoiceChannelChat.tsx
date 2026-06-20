@@ -19,7 +19,7 @@ import { useMessageReactions, useAddReaction, useRemoveReaction, useClearMessage
 import { ReactionsViewerModal } from '@/components/chat/ReactionsViewerModal';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { useShiftKey } from '@/hooks/useShiftKey';
-import { copyToClipboard } from '@/lib/clipboard';
+import { copyToClipboard, copyMessageWithFormatting } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
 import { toast } from 'sonner';
@@ -249,8 +249,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     onReply={() => {}}
                     onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                     onCopyText={() => {
-                      copyToClipboard(message.content);
-                      toast.success('Texte copié');
+                      copyMessageWithFormatting(message.content, 'Texte copié');
                     }}
                     onCopyLink={() => {
                       copyToClipboard(`${window.location.origin}/channels/${serverId}/${channelId}/${message.id}`);

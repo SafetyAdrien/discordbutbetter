@@ -1700,7 +1700,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
-                                {isEditing && !isMobile ? (
+                                {false ? (
                                   <div className="mt-1 space-y-2">
                                     <MarkdownTextarea
                                       ref={setEditingTextareaNode}
@@ -1820,7 +1820,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </TooltipContent>
                               </Tooltip>
                               <div className="flex-1 min-w-0">
-                                {isEditing && !isMobile ? (
+                                {false ? (
                                   <div className="space-y-2">
                                     <MarkdownTextarea
                                       ref={setEditingTextareaNode}
@@ -1942,7 +1942,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           </div>
         )}
         <TypingIndicator channelId={channel.id} />
-        {replyingTo && !(isMobile && editingMessageId) && (
+        {replyingTo && !editingMessageId && (
           <ReplyBanner
             authorName={replyingTo.author.displayName}
             authorAvatar={replyingTo.author.avatar}
@@ -1952,7 +1952,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             onClear={() => setReplyingTo(null)}
           />
         )}
-        {isMobile && editingMessageId && (
+        {editingMessageId && (
           <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
             <button
               onClick={handleCancelEdit}
@@ -1965,11 +1965,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           </div>
         )}
         <MessageInput
-          value={isMobile && editingMessageId ? editingContent : messageInput}
-          onChange={isMobile && editingMessageId ? setEditingContent : setMessageInput}
-          onSend={isMobile && editingMessageId ? () => handleSaveEdit() : handleSubmit}
+          value={editingMessageId ? editingContent : messageInput}
+          onChange={editingMessageId ? setEditingContent : setMessageInput}
+          onSend={editingMessageId ? () => handleSaveEdit() : handleSubmit}
           placeholder={
-            isMobile && editingMessageId
+            editingMessageId
               ? "Modifier le message…"
               : `Envoyer un message dans #${channel.name}`
           }
@@ -1979,7 +1979,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           serverId={channel.server_id}
           channelId={channel.id}
           channelName={channel.name}
-          editingMessageId={isMobile ? editingMessageId : null}
+          editingMessageId={editingMessageId}
           members={members.map((m) => ({
             id: m.id,
             displayName: m.displayName,

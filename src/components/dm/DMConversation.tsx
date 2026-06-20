@@ -577,7 +577,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               </div>
                             )}
 
-                            {editingMessageId === message.id && !isMobile ? (
+                            {false ? (
                               <div className="mt-1 space-y-2">
                                 <MarkdownTextarea
                                   value={editingContent}
@@ -666,7 +666,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           <TypingIndicator conversationId={conversationId} />
 
           {/* Reply preview (above input) */}
-          {replyingTo && !(isMobile && editingMessageId) && (
+          {replyingTo && !editingMessageId && (
             <ReplyBanner
               authorName={replyingTo.author?.display_name || 'Utilisateur'}
               authorAvatar={replyingTo.author?.avatar_url}
@@ -676,7 +676,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             />
           )}
 
-          {isMobile && editingMessageId && (
+          {editingMessageId && (
             <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
               <button
                 onClick={handleCancelEdit}
@@ -692,10 +692,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           {/* Input */}
           <div className="px-4 pb-4 pt-2">
           <MessageInput
-            value={isMobile && editingMessageId ? editingContent : messageInput}
-            onChange={isMobile && editingMessageId ? setEditingContent : setMessageInput}
+            value={editingMessageId ? editingContent : messageInput}
+            onChange={editingMessageId ? setEditingContent : setMessageInput}
             onSend={() => {
-              if (isMobile && editingMessageId) {
+              if (editingMessageId) {
                 handleSaveEdit();
                 return;
               }
@@ -712,7 +712,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               stopTyping();
             }}
             placeholder={
-              isMobile && editingMessageId
+              editingMessageId
                 ? 'Modifier le message…'
                 : replyingTo
                 ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}`
@@ -722,7 +722,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             isSending={sendMessage.isPending}
             onTypingStart={startTyping}
             onTypingStop={stopTyping}
-            editingMessageId={isMobile ? editingMessageId : null}
+            editingMessageId={editingMessageId}
             attachments={attachments}
             onAddFiles={addFiles}
             onRemoveAttachment={removeAttachment}

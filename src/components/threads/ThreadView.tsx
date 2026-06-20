@@ -948,7 +948,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               )}
                             </div>
                           )}
-                          {editingMessageId === message.id && !isMobile ? (
+                          {false ? (
                             <div className="space-y-2">
                               <MarkdownTextarea
                                 ref={(el) => {
@@ -1045,7 +1045,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       <TypingIndicator threadId={threadId} />
 
       {/* Reply indicator */}
-      {replyingTo && !(isMobile && editingMessageId) && (
+      {replyingTo && !editingMessageId && (
         <ReplyBanner
           authorName={replyingTo.author?.display_name || 'Inconnu'}
           authorAvatar={replyingTo.author?.avatar_url}
@@ -1054,7 +1054,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         />
       )}
 
-      {isMobile && editingMessageId && (
+      {editingMessageId && (
         <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
           <button
             onClick={handleCancelEdit}
@@ -1070,11 +1070,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       {/* Input */}
       <div className="px-4 pb-4 pt-2">
       <MessageInput
-        value={isMobile && editingMessageId ? editingContent : messageContent}
-        onChange={isMobile && editingMessageId ? setEditingContent : setMessageContent}
-        onSend={isMobile && editingMessageId ? () => handleSaveEdit() : handleSend}
+        value={editingMessageId ? editingContent : messageContent}
+        onChange={editingMessageId ? setEditingContent : setMessageContent}
+        onSend={editingMessageId ? () => handleSaveEdit() : handleSend}
         placeholder={
-          isMobile && editingMessageId
+          editingMessageId
             ? 'Modifier le message…'
             : replyingTo
             ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}`
@@ -1087,7 +1087,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         serverId={serverId}
         channelId={channelId || thread?.channel_id}
         threadId={threadId}
-        editingMessageId={isMobile ? editingMessageId : null}
+        editingMessageId={editingMessageId}
         members={mentionMembers}
         roles={mentionRoles}
         channels={allChannels}

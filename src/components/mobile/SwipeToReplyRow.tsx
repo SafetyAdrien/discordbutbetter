@@ -27,7 +27,7 @@ interface SwipeToReplyRowProps extends Omit<React.HTMLAttributes<HTMLDivElement>
  * - Honours `prefers-reduced-motion` by killing the transform animation.
  */
 export const SwipeToReplyRow = forwardRef<HTMLDivElement, SwipeToReplyRowProps>(function SwipeToReplyRow(
-  { enabled, onReply, onDoubleTap, className, children },
+  { enabled, onReply, onDoubleTap, className, children, ...rest },
   ref,
 ) {
   const reduced = useReducedMotion();
@@ -35,12 +35,13 @@ export const SwipeToReplyRow = forwardRef<HTMLDivElement, SwipeToReplyRowProps>(
   const swipe = useSwipeToReply({ onReply: handleReply, disabled: !enabled });
   const dbl = useDoubleTap({ onDoubleTap: onDoubleTap ?? (() => {}), disabled: !enabled || !onDoubleTap });
 
-  // IMPORTANT : forwarder la ref dans les deux branches pour que Radix
-  // ContextMenuTrigger asChild / Tooltip puissent attacher correctement
-  // leurs handlers. Sans ça, le clic-droit Desktop est cassé.
+  // IMPORTANT : forwarder la ref ET les props injectées par Radix (asChild)
+  // dans les deux branches pour que ContextMenuTrigger puisse attacher
+  // ses handlers (onContextMenu, onPointerDown...). Sans ça, le clic-droit
+  // Desktop est cassé.
   if (!enabled) {
     return (
-      <div ref={ref} className={className}>
+      <div ref={ref} className={className} {...rest}>
         {children}
       </div>
     );
@@ -62,6 +63,7 @@ export const SwipeToReplyRow = forwardRef<HTMLDivElement, SwipeToReplyRowProps>(
       onTouchMove={swipe.handlers.onTouchMove}
       onTouchEnd={onTouchEnd}
       onTouchCancel={swipe.handlers.onTouchCancel}
+      {...rest}
     >
       {/* Reveal indicator behind the row (right side, iMessage-style) */}
       <div

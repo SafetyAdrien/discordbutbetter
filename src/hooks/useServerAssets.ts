@@ -90,6 +90,7 @@ export function useUploadEmoji() {
       serverId: string;
       name: string;
       file: File;
+      silent?: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
 

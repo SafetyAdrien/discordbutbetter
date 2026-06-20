@@ -780,14 +780,27 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
         </div>
       </div>
 
-      {/* Image Cropper */}
+      {/* Banner cropper (legacy 16:9) */}
       <ImageCropper
         open={cropperOpen}
         onClose={() => setCropperOpen(false)}
         imageSrc={cropperImage}
-        aspectRatio={cropperType === 'icon' ? 1 : 16 / 9}
-        circularCrop={cropperType === 'icon'}
+        aspectRatio={16 / 9}
+        circularCrop={false}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Server icon editor */}
+      <ServerIconUploadEditor
+        open={!!iconEditorFile}
+        file={iconEditorFile}
+        serverName={serverName || 'New server'}
+        onClose={() => setIconEditorFile(null)}
+        onFinish={(file) => {
+          setIconEditorFile(null);
+          setIconFile(file);
+          setIconPreview(URL.createObjectURL(file));
+        }}
       />
     </>
   );

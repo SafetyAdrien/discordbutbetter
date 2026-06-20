@@ -32,8 +32,8 @@ const DEFAULT_PREVIEW = 380;
 const MOBILE_PREVIEW = 196;
 const MOBILE_LANDSCAPE_PREVIEW = 136;
 const MIN_PREVIEW = 56;
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 10;
+const MIN_SCALE = 0.5;
+const MAX_SCALE_CAP = 5;
 const MOBILE_CANVAS_PANEL_MIN = 220;
 const MOBILE_CANVAS_PANEL_MAX = 356;
 
@@ -48,7 +48,7 @@ const getInitialPreview = () => {
   return Math.max(MIN_PREVIEW, Math.min(hardCap, Math.floor(viewportW * 0.48), Math.floor(viewportH * 0.26)));
 };
 
-const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const clampScale = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
@@ -186,6 +186,24 @@ export function EmojiStickerEditor({
     return fitMode === 'fit' ? Math.min(sx, sy) : Math.max(sx, sy);
   }, [imgEl, PREVIEW, fitMode]);
 
+  const minScale = useMemo(() => {
+    if (!imgEl) return MIN_SCALE;
+    const sx = PREVIEW / imgEl.naturalWidth;
+    const sy = PREVIEW / imgEl.naturalHeight;
+    if (fitMode === 'fit') return 1;
+    return Math.max(MIN_SCALE, Math.min(sx, sy) / Math.max(sx, sy));
+  }, [imgEl, PREVIEW, fitMode]);
+
+  const maxScale = useMemo(() => {
+    if (!imgEl) return MAX_SCALE_CAP;
+    return Math.max(1, Math.min(MAX_SCALE_CAP, 1 / fitScale));
+  }, [imgEl, fitScale]);
+
+  // Keep scale within dynamic image bounds when limits change.
+  useEffect(() => {
+    setScale((s) => clampScale(s, minScale, maxScale));
+  }, [minScale, maxScale]);
+
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
@@ -215,7 +233,7 @@ export function EmojiStickerEditor({
     if (points.length >= 2 && pinchRef.current) {
       const distance = pointDistance(points[0], points[1]);
       if (pinchRef.current.startDistance > 0) {
-        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance)));
+        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance), minScale, maxScale));
       }
       return;
     }
@@ -244,7 +262,7 @@ export function EmojiStickerEditor({
 
   const onWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
+    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94), minScale, maxScale));
   };
 
   const rotateRef = useRef<{ cx: number; cy: number; startAngle: number; startRot: number } | null>(null);
@@ -520,10 +538,10 @@ export function EmojiStickerEditor({
               <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Slider
                 value={[scale]}
-                min={MIN_SCALE}
-                max={MAX_SCALE}
+                min={minScale}
+                max={maxScale}
                 step={0.01}
-                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1, minScale, maxScale))}
                 aria-label="Zoom"
                 className="flex-1"
               />

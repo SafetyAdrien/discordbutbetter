@@ -28,6 +28,8 @@ import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
 import { usePermissionsRealtime, useGlobalPermissionsRealtime } from '@/hooks/usePermissionsRealtime';
+import { useServerAssetsRealtime } from '@/hooks/useServerAssets';
+
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useNavigationState } from '@/hooks/useNavigationState';

@@ -69,25 +69,38 @@ export function EmojiStickerEditor({
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
 
-  // Measure to keep canvas square + fit within its container on every viewport
+  // Measure to keep canvas square + physically contained on mobile browsers.
   useEffect(() => {
     if (!previewWrapRef.current || !open) return;
     const el = previewWrapRef.current;
+    let raf = 0;
     const measure = () => {
       const rect = el.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      const viewportW = window.visualViewport?.width ?? window.innerWidth;
+      const viewportH = window.visualViewport?.height ?? window.innerHeight;
+      const isMobile = viewportW < 640;
+      const w = isMobile ? Math.min(rect.width, viewportW - 32) : rect.width;
+      const h = isMobile ? Math.min(rect.height, viewportH - 410) : rect.height;
       if (w <= 0 || h <= 0) return;
       const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
       setPreview(size);
     };
-    measure();
-    const ro = new ResizeObserver(measure);
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+    scheduleMeasure();
+    const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(el);
-    window.addEventListener('resize', measure);
+    window.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('scroll', scheduleMeasure);
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
-      window.removeEventListener('resize', measure);
+      window.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
   }, [open]);
 

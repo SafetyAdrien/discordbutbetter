@@ -107,20 +107,26 @@ export function MediaEditor({
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
 
-  // Measure to keep canvas square + fit on mobile
+  // Measure to keep canvas square + fit within its container on every viewport
   useEffect(() => {
     if (!previewWrapRef.current || !open) return;
     const el = previewWrapRef.current;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const w = entry.contentRect.width;
-        const h = window.innerHeight * 0.5;
-        const size = Math.max(180, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
-        setPreview(size);
-      }
-    });
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w <= 0 || h <= 0) return;
+      const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      setPreview(size);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, [open]);
 
   // Load image
@@ -249,7 +255,7 @@ export function MediaEditor({
       >
         <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100dvh] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0">
+          <div className="relative flex flex-col flex-1 md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -333,7 +339,7 @@ export function MediaEditor({
           </div>
 
           {/* RIGHT — previews + extras + finish */}
-          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-[45dvh] md:max-h-none shrink-0 md:shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
             {renderPreviews && (
               <div>
                 <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">

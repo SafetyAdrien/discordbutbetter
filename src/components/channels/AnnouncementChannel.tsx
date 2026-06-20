@@ -836,8 +836,26 @@ export function AnnouncementChannel({
             return (
               <div key={message.id}>
                 {DateSeparator}
-                <ContextMenu>
-                  <ContextMenuTrigger asChild>
+                <UniversalMessageContextMenu
+                  messageId={message.id}
+                  isOwnMessage={isOwnMessage}
+                  isPinned={pinnedMessageIds.has(message.id)}
+                  canAddReactions={canAddReactions}
+                  canManageMessages={canManageMessages}
+                  hasReactions={(reactionsData?.[message.id]?.length ?? 0) > 0}
+                  previewAuthorName={message.author.displayName}
+                  previewContent={message.content}
+                  onReply={() => handleReply(message)}
+                  onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                  onCopyText={() => handleCopyMessage(message.content)}
+                  onCopyLink={() => handleCopyMessageLink(message.id)}
+                  onCopyId={() => handleCopyId(message.id)}
+                  onEdit={(isOwnMessage || canManageMessages) ? () => handleStartEdit(message) : undefined}
+                  onDelete={(isOwnMessage || canManageMessages) ? () => handleDelete(message.id) : undefined}
+                  onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}
+                  copyLinkLabel="Copier le lien du message"
+                  copyIdLabel="Copier l'identifiant du message"
+                >
                   <div
                     ref={(el) => {
                       if (el) messageRefs.current.set(message.id, el);

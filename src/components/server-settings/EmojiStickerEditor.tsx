@@ -357,10 +357,10 @@ export function EmojiStickerEditor({
         )}
       >
         <DialogTitle className="sr-only">Add {type === 'emoji' ? 'Emoji' : 'Sticker'}</DialogTitle>
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] overflow-hidden">
+          <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:flex-row overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden [@media(max-height:520px)]:w-[42vw] [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
@@ -428,7 +428,7 @@ export function EmojiStickerEditor({
             </div>
 
             {/* Controls */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4 min-w-0">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setFitMode('fit')}
@@ -467,7 +467,7 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col flex-1 md:flex-none p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col flex-1 md:flex-none p-3 sm:p-5 gap-3 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="space-y-1.5">
               <Label htmlFor="es-name" className="text-xs">
                 {type === 'emoji' ? 'Emoji' : 'Sticker'} name <span className="text-destructive">*</span>

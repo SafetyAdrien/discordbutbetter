@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, RotateCcw, FlipHorizontal2, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn } from 'lucide-react';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -98,7 +99,7 @@ export function EmojiStickerEditor({
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
-  const cornerResizeRef = useRef<{ centerX: number; centerY: number; startDist: number; startScale: number } | null>(null);
+  
   const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
 
@@ -167,7 +168,7 @@ export function EmojiStickerEditor({
     setFitMode('fit');
     pointersRef.current.clear();
     pinchRef.current = null;
-    cornerResizeRef.current = null;
+    
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
@@ -187,8 +188,8 @@ export function EmojiStickerEditor({
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
 
-  // Bounded positioning: image center stays within roughly one canvas around the center.
-  const clamp = (v: number, _m: number) => Math.max(-PREVIEW, Math.min(PREVIEW, v));
+  // Discord-style clamping: image edges cannot leave canvas edges.
+  const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
   // Drag, pinch and direct in-canvas scale handlers
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -243,34 +244,6 @@ export function EmojiStickerEditor({
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
-  const onCornerResizeDown = (e: PointerEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const canvasEl = e.currentTarget.parentElement as HTMLElement | null;
-    if (!canvasEl) return;
-    const rect = canvasEl.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-    cornerResizeRef.current = { centerX: cx, centerY: cy, startDist: Math.max(1, dist), startScale: scale };
-  };
-  const onCornerResizeMove = (e: PointerEvent<HTMLButtonElement>) => {
-    if (!cornerResizeRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const { centerX, centerY, startDist, startScale } = cornerResizeRef.current;
-    const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
-    setScale(clampScale(startScale * (dist / startDist)));
-  };
-  const onCornerResizeUp = (e: PointerEvent<HTMLButtonElement>) => {
-    cornerResizeRef.current = null;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // Pointer capture may already be released by the browser.
-    }
-  };
 
   const onPanelResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
     if (typeof window === 'undefined') return;
@@ -482,36 +455,24 @@ export function EmojiStickerEditor({
                     />
                   )}
                 </div>
-                {(() => {
-                  const cx = PREVIEW / 2 + offset.x;
-                  const cy = PREVIEW / 2 + offset.y;
-                  const halfW = displayedW / 2;
-                  const halfH = displayedH / 2;
-                  const corners = [
-                    { Icon: ArrowDownRight, x: cx - halfW, y: cy - halfH, label: 'top-left' },
-                    { Icon: ArrowDownLeft, x: cx + halfW, y: cy - halfH, label: 'top-right' },
-                    { Icon: ArrowUpRight, x: cx - halfW, y: cy + halfH, label: 'bottom-left' },
-                    { Icon: ArrowUpLeft, x: cx + halfW, y: cy + halfH, label: 'bottom-right' },
-                  ];
-                  return corners.map(({ Icon, x, y, label }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      aria-label={`Resize from ${label}`}
-                      title="Drag to resize"
-                      className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: x, top: y }}
-                      onPointerDown={onCornerResizeDown}
-                      onPointerMove={onCornerResizeMove}
-                      onPointerUp={onCornerResizeUp}
-                      onPointerCancel={onCornerResizeUp}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </button>
-                  ));
-                })()}
               </div>
             </div>
+
+            {/* Discord-style zoom slider */}
+            <div className="flex items-center gap-3 mt-3 px-1">
+              <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Slider
+                value={[scale]}
+                min={MIN_SCALE}
+                max={MAX_SCALE}
+                step={0.01}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
+                aria-label="Zoom"
+                className="flex-1"
+              />
+              <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
+
 
             {/* Controls */}
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">

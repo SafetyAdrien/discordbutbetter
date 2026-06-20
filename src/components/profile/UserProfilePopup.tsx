@@ -54,6 +54,7 @@ import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
+import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';
@@ -182,6 +183,7 @@ export function UserProfilePopup({
   const { getUserVolume, setUserVolume } = useVoiceUserSettings();
   const [localVolume, setLocalVolume] = useState<number | null>(null);
   const [fullBioOpen, setFullBioOpen] = useState(false);
+  const [customStatusOpen, setCustomStatusOpen] = useState(false);
   const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
@@ -450,9 +452,14 @@ export function UserProfilePopup({
             />
           </div>
 
-          {user.customStatus && (
+          {(user.customStatus || isOwnProfile) && (
             <div className="absolute left-[88px] bottom-[14px] z-20 max-w-[180px]">
-              <CustomStatusBubble customStatus={user.customStatus} size="sm" />
+              <CustomStatusBubble
+                customStatus={user.customStatus}
+                size="sm"
+                showPlaceholder={isOwnProfile}
+                onClick={isOwnProfile ? () => setCustomStatusOpen(true) : undefined}
+              />
             </div>
           )}
         </div>
@@ -759,10 +766,15 @@ export function UserProfilePopup({
         bio: user.bio ?? null,
         status: user.status,
         created_at: user.createdAt ?? null,
+        custom_status: user.customStatus ?? null,
       }}
       onNavigateToDM={onOpenDM}
     />
   );
+
+  const customStatusModal = isOwnProfile ? (
+    <CustomStatusModal open={customStatusOpen} onOpenChange={setCustomStatusOpen} />
+  ) : null;
 
   // Mobile: Drawer from bottom (unchanged)
   if (isMobile) {
@@ -777,6 +789,7 @@ export function UserProfilePopup({
         </Drawer>
         {serverProfileModal}
         {fullBioModal}
+        {customStatusModal}
       </>
     );
   }
@@ -787,6 +800,7 @@ export function UserProfilePopup({
       <>
         {serverProfileModal}
         {fullBioModal}
+        {customStatusModal}
       </>
     );
   }
@@ -803,6 +817,7 @@ export function UserProfilePopup({
       </FloatingProfileCard>
       {serverProfileModal}
       {fullBioModal}
+      {customStatusModal}
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { CustomStatusBubble } from './CustomStatusBubble';
+import { CustomStatusModal } from './CustomStatusModal';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,7 @@ export function FullUserProfileModal({
   onNavigateToDM,
 }: FullUserProfileModalProps) {
   const [noteInput, setNoteInput] = useState('');
+  const [customStatusOpen, setCustomStatusOpen] = useState(false);
 
   const { user: currentUser } = useAuth();
   const { data: mutualServers = [] } = useMutualServers(user?.id || null);
@@ -126,6 +128,7 @@ export function FullUserProfileModal({
     : null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl max-h-[88vh] flex flex-col">
         {/* Hero — Banner + Avatar */}
@@ -154,9 +157,14 @@ export function FullUserProfileModal({
                   bgClassName="bg-background"
                 />
               </div>
-              {user.custom_status && (
+              {(user.custom_status || isOwnProfile) && (
                 <div className="absolute left-[128px] bottom-[14px] z-20 max-w-[260px]">
-                  <CustomStatusBubble customStatus={user.custom_status} size="md" />
+                  <CustomStatusBubble
+                    customStatus={user.custom_status}
+                    size="md"
+                    showPlaceholder={isOwnProfile}
+                    onClick={isOwnProfile ? () => setCustomStatusOpen(true) : undefined}
+                  />
                 </div>
               )}
             </div>
@@ -306,5 +314,9 @@ export function FullUserProfileModal({
         </div>
       </DialogContent>
     </Dialog>
+    {isOwnProfile && (
+      <CustomStatusModal open={customStatusOpen} onOpenChange={setCustomStatusOpen} />
+    )}
+    </>
   );
 }

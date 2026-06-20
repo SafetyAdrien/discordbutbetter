@@ -413,8 +413,8 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
         <div
           key={key}
           role="note"
-          className={cn('border-l-[4px] pl-3 pr-2 py-1.5', compact ? 'my-1' : 'my-2')}
-          style={{ borderColor: `hsl(var(--${varName}))`, backgroundColor: `hsl(var(--${varName}) / 0.15)` }}
+          className={cn('w-full border-l-[4px] pl-3 pr-2 py-1.5', compact ? 'my-1' : 'my-2')}
+          style={{ borderColor: `hsl(var(--${varName}))`, backgroundColor: `hsl(var(--${varName}) / 0.22)` }}
         >
           <div
             className="flex items-center gap-1.5 font-semibold mb-0.5 text-[0.95em]"
@@ -488,7 +488,12 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
     const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
-    return <div ref={ref} className={cn('inline-block max-w-full min-w-0 align-top', variant === 'chat' && 'chat-markdown', className)}>{parseMarkdown(content, ctxWithVariant)}</div>;
+    const hasAlert = content.includes('> [!');
+    return <div ref={ref} className={cn(
+      variant === 'chat' && hasAlert ? 'block w-full' : 'inline-block max-w-full min-w-0 align-top',
+      variant === 'chat' && 'chat-markdown',
+      className
+    )}>{parseMarkdown(content, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

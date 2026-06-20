@@ -34,11 +34,14 @@ function useUploaderProfiles(ids: string[]) {
         .in('id', unique);
       if (error) throw error;
       const map: Record<string, { username: string; display_name?: string | null; avatar_url?: string | null }> = {};
-      (data || []).forEach((p: any) => (map[p.id] = p));
+      (data || []).forEach((p) => (map[p.id] = p));
       return map;
     },
   });
 }
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : '';
 
 export function StickerManager({ serverId }: StickerManagerProps) {
   const { data: stickers = [], isLoading } = useServerStickers(serverId);
@@ -97,8 +100,8 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         silent: true,
       });
       toast.success(`${result.name} ajouté`);
-    } catch (e: any) {
-      toast.error(e?.message || "Erreur lors de l'ajout");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) || "Erreur lors de l'ajout");
     }
     if (pending.length > 0) {
       const [next, ...rest] = pending;

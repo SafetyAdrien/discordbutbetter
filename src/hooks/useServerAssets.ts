@@ -11,6 +11,7 @@ export interface ServerEmoji {
   url: string;
   server_id: string;
   created_at: string | null;
+  creator_id?: string | null;
 }
 
 export interface ServerSticker {
@@ -20,6 +21,7 @@ export interface ServerSticker {
   url: string;
   server_id: string;
   created_at: string | null;
+  creator_id?: string | null;
 }
 
 export function useServerEmojis(serverId: string | null) {

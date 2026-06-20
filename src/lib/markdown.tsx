@@ -259,10 +259,28 @@ function parseBlocks(content: string): BlockToken[] {
       continue;
     }
     const lines = segment.content.split('\n');
-    for (const line of lines) {
-      if (line.trim() === '') { blocks.push({ type: 'empty', content: '' }); continue; }
-      if (/^\\/.test(line)) { blocks.push({ type: 'escapedParagraph', content: line.slice(1) }); continue; }
-      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { blocks.push({ type: 'separator', content: '' }); continue; }
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // GitHub-style alert block: `> [!TYPE]` header consumes following `>` lines.
+      const alertHeader = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i.exec(line);
+      if (alertHeader) {
+        const alertType = alertHeader[1].toUpperCase() as AlertType;
+        const body: string[] = [];
+        let j = i + 1;
+        while (j < lines.length && /^>\s?/.test(lines[j])) {
+          body.push(lines[j].replace(/^>\s?/, ''));
+          j++;
+        }
+        blocks.push({ type: 'alert', alertType, content: body.join('\n') });
+        i = j;
+        continue;
+      }
+
+      if (line.trim() === '') { blocks.push({ type: 'empty', content: '' }); i++; continue; }
+      if (/^\\/.test(line)) { blocks.push({ type: 'escapedParagraph', content: line.slice(1) }); i++; continue; }
+      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { blocks.push({ type: 'separator', content: '' }); i++; continue; }
       if (line.startsWith('### ')) blocks.push({ type: 'header3', content: line.slice(4) });
       else if (line.startsWith('## ')) blocks.push({ type: 'header2', content: line.slice(3) });
       else if (line.startsWith('# ')) blocks.push({ type: 'header1', content: line.slice(2) });
@@ -281,6 +299,7 @@ function parseBlocks(content: string): BlockToken[] {
         blocks.push({ type: 'orderedListItem', content: line.slice(listMatch![0].length), indentLevel: listMatch![1].length });
       }
       else blocks.push({ type: 'paragraph', content: line });
+      i++;
     }
   }
   return blocks;

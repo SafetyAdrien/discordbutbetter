@@ -120,16 +120,16 @@ export function StickerManager({ serverId }: StickerManagerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="text-sm font-medium">Stickers personnalisés</h4>
           <p className="text-sm text-muted-foreground">
             {stickers.length} sticker{stickers.length > 1 ? 's' : ''} · 16 Mo max (HD)
           </p>
         </div>
-        <Button onClick={() => fileInputRef.current?.click()}>
+        <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto min-h-11">
           <Plus className="w-4 h-4 mr-2" />
-          Upload Sticker
+          Importer un sticker
         </Button>
         <input
           ref={fileInputRef}
@@ -138,6 +138,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
           multiple
           onChange={handleFilesSelect}
           className="hidden"
+          aria-label="Importer des stickers personnalisés"
         />
       </div>
 

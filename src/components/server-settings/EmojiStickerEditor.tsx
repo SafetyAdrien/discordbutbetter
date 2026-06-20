@@ -28,7 +28,7 @@ interface EmojiStickerEditorProps {
   onFinish: (result: EditorResult) => void;
 }
 
-const PREVIEW = 380;
+const DEFAULT_PREVIEW = 380;
 const sanitize = (n: string) =>
   n.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 32) || 'item';
 
@@ -63,8 +63,26 @@ export function EmojiStickerEditor({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
+  const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
+
+  // Measure available width to keep the canvas square and fit on mobile
+  useEffect(() => {
+    if (!previewWrapRef.current) return;
+    const el = previewWrapRef.current;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        const h = window.innerHeight * 0.5; // never exceed half the viewport height
+        const size = Math.max(180, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+        setPreview(size);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
 
   // Load image
   useEffect(() => {

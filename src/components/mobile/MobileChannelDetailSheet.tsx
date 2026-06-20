@@ -58,7 +58,9 @@ export function MobileChannelDetailSheet({
           </div>
 
           {description && (
-            <p className="text-sm text-muted-foreground bg-muted/40 rounded-xl px-3 py-2.5">{description}</p>
+            <div className="text-sm text-muted-foreground bg-muted/40 rounded-xl px-3 py-2.5">
+              <MarkdownText content={description} variant="chat" className="[&_.markdown-content]:text-muted-foreground" />
+            </div>
           )}
 
           {/* Quick actions */}

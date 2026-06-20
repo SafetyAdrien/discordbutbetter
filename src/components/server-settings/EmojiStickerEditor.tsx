@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn } from 'lucide-react';
+import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw } from 'lucide-react';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -90,6 +90,8 @@ export function EmojiStickerEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const [rotationMode, setRotationMode] = useState<'free' | 'step'>('step');
   const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(getInitialPreview);
@@ -165,6 +167,7 @@ export function EmojiStickerEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setRotation(0);
     setFitMode('fit');
     pointersRef.current.clear();
     pinchRef.current = null;
@@ -299,18 +302,15 @@ export function EmojiStickerEditor({
     const cy = outputSize / 2 + offset.y * ratio;
 
     ctx.save();
-    if (flip) {
-      ctx.translate(outputSize, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(imgEl, outputSize - cx - w / 2, cy - h / 2, w, h);
-    } else {
-      ctx.drawImage(imgEl, cx - w / 2, cy - h / 2, w, h);
-    }
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(imgEl, -w / 2, -h / 2, w, h);
     ctx.restore();
 
     // For PNG (lossless) or fallback. For gif/apng we can't preserve animation through canvas.
     const isAnimated = /gif|apng/i.test(file.type);
-    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
+    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip && rotation === 0) {
       // Untouched: preserve original animation
       return {
         blob: file,
@@ -342,6 +342,7 @@ export function EmojiStickerEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setRotation(0);
     setFitMode('fit');
   };
 
@@ -367,7 +368,7 @@ export function EmojiStickerEditor({
               height: displayedH * r,
               left: '50%',
               top: '50%',
-              transform: `translate(-50%, -50%) translate(${offset.x * r}px, ${offset.y * r}px) scaleX(${flip ? -1 : 1})`,
+              transform: `translate(-50%, -50%) translate(${offset.x * r}px, ${offset.y * r}px) rotate(${rotation}deg) scaleX(${flip ? -1 : 1})`,
               maxWidth: 'none',
             }}
           />
@@ -447,7 +448,7 @@ export function EmojiStickerEditor({
                         height: displayedH,
                         left: '50%',
                         top: '50%',
-                        transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) scaleX(${flip ? -1 : 1})`,
+                        transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scaleX(${flip ? -1 : 1})`,
                         maxWidth: 'none',
                         pointerEvents: 'none',
                         imageRendering: 'auto',
@@ -472,6 +473,71 @@ export function EmojiStickerEditor({
               />
               <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
             </div>
+
+            {/* Rotation control with mode toggle */}
+            <div className="mt-3 px-1 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Rotation</span>
+                <div className="flex items-center rounded-md border border-border/60 overflow-hidden text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRotationMode('step')}
+                    className={cn(
+                      'px-2 py-1 transition-colors',
+                      rotationMode === 'step' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    90°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRotationMode('free')}
+                    className={cn(
+                      'px-2 py-1 transition-colors',
+                      rotationMode === 'free' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    360°
+                  </button>
+                </div>
+              </div>
+              {rotationMode === 'free' ? (
+                <div className="flex items-center gap-3">
+                  <RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Slider
+                    value={[rotation]}
+                    min={-180}
+                    max={180}
+                    step={1}
+                    onValueChange={(v) => setRotation(v[0] ?? 0)}
+                    aria-label="Rotation"
+                    className="flex-1"
+                  />
+                  <RotateCw className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[0, 90, 180, 270].map((deg) => (
+                    <button
+                      key={deg}
+                      type="button"
+                      onClick={() => setRotation(deg > 180 ? deg - 360 : deg)}
+                      className={cn(
+                        'h-8 rounded-md border border-border/60 text-xs font-medium transition-colors',
+                        ((rotation + 360) % 360) === deg
+                          ? 'bg-primary text-primary-foreground border-primary/60'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {deg}°
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+
 
 
             {/* Controls */}

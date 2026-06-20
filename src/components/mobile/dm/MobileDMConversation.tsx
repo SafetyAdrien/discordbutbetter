@@ -427,6 +427,10 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
                 copyToClipboard(uuidToSnowflake(actionMessage.id), 'ID copié');
                 setActionMessage(null);
               }}
+              onCopyText={() => {
+                copyToClipboard(actionMessage.content, 'Message copié');
+                setActionMessage(null);
+              }}
               onEdit={
                 actionMessage.author?.id === user?.id
                   ? () => {

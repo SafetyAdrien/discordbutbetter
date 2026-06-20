@@ -28,11 +28,22 @@ interface EmojiStickerEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
-const MOBILE_PREVIEW = 214;
-const MOBILE_LANDSCAPE_PREVIEW = 148;
+const MOBILE_PREVIEW = 184;
+const MOBILE_LANDSCAPE_PREVIEW = 128;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
+
+const getInitialPreview = () => {
+  if (typeof window === 'undefined') return DEFAULT_PREVIEW;
+  const viewportW = window.visualViewport?.width ?? window.innerWidth;
+  const viewportH = window.visualViewport?.height ?? window.innerHeight;
+  const isMobile = viewportW < 768 || viewportH < 520;
+  if (!isMobile) return DEFAULT_PREVIEW;
+  const isLandscape = viewportW > viewportH;
+  const hardCap = isLandscape ? MOBILE_LANDSCAPE_PREVIEW : MOBILE_PREVIEW;
+  return Math.max(MIN_PREVIEW, Math.min(hardCap, Math.floor(viewportW * 0.48), Math.floor(viewportH * 0.26)));
+};
 
 const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
 const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
@@ -70,7 +81,7 @@ export function EmojiStickerEditor({
   const [flip, setFlip] = useState(false);
   const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
-  const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
+  const [PREVIEW, setPreview] = useState(getInitialPreview);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
@@ -90,8 +101,10 @@ export function EmojiStickerEditor({
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
       const isMobile = viewportW < 768 || viewportH < 520;
       const isLandscape = viewportW > viewportH;
-      const mobileMax = isLandscape ? MOBILE_LANDSCAPE_PREVIEW : MOBILE_PREVIEW;
-      const safeW = Math.max(MIN_PREVIEW, viewportW - (isLandscape ? 292 : 32));
+      const mobileMax = isLandscape
+        ? Math.min(MOBILE_LANDSCAPE_PREVIEW, Math.floor(viewportH * 0.4), Math.floor(viewportW * 0.26))
+        : Math.min(MOBILE_PREVIEW, Math.floor(viewportW * 0.48), Math.floor(viewportH * 0.26));
+      const safeW = Math.max(MIN_PREVIEW, isLandscape ? viewportW - 308 : viewportW - 104);
       const viewportLimitedH = isMobile
         ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 164 : 376))
         : DEFAULT_PREVIEW;

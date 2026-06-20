@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,7 +62,7 @@ export function EmojiStickerEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
-  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fill');
+  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
   const previewWrapRef = useRef<HTMLDivElement>(null);

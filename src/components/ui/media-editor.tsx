@@ -211,7 +211,7 @@ export function MediaEditor({
     img.onload = () => setImgEl(img);
     img.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, circular]);
 
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;

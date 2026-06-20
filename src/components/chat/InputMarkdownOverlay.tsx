@@ -25,7 +25,8 @@ interface InputMarkdownOverlayProps {
 }
 
 interface OverlayLine {
-  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'listItem' | 'orderedListItem' | 'taskItemUnchecked' | 'taskItemChecked' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
+  type: 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'alertHeader' | 'listItem' | 'orderedListItem' | 'taskItemUnchecked' | 'taskItemChecked' | 'codeBlockDelimiter' | 'codeBlockLine' | 'separator' | 'normal';
+  alertType?: 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION';
   text: string;
 }
 
@@ -52,6 +53,8 @@ export function parseLines(content: string): OverlayLine[] {
     if (line.startsWith('## ')) { result.push({ type: 'header2', text: line }); continue; }
     if (line.startsWith('# ')) { result.push({ type: 'header1', text: line }); continue; }
     if (line.startsWith('-# ')) { result.push({ type: 'subtext', text: line }); continue; }
+    const alertMatch = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i.exec(line);
+    if (alertMatch) { result.push({ type: 'alertHeader', text: line, alertType: alertMatch[1].toUpperCase() as OverlayLine['alertType'] }); continue; }
     if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
     if (/^(\s*)[-*] \[x\] /i.test(line)) { result.push({ type: 'taskItemChecked', text: line }); continue; }
@@ -73,6 +76,7 @@ const lineStyles: Record<OverlayLine['type'], string> = {
   header3: 'text-foreground',
   subtext: 'text-muted-foreground',
   blockquote: 'text-muted-foreground',
+  alertHeader: 'font-semibold',
   listItem: 'text-foreground',
   orderedListItem: 'text-foreground',
   taskItemUnchecked: 'text-foreground',
@@ -495,11 +499,21 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
           rest = line.text.slice(m[1].length);
         }
       }
+      const alertColorVar = line.type === 'alertHeader' && line.alertType
+        ? `alert-${line.alertType.toLowerCase()}`
+        : null;
       return (
         <div
           key={key}
           className={`${lineStyles[line.type]} relative ${isChecked ? 'line-through' : ''}`}
-          style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
+          style={{
+            fontSize: OVERLAY_FONT_SIZE,
+            lineHeight: OVERLAY_LINE_HEIGHT,
+            fontFamily: INPUT_FONT_FAMILY,
+            fontWeight: 400,
+            letterSpacing: 'normal',
+            color: alertColorVar ? `hsl(var(--${alertColorVar}))` : undefined,
+          }}
         >
           {prefix && <span className="text-muted-foreground/70">{prefix}</span>}
           {renderInlineMarkdown(rest, mentionData, consumer)}

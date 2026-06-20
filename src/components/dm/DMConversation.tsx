@@ -25,7 +25,7 @@ import { UniversalMessageActions } from '@/components/chat/UniversalMessageActio
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
 import { ReportModal } from '@/components/chat/ReportModal';
 import { useShiftKey } from '@/hooks/useShiftKey';
-import { copyToClipboard } from '@/lib/clipboard';
+import { copyToClipboard, copyMessageWithFormatting } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Message } from '@/types/app';

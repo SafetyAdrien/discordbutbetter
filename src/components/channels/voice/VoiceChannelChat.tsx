@@ -19,7 +19,7 @@ import { useMessageReactions, useAddReaction, useRemoveReaction, useClearMessage
 import { ReactionsViewerModal } from '@/components/chat/ReactionsViewerModal';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { useShiftKey } from '@/hooks/useShiftKey';
-import { copyToClipboard } from '@/lib/clipboard';
+import { copyToClipboard, copyMessageWithFormatting } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
 import { toast } from 'sonner';

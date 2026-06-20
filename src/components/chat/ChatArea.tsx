@@ -59,7 +59,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { copyToClipboard } from "@/lib/clipboard";
+import { copyToClipboard, copyMessageWithFormatting } from "@/lib/clipboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { TypingIndicator } from "@/components/typing/TypingIndicator";

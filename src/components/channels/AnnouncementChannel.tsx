@@ -49,7 +49,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { copyToClipboard } from "@/lib/clipboard";
+import { copyToClipboard, copyMessageWithFormatting } from "@/lib/clipboard";
 import { ThreadSpine } from "@/components/threads/ThreadSpine";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";

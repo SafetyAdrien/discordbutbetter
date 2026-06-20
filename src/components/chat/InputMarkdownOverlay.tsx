@@ -299,98 +299,174 @@ function renderInlineMarkdown(text: string, mentionData: MentionLookupData | und
 function renderInlineMarkdownOnly(text: string): ReactNode {
   if (!text) return '\u200B';
 
-  // Regex to match inline patterns - order matters (longest/most specific first)
-  const inlineRegex = /(\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`([^`\n]+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
-  
+  // Order matters: longest/most-specific first.
+  // Combined bold+italic/underline patterns are matched before their simpler forms.
+  const inlineRegex = /(\*\*\*(.+?)\*\*\*|___(.+?)___|__\*\*(.+?)\*\*__|\*\*__(.+?)__\*\*|\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\|\|(.+?)\|\||`([^`\n]+?)`|\[(.+?)\]\((.+?)\)|\*(.+?)\*|_(.+?)_)/g;
+
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
-  
+
+  // Helper: wrap markers + inner content into a span.
+  // Markers MUST keep the same character widths as the underlying textarea text,
+  // so we never apply font-weight/font-family changes to the markers themselves.
+  const marker = (s: string) => (
+    <span style={{ color: 'hsl(var(--muted-foreground) / 0.45)' }}>{s}</span>
+  );
+
+  // Bold simulation: text-shadow stacked horizontally to fake weight without
+  // changing the metric. Tuned to look noticeably bolder.
+  const boldStyle: React.CSSProperties = {
+    textShadow:
+      '0.45px 0 0 currentColor, -0.45px 0 0 currentColor, 0 0.25px 0 currentColor, 0 -0.25px 0 currentColor',
+    color: 'hsl(var(--foreground))',
+  };
+
   while ((match = inlineRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
     }
-    
     const full = match[0];
-    
+
     if (match[2] !== undefined) {
+      // ***bold italic***
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">**</span>
-          <span style={{ textShadow: '0.55px 0 0 currentColor, -0.55px 0 0 currentColor' }}>{match[2]}</span>
-          <span className="text-muted-foreground/50">**</span>
+          {marker('***')}
+          <span style={{ ...boldStyle, fontStyle: 'italic' }}>{match[2]}</span>
+          {marker('***')}
         </span>
       );
     } else if (match[3] !== undefined) {
+      // ___underline bold italic___
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">__</span>
-          <span className="underline">{match[3]}</span>
-          <span className="text-muted-foreground/50">__</span>
+          {marker('___')}
+          <span className="underline" style={{ ...boldStyle, fontStyle: 'italic' }}>{match[3]}</span>
+          {marker('___')}
         </span>
       );
     } else if (match[4] !== undefined) {
+      // __**underline bold**__
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">~~</span>
-          <span className="line-through">{match[4]}</span>
-          <span className="text-muted-foreground/50">~~</span>
+          {marker('__**')}
+          <span className="underline" style={boldStyle}>{match[4]}</span>
+          {marker('**__')}
         </span>
       );
     } else if (match[5] !== undefined) {
+      // **__bold underline__**
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">||</span>
-          <span className="bg-foreground/20 rounded-[3px]">{match[5]}</span>
-          <span className="text-muted-foreground/50">||</span>
+          {marker('**__')}
+          <span className="underline" style={boldStyle}>{match[5]}</span>
+          {marker('__**')}
         </span>
       );
     } else if (match[6] !== undefined) {
+      // **bold**
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">`</span>
-          <span className="bg-muted/40 rounded-[3px] text-[hsl(340,65%,65%)]">{match[6]}</span>
-          <span className="text-muted-foreground/50">`</span>
+          {marker('**')}
+          <span style={boldStyle}>{match[6]}</span>
+          {marker('**')}
         </span>
       );
-    } else if (match[7] !== undefined && match[8] !== undefined) {
+    } else if (match[7] !== undefined) {
+      // __underline__
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">[</span>
-          <span className="text-primary underline">{match[7]}</span>
-          <span className="text-muted-foreground/50">](</span>
-          <span className="text-muted-foreground/40">{match[8]}</span>
-          <span className="text-muted-foreground/50">)</span>
+          {marker('__')}
+          <span className="underline decoration-foreground/80 underline-offset-2">{match[7]}</span>
+          {marker('__')}
+        </span>
+      );
+    } else if (match[8] !== undefined) {
+      // ~~strikethrough~~
+      parts.push(
+        <span key={key++}>
+          {marker('~~')}
+          <span className="line-through decoration-foreground/70">{match[8]}</span>
+          {marker('~~')}
         </span>
       );
     } else if (match[9] !== undefined) {
+      // ||spoiler||
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">*</span>
-          <span style={{ fontStyle: 'italic' }}>{match[9]}</span>
-          <span className="text-muted-foreground/50">*</span>
+          {marker('||')}
+          <span
+            className="rounded-[3px]"
+            style={{
+              backgroundColor: 'hsl(var(--foreground) / 0.18)',
+              boxShadow: '0 0 0 1px hsl(var(--foreground) / 0.05)',
+            }}
+          >
+            {match[9]}
+          </span>
+          {marker('||')}
         </span>
       );
     } else if (match[10] !== undefined) {
+      // `inline code` — pill background only, no font-family swap (preserves caret alignment)
       parts.push(
         <span key={key++}>
-          <span className="text-muted-foreground/50">_</span>
-          <span style={{ fontStyle: 'italic' }}>{match[10]}</span>
-          <span className="text-muted-foreground/50">_</span>
+          {marker('`')}
+          <span
+            className="rounded-[3px]"
+            style={{
+              backgroundColor: 'hsl(var(--surface-elevated))',
+              boxShadow: '0 0 0 1px hsl(var(--border) / 0.6)',
+              color: 'hsl(var(--foreground))',
+            }}
+          >
+            {match[10]}
+          </span>
+          {marker('`')}
+        </span>
+      );
+    } else if (match[11] !== undefined && match[12] !== undefined) {
+      // [label](url)
+      parts.push(
+        <span key={key++}>
+          {marker('[')}
+          <span className="text-primary underline underline-offset-2">{match[11]}</span>
+          {marker('](')}
+          <span style={{ color: 'hsl(var(--muted-foreground) / 0.55)' }}>{match[12]}</span>
+          {marker(')')}
+        </span>
+      );
+    } else if (match[13] !== undefined) {
+      // *italic*
+      parts.push(
+        <span key={key++}>
+          {marker('*')}
+          <span style={{ fontStyle: 'italic' }}>{match[13]}</span>
+          {marker('*')}
+        </span>
+      );
+    } else if (match[14] !== undefined) {
+      // _italic_
+      parts.push(
+        <span key={key++}>
+          {marker('_')}
+          <span style={{ fontStyle: 'italic' }}>{match[14]}</span>
+          {marker('_')}
         </span>
       );
     } else {
       parts.push(<span key={key++}>{full}</span>);
     }
-    
+
     lastIndex = match.index + full.length;
   }
-  
+
   if (lastIndex < text.length) {
     parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
   }
-  
+
   return parts.length > 0 ? parts : text;
 }
 

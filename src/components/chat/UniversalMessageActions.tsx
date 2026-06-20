@@ -192,6 +192,10 @@ export function UniversalMessageActions({
                 <Pin className="w-4 h-4 mr-2" />
                 {isPinned ? 'Désépingler' : 'Épingler'}
               </DropdownMenuItem>}
+            {onCopyText && <DropdownMenuItem onClick={onCopyText}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copier le message
+              </DropdownMenuItem>}
             <DropdownMenuItem onClick={onCopyLink}>
               <Link className="w-4 h-4 mr-2" />
               Copier le lien

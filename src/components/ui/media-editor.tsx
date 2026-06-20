@@ -59,7 +59,7 @@ const getInitialPreview = () => {
   return Math.max(MIN_PREVIEW, Math.min(hardCap, Math.floor(viewportW * 0.5), Math.floor(viewportH * 0.28)));
 };
 
-const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const clampScale = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);

@@ -64,9 +64,9 @@ export function parseLines(content: string): OverlayLine[] {
   return result;
 }
 
-// CRITICAL: No font-weight, font-family, or font-size variation allowed.
-// Only color and visual-only decorations (pseudo-elements) are used.
-// This prevents glyph width mismatch between overlay and textarea.
+// CRITICAL: the overlay must keep the same text metrics as the textarea.
+// No real font-weight, font-family, font-size, padding, or margin changes in inline spans.
+// Discord-like effects below are visual-only so the caret does not drift.
 const lineStyles: Record<OverlayLine['type'], string> = {
   header1: 'text-foreground',
   header2: 'text-foreground',
@@ -308,21 +308,30 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
   let match: RegExpExecArray | null;
   let key = 0;
 
-  // Helper: wrap markers + inner content into a span.
-  // Markers MUST keep the same character widths as the underlying textarea text,
-  // so we never apply font-weight/font-family changes to the markers themselves.
+  // Helper: markers stay visible but muted, like Discord's composer while editing.
+  // They keep the exact same glyph metrics as the raw textarea value.
   const marker = (s: string) => (
     <span style={{ color: 'hsl(var(--muted-foreground) / 0.45)' }}>{s}</span>
   );
 
-  // Discord-style WYSIWYG: real font-weight. Slight caret drift accepted inside
-  // transformed spans (same trade-off Discord web makes).
+  // Visual-only styling: never changes layout metrics, preventing caret drift.
   const boldStyle: React.CSSProperties = {
-    fontWeight: 700,
     color: 'hsl(var(--foreground))',
+    textShadow: '0.45px 0 0 currentColor, -0.45px 0 0 currentColor, 0 0.28px 0 currentColor, 0 -0.28px 0 currentColor',
   };
 
-  const MONO_FAMILY = 'Consolas, "gg mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace';
+  const italicStyle: React.CSSProperties = {
+    display: 'inline-block',
+    transform: 'skewX(-10deg)',
+    transformOrigin: 'center',
+  };
+
+  const codeStyle: React.CSSProperties = {
+    backgroundColor: 'hsl(var(--surface-elevated))',
+    boxShadow: '0 0 0 1px hsl(var(--border) / 0.65), hsl(var(--surface-elevated)) 2px 0 0 0, hsl(var(--surface-elevated)) -2px 0 0 0',
+    color: 'hsl(var(--foreground))',
+    borderRadius: '3px',
+  };
 
 
   while ((match = inlineRegex.exec(text)) !== null) {

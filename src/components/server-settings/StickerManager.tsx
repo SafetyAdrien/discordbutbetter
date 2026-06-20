@@ -9,8 +9,9 @@ interface StickerManagerProps {
   serverId: string;
 }
 
-const MAX_STICKER_SIZE = 512 * 1024;
-const ACCEPT = 'image/png,image/gif,image/webp,image/apng';
+const MAX_STICKER_SIZE = 16 * 1024 * 1024; // 16 Mo — HD
+const ACCEPT = 'image/png,image/gif,image/webp,image/apng,image/avif,image/jpeg';
+
 
 interface QueueItem extends BatchItem {
   file: File;

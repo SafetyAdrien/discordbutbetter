@@ -315,13 +315,15 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
     <span style={{ color: 'hsl(var(--muted-foreground) / 0.45)' }}>{s}</span>
   );
 
-  // Bold simulation: text-shadow stacked horizontally to fake weight without
-  // changing the metric. Tuned to look noticeably bolder.
+  // Discord-style WYSIWYG: real font-weight. Slight caret drift accepted inside
+  // transformed spans (same trade-off Discord web makes).
   const boldStyle: React.CSSProperties = {
-    textShadow:
-      '0.45px 0 0 currentColor, -0.45px 0 0 currentColor, 0 0.25px 0 currentColor, 0 -0.25px 0 currentColor',
+    fontWeight: 700,
     color: 'hsl(var(--foreground))',
   };
+
+  const MONO_FAMILY = 'Consolas, "gg mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace';
+
 
   while ((match = inlineRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
@@ -410,7 +412,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
         </span>
       );
     } else if (match[10] !== undefined) {
-      // `inline code` — pill background only, no font-family swap (preserves caret alignment)
+      // `inline code` — real monospace pill (Discord-style)
       parts.push(
         <span key={key++}>
           {marker('`')}
@@ -420,6 +422,8 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
               backgroundColor: 'hsl(var(--surface-elevated))',
               boxShadow: '0 0 0 1px hsl(var(--border) / 0.6)',
               color: 'hsl(var(--foreground))',
+              fontFamily: MONO_FAMILY,
+              fontSize: '0.85em',
             }}
           >
             {match[10]}
@@ -427,6 +431,7 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
           {marker('`')}
         </span>
       );
+
     } else if (match[11] !== undefined && match[12] !== undefined) {
       // [label](url)
       parts.push(

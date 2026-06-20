@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2, X, ImageIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { ImageCropper } from '@/components/ui/image-cropper';
+import { ServerIconUploadEditor } from '@/components/server-settings/ServerIconUploadEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,10 +48,11 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
     formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true)
   );
 
-  // Cropper states
+  // Cropper / icon editor states
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImage, setCropperImage] = useState<string>('');
   const [cropperType, setCropperType] = useState<'icon' | 'banner'>('icon');
+  const [iconEditorFile, setIconEditorFile] = useState<File | null>(null);
 
   const isSaving = updateServer.isPending || updateSettings.isPending;
 
@@ -71,16 +73,23 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'icon' | 'banner') => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCropperImage(reader.result as string);
-        setCropperType(type);
-        setCropperOpen(true);
-      };
-      reader.readAsDataURL(file);
-    }
     e.target.value = '';
+    if (!file) return;
+
+    if (type === 'icon') {
+      // New full-fledged icon editor with circular crop + server-list preview
+      setIconEditorFile(file);
+      return;
+    }
+
+    // Banner keeps the legacy ImageCropper (16:9 aspect)
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropperImage(reader.result as string);
+      setCropperType(type);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCropComplete = useCallback((croppedBlob: Blob) => {
@@ -286,14 +295,26 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
         )}
       </div>
 
-      {/* Image Cropper */}
+      {/* Banner cropper (legacy 16:9) */}
       <ImageCropper
         open={cropperOpen}
         onClose={() => setCropperOpen(false)}
         imageSrc={cropperImage}
-        aspectRatio={cropperType === 'icon' ? 1 : 16 / 9}
-        circularCrop={cropperType === 'icon'}
+        aspectRatio={16 / 9}
+        circularCrop={false}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Server icon editor */}
+      <ServerIconUploadEditor
+        open={!!iconEditorFile}
+        file={iconEditorFile}
+        serverName={server.name}
+        onClose={() => setIconEditorFile(null)}
+        onFinish={(file) => {
+          setIconEditorFile(null);
+          uploadIcon.mutate({ serverId, file });
+        }}
       />
     </>
   );

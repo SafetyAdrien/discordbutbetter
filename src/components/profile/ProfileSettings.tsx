@@ -11,6 +11,7 @@ import { X, Camera, Loader2, Pencil, CalendarDays } from 'lucide-react';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
+import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -83,9 +84,11 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
     setUseGradient(!!profile?.theme_gradient);
   };
 
+  const [avatarEditorFile, setAvatarEditorFile] = useState<File | null>(null);
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadAvatar.mutate(file);
+    e.target.value = '';
+    if (file) setAvatarEditorFile(file);
   };
 
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,6 +312,15 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
         )}
 
         <ServerProfileEditModal open={serverProfileEditOpen} onOpenChange={setServerProfileEditOpen} />
+        <AvatarUploadEditor
+          open={!!avatarEditorFile}
+          file={avatarEditorFile}
+          onClose={() => setAvatarEditorFile(null)}
+          onFinish={(file) => {
+            setAvatarEditorFile(null);
+            uploadAvatar.mutate(file);
+          }}
+        />
       </div>
     </div>
   );

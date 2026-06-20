@@ -13,6 +13,7 @@ import { haptics } from '@/lib/haptics';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
+import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
 
 interface Props {
   onBack: () => void;
@@ -39,6 +40,7 @@ export function MobileEditProfileView({ onBack }: Props) {
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [bio, setBio] = useState(profile?.bio || '');
   const [pronouns, setPronouns] = useState(profile?.pronouns || '');
+  const [avatarEditorFile, setAvatarEditorFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -167,7 +169,8 @@ export function MobileEditProfileView({ onBack }: Props) {
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) uploadAvatar.mutate(file);
+              e.target.value = '';
+              if (file) setAvatarEditorFile(file);
             }}
           />
         </section>
@@ -290,6 +293,15 @@ export function MobileEditProfileView({ onBack }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+      <AvatarUploadEditor
+        open={!!avatarEditorFile}
+        file={avatarEditorFile}
+        onClose={() => setAvatarEditorFile(null)}
+        onFinish={(file) => {
+          setAvatarEditorFile(null);
+          uploadAvatar.mutate(file);
+        }}
+      />
     </motion.div>
   );
 }

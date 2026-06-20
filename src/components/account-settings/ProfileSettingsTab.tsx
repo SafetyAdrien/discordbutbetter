@@ -12,6 +12,7 @@ import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
+import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
 
 const BIO_MAX = 4000;
 
@@ -86,9 +87,11 @@ export function ProfileSettingsTab() {
     setGradientEnd(p?.theme_gradient?.split(',')[1] || '#8B5CF6');
   };
 
+  const [avatarEditorFile, setAvatarEditorFile] = useState<File | null>(null);
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) uploadAvatar.mutate(f);
+    e.target.value = '';
+    if (f) setAvatarEditorFile(f);
   };
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -312,6 +315,15 @@ export function ProfileSettingsTab() {
       )}
 
       <ServerProfileEditModal open={serverProfileEditOpen} onOpenChange={setServerProfileEditOpen} />
+      <AvatarUploadEditor
+        open={!!avatarEditorFile}
+        file={avatarEditorFile}
+        onClose={() => setAvatarEditorFile(null)}
+        onFinish={(file) => {
+          setAvatarEditorFile(null);
+          uploadAvatar.mutate(file);
+        }}
+      />
     </div>
   );
 }

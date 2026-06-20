@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { JoinServerModal } from './JoinServerModal';
 import { ImageCropper } from '@/components/ui/image-cropper';
+import { ServerIconUploadEditor } from '@/components/server-settings/ServerIconUploadEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -73,19 +74,25 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImage, setCropperImage] = useState<string>('');
   const [cropperType, setCropperType] = useState<'icon' | 'banner'>('icon');
+  const [iconEditorFile, setIconEditorFile] = useState<File | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'icon' | 'banner') => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCropperImage(reader.result as string);
-        setCropperType(type);
-        setCropperOpen(true);
-      };
-      reader.readAsDataURL(file);
-    }
     e.target.value = '';
+    if (!file) return;
+
+    if (type === 'icon') {
+      setIconEditorFile(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropperImage(reader.result as string);
+      setCropperType(type);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCropComplete = useCallback((croppedBlob: Blob) => {
@@ -773,14 +780,27 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
         </div>
       </div>
 
-      {/* Image Cropper */}
+      {/* Banner cropper (legacy 16:9) */}
       <ImageCropper
         open={cropperOpen}
         onClose={() => setCropperOpen(false)}
         imageSrc={cropperImage}
-        aspectRatio={cropperType === 'icon' ? 1 : 16 / 9}
-        circularCrop={cropperType === 'icon'}
+        aspectRatio={16 / 9}
+        circularCrop={false}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Server icon editor */}
+      <ServerIconUploadEditor
+        open={!!iconEditorFile}
+        file={iconEditorFile}
+        serverName={serverName || 'New server'}
+        onClose={() => setIconEditorFile(null)}
+        onFinish={(file) => {
+          setIconEditorFile(null);
+          setIconFile(file);
+          setIconPreview(URL.createObjectURL(file));
+        }}
       />
     </>
   );

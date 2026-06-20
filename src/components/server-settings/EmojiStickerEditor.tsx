@@ -113,13 +113,13 @@ export function EmojiStickerEditor({
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
       const isMobile = viewportW < 768 || viewportH < 520;
       const isLandscape = viewportW > viewportH;
+      const panelBounds = getCanvasPanelBounds(viewportW, viewportH);
+      setCanvasPanelHeight((prev) => clampNumber(prev ?? panelBounds.defaultHeight, panelBounds.min, panelBounds.max));
       const mobileMax = isLandscape
         ? Math.min(MOBILE_LANDSCAPE_PREVIEW, Math.floor(viewportH * 0.4), Math.floor(viewportW * 0.26))
         : Math.min(MOBILE_PREVIEW, Math.floor(viewportW * 0.48), Math.floor(viewportH * 0.26));
       const safeW = Math.max(MIN_PREVIEW, isLandscape ? viewportW - 308 : viewportW - 104);
-      const viewportLimitedH = isMobile
-        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 164 : 376))
-        : DEFAULT_PREVIEW;
+      const viewportLimitedH = isMobile ? Math.max(MIN_PREVIEW, (canvasPanelHeight ?? panelBounds.defaultHeight) - 96) : DEFAULT_PREVIEW;
       const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
       const h = isMobile ? viewportLimitedH : rect.height;
       if (w <= 0) return;
@@ -152,7 +152,7 @@ export function EmojiStickerEditor({
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
-  }, [open]);
+  }, [open, canvasPanelHeight]);
 
   // Load image
   useEffect(() => {
@@ -259,6 +259,36 @@ export function EmojiStickerEditor({
 
   const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     resizeRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
+  const onPanelResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+    if (typeof window === 'undefined') return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const viewportW = window.visualViewport?.width ?? window.innerWidth;
+    const viewportH = window.visualViewport?.height ?? window.innerHeight;
+    const { defaultHeight } = getCanvasPanelBounds(viewportW, viewportH);
+    panelResizeRef.current = { startY: e.clientY, startHeight: canvasPanelHeight ?? defaultHeight };
+  };
+
+  const onPanelResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!panelResizeRef.current || typeof window === 'undefined') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const viewportW = window.visualViewport?.width ?? window.innerWidth;
+    const viewportH = window.visualViewport?.height ?? window.innerHeight;
+    const { min, max } = getCanvasPanelBounds(viewportW, viewportH);
+    setCanvasPanelHeight(clampNumber(panelResizeRef.current.startHeight + e.clientY - panelResizeRef.current.startY, min, max));
+  };
+
+  const onPanelResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
+    panelResizeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {

@@ -174,8 +174,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
               />
             </div>
 
-            {/* Custom status bubble — unified across all profile views */}
-            <div className="absolute left-20 top-[40px] z-20">
+            {/* Custom status bubble — unified across all profile views (mobile parity) */}
+            <div className="absolute left-[76px] top-[18px] z-20 max-w-[200px]">
               <CustomStatusBubble
                 customStatus={profile?.custom_status}
                 onClick={() => setShowCustomStatusModal(true)}

@@ -452,9 +452,7 @@ export function MediaEditor({
             <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
               <div
                 className={cn(
-                  'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] select-none',
-                  circular ? 'border-0 ring-1 ring-border/60' : 'border border-border/60',
-                  circular ? 'rounded-full' : 'rounded-md',
+                  'relative rounded-md border border-border/60 bg-muted/40 select-none',
                   'cursor-grab active:cursor-grabbing'
                 )}
                 style={{ width: PREVIEW, height: PREVIEW, touchAction: 'none' }}
@@ -464,23 +462,30 @@ export function MediaEditor({
                 onPointerCancel={onPointerUp}
                 onWheel={onWheel}
               >
-                {src && imgEl && (
-                  <img
-                    src={src}
-                    alt="edit"
-                    draggable={false}
-                    style={{
-                      position: 'absolute',
-                      width: displayedW,
-                      height: displayedH,
-                      left: '50%',
-                      top: '50%',
-                      transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) scaleX(${flip ? -1 : 1})`,
-                      maxWidth: 'none',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                )}
+                <div
+                  className={cn(
+                    'absolute inset-0 overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px]',
+                    circular ? 'rounded-full ring-1 ring-inset ring-border/60' : 'rounded-md'
+                  )}
+                >
+                  {src && imgEl && (
+                    <img
+                      src={src}
+                      alt="edit"
+                      draggable={false}
+                      style={{
+                        position: 'absolute',
+                        width: displayedW,
+                        height: displayedH,
+                        left: '50%',
+                        top: '50%',
+                        transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) scaleX(${flip ? -1 : 1})`,
+                        maxWidth: 'none',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  )}
+                </div>
                 <button
                   type="button"
                   aria-label="Resize image"

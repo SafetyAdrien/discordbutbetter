@@ -37,12 +37,15 @@ interface MarkdownToken {
   };
 }
 
+type AlertType = 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION';
+
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'taskItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'taskItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph' | 'alert';
   content: string;
   language?: string;
   indentLevel?: number;
   checked?: boolean;
+  alertType?: AlertType;
 }
 
 export interface MarkdownContext {

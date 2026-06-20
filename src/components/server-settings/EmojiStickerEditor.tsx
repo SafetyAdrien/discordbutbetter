@@ -90,6 +90,8 @@ export function EmojiStickerEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const [rotationMode, setRotationMode] = useState<'free' | 'step'>('step');
   const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(getInitialPreview);

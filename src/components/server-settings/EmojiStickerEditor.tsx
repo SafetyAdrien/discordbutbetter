@@ -243,23 +243,28 @@ export function EmojiStickerEditor({
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
-  const onResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+  const onCornerResizeDown = (e: PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
+    const canvasEl = e.currentTarget.parentElement as HTMLElement | null;
+    if (!canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+    cornerResizeRef.current = { centerX: cx, centerY: cy, startDist: Math.max(1, dist), startScale: scale };
   };
-
-  const onResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
-    if (!resizeRef.current) return;
+  const onCornerResizeMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!cornerResizeRef.current) return;
     e.preventDefault();
     e.stopPropagation();
-    const delta = (e.clientX - resizeRef.current.startX + e.clientY - resizeRef.current.startY) / Math.max(PREVIEW, 1);
-    setScale(clampScale(resizeRef.current.startScale + delta * 2));
+    const { centerX, centerY, startDist, startScale } = cornerResizeRef.current;
+    const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
+    setScale(clampScale(startScale * (dist / startDist)));
   };
-
-  const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
-    resizeRef.current = null;
+  const onCornerResizeUp = (e: PointerEvent<HTMLButtonElement>) => {
+    cornerResizeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {

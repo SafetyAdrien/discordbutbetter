@@ -699,7 +699,35 @@ export function useUploadSound() {
       }
       return data as unknown as ServerSound;
     },
-    onError: (error: any, variables) => {
+    onMutate: async ({ serverId, name, emoji, volume, file }) => {
+      if (!user) return;
+      await queryClient.cancelQueries({ queryKey: ['server-sounds', serverId] });
+      const previous = queryClient.getQueryData(['server-sounds', serverId]);
+
+      const blobUrl = URL.createObjectURL(file);
+      const tempSound: ServerSound = {
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name,
+        emoji: emoji || null,
+        url: '',
+        signedUrl: blobUrl,
+        volume: volume ?? 1.0,
+        server_id: serverId,
+        creator_id: user.id,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(['server-sounds', serverId], (old: ServerSound[] | undefined) =>
+        old ? [tempSound, ...old] : [tempSound]
+      );
+
+      return { previous, blobUrl };
+    },
+    onError: (error: any, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['server-sounds', variables.serverId], context.previous);
+      }
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
       if (variables?.silent) return;
       if (error?.message?.includes('row-level security') || error?.message?.includes('permission')) {
         toast.error("Vous n'avez pas la permission d'ajouter des sons");
@@ -707,7 +735,8 @@ export function useUploadSound() {
         toast.error("Erreur lors de l'ajout du son");
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables, context) => {
+      if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
       if (!variables?.silent) toast.success('Son ajouté !');
     },
     onSettled: (_, __, { serverId }) => {
@@ -715,6 +744,7 @@ export function useUploadSound() {
     },
   });
 }
+
 
 export function useDeleteSound() {
   const queryClient = useQueryClient();

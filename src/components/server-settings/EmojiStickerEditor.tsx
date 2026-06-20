@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, RotateCcw, ZoomIn, ZoomOut, Move, FlipHorizontal2 } from 'lucide-react';
-import { useServers } from '@/hooks/useServers';
+import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -45,9 +45,7 @@ export function EmojiStickerEditor({
   const { data: servers = [] } = useServers();
 
   const manageable = useMemo(() => {
-    const mine = servers.filter(
-      (s) => s.owner_id === user?.id || (s as any).secondary_owner_id === user?.id
-    );
+    const mine = servers.filter((s: ServerWithDetails) => s.owner_id === user?.id || s.secondary_owner_id === user?.id);
     if (!mine.some((s) => s.id === currentServerId)) {
       const cur = servers.find((s) => s.id === currentServerId);
       if (cur) mine.unshift(cur);

@@ -1,8 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useServerEmojis, useUploadEmoji, useDeleteEmoji } from '@/hooks/useServerAssets';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Loader2, Smile } from 'lucide-react';
-import { BatchImportList, type BatchItem } from './BatchImportList';
+import { UploadingOverlay } from './UploadingOverlay';
+import { EmojiStickerEditor, type EditorResult } from './EmojiStickerEditor';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface EmojiManagerProps {
@@ -12,105 +15,102 @@ interface EmojiManagerProps {
 const MAX_EMOJI_SIZE = 8 * 1024 * 1024; // 8 Mo — HD
 const ACCEPT = 'image/png,image/gif,image/webp,image/jpeg,image/avif,image/apng';
 
-
-interface QueueItem extends BatchItem {
-  file: File;
-  emojiName: string;
-}
-
 const sanitize = (n: string) =>
   n.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 32) || 'emoji';
+
+// Loading time scales (gently) with file size: ~250ms baseline + 60ms / MB, capped at 2.5s
+const computePrepDelay = (bytes: number) =>
+  Math.min(2500, 250 + Math.round((bytes / (1024 * 1024)) * 60));
+
+function useUploaderProfiles(ids: string[]) {
+  const unique = useMemo(() => Array.from(new Set(ids.filter(Boolean))), [ids]);
+  return useQuery({
+    queryKey: ['profiles-mini', unique.sort().join(',')],
+    enabled: unique.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', unique);
+      if (error) throw error;
+      const map: Record<string, { username: string; display_name?: string | null; avatar_url?: string | null }> = {};
+      (data || []).forEach((p: any) => (map[p.id] = p));
+      return map;
+    },
+  });
+}
 
 export function EmojiManager({ serverId }: EmojiManagerProps) {
   const { data: emojis = [], isLoading } = useServerEmojis(serverId);
   const uploadEmoji = useUploadEmoji();
   const deleteEmoji = useDeleteEmoji();
-
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [pending, setPending] = useState<File[]>([]);
+  const [preparing, setPreparing] = useState(false);
+  const [current, setCurrent] = useState<File | null>(null);
 
   const handleFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    const items: QueueItem[] = files.map((file, i) => {
-      const oversize = file.size > MAX_EMOJI_SIZE;
-      return {
-        id: `${Date.now()}-${i}-${file.name}`,
-        name: file.name,
-        size: file.size,
-        previewUrl: URL.createObjectURL(file),
-        status: oversize ? 'error' : 'pending',
-        error: oversize ? 'Fichier > 8 Mo' : undefined,
-        file,
-        emojiName: sanitize(file.name),
-      };
-    });
-    setQueue(items);
-    setIsComplete(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+    if (files.length === 0) return;
 
-  const processQueue = useCallback(async (itemsToProcess?: QueueItem[]) => {
-    const targets = itemsToProcess ?? queue.filter((i) => i.status === 'pending');
-    if (targets.length === 0) {
-      setIsComplete(true);
-      return;
-    }
-    setIsProcessing(true);
-    setIsComplete(false);
-
-    for (const item of targets) {
-      setQueue((prev) =>
-        prev.map((q) => (q.id === item.id ? { ...q, status: 'uploading' } : q))
-      );
-      try {
-        await uploadEmoji.mutateAsync({
-          serverId,
-          name: item.emojiName,
-          file: item.file,
-          silent: true,
-        });
-        setQueue((prev) =>
-          prev.map((q) => (q.id === item.id ? { ...q, status: 'success' } : q))
-        );
-      } catch (e: any) {
-        const msg = e?.message?.includes('duplicate')
-          ? 'Nom déjà utilisé'
-          : e?.message || 'Erreur';
-        setQueue((prev) =>
-          prev.map((q) => (q.id === item.id ? { ...q, status: 'error', error: msg } : q))
-        );
+    const valid: File[] = [];
+    files.forEach((f) => {
+      if (f.size > MAX_EMOJI_SIZE) {
+        toast.error(`${f.name} dépasse 8 Mo`);
+      } else {
+        valid.push(f);
       }
-    }
-
-    setIsProcessing(false);
-    setIsComplete(true);
-  }, [queue, serverId, uploadEmoji]);
-
-  const closeQueue = () => {
-    queue.forEach((q) => q.previewUrl && URL.revokeObjectURL(q.previewUrl));
-    setQueue([]);
-    setIsComplete(false);
+    });
+    if (valid.length === 0) return;
+    setPending(valid);
+    openNext(valid[0], valid.slice(1));
   };
 
-  const retryFailed = () => {
-    const retry = queue
-      .filter((q) => q.status === 'error' && q.error !== 'Fichier > 8 Mo')
-      .map((q) => ({ ...q, status: 'pending' as const, error: undefined }));
-    if (retry.length === 0) {
-      toast.info('Aucun fichier réessayable');
-      return;
-    }
-    setQueue((prev) =>
-      prev.map((q) => {
-        const r = retry.find((x) => x.id === q.id);
-        return r ?? q;
-      })
-    );
-    processQueue(retry);
+  const openNext = (file: File, rest: File[]) => {
+    setPreparing(true);
+    setCurrent(null);
+    const delay = computePrepDelay(file.size);
+    window.setTimeout(() => {
+      setPreparing(false);
+      setCurrent(file);
+      setPending(rest);
+    }, delay);
   };
+
+  const handleEditorClose = () => {
+    setCurrent(null);
+    setPending([]);
+  };
+
+  const handleEditorFinish = async (result: EditorResult) => {
+    const fileForUpload = new File([result.blob], `${result.name}.${result.ext}`, {
+      type: result.mime,
+    });
+    setCurrent(null);
+    try {
+      await uploadEmoji.mutateAsync({
+        serverId: result.serverId,
+        name: result.name,
+        file: fileForUpload,
+        silent: true,
+      });
+      toast.success(`:${result.name}: ajouté`);
+    } catch (e: any) {
+      toast.error(
+        e?.message?.includes('duplicate') ? 'Nom déjà utilisé' : "Erreur lors de l'ajout"
+      );
+    }
+    // Chain remaining
+    if (pending.length > 0) {
+      const [next, ...rest] = pending;
+      openNext(next, rest);
+    }
+  };
+
+  const uploaderProfiles = useUploaderProfiles(emojis.map((e) => e.creator_id || '').filter(Boolean));
 
   if (isLoading) {
     return (
@@ -119,6 +119,9 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
       </div>
     );
   }
+
+  const slotsTotal = 50;
+  const slotsAvailable = Math.max(0, slotsTotal - emojis.length);
 
   return (
     <div className="space-y-6">
@@ -129,9 +132,9 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
             {emojis.length} emoji{emojis.length > 1 ? 's' : ''} · 8 Mo max (HD)
           </p>
         </div>
-        <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
+        <Button onClick={() => fileInputRef.current?.click()}>
           <Plus className="w-4 h-4 mr-2" />
-          Importer
+          Upload Emoji
         </Button>
         <input
           ref={fileInputRef}
@@ -143,52 +146,83 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
         />
       </div>
 
-      {queue.length > 0 && (
-        <BatchImportList
-          items={queue}
-          isProcessing={isProcessing}
-          isComplete={isComplete}
-          onStart={() => processQueue()}
-          onCancel={closeQueue}
-          onClose={closeQueue}
-          onRetry={retryFailed}
-        />
-      )}
+      {/* Emoji section header — like image 3 */}
+      <div>
+        <h3 className="text-2xl font-bold mb-0.5">Emoji</h3>
+        <p className="text-sm text-muted-foreground mb-3">
+          {slotsAvailable} slots available
+        </p>
 
-      {emojis.length === 0 ? (
-        <div className="text-center py-12">
-          <Smile className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-          <h3 className="text-lg font-medium">Aucun emoji</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Importez plusieurs emojis à la fois pour votre serveur
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {emojis.map((emoji) => (
-            <div
-              key={emoji.id}
-              className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 group"
-            >
-              <img
-                src={emoji.url}
-                alt={emoji.name}
-                className="w-10 h-10 object-contain"
-                loading="lazy"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">:{emoji.name}:</p>
-              </div>
-              <button
-                onClick={() => deleteEmoji.mutate({ emojiId: emoji.id, serverId })}
-                className="opacity-0 group-hover:opacity-100 p-1.5 hover:text-destructive transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+        {emojis.length === 0 ? (
+          <div className="rounded-lg bg-muted/30 py-10 text-center">
+            <Smile className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">Aucun emoji pour ce serveur</p>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-muted/30 overflow-hidden">
+            <div className="grid grid-cols-[80px_1fr_1fr_40px] gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/30">
+              <div>Image</div>
+              <div>Name</div>
+              <div>Uploaded By</div>
+              <div />
             </div>
-          ))}
-        </div>
-      )}
+            <ul className="divide-y divide-border/20">
+              {emojis.map((emoji) => {
+                const up = emoji.creator_id ? uploaderProfiles.data?.[emoji.creator_id] : null;
+                return (
+                  <li
+                    key={emoji.id}
+                    className="grid grid-cols-[80px_1fr_1fr_40px] gap-3 items-center px-4 py-2 group hover:bg-muted/30 transition-colors"
+                  >
+                    <img
+                      src={emoji.url}
+                      alt={emoji.name}
+                      className="w-10 h-10 object-contain rounded"
+                      loading="lazy"
+                    />
+                    <span className="text-sm font-medium truncate">:{emoji.name}:</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {up?.avatar_url ? (
+                        <img
+                          src={up.avatar_url}
+                          alt=""
+                          className="w-6 h-6 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-primary/20 text-[10px] font-bold flex items-center justify-center shrink-0">
+                          {(up?.username || up?.display_name || '?')[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm text-muted-foreground truncate">
+                        {up?.username || up?.display_name || '—'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => deleteEmoji.mutate({ emojiId: emoji.id, serverId })}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all"
+                      aria-label="Delete emoji"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <UploadingOverlay open={preparing} />
+
+      <EmojiStickerEditor
+        open={!!current}
+        file={current}
+        type="emoji"
+        defaultName={current ? sanitize(current.name) : 'emoji'}
+        currentServerId={serverId}
+        onClose={handleEditorClose}
+        onFinish={handleEditorFinish}
+      />
     </div>
   );
 }

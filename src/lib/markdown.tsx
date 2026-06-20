@@ -264,6 +264,10 @@ function parseBlocks(content: string): BlockToken[] {
       else if (line.startsWith('# ')) blocks.push({ type: 'header1', content: line.slice(2) });
       else if (line.startsWith('-# ')) blocks.push({ type: 'subtext', content: line.slice(3) });
       else if (line.startsWith('> ')) blocks.push({ type: 'blockquote', content: line.slice(2) });
+      else if (/^(\s*)[-*] \[([ xX])\] /.test(line)) {
+        const taskMatch = line.match(/^(\s*)[-*] \[([ xX])\] /)!;
+        blocks.push({ type: 'taskItem', content: line.slice(taskMatch[0].length), indentLevel: taskMatch[1].length, checked: taskMatch[2].toLowerCase() === 'x' });
+      }
       else if (/^(\s*)[-*] /.test(line)) {
         const listMatch = line.match(/^(\s*)[-*] /);
         blocks.push({ type: 'listItem', content: line.slice(listMatch![0].length), indentLevel: listMatch![1].length });

@@ -1018,6 +1018,35 @@ export function MessageInput({
                   <button type="button" onMouseDown={e => e.preventDefault()} title="Liste numérotée" onClick={() => applyMarkdown('1. ', '', true)} className={markdownButtonClass}><ListOrdered className="w-4 h-4" /></button>
                   <button type="button" onMouseDown={e => e.preventDefault()} title="Lien" onClick={() => applyMarkdown('[', '](url)')} className={markdownButtonClass}><LinkIcon className="w-4 h-4" /></button>
                   <button type="button" onMouseDown={e => e.preventDefault()} title="Spoiler" onClick={() => applyMarkdown('||')} className={markdownButtonClass}><EyeOff className="w-4 h-4" /></button>
+                  <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button type="button" onMouseDown={e => e.preventDefault()} title="Avertissement" className={markdownButtonClass}><TriangleAlert className="w-4 h-4" /></button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="start" className="w-56 p-1">
+                      <div className="flex flex-col">
+                        {([
+                          { type: 'NOTE' as const, Icon: Info, label: 'Note', varName: 'alert-note' },
+                          { type: 'TIP' as const, Icon: Lightbulb, label: 'Astuce', varName: 'alert-tip' },
+                          { type: 'IMPORTANT' as const, Icon: MessageSquareWarning, label: 'Important', varName: 'alert-important' },
+                          { type: 'WARNING' as const, Icon: TriangleAlert, label: 'Avertissement', varName: 'alert-warning' },
+                          { type: 'CAUTION' as const, Icon: OctagonAlert, label: 'Attention', varName: 'alert-caution' },
+                        ]).map(({ type, Icon, label, varName }) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => insertAlert(type)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-left text-sm"
+                            style={{ color: `hsl(var(--${varName}))` }}
+                          >
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span className="text-foreground">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>

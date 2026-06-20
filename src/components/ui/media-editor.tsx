@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type WheelEvent } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, RotateCcw, ZoomIn, FlipHorizontal2 } from 'lucide-react';
+import { X, RotateCcw, FlipHorizontal2, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface EditorTransform {
@@ -140,7 +140,6 @@ export function MediaEditor({
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
-  const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
   const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Measure to keep canvas square + physically contained on mobile browsers.
@@ -206,7 +205,7 @@ export function MediaEditor({
     setFitMode(circular ? 'fill' : 'fit');
     pointersRef.current.clear();
     pinchRef.current = null;
-    resizeRef.current = null;
+    cornerResizeRef.current = null;
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
@@ -225,8 +224,8 @@ export function MediaEditor({
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
-  // Free positioning: clamp is a no-op so the image can be moved anywhere.
-  const clamp = (v: number, _m: number) => v;
+  // Bounded positioning: image center stays within roughly one canvas around the center.
+  const clamp = (v: number, _m: number) => Math.max(-PREVIEW, Math.min(PREVIEW, v));
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -280,23 +279,29 @@ export function MediaEditor({
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
-  const onResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+  const cornerResizeRef = useRef<{ centerX: number; centerY: number; startDist: number; startScale: number } | null>(null);
+  const onCornerResizeDown = (e: PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
+    const canvasEl = e.currentTarget.parentElement as HTMLElement | null;
+    if (!canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+    cornerResizeRef.current = { centerX: cx, centerY: cy, startDist: Math.max(1, dist), startScale: scale };
   };
-
-  const onResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
-    if (!resizeRef.current) return;
+  const onCornerResizeMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!cornerResizeRef.current) return;
     e.preventDefault();
     e.stopPropagation();
-    const delta = (e.clientX - resizeRef.current.startX + e.clientY - resizeRef.current.startY) / Math.max(PREVIEW, 1);
-    setScale(clampScale(resizeRef.current.startScale + delta * 2));
+    const { centerX, centerY, startDist, startScale } = cornerResizeRef.current;
+    const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
+    setScale(clampScale(startScale * (dist / startDist)));
   };
-
-  const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
-    resizeRef.current = null;
+  const onCornerResizeUp = (e: PointerEvent<HTMLButtonElement>) => {
+    cornerResizeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
@@ -487,18 +492,29 @@ export function MediaEditor({
                     />
                   )}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Resize image"
-                  title="Resize image"
-                  className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95"
-                  onPointerDown={onResizePointerDown}
-                  onPointerMove={onResizePointerMove}
-                  onPointerUp={onResizePointerUp}
-                  onPointerCancel={onResizePointerUp}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
+                {[
+                  { Icon: ArrowDownRight, pos: 'top-1 left-1', label: 'top-left' },
+                  { Icon: ArrowDownLeft, pos: 'top-1 right-1', label: 'top-right' },
+                  { Icon: ArrowUpRight, pos: 'bottom-1 left-1', label: 'bottom-left' },
+                  { Icon: ArrowUpLeft, pos: 'bottom-1 right-1', label: 'bottom-right' },
+                ].map(({ Icon, pos, label }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-label={`Resize from ${label}`}
+                    title="Drag to resize"
+                    className={cn(
+                      'absolute z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95 touch-none',
+                      pos
+                    )}
+                    onPointerDown={onCornerResizeDown}
+                    onPointerMove={onCornerResizeMove}
+                    onPointerUp={onCornerResizeUp}
+                    onPointerCancel={onCornerResizeUp}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
               </div>
             </div>
 

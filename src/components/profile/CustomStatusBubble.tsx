@@ -24,35 +24,21 @@ export function CustomStatusBubble({
 }: CustomStatusBubbleProps) {
   if (!customStatus && !showPlaceholder) return null;
 
+  // Unified visual identity across all profile views.
+  // Only the text size and max-width adapt to the surface.
   const sizeClasses = {
-    sm: {
-      pill: 'pl-1.5 pr-2.5 py-1 min-h-[28px] gap-1.5',
-      smallBubble: '-left-2 -top-3 w-2.5 h-2.5',
-      tinyBubble: 'left-1 -top-1 w-2.5 h-2.5',
-      icon: 'w-4 h-4',
-      plus: 'w-3 h-3',
-      text: 'text-xs',
-      maxW: 'max-w-[200px]',
-    },
-    md: {
-      pill: 'pl-2 pr-3 py-1.5 min-h-[34px] gap-2',
-      smallBubble: '-left-2.5 -top-4 w-3 h-3',
-      tinyBubble: 'left-1.5 -top-1.5 w-3 h-3',
-      icon: 'w-[18px] h-[18px]',
-      plus: 'w-3.5 h-3.5',
-      text: 'text-sm',
-      maxW: 'max-w-[220px]',
-    },
-    lg: {
-      pill: 'pl-2 pr-4 py-2 min-h-[40px] gap-2 mr-3',
-      smallBubble: '-left-3 -top-5 w-4 h-4',
-      tinyBubble: 'left-2 -top-2 w-4 h-4',
-      icon: 'w-5 h-5',
-      plus: 'w-[18px] h-[18px]',
-      text: 'text-base',
-      maxW: '',
-    },
+    sm: { text: 'text-xs', maxW: 'max-w-[200px]' },
+    md: { text: 'text-sm', maxW: 'max-w-[220px]' },
+    lg: { text: 'text-base', maxW: '' },
   }[size];
+
+  const shared = {
+    pill: 'pl-2 pr-3 py-1.5 min-h-[32px] gap-2',
+    smallBubble: '-left-2.5 -top-3.5 w-3 h-3',
+    tinyBubble: 'left-1.5 -top-1.5 w-3 h-3',
+    icon: 'w-[18px] h-[18px]',
+    plus: 'w-3.5 h-3.5',
+  };
 
   const Component = onClick ? 'button' : 'div';
 

@@ -141,6 +141,7 @@ export function MediaEditor({
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
+  const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Measure to keep canvas square + physically contained on mobile browsers.
   useEffect(() => {
@@ -153,13 +154,13 @@ export function MediaEditor({
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
       const isMobile = viewportW < 768 || viewportH < 520;
       const isLandscape = viewportW > viewportH;
+      const panelBounds = getCanvasPanelBounds(viewportW, viewportH);
+      setCanvasPanelHeight((prev) => clampNumber(prev ?? panelBounds.defaultHeight, panelBounds.min, panelBounds.max));
       const mobileMax = isLandscape
         ? Math.min(MOBILE_LANDSCAPE_PREVIEW, Math.floor(viewportH * 0.42), Math.floor(viewportW * 0.28))
         : Math.min(MOBILE_PREVIEW, Math.floor(viewportW * 0.5), Math.floor(viewportH * 0.28));
       const safeW = Math.max(MIN_PREVIEW, isLandscape ? viewportW - 292 : viewportW - 96);
-      const viewportLimitedH = isMobile
-        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 164 : 360))
-        : DEFAULT_PREVIEW;
+      const viewportLimitedH = isMobile ? Math.max(MIN_PREVIEW, (canvasPanelHeight ?? panelBounds.defaultHeight) - 96) : DEFAULT_PREVIEW;
       const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
       const h = isMobile ? viewportLimitedH : rect.height;
       if (w <= 0) return;

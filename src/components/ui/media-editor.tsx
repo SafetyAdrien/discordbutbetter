@@ -323,6 +323,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setRotation(0);
     setFitMode(circular ? 'fill' : 'fit');
   };
 

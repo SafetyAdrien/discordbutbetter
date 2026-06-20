@@ -1700,7 +1700,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
-                                {isEditing ? (
+                                {isEditing && !isMobile ? (
                                   <div className="mt-1 space-y-2">
                                     <MarkdownTextarea
                                       ref={setEditingTextareaNode}

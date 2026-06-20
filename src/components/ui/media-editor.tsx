@@ -466,6 +466,22 @@ export function MediaEditor({
               </div>
             </div>
 
+            {/* Discord-style zoom slider */}
+            <div className="flex items-center gap-3 mt-3 px-1">
+              <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Slider
+                value={[scale]}
+                min={MIN_SCALE}
+                max={MAX_SCALE}
+                step={0.01}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
+                aria-label="Zoom"
+                className="flex-1"
+              />
+              <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
+
+
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
                 <button

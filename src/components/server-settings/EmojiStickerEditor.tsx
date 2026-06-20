@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,12 +110,14 @@ export function EmojiStickerEditor({
     const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(el);
     window.addEventListener('resize', scheduleMeasure);
+    window.addEventListener('orientationchange', scheduleMeasure);
     window.visualViewport?.addEventListener('resize', scheduleMeasure);
     window.visualViewport?.addEventListener('scroll', scheduleMeasure);
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener('resize', scheduleMeasure);
+      window.removeEventListener('orientationchange', scheduleMeasure);
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
@@ -154,7 +156,7 @@ export function EmojiStickerEditor({
   const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
   // Drag, pinch and direct in-canvas scale handlers
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -166,7 +168,7 @@ export function EmojiStickerEditor({
     }
     dragRef.current = { startX: e.clientX, startY: e.clientY, oX: offset.x, oY: offset.y };
   };
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (pointersRef.current.has(e.pointerId)) {
       pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
@@ -186,7 +188,7 @@ export function EmojiStickerEditor({
       y: clamp(dragRef.current.oY + dy, maxOffsetY),
     });
   };
-  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     pointersRef.current.delete(e.pointerId);
     pinchRef.current = null;
     dragRef.current = null;
@@ -201,19 +203,19 @@ export function EmojiStickerEditor({
     }
   };
 
-  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  const onWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
   };
 
-  const onResizePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
   };
 
-  const onResizePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
     if (!resizeRef.current) return;
     e.preventDefault();
     e.stopPropagation();
@@ -221,7 +223,7 @@ export function EmojiStickerEditor({
     setScale(clampScale(resizeRef.current.startScale + delta * 2));
   };
 
-  const onResizePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     resizeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -331,7 +333,7 @@ export function EmojiStickerEditor({
     );
   };
   const mobileViewportStyle = viewportHeight
-    ? ({ '--media-editor-vh': `${viewportHeight}px` } as React.CSSProperties)
+    ? ({ '--media-editor-vh': `${viewportHeight}px`, maxHeight: `${viewportHeight}px` } as CSSProperties)
     : undefined;
 
   return (

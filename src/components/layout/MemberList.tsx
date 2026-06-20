@@ -549,7 +549,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
               <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                 <span
                   className={cn(
-                    "text-sm font-medium truncate min-w-0",
+                    "text-sm font-medium truncate min-w-0 block",
                     member.status === "offline" && "opacity-60",
                   )}
                   style={{
@@ -558,18 +558,44 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 >
                   {member.displayName}
                 </span>
-                {(isOwner || isSecondaryOwner) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="flex-shrink-0 cursor-pointer">
-                        <StreamlineCrown size={14} className="text-yellow-500" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{isOwner ? "Propriétaire du serveur" : "Second Propriétaire"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  {(isOwner || isSecondaryOwner) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex-shrink-0 cursor-pointer">
+                          <StreamlineCrown size={14} className="text-yellow-500" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isOwner ? "Propriétaire du serveur" : "Second Propriétaire"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {(() => {
+                    const badgeRoles = member.roles?.filter((r) => r.icon_url) || [];
+                    const visible = badgeRoles.slice(0, 2);
+                    const hidden = badgeRoles.length - visible.length;
+                    return (
+                      <>
+                        {visible.map((role) => (
+                          <Tooltip key={role.id}>
+                            <TooltipTrigger asChild>
+                              <span className="flex-shrink-0 cursor-pointer">
+                                <RoleIcon role={role} />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{role.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                        {hidden > 0 && (
+                          <span className="text-[10px] text-muted-foreground leading-none">+{hidden}</span>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
               {/* Activity or Custom Status */}
               {member.activity_type && member.activity_text ? (

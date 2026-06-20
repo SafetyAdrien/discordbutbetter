@@ -56,6 +56,7 @@ export function FullUserProfileModal({
   onNavigateToDM,
 }: FullUserProfileModalProps) {
   const [noteInput, setNoteInput] = useState('');
+  const [customStatusOpen, setCustomStatusOpen] = useState(false);
 
   const { user: currentUser } = useAuth();
   const { data: mutualServers = [] } = useMutualServers(user?.id || null);

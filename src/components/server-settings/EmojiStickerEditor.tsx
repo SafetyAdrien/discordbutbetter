@@ -187,7 +187,8 @@ export function EmojiStickerEditor({
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
 
-  const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+  // Free positioning: no clamping so the image can be moved anywhere on the canvas.
+  const clamp = (v: number, _m: number) => v;
 
   // Drag, pinch and direct in-canvas scale handlers
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {

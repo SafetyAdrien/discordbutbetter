@@ -25,7 +25,6 @@ export interface ServerSticker {
 export function useServerEmojis(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!serverId) return;
@@ -35,20 +34,33 @@ export function useServerEmojis(serverId: string | null) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },
-        () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
-          }, 300);
+        (payload) => {
+          queryClient.setQueryData(['server-emojis', serverId], (old: ServerEmoji[] | undefined) => {
+            const list = old ?? [];
+            if (payload.eventType === 'INSERT') {
+              const row = payload.new as ServerEmoji;
+              if (list.some((e) => e.id === row.id)) return list;
+              return [row, ...list.filter((e) => !e.id.startsWith('temp-') || e.name !== row.name)];
+            }
+            if (payload.eventType === 'UPDATE') {
+              const row = payload.new as ServerEmoji;
+              return list.map((e) => (e.id === row.id ? row : e));
+            }
+            if (payload.eventType === 'DELETE') {
+              const row = payload.old as ServerEmoji;
+              return list.filter((e) => e.id !== row.id);
+            }
+            return list;
+          });
         }
       )
       .subscribe();
 
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [serverId, queryClient]);
+
 
   const query = useQuery({
     queryKey: ['server-emojis', serverId],
@@ -205,7 +217,6 @@ export function useDeleteEmoji() {
 export function useServerStickers(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!serverId) return;
@@ -215,20 +226,33 @@ export function useServerStickers(serverId: string | null) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_stickers', filter: `server_id=eq.${serverId}` },
-        () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
-          }, 300);
+        (payload) => {
+          queryClient.setQueryData(['server-stickers', serverId], (old: ServerSticker[] | undefined) => {
+            const list = old ?? [];
+            if (payload.eventType === 'INSERT') {
+              const row = payload.new as ServerSticker;
+              if (list.some((s) => s.id === row.id)) return list;
+              return [row, ...list.filter((s) => !s.id.startsWith('temp-') || s.name !== row.name)];
+            }
+            if (payload.eventType === 'UPDATE') {
+              const row = payload.new as ServerSticker;
+              return list.map((s) => (s.id === row.id ? row : s));
+            }
+            if (payload.eventType === 'DELETE') {
+              const row = payload.old as ServerSticker;
+              return list.filter((s) => s.id !== row.id);
+            }
+            return list;
+          });
         }
       )
       .subscribe();
 
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [serverId, queryClient]);
+
 
   const query = useQuery({
     queryKey: ['server-stickers', serverId],
@@ -583,7 +607,6 @@ async function signSoundUrls(rows: ServerSound[]): Promise<ServerSound[]> {
 export function useServerSounds(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!serverId) return;
@@ -593,18 +616,15 @@ export function useServerSounds(serverId: string | null) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_sounds', filter: `server_id=eq.${serverId}` },
         () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
-          }, 300);
+          queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
         }
       )
       .subscribe();
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [serverId, queryClient]);
+
 
   const query = useQuery({
     queryKey: ['server-sounds', serverId],
@@ -729,4 +749,40 @@ export function useDeleteSound() {
       queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
     },
   });
+}
+
+/**
+ * Always-on realtime subscription for emojis/stickers/sounds of the active server.
+ * Ensures imports made by any user are reflected instantly across all clients,
+ * even when the picker / soundboard view is not currently mounted.
+ */
+export function useServerAssetsRealtime(serverId: string | null) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`server-assets-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_stickers', filter: `server_id=eq.${serverId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_sounds', filter: `server_id=eq.${serverId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] })
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
 }

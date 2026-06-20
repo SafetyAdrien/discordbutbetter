@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { useMessages, useSendMessage, useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useServerRoles } from '@/hooks/useRoles';

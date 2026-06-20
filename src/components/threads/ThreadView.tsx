@@ -912,6 +912,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                           onCopyLink={() => handleCopyMessageLink(message.id)}
                           onCopyId={() => handleCopyId(message.id)}
+                          onCopyText={() => copyToClipboard(message.content, 'Message copié')}
                           onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                           onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                           onDropdownOpenChange={(open) => {

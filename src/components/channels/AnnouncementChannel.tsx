@@ -1171,48 +1171,7 @@ export function AnnouncementChannel({
                       </div>
                     )}
                   </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="w-48">
-                  <ContextMenuItem onClick={() => handleAddReaction(message.id, "👍")}>
-                    <span className="mr-2">👍</span>
-                    Ajouter une réaction
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleReply(message)}>
-                    <Reply className="w-4 h-4 mr-2" />
-                    Répondre
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => handleCopyMessage(message.content)}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copier le texte
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleCopyMessageLink(message.id)}>
-                    <Link className="w-4 h-4 mr-2" />
-                    Copier le lien du message
-                  </ContextMenuItem>
-                  {(isOwnMessage || canManageMessages) && (
-                    <>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => handleStartEdit(message)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Modifier
-                      </ContextMenuItem>
-                    </>
-                  )}
-                   {(isOwnMessage || canManageMessages) && (
-                     <>
-                       {!(isOwnMessage || canManageMessages) && <ContextMenuSeparator />}
-                      <ContextMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(message.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
-                      </ContextMenuItem>
-                    </>
-                  )}
-                </ContextMenuContent>
-              </ContextMenu>
+                </UniversalMessageContextMenu>
               </div>
             );
           })}

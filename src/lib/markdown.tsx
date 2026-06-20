@@ -101,19 +101,19 @@ function getGlobalSnapshot() {
 // PARSING LOGIC (TRIMMED FOR BREVITY IN TOOL CALL BUT FULL CONTENT PRESERVED)
 // ============================================
 const INLINE_PATTERNS: { regex: RegExp; type: MarkdownToken['type'] }[] = [
-  { regex: /\*\*\*(.+?)\*\*\*/g, type: 'boldItalic' },
-  { regex: /___(.+?)___/g, type: 'underlineBoldItalic' },
-  { regex: /__\*\*(.+?)\*\*__/g, type: 'underlineBold' },
-  { regex: /\*\*__(.+?)__\*\*/g, type: 'underlineBold' },
-  { regex: /__\*(.+?)\*__/g, type: 'underlineItalic' },
-  { regex: /\*__(.+?)__\*/g, type: 'underlineItalic' },
-  { regex: /\*\*(.+?)\*\*/g, type: 'bold' },
-  { regex: /__(.+?)__/g, type: 'underline' },
-  { regex: /\*(.+?)\*/g, type: 'italic' },
-  { regex: /_(.+?)_/g, type: 'italic' },
-  { regex: /~~(.+?)~~/g, type: 'strikethrough' },
-  { regex: /`([^`]+)`/g, type: 'code' },
-  { regex: /\|\|(.+?)\|\|/g, type: 'spoiler' },
+  { regex: /\*\*\*([\s\S]+?)\*\*\*/g, type: 'boldItalic' },
+  { regex: /___([\s\S]+?)___/g, type: 'underlineBoldItalic' },
+  { regex: /__\*\*([\s\S]+?)\*\*__/g, type: 'underlineBold' },
+  { regex: /\*\*__([\s\S]+?)__\*\*/g, type: 'underlineBold' },
+  { regex: /__\*([\s\S]+?)\*__/g, type: 'underlineItalic' },
+  { regex: /\*__([\s\S]+?)__\*/g, type: 'underlineItalic' },
+  { regex: /\*\*([\s\S]+?)\*\*/g, type: 'bold' },
+  { regex: /__([\s\S]+?)__/g, type: 'underline' },
+  { regex: /~~([\s\S]+?)~~/g, type: 'strikethrough' },
+  { regex: /`([^`\n]+)`/g, type: 'code' },
+  { regex: /\|\|([\s\S]+?)\|\|/g, type: 'spoiler' },
+  { regex: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g, type: 'italic' },
+  { regex: /(?<!_)_([^_\n]+?)_(?!_)/g, type: 'italic' },
 ];
 
 const MENTION_PATTERNS = {

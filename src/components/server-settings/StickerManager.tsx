@@ -66,6 +66,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
           serverId,
           name: item.stickerName,
           file: item.file,
+          silent: true,
         });
         setQueue((prev) =>
           prev.map((q) => (q.id === item.id ? { ...q, status: 'success' } : q))

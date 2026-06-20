@@ -69,6 +69,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
           serverId,
           name: item.emojiName,
           file: item.file,
+          silent: true,
         });
         setQueue((prev) =>
           prev.map((q) => (q.id === item.id ? { ...q, status: 'success' } : q))

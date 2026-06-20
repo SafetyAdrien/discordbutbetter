@@ -74,6 +74,7 @@ export function SoundBoardPage({ serverId }: SoundBoardPageProps) {
           name: item.soundName,
           volume: 1,
           file: item.file,
+          silent: true,
         });
         setQueue((prev) =>
           prev.map((q) => (q.id === item.id ? { ...q, status: 'success' } : q))

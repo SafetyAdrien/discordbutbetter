@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, MoreHorizontal, ClipboardCopy } from 'lucide-react';
+import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, MoreHorizontal, ClipboardCopy, Copy } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';
 import { DeleteMessageDialog } from './DeleteMessageDialog';

@@ -585,7 +585,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                   className="min-h-[60px] resize-none"
                                   autoFocus
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
                                       e.preventDefault();
                                       handleSaveEdit();
                                     }

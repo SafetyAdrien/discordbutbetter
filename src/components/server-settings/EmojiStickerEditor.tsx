@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, RotateCcw, ZoomIn, ZoomOut, Move, FlipHorizontal2 } from 'lucide-react';
+import { X, RotateCcw, ZoomIn, FlipHorizontal2 } from 'lucide-react';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -29,6 +28,13 @@ interface EmojiStickerEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
+const MIN_PREVIEW = 56;
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+
+const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.hypot(a.x - b.x, a.y - b.y);
 const sanitize = (n: string) =>
   n.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 32) || 'item';
 
@@ -63,8 +69,12 @@ export function EmojiStickerEditor({
   const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
 
   // Measure to keep canvas square + physically contained on mobile browsers.
@@ -76,12 +86,21 @@ export function EmojiStickerEditor({
       const rect = el.getBoundingClientRect();
       const viewportW = window.visualViewport?.width ?? window.innerWidth;
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
-      const isMobile = viewportW < 640;
-      const w = isMobile ? Math.min(rect.width, viewportW - 32) : rect.width;
-      const h = isMobile ? Math.min(rect.height, viewportH - 410) : rect.height;
-      if (w <= 0 || h <= 0) return;
-      const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      const isMobile = viewportW < 768 || viewportH < 520;
+      const isLandscape = viewportW > viewportH;
+      const safeW = Math.max(MIN_PREVIEW, viewportW - 32);
+      const viewportLimitedH = isMobile
+        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 220 : 286))
+        : DEFAULT_PREVIEW;
+      const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
+      const h = isMobile ? viewportLimitedH : rect.height;
+      if (w <= 0) return;
+      const size = Math.max(MIN_PREVIEW, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
       setPreview(size);
+      setViewportHeight((prev) => {
+        const next = Math.max(240, Math.floor(viewportH));
+        return prev === next ? prev : next;
+      });
     };
     const scheduleMeasure = () => {
       cancelAnimationFrame(raf);
@@ -91,12 +110,14 @@ export function EmojiStickerEditor({
     const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(el);
     window.addEventListener('resize', scheduleMeasure);
+    window.addEventListener('orientationchange', scheduleMeasure);
     window.visualViewport?.addEventListener('resize', scheduleMeasure);
     window.visualViewport?.addEventListener('scroll', scheduleMeasure);
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener('resize', scheduleMeasure);
+      window.removeEventListener('orientationchange', scheduleMeasure);
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
@@ -113,6 +134,9 @@ export function EmojiStickerEditor({
     setOffset({ x: 0, y: 0 });
     setFlip(false);
     setFitMode('fit');
+    pointersRef.current.clear();
+    pinchRef.current = null;
+    resizeRef.current = null;
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
@@ -134,12 +158,31 @@ export function EmojiStickerEditor({
 
   const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
-  // Drag handlers
-  const onPointerDown = (e: React.PointerEvent) => {
-    (e.target as Element).setPointerCapture(e.pointerId);
+  // Drag, pinch and direct in-canvas scale handlers
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = Array.from(pointersRef.current.values());
+    if (points.length >= 2) {
+      pinchRef.current = { startDistance: pointDistance(points[0], points[1]), startScale: scale };
+      dragRef.current = null;
+      return;
+    }
     dragRef.current = { startX: e.clientX, startY: e.clientY, oX: offset.x, oY: offset.y };
   };
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    const points = Array.from(pointersRef.current.values());
+    if (points.length >= 2 && pinchRef.current) {
+      const distance = pointDistance(points[0], points[1]);
+      if (pinchRef.current.startDistance > 0) {
+        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance)));
+      }
+      return;
+    }
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
@@ -148,7 +191,49 @@ export function EmojiStickerEditor({
       y: clamp(dragRef.current.oY + dy, maxOffsetY),
     });
   };
-  const onPointerUp = () => { dragRef.current = null; };
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    pinchRef.current = null;
+    dragRef.current = null;
+    const [remaining] = Array.from(pointersRef.current.values());
+    if (remaining) {
+      dragRef.current = { startX: remaining.x, startY: remaining.y, oX: offset.x, oY: offset.y };
+    }
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
+  const onWheel = (e: WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
+  };
+
+  const onResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
+  };
+
+  const onResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!resizeRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = (e.clientX - resizeRef.current.startX + e.clientY - resizeRef.current.startY) / Math.max(PREVIEW, 1);
+    setScale(clampScale(resizeRef.current.startScale + delta * 2));
+  };
+
+  const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
+    resizeRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
 
   // Re-clamp when scale changes
   useEffect(() => {
@@ -250,20 +335,25 @@ export function EmojiStickerEditor({
       </div>
     );
   };
+  const mobileViewportStyle = viewportHeight
+    ? ({ '--media-editor-vh': `${viewportHeight}px`, maxHeight: `${viewportHeight}px` } as CSSProperties)
+    : undefined;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
+        style={mobileViewportStyle}
         className={cn(
           'p-0 gap-0 overflow-hidden border-border/60 [&>button]:hidden',
           'sm:max-w-[1040px] sm:w-[95vw] sm:max-h-[92dvh]',
-          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100svh] max-sm:max-h-[100svh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
+          'max-sm:w-screen max-sm:max-w-none max-sm:h-[var(--media-editor-vh,100svh)] max-sm:max-h-[var(--media-editor-vh,100svh)] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0',
+          '[@media(max-height:520px)]:w-screen [@media(max-height:520px)]:max-w-none [@media(max-height:520px)]:h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:rounded-none [@media(max-height:520px)]:translate-x-0 [@media(max-height:520px)]:translate-y-0 [@media(max-height:520px)]:left-0 [@media(max-height:520px)]:top-0'
         )}
       >
         <DialogTitle className="sr-only">Add {type === 'emoji' ? 'Emoji' : 'Sticker'}</DialogTitle>
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100svh] overflow-hidden">
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
+          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -296,6 +386,7 @@ export function EmojiStickerEditor({
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
+                onWheel={onWheel}
               >
                 {src && imgEl && (
                   <img
@@ -315,13 +406,20 @@ export function EmojiStickerEditor({
                     }}
                   />
                 )}
+                <button
+                  type="button"
+                  aria-label="Resize image"
+                  title="Resize image"
+                  className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95"
+                  onPointerDown={onResizePointerDown}
+                  onPointerMove={onResizePointerMove}
+                  onPointerUp={onResizePointerUp}
+                  onPointerCancel={onResizePointerUp}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
               </div>
             </div>
-
-            <p className="text-xs text-muted-foreground text-center mt-3">
-              <Move className="w-3 h-3 inline mr-1 -mt-0.5" />
-              Drag image to reposition
-            </p>
 
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4 min-w-0">
@@ -359,22 +457,38 @@ export function EmojiStickerEditor({
               >
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
-              <ZoomOut className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1 min-w-[120px]">
-                <Slider
-                  min={1}
-                  max={4}
-                  step={0.01}
-                  value={[scale]}
-                  onValueChange={(v) => setScale(v[0] ?? 1)}
-                />
-              </div>
-              <ZoomIn className="w-4 h-4 text-muted-foreground" />
             </div>
           </div>
 
           {/* RIGHT — settings */}
           <div className="flex flex-col flex-1 md:flex-none p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="space-y-1.5">
+              <Label htmlFor="es-name" className="text-xs">
+                {type === 'emoji' ? 'Emoji' : 'Sticker'} name <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="es-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pr-8 text-base sm:text-sm"
+                  maxLength={32}
+                  autoComplete="off"
+                  inputMode="text"
+                />
+                {name && (
+                  <button
+                    type="button"
+                    onClick={() => setName('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear name"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview
@@ -387,29 +501,6 @@ export function EmojiStickerEditor({
                 <div className="p-2 rounded-md bg-muted/40">
                   <PreviewBox size={48} rounded />
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="es-name" className="text-xs">
-                {type === 'emoji' ? 'Emoji' : 'Sticker'} name <span className="text-destructive">*</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="es-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pr-8"
-                  maxLength={32}
-                />
-                {name && (
-                  <button
-                    onClick={() => setName('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             </div>
 

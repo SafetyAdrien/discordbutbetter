@@ -40,6 +40,7 @@ export function UniversalMessageActions({
   onAddReaction,
   onCopyLink,
   onCopyId,
+  onCopyText,
   onEdit,
   onDelete,
   onCreateThread,

@@ -32,8 +32,8 @@ const DEFAULT_PREVIEW = 380;
 const MOBILE_PREVIEW = 196;
 const MOBILE_LANDSCAPE_PREVIEW = 136;
 const MIN_PREVIEW = 56;
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 10;
+const MIN_SCALE = 0.5;
+const MAX_SCALE_CAP = 5;
 const MOBILE_CANVAS_PANEL_MIN = 220;
 const MOBILE_CANVAS_PANEL_MAX = 356;
 
@@ -48,7 +48,7 @@ const getInitialPreview = () => {
   return Math.max(MIN_PREVIEW, Math.min(hardCap, Math.floor(viewportW * 0.48), Math.floor(viewportH * 0.26)));
 };
 
-const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const clampScale = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);

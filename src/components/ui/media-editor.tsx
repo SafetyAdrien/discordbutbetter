@@ -356,11 +356,12 @@ export function MediaEditor({
         className={cn(
           'p-0 gap-0 overflow-hidden border-border/60 [&>button]:hidden',
           'sm:max-w-[1040px] sm:w-[95vw] sm:max-h-[92dvh]',
-          'max-sm:w-screen max-sm:max-w-none max-sm:h-[var(--media-editor-vh,100svh)] max-sm:max-h-[var(--media-editor-vh,100svh)] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
+          'max-sm:w-screen max-sm:max-w-none max-sm:h-[var(--media-editor-vh,100svh)] max-sm:max-h-[var(--media-editor-vh,100svh)] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0',
+          '[@media(max-height:520px)]:w-screen [@media(max-height:520px)]:max-w-none [@media(max-height:520px)]:h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:rounded-none [@media(max-height:520px)]:translate-x-0 [@media(max-height:520px)]:translate-y-0 [@media(max-height:520px)]:left-0 [@media(max-height:520px)]:top-0'
         )}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] overflow-hidden">
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] overflow-hidden">
           {/* LEFT — canvas */}
           <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">

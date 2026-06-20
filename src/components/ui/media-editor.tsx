@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type WheelEvent } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, RotateCcw, FlipHorizontal2, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface EditorTransform {

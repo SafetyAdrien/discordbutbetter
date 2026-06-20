@@ -1822,12 +1822,12 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <div className="flex-1 min-w-0">
                                 {isEditing ? (
                                   <div className="space-y-2">
-                                    <Textarea
+                                    <MarkdownTextarea
                                       ref={setEditingTextareaNode}
                                       value={editingContent}
-                                      onChange={(e) => {
-                                        setEditingContent(e.target.value);
-                                        resizeEditTextarea(e.target);
+                                      onChange={(v) => {
+                                        setEditingContent(v);
+                                        if (editingTextareaRef.current) resizeEditTextarea(editingTextareaRef.current);
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {

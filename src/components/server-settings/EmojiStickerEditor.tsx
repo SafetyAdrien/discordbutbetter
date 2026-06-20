@@ -62,26 +62,33 @@ export function EmojiStickerEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
+  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fill');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
 
-  // Measure available width to keep the canvas square and fit on mobile
+  // Measure to keep canvas square + fit within its container on every viewport
   useEffect(() => {
-    if (!previewWrapRef.current) return;
+    if (!previewWrapRef.current || !open) return;
     const el = previewWrapRef.current;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const w = entry.contentRect.width;
-        const h = window.innerHeight * 0.5; // never exceed half the viewport height
-        const size = Math.max(180, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
-        setPreview(size);
-      }
-    });
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w <= 0 || h <= 0) return;
+      const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      setPreview(size);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, [open]);
 
   // Load image
@@ -94,17 +101,20 @@ export function EmojiStickerEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setFitMode('fill');
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file, defaultName, currentServerId]);
 
-  // "Cover" base scale so image always fills the preview at scale = 1
+  // Base scale depends on fit mode: fit = whole image visible, fill = image covers preview
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;
-    return Math.max(PREVIEW / imgEl.naturalWidth, PREVIEW / imgEl.naturalHeight);
-  }, [imgEl, PREVIEW]);
+    const sx = PREVIEW / imgEl.naturalWidth;
+    const sy = PREVIEW / imgEl.naturalHeight;
+    return fitMode === 'fit' ? Math.min(sx, sy) : Math.max(sx, sy);
+  }, [imgEl, PREVIEW, fitMode]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
@@ -196,6 +206,7 @@ export function EmojiStickerEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setFitMode('fill');
   };
 
   // Live preview thumbnails — render via small inline canvas using same transform
@@ -240,7 +251,7 @@ export function EmojiStickerEditor({
       >
         <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100dvh] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0">
+          <div className="relative flex flex-col flex-1 md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -301,7 +312,31 @@ export function EmojiStickerEditor({
             </p>
 
             {/* Controls */}
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-3 mt-4">
+              <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
+                <button
+                  onClick={() => setFitMode('fit')}
+                  className={cn(
+                    'px-2 py-1.5 text-xs font-medium transition-colors',
+                    fitMode === 'fit' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title="Fit entire image"
+                  aria-label="Fit entire image"
+                >
+                  Fit
+                </button>
+                <button
+                  onClick={() => setFitMode('fill')}
+                  className={cn(
+                    'px-2 py-1.5 text-xs font-medium transition-colors',
+                    fitMode === 'fill' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title="Fill canvas"
+                  aria-label="Fill canvas"
+                >
+                  Fill
+                </button>
+              </div>
               <button
                 onClick={() => setFlip((f) => !f)}
                 className={cn(
@@ -313,7 +348,7 @@ export function EmojiStickerEditor({
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
               <ZoomOut className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1">
+              <div className="flex-1 min-w-[120px]">
                 <Slider
                   min={1}
                   max={4}
@@ -327,7 +362,7 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-[45dvh] md:max-h-none shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview

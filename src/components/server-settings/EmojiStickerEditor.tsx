@@ -330,20 +330,24 @@ export function EmojiStickerEditor({
       </div>
     );
   };
+  const mobileViewportStyle = viewportHeight
+    ? ({ '--media-editor-vh': `${viewportHeight}px` } as React.CSSProperties)
+    : undefined;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
+        style={mobileViewportStyle}
         className={cn(
           'p-0 gap-0 overflow-hidden border-border/60 [&>button]:hidden',
           'sm:max-w-[1040px] sm:w-[95vw] sm:max-h-[92dvh]',
-          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100svh] max-sm:max-h-[100svh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
+          'max-sm:w-screen max-sm:max-w-none max-sm:h-[var(--media-editor-vh,100svh)] max-sm:max-h-[var(--media-editor-vh,100svh)] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
         )}
       >
         <DialogTitle className="sr-only">Add {type === 'emoji' ? 'Emoji' : 'Sticker'}</DialogTitle>
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100svh] overflow-hidden">
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
+          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -376,6 +380,7 @@ export function EmojiStickerEditor({
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
+                onWheel={onWheel}
               >
                 {src && imgEl && (
                   <img
@@ -395,13 +400,20 @@ export function EmojiStickerEditor({
                     }}
                   />
                 )}
+                <button
+                  type="button"
+                  aria-label="Resize image"
+                  title="Resize image"
+                  className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur active:scale-95"
+                  onPointerDown={onResizePointerDown}
+                  onPointerMove={onResizePointerMove}
+                  onPointerUp={onResizePointerUp}
+                  onPointerCancel={onResizePointerUp}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
               </div>
             </div>
-
-            <p className="text-xs text-muted-foreground text-center mt-3">
-              <Move className="w-3 h-3 inline mr-1 -mt-0.5" />
-              Drag image to reposition
-            </p>
 
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4 min-w-0">
@@ -439,17 +451,6 @@ export function EmojiStickerEditor({
               >
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
-              <ZoomOut className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1 min-w-[120px]">
-                <Slider
-                  min={1}
-                  max={4}
-                  step={0.01}
-                  value={[scale]}
-                  onValueChange={(v) => setScale(v[0] ?? 1)}
-                />
-              </div>
-              <ZoomIn className="w-4 h-4 text-muted-foreground" />
             </div>
           </div>
 

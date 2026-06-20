@@ -9,8 +9,9 @@ interface EmojiManagerProps {
   serverId: string;
 }
 
-const MAX_EMOJI_SIZE = 256 * 1024;
-const ACCEPT = 'image/png,image/gif,image/webp,image/jpeg';
+const MAX_EMOJI_SIZE = 8 * 1024 * 1024; // 8 Mo — HD
+const ACCEPT = 'image/png,image/gif,image/webp,image/jpeg,image/avif,image/apng';
+
 
 interface QueueItem extends BatchItem {
   file: File;

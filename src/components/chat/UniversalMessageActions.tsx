@@ -159,6 +159,15 @@ export function UniversalMessageActions({
             <TooltipContent side="top">Modifier</TooltipContent>
           </Tooltip>}
         
+        {onCopyText && <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onCopyText} className={slotCls}>
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Copier le message</TooltipContent>
+          </Tooltip>}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <button onClick={onReply} className={slotCls}>

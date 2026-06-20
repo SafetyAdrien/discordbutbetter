@@ -257,14 +257,15 @@ export function EmojiStickerEditor({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         className={cn(
-          'p-0 overflow-hidden border-border/60 [&>button]:hidden',
+          'p-0 gap-0 overflow-hidden border-border/60 [&>button]:hidden',
           'sm:max-w-[1040px] sm:w-[95vw] sm:max-h-[92dvh]',
-          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100dvh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
+          'max-sm:w-screen max-sm:max-w-none max-sm:h-[100svh] max-sm:max-h-[100svh] max-sm:rounded-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:left-0 max-sm:top-0'
         )}
       >
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100dvh] overflow-hidden">
+        <DialogTitle className="sr-only">Add {type === 'emoji' ? 'Emoji' : 'Sticker'}</DialogTitle>
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[100svh] overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-1 md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 overflow-hidden">
+          <div className="relative flex flex-col flex-none md:flex-none p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
                 onClick={onClose}
@@ -286,7 +287,7 @@ export function EmojiStickerEditor({
               </button>
             </div>
 
-            <div ref={previewWrapRef} className="flex-1 min-h-0 flex items-center justify-center">
+            <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
               <div
                 className={cn(
                   'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] rounded-md border border-border/60 select-none',
@@ -325,7 +326,7 @@ export function EmojiStickerEditor({
             </p>
 
             {/* Controls */}
-            <div className="flex flex-wrap items-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-4 min-w-0">
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setFitMode('fit')}
@@ -375,7 +376,7 @@ export function EmojiStickerEditor({
           </div>
 
           {/* RIGHT — settings */}
-          <div className="flex flex-col p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-[45dvh] md:max-h-none shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-col flex-1 md:flex-none p-4 sm:p-5 gap-4 sm:gap-5 overflow-y-auto min-h-0 max-h-none md:max-h-none shrink pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Preview

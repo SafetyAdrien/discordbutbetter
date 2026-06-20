@@ -7,6 +7,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
 import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff } from "lucide-react";
+import { DiscordMic } from "@/components/icons/DiscordMic";
+import { DiscordMicOff } from "@/components/icons/DiscordMicOff";
+import { DiscordHeadphones } from "@/components/icons/DiscordHeadphones";
+import { DiscordHeadphonesOff } from "@/components/icons/DiscordHeadphonesOff";
+import { DiscordSettings } from "@/components/icons/DiscordSettings";
 import { useVoice } from "@/contexts/VoiceContext";
 import { copyToClipboard } from "@/lib/clipboard";
 import { uuidToSnowflake } from "@/lib/snowflake";
@@ -263,7 +268,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           voiceCtx.voiceState.isMuted && "text-destructive"
         )}
       >
-        {voiceCtx.voiceState.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-muted-foreground" />}
+        {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4 text-muted-foreground" />}
       </button>
       <button
         onClick={() => voiceCtx.toggleDeafen()}
@@ -272,10 +277,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           voiceCtx.voiceState.isDeafened && "text-destructive"
         )}
       >
-        {voiceCtx.voiceState.isDeafened ? <HeadphoneOff className="w-4 h-4" /> : <Headphones className="w-4 h-4 text-muted-foreground" />}
+        {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4 text-muted-foreground" />}
       </button>
       <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
-        <Settings className="w-4 h-4 text-muted-foreground" />
+        <DiscordSettings className="w-4 h-4 text-muted-foreground" />
       </button>
 
       {/* Custom Status Modal */}

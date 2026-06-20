@@ -1,5 +1,9 @@
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, AlertTriangle, Radio, ChevronDown } from 'lucide-react';
+import { PhoneOff, AlertTriangle, Radio, ChevronDown } from 'lucide-react';
+import { DiscordMic } from '@/components/icons/DiscordMic';
+import { DiscordMicOff } from '@/components/icons/DiscordMicOff';
+import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
+import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoice } from '@/contexts/VoiceContext';
@@ -120,7 +124,7 @@ export function VoiceControls({
                   )}
                   onClick={onToggleMute}
                 >
-                  {isMuted ? <MicOff className="w-[18px] h-[18px]" /> : <Mic className="w-[18px] h-[18px]" />}
+                  {isMuted ? <DiscordMicOff className="w-[18px] h-[18px]" /> : <DiscordMic className="w-[18px] h-[18px]" />}
                   {noiseSuppression !== 'off' && rnnoiseAvailable && (
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
                   )}
@@ -173,9 +177,9 @@ export function VoiceControls({
                 onClick={onToggleDeafen}
               >
                 {isDeafened ? (
-                  <HeadphoneOff className="w-[18px] h-[18px]" />
+                  <DiscordHeadphonesOff className="w-[18px] h-[18px]" />
                 ) : (
-                  <Headphones className="w-[18px] h-[18px]" />
+                  <DiscordHeadphones className="w-[18px] h-[18px]" />
                 )}
               </Button>
             </TooltipTrigger>

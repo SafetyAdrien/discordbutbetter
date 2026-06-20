@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, Headphones } from 'lucide-react';
+import { DiscordMic } from '@/components/icons/DiscordMic';
+import { DiscordMicOff } from '@/components/icons/DiscordMicOff';
+import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface VoiceVideoTileProps {
@@ -70,11 +72,11 @@ export function VoiceVideoTile({
       {/* Name badge */}
       <div className="absolute bottom-2 left-2 flex items-center gap-2 px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm">
         {isMuted ? (
-          <MicOff className="w-4 h-4 text-destructive" />
+          <DiscordMicOff className="w-4 h-4 text-destructive" />
         ) : isDeafened ? (
-          <Headphones className="w-4 h-4 text-destructive" />
+          <DiscordHeadphonesOff className="w-4 h-4 text-destructive" />
         ) : (
-          <Mic className="w-4 h-4 text-muted-foreground" />
+          <DiscordMic className="w-4 h-4 text-muted-foreground" />
         )}
         <span className="text-sm font-medium text-white">
           {participantName}

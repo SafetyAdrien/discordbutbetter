@@ -25,6 +25,7 @@ import {
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { InboxPanel } from "@/components/inbox/InboxPanel";
+import { DiscordInbox } from '@/components/icons/DiscordInbox';
 import { useNotifications } from "@/hooks/useNotifications";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -232,7 +233,7 @@ function InboxButton() {
     <Popover>
       <PopoverTrigger asChild>
         <button className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
-          <Inbox className="w-5 h-5" />
+          <DiscordInbox className="w-5 h-5" />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 

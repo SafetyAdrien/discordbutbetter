@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { DiscordInbox as Inbox } from '@/components/icons/DiscordInbox';
 import { cn } from '@/lib/utils';
 import { 
-  Inbox, 
+  
   Check, 
   X, 
   Trash2, 

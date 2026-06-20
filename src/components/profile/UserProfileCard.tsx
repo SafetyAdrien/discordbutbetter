@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { CustomStatusBubble } from "./CustomStatusBubble";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
 import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff, Plus } from "lucide-react";

@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { MessageSquare, UserPlus, Check, Loader2, UserCheck, Clock, Gamepad2, Radio, Headphones, Eye, Swords, X, UserMinus, Ban, Pencil, Volume2, VolumeX, Plus, Sparkles, Shield, Star, Crown, Heart, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CustomStatusBubble } from './CustomStatusBubble';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';

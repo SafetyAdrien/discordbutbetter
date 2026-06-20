@@ -26,6 +26,7 @@ import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { CustomStatusBubble } from '@/components/profile/CustomStatusBubble';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';

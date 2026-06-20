@@ -399,6 +399,9 @@ export function EmojiStickerEditor({
   const mobileViewportStyle = viewportHeight
     ? ({ '--media-editor-vh': `${viewportHeight}px`, maxHeight: `${viewportHeight}px` } as CSSProperties)
     : undefined;
+  const canvasPanelStyle = {
+    '--media-canvas-panel-h': `${canvasPanelHeight ?? MOBILE_CANVAS_PANEL_MAX}px`,
+  } as CSSProperties;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -414,7 +417,7 @@ export function EmojiStickerEditor({
         <DialogTitle className="sr-only">Add {type === 'emoji' ? 'Emoji' : 'Sticker'}</DialogTitle>
           <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:flex-row overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden max-sm:max-h-[348px] [@media(max-height:520px)]:w-[40vw] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
+          <div style={canvasPanelStyle} className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden max-sm:h-[var(--media-canvas-panel-h)] max-sm:max-h-[var(--media-canvas-panel-h)] [@media(max-height:520px)]:w-[40vw] [@media(max-height:520px)]:h-full [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <button
                 onClick={onClose}
@@ -439,7 +442,7 @@ export function EmojiStickerEditor({
             <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
               <div
                 className={cn(
-                  'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] rounded-md border border-border/60 select-none',
+                  'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] border border-border/60 select-none rounded-md',
                   'cursor-grab active:cursor-grabbing'
                 )}
                 style={{ width: PREVIEW, height: PREVIEW, touchAction: 'none' }}
@@ -519,6 +522,18 @@ export function EmojiStickerEditor({
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
             </div>
+            <button
+              type="button"
+              aria-label="Resize canvas area height"
+              title="Resize canvas area height"
+              className="mx-auto mt-2 hidden h-5 w-24 shrink-0 touch-none items-center justify-center rounded-full text-muted-foreground max-sm:flex [@media(max-height:520px)]:hidden"
+              onPointerDown={onPanelResizePointerDown}
+              onPointerMove={onPanelResizePointerMove}
+              onPointerUp={onPanelResizePointerUp}
+              onPointerCancel={onPanelResizePointerUp}
+            >
+              <span className="h-1 w-12 rounded-full bg-muted-foreground/50" />
+            </button>
           </div>
 
           {/* RIGHT — settings */}

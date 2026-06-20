@@ -188,8 +188,8 @@ export function EmojiStickerEditor({
   const maxOffsetX = Math.max(0, (displayedW - PREVIEW) / 2);
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
 
-  // Bounded positioning: image center stays within roughly one canvas around the center.
-  const clamp = (v: number, _m: number) => Math.max(-PREVIEW, Math.min(PREVIEW, v));
+  // Discord-style clamping: image edges cannot leave canvas edges.
+  const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
   // Drag, pinch and direct in-canvas scale handlers
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {

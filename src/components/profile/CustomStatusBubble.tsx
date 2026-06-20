@@ -51,7 +51,7 @@ export function CustomStatusBubble({
         'relative inline-flex items-center text-left rounded-full shadow-md',
         'bg-[hsl(220_8%_18%)]',
         onClick && 'hover:bg-[hsl(220_8%_22%)] active:bg-[hsl(220_8%_22%)] transition-colors cursor-pointer',
-        sizeClasses.pill,
+        shared.pill,
         sizeClasses.maxW,
         className
       )}
@@ -59,17 +59,17 @@ export function CustomStatusBubble({
       {/* Mini detached bubble (top-left, far) */}
       <span
         aria-hidden
-        className={cn('absolute rounded-full bg-[hsl(220_8%_18%)] shadow', sizeClasses.smallBubble)}
+        className={cn('absolute rounded-full bg-[hsl(220_8%_18%)] shadow', shared.smallBubble)}
       />
       {/* Small bubble fused into the top-left of the main pill */}
       <span
         aria-hidden
-        className={cn('absolute rounded-[3px_50%_50%_50%] bg-[hsl(220_8%_18%)]', sizeClasses.tinyBubble)}
+        className={cn('absolute rounded-[3px_50%_50%_50%] bg-[hsl(220_8%_18%)]', shared.tinyBubble)}
       />
 
       {showPlaceholder && !customStatus && (
-        <span className={cn('shrink-0 text-foreground flex items-center justify-center', sizeClasses.icon)}>
-          <Plus className={sizeClasses.plus} strokeWidth={2.25} />
+        <span className={cn('shrink-0 text-foreground flex items-center justify-center', shared.icon)}>
+          <Plus className={shared.plus} strokeWidth={2.25} />
         </span>
       )}
 

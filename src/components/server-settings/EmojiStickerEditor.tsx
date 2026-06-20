@@ -233,7 +233,7 @@ export function EmojiStickerEditor({
     if (points.length >= 2 && pinchRef.current) {
       const distance = pointDistance(points[0], points[1]);
       if (pinchRef.current.startDistance > 0) {
-        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance)));
+        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance), minScale, maxScale));
       }
       return;
     }
@@ -262,7 +262,7 @@ export function EmojiStickerEditor({
 
   const onWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
+    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94), minScale, maxScale));
   };
 
   const rotateRef = useRef<{ cx: number; cy: number; startAngle: number; startRot: number } | null>(null);
@@ -538,10 +538,10 @@ export function EmojiStickerEditor({
               <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Slider
                 value={[scale]}
-                min={MIN_SCALE}
-                max={MAX_SCALE}
+                min={minScale}
+                max={maxScale}
                 step={0.01}
-                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1, minScale, maxScale))}
                 aria-label="Zoom"
                 className="flex-1"
               />

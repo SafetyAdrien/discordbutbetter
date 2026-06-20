@@ -102,6 +102,7 @@ export function MediaEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
+  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fill');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
   const previewWrapRef = useRef<HTMLDivElement>(null);
@@ -137,6 +138,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setFitMode('fill');
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;
@@ -145,8 +147,10 @@ export function MediaEditor({
 
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;
-    return Math.max(PREVIEW / imgEl.naturalWidth, PREVIEW / imgEl.naturalHeight);
-  }, [imgEl, PREVIEW]);
+    const sx = PREVIEW / imgEl.naturalWidth;
+    const sy = PREVIEW / imgEl.naturalHeight;
+    return fitMode === 'fit' ? Math.min(sx, sy) : Math.max(sx, sy);
+  }, [imgEl, PREVIEW, fitMode]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
@@ -178,6 +182,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
+    setFitMode('fill');
   };
 
   const exportBlob = async (): Promise<MediaEditorResult | null> => {
@@ -313,7 +318,31 @@ export function MediaEditor({
               Drag image to reposition
             </p>
 
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-3 mt-4">
+              <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
+                <button
+                  onClick={() => setFitMode('fit')}
+                  className={cn(
+                    'px-2 py-1.5 text-xs font-medium transition-colors',
+                    fitMode === 'fit' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title="Fit entire image"
+                  aria-label="Fit entire image"
+                >
+                  Fit
+                </button>
+                <button
+                  onClick={() => setFitMode('fill')}
+                  className={cn(
+                    'px-2 py-1.5 text-xs font-medium transition-colors',
+                    fitMode === 'fill' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title="Fill canvas"
+                  aria-label="Fill canvas"
+                >
+                  Fill
+                </button>
+              </div>
               <button
                 onClick={() => setFlip((f) => !f)}
                 className={cn(
@@ -325,7 +354,7 @@ export function MediaEditor({
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
               <ZoomOut className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1">
+              <div className="flex-1 min-w-[120px]">
                 <Slider
                   min={1}
                   max={4}

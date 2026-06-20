@@ -512,11 +512,11 @@ export function EmojiStickerEditor({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">
-                Upload to <span className="text-destructive">*</span>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Serveur de destination <span className="text-destructive">*</span>
               </Label>
               <Select value={serverId} onValueChange={setServerId}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

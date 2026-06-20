@@ -107,7 +107,7 @@ export function EditorPreviewImage({
             height: t.displayedH * r,
             left: '50%',
             top: '50%',
-            transform: `translate(-50%, -50%) translate(${t.offsetX * r}px, ${t.offsetY * r}px) scaleX(${t.flip ? -1 : 1})`,
+            transform: `translate(-50%, -50%) translate(${t.offsetX * r}px, ${t.offsetY * r}px) rotate(${t.rotation}deg) scaleX(${t.flip ? -1 : 1})`,
             maxWidth: 'none',
           }}
         />

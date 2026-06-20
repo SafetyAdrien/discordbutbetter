@@ -47,6 +47,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/chat/MarkdownTextarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
 import {

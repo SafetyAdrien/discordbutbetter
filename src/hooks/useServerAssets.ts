@@ -25,7 +25,6 @@ export interface ServerSticker {
 export function useServerEmojis(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!serverId) return;
@@ -35,20 +34,33 @@ export function useServerEmojis(serverId: string | null) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },
-        () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
-          }, 300);
+        (payload) => {
+          queryClient.setQueryData(['server-emojis', serverId], (old: ServerEmoji[] | undefined) => {
+            const list = old ?? [];
+            if (payload.eventType === 'INSERT') {
+              const row = payload.new as ServerEmoji;
+              if (list.some((e) => e.id === row.id)) return list;
+              return [row, ...list.filter((e) => !e.id.startsWith('temp-') || e.name !== row.name)];
+            }
+            if (payload.eventType === 'UPDATE') {
+              const row = payload.new as ServerEmoji;
+              return list.map((e) => (e.id === row.id ? row : e));
+            }
+            if (payload.eventType === 'DELETE') {
+              const row = payload.old as ServerEmoji;
+              return list.filter((e) => e.id !== row.id);
+            }
+            return list;
+          });
         }
       )
       .subscribe();
 
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
   }, [serverId, queryClient]);
+
 
   const query = useQuery({
     queryKey: ['server-emojis', serverId],

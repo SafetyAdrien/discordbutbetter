@@ -5,7 +5,7 @@ import { useSwipeToReply } from '@/hooks/useSwipeToReply';
 import { useDoubleTap } from '@/hooks/useDoubleTap';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
-interface SwipeToReplyRowProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onTouchStart' | 'onTouchMove' | 'onTouchEnd' | 'onTouchCancel'> {
+interface SwipeToReplyRowProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Whether the gesture should be active (mobile only). */
   enabled: boolean;
   onReply: () => void;
@@ -18,34 +18,64 @@ interface SwipeToReplyRowProps extends Omit<React.HTMLAttributes<HTMLDivElement>
 
 /**
  * Wraps a chat message row with a Discord/iMessage-style swipe-to-reply gesture.
- * Renders a soft Reply icon that fades in from the left as the user drags right.
- * Falls back to a transparent passthrough on desktop or when disabled.
  *
- * Composition rules:
- * - Sits *inside* the existing ContextMenuTrigger so long-press/right-click still work.
- * - Wraps the original visual row; the row keeps its own padding and styles.
- * - Honours `prefers-reduced-motion` by killing the transform animation.
+ * Architecture:
+ * - Desktop (`enabled=false`) → renders a plain passthrough `<div>` forwarding
+ *   the ref and ALL Radix-injected props (onContextMenu, onPointerDown, …).
+ *   No mobile hook is mounted, no touch handler, no transform — zero impact.
+ * - Mobile (`enabled=true`) → delegates to `<MobileSwipeRow>` which owns the
+ *   swipe/double-tap logic and the visual reveal indicator.
  */
 export const SwipeToReplyRow = forwardRef<HTMLDivElement, SwipeToReplyRowProps>(function SwipeToReplyRow(
   { enabled, onReply, onDoubleTap, className, children, ...rest },
   ref,
 ) {
-  const reduced = useReducedMotion();
-  const handleReply = useCallback(() => onReply(), [onReply]);
-  const swipe = useSwipeToReply({ onReply: handleReply, disabled: !enabled });
-  const dbl = useDoubleTap({ onDoubleTap: onDoubleTap ?? (() => {}), disabled: !enabled || !onDoubleTap });
-
-  // IMPORTANT : forwarder la ref ET les props injectées par Radix (asChild)
-  // dans les deux branches pour que ContextMenuTrigger puisse attacher
-  // ses handlers (onContextMenu, onPointerDown...). Sans ça, le clic-droit
-  // Desktop est cassé.
   if (!enabled) {
+    // === DESKTOP PATH ===
+    // Pure passthrough. Radix `asChild` props (onContextMenu, onPointerDown,
+    // onKeyDown…) flow straight through `...rest`. No touch listeners attached.
     return (
       <div ref={ref} className={className} {...rest}>
         {children}
       </div>
     );
   }
+
+  // === MOBILE PATH ===
+  return (
+    <MobileSwipeRow
+      ref={ref}
+      onReply={onReply}
+      onDoubleTap={onDoubleTap}
+      className={className}
+      {...rest}
+    >
+      {children}
+    </MobileSwipeRow>
+  );
+});
+
+// -----------------------------------------------------------------------------
+// MobileSwipeRow — isolated mobile-only implementation.
+// Hooks here only run when the parent is mounted on mobile/tablet, so desktop
+// never pays the cost (no listeners, no re-renders on swipe progress, etc.).
+// -----------------------------------------------------------------------------
+
+interface MobileSwipeRowProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onTouchStart' | 'onTouchMove' | 'onTouchEnd' | 'onTouchCancel'> {
+  onReply: () => void;
+  onDoubleTap?: () => void;
+  className?: string;
+  children: ReactNode;
+}
+
+const MobileSwipeRow = forwardRef<HTMLDivElement, MobileSwipeRowProps>(function MobileSwipeRow(
+  { onReply, onDoubleTap, className, children, ...rest },
+  ref,
+) {
+  const reduced = useReducedMotion();
+  const handleReply = useCallback(() => onReply(), [onReply]);
+  const swipe = useSwipeToReply({ onReply: handleReply, disabled: false });
+  const dbl = useDoubleTap({ onDoubleTap: onDoubleTap ?? (() => {}), disabled: !onDoubleTap });
 
   // Compose touch handlers: swipe owns start/move/cancel; both listen to end.
   const onTouchEnd = (e: React.TouchEvent) => {

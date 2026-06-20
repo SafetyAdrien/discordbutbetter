@@ -21,6 +21,7 @@ export interface UniversalMessageActionsProps {
   onAddReaction?: (emoji: string) => void;
   onCopyLink: () => void;
   onCopyId: () => void;
+  onCopyText?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onCreateThread?: () => void;

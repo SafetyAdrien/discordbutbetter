@@ -104,7 +104,7 @@ export function EmojiStickerEditor({
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;
     return Math.max(PREVIEW / imgEl.naturalWidth, PREVIEW / imgEl.naturalHeight);
-  }, [imgEl]);
+  }, [imgEl, PREVIEW]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;

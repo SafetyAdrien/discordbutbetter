@@ -789,6 +789,7 @@ export function UserProfilePopup({
         </Drawer>
         {serverProfileModal}
         {fullBioModal}
+        {customStatusModal}
       </>
     );
   }

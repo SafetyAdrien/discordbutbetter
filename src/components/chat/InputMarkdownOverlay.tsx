@@ -423,11 +423,9 @@ function renderInlineMarkdownOnly(text: string): ReactNode {
     } else if (match[10] !== undefined) {
       // `inline code` — real monospace pill (Discord-style)
       parts.push(
-        <span key={key++}>
+        <span key={key++} style={codeStyle}>
           {marker('`')}
-          <span style={codeStyle}>
-            {match[10]}
-          </span>
+          {match[10]}
           {marker('`')}
         </span>
       );

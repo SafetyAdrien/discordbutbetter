@@ -75,7 +75,10 @@ export const MarkdownTextarea = forwardRef<HTMLTextAreaElement, MarkdownTextarea
             onScroll?.(e);
           }}
           className={cn(
-            'relative z-10 w-full resize-none whitespace-pre-wrap break-words appearance-none',
+            // Sensible defaults aligned with the shadcn <Textarea>; callers can override.
+            'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            'relative z-10 resize-none whitespace-pre-wrap break-words appearance-none',
             'placeholder:text-muted-foreground focus:outline-none focus-visible:outline-none focus:ring-0',
             showOverlay ? 'text-transparent caret-foreground' : 'text-foreground',
             className,

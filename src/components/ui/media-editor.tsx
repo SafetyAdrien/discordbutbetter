@@ -342,18 +342,15 @@ export function MediaEditor({
     const cy = outputSize / 2 + offset.y * ratio;
 
     ctx.save();
-    if (flip) {
-      ctx.translate(outputSize, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(imgEl, outputSize - cx - w / 2, cy - h / 2, w, h);
-    } else {
-      ctx.drawImage(imgEl, cx - w / 2, cy - h / 2, w, h);
-    }
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(imgEl, -w / 2, -h / 2, w, h);
     ctx.restore();
 
     // Preserve animation if user did not touch the image (GIF/APNG only)
     const isAnimated = /gif|apng/i.test(file.type);
-    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
+    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip && rotation === 0) {
       return {
         blob: file,
         mime: file.type || 'image/gif',
@@ -386,6 +383,7 @@ export function MediaEditor({
     offsetX: offset.x,
     offsetY: offset.y,
     flip,
+    rotation,
     PREVIEW,
   };
   const mobileViewportStyle = viewportHeight

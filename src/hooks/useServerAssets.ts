@@ -750,3 +750,39 @@ export function useDeleteSound() {
     },
   });
 }
+
+/**
+ * Always-on realtime subscription for emojis/stickers/sounds of the active server.
+ * Ensures imports made by any user are reflected instantly across all clients,
+ * even when the picker / soundboard view is not currently mounted.
+ */
+export function useServerAssetsRealtime(serverId: string | null) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!serverId) return;
+
+    const channel = supabase
+      .channel(`server-assets-rt-${serverId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_stickers', filter: `server_id=eq.${serverId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_sounds', filter: `server_id=eq.${serverId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] })
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [serverId, queryClient]);
+}

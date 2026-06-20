@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { DiscordMic as Mic } from '@/components/icons/DiscordMic';
+import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
-  Mic, MicOff, Video, VideoOff, MonitorUp, 
+  Video, VideoOff, MonitorUp, 
   PhoneOff, MessageSquare, Users, MoreHorizontal,
   ChevronDown
 } from 'lucide-react';

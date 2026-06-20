@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2 } from 'lucide-react';
+import { Video, VideoOff, PhoneOff, Maximize2 } from 'lucide-react';
+import { DiscordMic as Mic } from '@/components/icons/DiscordMic';
+import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DMCall } from '@/hooks/useDMCalls';
 import { useDMCallWebRTC } from '@/hooks/useDMCallWebRTC';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';

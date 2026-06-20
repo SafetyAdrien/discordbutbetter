@@ -435,8 +435,8 @@ export function UserProfilePopup({
 
       {/* Body */}
       <div className="px-3 pb-3">
-        {/* Avatar row with floating custom status bubble */}
-        <div className="relative -mt-10 mb-2 flex items-end gap-2">
+        {/* Avatar row */}
+        <div className="relative -mt-10 mb-2">
           <div className="relative inline-block">
             <Avatar className="w-[72px] h-[72px] border-[5px] border-card">
               <AvatarImage src={effectiveUser.avatar} alt={effectiveUser.displayName} />
@@ -451,7 +451,7 @@ export function UserProfilePopup({
           </div>
 
           {user.customStatus && (
-            <div className="mb-1">
+            <div className="absolute left-[86px] bottom-[10px] z-20 max-w-[185px]">
               <CustomStatusBubble customStatus={user.customStatus} size="sm" />
             </div>
           )}

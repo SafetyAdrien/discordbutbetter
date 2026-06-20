@@ -8,6 +8,7 @@ import { JoinServerModal } from './JoinServerModal';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ServerIconUploadEditor } from '@/components/server-settings/ServerIconUploadEditor';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
@@ -34,6 +35,13 @@ interface ImportedTemplate {
   iconUrl: string | null;
   bannerUrl: string | null;
 }
+
+type ChannelType = Database['public']['Enums']['channel_type'];
+
+const toChannelType = (type: string): ChannelType => {
+  const allowed: ChannelType[] = ['text', 'voice', 'forum', 'announcement', 'media', 'calendar', 'tasks', 'stage', 'link'];
+  return allowed.includes(type as ChannelType) ? (type as ChannelType) : 'text';
+};
 
 const templates = [
   { id: 'gaming', name: 'Gaming', icon: '🎮', description: 'Pour les communautés de joueurs' },

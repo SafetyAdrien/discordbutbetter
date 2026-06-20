@@ -948,7 +948,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               )}
                             </div>
                           )}
-                          {editingMessageId === message.id ? (
+                          {editingMessageId === message.id && !isMobile ? (
                             <div className="space-y-2">
                               <MarkdownTextarea
                                 ref={(el) => {

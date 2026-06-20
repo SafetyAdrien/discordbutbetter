@@ -413,8 +413,8 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
         <div
           key={key}
           role="note"
-          className={cn('border-l-[4px] pl-3', compact ? 'my-1' : 'my-2')}
-          style={{ borderColor: `hsl(var(--${varName}))` }}
+          className={cn('border-l-[4px] pl-3 pr-2.5 py-2 rounded-md', compact ? 'my-1' : 'my-2')}
+          style={{ borderColor: `hsl(var(--${varName}))`, backgroundColor: `hsl(var(--${varName}) / 0.08)` }}
         >
           <div
             className="flex items-center gap-1.5 font-semibold mb-0.5 text-[0.95em]"

@@ -37,10 +37,11 @@ interface MarkdownToken {
 }
 
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'taskItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
   content: string;
   language?: string;
   indentLevel?: number;
+  checked?: boolean;
 }
 
 export interface MarkdownContext {
@@ -263,6 +264,10 @@ function parseBlocks(content: string): BlockToken[] {
       else if (line.startsWith('# ')) blocks.push({ type: 'header1', content: line.slice(2) });
       else if (line.startsWith('-# ')) blocks.push({ type: 'subtext', content: line.slice(3) });
       else if (line.startsWith('> ')) blocks.push({ type: 'blockquote', content: line.slice(2) });
+      else if (/^(\s*)[-*] \[([ xX])\] /.test(line)) {
+        const taskMatch = line.match(/^(\s*)[-*] \[([ xX])\] /)!;
+        blocks.push({ type: 'taskItem', content: line.slice(taskMatch[0].length), indentLevel: taskMatch[1].length, checked: taskMatch[2].toLowerCase() === 'x' });
+      }
       else if (/^(\s*)[-*] /.test(line)) {
         const listMatch = line.match(/^(\s*)[-*] /);
         blocks.push({ type: 'listItem', content: line.slice(listMatch![0].length), indentLevel: listMatch![1].length });
@@ -294,7 +299,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'underlineItalic': return <u key={key}><em>{renderContent(token.content)}</em></u>;
     case 'underlineBoldItalic': return <u key={key}><strong><em>{renderContent(token.content)}</em></strong></u>;
     case 'strikethrough': return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
-    case 'code': return <code key={key} className={cn("px-1.5 py-0.5 bg-[hsl(var(--surface-elevated))] rounded text-sm font-mono text-foreground", context.variant === 'chat' && "border border-[hsl(225_14%_35%)]")}>{token.content as string}</code>;
+    case 'code': return <code key={key} className="px-[5px] py-px bg-[hsl(var(--surface-elevated))] border border-[hsl(var(--border))] rounded-[4px] text-[0.85em] font-mono text-foreground/90 whitespace-pre-wrap">{token.content as string}</code>;
     case 'spoiler': return <span key={key} className="spoiler" onClick={(e) => e.currentTarget.classList.toggle('revealed')}>{renderContent(token.content)}</span>;
     case 'link': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{token.content as string}</a>;
     case 'userMention': {
@@ -347,16 +352,27 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
   const renderInlineContent = (content: string) => tokenizeInline(content).map((token, i) => renderInlineToken(token, i, context));
   const compact = context.variant === 'chat';
   switch (block.type) {
-    case 'header1': return <div key={key}><h1 className={cn("text-2xl font-bold text-white", compact ? "my-0" : "my-1")}>{renderInlineContent(block.content)}</h1>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />}</div>;
-    case 'header2': return <div key={key}><h2 className={cn("text-xl font-bold text-white", compact ? "my-0" : "my-1")}>{renderInlineContent(block.content)}</h2>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />}</div>;
-    case 'header3': return <div key={key}><h3 className={cn("text-lg font-semibold text-white", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</h3>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mb-2 mt-1" />}</div>;
-    case 'subtext': return <div key={key}>{!compact && <hr className="border-t border-[hsl(228,6%,26%)] mt-2 mb-0.5" />}<p className="text-[12px] text-muted-foreground leading-4">{renderInlineContent(block.content)}</p></div>;
-    case 'blockquote': return <blockquote key={key} className={cn("border-l-[4px] border-border pl-3 text-muted-foreground", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
-    case 'multiBlockquote': return <blockquote key={key} className={cn("border-l-[4px] border-border pl-3 text-muted-foreground whitespace-pre-wrap", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
-    case 'listItem': { const level = block.indentLevel || 0; return <li key={key} className={level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]'} style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
-    case 'orderedListItem': { const level = block.indentLevel || 0; return <li key={key} className="list-decimal" style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
+    case 'header1': return <h1 key={key} className={cn("font-bold text-foreground leading-tight", "text-[1.5rem]", compact ? "mt-2 mb-1 first:mt-0" : "mt-3 mb-2 first:mt-0")}>{renderInlineContent(block.content)}</h1>;
+    case 'header2': return <h2 key={key} className={cn("font-bold text-foreground leading-tight", "text-[1.25rem]", compact ? "mt-1.5 mb-1 first:mt-0" : "mt-2.5 mb-1.5 first:mt-0")}>{renderInlineContent(block.content)}</h2>;
+    case 'header3': return <h3 key={key} className={cn("font-semibold text-foreground leading-tight", "text-[1rem]", compact ? "mt-1 mb-0.5 first:mt-0" : "mt-2 mb-1 first:mt-0")}>{renderInlineContent(block.content)}</h3>;
+    case 'subtext': return <p key={key} className="text-[0.75rem] text-muted-foreground leading-4 mt-0.5">{renderInlineContent(block.content)}</p>;
+    case 'blockquote': return <blockquote key={key} className={cn("border-l-[4px] border-[hsl(var(--border))] pl-3 text-foreground/90", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
+    case 'multiBlockquote': return <blockquote key={key} className={cn("border-l-[4px] border-[hsl(var(--border))] pl-3 text-foreground/90 whitespace-pre-wrap", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
+    case 'listItem': { const level = block.indentLevel || 0; return <li key={key} className={cn("marker:text-muted-foreground", level === 0 ? 'list-disc' : level === 1 ? 'list-[circle]' : 'list-[square]')} style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
+    case 'orderedListItem': { const level = block.indentLevel || 0; return <li key={key} className="list-decimal marker:text-muted-foreground" style={{ marginLeft: `${(level + 1) * 16}px` }}>{renderInlineContent(block.content)}</li>; }
+    case 'taskItem': {
+      const level = block.indentLevel || 0;
+      return (
+        <li key={key} className="list-none flex items-start gap-1.5" style={{ marginLeft: `${(level + 1) * 16}px` }}>
+          <span className={cn("mt-[3px] inline-flex shrink-0 items-center justify-center w-3.5 h-3.5 rounded-[3px] border", block.checked ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/60 bg-transparent")} aria-hidden>
+            {block.checked && (<svg viewBox="0 0 12 12" className="w-2.5 h-2.5 fill-none stroke-current" strokeWidth={2}><path d="M2 6.5 5 9.5 10 3" strokeLinecap="round" strokeLinejoin="round" /></svg>)}
+          </span>
+          <span className={cn(block.checked && "line-through text-muted-foreground")}>{renderInlineContent(block.content)}</span>
+        </li>
+      );
+    }
     case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} variant={context.variant} />;
-    case 'separator': return <hr key={key} className={cn("border-t border-[hsl(228,6%,26%)]", compact ? "my-0" : "my-1")} />;
+    case 'separator': return <hr key={key} className={cn("border-t border-[hsl(var(--border))]", compact ? "my-1" : "my-2")} />;
     case 'empty': return <br key={key} />;
     case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
     case 'paragraph':
@@ -378,8 +394,8 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
   const groupedBlocks: React.ReactNode[] = [];
   let currentList: { type: 'ul' | 'ol'; items: BlockToken[] } | null = null;
   blocks.forEach((block, index) => {
-    if (block.type === 'listItem' || block.type === 'orderedListItem') {
-      const type = block.type === 'listItem' ? 'ul' : 'ol';
+    if (block.type === 'listItem' || block.type === 'orderedListItem' || block.type === 'taskItem') {
+      const type = block.type === 'orderedListItem' ? 'ol' : 'ul';
       if (currentList?.type === type) currentList.items.push(block);
       else {
         if (currentList) {

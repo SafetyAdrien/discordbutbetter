@@ -43,6 +43,8 @@ const MOBILE_LANDSCAPE_PREVIEW = 132;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
+const MOBILE_CANVAS_PANEL_MIN = 220;
+const MOBILE_CANVAS_PANEL_MAX = 360;
 
 const getInitialPreview = () => {
   if (typeof window === 'undefined') return DEFAULT_PREVIEW;
@@ -56,8 +58,16 @@ const getInitialPreview = () => {
 };
 
 const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
+
+const getCanvasPanelBounds = (viewportW: number, viewportH: number) => {
+  const max = Math.max(MOBILE_CANVAS_PANEL_MIN, Math.min(MOBILE_CANVAS_PANEL_MAX, Math.floor(viewportH - 210)));
+  const min = Math.min(MOBILE_CANVAS_PANEL_MIN, max);
+  const defaultHeight = clampNumber(Math.floor(Math.min(viewportH * 0.48, viewportW * 0.88)), min, max);
+  return { min, max, defaultHeight };
+};
 
 /**
  * A small helper that renders the source image using the transform produced by
@@ -121,15 +131,17 @@ export function MediaEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
-  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
+  const [fitMode, setFitMode] = useState<'fit' | 'fill'>(() => (circular ? 'fill' : 'fit'));
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(getInitialPreview);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const [canvasPanelHeight, setCanvasPanelHeight] = useState<number | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
+  const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Measure to keep canvas square + physically contained on mobile browsers.
   useEffect(() => {
@@ -142,13 +154,13 @@ export function MediaEditor({
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
       const isMobile = viewportW < 768 || viewportH < 520;
       const isLandscape = viewportW > viewportH;
+      const panelBounds = getCanvasPanelBounds(viewportW, viewportH);
+      setCanvasPanelHeight((prev) => clampNumber(prev ?? panelBounds.defaultHeight, panelBounds.min, panelBounds.max));
       const mobileMax = isLandscape
         ? Math.min(MOBILE_LANDSCAPE_PREVIEW, Math.floor(viewportH * 0.42), Math.floor(viewportW * 0.28))
         : Math.min(MOBILE_PREVIEW, Math.floor(viewportW * 0.5), Math.floor(viewportH * 0.28));
       const safeW = Math.max(MIN_PREVIEW, isLandscape ? viewportW - 292 : viewportW - 96);
-      const viewportLimitedH = isMobile
-        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 164 : 360))
-        : DEFAULT_PREVIEW;
+      const viewportLimitedH = isMobile ? Math.max(MIN_PREVIEW, (canvasPanelHeight ?? panelBounds.defaultHeight) - 96) : DEFAULT_PREVIEW;
       const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
       const h = isMobile ? viewportLimitedH : rect.height;
       if (w <= 0) return;
@@ -181,7 +193,7 @@ export function MediaEditor({
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
-  }, [open]);
+  }, [open, canvasPanelHeight]);
 
   // Load image
   useEffect(() => {
@@ -191,7 +203,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fit');
+    setFitMode(circular ? 'fill' : 'fit');
     pointersRef.current.clear();
     pinchRef.current = null;
     resizeRef.current = null;
@@ -199,16 +211,15 @@ export function MediaEditor({
     img.onload = () => setImgEl(img);
     img.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, circular]);
 
   const fitScale = useMemo(() => {
     if (!imgEl) return 1;
     const sx = PREVIEW / imgEl.naturalWidth;
     const sy = PREVIEW / imgEl.naturalHeight;
     if (fitMode === 'fill') return Math.max(sx, sy);
-    if (!circular) return Math.min(sx, sy);
-    return PREVIEW / Math.sqrt(imgEl.naturalWidth ** 2 + imgEl.naturalHeight ** 2);
-  }, [imgEl, PREVIEW, fitMode, circular]);
+    return Math.min(sx, sy);
+  }, [imgEl, PREVIEW, fitMode]);
 
   const displayedW = imgEl ? imgEl.naturalWidth * fitScale * scale : PREVIEW;
   const displayedH = imgEl ? imgEl.naturalHeight * fitScale * scale : PREVIEW;
@@ -292,6 +303,36 @@ export function MediaEditor({
     }
   };
 
+  const onPanelResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+    if (typeof window === 'undefined') return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const viewportW = window.visualViewport?.width ?? window.innerWidth;
+    const viewportH = window.visualViewport?.height ?? window.innerHeight;
+    const { defaultHeight } = getCanvasPanelBounds(viewportW, viewportH);
+    panelResizeRef.current = { startY: e.clientY, startHeight: canvasPanelHeight ?? defaultHeight };
+  };
+
+  const onPanelResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!panelResizeRef.current || typeof window === 'undefined') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const viewportW = window.visualViewport?.width ?? window.innerWidth;
+    const viewportH = window.visualViewport?.height ?? window.innerHeight;
+    const { min, max } = getCanvasPanelBounds(viewportW, viewportH);
+    setCanvasPanelHeight(clampNumber(panelResizeRef.current.startHeight + e.clientY - panelResizeRef.current.startY, min, max));
+  };
+
+  const onPanelResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
+    panelResizeRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
   useEffect(() => {
     setOffset((o) => ({ x: clamp(o.x, maxOffsetX), y: clamp(o.y, maxOffsetY) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -301,7 +342,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fit');
+    setFitMode(circular ? 'fill' : 'fit');
   };
 
   const exportBlob = async (): Promise<MediaEditorResult | null> => {
@@ -370,6 +411,9 @@ export function MediaEditor({
   const mobileViewportStyle = viewportHeight
     ? ({ '--media-editor-vh': `${viewportHeight}px`, maxHeight: `${viewportHeight}px` } as CSSProperties)
     : undefined;
+  const canvasPanelStyle = {
+    '--media-canvas-panel-h': `${canvasPanelHeight ?? MOBILE_CANVAS_PANEL_MAX}px`,
+  } as CSSProperties;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -385,7 +429,7 @@ export function MediaEditor({
         <DialogTitle className="sr-only">{title}</DialogTitle>
           <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] h-full max-h-[92dvh] max-sm:max-h-[var(--media-editor-vh,100svh)] [@media(max-height:520px)]:max-h-[var(--media-editor-vh,100dvh)] [@media(max-height:520px)]:flex-row overflow-hidden">
           {/* LEFT — canvas */}
-          <div className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden max-sm:max-h-[360px] [@media(max-height:520px)]:w-[42vw] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
+          <div style={canvasPanelStyle} className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden max-sm:h-[var(--media-canvas-panel-h)] max-sm:max-h-[var(--media-canvas-panel-h)] [@media(max-height:520px)]:w-[42vw] [@media(max-height:520px)]:h-full [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <button
                 onClick={onClose}
@@ -408,7 +452,8 @@ export function MediaEditor({
             <div ref={previewWrapRef} className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden">
               <div
                 className={cn(
-                  'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] border border-border/60 select-none',
+                  'relative overflow-hidden bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] select-none',
+                  circular ? 'border-0 ring-1 ring-border/60' : 'border border-border/60',
                   circular ? 'rounded-full' : 'rounded-md',
                   'cursor-grab active:cursor-grabbing'
                 )}
@@ -487,6 +532,18 @@ export function MediaEditor({
                 <FlipHorizontal2 className="w-4 h-4" />
               </button>
             </div>
+            <button
+              type="button"
+              aria-label="Resize canvas area height"
+              title="Resize canvas area height"
+              className="mx-auto mt-2 hidden h-5 w-24 shrink-0 touch-none items-center justify-center rounded-full text-muted-foreground max-sm:flex [@media(max-height:520px)]:hidden"
+              onPointerDown={onPanelResizePointerDown}
+              onPointerMove={onPanelResizePointerMove}
+              onPointerUp={onPanelResizePointerUp}
+              onPointerCancel={onPanelResizePointerUp}
+            >
+              <span className="h-1 w-12 rounded-full bg-muted-foreground/50" />
+            </button>
           </div>
 
           {/* RIGHT — previews + extras + finish */}

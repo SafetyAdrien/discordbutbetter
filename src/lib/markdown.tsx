@@ -398,6 +398,42 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
     case 'separator': return <hr key={key} className={cn("border-t border-[hsl(var(--border))]", compact ? "my-1" : "my-2")} />;
     case 'empty': return <br key={key} />;
     case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
+    case 'alert': {
+      const type = (block.alertType || 'NOTE') as AlertType;
+      const meta: Record<AlertType, { Icon: typeof Info; label: string; varName: string }> = {
+        NOTE:      { Icon: Info,                  label: 'Note',          varName: 'alert-note' },
+        TIP:       { Icon: Lightbulb,             label: 'Astuce',        varName: 'alert-tip' },
+        IMPORTANT: { Icon: MessageSquareWarning,  label: 'Important',     varName: 'alert-important' },
+        WARNING:   { Icon: TriangleAlert,         label: 'Avertissement', varName: 'alert-warning' },
+        CAUTION:   { Icon: OctagonAlert,          label: 'Attention',     varName: 'alert-caution' },
+      };
+      const { Icon, label, varName } = meta[type];
+      const bodyLines = block.content.split('\n');
+      return (
+        <div
+          key={key}
+          role="note"
+          className={cn('border-l-[4px] pl-3', compact ? 'my-1' : 'my-2')}
+          style={{ borderColor: `hsl(var(--${varName}))` }}
+        >
+          <div
+            className="flex items-center gap-1.5 font-semibold mb-0.5 text-[0.95em]"
+            style={{ color: `hsl(var(--${varName}))` }}
+          >
+            <Icon className="w-4 h-4 shrink-0" aria-hidden />
+            <span>{label}</span>
+          </div>
+          <div className="text-foreground/90">
+            {bodyLines.map((bl, idx) => (
+              <React.Fragment key={idx}>
+                {tokenizeInline(bl).map((tk, j) => renderInlineToken(tk, j, context))}
+                {idx < bodyLines.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      );
+    }
     case 'paragraph':
     default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && <br />}</React.Fragment>;
   }

@@ -168,8 +168,8 @@ export function VoiceChannelView({
           <StreamlineVoice className="w-5 h-5 text-muted-foreground" />
           <h2 className="font-semibold text-white">{channel.name}</h2>
           {channel.description && (
-            <span className="text-sm text-muted-foreground ml-2 hidden md:inline">
-              {channel.description}
+            <span className="text-sm text-muted-foreground ml-2 hidden md:inline truncate max-w-[260px] [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_p]:inline [&_*]:!m-0">
+              <MarkdownText content={channel.description} variant="chat" className="[&_.markdown-content]:text-muted-foreground" />
             </span>
           )}
         </div>

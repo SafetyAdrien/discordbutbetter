@@ -648,6 +648,7 @@ export function useUploadSound() {
       emoji?: string;
       volume?: number;
       file: File;
+      silent?: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -678,15 +679,16 @@ export function useUploadSound() {
       }
       return data as unknown as ServerSound;
     },
-    onError: (error: any) => {
+    onError: (error: any, variables) => {
+      if (variables?.silent) return;
       if (error?.message?.includes('row-level security') || error?.message?.includes('permission')) {
         toast.error("Vous n'avez pas la permission d'ajouter des sons");
       } else {
         toast.error("Erreur lors de l'ajout du son");
       }
     },
-    onSuccess: () => {
-      toast.success('Son ajouté !');
+    onSuccess: (_, variables) => {
+      if (!variables?.silent) toast.success('Son ajouté !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });

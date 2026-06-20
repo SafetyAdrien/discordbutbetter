@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
-import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff } from "lucide-react";
+import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff, Plus } from "lucide-react";
 import { DiscordMic } from "@/components/icons/DiscordMic";
 import { DiscordMicOff } from "@/components/icons/DiscordMicOff";
 import { DiscordHeadphones } from "@/components/icons/DiscordHeadphones";
@@ -94,7 +94,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </span>
       );
     }
-    return profile?.custom_status || statusLabels[currentStatus];
+    return statusLabels[currentStatus];
   };
 
   const handleStatusHover = () => {
@@ -172,7 +172,28 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
                 className="absolute bottom-0 right-0 w-4 h-4 border-2 border-card"
               />
             </div>
+
+            {/* Custom status bubble — pinned to the banner edge (parity with mobile) */}
+            <button
+              type="button"
+              onClick={() => setShowCustomStatusModal(true)}
+              aria-label="Modifier le statut personnalisé"
+              className="absolute left-20 top-[44px] z-20 inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-[hsl(220_8%_18%)] hover:bg-[hsl(220_8%_22%)] transition-colors shadow-md max-w-[180px]"
+            >
+              <span aria-hidden className="absolute -left-2 -top-3 w-2.5 h-2.5 rounded-full bg-[hsl(220_8%_18%)] shadow" />
+              <span aria-hidden className="absolute left-1 -top-1 w-2.5 h-2.5 rounded-[3px_50%_50%_50%] bg-[hsl(220_8%_18%)]" />
+              <span className="shrink-0 w-4 h-4 text-foreground flex items-center justify-center">
+                <Plus className="w-3 h-3" strokeWidth={2.5} />
+              </span>
+              <span className={cn(
+                "text-xs italic truncate",
+                profile?.custom_status ? "text-foreground" : "text-muted-foreground"
+              )}>
+                {profile?.custom_status || "Quoi de neuf ?"}
+              </span>
+            </button>
           </div>
+
 
           {/* User Info */}
           <div className="pt-8 px-3 pb-3">

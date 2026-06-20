@@ -99,7 +99,7 @@ export function EmojiStickerEditor({
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
-  const cornerResizeRef = useRef<{ centerX: number; centerY: number; startDist: number; startScale: number } | null>(null);
+  
   const panelResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const outputSize = type === 'emoji' ? 320 : 512;
 

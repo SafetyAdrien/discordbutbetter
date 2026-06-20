@@ -459,7 +459,7 @@ export function MediaEditor({
                         height: displayedH,
                         left: '50%',
                         top: '50%',
-                        transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) scaleX(${flip ? -1 : 1})`,
+                        transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scaleX(${flip ? -1 : 1})`,
                         maxWidth: 'none',
                         pointerEvents: 'none',
                       }}

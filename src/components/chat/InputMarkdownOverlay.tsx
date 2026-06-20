@@ -619,15 +619,25 @@ export const InputMarkdownOverlay = forwardRef<HTMLDivElement, InputMarkdownOver
                 boxShadow: 'inset 0 0 0 1px hsl(var(--border) / 0.4)',
               }}
             >
-              {block.map((l) => (
-                <div
-                  key={keyCounter++}
-                  className={lineStyles[l.type]}
-                  style={{ fontSize: OVERLAY_FONT_SIZE, lineHeight: OVERLAY_LINE_HEIGHT, fontFamily: INPUT_FONT_FAMILY, fontWeight: 400, letterSpacing: 'normal' }}
-                >
-                  {l.text || '\u200B'}
-                </div>
-              ))}
+              {block.map((l) => {
+                const isCode = l.type === 'codeBlockLine' || l.type === 'codeBlockDelimiter';
+                return (
+                  <div
+                    key={keyCounter++}
+                    className={lineStyles[l.type]}
+                    style={{
+                      fontSize: OVERLAY_FONT_SIZE,
+                      lineHeight: OVERLAY_LINE_HEIGHT,
+                      fontFamily: isCode ? 'Consolas, "gg mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' : INPUT_FONT_FAMILY,
+                      fontWeight: 400,
+                      letterSpacing: 'normal',
+                    }}
+                  >
+                    {l.text || '\u200B'}
+                  </div>
+                );
+              })}
+
             </div>
           );
         })}

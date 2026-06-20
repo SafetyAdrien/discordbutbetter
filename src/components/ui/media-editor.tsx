@@ -206,7 +206,7 @@ export function MediaEditor({
     setFitMode(circular ? 'fill' : 'fit');
     pointersRef.current.clear();
     pinchRef.current = null;
-    cornerResizeRef.current = null;
+    pointersRef.current.clear();
     const img = new Image();
     img.onload = () => setImgEl(img);
     img.src = url;

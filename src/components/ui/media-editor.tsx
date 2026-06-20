@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { X, RotateCcw, ZoomIn, ZoomOut, Move, FlipHorizontal2 } from 'lucide-react';
+import { X, RotateCcw, ZoomIn, FlipHorizontal2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface EditorTransform {
@@ -39,6 +38,13 @@ interface MediaEditorProps {
 }
 
 const DEFAULT_PREVIEW = 380;
+const MIN_PREVIEW = 56;
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+
+const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.hypot(a.x - b.x, a.y - b.y);
 
 /**
  * A small helper that renders the source image using the transform produced by
@@ -105,8 +111,12 @@ export function MediaEditor({
   const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(DEFAULT_PREVIEW);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
 
   // Measure to keep canvas square + physically contained on mobile browsers.
   useEffect(() => {
@@ -117,12 +127,21 @@ export function MediaEditor({
       const rect = el.getBoundingClientRect();
       const viewportW = window.visualViewport?.width ?? window.innerWidth;
       const viewportH = window.visualViewport?.height ?? window.innerHeight;
-      const isMobile = viewportW < 640;
-      const w = isMobile ? Math.min(rect.width, viewportW - 32) : rect.width;
-      const h = isMobile ? Math.min(rect.height, viewportH - 390) : rect.height;
-      if (w <= 0 || h <= 0) return;
-      const size = Math.max(160, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
+      const isMobile = viewportW < 768 || viewportH < 520;
+      const isLandscape = viewportW > viewportH;
+      const safeW = Math.max(MIN_PREVIEW, viewportW - 32);
+      const viewportLimitedH = isMobile
+        ? Math.max(MIN_PREVIEW, viewportH - (isLandscape ? 220 : 286))
+        : DEFAULT_PREVIEW;
+      const w = isMobile ? Math.min(rect.width || safeW, safeW) : rect.width;
+      const h = isMobile ? Math.min(rect.height || viewportLimitedH, viewportLimitedH) : rect.height;
+      if (w <= 0) return;
+      const size = Math.max(MIN_PREVIEW, Math.min(DEFAULT_PREVIEW, Math.floor(w), Math.floor(h)));
       setPreview(size);
+      setViewportHeight((prev) => {
+        const next = Math.max(240, Math.floor(viewportH));
+        return prev === next ? prev : next;
+      });
     };
     const scheduleMeasure = () => {
       cancelAnimationFrame(raf);
@@ -173,11 +192,30 @@ export function MediaEditor({
   const maxOffsetY = Math.max(0, (displayedH - PREVIEW) / 2);
   const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    (e.target as Element).setPointerCapture(e.pointerId);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = Array.from(pointersRef.current.values());
+    if (points.length >= 2) {
+      pinchRef.current = { startDistance: pointDistance(points[0], points[1]), startScale: scale };
+      dragRef.current = null;
+      return;
+    }
     dragRef.current = { startX: e.clientX, startY: e.clientY, oX: offset.x, oY: offset.y };
   };
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    const points = Array.from(pointersRef.current.values());
+    if (points.length >= 2 && pinchRef.current) {
+      const distance = pointDistance(points[0], points[1]);
+      if (pinchRef.current.startDistance > 0) {
+        setScale(clampScale(pinchRef.current.startScale * (distance / pinchRef.current.startDistance)));
+      }
+      return;
+    }
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
@@ -186,7 +224,49 @@ export function MediaEditor({
       y: clamp(dragRef.current.oY + dy, maxOffsetY),
     });
   };
-  const onPointerUp = () => { dragRef.current = null; };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    pinchRef.current = null;
+    dragRef.current = null;
+    const [remaining] = Array.from(pointersRef.current.values());
+    if (remaining) {
+      dragRef.current = { startX: remaining.x, startY: remaining.y, oX: offset.x, oY: offset.y };
+    }
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setScale((value) => clampScale(value * (e.deltaY < 0 ? 1.06 : 0.94)));
+  };
+
+  const onResizePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, startScale: scale };
+  };
+
+  const onResizePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!resizeRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = (e.clientX - resizeRef.current.startX + e.clientY - resizeRef.current.startY) / Math.max(PREVIEW, 1);
+    setScale(clampScale(resizeRef.current.startScale + delta * 2));
+  };
+
+  const onResizePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    resizeRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
 
   useEffect(() => {
     setOffset((o) => ({ x: clamp(o.x, maxOffsetX), y: clamp(o.y, maxOffsetY) }));
@@ -376,7 +456,7 @@ export function MediaEditor({
                   max={4}
                   step={0.01}
                   value={[scale]}
-                  onValueChange={(v) => setScale(v[0] ?? 1)}
+                onValueChange={(v) => setScale(clampScale(v[0] ?? 1))}
                 />
               </div>
               <ZoomIn className="w-4 h-4 text-muted-foreground" />

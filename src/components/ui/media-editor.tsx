@@ -193,7 +193,7 @@ export function MediaEditor({
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
-  }, [open]);
+  }, [open, canvasPanelHeight]);
 
   // Load image
   useEffect(() => {
@@ -203,7 +203,7 @@ export function MediaEditor({
     setScale(1);
     setOffset({ x: 0, y: 0 });
     setFlip(false);
-    setFitMode('fit');
+    setFitMode(circular ? 'fill' : 'fit');
     pointersRef.current.clear();
     pinchRef.current = null;
     resizeRef.current = null;
@@ -297,6 +297,36 @@ export function MediaEditor({
 
   const onResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     resizeRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+  };
+
+  const onPanelResizePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+    if (typeof window === 'undefined') return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const viewportW = window.visualViewport?.width ?? window.innerWidth;
+    const viewportH = window.visualViewport?.height ?? window.innerHeight;
+    const { defaultHeight } = getCanvasPanelBounds(viewportW, viewportH);
+    panelResizeRef.current = { startY: e.clientY, startHeight: canvasPanelHeight ?? defaultHeight };
+  };
+
+  const onPanelResizePointerMove = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!panelResizeRef.current || typeof window === 'undefined') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const viewportW = window.visualViewport?.width ?? window.innerWidth;
+    const viewportH = window.visualViewport?.height ?? window.innerHeight;
+    const { min, max } = getCanvasPanelBounds(viewportW, viewportH);
+    setCanvasPanelHeight(clampNumber(panelResizeRef.current.startHeight + e.clientY - panelResizeRef.current.startY, min, max));
+  };
+
+  const onPanelResizePointerUp = (e: PointerEvent<HTMLButtonElement>) => {
+    panelResizeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {

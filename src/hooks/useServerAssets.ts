@@ -272,6 +272,7 @@ export function useUploadSticker() {
       name: string;
       description?: string;
       file: File;
+      silent?: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
 

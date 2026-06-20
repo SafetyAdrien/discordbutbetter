@@ -474,6 +474,71 @@ export function EmojiStickerEditor({
               <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
             </div>
 
+            {/* Rotation control with mode toggle */}
+            <div className="mt-3 px-1 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Rotation</span>
+                <div className="flex items-center rounded-md border border-border/60 overflow-hidden text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRotationMode('step')}
+                    className={cn(
+                      'px-2 py-1 transition-colors',
+                      rotationMode === 'step' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    90°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRotationMode('free')}
+                    className={cn(
+                      'px-2 py-1 transition-colors',
+                      rotationMode === 'free' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    360°
+                  </button>
+                </div>
+              </div>
+              {rotationMode === 'free' ? (
+                <div className="flex items-center gap-3">
+                  <RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Slider
+                    value={[rotation]}
+                    min={-180}
+                    max={180}
+                    step={1}
+                    onValueChange={(v) => setRotation(v[0] ?? 0)}
+                    aria-label="Rotation"
+                    className="flex-1"
+                  />
+                  <RotateCw className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[0, 90, 180, 270].map((deg) => (
+                    <button
+                      key={deg}
+                      type="button"
+                      onClick={() => setRotation(deg > 180 ? deg - 360 : deg)}
+                      className={cn(
+                        'h-8 rounded-md border border-border/60 text-xs font-medium transition-colors',
+                        ((rotation + 360) % 360) === deg
+                          ? 'bg-primary text-primary-foreground border-primary/60'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {deg}°
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+
+
 
             {/* Controls */}
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">

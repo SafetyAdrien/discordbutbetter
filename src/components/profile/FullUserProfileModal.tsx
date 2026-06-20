@@ -155,7 +155,7 @@ export function FullUserProfileModal({
                 />
               </div>
               {user.custom_status && (
-                <div className="absolute left-[132px] bottom-[18px] z-20 max-w-[260px]">
+                <div className="absolute left-[128px] bottom-[14px] z-20 max-w-[260px]">
                   <CustomStatusBubble customStatus={user.custom_status} size="md" />
                 </div>
               )}

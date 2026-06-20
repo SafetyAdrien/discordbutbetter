@@ -302,18 +302,15 @@ export function EmojiStickerEditor({
     const cy = outputSize / 2 + offset.y * ratio;
 
     ctx.save();
-    if (flip) {
-      ctx.translate(outputSize, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(imgEl, outputSize - cx - w / 2, cy - h / 2, w, h);
-    } else {
-      ctx.drawImage(imgEl, cx - w / 2, cy - h / 2, w, h);
-    }
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(imgEl, -w / 2, -h / 2, w, h);
     ctx.restore();
 
     // For PNG (lossless) or fallback. For gif/apng we can't preserve animation through canvas.
     const isAnimated = /gif|apng/i.test(file.type);
-    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip) {
+    if (isAnimated && fitMode === 'fit' && scale === 1 && offset.x === 0 && offset.y === 0 && !flip && rotation === 0) {
       // Untouched: preserve original animation
       return {
         blob: file,

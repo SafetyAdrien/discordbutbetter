@@ -290,6 +290,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
               size="icon" 
               onClick={onClose}
               className="absolute right-4 top-4"
+              aria-label="Fermer"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -658,7 +659,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
             <div className="px-6 pb-6">
               {/* Banner Upload */}
               <div className="relative mb-4 group">
-                <label className="cursor-pointer block">
+                <label className="cursor-pointer block" aria-label="Importer ou modifier la bannière du serveur">
                   <input
                     type="file"
                     accept="image/*"
@@ -699,14 +700,14 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
               {/* Icon Upload - centered overlapping banner */}
               <div className="flex justify-center -mt-12 mb-4">
                 <div className="relative group">
-                  <label className="cursor-pointer block">
+                <label className="cursor-pointer block" aria-label="Importer ou modifier l'icône du serveur">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleFileSelect(e, 'icon')}
                       className="hidden"
                     />
-                    <div className="w-20 h-20 rounded-full bg-card border-4 border-card flex items-center justify-center shadow-lg group-hover:scale-105 transition-all overflow-hidden">
+                    <div className="w-20 h-20 rounded-full bg-card border-4 border-card flex items-center justify-center shadow-lg transition-all overflow-hidden">
                       {iconPreview ? (
                         <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" />
                       ) : (
@@ -725,10 +726,14 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                     <button
                       onClick={handleRemoveIcon}
                       className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+                      aria-label="Supprimer l'icône du serveur"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   )}
+                  <span className="mt-2 block text-center text-xs font-medium text-muted-foreground">
+                    {iconPreview ? "Changer l'icône" : 'Importer une icône'}
+                  </span>
                 </div>
               </div>
 

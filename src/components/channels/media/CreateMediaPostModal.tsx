@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -248,10 +249,10 @@ export function CreateMediaPostModal({
                 {descLength}/500
               </span>
             </div>
-            <Textarea
+            <MarkdownTextarea
               id="media-desc"
               value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+              onChange={(v) => setDescription(v.slice(0, 500))}
               placeholder="Décrivez votre poste (minimum 10 caractères)"
               className="resize-none min-h-[80px]"
             />

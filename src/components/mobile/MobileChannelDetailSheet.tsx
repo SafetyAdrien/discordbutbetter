@@ -4,6 +4,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Pin, Bell, BellOff, BellRing, AtSign, Hash } from 'lucide-react';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import StreamlineSummaries from '@/components/icons/StreamlineSummaries';
+import { MarkdownText } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 
 interface MobileChannelDetailSheetProps {
@@ -57,7 +58,9 @@ export function MobileChannelDetailSheet({
           </div>
 
           {description && (
-            <p className="text-sm text-muted-foreground bg-muted/40 rounded-xl px-3 py-2.5">{description}</p>
+            <div className="text-sm text-muted-foreground bg-muted/40 rounded-xl px-3 py-2.5">
+              <MarkdownText content={description} variant="chat" className="[&_.markdown-content]:text-muted-foreground" />
+            </div>
           )}
 
           {/* Quick actions */}

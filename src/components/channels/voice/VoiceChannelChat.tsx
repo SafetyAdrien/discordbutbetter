@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { useMessages, useSendMessage, useEditMessage, useDeleteMessage } from '@/hooks/useMessages';
 import { useChannels } from '@/hooks/useChannels';
 import { useServerRoles } from '@/hooks/useRoles';
@@ -313,9 +314,9 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                           </div>
                           {isEditing ? (
                             <div className="mt-1 space-y-1">
-                              <Textarea
+                              <MarkdownTextarea
                                 value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
+                                onChange={(v) => setEditContent(v)}
                                 onKeyDown={handleEditKeyDown}
                                 className="min-h-[60px] text-sm resize-none"
                                 autoFocus

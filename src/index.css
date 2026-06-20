@@ -155,6 +155,13 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 220 10% 93%;
 
+    /* GitHub-style markdown alerts (NOTE / TIP / IMPORTANT / WARNING / CAUTION) */
+    --alert-note: 212 92% 62%;
+    --alert-tip: 142 62% 48%;
+    --alert-important: 268 75% 68%;
+    --alert-warning: 38 92% 52%;
+    --alert-caution: 0 78% 60%;
+
     /* Borders & Inputs */
     --border: 225 14% 22%;
     --input: 225 20% 18%;

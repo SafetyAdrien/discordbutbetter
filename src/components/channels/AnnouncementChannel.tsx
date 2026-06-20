@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/chat/MarkdownTextarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
@@ -534,12 +535,14 @@ export function AnnouncementChannel({
               <PopoverTrigger asChild>
                 <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground truncate">{channel.description}</p>
+                  <span className="text-sm text-muted-foreground truncate [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-sm [&_p]:inline [&_*]:!m-0">
+                    <MarkdownText content={channel.description} variant="chat" className="[&_.markdown-content]:text-muted-foreground" />
+                  </span>
                 </button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="start" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-3">
                 <h4 className="font-semibold text-foreground mb-2">Sujet du salon</h4>
-                <p className="text-sm text-muted-foreground">{channel.description}</p>
+                <MarkdownText content={channel.description} variant="chat" className="text-sm text-muted-foreground [&_.markdown-content]:text-muted-foreground" />
               </PopoverContent>
             </Popover>
           </>
@@ -973,7 +976,7 @@ export function AnnouncementChannel({
                           </div>
                           {isEditing ? (
                             <div className="mt-1 space-y-2">
-                              <Textarea
+                              <MarkdownTextarea
                                 ref={(el) => {
                                   if (el) {
                                     el.style.height = "auto";
@@ -981,10 +984,11 @@ export function AnnouncementChannel({
                                   }
                                 }}
                                 value={editingContent}
-                                onChange={(e) => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = "auto";
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                onChange={(v) => setEditingContent(v)}
+                                onInput={(e) => {
+                                  const el = e.currentTarget;
+                                  el.style.height = "auto";
+                                  el.style.height = Math.min(el.scrollHeight, 200) + "px";
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && !e.shiftKey) {
@@ -1083,9 +1087,9 @@ export function AnnouncementChannel({
                         <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <div className="space-y-2">
-                              <Textarea
+                              <MarkdownTextarea
                                 value={editingContent}
-                                onChange={(e) => setEditingContent(e.target.value)}
+                                onChange={(v) => setEditingContent(v)}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && !e.shiftKey) {
                                     e.preventDefault();

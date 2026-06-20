@@ -2,6 +2,7 @@
 import React, { createContext, useContext, ReactNode, useSyncExternalStore } from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
 import { cn } from '@/lib/utils';
+import { Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
 import { 
   UserMention, 
   RoleMention, 
@@ -36,12 +37,15 @@ interface MarkdownToken {
   };
 }
 
+type AlertType = 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION';
+
 interface BlockToken {
-  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'taskItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph';
+  type: 'paragraph' | 'header1' | 'header2' | 'header3' | 'subtext' | 'blockquote' | 'multiBlockquote' | 'listItem' | 'orderedListItem' | 'taskItem' | 'codeBlock' | 'empty' | 'separator' | 'escapedParagraph' | 'alert';
   content: string;
   language?: string;
   indentLevel?: number;
   checked?: boolean;
+  alertType?: AlertType;
 }
 
 export interface MarkdownContext {
@@ -255,10 +259,28 @@ function parseBlocks(content: string): BlockToken[] {
       continue;
     }
     const lines = segment.content.split('\n');
-    for (const line of lines) {
-      if (line.trim() === '') { blocks.push({ type: 'empty', content: '' }); continue; }
-      if (/^\\/.test(line)) { blocks.push({ type: 'escapedParagraph', content: line.slice(1) }); continue; }
-      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { blocks.push({ type: 'separator', content: '' }); continue; }
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // GitHub-style alert block: `> [!TYPE]` header consumes following `>` lines.
+      const alertHeader = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i.exec(line);
+      if (alertHeader) {
+        const alertType = alertHeader[1].toUpperCase() as AlertType;
+        const body: string[] = [];
+        let j = i + 1;
+        while (j < lines.length && /^>\s?/.test(lines[j])) {
+          body.push(lines[j].replace(/^>\s?/, ''));
+          j++;
+        }
+        blocks.push({ type: 'alert', alertType, content: body.join('\n') });
+        i = j;
+        continue;
+      }
+
+      if (line.trim() === '') { blocks.push({ type: 'empty', content: '' }); i++; continue; }
+      if (/^\\/.test(line)) { blocks.push({ type: 'escapedParagraph', content: line.slice(1) }); i++; continue; }
+      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { blocks.push({ type: 'separator', content: '' }); i++; continue; }
       if (line.startsWith('### ')) blocks.push({ type: 'header3', content: line.slice(4) });
       else if (line.startsWith('## ')) blocks.push({ type: 'header2', content: line.slice(3) });
       else if (line.startsWith('# ')) blocks.push({ type: 'header1', content: line.slice(2) });
@@ -277,6 +299,7 @@ function parseBlocks(content: string): BlockToken[] {
         blocks.push({ type: 'orderedListItem', content: line.slice(listMatch![0].length), indentLevel: listMatch![1].length });
       }
       else blocks.push({ type: 'paragraph', content: line });
+      i++;
     }
   }
   return blocks;
@@ -375,6 +398,42 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
     case 'separator': return <hr key={key} className={cn("border-t border-[hsl(var(--border))]", compact ? "my-1" : "my-2")} />;
     case 'empty': return <br key={key} />;
     case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
+    case 'alert': {
+      const type = (block.alertType || 'NOTE') as AlertType;
+      const meta: Record<AlertType, { Icon: typeof Info; label: string; varName: string }> = {
+        NOTE:      { Icon: Info,                  label: 'Note',          varName: 'alert-note' },
+        TIP:       { Icon: Lightbulb,             label: 'Astuce',        varName: 'alert-tip' },
+        IMPORTANT: { Icon: MessageSquareWarning,  label: 'Important',     varName: 'alert-important' },
+        WARNING:   { Icon: TriangleAlert,         label: 'Avertissement', varName: 'alert-warning' },
+        CAUTION:   { Icon: OctagonAlert,          label: 'Attention',     varName: 'alert-caution' },
+      };
+      const { Icon, label, varName } = meta[type];
+      const bodyLines = block.content.split('\n');
+      return (
+        <div
+          key={key}
+          role="note"
+          className={cn('border-l-[4px] pl-3', compact ? 'my-1' : 'my-2')}
+          style={{ borderColor: `hsl(var(--${varName}))` }}
+        >
+          <div
+            className="flex items-center gap-1.5 font-semibold mb-0.5 text-[0.95em]"
+            style={{ color: `hsl(var(--${varName}))` }}
+          >
+            <Icon className="w-4 h-4 shrink-0" aria-hidden />
+            <span>{label}</span>
+          </div>
+          <div className="text-foreground/90">
+            {bodyLines.map((bl, idx) => (
+              <React.Fragment key={idx}>
+                {tokenizeInline(bl).map((tk, j) => renderInlineToken(tk, j, context))}
+                {idx < bodyLines.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      );
+    }
     case 'paragraph':
     default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && <br />}</React.Fragment>;
   }

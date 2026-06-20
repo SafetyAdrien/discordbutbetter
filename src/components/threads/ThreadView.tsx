@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, Bell
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -949,7 +950,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           )}
                           {editingMessageId === message.id ? (
                             <div className="space-y-2">
-                              <Textarea
+                              <MarkdownTextarea
                                 ref={(el) => {
                                   if (el) {
                                     el.style.height = 'auto';
@@ -957,10 +958,13 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                   }
                                 }}
                                 value={editingContent}
-                                onChange={(e) => {
-                                  setEditingContent(e.target.value);
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                onChange={(v) => {
+                                  setEditingContent(v);
+                                }}
+                                onInput={(e) => {
+                                  const el = e.currentTarget;
+                                  el.style.height = 'auto';
+                                  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !e.shiftKey) {

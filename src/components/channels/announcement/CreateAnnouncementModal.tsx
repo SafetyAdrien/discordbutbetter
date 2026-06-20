@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ImagePlus, X, Pin, Star, Loader2 } from 'lucide-react';
@@ -162,11 +163,11 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
           {/* Content */}
           <div className="space-y-2">
             <Label htmlFor="content">Contenu *</Label>
-            <Textarea
+            <MarkdownTextarea
               id="content"
               placeholder="Rédigez votre annonce... (Markdown supporté)"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(v) => setContent(v)}
               rows={6}
               maxLength={4000}
             />

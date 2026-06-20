@@ -300,29 +300,6 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
             </div>
           </div>
 
-          {/* Online status section */}
-          <SectionHeader>Statut en ligne</SectionHeader>
-          <section className="mx-4 rounded-2xl bg-card border border-border/50 overflow-hidden">
-            {STATUS_OPTIONS.map((opt, idx) => {
-              const isCurrent = profile?.status === opt.value;
-              return (
-                <div key={opt.value}>
-                  {idx > 0 && <div className="h-px bg-border/40 mx-4" />}
-                  <button
-                    onClick={() => handleSetStatus(opt.value)}
-                    disabled={isPending}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors disabled:opacity-50"
-                  >
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/40">
-                      <div className={cn('w-3 h-3 rounded-full', opt.dot)} />
-                    </div>
-                    <span className="flex-1 text-left text-sm font-medium">{opt.label}</span>
-                    {isCurrent && <Check className="w-4 h-4 text-primary" />}
-                  </button>
-                </div>
-              );
-            })}
-          </section>
         </div>
       </DialogContent>
     </Dialog>

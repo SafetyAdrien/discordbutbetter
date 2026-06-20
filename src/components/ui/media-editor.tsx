@@ -43,6 +43,8 @@ const MOBILE_LANDSCAPE_PREVIEW = 132;
 const MIN_PREVIEW = 56;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
+const MOBILE_CANVAS_PANEL_MIN = 220;
+const MOBILE_CANVAS_PANEL_MAX = 360;
 
 const getInitialPreview = () => {
   if (typeof window === 'undefined') return DEFAULT_PREVIEW;
@@ -56,8 +58,16 @@ const getInitialPreview = () => {
 };
 
 const clampScale = (value: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const pointDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
+
+const getCanvasPanelBounds = (viewportW: number, viewportH: number) => {
+  const max = Math.max(MOBILE_CANVAS_PANEL_MIN, Math.min(MOBILE_CANVAS_PANEL_MAX, Math.floor(viewportH - 210)));
+  const min = Math.min(MOBILE_CANVAS_PANEL_MIN, max);
+  const defaultHeight = clampNumber(Math.floor(Math.min(viewportH * 0.48, viewportW * 0.88)), min, max);
+  return { min, max, defaultHeight };
+};
 
 /**
  * A small helper that renders the source image using the transform produced by
@@ -121,10 +131,11 @@ export function MediaEditor({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [flip, setFlip] = useState(false);
-  const [fitMode, setFitMode] = useState<'fit' | 'fill'>('fit');
+  const [fitMode, setFitMode] = useState<'fit' | 'fill'>(() => (circular ? 'fill' : 'fit'));
   const [busy, setBusy] = useState(false);
   const [PREVIEW, setPreview] = useState(getInitialPreview);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const [canvasPanelHeight, setCanvasPanelHeight] = useState<number | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; oX: number; oY: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());

@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
 import { useChannels } from '@/hooks/useChannels';
 
 import { MobileChannelListView } from './MobileChannelListView';
@@ -182,6 +183,7 @@ export function MobileServersView({
   const { unreadInfo } = useServerUnreadCounts();
   const { sortServers, reorderServers } = useServerOrder();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
+  const { totalMentionCount: totalDMMentions } = useDMMentionCounts();
   const [showDMs, setShowDMs] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -217,12 +219,12 @@ export function MobileServersView({
   }, [unreadInfo]);
 
   useEffect(() => {
-    if (totalUnreadDMs > prevDMCount.current) {
+    if (totalDMMentions > prevDMCount.current) {
       setShakingDMs(true);
       setTimeout(() => setShakingDMs(false), 500);
     }
-    prevDMCount.current = totalUnreadDMs;
-  }, [totalUnreadDMs]);
+    prevDMCount.current = totalDMMentions;
+  }, [totalDMMentions]);
 
   const sensors = useSensors(
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
@@ -344,7 +346,7 @@ export function MobileServersView({
               'absolute left-0 top-1/2 -translate-y-1/2 w-[4px] rounded-r-full bg-foreground pointer-events-none z-10',
               showDMs
                 ? 'h-10'
-                : totalUnreadDMs > 0
+                : totalUnreadDMs > 0 || totalDMMentions > 0
                   ? 'h-2'
                   : 'h-0 group-hover:h-5'
             )}
@@ -360,7 +362,7 @@ export function MobileServersView({
             )}
           >
             <MessageCircle className="w-6 h-6" />
-            {totalUnreadDMs > 0 && !showDMs && (
+            {totalDMMentions > 0 && !showDMs ? (
               <span
                 className={cn(
                   'absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
@@ -368,9 +370,11 @@ export function MobileServersView({
                 )}
                 style={{ boxShadow: 'var(--shadow-elevation-1)' }}
               >
-                {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
+                {totalDMMentions > 99 ? '99+' : totalDMMentions}
               </span>
-            )}
+            ) : totalUnreadDMs > 0 && !showDMs ? (
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-foreground border-2 border-[hsl(var(--surface-server-list))]" />
+            ) : null}
           </button>
         </div>
 

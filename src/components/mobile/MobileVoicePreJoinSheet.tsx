@@ -86,7 +86,7 @@ export function MobileVoicePreJoinSheet({
           <motion.div
             key="voice-prejoin-sheet"
             ref={sheetRef}
-            initial={{ y: '100%' }}
+            initial={{ y: 0 }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 300 }}

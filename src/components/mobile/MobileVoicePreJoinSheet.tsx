@@ -120,6 +120,8 @@ export function MobileVoicePreJoinSheet({
                 <div className="flex-1 flex justify-center min-w-0">
                   <button
                     type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    aria-label="Paramètres du salon"
                     className="flex items-center gap-1 px-4 h-10 rounded-full bg-[hsl(var(--surface-2))] active:bg-[hsl(var(--surface-3))] transition-colors max-w-full"
                   >
                     <span className="font-bold text-foreground truncate">{channel.name}</span>

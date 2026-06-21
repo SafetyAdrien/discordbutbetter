@@ -885,6 +885,23 @@ const Index = () => {
           }}
         />
       )}
+      {/* Floating User Profile Panel - desktop only, spans ServerList + ChannelList width */}
+      {!isMobile && !isTablet && (
+        <div
+          className="fixed bottom-0 left-0 z-40 h-[68px]"
+          style={{ width: 'calc(80px + 2px + 240px)' }}
+        >
+          <UserProfileCard
+            onOpenSettings={() => setShowAccountSettingsGlobal(true)}
+            onOpenProfile={() => setShowAccountSettingsGlobal(true)}
+            speakingUsers={speakingUsers}
+          />
+        </div>
+      )}
+
+      {showAccountSettingsGlobal && (
+        <AccountSettingsModal onClose={() => setShowAccountSettingsGlobal(false)} />
+      )}
     </div>
   );
 };

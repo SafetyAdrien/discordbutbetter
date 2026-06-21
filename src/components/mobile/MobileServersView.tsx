@@ -84,32 +84,32 @@ function SortableMobileServerIcon({
   } as React.CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style} className="relative overflow-visible">
+    <div ref={setNodeRef} style={style} className="group relative w-full flex flex-col items-center overflow-visible">
 
       {dropIndicator === 'before' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />
       )}
+      {/* Active pill indicator — same style/behavior as desktop */}
+      <div
+        className={cn(
+          'absolute left-0 top-1/2 -translate-y-1/2 w-[4px] rounded-r-full bg-foreground pointer-events-none z-10',
+          isActive
+            ? 'h-10'
+            : hasUnread || mentionCount > 0
+              ? 'h-2'
+              : 'h-0 group-hover:h-5'
+        )}
+        style={{ transition: 'height 300ms' }}
+      />
       <button
         {...attributes}
         {...listeners}
         onClick={onTap}
         className={cn(
-          'relative flex items-center justify-center w-full py-0.5 group',
+          'relative flex items-center justify-center py-0.5 group',
           isDragging && 'opacity-30'
         )}
       >
-        <div
-          className={cn(
-            'absolute left-0 w-[4px] rounded-r-full bg-foreground z-10',
-            isActive
-              ? 'h-10'
-              : hasUnread || mentionCount > 0
-                ? 'h-2'
-                : 'h-0 group-hover:h-5'
-          )}
-          style={{ transition: 'height 300ms' }}
-        />
-
         <div className="relative">
           <Avatar className={cn(
             ICON_SIZE,
@@ -297,18 +297,10 @@ export function MobileServersView({
         'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5'
       )}>
         {/* DM Button */}
-        <button
-          onClick={handleDMClick}
-          className={cn(
-            ICON_SIZE, 'group relative flex items-center justify-center rounded-2xl transition-all',
-            showDMs
-              ? 'bg-primary text-primary-foreground rounded-2xl'
-              : 'bg-surface-3 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
-          )}
-        >
+        <div className="group relative w-full flex justify-center">
           <div
             className={cn(
-              'absolute left-0 w-[4px] rounded-r-full bg-foreground z-10',
+              'absolute left-0 top-1/2 -translate-y-1/2 w-[4px] rounded-r-full bg-foreground pointer-events-none z-10',
               showDMs
                 ? 'h-10'
                 : totalUnreadDMs > 0
@@ -317,13 +309,23 @@ export function MobileServersView({
             )}
             style={{ transition: 'height 300ms' }}
           />
-          <MessageCircle className="w-6 h-6" />
-          {totalUnreadDMs > 0 && !showDMs && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
-              {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
-            </span>
-          )}
-        </button>
+          <button
+            onClick={handleDMClick}
+            className={cn(
+              ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
+              showDMs
+                ? 'bg-primary text-primary-foreground rounded-2xl'
+                : 'bg-surface-3 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
+            )}
+          >
+            <MessageCircle className="w-6 h-6" />
+            {totalUnreadDMs > 0 && !showDMs && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
+              </span>
+            )}
+          </button>
+        </div>
 
         <Separator className="w-8 my-1" />
 

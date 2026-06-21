@@ -4,8 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDMConversations } from './useDMs';
-import { uuidToSnowflake } from '@/lib/snowflake';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { isDirectMentionForUser } from '@/lib/mentions';
 
 /**
  * Per-conversation mention counts (Discord-style red bubble logic):
@@ -16,7 +16,6 @@ export function useDMMentionCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: conversations = [] } = useDMConversations();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cacheKey = user?.id ? `dm-mention-counts:${user.id}` : null;
@@ -66,10 +65,6 @@ export function useDMMentionCounts() {
         .neq('author_id', user.id)
         .limit(2000);
 
-      const mySnowflake = uuidToSnowflake(user.id);
-      const myUuid = user.id;
-      const mentionRe = new RegExp(`<@!?(${myUuid}|${mySnowflake})>`);
-
       const result: Record<string, number> = {};
       for (const msg of messages || []) {
         const cutoff = readMap[msg.conversation_id] || new Date(0).toISOString();
@@ -77,7 +72,7 @@ export function useDMMentionCounts() {
         const meta = convMeta[msg.conversation_id];
         if (!meta) continue;
         if (meta.isGroup) {
-          if (!msg.content || !mentionRe.test(msg.content)) continue;
+          if (!isDirectMentionForUser(msg.content, user.id)) continue;
         }
         result[msg.conversation_id] = (result[msg.conversation_id] || 0) + 1;
       }
@@ -95,32 +90,58 @@ export function useDMMentionCounts() {
   // Realtime: invalidate (debounced) on new dm_messages or my own read state changes.
   useEffect(() => {
     if (!user) return;
-    const invalidate = () => {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
-      }, 200);
+    const patchConversation = (conversationId: string, delta: number) => {
+      queryClient.setQueriesData<Record<string, number>>(
+        { queryKey: ['dm-mention-counts'] },
+        (old = {}) => {
+          const nextCount = Math.max(0, (old[conversationId] || 0) + delta);
+          if (nextCount === 0) {
+            const { [conversationId]: _, ...rest } = old;
+            return rest;
+          }
+          return { ...old, [conversationId]: nextCount };
+        }
+      );
     };
     const ch1 = supabase
       .channel(`dm-mention-counts-messages-${user.id}-${instanceIdRef.current}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, invalidate)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, (payload) => {
+        const msg = payload.new as { conversation_id?: string; author_id?: string; content?: string | null };
+        if (!msg.conversation_id || msg.author_id === user.id) return;
+        const meta = convMeta[msg.conversation_id];
+        if (!meta || !meta.isGroup || isDirectMentionForUser(msg.content, user.id)) {
+          patchConversation(msg.conversation_id, 1);
+        }
+        queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
+      })
       .subscribe();
     const ch2 = supabase
       .channel(`dm-mention-counts-reads-${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
-        invalidate,
+        (payload) => {
+          const conversationId = ((payload.new || payload.old) as { conversation_id?: string })?.conversation_id;
+          if (conversationId) {
+            queryClient.setQueriesData<Record<string, number>>(
+              { queryKey: ['dm-mention-counts'] },
+              (old = {}) => {
+                const { [conversationId]: _, ...rest } = old;
+                return rest;
+              }
+            );
+          }
+          queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
+        },
       )
       .subscribe();
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(ch1);
       supabase.removeChannel(ch2);
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, convMeta]);
 
-  const mentionCounts = query.data || {};
+  const mentionCounts = useMemo(() => query.data || {}, [query.data]);
   const totalMentionCount = useMemo(
     () => Object.values(mentionCounts).reduce((s, n) => s + (n || 0), 0),
     [mentionCounts],

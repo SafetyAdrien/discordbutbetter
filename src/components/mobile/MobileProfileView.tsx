@@ -34,6 +34,7 @@ import { MarkdownText } from '@/lib/markdown';
 import { useFriends } from '@/hooks/useFriends';
 import { useServers } from '@/hooks/useServers';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
+import { useTotalMentionCount } from '@/hooks/useTotalMentionCount';
 import {
   CONNECTION_PROVIDERS_BY_ID,
   formatConnectionDisplay,
@@ -72,6 +73,7 @@ export function MobileProfileView({
   const { data: friends = [] } = useFriends();
   const { data: servers = [] } = useServers();
   const notifCount = useUnreadNotificationsCount();
+  const mentionCount = useTotalMentionCount();
   const [showSettings, setShowSettings] = useState(false);
   const [showStatusSheet, setShowStatusSheet] = useState(false);
   const [showCustomStatus, setShowCustomStatus] = useState(false);
@@ -181,11 +183,16 @@ export function MobileProfileView({
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4 text-foreground" />
-              {notifCount > 0 && (
+              {mentionCount > 0 ? (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
-                  {notifCount > 99 ? '99+' : notifCount}
+                  {mentionCount > 99 ? '99+' : mentionCount}
                 </span>
-              )}
+              ) : notifCount > 0 ? (
+                <span
+                  aria-label="Notifications non lues"
+                  className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-foreground shadow-sm"
+                />
+              ) : null}
             </button>
             <button
               onClick={handleOpenSettings}

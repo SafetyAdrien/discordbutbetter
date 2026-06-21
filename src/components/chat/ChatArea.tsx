@@ -96,6 +96,7 @@ import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { DeleteMessageDialog } from "./DeleteMessageDialog";
 import { toast } from "sonner";
 import { useSummaries } from "@/hooks/useSummaries";
+import { useMarkChannelAsRead } from "@/hooks/useMarkChannelAsRead";
 import { SummariesBar } from "@/components/summaries/SummariesBar";
 import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";

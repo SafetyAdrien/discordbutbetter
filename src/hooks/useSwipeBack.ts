@@ -120,29 +120,15 @@ export function useSwipeBack({
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-    // Ensure final pending value is committed before animating from it.
-    if (elementRef.current && isSwipingRef.current) {
-      elementRef.current.style.transform = `translate3d(${currentXRef.current}px, 0, 0)`;
-    }
     if (isSwipingRef.current && currentXRef.current > threshold) {
-      const el = elementRef.current;
-      if (el && typeof el.animate === 'function') {
-        const fromX = currentXRef.current;
-        exitAnimationRef.current = el.animate(
-          [
-            { transform: `translate3d(${fromX}px, 0, 0)` },
-            { transform: 'translate3d(100%, 0, 0)' },
-          ],
-          { duration: 220, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', fill: 'forwards' }
-        );
-        exitAnimationRef.current.onfinish = () => {
-          haptics.light();
-          onBack();
-        };
-      } else {
-        haptics.light();
-        onBack();
+      // Commit the final drag position synchronously so Framer's exit
+      // animation on the outer wrapper continues visually from where the
+      // finger left off, with no double-animation / blank-page gap.
+      if (elementRef.current) {
+        elementRef.current.style.transform = `translate3d(${currentXRef.current}px, 0, 0)`;
       }
+      haptics.light();
+      onBack();
     } else {
       const el = elementRef.current;
       if (el && currentXRef.current > 0 && typeof el.animate === 'function') {
@@ -169,6 +155,7 @@ export function useSwipeBack({
     lockedRef.current = null;
     setIsDragging(false);
   }, [onBack, threshold, clearTransform]);
+
 
 
   return { onTouchStart, onTouchMove, onTouchEnd, setRef, isDragging };

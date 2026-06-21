@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ChevronRight, UserPlus } from 'lucide-react';
 import { VoiceParticipantGrid } from '@/components/channels/voice/VoiceParticipantGrid';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';

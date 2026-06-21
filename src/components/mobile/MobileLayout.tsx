@@ -561,6 +561,7 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className={`absolute inset-0 ${overlayBottomClass} z-30 bg-background`}
+              ref={threadSwipe.setRef}
               onTouchStart={threadSwipe.onTouchStart}
               onTouchMove={threadSwipe.onTouchMove}
               onTouchEnd={threadSwipe.onTouchEnd}
@@ -584,6 +585,7 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className={`absolute inset-0 ${overlayBottomClass} z-20 bg-background`}
+              ref={chatSwipe.setRef}
               onTouchStart={chatSwipe.onTouchStart}
               onTouchMove={chatSwipe.onTouchMove}
               onTouchEnd={chatSwipe.onTouchEnd}
@@ -601,6 +603,7 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className={`absolute inset-0 ${overlayBottomClass} z-10 bg-background rounded-tl-[30px] overflow-hidden`}
+              ref={channelSwipe.setRef}
               onTouchStart={channelSwipe.onTouchStart}
               onTouchMove={channelSwipe.onTouchMove}
               onTouchEnd={channelSwipe.onTouchEnd}

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDMConversations } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
 import { useFavoriteFriendIds, useToggleFavoriteFriend } from '@/hooks/useFavoriteFriends';
 import { useDMLocalSet } from '@/lib/dm-local-prefs';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -37,6 +38,7 @@ export function MobileDMHomeView({
   const queryClient = useQueryClient();
   const { data: conversations = [] } = useDMConversations();
   const { unreadCounts, markAsRead } = useUnreadCounts();
+  const { mentionCounts } = useDMMentionCounts();
   const { data: favoriteIds = [] } = useFavoriteFriendIds();
   const toggleFavorite = useToggleFavoriteFriend();
   const muted = useDMLocalSet(user?.id, 'muted');
@@ -93,12 +95,13 @@ export function MobileDMHomeView({
               }
             : undefined,
           unreadCount: unreadCounts[c.id] || 0,
+          mentionCount: mentionCounts[c.id] || 0,
           isMuted: muted.set.has(c.id),
           isFavorite: !!otherUserId && favoriteIds.includes(otherUserId),
           isTyping: false,
         } satisfies MobileDMListItemData;
       });
-  }, [conversations, user, unreadCounts, muted.set, archived.set, favoriteIds]);
+  }, [conversations, user, unreadCounts, mentionCounts, muted.set, archived.set, favoriteIds]);
 
   // Filter + search
   const visible = useMemo(() => {

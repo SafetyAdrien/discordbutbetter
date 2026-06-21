@@ -1,6 +1,7 @@
 import React, { forwardRef, useRef, useImperativeHandle } from 'react';
 import {
   InputMarkdownOverlay,
+  hasOverlayMarkdown,
   OVERLAY_FONT_SIZE,
   OVERLAY_LINE_HEIGHT,
   INPUT_FONT_FAMILY,
@@ -52,7 +53,7 @@ export const MarkdownTextarea = forwardRef<HTMLTextAreaElement, MarkdownTextarea
 
     useImperativeHandle(ref, () => innerRef.current as HTMLTextAreaElement, []);
 
-    const showOverlay = !disableOverlay && value.length > 0;
+    const showOverlay = !disableOverlay && hasOverlayMarkdown(value);
 
     return (
       <div className={cn('relative w-full min-w-0', wrapperClassName)}>

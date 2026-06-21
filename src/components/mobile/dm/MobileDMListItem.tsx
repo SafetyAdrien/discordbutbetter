@@ -40,6 +40,7 @@ export interface MobileDMListItemData {
     hasAttachment?: 'image' | 'video' | 'audio' | 'file' | null;
   };
   unreadCount: number;
+  mentionCount?: number;
   isMuted: boolean;
   isFavorite: boolean;
   isTyping: boolean;
@@ -365,9 +366,9 @@ export function MobileDMListItem({
             ) : (
               <p className="text-xs text-muted-foreground italic truncate">Aucun message</p>
             )}
-            {item.unreadCount > 0 && (
+            {(item.mentionCount ?? 0) > 0 ? (
               <span
-                aria-label={`${item.unreadCount} non lus`}
+                aria-label={`${item.mentionCount} mention${(item.mentionCount ?? 0) > 1 ? 's' : ''}`}
                 className={cn(
                   'min-w-[20px] h-5 px-1.5 flex items-center justify-center text-[10px] font-bold rounded-full shrink-0',
                   item.isMuted
@@ -375,9 +376,17 @@ export function MobileDMListItem({
                     : 'bg-destructive text-destructive-foreground',
                 )}
               >
-                {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                {(item.mentionCount ?? 0) > 99 ? '99+' : item.mentionCount}
               </span>
-            )}
+            ) : item.unreadCount > 0 ? (
+              <span
+                aria-label={`${item.unreadCount} non lus`}
+                className={cn(
+                  'w-2.5 h-2.5 rounded-full shrink-0',
+                  item.isMuted ? 'bg-muted-foreground/50' : 'bg-foreground',
+                )}
+              />
+            ) : null}
           </div>
         </div>
       </button>

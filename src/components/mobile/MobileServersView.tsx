@@ -390,6 +390,7 @@ export function MobileServersView({
                   isActive={!showDMs && selectedServerId === server.id}
                   hasUnread={info.hasUnread}
                   mentionCount={info.mentionCount}
+                  isShaking={shakingServers.has(server.id)}
                   isDragging={activeDragId === server.id}
                   dragActive={!!activeDragId}
                   dropIndicator={isOver ? dropPosition : null}

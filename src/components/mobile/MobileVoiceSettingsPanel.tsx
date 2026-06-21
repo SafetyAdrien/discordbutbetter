@@ -1,5 +1,5 @@
 import { motion, useMotionValue, PanInfo } from 'framer-motion';
-import { ChevronDown, ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
+import { ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 interface Props {
@@ -77,13 +77,8 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
       className="fixed inset-x-0 bottom-0 z-[60] h-[90vh] max-h-[90vh] rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 flex flex-col overflow-y-auto touch-pan-y shadow-2xl"
     >
       {/* Drag handle */}
-      <div className="w-full pt-3 pb-2 flex justify-center shrink-0">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fermer"
-          className="w-12 h-1.5 rounded-full bg-white/20"
-        />
+      <div className="w-full h-11 flex items-center justify-center shrink-0">
+        <div className="w-[76px] h-2 rounded-full bg-[hsl(var(--surface-3))]" />
       </div>
 
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, useMotionValue, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, PanInfo, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Smartphone, UserPlus } from 'lucide-react';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';

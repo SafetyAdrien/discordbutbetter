@@ -80,8 +80,8 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
         </TooltipProvider>
       </div>
 
-      {/* Ligne 2 : contrôles média */}
-      <div className="mt-1 pt-1 border-t border-border/40 flex items-center justify-center gap-1">
+      {/* Ligne 2 : contrôles média - fond arrondi pleine largeur */}
+      <div className="mt-1 w-full rounded-lg bg-[hsl(var(--surface-1))]/60 px-2 py-1 flex items-center justify-around gap-1">
         <TooltipProvider delayDuration={200}>
           {/* Vidéo */}
           <Tooltip>

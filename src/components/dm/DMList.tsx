@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { useDMConversations, DMConversation } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
@@ -83,6 +84,7 @@ interface DMListProps {
 export function DMList({ activeConversationId, onConversationSelect }: DMListProps) {
   const { data: conversations = [], isLoading } = useDMConversations();
   const { unreadCounts } = useUnreadCounts();
+  const { mentionCounts } = useDMMentionCounts();
 
   if (isLoading) {
     return (
@@ -115,6 +117,7 @@ export function DMList({ activeConversationId, onConversationSelect }: DMListPro
           conversation={conv}
           isActive={activeConversationId === conv.id}
           unreadCount={unreadCounts[conv.id] || 0}
+          mentionCount={mentionCounts[conv.id] || 0}
           onClick={() => onConversationSelect(conv.id)}
         />
       ))}
@@ -126,11 +129,13 @@ function DMConversationItem({
   conversation,
   isActive,
   unreadCount,
+  mentionCount,
   onClick,
 }: {
   conversation: DMConversation;
   isActive: boolean;
   unreadCount: number;
+  mentionCount: number;
   onClick: () => void;
 }) {
   const participants = conversation.participants || [];
@@ -204,11 +209,19 @@ function DMConversationItem({
                     )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {unreadCount > 0 && (
-              <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
-                {unreadCount > 99 ? '99+' : unreadCount}
+            {mentionCount > 0 ? (
+              <span
+                aria-label={`${mentionCount} mention${mentionCount > 1 ? 's' : ''}`}
+                className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full"
+              >
+                {mentionCount > 99 ? '99+' : mentionCount}
               </span>
-            )}
+            ) : unreadCount > 0 ? (
+              <span
+                aria-label="Messages non lus"
+                className="w-2 h-2 rounded-full bg-foreground"
+              />
+            ) : null}
             {conversation.lastMessage && (
               <RealtimeTimestamp date={new Date(conversation.lastMessage.created_at)} />
             )}

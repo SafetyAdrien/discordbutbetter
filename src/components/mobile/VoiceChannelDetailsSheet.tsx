@@ -9,7 +9,7 @@ import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSetti
 import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { copyToClipboard } from '@/lib/clipboard';
-import { toSnowflake } from '@/lib/snowflake';
+import { uuidToSnowflake } from '@/lib/snowflake';
 import { toast } from 'sonner';
 import type { User } from '@/types/app';
 import type { MemberWithProfile } from '@/hooks/useMembers';

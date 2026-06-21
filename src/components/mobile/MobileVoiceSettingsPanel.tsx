@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ChevronRight, Settings, EarOff, Video, UserPlus, Wrench } from 'lucide-react';
+import { ChevronDown, ChevronRight, Ear, Video, UserPlus, Wrench } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {

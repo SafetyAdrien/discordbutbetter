@@ -52,6 +52,7 @@ function SortableMobileServerIcon({
   isActive,
   hasUnread,
   mentionCount,
+  isShaking,
   isDragging,
   dragActive,
   dropIndicator,
@@ -61,6 +62,7 @@ function SortableMobileServerIcon({
   isActive: boolean;
   hasUnread: boolean;
   mentionCount: number;
+  isShaking: boolean;
   isDragging: boolean;
   dragActive: boolean;
   dropIndicator: 'before' | 'after' | null;

@@ -565,7 +565,7 @@ export function MobileLayout({
               onTouchMove={threadSwipe.onTouchMove}
               onTouchEnd={threadSwipe.onTouchEnd}
             >
-              <div ref={threadSwipe.setRef} className="absolute inset-0 will-change-transform">
+              <div ref={threadSwipe.setRef} className="absolute inset-0 bg-background will-change-transform">
                 <MobileThreadView
                   threadId={mobileView.threadId}
                   channelId={mobileView.channelId}
@@ -590,7 +590,7 @@ export function MobileLayout({
               onTouchMove={chatSwipe.onTouchMove}
               onTouchEnd={chatSwipe.onTouchEnd}
             >
-              <div ref={chatSwipe.setRef} className="absolute inset-0 will-change-transform">
+              <div ref={chatSwipe.setRef} className="absolute inset-0 bg-background will-change-transform">
                 {renderChannelContent()}
               </div>
             </motion.div>
@@ -609,7 +609,7 @@ export function MobileLayout({
               onTouchMove={channelSwipe.onTouchMove}
               onTouchEnd={channelSwipe.onTouchEnd}
             >
-              <div ref={channelSwipe.setRef} className="absolute inset-0 will-change-transform">
+              <div ref={channelSwipe.setRef} className="absolute inset-0 bg-background will-change-transform">
                 <MobileChannelListView
                   serverName={currentServer?.name || 'Serveur'}
                   serverId={mobileView.serverId}

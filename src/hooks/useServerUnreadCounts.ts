@@ -15,7 +15,7 @@ export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const optimisticMentionMessageIdsRef = useRef<Set<string>>(new Set());
+  const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
 
   const cachedKey = user?.id ? `server-unread:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ServerUnreadInfo>>(cachedKey) : undefined;
@@ -68,10 +68,11 @@ export function useServerUnreadCounts() {
             if (serverId) {
               const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
               const isMention = isDirectMentionForUser(newMsg.content, user.id);
-              if (isMention && newMsg.id) optimisticMentionMessageIdsRef.current.add(newMsg.id);
+              const shouldCountMention = isMention && (!newMsg.id || !countedMentionMessageIdsRef.current.has(newMsg.id));
+              if (shouldCountMention && newMsg.id) countedMentionMessageIdsRef.current.add(newMsg.id);
               patchServer(serverId, {
                 hasUnread: true,
-                mentionCount: (current?.mentionCount || 0) + (isMention ? 1 : 0),
+                mentionCount: (current?.mentionCount || 0) + (shouldCountMention ? 1 : 0),
               });
             }
           }
@@ -91,7 +92,10 @@ export function useServerUnreadCounts() {
           const serverId = userChannelToServer?.get(mention.channel_id);
           if (userChannelToServer && !serverId) return;
           if (serverId) {
-            if (mention.message_id && optimisticMentionMessageIdsRef.current.delete(mention.message_id)) return;
+            if (mention.message_id) {
+              if (countedMentionMessageIdsRef.current.has(mention.message_id)) return;
+              countedMentionMessageIdsRef.current.add(mention.message_id);
+            }
             const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
             patchServer(serverId, { mentionCount: (current?.mentionCount || 0) + 1 });
           }

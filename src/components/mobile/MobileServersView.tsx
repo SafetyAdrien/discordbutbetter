@@ -361,7 +361,13 @@ export function MobileServersView({
           >
             <MessageCircle className="w-6 h-6" />
             {totalUnreadDMs > 0 && !showDMs && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+              <span
+                className={cn(
+                  'absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+                  shakingDMs && 'animate-badge-shake'
+                )}
+                style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+              >
                 {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
               </span>
             )}

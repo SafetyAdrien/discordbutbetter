@@ -227,26 +227,33 @@ function RoleIcon({ role }: { role: Role | RoleWithPermissions }) {
 // Inbox Button Component
 function InboxButton() {
   const { data: notifications = [] } = useNotifications();
+  const mentionCount = useTotalMentionCount();
   const unreadCount = notifications.filter(n => n.status === 'pending').length;
+  const hasUnread = unreadCount > 0 || mentionCount > 0;
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
           <DiscordInbox className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
+          {mentionCount > 0 ? (
+            <Badge
+              variant="destructive"
               className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
             >
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {mentionCount > 99 ? '99+' : mentionCount}
             </Badge>
-          )}
+          ) : hasUnread ? (
+            <span
+              aria-label="Notifications non lues"
+              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-foreground"
+            />
+          ) : null}
         </button>
       </PopoverTrigger>
-      <PopoverContent 
-        side="left" 
-        align="start" 
+      <PopoverContent
+        side="left"
+        align="start"
         className="w-96 max-h-[500px] p-0 overflow-hidden"
         sideOffset={8}
       >

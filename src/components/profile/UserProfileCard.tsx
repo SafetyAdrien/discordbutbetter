@@ -286,13 +286,15 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           <button
             onClick={() => voiceCtx.toggleMute()}
             className={cn(
-              "p-1.5 hover:bg-muted rounded-l-md rounded-r-none transition-colors",
+              "p-1 hover:bg-muted rounded-l-md rounded-r-none transition-colors",
               voiceCtx.voiceState.isMuted && "text-destructive"
             )}
           >
-            {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4 text-muted-foreground" />}
+            {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-[15px] h-[15px]" /> : <DiscordMic className="w-[15px] h-[15px] text-muted-foreground" />}
           </button>
           <MicrophoneSettingsPopover
+            open={micPopoverOpen}
+            onOpenChange={setMicPopoverOpen}
             micVolume={voiceCtx.micVolume}
             onMicVolumeChange={voiceCtx.setMicVolume}
             vadSensitivity={voiceCtx.vadSensitivity}
@@ -307,8 +309,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             enableHighPass={voiceCtx.audioFilters.highPass}
             onToggleHighPass={(v) => voiceCtx.setAudioFilter('highPass', v)}
           >
-            <button className="px-0.5 py-1.5 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <button className="px-0.5 py-1 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
+              {micPopoverOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
             </button>
           </MicrophoneSettingsPopover>
         </div>
@@ -318,27 +320,29 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
           <button
             onClick={() => voiceCtx.toggleDeafen()}
             className={cn(
-              "p-1.5 hover:bg-muted rounded-l-md rounded-r-none transition-colors",
+              "p-1 hover:bg-muted rounded-l-md rounded-r-none transition-colors",
               voiceCtx.voiceState.isDeafened && "text-destructive"
             )}
           >
-            {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4 text-muted-foreground" />}
+            {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-[15px] h-[15px]" /> : <DiscordHeadphones className="w-[15px] h-[15px] text-muted-foreground" />}
           </button>
           <HeadphonesSettingsPopover
+            open={headphonesPopoverOpen}
+            onOpenChange={setHeadphonesPopoverOpen}
             outputVolume={voiceCtx.outputVolume}
             onOutputVolumeChange={voiceCtx.setOutputVolume}
             isDeafened={voiceCtx.voiceState.isDeafened}
             onToggleDeafen={() => voiceCtx.toggleDeafen()}
           >
-            <button className="px-0.5 py-1.5 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <button className="px-0.5 py-1 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
+              {headphonesPopoverOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
             </button>
           </HeadphonesSettingsPopover>
         </div>
 
         {/* Paramètres */}
-        <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors ml-0.5">
-          <DiscordSettings className="w-4 h-4 text-muted-foreground" />
+        <button onClick={onOpenSettings} className="p-1 hover:bg-muted rounded-md transition-colors ml-0.5">
+          <DiscordSettings className="w-[15px] h-[15px] text-muted-foreground" />
         </button>
       </div>
 

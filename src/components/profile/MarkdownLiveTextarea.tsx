@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import {
   InputMarkdownOverlay,
+  hasOverlayMarkdown,
   OVERLAY_FONT_SIZE,
   OVERLAY_LINE_HEIGHT,
   INPUT_FONT_FAMILY,
@@ -32,11 +33,11 @@ export function MarkdownLiveTextarea({
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const hasContent = value.length > 0;
+  const showOverlay = hasOverlayMarkdown(value);
 
   return (
     <div className={cn('relative w-full', className)}>
-      {hasContent && (
+      {showOverlay && (
         <InputMarkdownOverlay
           ref={overlayRef}
           content={value}
@@ -61,7 +62,7 @@ export function MarkdownLiveTextarea({
         maxLength={maxLength}
         className={cn(
           'block w-full rounded-xl border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto whitespace-pre-wrap break-words',
-          hasContent ? 'text-transparent caret-foreground' : 'text-foreground',
+          showOverlay ? 'text-transparent caret-foreground' : 'text-foreground',
         )}
         style={{
           fontSize: OVERLAY_FONT_SIZE,

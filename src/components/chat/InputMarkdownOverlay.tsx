@@ -56,7 +56,7 @@ export function parseLines(content: string): OverlayLine[] {
     const alertMatch = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i.exec(line);
     if (alertMatch) { result.push({ type: 'alertHeader', text: line, alertType: alertMatch[1].toUpperCase() as OverlayLine['alertType'] }); continue; }
     if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
-    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
+    if (/^-{3,}$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
     if (/^(\s*)[-*] \[x\] /i.test(line)) { result.push({ type: 'taskItemChecked', text: line }); continue; }
     if (/^(\s*)[-*] \[ \] /.test(line)) { result.push({ type: 'taskItemUnchecked', text: line }); continue; }
     if (/^(\s*)[-*] /.test(line)) { result.push({ type: 'listItem', text: line }); continue; }
@@ -94,7 +94,7 @@ export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif'
 
 export function hasInlineMarkdown(content: string): boolean {
   if (!content) return false;
-  return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
+  return /(__\*\*\*[^\n*_][^\n]*?\*\*\*__|\*\*\*__[^\n*_][^\n]*?__\*\*\*|___[^\n_][^\n]*?___|__\*\*[^\n*_][^\n]*?\*\*__|\*\*__[^\n*_][^\n]*?__\*\*|__\*[^\n*_][^\n]*?\*__|\*__[^\n*_][^\n]*?__\*|\*\*\*[^\n*][^\n]*?\*\*\*|\*\*[^\n*][^\n]*?\*\*|__[^\n_][^\n]*?__|~~[^\n~][^\n]*?~~|`[^`\n]+?`|\|\|[^|\n]+?\|\||\[[^\]\n]+?\]\([^)\n]+?\)|(?<!\*)\*[^*\n]+?\*(?!\*)|(?<!_)_[^_\n]+?_(?!_))/.test(content);
 }
 
 export function hasInlineMentions(content: string, entries?: MentionEntry[]): boolean {
@@ -104,6 +104,12 @@ export function hasInlineMentions(content: string, entries?: MentionEntry[]): bo
     return entries.some(e => content.includes(e.display));
   }
   return false;
+}
+
+export function hasOverlayMarkdown(content: string, mentionEntries?: MentionEntry[]): boolean {
+  if (!content) return false;
+  const lines = parseLines(content);
+  return lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content, mentionEntries);
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {
@@ -125,7 +131,7 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   if (currentLine.startsWith('# ')) return 'header1';
   if (currentLine.startsWith('-# ')) return 'subtext';
   if (currentLine.startsWith('> ') || currentLine.startsWith('>>> ')) return 'blockquote';
-  if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(currentLine.trim())) return 'separator';
+  if (/^-{3,}$/.test(currentLine.trim())) return 'separator';
   if (/^(\s*)[-*] \[x\] /i.test(currentLine)) return 'taskItemChecked';
   if (/^(\s*)[-*] \[ \] /.test(currentLine)) return 'taskItemUnchecked';
   if (/^(\s*)[-*] /.test(currentLine)) return 'listItem';

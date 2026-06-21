@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, hasInlineMentions, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
+import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
@@ -116,9 +116,7 @@ export function MessageInput({
   const [mentionRev, setMentionRev] = useState(0);
 
   const hasMarkdown = useMemo(() => {
-    if (!value) return false;
-    const lines = parseLines(value);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(value) || hasInlineMentions(value, mentionEntriesRef.current);
+    return hasOverlayMarkdown(value, mentionEntriesRef.current);
   }, [value, mentionRev]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);

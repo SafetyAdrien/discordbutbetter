@@ -14,6 +14,8 @@ interface Props {
   serverName?: string;
   /** Called once the user has successfully joined; parent should navigate to the connected voice view. */
   onJoined: (channelId: string) => void;
+  /** Optional: open the channel chat (text) view from inside the pre-join sheet. */
+  onOpenChat?: (channelId: string) => void;
 }
 
 export function MobileVoicePreJoinSheet({

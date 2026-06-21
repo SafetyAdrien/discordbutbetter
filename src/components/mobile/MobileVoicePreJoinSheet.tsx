@@ -106,7 +106,7 @@ export function MobileVoicePreJoinSheet({
             canConnect={canConnect}
             onToggleMuted={() => setPreJoinMuted(v => !v)}
             onJoin={handleJoin}
-            onOpenChat={undefined}
+            onOpenChat={onOpenChat ? () => { onOpenChat(channel.id); onOpenChange(false); } : undefined}
           />
         </SheetContent>
       </Sheet>

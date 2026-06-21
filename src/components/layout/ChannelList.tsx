@@ -73,7 +73,7 @@ import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
 import { VoiceControls } from "./VoiceControls";
-import { UserProfileCard } from "@/components/profile/UserProfileCard";
+
 import { copyToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
 import { useVoice, useVoiceParticipants } from "@/contexts/VoiceContext";
@@ -1911,12 +1911,8 @@ threads={threadsByChannel[channel.id] || []}
 
       }
 
-      {/* User Panel */}
-      <UserProfileCard
-        onOpenSettings={() => setShowAccountSettings(true)}
-        onOpenProfile={() => setShowAccountSettings(true)}
-        speakingUsers={speakingUsers} />
-
+      {/* Spacer for floating UserProfileCard rendered at Index level */}
+      <div className="h-[68px] shrink-0" />
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 

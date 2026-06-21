@@ -77,7 +77,7 @@ export function MobileVoiceChannelView({
   // Apply "video only" filter when toggled
   const visibleParticipants = videoOnly
     ? participants.filter(p => {
-        const hasVideo = p.user_id === voiceState.channelId ? !!localCameraStream : remoteVideoStreams.has(p.user_id);
+        const hasVideo = p.user_id === user?.id ? !!localCameraStream : remoteVideoStreams.has(p.user_id);
         return hasVideo || p.streaming;
       })
     : participants;

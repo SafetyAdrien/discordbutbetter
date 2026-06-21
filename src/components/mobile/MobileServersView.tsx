@@ -308,7 +308,7 @@ export function MobileServersView({
         >
           <div
             className={cn(
-              'absolute -left-[10px] w-[4px] rounded-r-full bg-foreground',
+              'absolute left-0 w-[4px] rounded-r-full bg-foreground',
               showDMs
                 ? 'h-10'
                 : totalUnreadDMs > 0

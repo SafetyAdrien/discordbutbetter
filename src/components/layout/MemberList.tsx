@@ -29,6 +29,7 @@ import { DiscordInbox } from '@/components/icons/DiscordInbox';
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTotalMentionCount } from "@/hooks/useTotalMentionCount";
 import { Badge } from "@/components/ui/badge";
+import { MentionBadge } from "@/components/ui/MentionBadge";
 import {
   Popover,
   PopoverContent,

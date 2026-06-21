@@ -191,6 +191,39 @@ export function MobileServersView({
 
   const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((a, b) => a + b, 0);
 
+  // Shake animation state — mirrors desktop ServerList
+  const prevMentionCounts = useRef<Record<string, number>>({});
+  const prevDMCount = useRef<number>(0);
+  const [shakingServers, setShakingServers] = useState<Set<string>>(new Set());
+  const [shakingDMs, setShakingDMs] = useState(false);
+
+  useEffect(() => {
+    const newShaking = new Set<string>();
+    Object.entries(unreadInfo).forEach(([serverId, info]) => {
+      const prevCount = prevMentionCounts.current[serverId] || 0;
+      if (info.mentionCount > prevCount) {
+        newShaking.add(serverId);
+      }
+    });
+    if (newShaking.size > 0) {
+      setShakingServers(newShaking);
+      setTimeout(() => setShakingServers(new Set()), 500);
+    }
+    const newPrevCounts: Record<string, number> = {};
+    Object.entries(unreadInfo).forEach(([serverId, info]) => {
+      newPrevCounts[serverId] = info.mentionCount;
+    });
+    prevMentionCounts.current = newPrevCounts;
+  }, [unreadInfo]);
+
+  useEffect(() => {
+    if (totalUnreadDMs > prevDMCount.current) {
+      setShakingDMs(true);
+      setTimeout(() => setShakingDMs(false), 500);
+    }
+    prevDMCount.current = totalUnreadDMs;
+  }, [totalUnreadDMs]);
+
   const sensors = useSensors(
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   );

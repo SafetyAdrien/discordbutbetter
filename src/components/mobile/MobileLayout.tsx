@@ -199,15 +199,24 @@ export function MobileLayout({
     }
   }, [onServerSelect, mobileView.type, setMobileView]);
 
-  // Resolve a channel object from any loaded server (used to intercept link channels)
+  // Resolve a channel object from any loaded server, including the live channelsData
+  // (which may not be merged into rawServers yet).
   const findChannel = useCallback((channelId: string) => {
     for (const s of rawServers) {
       const all = [...s.categories.flatMap((c: any) => c.channels), ...(s.orphanChannels || [])];
       const found = all.find((ch: any) => ch.id === channelId);
       if (found) return found;
     }
+    if (channelsData) {
+      const all = [
+        ...(channelsData.categories || []).flatMap((c: any) => c.channels || []),
+        ...(channelsData.orphanChannels || []),
+      ];
+      const found = all.find((ch: any) => ch.id === channelId);
+      if (found) return found;
+    }
     return null;
-  }, [rawServers]);
+  }, [rawServers, channelsData]);
 
   const handleServerChannelSelect = (serverId: string, channelId: string, channelType: string) => {
     // Intercept link channels — open external link modal instead of navigating to a chat
@@ -221,14 +230,11 @@ export function MobileLayout({
     // Intercept voice channels — open the pre-join bottom sheet over the channel list
     if (channelType === 'voice') {
       const ch = findChannel(channelId);
-      if (!ch) return;
-      // Only open pre-join if user isn't already connected to this very channel
       if (voiceState.channelId !== channelId) {
         onServerSelect(serverId);
-        setVoicePreJoin({ serverId, channel: { id: channelId, name: ch.name } });
+        setVoicePreJoin({ serverId, channel: { id: channelId, name: ch?.name || 'Salon vocal' } });
         return;
       }
-      // Already connected — open the full voice view
     }
 
     if (serverId) {
@@ -246,9 +252,8 @@ export function MobileLayout({
     }
     if (channelType === 'voice' && mobileView.type === 'channels') {
       const ch = findChannel(channelId);
-      if (!ch) return;
       if (voiceState.channelId !== channelId) {
-        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: ch.name } });
+        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: ch?.name || 'Salon vocal' } });
         return;
       }
     }

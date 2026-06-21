@@ -94,7 +94,7 @@ export function CodeBlock({ code, language, variant }: CodeBlockProps) {
 
   return (
     <div
-      className="relative my-2 w-full max-w-full min-w-0 rounded-[4px] overflow-hidden"
+      className={`relative w-full max-w-full min-w-0 rounded-[4px] overflow-hidden ${variant === 'chat' ? 'my-0.5' : 'my-1.5'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{

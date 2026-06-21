@@ -371,7 +371,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
   }
 }
 
-function renderBlockToken(block: BlockToken, key: number, context: MarkdownContext, isLast: boolean = false): React.ReactNode {
+function renderBlockToken(block: BlockToken, key: number, context: MarkdownContext, isLast: boolean = false, suppressBr: boolean = false): React.ReactNode {
   const renderInlineContent = (content: string) => tokenizeInline(content).map((token, i) => renderInlineToken(token, i, context));
   const compact = context.variant === 'chat';
   switch (block.type) {
@@ -397,7 +397,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
     case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} variant={context.variant} />;
     case 'separator': return <hr key={key} className={cn("border-t border-[hsl(var(--border))]", compact ? "my-1" : "my-2")} />;
     case 'empty': return <br key={key} />;
-    case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
+    case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && !suppressBr && <br />}</React.Fragment>;
     case 'alert': {
       const type = (block.alertType || 'NOTE') as AlertType;
       const meta: Record<AlertType, { Icon: typeof Info; label: string; varName: string }> = {
@@ -435,7 +435,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
       );
     }
     case 'paragraph':
-    default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && <br />}</React.Fragment>;
+    default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && !suppressBr && <br />}</React.Fragment>;
   }
 }
 
@@ -449,10 +449,20 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
       return <React.Fragment key={i}>{tokenizeInline(line).map((token, j) => renderInlineToken(token, j, context))}{i < lines.length - 1 && <br />}</React.Fragment>;
     });
   }
-  const blocks = parseBlocks(content);
+  const rawBlocks = parseBlocks(content);
+  // Drop empty (br) blocks that sit immediately before or after a codeBlock to avoid visible double-spacing
+  const blocks = rawBlocks.filter((b, i) => {
+    if (b.type !== 'empty') return true;
+    const prev = rawBlocks[i - 1];
+    const next = rawBlocks[i + 1];
+    if (prev?.type === 'codeBlock' || next?.type === 'codeBlock') return false;
+    return true;
+  });
   const groupedBlocks: React.ReactNode[] = [];
   let currentList: { type: 'ul' | 'ol'; items: BlockToken[] } | null = null;
   blocks.forEach((block, index) => {
+    const nextBlock = blocks[index + 1];
+    const suppressBr = nextBlock?.type === 'codeBlock';
     if (block.type === 'listItem' || block.type === 'orderedListItem' || block.type === 'taskItem') {
       const type = block.type === 'orderedListItem' ? 'ol' : 'ul';
       if (currentList?.type === type) currentList.items.push(block);
@@ -469,7 +479,7 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
         groupedBlocks.push(<Tag key={`list-${groupedBlocks.length}`} className={compact ? "my-0" : "my-1"}>{currentList.items.map((item, i) => renderBlockToken(item, i, context))}</Tag>);
         currentList = null;
       }
-      groupedBlocks.push(renderBlockToken(block, index, context, index === blocks.length - 1));
+      groupedBlocks.push(renderBlockToken(block, index, context, index === blocks.length - 1, suppressBr));
     }
   });
   if (currentList) {

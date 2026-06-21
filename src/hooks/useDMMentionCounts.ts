@@ -16,7 +16,6 @@ export function useDMMentionCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: conversations = [] } = useDMConversations();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cacheKey = user?.id ? `dm-mention-counts:${user.id}` : null;
@@ -137,11 +136,10 @@ export function useDMMentionCounts() {
       )
       .subscribe();
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(ch1);
       supabase.removeChannel(ch2);
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, convMeta]);
 
   const mentionCounts = query.data || {};
   const totalMentionCount = useMemo(

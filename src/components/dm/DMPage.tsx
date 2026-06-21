@@ -6,7 +6,7 @@ import { DMConversation } from './DMConversation';
 import { NewMessageModal } from './NewMessageModal';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { InboxPanel } from '@/components/inbox/InboxPanel';
-import { VoiceControls } from '@/components/layout/VoiceControls';
+
 import { useVoice } from '@/contexts/VoiceContext';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
@@ -125,21 +125,8 @@ export function DMPage({
           <DMList activeConversationId={activeDMId} onConversationSelect={handleOpenDM} />
         </div>
 
-        {/* Voice Controls */}
-        {isConnected && voiceState.channelName && (
-          <VoiceControls 
-            channelName={voiceState.channelName} 
-            serverName={voiceState.serverName} 
-            isMuted={voiceState.isMuted} 
-            isDeafened={voiceState.isDeafened} 
-            onToggleMute={() => toggleMute()} 
-            onToggleDeafen={() => toggleDeafen()} 
-            onDisconnect={() => leaveChannel()} 
-          />
-        )}
-
-        {/* Spacer for floating UserProfileCard rendered at Index level */}
-        <div className="h-[68px] shrink-0" />
+        {/* Spacer reserving room for floating VoiceControls + UserProfileCard at Index level */}
+        <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[220px]" : "h-[68px]")} />
       </div>
 
       {/* Main Content */}

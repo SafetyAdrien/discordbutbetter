@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNotifications, type ServerNotification } from './useNotifications';
 import { useDMNotifications, type DMNotificationItem } from './useDMNotifications';
+import { useChannelMentionNotifications, type ChannelMentionNotificationItem } from './useChannelMentionNotifications';
 
 export type NotifKind = 'mention' | 'reply' | 'system' | 'dm';
 
@@ -14,13 +15,18 @@ export interface UnifiedNotification {
   fallback: string;
   isUnread: boolean;
   highlight: boolean; // favorite / mention / deletion request
+  source: 'server_notification' | 'channel_mention' | 'dm';
   serverId: string | null;
   serverName: string | null;
   serverIconUrl: string | null;
+  channelId: string | null;
+  channelName: string | null;
+  mentionId: string | null;
   conversationId: string | null;
   userId: string | null;
   unreadCount: number;
-  raw: ServerNotification | DMNotificationItem;
+  mentionCount: number;
+  raw: ServerNotification | DMNotificationItem | ChannelMentionNotificationItem;
 }
 
 function categorizeServer(n: ServerNotification): NotifKind {
@@ -32,6 +38,7 @@ function categorizeServer(n: ServerNotification): NotifKind {
 export function useUnifiedNotifications() {
   const { data: serverNotifs = [], isLoading } = useNotifications();
   const dmNotifs = useDMNotifications();
+  const { data: channelMentions = [], isLoading: isLoadingMentions } = useChannelMentionNotifications();
 
   const items = useMemo<UnifiedNotification[]>(() => {
     const fromServer: UnifiedNotification[] = serverNotifs.map((n) => {
@@ -46,15 +53,44 @@ export function useUnifiedNotifications() {
         fallback: (n.sender?.display_name ?? n.title ?? 'N').charAt(0).toUpperCase(),
         isUnread: n.status === 'pending',
         highlight: kind === 'mention' || n.type === 'server_deletion_request',
+        source: 'server_notification',
         serverId: n.server_id ?? null,
         serverName: n.server?.name ?? null,
         serverIconUrl: n.server?.icon_url ?? null,
+        channelId: null,
+        channelName: null,
+        mentionId: null,
         conversationId: null,
-        userId: (n as any).sender_id ?? null,
+        userId: n.sender_id ?? null,
         unreadCount: 0,
+        mentionCount: kind === 'mention' && n.status === 'pending' ? 1 : 0,
         raw: n,
       };
     });
+
+    const fromChannelMentions: UnifiedNotification[] = channelMentions.map((m) => ({
+      id: m.id,
+      kind: 'mention',
+      createdAt: m.createdAt,
+      title: m.authorName,
+      message: m.channelName ? `#${m.channelName} · ${m.content}` : m.content,
+      avatarUrl: m.authorAvatarUrl,
+      fallback: m.authorName.charAt(0).toUpperCase(),
+      isUnread: true,
+      highlight: true,
+      source: 'channel_mention',
+      serverId: m.serverId,
+      serverName: m.serverName,
+      serverIconUrl: m.serverIconUrl,
+      channelId: m.channelId,
+      channelName: m.channelName,
+      mentionId: m.mentionId,
+      conversationId: null,
+      userId: m.authorId,
+      unreadCount: 0,
+      mentionCount: 1,
+      raw: m,
+    }));
 
     const fromDM: UnifiedNotification[] = dmNotifs.map((d) => ({
       id: d.id,
@@ -65,20 +101,25 @@ export function useUnifiedNotifications() {
       avatarUrl: d.avatarUrl,
       fallback: d.displayName.charAt(0).toUpperCase(),
       isUnread: d.unreadCount > 0,
-      highlight: d.isFavorite,
+      highlight: d.mentionCount > 0 || d.isFavorite,
+      source: 'dm',
       serverId: null,
       serverName: null,
       serverIconUrl: null,
+      channelId: null,
+      channelName: null,
+      mentionId: null,
       conversationId: d.conversationId,
       userId: d.userId,
       unreadCount: d.unreadCount,
+      mentionCount: d.mentionCount,
       raw: d,
     }));
 
-    return [...fromServer, ...fromDM].sort(
+    return [...fromChannelMentions, ...fromServer, ...fromDM].sort(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
     );
-  }, [serverNotifs, dmNotifs]);
+  }, [serverNotifs, channelMentions, dmNotifs]);
 
-  return { items, isLoading };
+  return { items, isLoading: isLoading || isLoadingMentions };
 }

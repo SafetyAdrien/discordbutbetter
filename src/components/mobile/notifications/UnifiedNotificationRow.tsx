@@ -34,10 +34,10 @@ const KIND_ICONS = {
 } as const;
 
 const KIND_COLORS = {
-  mention: 'text-primary bg-primary/15',
+  mention: 'text-destructive bg-destructive/15',
   reply: 'text-sky-400 bg-sky-500/15',
   system: 'text-amber-400 bg-amber-500/15',
-  dm: 'text-violet-400 bg-violet-500/15',
+  dm: 'text-destructive bg-destructive/15',
 } as const;
 
 export function UnifiedNotificationRow({ n, onTap, onMarkRead, onDelete, onRespond }: Props) {
@@ -149,10 +149,17 @@ export function UnifiedNotificationRow({ n, onTap, onMarkRead, onDelete, onRespo
                   {n.unreadCount > 99 ? '99+' : n.unreadCount}
                 </span>
               )}
+              {n.mentionCount > 0 && (
+                <span className="text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full h-4 min-w-4 px-1 flex items-center justify-center">
+                  {n.mentionCount > 99 ? '99+' : n.mentionCount}
+                </span>
+              )}
               <span className="text-[10px] text-muted-foreground">
                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: false, locale: fr })}
               </span>
-              {n.isUnread && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+              {n.isUnread && (
+                <span className={cn('w-1.5 h-1.5 rounded-full', n.mentionCount > 0 ? 'bg-destructive' : 'bg-foreground')} />
+              )}
             </div>
           </div>
 

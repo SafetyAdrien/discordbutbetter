@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useDMConversations } from './useDMs';
 import { useUnreadCounts } from './useUnreadCounts';
+import { useDMMentionCounts } from './useDMMentionCounts';
 import { useFavoriteFriendIds } from './useFavoriteFriends';
 import { useFrequentDMContacts } from './useFrequentDMContacts';
 
@@ -13,6 +14,7 @@ export interface DMNotificationItem {
   preview: string;
   createdAt: string;
   unreadCount: number;
+  mentionCount: number;
   isFavorite: boolean;
   isFrequent: boolean;
   score: number;
@@ -26,6 +28,7 @@ export interface DMNotificationItem {
 export function useDMNotifications() {
   const { data: conversations = [] } = useDMConversations();
   const { unreadCounts } = useUnreadCounts();
+  const { mentionCounts } = useDMMentionCounts();
   const { data: favoriteIds = [] } = useFavoriteFriendIds();
   const { data: frequent = [] } = useFrequentDMContacts();
 
@@ -36,23 +39,23 @@ export function useDMNotifications() {
     const items: DMNotificationItem[] = [];
 
     for (const conv of conversations) {
-      if (conv.is_group) continue;
       const other = conv.participants[0];
-      if (!other) continue;
+      if (!conv.is_group && !other) continue;
 
       const unread = unreadCounts[conv.id] ?? 0;
-      const isFav = favSet.has(other.id);
-      const freq = frequentMap.get(other.id);
+      const mentions = mentionCounts[conv.id] ?? 0;
+      const isFav = !conv.is_group && !!other && favSet.has(other.id);
+      const freq = !conv.is_group && other ? frequentMap.get(other.id) : undefined;
       const isFrequent = !!freq && freq.countWeek >= 5;
 
       // Skip if nothing notable
-      if (unread === 0 && !isFav && !isFrequent) continue;
+      if (unread === 0 && mentions === 0 && !isFav && !isFrequent) continue;
 
       const created = conv.lastMessage?.created_at ?? conv.created_at ?? new Date().toISOString();
       const preview = conv.lastMessage?.content?.trim() || 'Nouvelle conversation';
 
       // Scoring: unread weight + boosts
-      let score = unread * 10;
+      let score = mentions * 20 + unread * 10;
       if (isFav) score += 25;
       if (isFrequent) score += 10;
       if (freq) score += Math.min(freq.countDay * 2, 20);
@@ -60,12 +63,13 @@ export function useDMNotifications() {
       items.push({
         id: `dm:${conv.id}`,
         conversationId: conv.id,
-        userId: other.id,
-        displayName: other.display_name || other.username || 'Utilisateur',
-        avatarUrl: other.avatar_url,
+        userId: conv.is_group ? null : other?.id ?? null,
+        displayName: conv.is_group ? conv.name || 'Groupe' : other?.display_name || other?.username || 'Utilisateur',
+        avatarUrl: conv.is_group ? conv.icon_url : other?.avatar_url ?? null,
         preview,
         createdAt: created,
         unreadCount: unread,
+        mentionCount: mentions,
         isFavorite: isFav,
         isFrequent,
         score,
@@ -80,5 +84,5 @@ export function useDMNotifications() {
       if (b.score !== a.score) return b.score - a.score;
       return Date.parse(b.createdAt) - Date.parse(a.createdAt);
     });
-  }, [conversations, unreadCounts, favoriteIds, frequent]);
+  }, [conversations, unreadCounts, mentionCounts, favoriteIds, frequent]);
 }

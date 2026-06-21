@@ -3428,6 +3428,7 @@ export type Database = {
         Returns: undefined
       }
       use_invite: { Args: { invite_code: string }; Returns: string }
+      uuid_to_snowflake: { Args: { _id: string }; Returns: string }
     }
     Enums: {
       channel_type:

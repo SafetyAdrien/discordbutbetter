@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,7 @@ export interface UnreadCount {
 export function useUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['unread-counts', user?.id],
@@ -78,6 +79,35 @@ export function useUnreadCounts() {
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
+    };
+
+    const messagesChannel = supabase
+      .channel(`unread-counts-dm-messages-${user.id}-${instanceIdRef.current}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, invalidate)
+      .subscribe();
+
+    const readsChannel = supabase
+      .channel(`unread-counts-dm-reads-${user.id}-${instanceIdRef.current}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
+        invalidate,
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(readsChannel);
+    };
+  }, [user, queryClient]);
+
   const markAsRead = useMutation({
     mutationFn: async (conversationId: string) => {
       if (!user) throw new Error('Not authenticated');
@@ -104,6 +134,15 @@ export function useUnreadCounts() {
         const { [conversationId]: _, ...rest } = old;
         return rest;
       });
+
+      queryClient.setQueriesData<Record<string, number>>(
+        { queryKey: ['dm-mention-counts'] },
+        old => {
+          if (!old) return old;
+          const { [conversationId]: _, ...rest } = old;
+          return rest;
+        }
+      );
       
       return { previousCounts };
     },
@@ -114,6 +153,7 @@ export function useUnreadCounts() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
     },
   });
 

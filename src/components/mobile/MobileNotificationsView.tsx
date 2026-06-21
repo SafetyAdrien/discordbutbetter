@@ -7,7 +7,9 @@ import {
   useDeleteNotification,
   useRespondToDeletionRequest,
 } from '@/hooks/useNotifications';
+import type { ServerNotification } from '@/hooks/useNotifications';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useMarkChannelAsRead } from '@/hooks/useMarkChannelAsRead';
 import { useUnifiedNotifications, type UnifiedNotification } from '@/hooks/useUnifiedNotifications';
 import { useServers } from '@/hooks/useServers';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -52,6 +54,7 @@ export function MobileNotificationsView({
   const deleteNotification = useDeleteNotification();
   const respondToDeletion = useRespondToDeletionRequest();
   const { markAsRead: markDMRead } = useUnreadCounts();
+  const markChannelRead = useMarkChannelAsRead();
   const { data: servers = [] } = useServers();
   const queryClient = useQueryClient();
 
@@ -63,7 +66,9 @@ export function MobileNotificationsView({
       onRefresh: async () => {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+          queryClient.invalidateQueries({ queryKey: ['channel-mention-notifications'] }),
           queryClient.invalidateQueries({ queryKey: ['unread-counts'] }),
+          queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] }),
           queryClient.invalidateQueries({ queryKey: ['dm-conversations'] }),
         ]);
       },
@@ -106,27 +111,59 @@ export function MobileNotificationsView({
   }, [filtered]);
 
   const unreadCount = items.filter((n) => n.isUnread).length;
+  const mentionCount = items.reduce((sum, n) => sum + (n.mentionCount || 0), 0);
   const active = hasActiveFilters(filters);
 
   const handleTap = (n: UnifiedNotification) => {
     haptics.light();
+    if (n.source === 'channel_mention' && n.channelId) {
+      void markChannelRead(n.channelId, n.serverId);
+      if (n.serverId) onOpenServer?.(n.serverId);
+      return;
+    }
     if (n.kind === 'dm' && n.conversationId) {
       markDMRead.mutate(n.conversationId);
       onOpenDM?.(n.conversationId);
       return;
     }
-    if (n.isUnread) markRead.mutate((n.raw as any).id);
+    if (n.source === 'server_notification' && n.isUnread) {
+      markRead.mutate((n.raw as ServerNotification).id);
+    }
     if (n.serverId) onOpenServer?.(n.serverId);
   };
 
   const handleMarkRead = (n: UnifiedNotification) => {
-    if (n.kind === 'dm' && n.conversationId) markDMRead.mutate(n.conversationId);
-    else markRead.mutate((n.raw as any).id);
+    if (n.source === 'channel_mention' && n.channelId) void markChannelRead(n.channelId, n.serverId);
+    else if (n.kind === 'dm' && n.conversationId) markDMRead.mutate(n.conversationId);
+    else if (n.source === 'server_notification') markRead.mutate((n.raw as ServerNotification).id);
   };
 
   const handleDelete = (n: UnifiedNotification) => {
-    if (n.kind === 'dm' && n.conversationId) markDMRead.mutate(n.conversationId);
-    else deleteNotification.mutate((n.raw as any).id);
+    if (n.source === 'channel_mention' && n.channelId) void markChannelRead(n.channelId, n.serverId);
+    else if (n.kind === 'dm' && n.conversationId) markDMRead.mutate(n.conversationId);
+    else if (n.source === 'server_notification') deleteNotification.mutate((n.raw as ServerNotification).id);
+  };
+
+  const handleRespond = (n: UnifiedNotification, accept: boolean) => {
+    if (n.source !== 'server_notification') return;
+    respondToDeletion.mutate({ notificationId: (n.raw as ServerNotification).id, accept });
+  };
+
+  const handleMarkAllRead = () => {
+    haptics.medium();
+    markAllRead.mutate();
+    const seenChannels = new Set<string>();
+    const seenDMs = new Set<string>();
+    items.forEach((item) => {
+      if (item.source === 'channel_mention' && item.channelId && !seenChannels.has(item.channelId)) {
+        seenChannels.add(item.channelId);
+        void markChannelRead(item.channelId, item.serverId);
+      }
+      if (item.kind === 'dm' && item.conversationId && item.isUnread && !seenDMs.has(item.conversationId)) {
+        seenDMs.add(item.conversationId);
+        markDMRead.mutate(item.conversationId);
+      }
+    });
   };
 
   const filterChips = buildFilterChips(filters, servers);
@@ -167,9 +204,11 @@ export function MobileNotificationsView({
               )}
               <div className="flex items-baseline gap-2">
                 <h1 className="text-[26px] leading-none font-bold tracking-tight">Notifications</h1>
-                {unreadCount > 0 && (
-                  <span className="text-xs font-semibold text-primary">
-                    {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
+                {(mentionCount > 0 || unreadCount > 0) && (
+                  <span className={cn('text-xs font-semibold', mentionCount > 0 ? 'text-destructive' : 'text-primary')}>
+                    {mentionCount > 0
+                      ? `${mentionCount} mention${mentionCount > 1 ? 's' : ''}`
+                      : `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}`}
                   </span>
                 )}
               </div>
@@ -253,9 +292,7 @@ export function MobileNotificationsView({
                   onTap={() => handleTap(n)}
                   onMarkRead={() => handleMarkRead(n)}
                   onDelete={() => handleDelete(n)}
-                  onRespond={(accept) =>
-                    respondToDeletion.mutate({ notificationId: (n.raw as any).id, accept })
-                  }
+                  onRespond={(accept) => handleRespond(n, accept)}
                 />
               ))}
             </NotificationSection>
@@ -267,9 +304,7 @@ export function MobileNotificationsView({
                   onTap={() => handleTap(n)}
                   onMarkRead={() => handleMarkRead(n)}
                   onDelete={() => handleDelete(n)}
-                  onRespond={(accept) =>
-                    respondToDeletion.mutate({ notificationId: (n.raw as any).id, accept })
-                  }
+                  onRespond={(accept) => handleRespond(n, accept)}
                 />
               ))}
             </NotificationSection>
@@ -285,9 +320,7 @@ export function MobileNotificationsView({
                   onTap={() => handleTap(n)}
                   onMarkRead={() => handleMarkRead(n)}
                   onDelete={() => handleDelete(n)}
-                  onRespond={(accept) =>
-                    respondToDeletion.mutate({ notificationId: (n.raw as any).id, accept })
-                  }
+                  onRespond={(accept) => handleRespond(n, accept)}
                 />
               ))}
             </NotificationSection>
@@ -298,10 +331,7 @@ export function MobileNotificationsView({
       {/* FAB */}
       {unreadCount > 0 && (
         <button
-          onClick={() => {
-            haptics.medium();
-            markAllRead.mutate();
-          }}
+          onClick={handleMarkAllRead}
           className={cn(
             'fixed right-4 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 active:bg-primary/90 transition-colors z-10 text-sm font-medium',
             onBack ? 'bottom-4' : 'bottom-[calc(72px+env(safe-area-inset-bottom,0px))]'

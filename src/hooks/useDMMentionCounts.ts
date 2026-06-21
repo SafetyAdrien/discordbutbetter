@@ -17,6 +17,7 @@ export function useDMMentionCounts() {
   const queryClient = useQueryClient();
   const { data: conversations = [] } = useDMConversations();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cacheKey = user?.id ? `dm-mention-counts:${user.id}` : null;
   const cached = cacheKey ? cacheGetSync<Record<string, number>>(cacheKey) : undefined;
@@ -101,11 +102,11 @@ export function useDMMentionCounts() {
       }, 200);
     };
     const ch1 = supabase
-      .channel('dm-mention-counts-messages')
+      .channel(`dm-mention-counts-messages-${user.id}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, invalidate)
       .subscribe();
     const ch2 = supabase
-      .channel(`dm-mention-counts-reads-${user.id}`)
+      .channel(`dm-mention-counts-reads-${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },

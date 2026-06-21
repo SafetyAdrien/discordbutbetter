@@ -27,6 +27,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -284,6 +285,7 @@ export function ServerList({
 }: ServerListProps) {
   const { unreadInfo, markServerAsRead } = useServerUnreadCounts();
   const { unreadCounts: dmUnreadCounts } = useUnreadCounts();
+  const { totalMentionCount: totalDMMentions } = useDMMentionCounts();
   const { sortServers, reorderServers } = useServerOrder();
   const leaveServer = useLeaveServer();
   const { user } = useAuth();
@@ -344,12 +346,12 @@ export function ServerList({
   }, [unreadInfo]);
 
   useEffect(() => {
-    if (totalUnreadDMs > prevDMCount.current) {
+    if (totalDMMentions > prevDMCount.current) {
       setShakingDMs(true);
       setTimeout(() => setShakingDMs(false), 500);
     }
-    prevDMCount.current = totalUnreadDMs;
-  }, [totalUnreadDMs]);
+    prevDMCount.current = totalDMMentions;
+  }, [totalDMMentions]);
 
   const handleCopyId = (serverId: string) => {
     copyToClipboard(uuidToSnowflake(serverId), 'ID serveur copié');
@@ -476,15 +478,17 @@ export function ServerList({
             )}
             <MessageCircle className="w-6 h-6" />
             
-            {totalUnreadDMs > 0 && (
+            {totalDMMentions > 0 ? (
               <div className={cn(
                 "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-surface-1 animate-badge-pop",
                 shakingDMs && "animate-badge-shake"
               )}
               style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-                {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
+                {totalDMMentions > 99 ? '99+' : totalDMMentions}
               </div>
-            )}
+            ) : activeServerId !== null && hasUnreadDMs ? (
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-foreground border-2 border-surface-1" />
+            ) : null}
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">

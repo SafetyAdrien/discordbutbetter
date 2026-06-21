@@ -12,6 +12,7 @@ import { MobileChannelListView } from './MobileChannelListView';
 import { MobileHomeView } from './MobileHomeView';
 import { Separator } from '@/components/ui/separator';
 import type { Server } from '@/types/app';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 
 import {
   DndContext,
@@ -129,17 +130,15 @@ function SortableMobileServerIcon({
             </AvatarFallback>
           </Avatar>
 
-          {mentionCount > 0 && (
-            <span
-              className={cn(
-                'absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
-                isShaking && 'animate-badge-shake'
-              )}
-              style={{ boxShadow: 'var(--shadow-elevation-1)' }}
-            >
-              {mentionCount > 99 ? '99+' : mentionCount}
-            </span>
-          )}
+          <MentionBadge
+            count={mentionCount}
+            size="lg"
+            className={cn(
+              'absolute -top-1.5 -right-1.5 border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+              isShaking && 'animate-badge-shake'
+            )}
+            style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+          />
         </div>
       </button>
       {dropIndicator === 'after' && (
@@ -363,15 +362,15 @@ export function MobileServersView({
           >
             <MessageCircle className="w-6 h-6" />
             {totalDMMentions > 0 && !showDMs ? (
-              <span
+              <MentionBadge
+                count={totalDMMentions}
+                size="md"
                 className={cn(
-                  'absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+                  'absolute -bottom-1 -right-1 border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
                   shakingDMs && 'animate-badge-shake'
                 )}
                 style={{ boxShadow: 'var(--shadow-elevation-1)' }}
-              >
-                {totalDMMentions > 99 ? '99+' : totalDMMentions}
-              </span>
+              />
             ) : totalUnreadDMs > 0 && !showDMs ? (
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-foreground border-2 border-[hsl(var(--surface-server-list))]" />
             ) : null}

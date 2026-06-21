@@ -42,6 +42,7 @@ import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import { useState, useCallback, useMemo, useRef, useEffect, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MentionBadge } from "@/components/ui/MentionBadge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -712,11 +713,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 </span>
 
                 {/* Mention badge - ONLY shows for mentions */}
-                {mentionCount > 0 &&
-                <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                    {mentionCount}
-                  </span>
-                }
+                <MentionBadge count={mentionCount} size="sm" />
 
                 <div className="hidden group-hover:flex gap-[5px]">
                   {(isVoice || isStage) && onOpenChat &&

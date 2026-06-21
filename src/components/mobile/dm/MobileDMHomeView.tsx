@@ -15,6 +15,7 @@ import { CreateGroupModal } from '@/components/dm/CreateGroupModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MessageSquarePlus, Search, Star, UsersRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 
@@ -273,14 +274,13 @@ export function MobileDMHomeView({
               {Icon && <Icon className="w-3.5 h-3.5" />}
               <span>{label}</span>
               {id === 'unread' && (badge ?? 0) > 0 && (
-                <span
+                <MentionBadge
+                  count={badge!}
+                  size="sm"
                   className={cn(
-                    'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
-                    active ? 'bg-primary-foreground/25 text-primary-foreground' : 'bg-destructive text-destructive-foreground',
+                    active && 'bg-primary-foreground/25 text-primary-foreground',
                   )}
-                >
-                  {badge! > 99 ? '99+' : badge}
-                </span>
+                />
               )}
             </button>
           );

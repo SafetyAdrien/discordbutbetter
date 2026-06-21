@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 import {
   useMarkAllNotificationsAsRead,
   useMarkNotificationAsRead,
@@ -99,9 +100,7 @@ export function InboxPanel() {
         <Inbox className="w-5 h-5 text-muted-foreground" />
         <h2 className="font-semibold">Boîte de réception</h2>
         {mentionCount > 0 ? (
-          <Badge variant="destructive" className="text-xs">
-            {mentionCount > 99 ? '99+' : mentionCount}
-          </Badge>
+          <MentionBadge count={mentionCount} size="sm" />
         ) : unreadCount > 0 && (
           <span className="w-2 h-2 rounded-full bg-foreground" aria-label="Notifications non lues" />
         )}
@@ -220,9 +219,7 @@ function NotificationItem({
           </div>
           
           {notification.mentionCount > 0 ? (
-            <Badge variant="destructive" className="h-5 min-w-5 px-1 text-[10px] flex items-center justify-center">
-              {notification.mentionCount > 99 ? '99+' : notification.mentionCount}
-            </Badge>
+            <MentionBadge count={notification.mentionCount} size="sm" />
           ) : isUnread && (
             <div className="w-2 h-2 rounded-full bg-foreground flex-shrink-0 mt-2" />
           )}

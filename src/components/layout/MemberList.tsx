@@ -29,6 +29,7 @@ import { DiscordInbox } from '@/components/icons/DiscordInbox';
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTotalMentionCount } from "@/hooks/useTotalMentionCount";
 import { Badge } from "@/components/ui/badge";
+import { MentionBadge } from "@/components/ui/MentionBadge";
 import {
   Popover,
   PopoverContent,
@@ -238,12 +239,11 @@ function InboxButton() {
         <button className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
           <DiscordInbox className="w-5 h-5" />
           {mentionCount > 0 ? (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-            >
-              {mentionCount > 99 ? '99+' : mentionCount}
-            </Badge>
+            <MentionBadge
+              count={mentionCount}
+              size="xs"
+              className="absolute -top-1 -right-1"
+            />
           ) : hasUnread ? (
             <span
               aria-label="Notifications non lues"

@@ -13,6 +13,7 @@ import {
   Plus,
   BadgeCheck,
 } from 'lucide-react';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
 import { MobileEditProfileView } from './profile/MobileEditProfileView';
@@ -184,9 +185,11 @@ export function MobileProfileView({
             >
               <Bell className="w-4 h-4 text-foreground" />
               {mentionCount > 0 ? (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full shadow-sm">
-                  {mentionCount > 99 ? '99+' : mentionCount}
-                </span>
+                <MentionBadge
+                  count={mentionCount}
+                  size="xs"
+                  className="absolute -top-0.5 -right-0.5 shadow-sm"
+                />
               ) : notifCount > 0 ? (
                 <span
                   aria-label="Notifications non lues"

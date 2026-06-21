@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isDirectMentionForUser } from '@/lib/mentions';
 
 export interface ChannelMentionNotificationItem {
   id: string;
@@ -116,7 +117,7 @@ export function useChannelMentionNotifications() {
 
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
+    const mentionsChannel = supabase
       .channel(`channel-mention-notifications-${user.id}`)
       .on(
         'postgres_changes',
@@ -128,8 +129,42 @@ export function useChannelMentionNotifications() {
       )
       .subscribe();
 
+    const messagesChannel = supabase
+      .channel(`channel-mention-notification-messages-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const msg = payload.new as { id?: string; channel_id?: string; author_id?: string | null; content?: string | null; created_at?: string | null };
+          if (!msg.id || !msg.channel_id || msg.author_id === user.id || !isDirectMentionForUser(msg.content, user.id)) return;
+
+          const optimistic: ChannelMentionNotificationItem = {
+            id: `mention-message:${msg.id}`,
+            mentionId: `message:${msg.id}`,
+            channelId: msg.channel_id,
+            serverId: null,
+            channelName: null,
+            serverName: null,
+            serverIconUrl: null,
+            authorId: msg.author_id ?? null,
+            authorName: 'Utilisateur',
+            authorAvatarUrl: null,
+            content: msg.content || 'Vous avez été mentionné·e',
+            createdAt: msg.created_at || new Date().toISOString(),
+          };
+
+          queryClient.setQueryData<ChannelMentionNotificationItem[]>(
+            ['channel-mention-notifications', user.id],
+            (old = []) => old.some((item) => item.id === optimistic.id) ? old : [optimistic, ...old]
+          );
+          queryClient.invalidateQueries({ queryKey: ['channel-mention-notifications', user.id] });
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(mentionsChannel);
+      supabase.removeChannel(messagesChannel);
     };
   }, [user, queryClient]);
 

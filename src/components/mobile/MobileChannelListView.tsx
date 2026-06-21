@@ -23,6 +23,7 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useChannelUnreadCounts } from '@/hooks/useChannelUnreadCounts';
@@ -687,11 +688,7 @@ export function MobileChannelListView({
                     "text-sm truncate flex-1 text-left",
                     info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
                   )}>{ch.name}</span>
-                  {(info?.mentionCount ?? 0) > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full font-bold">
-                      {info!.mentionCount}
-                    </span>
-                  )}
+                  <MentionBadge count={info?.mentionCount ?? 0} size="sm" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-1" side="bottom" align="start">
@@ -820,11 +817,7 @@ export function MobileChannelListView({
                           "text-sm truncate flex-1 text-left",
                           info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>{ch.name}</span>
-                        {(info?.mentionCount ?? 0) > 0 && (
-                          <span className="px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full font-bold">
-                            {info!.mentionCount}
-                          </span>
-                        )}
+                        <MentionBadge count={info?.mentionCount ?? 0} size="sm" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-1" side="bottom" align="start">

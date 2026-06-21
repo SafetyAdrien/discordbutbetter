@@ -12,6 +12,7 @@ import { useVoice } from '@/contexts/VoiceContext';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 
 type DMView = 'friends' | 'inbox' | 'conversation';
 
@@ -104,14 +105,11 @@ export function DMPage({
           >
             <div className="relative">
               <Inbox className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-                >
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Badge>
-              )}
+              <MentionBadge
+                count={unreadCount}
+                size="xs"
+                className="absolute -top-1.5 -right-1.5"
+              />
             </div>
             <span className="font-normal">Boîte de réception</span>
           </button>

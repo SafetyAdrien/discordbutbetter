@@ -712,11 +712,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 </span>
 
                 {/* Mention badge - ONLY shows for mentions */}
-                {mentionCount > 0 &&
-                <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
-                    {mentionCount}
-                  </span>
-                }
+                <MentionBadge count={mentionCount} size="sm" />
 
                 <div className="hidden group-hover:flex gap-[5px]">
                   {(isVoice || isStage) && onOpenChat &&

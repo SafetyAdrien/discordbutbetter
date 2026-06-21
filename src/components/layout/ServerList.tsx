@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 import { useServerOrder } from '@/hooks/useServerOrder';
 import { useLeaveServer } from '@/hooks/useLeaveServer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -155,15 +156,15 @@ function SortableServerIcon({
                 )}
 
                 {/* Mention notification badge - ONLY shows for mentions, not general unreads */}
-                {mentionCount > 0 && (
-                  <div className={cn(
-                    "absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-[11px] font-bold border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop",
+                <MentionBadge
+                  count={mentionCount}
+                  size="lg"
+                  className={cn(
+                    "absolute -top-1.5 -right-1.5 border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop",
                     isShaking && "animate-badge-shake"
                   )}
-                  style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-                    {mentionCount > 99 ? '99+' : mentionCount}
-                  </div>
-                )}
+                  style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+                />
               </button>
             </TooltipTrigger>
           </ContextMenuTrigger>
@@ -479,13 +480,15 @@ export function ServerList({
             <MessageCircle className="w-6 h-6" />
             
             {totalDMMentions > 0 ? (
-              <div className={cn(
-                "absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 bg-destructive rounded-full flex items-center justify-center text-destructive-foreground text-xs font-bold border-2 border-surface-1 animate-badge-pop",
-                shakingDMs && "animate-badge-shake"
-              )}
-              style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-                {totalDMMentions > 99 ? '99+' : totalDMMentions}
-              </div>
+              <MentionBadge
+                count={totalDMMentions}
+                size="md"
+                className={cn(
+                  "absolute -bottom-1 -right-1 border-2 border-surface-1 animate-badge-pop",
+                  shakingDMs && "animate-badge-shake"
+                )}
+                style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+              />
             ) : activeServerId !== null && hasUnreadDMs ? (
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-foreground border-2 border-surface-1" />
             ) : null}

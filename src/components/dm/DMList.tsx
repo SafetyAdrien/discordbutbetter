@@ -3,6 +3,7 @@ import { useDMConversations, DMConversation } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MentionBadge } from '@/components/ui/MentionBadge';
 import { useState, useEffect } from 'react';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -210,12 +211,7 @@ function DMConversationItem({
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {mentionCount > 0 ? (
-              <span
-                aria-label={`${mentionCount} mention${mentionCount > 1 ? 's' : ''}`}
-                className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full"
-              >
-                {mentionCount > 99 ? '99+' : mentionCount}
-              </span>
+              <MentionBadge count={mentionCount} size="sm" />
             ) : unreadCount > 0 ? (
               <span
                 aria-label="Messages non lus"

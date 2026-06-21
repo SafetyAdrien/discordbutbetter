@@ -121,14 +121,29 @@ export function useSwipeBack({
       rafRef.current = null;
     }
     if (isSwipingRef.current && currentXRef.current > threshold) {
-      // Commit the final drag position synchronously so Framer's exit
-      // animation on the outer wrapper continues visually from where the
-      // finger left off, with no double-animation / blank-page gap.
-      if (elementRef.current) {
-        elementRef.current.style.transform = `translate3d(${currentXRef.current}px, 0, 0)`;
+      const el = elementRef.current;
+      if (el && typeof el.animate === 'function') {
+        const fromX = currentXRef.current;
+        const targetX = Math.max(el.getBoundingClientRect().width, window.innerWidth || 0);
+        exitAnimationRef.current = el.animate(
+          [
+            { transform: `translate3d(${fromX}px, 0, 0)` },
+            { transform: `translate3d(${targetX}px, 0, 0)` },
+          ],
+          { duration: 160, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'forwards' }
+        );
+        exitAnimationRef.current.onfinish = () => {
+          haptics.light();
+          onBack();
+          exitAnimationRef.current = null;
+        };
+      } else {
+        if (el) {
+          el.style.transform = `translate3d(${currentXRef.current}px, 0, 0)`;
+        }
+        haptics.light();
+        onBack();
       }
-      haptics.light();
-      onBack();
     } else {
       const el = elementRef.current;
       if (el && currentXRef.current > 0 && typeof el.animate === 'function') {

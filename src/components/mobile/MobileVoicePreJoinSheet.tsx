@@ -159,6 +159,16 @@ export function MobileVoicePreJoinSheet({
             />
           </motion.div>
 
+          <AnimatePresence>
+            {settingsOpen && (
+              <MobileVoiceSettingsPanel
+                channelName={channel.name}
+                onClose={() => setSettingsOpen(false)}
+                onInvite={() => { setSettingsOpen(false); setInviteOpen(true); }}
+              />
+            )}
+          </AnimatePresence>
+
           {inviteOpen && (
             <CreateInviteModal
               serverId={serverId}

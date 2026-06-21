@@ -28,7 +28,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
   return (
     <div
       className={cn(
-        "mx-2 px-3 py-2 bg-[hsl(var(--surface-2))] border border-border/40",
+        "mx-2 px-2 py-1 bg-[hsl(var(--surface-2))] border border-border/40",
         connectedToProfile ? "rounded-t-2xl rounded-b-none border-b-0" : "rounded-2xl"
       )}
       style={{ boxShadow: connectedToProfile ? undefined : 'var(--shadow-elevation-2)' }}
@@ -52,11 +52,11 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
               <button
                 onClick={() => setNoiseSuppression(krispActive ? 'off' : 'high')}
                 className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted shrink-0',
+                  'w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-muted shrink-0',
                   krispActive && 'bg-[hsl(var(--online))]/15 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/25'
                 )}
               >
-                <Wand2 className={cn('w-3.5 h-3.5', !krispActive && 'text-muted-foreground')} />
+                <Wand2 className={cn('w-3 h-3', !krispActive && 'text-muted-foreground')} />
               </button>
             </TooltipTrigger>
             <TooltipContent>{krispActive ? 'Krisp activé' : 'Krisp désactivé'}</TooltipContent>
@@ -69,10 +69,10 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
               <Button
                 size="icon"
                 variant="ghost"
-                className="w-7 h-7 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 shrink-0"
+                className="w-6 h-6 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 shrink-0"
                 onClick={onDisconnect}
               >
-                <PhoneOff className="w-3.5 h-3.5" />
+                <PhoneOff className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Déconnexion</TooltipContent>
@@ -81,7 +81,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
       </div>
 
       {/* Ligne 2 : contrôles média */}
-      <div className="mt-2 pt-2 border-t border-border/40 flex items-center justify-center gap-1.5">
+      <div className="mt-1 pt-1 border-t border-border/40 flex items-center justify-center gap-1">
         <TooltipProvider delayDuration={200}>
           {/* Vidéo */}
           <Tooltip>
@@ -89,11 +89,11 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
               <button
                 onClick={() => toggleCamera()}
                 className={cn(
-                  'w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-muted',
+                  'w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-muted',
                   isCameraActive && 'bg-destructive/15 text-destructive hover:bg-destructive/25'
                 )}
               >
-                {isCameraActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4 text-muted-foreground" />}
+                {isCameraActive ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
             </TooltipTrigger>
             <TooltipContent>{isCameraActive ? 'Arrêter la vidéo' : 'Activer la vidéo'}</TooltipContent>
@@ -105,11 +105,11 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
               <button
                 onClick={() => toggleScreenShare()}
                 className={cn(
-                  'w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-muted',
+                  'w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-muted',
                   isScreenSharing && 'bg-[hsl(var(--online))]/15 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/25'
                 )}
               >
-                {isScreenSharing ? <Monitor className="w-4 h-4" /> : <MonitorOff className="w-4 h-4 text-muted-foreground" />}
+                {isScreenSharing ? <Monitor className="w-3.5 h-3.5" /> : <MonitorOff className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
             </TooltipTrigger>
             <TooltipContent>{isScreenSharing ? 'Arrêter le partage' : "Partager l'écran"}</TooltipContent>
@@ -120,9 +120,9 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
             <TooltipTrigger asChild>
               <button
                 disabled
-                className="w-8 h-8 rounded-lg flex items-center justify-center opacity-40 cursor-not-allowed"
+                className="w-7 h-7 rounded-md flex items-center justify-center opacity-40 cursor-not-allowed"
               >
-                <Music2 className="w-4 h-4 text-muted-foreground" />
+                <Music2 className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </TooltipTrigger>
             <TooltipContent>Soundboard — Bientôt disponible</TooltipContent>

@@ -252,9 +252,8 @@ export function MobileLayout({
     }
     if (channelType === 'voice' && mobileView.type === 'channels') {
       const ch = findChannel(channelId);
-      if (!ch) return;
       if (voiceState.channelId !== channelId) {
-        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: ch.name } });
+        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: ch?.name || 'Salon vocal' } });
         return;
       }
     }

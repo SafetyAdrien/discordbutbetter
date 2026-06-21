@@ -209,7 +209,7 @@ export function MobileChatView({
               </div>
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-2xl [&>button.absolute]:hidden">
+          <SheetContent side="right" className="w-[85vw] max-w-80 p-0 rounded-l-2xl bg-surface-1 [&>button.absolute]:hidden">
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
               <SheetClose asChild>

@@ -1897,7 +1897,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                                 {/* Edited indicator - after attachments */}
                                 {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 max-sm:mt-0 block">
+                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">
                                     (modifié)
                                   </span>
                                 )}

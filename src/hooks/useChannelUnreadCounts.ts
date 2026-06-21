@@ -124,12 +124,19 @@ export function useChannelUnreadCounts(serverId: string | null) {
           table: 'channel_read_states',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
-            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-          }, 200);
+        (payload) => {
+          const channelId = ((payload.new || payload.old) as { channel_id?: string })?.channel_id;
+          if (channelId) {
+            queryClient.setQueryData<Record<string, ChannelUnreadInfo>>(
+              ['channel-unread-counts', serverId, user.id],
+              (old = {}) => {
+                const { [channelId]: _, ...rest } = old;
+                return rest;
+              }
+            );
+          }
+          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
         }
       )
       .subscribe();

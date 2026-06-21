@@ -1666,7 +1666,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               />
                             )}
                             <div className="flex gap-3 items-start -ml-[11px]">
-                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0 !min-h-0 h-auto p-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
                                   <AvatarFallback className="bg-primary/20 text-primary">
@@ -1678,7 +1678,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
                                   <button
                                     onClick={() => handleUserClick(message.author)}
-                                    className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0 text-[15px]"
+                                    className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0 text-[15px] leading-[1.375rem] !min-h-0 h-auto p-0"
                                     style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
                                   >
                                     {message.author.displayName}

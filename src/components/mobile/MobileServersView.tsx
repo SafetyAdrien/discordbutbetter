@@ -294,8 +294,8 @@ export function MobileServersView({
       <div
         data-swipe-ignore="true"
         className={cn(
-        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 overflow-y-auto scrollbar-hide'
-      )}>
+        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 overflow-visible'
+      )} style={{ overflowY: 'auto', overflowX: 'visible' }}>
         {/* DM Button */}
         <button
           onClick={handleDMClick}

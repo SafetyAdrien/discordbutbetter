@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { UserProfileCard } from '@/components/profile/UserProfileCard';
-import { VoiceControls } from '@/components/layout/VoiceControls';
+import { VoiceStatusBadge } from '@/components/layout/VoiceStatusBadge';
 import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
@@ -889,17 +889,13 @@ const Index = () => {
       {/* Floating Voice + Profile Panel - desktop only, spans ServerList + ChannelList width */}
       {!isMobile && !isTablet && (
         <div
-          className="fixed bottom-0 left-0 z-40 flex flex-col gap-1"
+          className="fixed bottom-0 left-0 z-40 flex flex-col gap-1.5 pb-0"
           style={{ width: 'calc(80px + 2px + 240px)' }}
         >
           {isConnected && voiceState.channelName && (
-            <VoiceControls
+            <VoiceStatusBadge
               channelName={voiceState.channelName}
               serverName={voiceState.serverName}
-              isMuted={voiceState.isMuted}
-              isDeafened={voiceState.isDeafened}
-              onToggleMute={() => toggleMute()}
-              onToggleDeafen={() => toggleDeafen()}
               onDisconnect={() => leaveChannel()}
             />
           )}

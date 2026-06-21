@@ -30,6 +30,7 @@ export function MobileVoicePreJoinSheet({
   const [isConnecting, setIsConnecting] = useState(false);
   const [preJoinMuted, setPreJoinMuted] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const y = useMotionValue(0);
   const sheetRef = useRef<HTMLDivElement>(null);

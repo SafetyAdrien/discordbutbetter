@@ -14,13 +14,12 @@ export interface ServerUnreadInfo {
 export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
 
   const cachedKey = user?.id ? `server-unread:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ServerUnreadInfo>>(cachedKey) : undefined;
 
-  // Realtime — debounced
+  // Realtime — direct cache patching for instant badges
   useEffect(() => {
     if (!user) return;
 
@@ -138,7 +137,6 @@ export function useServerUnreadCounts() {
       .subscribe();
 
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(mentionsChannel);
       supabase.removeChannel(readChannel);

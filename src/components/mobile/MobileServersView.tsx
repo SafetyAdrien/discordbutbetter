@@ -297,18 +297,10 @@ export function MobileServersView({
         'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5'
       )}>
         {/* DM Button */}
-        <button
-          onClick={handleDMClick}
-          className={cn(
-            ICON_SIZE, 'group relative flex items-center justify-center rounded-2xl transition-all',
-            showDMs
-              ? 'bg-primary text-primary-foreground rounded-2xl'
-              : 'bg-surface-3 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
-          )}
-        >
+        <div className="group relative w-full flex justify-center">
           <div
             className={cn(
-              'absolute left-0 w-[4px] rounded-r-full bg-foreground z-10',
+              'absolute left-0 top-1/2 -translate-y-1/2 w-[4px] rounded-r-full bg-foreground pointer-events-none z-10',
               showDMs
                 ? 'h-10'
                 : totalUnreadDMs > 0
@@ -317,13 +309,23 @@ export function MobileServersView({
             )}
             style={{ transition: 'height 300ms' }}
           />
-          <MessageCircle className="w-6 h-6" />
-          {totalUnreadDMs > 0 && !showDMs && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
-              {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
-            </span>
-          )}
-        </button>
+          <button
+            onClick={handleDMClick}
+            className={cn(
+              ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
+              showDMs
+                ? 'bg-primary text-primary-foreground rounded-2xl'
+                : 'bg-surface-3 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
+            )}
+          >
+            <MessageCircle className="w-6 h-6" />
+            {totalUnreadDMs > 0 && !showDMs && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
+              </span>
+            )}
+          </button>
+        </div>
 
         <Separator className="w-8 my-1" />
 

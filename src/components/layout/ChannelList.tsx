@@ -42,6 +42,7 @@ import { StreamlineLink } from "@/components/icons/StreamlineLink";
 import { useState, useCallback, useMemo, useRef, useEffect, forwardRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MentionBadge } from "@/components/ui/MentionBadge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";

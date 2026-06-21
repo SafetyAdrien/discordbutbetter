@@ -125,8 +125,8 @@ export function DMPage({
           <DMList activeConversationId={activeDMId} onConversationSelect={handleOpenDM} />
         </div>
 
-        {/* Spacer reserving room for floating VoiceControls + UserProfileCard at Index level */}
-        <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[220px]" : "h-[68px]")} />
+        {/* Spacer reserving room for floating VoiceStatusBadge + UserProfileCard at Index level */}
+        <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[130px]" : "h-[68px]")} />
       </div>
 
       {/* Main Content */}

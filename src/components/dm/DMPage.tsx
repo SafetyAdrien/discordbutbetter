@@ -126,7 +126,7 @@ export function DMPage({
         </div>
 
         {/* Spacer reserving room for floating VoiceStatusBadge + UserProfileCard at Index level */}
-        <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[130px]" : "h-[68px]")} />
+        <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[170px]" : "h-[64px]")} />
       </div>
 
       {/* Main Content */}

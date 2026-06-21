@@ -1,42 +1,44 @@
-## Problème constaté
+## Modifications
 
-Le bloc « Connecté · Vocal » au-dessus du profil **ne s'affiche pas**. Le code dans `Index.tsx` est bien là (`{isConnected && voiceState.channelName && <VoiceControls .../>}`), mais le composant `VoiceControls` actuel duplique les boutons mic/casque/déconnexion qui sont déjà dans `UserProfileCard` — ce n'est pas ce que tu as demandé. Tu veux juste un **bloc de statut** indiquant le salon vocal, séparé légèrement de la carte profil.
+### 1. `VoiceStatusBadge.tsx` — ajouter une rangée de contrôles média
 
-Par ailleurs, à ce stade je n'ai pas la preuve que `isConnected && voiceState.channelName` se déclenchent correctement dans la branche de rendu fixe (z-40), donc il faut aussi vérifier le rendu effectif.
+Restructurer le composant en 2 sections empilées dans le même conteneur (rounded-2xl, surface-2) :
 
-## Plan
+**Ligne 1 (status, inchangée)** :
+- `VoiceConnectionIndicator` + "Vocal connecté" + nom du salon + bouton `PhoneOff` rouge
 
-### 1. Créer un nouveau composant `VoiceStatusBadge`
-Fichier : `src/components/layout/VoiceStatusBadge.tsx`
+**Ligne 2 (nouvelle, séparée par `border-t border-border/40 pt-2 mt-2`)** :
+4 boutons carrés (`w-8 h-8 rounded-lg`), légèrement espacés (`gap-1.5`), centrés :
+- **Vidéo** : `Video` / `VideoOff` (lucide) — appelle `voiceCtx.toggleCamera()`, état actif rouge si `isCameraActive`
+- **Partage d'écran** : `Monitor` / `MonitorOff` — appelle `voiceCtx.toggleScreenShare()`, état actif vert si `isScreenSharing`
+- **Soundboard** : icône `Music2` — **désactivé** (`disabled`, `opacity-40 cursor-not-allowed`), tooltip "Bientôt disponible"
+- **Krisp / Noise Suppression** : icône `Wand2` (ou `Sparkles`) — toggle entre `'off'` ↔ `'high'` via `voiceCtx.setNoiseSuppression()`, actif vert quand `noiseSuppression !== 'off'`
 
-Petit bloc compact (~52px de haut) avec :
-- Pastille verte animée (`bg-[hsl(var(--online))]` + `animate-pulse`) + `VoiceConnectionIndicator` pour la qualité de connexion
-- Ligne 1 : « **Vocal connecté** » en `text-xs font-semibold text-[hsl(var(--online))]`
-- Ligne 2 : `channelName / serverName` en `text-xs text-muted-foreground truncate`
-- Bouton `PhoneOff` rouge à droite (taille `w-7 h-7`, `rounded-full`, `bg-destructive/10`) pour quitter rapidement
-- Style : `bg-[hsl(var(--surface-2))] rounded-2xl mx-2 px-3 py-2 border border-border/40`, `box-shadow: var(--shadow-elevation-2)`
-- **Pas** de boutons mic/casque/PTT (déjà présents dans `UserProfileCard`)
+Chaque bouton avec `Tooltip`. Importer `useVoice` pour récupérer les états/actions.
 
-### 2. Remplacer `VoiceControls` par `VoiceStatusBadge` dans `Index.tsx`
-- Importer `VoiceStatusBadge` à la place de `VoiceControls`
-- Ajouter un `mb-1.5` entre les deux blocs pour la « séparation légère » demandée
-- Garder le wrapper `fixed bottom-0 left-0 z-40` avec `width: calc(80px + 2px + 240px)`
-- Garder `flex flex-col gap-1.5`
+### 2. `UserProfileCard.tsx` — chevrons orientés vers le haut quand popover ouvert
 
-### 3. Garder `VoiceControls.tsx` intact
-Il est encore utilisé ailleurs (mobile / tablet / vues dédiées). On ne le supprime pas.
+Pour les 2 popovers (micro et casque), utiliser le state `open` contrôlé du `Popover` afin de basculer l'icône :
+- Convertir `MicrophoneSettingsPopover` et `HeadphonesSettingsPopover` triggers en composants contrôlés : passer `open`/`onOpenChange` (ajouter ces props si manquantes dans ces deux composants), et remplacer `<ChevronDown>` par `open ? <ChevronUp> : <ChevronDown>`.
+- Importer `ChevronUp` depuis `lucide-react`.
 
-### 4. Vérifier les spacers
-`ChannelList.tsx` et `DMPage.tsx` réservent actuellement `h-[220px]` quand `isConnected`. Comme le nouveau badge est plus petit (~52px), réduire à :
-- `h-[130px]` quand connecté (52px badge + 6px gap + 68px profil + marges)
-- `h-[68px]` sinon
+*Si les popovers ne supportent pas `open` contrôlé*, ajouter les props `open?: boolean` et `onOpenChange?: (o: boolean) => void` et les forwarder au `<Popover>` interne.
 
-### 5. Validation
-- Screenshot du preview après modif pour confirmer que le bloc apparaît au-dessus du profil quand on rejoint un salon vocal
-- Vérifier l'alignement et la séparation visuelle
+### 3. `UserProfileCard.tsx` — réduire légèrement la hauteur
 
-## Fichiers touchés
+- Conteneur principal : `py-2` → `py-1.5`, `gap-3` → `gap-2.5`
+- Avatar : `w-9 h-9` → `w-8 h-8`
+- Nom : `text-[15px]` → `text-sm`
+- Boutons mic/casque : `p-1.5` → `p-1`, icônes `w-4 h-4` → `w-[15px] h-[15px]`
+- Bouton settings : `p-1.5` → `p-1`
 
-- **Créé** : `src/components/layout/VoiceStatusBadge.tsx`
-- **Modifié** : `src/pages/Index.tsx`, `src/components/layout/ChannelList.tsx`, `src/components/dm/DMPage.tsx`
-- **Non touché** : `VoiceControls.tsx`, `UserProfileCard.tsx`, `VoiceContext.tsx`
+### 4. Spacers — mettre à jour la hauteur réservée
+
+Le badge devient plus haut (~96px : status 52px + média 44px). Mettre à jour dans `ChannelList.tsx` et `DMPage.tsx` le spacer "connecté" de `h-[130px]` → `h-[170px]`. Le spacer "non connecté" passe à `h-[64px]` (carte profil réduite).
+
+## Validation
+
+Screenshot de la sidebar après connexion vocale pour confirmer :
+- la rangée de 4 boutons sous le bandeau status, dans le même conteneur
+- chevrons pointant vers le haut quand les popovers sont ouverts
+- carte profil visiblement plus compacte sans chevauchement

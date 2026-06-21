@@ -22,6 +22,8 @@ interface MicrophoneSettingsPopoverProps {
   onToggleLowShelf: (v: boolean) => void;
   enableHighPass: boolean;
   onToggleHighPass: (v: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (o: boolean) => void;
 }
 
 const vadLabels: Record<VADSensitivity, string> = {
@@ -51,9 +53,11 @@ export function MicrophoneSettingsPopover({
   onToggleLowShelf,
   enableHighPass,
   onToggleHighPass,
+  open,
+  onOpenChange,
 }: MicrophoneSettingsPopoverProps) {
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         {children}
       </PopoverTrigger>

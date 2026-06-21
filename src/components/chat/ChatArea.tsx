@@ -1662,7 +1662,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     ? (memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null)
                                     : null
                                 }
-                                className="mb-1 max-sm:mb-0.5"
+                                className="mb-1"
                               />
                             )}
                             <div className="flex gap-3 max-sm:gap-2 items-start -ml-[11px]">

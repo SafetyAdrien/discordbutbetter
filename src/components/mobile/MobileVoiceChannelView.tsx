@@ -1,73 +1,161 @@
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Volume2, VolumeX, UserPlus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ChevronRight, UserPlus } from 'lucide-react';
 import { VoiceParticipantGrid } from '@/components/channels/voice/VoiceParticipantGrid';
-import { VoiceEmptyState } from '@/components/channels/voice/VoiceEmptyState';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
+import { MobileChannelHeader } from './MobileChannelHeader';
+import { MobileVoicePreJoin } from './MobileVoicePreJoin';
+import { VoiceChannelDetailsSheet } from './VoiceChannelDetailsSheet';
+import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
+import type { User } from '@/types/app';
+import type { MemberWithProfile } from '@/hooks/useMembers';
 
 interface Props {
   channel: { id: string; name: string; description?: string };
   serverId: string;
-  members: any[];
+  members: (User & { roles?: MemberWithProfile['roles'] })[];
   ownerId: string;
+  serverName?: string;
   onOpenDM: (id: string) => void;
   onBack: () => void;
+  onOpenChat?: () => void;
 }
 
-export function MobileVoiceChannelView({ channel, onBack }: Props) {
+export function MobileVoiceChannelView({
+  channel,
+  serverId,
+  members,
+  ownerId,
+  serverName,
+  onOpenDM,
+  onBack,
+  onOpenChat,
+}: Props) {
   const {
-    voiceState, joinChannel, leaveChannel, toggleDeafen,
+    voiceState, joinChannel, toggleDeafen, toggleMute,
     speakingUsers, audioLevels,
     localCameraStream, localScreenStream, remoteVideoStreams, remoteScreenStreams,
   } = useVoice();
+  const { user } = useAuth();
 
   const { data: participants = [] } = useVoiceParticipants(channel.id);
   const isConnected = voiceState.channelId === channel.id;
   const [isConnecting, setIsConnecting] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [videoOnly, setVideoOnly] = useState(false);
+
+  // Local pre-join mute preference; synced into voice state after joining.
+  const [preJoinMuted, setPreJoinMuted] = useState(false);
 
   const { can } = useMultipleChannelPermissions(channel.id, ['connect_voice']);
   const canConnect = can('connect_voice');
 
   const handleJoin = async () => {
     setIsConnecting(true);
-    try { await joinChannel(channel.id, channel.name, voiceState.serverName || 'Server'); }
-    finally { setIsConnecting(false); }
+    try {
+      await joinChannel(channel.id, channel.name, serverName || voiceState.serverName || 'Server');
+      if (preJoinMuted && !voiceState.isMuted) {
+        await toggleMute();
+      }
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
-  if (!isConnected && participants.length === 0) {
+  // Keep preJoin state in sync when actually connected
+  useEffect(() => {
+    if (isConnected) setPreJoinMuted(voiceState.isMuted);
+  }, [isConnected, voiceState.isMuted]);
+
+  const onlineCount = members.filter(m => {
+    const s = (m as any).status;
+    return s === 'online' || s === 'idle' || s === 'dnd';
+  }).length;
+
+  // Apply "video only" filter when toggled
+  const visibleParticipants = videoOnly
+    ? participants.filter(p => {
+        const hasVideo = p.user_id === user?.id ? !!localCameraStream : remoteVideoStreams.has(p.user_id);
+        return hasVideo || p.streaming;
+      })
+    : participants;
+
+  const header = (
+    <MobileChannelHeader
+      channelName={channel.name}
+      channelType="voice"
+      onlineCount={onlineCount}
+      onBack={onBack}
+      onOpenDetails={() => setDetailsOpen(true)}
+      rightSlot={
+        <button
+          onClick={() => setInviteOpen(true)}
+          className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10"
+          aria-label="Inviter"
+        >
+          <UserPlus className="w-5 h-5 text-foreground" />
+        </button>
+      }
+    />
+  );
+
+  const detailsSheet = (
+    <VoiceChannelDetailsSheet
+      open={detailsOpen}
+      onOpenChange={setDetailsOpen}
+      channel={channel}
+      serverId={serverId}
+      serverName={serverName}
+      ownerId={ownerId}
+      members={members}
+      onOpenDM={onOpenDM}
+      isDeafened={voiceState.isDeafened}
+      onToggleDeafen={toggleDeafen}
+      videoOnly={videoOnly}
+      onToggleVideoOnly={setVideoOnly}
+    />
+  );
+
+  // Pre-join state
+  if (!isConnected) {
     return (
       <div className="flex-1 flex flex-col bg-background h-full">
-        <MobileVoiceHeader channelName={channel.name} onBack={onBack} isDeafened={voiceState.isDeafened} onToggleDeafen={toggleDeafen} canShowDeafen={false} />
-        <VoiceEmptyState
-          channelName={channel.name}
-          onJoin={canConnect ? handleJoin : undefined}
+        {header}
+        <MobileVoicePreJoin
+          participantCount={participants.length}
+          isMuted={preJoinMuted}
           isConnecting={isConnecting}
-          permissionDenied={!canConnect}
+          canConnect={canConnect}
+          onToggleMuted={() => setPreJoinMuted(v => !v)}
+          onJoin={handleJoin}
+          onOpenChat={onOpenChat}
         />
+        {detailsSheet}
+        {inviteOpen && (
+          <CreateInviteModal
+            serverId={serverId}
+            channelName={channel.name}
+            onClose={() => setInviteOpen(false)}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div className="flex-1 flex flex-col bg-background h-full relative">
-      <MobileVoiceHeader
-        channelName={channel.name}
-        onBack={onBack}
-        isDeafened={voiceState.isDeafened}
-        onToggleDeafen={toggleDeafen}
-        canShowDeafen={isConnected}
-      />
+      {header}
 
       {/* Grid area */}
       <div className="flex-1 overflow-y-auto voice-gradient-bg">
         <VoiceParticipantGrid
-          participants={participants}
+          participants={visibleParticipants}
           speakingUsers={speakingUsers || new Set()}
           audioLevels={audioLevels}
-          localCameraStream={isConnected ? localCameraStream : null}
-          localScreenStream={isConnected ? localScreenStream : null}
+          localCameraStream={localCameraStream}
+          localScreenStream={localScreenStream}
           remoteVideoStreams={remoteVideoStreams}
           remoteScreenStreams={remoteScreenStreams}
           channelId={channel.id}
@@ -75,62 +163,28 @@ export function MobileVoiceChannelView({ channel, onBack }: Props) {
       </div>
 
       {/* Add people row */}
-      {isConnected && (
-        <button className="flex items-center gap-3 px-4 py-3 border-t border-white/5 active:bg-white/5 transition-colors">
-          <div className="w-10 h-10 rounded-full bg-[hsl(var(--surface-1))] flex items-center justify-center shrink-0">
-            <UserPlus className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="text-sm font-semibold text-white">Ajouter au salon vocal</div>
-            <div className="text-xs text-muted-foreground">Invite des amis à te rejoindre</div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-muted-foreground" />
-        </button>
-      )}
-
-      {/* Join button when not connected */}
-      {!isConnected && (
-        <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <Button
-            onClick={handleJoin}
-            disabled={isConnecting || !canConnect}
-            className="w-full bg-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/90 text-white py-6 text-base rounded-full font-semibold"
-          >
-            {!canConnect ? 'Accès refusé' : isConnecting ? 'Connexion...' : 'Rejoindre le salon'}
-          </Button>
+      <button
+        onClick={() => setInviteOpen(true)}
+        className="flex items-center gap-3 px-4 py-3 border-t border-white/5 active:bg-white/5 transition-colors"
+      >
+        <div className="w-10 h-10 rounded-full bg-[hsl(var(--surface-1))] flex items-center justify-center shrink-0">
+          <UserPlus className="w-5 h-5 text-foreground" />
         </div>
+        <div className="flex-1 text-left">
+          <div className="text-sm font-semibold text-foreground">Ajouter au salon vocal</div>
+          <div className="text-xs text-muted-foreground">Invite des amis à te rejoindre</div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+      </button>
+
+      {detailsSheet}
+      {inviteOpen && (
+        <CreateInviteModal
+          serverId={serverId}
+          channelName={channel.name}
+          onClose={() => setInviteOpen(false)}
+        />
       )}
     </div>
-  );
-}
-
-function MobileVoiceHeader({ channelName, onBack, isDeafened, onToggleDeafen, canShowDeafen }: { channelName: string; onBack: () => void; isDeafened: boolean; onToggleDeafen: () => void; canShowDeafen: boolean }) {
-  return (
-    <header className="h-14 flex items-center justify-between px-3 bg-background shrink-0">
-      <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10" aria-label="Réduire">
-        <ChevronDown className="w-6 h-6 text-white" />
-      </button>
-      <button className="flex-1 flex items-center justify-center gap-1 min-w-0" onClick={onBack}>
-        <span className="font-bold text-white truncate">{channelName}</span>
-        <ChevronRight className="w-4 h-4 text-white shrink-0" />
-      </button>
-      <div className="flex items-center gap-1">
-        {canShowDeafen && (
-          <button
-            onClick={onToggleDeafen}
-            className={cn(
-              'w-10 h-10 flex items-center justify-center rounded-full',
-              isDeafened ? 'bg-destructive text-destructive-foreground' : 'bg-white text-black'
-            )}
-            aria-label="Sourdine casque"
-          >
-            {isDeafened ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
-        )}
-        <button className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10" aria-label="Ajouter">
-          <UserPlus className="w-5 h-5 text-white" />
-        </button>
-      </div>
-    </header>
   );
 }

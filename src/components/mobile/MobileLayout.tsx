@@ -9,6 +9,7 @@ import { MobileProfileView } from './MobileProfileView';
 import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { MobileVoiceChannelView } from './MobileVoiceChannelView';
+import { MobileChannelHeader } from './MobileChannelHeader';
 import { VoicePiP } from './VoicePiP';
 import { StageChannel } from '@/components/channels/StageChannel';
 import { MediaChannel } from '@/components/channels/MediaChannel';
@@ -408,6 +409,7 @@ export function MobileLayout({
             serverId={currentServer.id}
             members={memberListData}
             ownerId={currentServer.owner_id || ''}
+            serverName={currentServer.name}
             onOpenDM={onOpenDM}
             onBack={handleBackToChannels}
           />
@@ -448,7 +450,18 @@ export function MobileLayout({
           />
         );
       case 'stage':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><StageChannel {...commonProps} serverId={currentServer.id} /></FullScreenWrapper>;
+        return (
+          <div className="flex flex-col h-full">
+            <MobileChannelHeader
+              channelName={channelForChat.name}
+              channelType="stage"
+              onBack={handleBackToChannels}
+            />
+            <div className="flex-1 overflow-hidden">
+              <StageChannel {...commonProps} serverId={currentServer.id} />
+            </div>
+          </div>
+        );
       case 'link': {
         // Safety net: a link channel reached the chat view — open the external URL modal and bounce back
         const url = (channelForChat.description as string | undefined) || '';

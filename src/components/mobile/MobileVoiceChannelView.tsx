@@ -27,9 +27,8 @@ export function MobileVoiceChannelView({ channel, onBack }: Props) {
   const isConnected = voiceState.channelId === channel.id;
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const { can } = useMultipleChannelPermissions(channel.id, ['connect_voice', 'video']);
+  const { can } = useMultipleChannelPermissions(channel.id, ['connect_voice']);
   const canConnect = can('connect_voice');
-  const canVideo = can('video');
 
   const handleJoin = async () => {
     setIsConnecting(true);

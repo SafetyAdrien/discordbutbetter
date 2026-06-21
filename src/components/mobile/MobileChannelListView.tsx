@@ -79,7 +79,7 @@ interface MobileChannelListViewProps {
   categories: Category[];
   orphanChannels?: Channel[];
   onBack: () => void;
-  onChannelSelect: (channelId: string, channelType: string) => void;
+  onChannelSelect: (channelId: string, channelType: string, channelName?: string) => void;
   onOpenSettings?: (initialTab?: string) => void;
   embedded?: boolean;
 }
@@ -678,7 +678,7 @@ export function MobileChannelListView({
                       if (url) setExternalLinkModal({ url });
                       return;
                     }
-                    setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
+                    setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type, ch.name);
                   }}
                   {...chLongPressHandlers}
                   className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
@@ -807,7 +807,7 @@ export function MobileChannelListView({
                             if (url) setExternalLinkModal({ url });
                             return;
                           }
-                          setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
+                          setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type, ch.name);
                         }}
                         {...chLongPressHandlers}
                         className={cn("channel-item w-full", activeChannelId === ch.id && "active")}

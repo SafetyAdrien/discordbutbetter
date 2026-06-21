@@ -94,7 +94,7 @@ export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif'
 
 export function hasInlineMarkdown(content: string): boolean {
   if (!content) return false;
-  return /(\*\*.+?\*\*|\*.+?\*|__.+?__|~~.+?~~|`.+?`|\|\|.+?\|\||\[.+?\]\(.+?\))/.test(content);
+  return /(__\*\*\*[^\n*_][^\n]*?\*\*\*__|\*\*\*__[^\n*_][^\n]*?__\*\*\*|___[^\n_][^\n]*?___|__\*\*[^\n*_][^\n]*?\*\*__|\*\*__[^\n*_][^\n]*?__\*\*|__\*[^\n*_][^\n]*?\*__|\*__[^\n*_][^\n]*?__\*|\*\*\*[^\n*][^\n]*?\*\*\*|\*\*[^\n*][^\n]*?\*\*|__[^\n_][^\n]*?__|~~[^\n~][^\n]*?~~|`[^`\n]+?`|\|\|[^|\n]+?\|\||\[[^\]\n]+?\]\([^)\n]+?\)|(?<!\*)\*[^*\n]+?\*(?!\*)|(?<!_)_[^_\n]+?_(?!_))/.test(content);
 }
 
 export function hasInlineMentions(content: string, entries?: MentionEntry[]): boolean {
@@ -104,6 +104,12 @@ export function hasInlineMentions(content: string, entries?: MentionEntry[]): bo
     return entries.some(e => content.includes(e.display));
   }
   return false;
+}
+
+export function hasOverlayMarkdown(content: string, mentionEntries?: MentionEntry[]): boolean {
+  if (!content) return false;
+  const lines = parseLines(content);
+  return lines.some((line) => line.type !== 'normal') || hasInlineMarkdown(content) || hasInlineMentions(content, mentionEntries);
 }
 
 export function getLineTypeAtCursor(content: string, cursorPos: number): OverlayLine['type'] {

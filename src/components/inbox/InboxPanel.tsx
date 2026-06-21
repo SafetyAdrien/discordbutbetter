@@ -1,64 +1,81 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { DiscordInbox as Inbox } from '@/components/icons/DiscordInbox';
 import { cn } from '@/lib/utils';
 import { 
-  
   Check, 
   X, 
   Trash2, 
   CheckCheck, 
   Loader2,
   AlertTriangle,
-  Bell
+  Bell,
+  AtSign,
+  MessageSquare,
+  MessagesSquare,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
-  useNotifications,
   useMarkAllNotificationsAsRead,
+  useMarkNotificationAsRead,
   useDeleteNotification,
   useRespondToDeletionRequest,
   ServerNotification,
 } from '@/hooks/useNotifications';
+import { useUnifiedNotifications, type UnifiedNotification } from '@/hooks/useUnifiedNotifications';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useMarkChannelAsRead } from '@/hooks/useMarkChannelAsRead';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export function InboxPanel() {
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { items, isLoading } = useUnifiedNotifications();
   const markAllRead = useMarkAllNotificationsAsRead();
+  const markRead = useMarkNotificationAsRead();
   const deleteNotification = useDeleteNotification();
   const respondToDeletion = useRespondToDeletionRequest();
-  
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { markAsRead: markDMRead } = useUnreadCounts();
+  const markChannelRead = useMarkChannelAsRead();
 
-  const unreadCount = notifications.filter(n => n.status === 'pending').length;
+  const unreadCount = useMemo(() => items.filter(n => n.isUnread).length, [items]);
+  const mentionCount = useMemo(
+    () => items.reduce((sum, n) => sum + (n.mentionCount || 0), 0),
+    [items],
+  );
 
-  const toggleSelect = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
+  const markItemRead = (notification: UnifiedNotification) => {
+    if (notification.source === 'channel_mention' && notification.channelId) {
+      void markChannelRead(notification.channelId, notification.serverId);
+      return;
     }
-    setSelectedIds(newSet);
+    if (notification.source === 'dm' && notification.conversationId) {
+      markDMRead.mutate(notification.conversationId);
+      return;
+    }
+    if (notification.isUnread) markRead.mutate((notification.raw as any).id);
   };
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === notifications.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(notifications.map(n => n.id)));
-    }
-  };
-
-  const handleDeleteSelected = () => {
-    selectedIds.forEach(id => {
-      deleteNotification.mutate(id);
+  const handleMarkAllRead = () => {
+    markAllRead.mutate();
+    const seenChannels = new Set<string>();
+    const seenDMs = new Set<string>();
+    items.forEach((item) => {
+      if (item.source === 'channel_mention' && item.channelId && !seenChannels.has(item.channelId)) {
+        seenChannels.add(item.channelId);
+        void markChannelRead(item.channelId, item.serverId);
+      }
+      if (item.source === 'dm' && item.conversationId && item.isUnread && !seenDMs.has(item.conversationId)) {
+        seenDMs.add(item.conversationId);
+        markDMRead.mutate(item.conversationId);
+      }
     });
-    setSelectedIds(new Set());
+  };
+
+  const handleDelete = (notification: UnifiedNotification) => {
+    if (notification.source === 'server_notification') deleteNotification.mutate((notification.raw as any).id);
+    else markItemRead(notification);
   };
 
   const handleRespond = (notificationId: string, accept: boolean) => {
@@ -79,29 +96,19 @@ export function InboxPanel() {
       <div className="h-12 px-4 flex items-center gap-4 border-b border-border">
         <Inbox className="w-5 h-5 text-muted-foreground" />
         <h2 className="font-semibold">Boîte de réception</h2>
-        {unreadCount > 0 && (
+        {mentionCount > 0 ? (
           <Badge variant="destructive" className="text-xs">
-            {unreadCount}
+            {mentionCount > 99 ? '99+' : mentionCount}
           </Badge>
+        ) : unreadCount > 0 && (
+          <span className="w-2 h-2 rounded-full bg-foreground" aria-label="Notifications non lues" />
         )}
         
         <div className="flex items-center gap-2 ml-auto">
-          {selectedIds.size > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDeleteSelected}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Supprimer ({selectedIds.size})
-            </Button>
-          )}
-          
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => markAllRead.mutate()}
+            onClick={handleMarkAllRead}
             disabled={markAllRead.isPending || unreadCount === 0}
           >
             <CheckCheck className="w-4 h-4 mr-1" />
@@ -111,7 +118,7 @@ export function InboxPanel() {
       </div>
 
       {/* Notifications List */}
-      {notifications.length === 0 ? (
+      {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center p-8">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <Bell className="w-8 h-8 text-muted-foreground" />
@@ -123,27 +130,13 @@ export function InboxPanel() {
         </div>
       ) : (
         <ScrollArea className="max-h-80">
-          {/* Select all row */}
-          <div className="px-4 py-2 border-b border-border bg-muted/30 sticky top-0">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={selectedIds.size === notifications.length && notifications.length > 0}
-                onCheckedChange={toggleSelectAll}
-              />
-              <span className="text-sm text-muted-foreground">
-                Tout sélectionner
-              </span>
-            </label>
-          </div>
-          
           <div className="divide-y divide-border">
-            {notifications.map((notification) => (
+            {items.map((notification) => (
               <NotificationItem
                 key={notification.id}
                 notification={notification}
-                isSelected={selectedIds.has(notification.id)}
-                onToggleSelect={() => toggleSelect(notification.id)}
-                onDelete={() => deleteNotification.mutate(notification.id)}
+                onMarkRead={() => markItemRead(notification)}
+                onDelete={() => handleDelete(notification)}
                 onRespond={handleRespond}
                 isResponding={respondToDeletion.isPending}
               />
@@ -156,9 +149,8 @@ export function InboxPanel() {
 }
 
 interface NotificationItemProps {
-  notification: ServerNotification;
-  isSelected: boolean;
-  onToggleSelect: () => void;
+  notification: UnifiedNotification;
+  onMarkRead: () => void;
   onDelete: () => void;
   onRespond: (id: string, accept: boolean) => void;
   isResponding: boolean;
@@ -166,14 +158,21 @@ interface NotificationItemProps {
 
 function NotificationItem({ 
   notification, 
-  isSelected, 
-  onToggleSelect,
+  onMarkRead,
   onDelete,
   onRespond,
   isResponding,
 }: NotificationItemProps) {
-  const isUnread = notification.status === 'pending';
-  const isDeletionRequest = notification.type === 'deletion_request';
+  const isUnread = notification.isUnread;
+  const rawServer = notification.source === 'server_notification' ? notification.raw as ServerNotification : null;
+  const isDeletionRequest = rawServer?.type === 'deletion_request' || rawServer?.type === 'server_deletion_request';
+  const KindIcon = notification.kind === 'mention'
+    ? AtSign
+    : notification.kind === 'dm'
+      ? MessagesSquare
+      : notification.kind === 'reply'
+        ? MessageSquare
+        : AlertTriangle;
 
   return (
     <div
@@ -182,19 +181,21 @@ function NotificationItem({
         isUnread && "bg-primary/5"
       )}
     >
-      <Checkbox
-        checked={isSelected}
-        onCheckedChange={onToggleSelect}
-        className="mt-1"
-      />
-      
       {/* Server/Sender icon */}
-      <Avatar className="w-10 h-10 flex-shrink-0">
-        <AvatarImage src={notification.server?.icon_url || notification.sender?.avatar_url || undefined} />
+      <div className="relative flex-shrink-0">
+      <Avatar className="w-10 h-10">
+        <AvatarImage src={notification.avatarUrl || notification.serverIconUrl || undefined} />
         <AvatarFallback className="bg-primary/20 text-primary">
-          {notification.server?.name?.charAt(0) || notification.sender?.display_name?.charAt(0) || '?'}
+          {notification.fallback || '?'}
         </AvatarFallback>
       </Avatar>
+        <span className={cn(
+          'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-background',
+          notification.mentionCount > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground'
+        )}>
+          <KindIcon className="w-2.5 h-2.5" />
+        </span>
+      </div>
       
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
@@ -206,29 +207,33 @@ function NotificationItem({
               {notification.message}
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              {formatDistanceToNow(new Date(notification.created_at), { 
+              {formatDistanceToNow(new Date(notification.createdAt), { 
                 addSuffix: true,
                 locale: fr 
               })}
-              {notification.server?.name && (
-                <> · {notification.server.name}</>
+              {notification.serverName && (
+                <> · {notification.serverName}</>
               )}
             </p>
           </div>
           
-          {isUnread && (
-            <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
+          {notification.mentionCount > 0 ? (
+            <Badge variant="destructive" className="h-5 min-w-5 px-1 text-[10px] flex items-center justify-center">
+              {notification.mentionCount > 99 ? '99+' : notification.mentionCount}
+            </Badge>
+          ) : isUnread && (
+            <div className="w-2 h-2 rounded-full bg-foreground flex-shrink-0 mt-2" />
           )}
         </div>
         
         {/* Action buttons for deletion requests */}
-        {isDeletionRequest && notification.status === 'pending' && (
+        {isDeletionRequest && rawServer?.status === 'pending' && (
           <div className="flex gap-2 mt-3">
             <Button
               size="sm"
               variant="default"
               className="bg-green-600 hover:bg-green-700"
-              onClick={() => onRespond(notification.id, true)}
+              onClick={() => onRespond(rawServer.id, true)}
               disabled={isResponding}
             >
               <Check className="w-4 h-4 mr-1" />
@@ -237,7 +242,7 @@ function NotificationItem({
             <Button
               size="sm"
               variant="destructive"
-              onClick={() => onRespond(notification.id, false)}
+              onClick={() => onRespond(rawServer.id, false)}
               disabled={isResponding}
             >
               <X className="w-4 h-4 mr-1" />
@@ -247,32 +252,41 @@ function NotificationItem({
         )}
         
         {/* Status for responded requests */}
-        {isDeletionRequest && notification.status !== 'pending' && (
+        {isDeletionRequest && rawServer?.status !== 'pending' && (
           <div className="mt-2">
             <Badge 
-              variant={notification.status === 'accepted' ? 'default' : 'secondary'}
+              variant={rawServer?.status === 'accepted' ? 'default' : 'secondary'}
               className={cn(
-                notification.status === 'accepted' && "bg-green-600",
-                notification.status === 'rejected' && "bg-red-600"
+                rawServer?.status === 'accepted' && "bg-green-600",
+                rawServer?.status === 'rejected' && "bg-red-600"
               )}
             >
-              {notification.status === 'accepted' ? 'Acceptée' : 'Refusée'}
+              {rawServer?.status === 'accepted' ? 'Acceptée' : 'Refusée'}
             </Badge>
           </div>
         )}
       </div>
       
-      {/* Delete button - only for non-pending notifications */}
-      {notification.status !== 'pending' && (
+      <div className="flex items-center gap-1">
+        {isUnread && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onMarkRead}
+          >
+            <CheckCheck className="w-4 h-4 text-muted-foreground" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-0 hover:opacity-100 group-hover:opacity-100"
+          className="h-8 w-8"
           onClick={onDelete}
         >
           <Trash2 className="w-4 h-4 text-muted-foreground" />
         </Button>
-      )}
+      </div>
     </div>
   );
 }

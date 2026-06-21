@@ -13,13 +13,12 @@ export interface ChannelUnreadInfo {
 export function useChannelUnreadCounts(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
 
   const cachedKey = serverId && user?.id ? `channel-unread:${serverId}:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ChannelUnreadInfo>>(cachedKey) : undefined;
 
-  // Realtime — single debounced invalidation
+  // Realtime — direct cache patching for instant badges
   useEffect(() => {
     if (!user || !serverId) return;
 
@@ -105,7 +104,6 @@ export function useChannelUnreadCounts(serverId: string | null) {
       .subscribe();
 
     return () => {
-      clearTimeout(debounceRef.current);
       supabase.removeChannel(mentionsChannel);
       supabase.removeChannel(messagesChannel);
     };

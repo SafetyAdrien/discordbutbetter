@@ -198,11 +198,24 @@ function MobileVoiceHeader({ channelName, onBack, isDeafened, onToggleDeafen, ca
   );
 }
 
-function PillButton({ icon, onClick, active, danger }: { icon: React.ReactNode; onClick?: () => void; active?: boolean; danger?: boolean }) {
+function PillButton({
+  icon,
+  onClick,
+  active,
+  danger,
+  'aria-label': ariaLabel,
+}: {
+  icon: React.ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  danger?: boolean;
+  'aria-label'?: string;
+}) {
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
+      aria-label={ariaLabel}
       className={cn(
         'w-12 h-12 rounded-full flex items-center justify-center transition-colors active:scale-95',
         'bg-white/10 text-white',

@@ -100,7 +100,7 @@ function SortableMobileServerIcon({
       >
         <div
           className={cn(
-            'absolute -left-[14px] w-[4px] rounded-r-full bg-foreground',
+            'absolute -left-[10px] w-[4px] rounded-r-full bg-foreground',
             isActive
               ? 'h-10'
               : hasUnread || mentionCount > 0

@@ -720,6 +720,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Audio filters
         audioFilters,
         setAudioFilter,
+        // Output volume
+        outputVolume,
+        setOutputVolume,
       }}
     >
       {children}
@@ -761,6 +764,8 @@ const defaultVoiceContext: VoiceContextType = {
   setVadSensitivity: () => {},
   audioFilters: { deEsser: true, lowShelf: true, highPass: true },
   setAudioFilter: () => {},
+  outputVolume: 100,
+  setOutputVolume: () => {},
 };
 
 export function useVoice() {

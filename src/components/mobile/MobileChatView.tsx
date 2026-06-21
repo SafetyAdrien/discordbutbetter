@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Users, Pin, Bell, Search, X, MoreVertical, Rss } from 'lucide-react';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -31,6 +31,7 @@ import { useServers } from '@/hooks/useServers';
 import { MobileMoreActionsSheet, MobileMoreAction } from '@/components/mobile/MobileMoreActionsSheet';
 import { MobileChannelDetailSheet } from '@/components/mobile/MobileChannelDetailSheet';
 import type { Message, User } from '@/types/app';
+import { useMarkChannelAsRead } from '@/hooks/useMarkChannelAsRead';
 import type { MemberWithProfile } from '@/hooks/useMembers';
 
 const channelIcons: Record<string, React.ElementType> = {
@@ -134,6 +135,16 @@ export function MobileChatView({
     toggleLike,
     likedCount,
   } = useSummaries(channel.id);
+
+  // Auto mark channel as read when viewing it (Mobile)
+  const markChannelAsRead = useMarkChannelAsRead();
+  useEffect(() => {
+    if (!channel?.id) return;
+    const t = setTimeout(() => {
+      markChannelAsRead(channel.id, serverId || null);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [channel?.id, serverId, messages.length, markChannelAsRead]);
 
   // Build kebab actions
   const moreActions: MobileMoreAction[] = [

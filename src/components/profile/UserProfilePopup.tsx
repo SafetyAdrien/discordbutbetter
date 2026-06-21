@@ -551,12 +551,21 @@ export function UserProfilePopup({
                   </button>
                 )}
               </>
+            ) : isOwnProfile ? (
+              <button
+                type="button"
+                onClick={() => setServerProfileEditOpen(true)}
+                className="text-xs text-muted-foreground/70 hover:text-primary transition-colors text-left w-full"
+              >
+                Ajouter une biographie…
+              </button>
             ) : (
               <p className="text-xs text-muted-foreground/50">
                 Aucune biographie définie.
               </p>
             )}
           </div>
+
 
           {/* Roles */}
           {((displayRoles && displayRoles.length > 0) ||

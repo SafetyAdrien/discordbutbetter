@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
-import { ChevronRight, Settings, EarOff, Video, UserPlus, Wrench } from 'lucide-react';
-import { useState } from 'react';
+import { motion, useMotionValue, PanInfo } from 'framer-motion';
+import { ChevronDown, ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
+import { useState, useRef } from 'react';
 
 interface Props {
   channelName: string;
@@ -48,30 +48,46 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
   const [deafen, setDeafen] = useState(false);
   const [onlyVideos, setOnlyVideos] = useState(false);
   const [debugOverlay, setDebugOverlay] = useState(false);
+  const y = useMotionValue(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = (panelRef.current?.offsetHeight ?? window.innerHeight) * 0.2;
+    if (info.offset.y > threshold || info.velocity.y > 500) {
+      onClose();
+    } else {
+      y.set(0);
+    }
+  };
 
   return (
     <motion.div
       key="voice-settings-panel"
+      ref={panelRef}
       initial={{ y: '100%' }}
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
-      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed inset-0 z-[60] bg-[hsl(var(--surface-1))] flex flex-col overflow-y-auto"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.18 }}
+      dragListener={true}
+      onDragEnd={handleDragEnd}
+      style={{ y }}
+      className="fixed inset-0 z-[60] bg-[hsl(var(--surface-1))] flex flex-col overflow-y-auto touch-pan-y"
     >
-      {/* Drag handle */}
-      <div className="w-full pt-2 pb-1 flex justify-center shrink-0">
+      {/* Header */}
+      <div className="px-4 pt-12 pb-4 flex items-center justify-between shrink-0">
         <button
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="w-10 h-1 rounded-full bg-white/20"
-        />
-      </div>
-
-      {/* Header */}
-      <div className="px-6 pt-6 pb-8 flex items-center justify-center gap-2 shrink-0">
-        <span className="text-2xl">🌕</span>
-        <h2 className="text-xl font-bold text-foreground truncate">{channelName}</h2>
+          className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
+        >
+          <ChevronDown className="w-6 h-6 text-foreground" />
+        </button>
+        <h2 className="text-lg font-bold text-foreground truncate px-2">{channelName}</h2>
+        <div className="w-10 shrink-0" />
       </div>
 
       <div className="flex-1 px-3 pb-8 space-y-4">
@@ -104,7 +120,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
           </button>
           <div className="mx-4 h-px bg-white/5" />
           <ToggleRow
-            icon={<EarOff className="w-6 h-6" />}
+            icon={<Ear className="w-6 h-6" />}
             title="Deafen"
             subtitle="Disables all sound"
             value={deafen}

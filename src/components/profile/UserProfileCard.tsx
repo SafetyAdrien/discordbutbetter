@@ -135,7 +135,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             <div className="relative">
               <Avatar
                 className={cn(
-                  "w-9 h-9 transition-all",
+                  "w-8 h-8 transition-all",
                   profile?.id && speakingUsers?.has(profile.id)
                     ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring"
                     : "ring-2 ring-primary/30",
@@ -153,7 +153,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
               />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-[15px] font-semibold truncate">{profile?.display_name || "Chargement..."}</p>
+              <p className="text-sm font-semibold truncate">{profile?.display_name || "Chargement..."}</p>
               <div className="text-xs text-muted-foreground truncate">{getDisplayText()}</div>
             </div>
           </button>

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { isDirectMentionForUser } from '@/lib/mentions';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;
@@ -13,6 +14,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const optimisticMentionMessageIdsRef = useRef<Set<string>>(new Set());
 
   const cachedKey = serverId && user?.id ? `channel-unread:${serverId}:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ChannelUnreadInfo>>(cachedKey) : undefined;
@@ -30,16 +32,47 @@ export function useChannelUnreadCounts(serverId: string | null) {
         serverChannelIds = new Set(data?.map(c => c.id) || []);
       });
 
+    const patchChannel = (channelId: string, patch: Partial<ChannelUnreadInfo>) => {
+      queryClient.setQueryData<Record<string, ChannelUnreadInfo>>(
+        ['channel-unread-counts', serverId, user.id],
+        (old = {}) => {
+          const current = old[channelId] || { hasUnread: false, mentionCount: 0 };
+          const next = { ...current, ...patch };
+          if (!next.hasUnread && next.mentionCount <= 0) {
+            const { [channelId]: _, ...rest } = old;
+            return rest;
+          }
+          return { ...old, [channelId]: next };
+        }
+      );
+    };
+
     const mentionsChannel = supabase
       .channel(`channel-mentions-${serverId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'channel_mentions' },
-        () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
-          }, 800);
+        { event: 'INSERT', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const mention = payload.new as { channel_id?: string; message_id?: string };
+          if (!mention.channel_id) return;
+          if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
+          if (mention.message_id && optimisticMentionMessageIdsRef.current.delete(mention.message_id)) return;
+          patchChannel(mention.channel_id, {
+            mentionCount: ((queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id]?.mentionCount || 0) + 1,
+          });
+          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const mention = payload.old as { channel_id?: string };
+          if (!mention.channel_id) return;
+          if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
+          const current = (queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id];
+          patchChannel(mention.channel_id, { mentionCount: Math.max(0, (current?.mentionCount || 0) - 1) });
+          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
         }
       )
       .subscribe();
@@ -50,13 +83,19 @@ export function useChannelUnreadCounts(serverId: string | null) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          const channelId = (payload.new as any)?.channel_id;
+          const newMsg = payload.new as any;
+          const channelId = newMsg?.channel_id;
           if (serverChannelIds && channelId && !serverChannelIds.has(channelId)) return;
+          if (!channelId || newMsg.author_id === user.id) return;
 
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
-          }, 800);
+          const isMention = isDirectMentionForUser(newMsg.content, user.id);
+          const current = (queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[channelId];
+          if (isMention && newMsg.id) optimisticMentionMessageIdsRef.current.add(newMsg.id);
+          patchChannel(channelId, {
+            hasUnread: true,
+            mentionCount: (current?.mentionCount || 0) + (isMention ? 1 : 0),
+          });
+          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
         }
       )
       .subscribe();

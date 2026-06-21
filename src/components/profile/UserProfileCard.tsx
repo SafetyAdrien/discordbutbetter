@@ -121,7 +121,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   };
 
   return (
-    <div className="h-14 px-2 flex items-center gap-2 bg-[hsl(var(--user-panel))] border-t border-border/50">
+    <div
+      className="h-14 px-2 py-1.5 mx-2 mb-2 rounded-2xl flex items-center gap-2 bg-[hsl(var(--surface-2))] border border-border/40"
+      style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+    >
       <Popover>
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">

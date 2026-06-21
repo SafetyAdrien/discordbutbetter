@@ -1,6 +1,6 @@
-import { motion, useMotionValue, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useDragControls, PanInfo } from 'framer-motion';
 import { ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface Props {
   channelName: string;
@@ -50,9 +50,15 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
   const [debugOverlay, setDebugOverlay] = useState(false);
   const y = useMotionValue(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [panelHeight, setPanelHeight] = useState(window.innerHeight);
+  const dragControls = useDragControls();
+
+  useEffect(() => {
+    setPanelHeight(panelRef.current?.offsetHeight ?? window.innerHeight);
+  }, []);
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = (panelRef.current?.offsetHeight ?? window.innerHeight) * 0.2;
+    const threshold = panelHeight * 0.2;
     if (info.offset.y > threshold || info.velocity.y > 500) {
       onClose();
     } else {
@@ -69,15 +75,19 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
       exit={{ y: '100%' }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
       drag="y"
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0, bottom: 0.18 }}
-      dragListener={true}
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: 0, bottom: panelHeight }}
+      dragElastic={{ top: 0, bottom: 0 }}
       onDragEnd={handleDragEnd}
       style={{ y }}
       className="fixed inset-x-0 bottom-0 z-[60] h-[90vh] max-h-[90vh] rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 flex flex-col overflow-y-auto touch-pan-y shadow-2xl"
     >
       {/* Drag handle */}
-      <div className="w-full h-7 flex items-center justify-center shrink-0">
+      <div
+        className="w-full h-7 flex items-center justify-center shrink-0 touch-none"
+        onPointerDown={(e) => dragControls.start(e.nativeEvent)}
+      >
         <div className="w-[76px] h-2 rounded-full bg-[hsl(var(--surface-3))]" />
       </div>
 

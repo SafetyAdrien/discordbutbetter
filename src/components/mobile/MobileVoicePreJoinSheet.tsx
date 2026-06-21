@@ -95,12 +95,12 @@ export function MobileVoicePreJoinSheet({
             exit={{ y: '100%' }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
             drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.18 }}
+            dragConstraints={{ top: 0, bottom: sheetHeight }}
+            dragElastic={{ top: 0, bottom: 0 }}
             dragListener={true}
             onDragEnd={handleDragEnd}
             style={{ y }}
-            className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 h-[32vh] max-h-[32vh] flex flex-col shadow-2xl touch-pan-y"
+            className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 h-[32vh] max-h-[32vh] flex flex-col shadow-2xl touch-none"
           >
             {/* Drag handle + top bar */}
             <div className="flex flex-col shrink-0">

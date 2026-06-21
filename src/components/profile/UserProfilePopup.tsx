@@ -890,11 +890,21 @@ function FloatingProfileCard({ children, onClose, cardPosition, showRolePanel, r
 
   useEffect(() => {
     const handleDown = (e: MouseEvent) => {
-      console.log('FloatingProfileCard handleDown', { target: e.target, cardRef: cardRef.current, contains: cardRef.current ? cardRef.current.contains(e.target as Node) : null });
       if (!cardRef.current) return;
-      if (!cardRef.current.contains(e.target as Node)) {
-        onClose();
+      const target = e.target as Element | null;
+      if (!target) return;
+      // Inside our own card
+      if (cardRef.current.contains(target)) return;
+      // Inside any portal "owned" by the card (tooltips, popovers, dropdowns, dialogs, context menus, sheets...)
+      // Radix portals carry these data attributes; Sonner toasts use [data-sonner-toast].
+      if (
+        target.closest(
+          '[data-radix-popper-content-wrapper], [data-radix-portal], [data-radix-tooltip-content], [data-radix-popover-content], [data-radix-dropdown-menu-content], [data-radix-context-menu-content], [data-radix-dialog-content], [data-radix-dialog-overlay], [data-radix-alert-dialog-content], [data-radix-alert-dialog-overlay], [data-radix-hover-card-content], [role="dialog"], [role="menu"], [role="tooltip"], [data-sonner-toast], [data-floating-profile-portal]'
+        )
+      ) {
+        return;
       }
+      onClose();
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();

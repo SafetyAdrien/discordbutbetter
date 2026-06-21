@@ -141,7 +141,7 @@ export function useDMMentionCounts() {
     };
   }, [user, queryClient, convMeta]);
 
-  const mentionCounts = query.data || {};
+  const mentionCounts = useMemo(() => query.data || {}, [query.data]);
   const totalMentionCount = useMemo(
     () => Object.values(mentionCounts).reduce((s, n) => s + (n || 0), 0),
     [mentionCounts],

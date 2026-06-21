@@ -397,7 +397,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
     case 'codeBlock': return <CodeBlock key={key} code={block.content} language={block.language} variant={context.variant} />;
     case 'separator': return <hr key={key} className={cn("border-t border-[hsl(var(--border))]", compact ? "my-1" : "my-2")} />;
     case 'empty': return <br key={key} />;
-    case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && <br />}</React.Fragment>;
+    case 'escapedParagraph': return <React.Fragment key={key}><span>{block.content}</span>{!isLast && !suppressBr && <br />}</React.Fragment>;
     case 'alert': {
       const type = (block.alertType || 'NOTE') as AlertType;
       const meta: Record<AlertType, { Icon: typeof Info; label: string; varName: string }> = {

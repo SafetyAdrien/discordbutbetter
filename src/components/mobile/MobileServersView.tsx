@@ -84,7 +84,7 @@ function SortableMobileServerIcon({
   } as React.CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="relative overflow-visible">
 
       {dropIndicator === 'before' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />
@@ -100,7 +100,7 @@ function SortableMobileServerIcon({
       >
         <div
           className={cn(
-            'absolute -left-[14px] w-[4px] rounded-r-full bg-foreground',
+            'absolute left-0 w-[4px] rounded-r-full bg-foreground z-10',
             isActive
               ? 'h-10'
               : hasUnread || mentionCount > 0
@@ -294,7 +294,7 @@ export function MobileServersView({
       <div
         data-swipe-ignore="true"
         className={cn(
-        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 overflow-y-auto scrollbar-hide'
+        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5'
       )}>
         {/* DM Button */}
         <button
@@ -308,7 +308,7 @@ export function MobileServersView({
         >
           <div
             className={cn(
-              'absolute -left-[14px] w-[4px] rounded-r-full bg-foreground',
+              'absolute left-0 w-[4px] rounded-r-full bg-foreground z-10',
               showDMs
                 ? 'h-10'
                 : totalUnreadDMs > 0

@@ -40,9 +40,9 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, v
             className={`
               mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
               transition-colors duration-100
-                ${isSelf 
-                  ? 'bg-[rgba(250,166,26,0.3)] text-[#faa61a] border-l-2 border-[#faa61a] hover:bg-[rgba(250,166,26,0.5)] max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]' 
-                  : 'bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
+                ${isSelf
+                  ? 'bg-[rgba(88,101,242,0.3)] text-[#5865F2] border-l-2 border-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
+                  : 'bg-[rgba(88,101,242,0.15)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.3)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
                 }
             `}
           >
@@ -76,12 +76,49 @@ interface RoleMentionProps {
   serverId?: string;
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  let h = (hex || '').trim().replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(h) || h.toLowerCase() === '000000') {
+    return `rgba(88,101,242,${alpha})`;
+  }
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function resolveMentionColor(roleColor: string): string {
+  const h = (roleColor || '').trim();
+  if (!h || h.toLowerCase() === '#000000' || h.toLowerCase() === '#99aab5') return '#5865F2';
+  return h;
+}
+
 export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMentionProps) {
+  const color = resolveMentionColor(roleColor);
+  const bgRest = hexToRgba(color, 0.1);
+  const bgHover = hexToRgba(color, 0.3);
+
   const pill = (
     <span
       role="button"
       tabIndex={0}
-      className="mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]"
+      style={
+        {
+          color,
+          backgroundColor: bgRest,
+          ['--mention-bg-hover' as any]: bgHover,
+        } as React.CSSProperties
+      }
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = bgHover;
+        e.currentTarget.style.color = '#ffffff';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = bgRest;
+        e.currentTarget.style.color = color;
+      }}
+      className="mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]"
     >
       @{roleName}
     </span>
@@ -103,10 +140,10 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
           <div className="flex items-center gap-2">
             <div
               className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: roleColor || '#99aab5' }}
+              style={{ backgroundColor: color }}
             />
             <div>
-              <p className="font-semibold" style={{ color: roleColor || '#99aab5' }}>{roleName}</p>
+              <p className="font-semibold" style={{ color }}>{roleName}</p>
               <p className="text-xs text-muted-foreground">Rôle du serveur</p>
             </div>
           </div>

@@ -1,67 +1,54 @@
-## Objectif
+# Mentions — synchronisation visuelle & restyle Discord-like
 
-Étendre les pastilles rouges "mention" (style Discord) à:
-1. Les conversations DM (Desktop `DMList` + Mobile `MobileDMHomeView`).
-2. L'icône Inbox / Notifications (Desktop `InboxButton`, Mobile `MobileProfileView` → Bell, et le compteur du header dans `MobileNotificationsView`).
+## 1. MentionBadge — alignement & animation synchronisés (desktop + mobile)
 
-Règle (cohérente avec la mémoire "Notification distinctions"):
-- Pastille rouge avec compteur = "mention" (message qui vous est adressé).
-- DM 1-on-1: **chaque** message non lu compte comme une mention (la conversation entière vous est adressée).
-- Groupe DM: seuls les `<@me>` explicites (UUID ou Snowflake) comptent comme mention; le reste reste un simple "unread".
+Problème : sur les icônes de serveur (desktop `ServerList.tsx`, mobile `MobileServersView.tsx`) le badge utilise `absolute -top-1.5 -right-1.5` + `border-2` + `animate-badge-pop`. Quand le `count` passe de 1→2 chiffres (cercle → pilule), la largeur change mais l'ancrage `right` reste fixe : le badge "saute" vers la gauche au moment exact d'un update temps réel.
 
-## 1. Hook `useDMMentionCounts`
+Correctifs dans `src/components/ui/MentionBadge.tsx` :
+- Origine de transform stable : ajouter `origin-center` et `transform-gpu` (évite le sub-pixel jitter sur l'animation pop).
+- Garantir un wrapper inline-flex centré qui ne dépend pas du contenu : conserver `h` fixe pour les deux variantes et ajouter `justify-center` + `whitespace-nowrap` + `select-none` + `pointer-events-none` (le badge ne doit jamais intercepter le clic sur l'icône parente).
+- Stabiliser la transition : `transition-[min-width,width] duration-150 ease-out` pour que le passage cercle→pilule soit fluide au lieu d'un saut.
 
-Nouveau hook `src/hooks/useDMMentionCounts.ts`:
-- Entrée: rien (utilise `useAuth`).
-- Fetch:
-  - `dm_participants` de l'utilisateur → ids des conversations.
-  - `dm_conversations` (champ `is_group`) en batch.
-  - `dm_read_states` (last_read_at par conv) en batch.
-  - `dm_messages` filtré: `conversation_id IN (...)`, `created_at > min(last_read_at)`, `author_id != me`, limit 2000.
-- Calcul en mémoire par conv:
-  - 1-on-1: `mentionCount = nombre de messages non lus reçus`.
-  - Groupe: ne compter que les messages dont `content` matche `<@(my_uuid)>` ou `<@(my_snowflake)>` (snowflake calculé une fois via `uuidToSnowflake`).
-- Souscription Realtime sur `dm_messages` (déjà filtrable côté hook) + `dm_read_states` (invalidate debounce 200ms).
-- Cache via `cacheGetSync`/`cacheSetAsync` clé `dm-mention-counts:${user.id}`.
-- Retour: `{ mentionCounts: Record<convId, number>, totalMentionCount: number }`.
+Correctifs aux call-sites avec ancrage absolu (`ServerList.tsx` ×2, `MobileServersView.tsx` ×2) :
+- Remplacer `-top-1.5 -right-1.5` / `-bottom-1 -right-1` par un ancrage centré qui ne dépend plus de la largeur : wrapper `absolute -top-1 -right-1 flex` + sur le badge `translate-x-1/2 -translate-y-0` (ou utiliser `right-0 translate-x-1/2`) → le centre du badge reste à la même coordonnée quelle que soit la largeur.
+- Appliquer rigoureusement les mêmes offsets/`border-2`/`size` entre desktop et mobile pour éviter tout décalage perçu lors d'un switch entre vues.
+- Vérifier que `animate-badge-pop` se déclenche uniquement à l'apparition (passage de 0→n) et pas à chaque incrément : ajouter `key={count > 0 ? 'on' : 'off'}` sur le wrapper pour ne remonter l'animation qu'à la première apparition.
 
-## 2. Hook agrégé `useTotalMentionCount`
+## 2. Mention utilisateur par défaut → bleu Discord
 
-Nouveau `src/hooks/useTotalMentionCount.ts`:
-- Combine:
-  - `useServerUnreadCounts().unreadInfo` → `sum(info.mentionCount)`.
-  - `useDMMentionCounts().totalMentionCount`.
-- Retourne `number`.
+Dans `src/components/chat/mentions/MentionComponents.tsx`, `UserMention` (variant `chat`, branche non-self) utilise actuellement `bg-primary/30 text-[#dee0fc] hover:bg-primary` (teinte violet/indigo du thème). Le remplacer par la teinte bleue Discord déjà utilisée dans la variante `bio` :
+- Repos : `bg-[rgba(88,101,242,0.15)] text-[#5865F2]`
+- Hover : `bg-[rgba(88,101,242,0.3)] text-white`
 
-## 3. Affichage DM list — pastille rouge mention
+Conserver toutes les classes mobile (`max-sm:!min-h-0 …`), le tooltip et le `onClick`.
 
-- **Desktop** `src/components/dm/DMList.tsx`:
-  - Récupérer `mentionCounts` via `useDMMentionCounts`.
-  - Passer `mentionCount` au `DMListItem`.
-  - Remplacer le bloc actuel (badge bg-destructive avec `unreadCount`) par la logique:
-    - `mentionCount > 0` → pastille rouge avec `mentionCount` (style identique à `ChannelList` lignes 715-719: `bg-destructive text-destructive-foreground rounded-full text-xs px-1.5 py-0.5`).
-    - sinon si `unreadCount > 0` → petit point blanc (style "unread dot" déjà utilisé pour les salons sans mention, cf. mémoire).
-- **Mobile** `src/components/mobile/dm/MobileDMHomeView.tsx`:
-  - Même hook, même règle d'affichage à l'endroit où le `unreadCount` est rendu.
+## 3. Self-mention → même teinte bleue (et plus orange)
 
-## 4. Inbox / Notifications — pastille rouge
+Toujours dans `UserMention`, la branche `isSelf` utilise actuellement l'orange `#faa61a`. La demande : "même teinte que celle par défaut" → garder la teinte bleue `#5865F2` mais marquer la self-mention par une intensité plus forte + barre latérale gauche (équivalent visuel Discord highlight) :
+- `bg-[rgba(88,101,242,0.3)] text-[#5865F2] border-l-2 border-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:text-white`
 
-- **Desktop** `src/components/layout/MemberList.tsx` (`InboxButton` lignes 228-256):
-  - Remplacer `unreadCount = notifications.filter(status==='pending').length` par `totalMentionCount = useTotalMentionCount()`.
-  - Conserver le Badge `variant="destructive"` mais branché sur `totalMentionCount` (affichage si > 0, "99+" au-delà).
-  - Garder éventuellement un point blanc supplémentaire si `unreadCount > 0 && totalMentionCount === 0` (cohérence dot/bubble).
-- **Mobile** `src/components/mobile/MobileProfileView.tsx` (bouton Bell lignes 178-188):
-  - Remplacer `notifCount` par `useTotalMentionCount()`; même règle.
-- **Header `MobileNotificationsView`** lignes 170-172, 299: laisser le label "X non lue" inchangé (il représente l'unread général), mais ajouter à côté un sous-compteur rouge si `totalMentionCount > 0` pour cohérence visuelle.
+Aucune autre logique (détection `isSelf`, propagation `currentUserId`) n'est modifiée.
 
-## 5. Aucune migration DB requise
+## 4. RoleMention — couleur du rôle dans le texte (Discord-like)
 
-Tout est dérivé des tables existantes (`dm_messages`, `dm_read_states`, `dm_participants`, `dm_conversations`, `channel_mentions`). Aucune nouvelle table, aucun trigger.
+Dans `RoleMention` (`MentionComponents.tsx`), le pill ignore `roleColor`. Le rendre dynamique :
+- Couleur du texte = `roleColor` (fallback `#5865F2` si rôle sans couleur ou couleur `#000000`/invalide).
+- Fond = même couleur à 10 % d'opacité au repos, 30 % au hover, texte → blanc au hover.
+- Implémentation via `style={{ color, backgroundColor: hexToRgba(color, 0.1) }}` + handlers `onMouseEnter/Leave` pour basculer à 30 % et `color: '#fff'` (ou via une classe `group` + variables CSS inline `--mention-color` / `--mention-bg`, puis classes `bg-[var(--mention-bg)] hover:bg-[color:rgb(from_var(--mention-color)_r_g_b_/_0.3)]`). Approche retenue : variables CSS inline pour éviter les handlers JS.
+  - `style={{ '--mc': color, '--mcb': hexToRgba(color, 0.1), '--mcbh': hexToRgba(color, 0.3) }}`
+  - `className="… text-[color:var(--mc)] bg-[var(--mcb)] hover:bg-[var(--mcbh)] hover:text-white"`
+- Ajouter petit helper `hexToRgba(hex, alpha)` local au fichier (ou dans `src/lib/utils.ts` si déjà absent) — accepter `#rgb`, `#rrggbb`, fallback bleu.
+- `markdown.tsx` passe déjà `roleColor={roleData?.color || '#99aab5'}` : remplacer le fallback `#99aab5` par `#5865F2` pour cohérence quand un rôle n'a pas de couleur (sinon le texte serait gris au lieu de bleu).
 
-## 6. Vérification
+Le `RoleInfoPopup` / Tooltip enveloppant reste inchangé.
 
-- DM 1-on-1: envoyer un message depuis A vers B → pastille rouge "1" sur la ligne DM (Desktop + Mobile) et incrément du compteur Inbox/Bell.
-- Groupe DM: message sans @ → simple point blanc, pas de rouge; message avec `<@B>` → pastille rouge "1".
-- Mention serveur (déjà couverte) → continue d'incrémenter le compteur Inbox/Bell global.
-- Ouvrir la conversation / le salon → le compteur retombe (déjà géré par `useMarkChannelAsRead` et `useUnreadCounts.markAsRead`).
-- `bunx tsc --noEmit`.
+## Détails techniques
+
+Fichiers modifiés :
+- `src/components/ui/MentionBadge.tsx` — stabilité d'ancrage/animation.
+- `src/components/layout/ServerList.tsx` — wrapper d'ancrage centré (2 occurrences).
+- `src/components/mobile/MobileServersView.tsx` — idem (2 occurrences).
+- `src/components/chat/mentions/MentionComponents.tsx` — restyle `UserMention` (default + self) et `RoleMention` (couleur dynamique).
+- `src/lib/markdown.tsx` — fallback couleur rôle `#5865F2`.
+
+Hors scope : pas de changement de logique temps réel (les hooks `useChannelUnreadCounts`, etc. ne sont pas touchés), pas de modification des autres pills (`ChannelMention`, `EveryoneMention`, `SpecialMention`) — seuls user/role/badge sont concernés par la demande.

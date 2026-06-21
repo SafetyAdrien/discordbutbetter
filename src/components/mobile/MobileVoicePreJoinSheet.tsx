@@ -5,6 +5,7 @@ import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobileVoicePreJoin } from './MobileVoicePreJoin';
 import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
+import { MobileVoiceSettingsPanel } from './MobileVoiceSettingsPanel';
 
 interface Props {
   open: boolean;

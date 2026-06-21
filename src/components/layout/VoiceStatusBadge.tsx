@@ -80,8 +80,8 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
         </TooltipProvider>
       </div>
 
-      {/* Ligne 2 : contrôles média — barre pleine largeur avec icônes séparées */}
-      <div className="mt-1 w-full rounded-lg bg-[hsl(var(--surface-1))]/60 px-2 py-1 flex items-center justify-around gap-1">
+      {/* Ligne 2 : contrôles média — 3 boutons séparés avec fond arrondi */}
+      <div className="mt-1 w-full flex items-center justify-center gap-1.5">
         <TooltipProvider delayDuration={200}>
           {/* Vidéo */}
           <Tooltip>
@@ -89,7 +89,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
               <button
                 onClick={() => toggleCamera()}
                 className={cn(
-                  'w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-muted',
+                  'w-7 h-7 rounded-lg bg-[hsl(var(--surface-1))]/60 flex items-center justify-center transition-colors hover:bg-muted',
                   isCameraActive && 'bg-destructive/15 text-destructive hover:bg-destructive/25'
                 )}
               >
@@ -105,7 +105,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
               <button
                 onClick={() => toggleScreenShare()}
                 className={cn(
-                  'w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-muted',
+                  'w-7 h-7 rounded-lg bg-[hsl(var(--surface-1))]/60 flex items-center justify-center transition-colors hover:bg-muted',
                   isScreenSharing && 'bg-[hsl(var(--online))]/15 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/25'
                 )}
               >
@@ -120,7 +120,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
             <TooltipTrigger asChild>
               <button
                 disabled
-                className="w-7 h-7 rounded-md flex items-center justify-center opacity-40 cursor-not-allowed"
+                className="w-7 h-7 rounded-lg bg-[hsl(var(--surface-1))]/60 flex items-center justify-center opacity-40 cursor-not-allowed"
               >
                 <Music2 className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
@@ -129,6 +129,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
           </Tooltip>
         </TooltipProvider>
       </div>
+
 
 
     </div>

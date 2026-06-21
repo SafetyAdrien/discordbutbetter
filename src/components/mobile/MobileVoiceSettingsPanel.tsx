@@ -20,7 +20,7 @@ interface ToggleRowProps {
 function ToggleRow({ icon, title, subtitle, value, onChange, divider }: ToggleRowProps) {
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-2.5">
         <div className="w-8 flex justify-center text-muted-foreground shrink-0">{icon}</div>
         <div className="flex-1 min-w-0">
           <div className="font-bold text-foreground text-[15px]">{title}</div>
@@ -91,7 +91,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
         {/* Channel Settings */}
         <button
           type="button"
-          className="w-full flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl p-4 active:bg-[hsl(var(--surface-3))] transition-colors text-left"
+          className="w-full flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl p-3 active:bg-[hsl(var(--surface-3))] transition-colors text-left"
         >
           <div className="flex-1 min-w-0">
             <div className="font-bold text-foreground">Channel Settings</div>
@@ -104,7 +104,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
         <div className="bg-[hsl(var(--surface-2))] rounded-xl overflow-hidden">
           <button
             type="button"
-            className="w-full flex items-center gap-3 px-4 py-3 active:bg-[hsl(var(--surface-3))] transition-colors text-left"
+            className="w-full flex items-center gap-3 px-4 py-2.5 active:bg-[hsl(var(--surface-3))] transition-colors text-left"
           >
             <div className="w-8 flex justify-center text-muted-foreground shrink-0">
               <Settings className="w-6 h-6" />
@@ -135,11 +135,11 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
 
         {/* Members */}
         <div>
-          <div className="px-2 pt-2 pb-2 text-[13px] font-semibold text-muted-foreground">0 Members</div>
+          <div className="px-2 pt-1 pb-1 text-[13px] font-semibold text-muted-foreground">0 Members</div>
           <button
             type="button"
             onClick={onInvite}
-            className="w-full flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl p-4 active:bg-[hsl(var(--surface-3))] transition-colors text-left"
+            className="w-full flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl p-3 active:bg-[hsl(var(--surface-3))] transition-colors text-left"
           >
             <UserPlus className="w-5 h-5 text-muted-foreground shrink-0" />
             <div className="flex-1 font-bold text-foreground">Invite a friend</div>
@@ -149,7 +149,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
 
         {/* Developers */}
         <div>
-          <div className="px-2 pt-2 pb-2 text-[13px] font-semibold text-muted-foreground">For Developers</div>
+          <div className="px-2 pt-1 pb-1 text-[13px] font-semibold text-muted-foreground">For Developers</div>
           <div className="bg-[hsl(var(--surface-2))] rounded-xl overflow-hidden">
             <ToggleRow
               icon={<Wrench className="w-6 h-6" />}

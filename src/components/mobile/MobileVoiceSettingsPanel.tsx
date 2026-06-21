@@ -75,9 +75,10 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
       exit={{ y: '100%' }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
       drag="y"
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0, bottom: 0.18 }}
-      dragListener={true}
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: 0, bottom: panelHeight }}
+      dragElastic={{ top: 0, bottom: 0 }}
       onDragEnd={handleDragEnd}
       style={{ y }}
       className="fixed inset-x-0 bottom-0 z-[60] h-[90vh] max-h-[90vh] rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 flex flex-col overflow-y-auto touch-pan-y shadow-2xl"

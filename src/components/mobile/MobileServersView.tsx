@@ -300,16 +300,23 @@ export function MobileServersView({
         <button
           onClick={handleDMClick}
           className={cn(
-            ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
+            ICON_SIZE, 'group relative flex items-center justify-center rounded-2xl transition-all',
             showDMs
               ? 'bg-primary text-primary-foreground rounded-2xl'
               : 'bg-surface-3 hover:bg-primary/20 hover:text-primary text-muted-foreground rounded-2xl'
           )}
         >
-          <div className={cn(
-            'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
-            showDMs ? 'h-8' : totalUnreadDMs > 0 ? 'h-3' : 'h-0 opacity-0'
-          )} />
+          <div
+            className={cn(
+              'absolute -left-[14px] w-[4px] rounded-r-full bg-foreground',
+              showDMs
+                ? 'h-10'
+                : totalUnreadDMs > 0
+                  ? 'h-2'
+                  : 'h-0 group-hover:h-5'
+            )}
+            style={{ transition: 'height 300ms' }}
+          />
           <MessageCircle className="w-6 h-6" />
           {totalUnreadDMs > 0 && !showDMs && (
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">

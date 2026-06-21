@@ -1898,21 +1898,8 @@ threads={threadsByChannel[channel.id] || []}
         </ContextMenuContent>
       </ContextMenu>
 
-      {/* Voice Controls */}
-      {isConnected && voiceState.channelName &&
-      <VoiceControls
-        channelName={voiceState.channelName}
-        serverName={voiceState.serverName}
-        isMuted={voiceState.isMuted}
-        isDeafened={voiceState.isDeafened}
-        onToggleMute={() => toggleMute()}
-        onToggleDeafen={() => toggleDeafen()}
-        onDisconnect={() => leaveChannel()} />
-
-      }
-
-      {/* Spacer for floating UserProfileCard rendered at Index level */}
-      <div className="h-[68px] shrink-0" />
+      {/* Spacer reserving room for floating VoiceControls + UserProfileCard at Index level */}
+      <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[220px]" : "h-[68px]")} />
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 

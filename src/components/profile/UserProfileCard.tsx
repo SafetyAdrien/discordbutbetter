@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { CustomStatusBubble } from "./CustomStatusBubble";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
-import { Pencil, ChevronRight, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff, Plus } from "lucide-react";
+import { Pencil, ChevronRight, ChevronDown, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff, Plus } from "lucide-react";
 import { DiscordMic } from "@/components/icons/DiscordMic";
 import { DiscordMicOff } from "@/components/icons/DiscordMicOff";
 import { DiscordHeadphones } from "@/components/icons/DiscordHeadphones";
@@ -18,6 +18,8 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { CustomStatusModal } from "./CustomStatusModal";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
+import { MicrophoneSettingsPopover } from "@/components/channels/voice/MicrophoneSettingsPopover";
+import { HeadphonesSettingsPopover } from "@/components/channels/voice/HeadphonesSettingsPopover";
 
 const statusColors = {
   online: "bg-[hsl(var(--online))]",
@@ -276,27 +278,67 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
         </PopoverContent>
       </Popover>
 
-      <button
-        onClick={() => voiceCtx.toggleMute()}
-        className={cn(
-          "p-2 hover:bg-muted rounded-md transition-colors",
-          voiceCtx.voiceState.isMuted && "text-destructive"
-        )}
-      >
-        {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-[18px] h-[18px]" /> : <DiscordMic className="w-[18px] h-[18px] text-muted-foreground" />}
-      </button>
-      <button
-        onClick={() => voiceCtx.toggleDeafen()}
-        className={cn(
-          "p-2 hover:bg-muted rounded-md transition-colors",
-          voiceCtx.voiceState.isDeafened && "text-destructive"
-        )}
-      >
-        {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-[18px] h-[18px]" /> : <DiscordHeadphones className="w-[18px] h-[18px] text-muted-foreground" />}
-      </button>
-      <button onClick={onOpenSettings} className="p-2 hover:bg-muted rounded-md transition-colors">
-        <DiscordSettings className="w-[18px] h-[18px] text-muted-foreground" />
-      </button>
+      <div className="flex items-center gap-0.5 shrink-0">
+        {/* Micro + chevron */}
+        <div className="flex items-center">
+          <button
+            onClick={() => voiceCtx.toggleMute()}
+            className={cn(
+              "p-1.5 hover:bg-muted rounded-l-md rounded-r-none transition-colors",
+              voiceCtx.voiceState.isMuted && "text-destructive"
+            )}
+          >
+            {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          <MicrophoneSettingsPopover
+            micVolume={voiceCtx.micVolume}
+            onMicVolumeChange={voiceCtx.setMicVolume}
+            vadSensitivity={voiceCtx.vadSensitivity}
+            onVadSensitivityChange={voiceCtx.setVadSensitivity}
+            noiseSuppression={voiceCtx.noiseSuppression}
+            onNoiseSuppressionChange={voiceCtx.setNoiseSuppression}
+            rnnoiseAvailable={voiceCtx.rnnoiseAvailable}
+            enableDeEsser={voiceCtx.audioFilters.deEsser}
+            onToggleDeEsser={(v) => voiceCtx.setAudioFilter('deEsser', v)}
+            enableLowShelf={voiceCtx.audioFilters.lowShelf}
+            onToggleLowShelf={(v) => voiceCtx.setAudioFilter('lowShelf', v)}
+            enableHighPass={voiceCtx.audioFilters.highPass}
+            onToggleHighPass={(v) => voiceCtx.setAudioFilter('highPass', v)}
+          >
+            <button className="px-0.5 py-1.5 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </button>
+          </MicrophoneSettingsPopover>
+        </div>
+
+        {/* Casque + chevron */}
+        <div className="flex items-center">
+          <button
+            onClick={() => voiceCtx.toggleDeafen()}
+            className={cn(
+              "p-1.5 hover:bg-muted rounded-l-md rounded-r-none transition-colors",
+              voiceCtx.voiceState.isDeafened && "text-destructive"
+            )}
+          >
+            {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          <HeadphonesSettingsPopover
+            outputVolume={voiceCtx.outputVolume}
+            onOutputVolumeChange={voiceCtx.setOutputVolume}
+            isDeafened={voiceCtx.voiceState.isDeafened}
+            onToggleDeafen={() => voiceCtx.toggleDeafen()}
+          >
+            <button className="px-0.5 py-1.5 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </button>
+          </HeadphonesSettingsPopover>
+        </div>
+
+        {/* Paramètres */}
+        <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors ml-0.5">
+          <DiscordSettings className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
 
       {/* Custom Status Modal */}
       <CustomStatusModal open={showCustomStatusModal} onOpenChange={setShowCustomStatusModal} />

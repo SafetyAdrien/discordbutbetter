@@ -351,9 +351,10 @@ export class MediaManager {
       audio.autoplay = true;
       audio.muted = this.isDeafened;
       
-      // Apply saved volume — clamp native volume to [0,1]
+      // Apply saved volume — clamp native volume to [0,1] (master applied below)
       const savedVolume = this.peerVolumes.get(peerId) ?? 100;
-      audio.volume = Math.max(0, Math.min(1, savedVolume / 100));
+      this.peerVolumes.set(peerId, savedVolume);
+      audio.volume = Math.max(0, Math.min(1, (savedVolume / 100) * this._masterOutputVolume));
 
       // Robust play with retry on autoplay policy block
       const tryPlay = () => {
@@ -393,15 +394,15 @@ export class MediaManager {
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
-      // GainNode for amplification beyond 100%
+      // GainNode for amplification beyond 100% (taking master into account)
       let gainNode: GainNode | null = null;
-      if (savedVolume > 100) {
+      const effective = (savedVolume / 100) * this._masterOutputVolume;
+      if (effective > 1) {
         gainNode = context.createGain();
-        gainNode.gain.value = savedVolume / 100;
+        gainNode.gain.value = effective;
         source.connect(gainNode);
         gainNode.connect(context.destination);
         // When using GainNode for amplification, mute the native element
-        // and let Web Audio API handle playback
         audio.volume = 0;
         audio.muted = true;
       }
@@ -611,42 +612,57 @@ export class MediaManager {
 
   // ==================== VOLUME CONTROL ====================
 
+  private _masterOutputVolume = (() => {
+    try { return Math.max(0, Math.min(2, parseInt(localStorage.getItem('voice-output-volume') || '100', 10) / 100)); }
+    catch { return 1; }
+  })();
+
+  setMasterOutputVolume(percent: number): void {
+    this._masterOutputVolume = Math.max(0, Math.min(2, percent / 100));
+    try { localStorage.setItem('voice-output-volume', String(Math.round(this._masterOutputVolume * 100))); } catch {}
+    this.peerVolumes.forEach((_, peerId) => this._applyEffectiveVolume(peerId));
+    this.remoteAudioElements.forEach((_, peerId) => {
+      if (!this.peerVolumes.has(peerId)) this._applyEffectiveVolume(peerId);
+    });
+  }
+
+  getMasterOutputVolume(): number {
+    return Math.round(this._masterOutputVolume * 100);
+  }
+
   setRemoteAudioVolume(peerId: string, volume: number): void {
     this.peerVolumes.set(peerId, volume);
-    
+    this._applyEffectiveVolume(peerId);
+  }
+
+  private _applyEffectiveVolume(peerId: string): void {
+    const peerVol = this.peerVolumes.get(peerId) ?? 100;
+    const effective = (peerVol / 100) * this._masterOutputVolume; // 0..4
     const audio = this.remoteAudioElements.get(peerId);
     const remoteCtx = this.remoteAudioContexts.get(peerId);
 
-    if (volume <= 100) {
-      // Use native audio.volume for 0-100%
+    if (effective <= 1) {
       if (audio) {
-        audio.volume = Math.max(0, Math.min(1, volume / 100));
-        audio.muted = this.isDeafened || volume === 0;
+        audio.volume = Math.max(0, effective);
+        audio.muted = this.isDeafened || effective === 0;
       }
-      // Disconnect any existing GainNode amplification
       if (remoteCtx?.gainNode) {
-        try {
-          remoteCtx.gainNode.disconnect();
-        } catch { /* already disconnected */ }
+        try { remoteCtx.gainNode.disconnect(); } catch { /* already */ }
         remoteCtx.gainNode = null;
       }
     } else {
-      // For > 100%, use GainNode for amplification
-      if (audio) {
-        // Mute native element, let Web Audio API handle output
-        audio.volume = 0;
-        audio.muted = true;
-      }
+      if (audio) { audio.volume = 0; audio.muted = true; }
       if (remoteCtx) {
         if (!remoteCtx.gainNode) {
           remoteCtx.gainNode = remoteCtx.context.createGain();
           remoteCtx.source.connect(remoteCtx.gainNode);
           remoteCtx.gainNode.connect(remoteCtx.context.destination);
         }
-        remoteCtx.gainNode.gain.value = volume / 100;
+        remoteCtx.gainNode.gain.value = effective;
       }
     }
   }
+
 
   getRemoteAudioVolume(peerId: string): number {
     return this.peerVolumes.get(peerId) ?? 100;

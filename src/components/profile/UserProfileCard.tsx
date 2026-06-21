@@ -279,23 +279,23 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
       <button
         onClick={() => voiceCtx.toggleMute()}
         className={cn(
-          "p-1.5 hover:bg-muted rounded-md transition-colors",
+          "p-2 hover:bg-muted rounded-md transition-colors",
           voiceCtx.voiceState.isMuted && "text-destructive"
         )}
       >
-        {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4 text-muted-foreground" />}
+        {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-[18px] h-[18px]" /> : <DiscordMic className="w-[18px] h-[18px] text-muted-foreground" />}
       </button>
       <button
         onClick={() => voiceCtx.toggleDeafen()}
         className={cn(
-          "p-1.5 hover:bg-muted rounded-md transition-colors",
+          "p-2 hover:bg-muted rounded-md transition-colors",
           voiceCtx.voiceState.isDeafened && "text-destructive"
         )}
       >
-        {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4 text-muted-foreground" />}
+        {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-[18px] h-[18px]" /> : <DiscordHeadphones className="w-[18px] h-[18px] text-muted-foreground" />}
       </button>
-      <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
-        <DiscordSettings className="w-4 h-4 text-muted-foreground" />
+      <button onClick={onOpenSettings} className="p-2 hover:bg-muted rounded-md transition-colors">
+        <DiscordSettings className="w-[18px] h-[18px] text-muted-foreground" />
       </button>
 
       {/* Custom Status Modal */}

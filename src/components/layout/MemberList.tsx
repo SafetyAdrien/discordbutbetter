@@ -27,6 +27,7 @@ import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { InboxPanel } from "@/components/inbox/InboxPanel";
 import { DiscordInbox } from '@/components/icons/DiscordInbox';
 import { useNotifications } from "@/hooks/useNotifications";
+import { useTotalMentionCount } from "@/hooks/useTotalMentionCount";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,

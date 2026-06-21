@@ -7,9 +7,7 @@ import { NewMessageModal } from './NewMessageModal';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { InboxPanel } from '@/components/inbox/InboxPanel';
 import { VoiceControls } from '@/components/layout/VoiceControls';
-import { UserProfileCard } from '@/components/profile/UserProfileCard';
 import { useVoice } from '@/contexts/VoiceContext';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { useUnreadNotificationsCount } from '@/hooks/useNotifications';
 import { Badge } from '@/components/ui/badge';
 import { MentionBadge } from '@/components/ui/MentionBadge';
@@ -27,7 +25,6 @@ export function DMPage({
   onConversationSelect,
   onShowFriends
 }: DMPageProps) {
-  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const unreadCount = useUnreadNotificationsCount();
@@ -141,11 +138,8 @@ export function DMPage({
           />
         )}
 
-        {/* User Panel */}
-        <UserProfileCard 
-          onOpenSettings={() => setShowAccountSettings(true)} 
-          onOpenProfile={() => setShowAccountSettings(true)} 
-        />
+        {/* Spacer for floating UserProfileCard rendered at Index level */}
+        <div className="h-[68px] shrink-0" />
       </div>
 
       {/* Main Content */}
@@ -158,9 +152,6 @@ export function DMPage({
       ) : null}
 
       {/* Modals */}
-      {showAccountSettings && (
-        <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
-      )}
       {showNewMessageModal && (
         <NewMessageModal 
           onClose={() => setShowNewMessageModal(false)} 

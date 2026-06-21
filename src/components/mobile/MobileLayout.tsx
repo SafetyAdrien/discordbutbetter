@@ -790,6 +790,20 @@ export function MobileLayout({
           onClose={() => setExternalLinkUrl(null)}
         />
       )}
+
+      <MobileVoicePreJoinSheet
+        open={!!voicePreJoin}
+        onOpenChange={(o) => { if (!o) setVoicePreJoin(null); }}
+        channel={voicePreJoin?.channel ?? null}
+        serverId={voicePreJoin?.serverId ?? ''}
+        serverName={rawServers.find((s: any) => s.id === voicePreJoin?.serverId)?.name}
+        onJoined={(channelId) => {
+          if (voicePreJoin) {
+            setMobileView({ type: 'chat', serverId: voicePreJoin.serverId, channelId, channelType: 'voice' });
+            setVoicePreJoin(null);
+          }
+        }}
+      />
     </div>
   );
 }

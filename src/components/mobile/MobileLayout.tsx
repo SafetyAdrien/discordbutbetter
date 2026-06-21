@@ -8,6 +8,7 @@ import { MobileProfileView } from './MobileProfileView';
 
 import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
+import { MobileVoiceChannelView } from './MobileVoiceChannelView';
 import { VoicePiP } from './VoicePiP';
 import { StageChannel } from '@/components/channels/StageChannel';
 import { MediaChannel } from '@/components/channels/MediaChannel';
@@ -401,15 +402,15 @@ export function MobileLayout({
     switch (channelForChat.type) {
       case 'voice':
         return (
-          <div className="flex flex-col h-full">
-            <div className="h-12 px-2 flex items-center gap-2 border-b border-border">
-              <button onClick={handleBackToChannels} className="p-1.5 rounded-lg hover:bg-muted"><ChevronLeftIcon /></button>
-              <h2 className="font-semibold text-sm truncate flex-1">{channelForChat.name}</h2>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <VoiceChannelView {...commonProps} serverId={currentServer.id} members={memberListData} ownerId={currentServer.owner_id || ''} onOpenDM={onOpenDM} />
-            </div>
-          </div>
+          <MobileVoiceChannelView
+            key={channelForChat.id}
+            channel={channelForChat}
+            serverId={currentServer.id}
+            members={memberListData}
+            ownerId={currentServer.owner_id || ''}
+            onOpenDM={onOpenDM}
+            onBack={handleBackToChannels}
+          />
         );
       case 'media':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} /></FullScreenWrapper>;

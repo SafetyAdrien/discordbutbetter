@@ -48,15 +48,33 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
   const [deafen, setDeafen] = useState(false);
   const [onlyVideos, setOnlyVideos] = useState(false);
   const [debugOverlay, setDebugOverlay] = useState(false);
+  const y = useMotionValue(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = (panelRef.current?.offsetHeight ?? window.innerHeight) * 0.2;
+    if (info.offset.y > threshold || info.velocity.y > 500) {
+      onClose();
+    } else {
+      y.set(0);
+    }
+  };
 
   return (
     <motion.div
       key="voice-settings-panel"
+      ref={panelRef}
       initial={{ y: '100%' }}
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="fixed inset-0 z-[60] bg-[hsl(var(--surface-1))] flex flex-col overflow-y-auto"
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.18 }}
+      dragListener={true}
+      onDragEnd={handleDragEnd}
+      style={{ y }}
+      className="fixed inset-0 z-[60] bg-[hsl(var(--surface-1))] flex flex-col overflow-y-auto touch-pan-y"
     >
       {/* Header */}
       <div className="px-4 pt-12 pb-4 flex items-center justify-between shrink-0">

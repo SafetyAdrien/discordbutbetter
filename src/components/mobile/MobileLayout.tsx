@@ -808,6 +808,12 @@ export function MobileLayout({
             setVoicePreJoin(null);
           }
         }}
+        onOpenChat={(channelId) => {
+          if (voicePreJoin) {
+            setMobileView({ type: 'chat', serverId: voicePreJoin.serverId, channelId, channelType: 'voice' });
+            setVoicePreJoin(null);
+          }
+        }}
       />
     </div>
   );

@@ -1783,7 +1783,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 )}
 
                                 {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
-                                  <div className="mt-1 max-sm:mt-0.5">
+                                  <div className="mt-1">
                                     <ReactionBar
                                       reactions={reactionsData?.[message.id] || []}
                                       onToggle={(emoji) => handleAddReaction(message.id, emoji)}

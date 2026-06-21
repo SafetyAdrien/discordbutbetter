@@ -41,8 +41,8 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, v
               mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
               transition-colors duration-100
                 ${isSelf
-                  ? 'bg-[rgba(88,101,242,0.3)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
-                  : 'bg-[rgba(88,101,242,0.15)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.3)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
+                  ? 'bg-[rgba(88,101,242,0.3)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:text-white'
+                  : 'bg-[rgba(88,101,242,0.15)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.3)] hover:text-white'
                 }
             `}
           >
@@ -118,7 +118,7 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
         e.currentTarget.style.backgroundColor = bgRest;
         e.currentTarget.style.color = color;
       }}
-      className="mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100 max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]"
+      className="mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium transition-colors duration-100"
     >
       @{roleName}
     </span>
@@ -168,7 +168,7 @@ export function ChannelMention({ channelId, channelName, serverId, onNavigate }:
     <span
       onClick={() => onNavigate?.(channelId, serverId)}
       className="mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
-        bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]
+        bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white
         transition-colors duration-100"
     >
       <Hash className="w-3.5 h-3.5" />
@@ -197,7 +197,7 @@ export function SpecialMention({ type }: SpecialMentionProps) {
 
   return (
     <span className="mention-pill inline-flex items-center gap-1 px-1 rounded-[3px] cursor-pointer font-medium
-      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]
+      bg-[rgba(79,84,92,0.48)] text-[#c4c9ce] hover:bg-[rgba(79,84,92,0.76)] hover:text-white
       transition-colors duration-100">
       <Icon className="w-3.5 h-3.5" />
       {config.label}
@@ -275,7 +275,7 @@ export function EveryoneMention({ type, serverId }: EveryoneMentionProps) {
       type="button"
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="mention-pill inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-pointer align-baseline max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]"
+      className="mention-pill inline-flex items-center px-1 rounded-[3px] font-medium bg-primary/30 text-[#dee0fc] hover:bg-primary hover:text-white transition-colors duration-100 cursor-pointer align-baseline"
     >
       @{type}
     </button>

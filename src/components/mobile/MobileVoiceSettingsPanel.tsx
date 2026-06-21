@@ -50,9 +50,15 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
   const [debugOverlay, setDebugOverlay] = useState(false);
   const y = useMotionValue(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [panelHeight, setPanelHeight] = useState(window.innerHeight);
+  const dragControls = useDragControls();
+
+  useEffect(() => {
+    setPanelHeight(panelRef.current?.offsetHeight ?? window.innerHeight);
+  }, []);
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = (panelRef.current?.offsetHeight ?? window.innerHeight) * 0.2;
+    const threshold = panelHeight * 0.2;
     if (info.offset.y > threshold || info.velocity.y > 500) {
       onClose();
     } else {

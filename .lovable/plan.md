@@ -1,110 +1,71 @@
 ## Objectif
 
-Trois extensions du système Markdown, à appliquer partout (desktop + mobile) :
+Sur Desktop, la pastille blanche à gauche des icônes de serveurs (`ServerList.tsx`) possède un style et un comportement spécifiques :
 
-1. **Aperçu WYSIWYG dans tous les champs de saisie** Markdown (overlay `InputMarkdownOverlay`).
-2. **Markdown dans les *topics* (descriptions) de tous les types de salons**, en affichage et en édition.
-3. **Alertes GitHub-style** (`> [!NOTE]` / `> [!TIP]` / `> [!IMPORTANT]` / `> [!WARNING]` / `> [!CAUTION]`) dans le renderer.
+- Position : `absolute -left-[14px]`
+- Largeur : `w-[4px]`
+- Coin droit arrondi : `rounded-r-full`
+- Couleur : `bg-foreground`
+- Hauteur dynamique :
+  - Serveur actif → `h-10`
+  - Non-lu / mentions → `h-2`
+  - Sinon → `h-0` puis `group-hover:h-5` (croissance au survol)
+- Transition : `height 300ms`
 
----
+Sur Mobile (`MobileServersView.tsx`), la pastille est légèrement différente :
+- `-left-[11px]`, `w-1`, centrée verticalement avec `top-1/2 -translate-y-1/2`
+- Hauteurs `h-8 / h-3 / h-0 opacity-0`, sans état hover, transition `transition-all`
 
-## 1) Overlay WYSIWYG sur tous les composers
+L'utilisateur veut que la version mobile soit **entièrement identique** au desktop, à la fois sur le style et le comportement.
 
-Aujourd'hui l'overlay n'est branché que sur `MessageInput` (chat principal) et `MarkdownLiveTextarea` (bios). Les `<Textarea>` listés ci-dessous tapent encore en texte brut.
+## Modifications
 
-**Refactor** : extraire `src/components/chat/MarkdownTextarea.tsx` — wrap `<Textarea>` + `<InputMarkdownOverlay>` synchronisés (scroll, font-metrics, padding, markers ~55 % d'opacité, ref forwardée pour `HTMLTextAreaElement` et auto-resize). `MessageInput` consomme ce composant ; chaque site ci-dessous remplace son `<Textarea>` par `<MarkdownTextarea>`.
+### 1. `src/components/mobile/MobileServersView.tsx` — icône de serveur (lignes 101-104)
 
-Sites à patcher :
+Remplacer le `<div>` de la pastille par la version desktop :
 
-- **Édition inline de message** : `ChatArea.tsx` (≈ l. 1704 et 1824), `DMConversation.tsx` (≈ l. 581), `ThreadView.tsx` (≈ l. 952), `VoiceChannelChat.tsx` (≈ l. 316), `AnnouncementChannel.tsx` (édition annonce + commentaire, ≈ l. 976 et 1086).
-- **Composers Markdown dédiés** : `announcement/AnnouncementComposer.tsx` (≈ l. 335), `announcement/CreateAnnouncementModal.tsx` (≈ l. 165), `media/CreateMediaPostModal.tsx` (≈ l. 251).
-- **Topic / description de salon** (édition) : `channel-settings/ChannelOverview.tsx` (≈ l. 264).
-
-Mobile : `MobileDMConversation`, `MobileChatView`, `MobileThreadView` consomment déjà `MessageInput` → bénéficient automatiquement du refactor. Pas d'édition inline mobile à patcher.
-
-Hors scope : bios (déjà sur `MarkdownLiveTextarea`), question de sondage, description de serveur (reste texte brut tant que produit ne valide pas le Markdown serveur).
-
----
-
-## 2) Topics Markdown sur tous les types de salons
-
-Le topic est déjà rendu via `MarkdownText` sur le header desktop du chat texte (`ChatArea.tsx:1109`). À aligner ailleurs :
-
-- **Affichage** : passer `channel.description` à `MarkdownText variant="chat"` (inline-compact) au lieu de `<p>{description}</p>` dans :
-  - `channels/VoiceChannelView.tsx` (≈ l. 171)
-  - `channels/AnnouncementChannel.tsx` (≈ l. 537 et 542)
-  - `channels/StageChannel.tsx`, `ForumChannel.tsx`, `MediaChannel.tsx`, `CalendarChannel.tsx`, `TasksChannel.tsx`, `LinkChannel.tsx` — wherever the header/sidebar renders the topic (ajouter le rendu Markdown s'il y en a un, sinon noter qu'il n'y en a pas).
-  - Mobile : `mobile/MobileChannelDetailSheet.tsx` (≈ l. 60) → `MarkdownText variant="chat"` à la place du `<p>`.
-- **Édition** : `ChannelOverview.tsx` → `MarkdownTextarea` (cf. point 1) pour saisir le topic en WYSIWYG.
-
-Aucun changement de schéma : `channels.description` est déjà du texte libre.
-
----
-
-## 3) Alertes GitHub-style dans le renderer
-
-Étendre `src/lib/markdown.tsx` pour reconnaître le bloc :
-
-```
-> [!TYPE]
-> Contenu sur une ou plusieurs lignes commençant par `> `
+```tsx
+<div
+  className={cn(
+    'absolute -left-[14px] w-[4px] rounded-r-full bg-foreground',
+    isActive
+      ? 'h-10'
+      : hasUnread || mentionCount > 0
+        ? 'h-2'
+        : 'h-0 group-hover:h-5'
+  )}
+  style={{ transition: 'height 300ms' }}
+/>
 ```
 
-avec `TYPE ∈ {NOTE, TIP, IMPORTANT, WARNING, CAUTION}` (case-insensitive). Le bloc entier remplace la séquence de blockquotes consécutifs.
+Le bouton parent porte déjà la classe `group`, donc `group-hover:h-5` fonctionnera (même si peu visible sur tactile, c'est conservé pour parité 1:1 avec le desktop, notamment sur tablette ou en mode souris).
 
-### Parsing (`parseMarkdown`)
-- Dans le pré-parse des lignes, lorsqu'une ligne `> [!TYPE]` est rencontrée, regrouper toutes les lignes `>`-préfixées suivantes en un nouveau bloc `{ type: 'alert', alertType, content }` (content = jointure des lignes sans le `> `).
-- Si le type est inconnu, retomber sur le rendu blockquote actuel.
+### 2. `src/components/mobile/MobileServersView.tsx` — bouton DM (lignes 302-305)
 
-### Rendu
-- Nouveau case `'alert'` rendant :
-  ```
-  <div role="note" class="border-l-[4px] pl-3 my-1.5" style="border-color: var(--alert-{type}-border)">
-    <div class="flex items-center gap-1.5 font-semibold mb-0.5" style="color: var(--alert-{type}-fg)">
-      <Icon /> {Label localisé FR}
-    </div>
-    <div>{renderInlineContent(content)}</div>
-  </div>
-  ```
-- Icônes (lucide-react) :
-  - NOTE → `Info` (bleu)
-  - TIP → `Lightbulb` (vert)
-  - IMPORTANT → `MessageSquareWarning` (violet)
-  - WARNING → `TriangleAlert` (ambre)
-  - CAUTION → `OctagonAlert` (rouge)
-- Labels FR : `Note`, `Astuce`, `Important`, `Avertissement`, `Attention`.
+Appliquer exactement le même bloc, en remplaçant `hasUnread` par `totalUnreadDMs > 0` et en gardant `showDMs` pour l'état actif :
 
-### Tokens (`src/index.css`)
-Ajouter des variables HSL sémantiques (light + dark) :
+```tsx
+<div
+  className={cn(
+    'absolute -left-[14px] w-[4px] rounded-r-full bg-foreground',
+    showDMs
+      ? 'h-10'
+      : totalUnreadDMs > 0
+        ? 'h-2'
+        : 'h-0 group-hover:h-5'
+  )}
+  style={{ transition: 'height 300ms' }}
+/>
 ```
---alert-note-fg / --alert-note-border    (bleu)
---alert-tip-fg / --alert-tip-border      (vert)
---alert-important-fg / --alert-important-border (violet)
---alert-warning-fg / --alert-warning-border (ambre)
---alert-caution-fg / --alert-caution-border (rouge)
-```
-Valeurs alignées sur la palette GitHub adaptée au thème sombre du projet — pas de couleur en dur dans le JSX.
 
-### Overlay (`InputMarkdownOverlay.tsx`)
-- Étendre `parseLines` pour reconnaître `> [!TYPE]` comme un nouveau line type `alertHeader`, rendu coloré (couleur de l'alerte, marker `[!TYPE]` visible à ~55 %).
-- Les lignes `>` qui suivent gardent le style `blockquote`. Pas de bloc visuel multi-ligne dans l'overlay (impossible sans casser l'alignement caret) — seul l'entête de la première ligne se colore. Le rendu complet apparaît côté message envoyé.
+Ajouter la classe `group` au bouton DM si elle est absente, pour que `group-hover` fonctionne.
 
-### Fallbacks
-- `> [!XYZ]` non reconnu → rendu blockquote standard (compat avant).
-- Alerte vide (`> [!NOTE]` sans contenu) → bloc rendu avec entête seul.
+## Vérification
 
----
+- `bunx tsc --noEmit`
+- Vérification visuelle mobile : la pastille apparaît à `-14px` à gauche, largeur 4px, hauteur 40px en actif, 8px quand il y a un non-lu, et anime sur 300ms — identique au desktop.
 
-## Validation
+## Hors-périmètre
 
-- `bunx tsc --noEmit`.
-- Aperçu visuel desktop + mobile :
-  - Topic Markdown affiché correctement dans chaque type de salon (vocal, annonce, forum, média, calendrier, tâches, stage, lien, mobile sheet).
-  - Composer overlay actif lors de l'édition d'un message (chat/DM/thread/vocal/annonce), composer d'annonce, composer média et édition de topic — markers gris faibles + rendu WYSIWYG.
-  - Coller le bloc des 5 alertes (cf. message utilisateur) dans un message : rendu identique à l'image, couleurs/icônes correctes, marker `[!TYPE]` visible mais discret dans le composer.
-
-## Hors scope
-
-- Pas de Markdown sur la description de serveur (à confirmer séparément).
-- Pas de migration des bios (`parseMarkdown` legacy → `<MarkdownText>`) — déjà fonctionnel.
-- Pas de support des alertes imbriquées dans des listes.
+- Les badges de mentions rouges et les badges vocaux ne sont pas modifiés.
+- Aucune modification de logique métier (calcul des non-lus, sélection de serveur).

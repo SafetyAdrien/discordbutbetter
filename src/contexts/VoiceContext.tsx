@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { soundEffects } from '@/utils/audio/SoundEffects';
 import { audioProcessor, type NoiseSuppressonMode, type VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
+import { mediaManager } from '@/utils/webrtc/MediaManager';
 
 // Re-export useVoiceParticipants from dedicated hook file
 export { useVoiceParticipants } from '@/hooks/useVoiceParticipants';
@@ -62,6 +63,9 @@ interface VoiceContextType {
   // Audio filters
   audioFilters: { deEsser: boolean; lowShelf: boolean; highPass: boolean };
   setAudioFilter: (filter: 'deEsser' | 'lowShelf' | 'highPass', enabled: boolean) => void;
+  // Output (headphones) volume
+  outputVolume: number;
+  setOutputVolume: (vol: number) => void;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -101,6 +105,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem('voice-audio-filters');
       return stored ? JSON.parse(stored) : { deEsser: true, lowShelf: true, highPass: true };
     } catch { return { deEsser: true, lowShelf: true, highPass: true }; }
+  });
+
+  // Output (headphones) volume — persisted, applied to all remote audio
+  const [outputVolume, setOutputVolumeState] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('voice-output-volume') || '100', 10); }
+    catch { return 100; }
   });
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
@@ -659,6 +669,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (filter === 'deEsser') audioProcessor.setDeEsserEnabled(enabled);
     if (filter === 'lowShelf') audioProcessor.setLowShelfEnabled(enabled);
     if (filter === 'highPass') audioProcessor.setHighPassEnabled(enabled);
+  }, []);
+
+  const setOutputVolume = useCallback((vol: number) => {
+    setOutputVolumeState(vol);
+    mediaManager.setMasterOutputVolume(vol);
   }, []);
 
   return (

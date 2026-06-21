@@ -114,19 +114,23 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
               active={isCameraActive}
               onClick={canVideo ? toggleCamera : undefined}
               icon={isCameraActive ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              aria-label={isCameraActive ? 'Désactiver la caméra' : 'Activer la caméra'}
             />
             <PillButton
               danger={voiceState.isMuted}
               onClick={canSpeak ? toggleMute : undefined}
               icon={voiceState.isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              aria-label={voiceState.isMuted ? 'Désactiver la sourdine' : 'Couper le micro'}
             />
             <PillButton
               onClick={() => setShowChat(true)}
-              icon={<MessageSquare className="w-5 h-5" />}
+              icon={<MessageSquare className="w-5 h-5" fill="currentColor" strokeWidth={0} />}
+              aria-label="Chat textuel"
             />
             <PillButton
               onClick={() => {}}
               icon={<Hand className="w-5 h-5" />}
+              aria-label="Lever la main"
             />
             <button
               onClick={leaveChannel}
@@ -197,11 +201,24 @@ function MobileVoiceHeader({ channelName, onBack, isDeafened, onToggleDeafen, ca
   );
 }
 
-function PillButton({ icon, onClick, active, danger }: { icon: React.ReactNode; onClick?: () => void; active?: boolean; danger?: boolean }) {
+function PillButton({
+  icon,
+  onClick,
+  active,
+  danger,
+  'aria-label': ariaLabel,
+}: {
+  icon: React.ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  danger?: boolean;
+  'aria-label'?: string;
+}) {
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
+      aria-label={ariaLabel}
       className={cn(
         'w-12 h-12 rounded-full flex items-center justify-center transition-colors active:scale-95',
         'bg-white/10 text-white',
